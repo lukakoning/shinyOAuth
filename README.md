@@ -43,11 +43,11 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
   
 - Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with 
   local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
-  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` for
+  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)) for
   more details)
 
 - Provides hooks for auditing & logging key events,
-  like login successes or failures (see `vignette("audit-logging", package = "shinyOAuth")` for more details)
+  like login successes or failures (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for more details)
 
 ## Installation
 
@@ -60,7 +60,7 @@ remotes::install_github("lukakoning/shinyOAuth")
 ## Usage
 
 For complete usage documentation (i.e., making a manual login button, making authenticated
-API calls, setting various options, and a security checklist) see: `vignette("usage", package = "shinyOAuth")`.
+API calls, setting various options, and a security checklist) see: `vignette("usage", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html)).
 
 ### Minimal example
 
@@ -122,16 +122,16 @@ runApp(shinyApp(ui, server), port = 8100)
 
 The package provides hooks for logging/auditing crucial events 
 (e.g., callbacks issued & received, login success/failures).
-See `vignette("audit-logging", package = "shinyOAuth")` for details.
+See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for details.
 
 ## More information
 
 ### What happens during the authentication flow?
 
 For an in-depth step-by-step explanation of what happens during the authentication flow, see: 
-`vignette("authentication-flow", package = "shinyOAuth")`.
+`vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
 
 ### What do I need to consider for production use?
 
 For a checklist of security considerations and best practices for production use, see:
-`vignette("usage", package = "shinyOAuth")`.
+`vignette("usage", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist)).
