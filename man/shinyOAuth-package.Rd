@@ -12,6 +12,7 @@ Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and 'OpenID Conne
 Useful links:
 \itemize{
   \item \url{https://github.com/lukakoning/shinyOAuth}
+  \item \url{https://lukakoning.github.io/shinyOAuth/}
   \item Report bugs at \url{https://github.com/lukakoning/shinyOAuth/issues}
 }
 
