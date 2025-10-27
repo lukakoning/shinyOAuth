@@ -9,52 +9,47 @@ vignette: >
 
 ## Overview
 
-'shinyOAuth' emits structured audit events at key milestones in the OAuth 2.0 / OIDC flow. These events are designed to help
-detect anomalous activity (e.g., brute force, replay, or configuration errors) without leaking sensitive data.
-Events only include redacted or digested identifiers (for example, SHA-256 digests of client ids, state values, or subject ids).
+'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow. 
+These may help detect anomalous activity (e.g., brute force, replay, or configuration errors).
 
 This vignette covers:
-
 - How to register audit hooks to export/store events
-- Which audit events are emitted
-- What fields are included in each event
+- Which audit events are emitted & what fields are included in each event
 - Best practices
 
 ## Receiving audit events
 
-There are two hook options you can set. Both receive the same event object (a named list) and should be fast, non-blocking, and never throw.
+There are two hook options you can set. Both receive the same event object (a named list).
+The functions you should register under these options should be fast, non-blocking, and never
+throw errors.
 
-- `options(shinyOAuth.audit_hook = function(event) { ... })` — intended for audit-specific sinks (SIEM/ELK/etc.)
-- `options(shinyOAuth.trace_hook = function(event) { ... })` — a more general-purpose tracing hook used for both audit events and error traces
+- `options(shinyOAuth.audit_hook = function(event) { ... })` - intended for audit-specific sinks
+- `options(shinyOAuth.trace_hook = function(event) { ... })` - a more general-purpose tracing hook used for both audit events and error traces
 
-Example: print all audit events to the console during development.
-
+Example of printing audit events to console:
 ```r
-options(shinyOAuth.audit_hook = function(ev) {
-	cat(sprintf("[AUDIT] %s %s\n", ev$type, ev$trace_id))
-	str(ev)
+options(shinyOAuth.audit_hook = function(event) {
+	cat(sprintf("[AUDIT] %s %s\n", event$type, event$trace_id))
+	str(event)
 })
 ```
 
 To stop receiving events, unset the option:
-
 ```r
 options(shinyOAuth.audit_hook = NULL)
 ```
 
-## Event catalog
+## Event structure
 
 All audit events share the following base shape:
-
 - `type`: a string starting with `audit_...`
 - `trace_id`: a short correlation id for linking related records
-- Additional key/value fields depending on the event
 - `timestamp`: POSIXct time when the event was created (from `Sys.time()`)
+- Additional key/value fields depending on the event (see event catalog)
 
-### Shiny session context
-
-When events are emitted from within a Shiny session (e.g., the authentication module), a JSON-friendly `shiny_session` list is attached to every event to correlate audit activity with the HTTP request and session. The structure is designed to be directly serializable with `jsonlite::toJSON()`:
-
+When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
+is attached to every event to correlate audit activity with the HTTP request and session. 
+The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
 - `shiny_session$http`: a compact HTTP summary with fields:
 	- `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
@@ -66,13 +61,14 @@ Note: the `shiny_session$http` summary intentionally captures all `HTTP_*` heade
 If you forward events to a log sink, this may include sensitive material such as the authorization code, `state`, and every request header
 (including `Cookie`, `Authorization`, and other bearer tokens). Consider stripping or redacting sensitive headers and query parameters in your hook before exporting.
 
+## Event catalog
+
 ### Authorization redirect issuance
 
 #### Event: `audit_redirect_issued`
 
 - When: after `prepare_call()` builds the authorization URL
 - Context:
-
 	- `provider`, `issuer`
 	- `client_id_digest`
 	- `state_digest`
@@ -226,14 +222,15 @@ State parsing failures occur while decoding and validating the encrypted wrapper
 - Consider adding a host/app identifier to the record before exporting
 - If you also want error traces, set `options(shinyOAuth.trace_hook=...)`
 
-Example JSON export hook:
+Example of a JSON export hook:
 
 ```r
-json_hook <- function(ev) {
+json_hook <- function(event) {
 	try({
-		line <- jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null")
+		line <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
 		cat(line, "\n", file = "shinyOAuth-audit.log", append = TRUE)
 	}, silent = TRUE)
 }
+
 options(shinyOAuth.audit_hook = json_hook)
 ```
