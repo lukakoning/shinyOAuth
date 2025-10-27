@@ -4,7 +4,7 @@
 [![R-CMD-check](https://github.com/lukakoning/shinyOAuth/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/lukakoning/shinyOAuth/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-'shinyOAuth' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
+'[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
 authorization and authentication for [Shiny](https://github.com/rstudio/shiny) apps. It is built
 with modern S7 classes and security in mind.
 
