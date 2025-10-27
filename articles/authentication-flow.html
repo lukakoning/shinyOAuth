@@ -88,7 +88,7 @@ options, and security checklist) see:
 PKCE) and optional OpenID Connect checks end‑to‑end. Below is the
 sequence of operations and the rationale behind each step.</p>
 <div class="section level3">
-<h3 id="first-page-load-set-a-browser-token">1. First page load – set a browser token<a class="anchor" aria-label="anchor" href="#first-page-load-set-a-browser-token"></a>
+<h3 id="first-page-load-set-a-browser-token">1. First page load: set a browser token<a class="anchor" aria-label="anchor" href="#first-page-load-set-a-browser-token"></a>
 </h3>
 <p>On the first load of your app, the module sets a small random cookie
 in the user’s browser (SameSite=Strict; Secure when over HTTPS). This
@@ -122,9 +122,10 @@ the flow</li>
 <strong>nonce</strong> (OIDC): random string echoed back in the ID
 token, mitigating replay attacks</li>
 <li>
-<strong>Server-side one-time state store</strong>: keyed by the raw
-state; stores: browser token, code_verifier, nonce. Purged after
-callback</li>
+<strong>Server-side one-time state store</strong>: keyed by a
+cache-safe hash of the raw state (derived from the state to satisfy
+cache backends); stores: browser token, code_verifier, nonce. Purged
+after callback</li>
 <li>
 <strong>Sealed state payload</strong>: Instead of sending raw state,
 the package seals (AES-GCM AEAD: encrypts + authenticates) a payload
@@ -141,7 +142,7 @@ containing:
 other providers/clients.</p>
 </div>
 <div class="section level3">
-<h3 id="redirect-to-the-provider">4. Redirect to the provider<a class="anchor" aria-label="anchor" href="#redirect-to-the-provider"></a>
+<h3 id="app-redirects-to-the-provider">4. App redirects to the provider<a class="anchor" aria-label="anchor" href="#app-redirects-to-the-provider"></a>
 </h3>
 <p>Browser navigates to the provider’s authorization endpoint with
 parameters: <code>response_type=code</code>, <code>client_id</code>,
@@ -188,22 +189,24 @@ thread before handing work to the async worker, preserving the same
 single‑use and strict failure behavior.</p>
 </div>
 <div class="section level3">
-<h3 id="exchange-authorization-code-for-tokens-back-channel">7. Exchange authorization code for tokens (back-channel)<a class="anchor" aria-label="anchor" href="#exchange-authorization-code-for-tokens-back-channel"></a>
+<h3 id="exchange-authorization-code-for-tokens">7. Exchange authorization code for tokens<a class="anchor" aria-label="anchor" href="#exchange-authorization-code-for-tokens"></a>
 </h3>
 <p>A POST request is made to the token endpoint with
 <code>grant_type=authorization_code</code>, code, redirect_uri, and
 <code>code_verifier</code> (PKCE). Client authentication method depends
-on provider style (<code>basic</code> header vs body params). Response
-must include at least <code>access_token</code>. Malformed or error
-responses abort the flow. When successful, the package also applies two
-safety rails:</p>
+on provider style: HTTP Basic header (<code>client_secret_basic</code>),
+body params (<code>client_secret_post</code>), or JWT-based assertions
+(<code>client_secret_jwt</code>, <code>private_key_jwt</code>) when
+configured. Response must include at least <code>access_token</code>.
+Malformed or error responses abort the flow. When successful, the
+package also applies two safety rails:</p>
 <ul>
 <li>If the token response includes <code>scope</code>, all scopes
 requested by the client must be present in the granted set; otherwise
 the flow fails fast to avoid downstream surprises.</li>
 <li>If the token response includes <code>token_type</code>, and the
 provider was configured with <code>allowed_token_types</code>, the
-<code>token_type</code> must be present in the response and be one fo
+<code>token_type</code> must be present in the response and be one of
 the allowed types (e.g., <code>Bearer</code>). Failure aborts the
 flow.</li>
 </ul>
@@ -268,6 +271,10 @@ re-authentication.</li>
 <ul>
 <li>Structured errors surface short codes and (optionally) detailed
 descriptions (avoid exposing full descriptions to users)</li>
+<li>If the browser cannot set the session-binding cookie or the Web
+Crypto API is unavailable, the module surfaces
+<code>browser_cookie_error</code> with a concise description and halts
+login attempts until resolved</li>
 <li>Host and HTTPS constraints enforced early</li>
 <li>State is single‑use and time‑limited; sealed state + cookie binding
 mitigate CSRF/state injection</li>
