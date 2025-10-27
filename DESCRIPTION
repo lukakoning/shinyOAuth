@@ -43,5 +43,5 @@ Depends:
     R (>= 4.1.0)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/lukakoning/shinyOAuth
+URL: https://github.com/lukakoning/shinyOAuth, https://lukakoning.github.io/shinyOAuth/
 BugReports: https://github.com/lukakoning/shinyOAuth/issues

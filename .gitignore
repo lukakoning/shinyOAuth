@@ -12,3 +12,4 @@ lib/*
 cobertura.xml
 coverage.html
 coverage.xml
+docs
