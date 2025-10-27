@@ -71,8 +71,8 @@
 <li><p>S7 classes: <code>OAuthProvider</code>, <code>OAuthClient</code>, <code>OAuthToken</code>, for a structured representation of key elements of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Functions: <code><a href="reference/prepare_call.html">prepare_call()</a></code>, <code><a href="reference/handle_callback.html">handle_callback()</a></code>, <code><a href="reference/introspect_token.html">introspect_token()</a></code>, <code><a href="reference/refresh_token.html">refresh_token()</a></code>, and more, should you wish to manually implement parts of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Provider helpers: you can configure your own OAuth 2.0/OIDC providers, but the package also includes an <code><a href="reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> function for quick OIDC setup, and contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).</p></li>
-<li><p>Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce), userinfo subject match, and more (see <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> for more details)</p></li>
-<li><p>Provides hooks for auditing &amp; logging key events, like login successes or failures (see <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> for more details)</p></li>
+<li><p>Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce), userinfo subject match, and more (see <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">link</a>) for more details)</p></li>
+<li><p>Provides hooks for auditing &amp; logging key events, like login successes or failures (see <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) for more details)</p></li>
 </ul>
 </div>
 <div class="section level2">
@@ -85,7 +85,7 @@
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>For complete usage documentation (i.e., making a manual login button, making authenticated API calls, setting various options, and a security checklist) see: <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p>
+<p>For complete usage documentation (i.e., making a manual login button, making authenticated API calls, setting various options, and a security checklist) see: <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html">link</a>).</p>
 <div class="section level3">
 <h3 id="minimal-example">Minimal example<a class="anchor" aria-label="anchor" href="#minimal-example"></a>
 </h3>
@@ -143,7 +143,7 @@
 <div class="section level3">
 <h3 id="loggingauditing">Logging/auditing<a class="anchor" aria-label="anchor" href="#loggingauditing"></a>
 </h3>
-<p>The package provides hooks for logging/auditing crucial events (e.g., callbacks issued &amp; received, login success/failures). See <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> for details.</p>
+<p>The package provides hooks for logging/auditing crucial events (e.g., callbacks issued &amp; received, login success/failures). See <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) for details.</p>
 </div>
 </div>
 <div class="section level2">
@@ -152,12 +152,12 @@
 <div class="section level3">
 <h3 id="what-happens-during-the-authentication-flow">What happens during the authentication flow?<a class="anchor" aria-label="anchor" href="#what-happens-during-the-authentication-flow"></a>
 </h3>
-<p>For an in-depth step-by-step explanation of what happens during the authentication flow, see: <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code>.</p>
+<p>For an in-depth step-by-step explanation of what happens during the authentication flow, see: <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">link</a>).</p>
 </div>
 <div class="section level3">
 <h3 id="what-do-i-need-to-consider-for-production-use">What do I need to consider for production use?<a class="anchor" aria-label="anchor" href="#what-do-i-need-to-consider-for-production-use"></a>
 </h3>
-<p>For a checklist of security considerations and best practices for production use, see: <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p>
+<p>For a checklist of security considerations and best practices for production use, see: <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist">link</a>).</p>
 </div>
 </div>
 </div>
