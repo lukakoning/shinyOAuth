@@ -8,7 +8,7 @@ oauth_provider_keycloak(
   base_url,
   realm,
   name = paste0("keycloak-", realm),
-  token_auth_style = NULL
+  token_auth_style = "body"
 )
 }
 \arguments{
@@ -21,9 +21,11 @@ oauth_provider_keycloak(
 
 \item{token_auth_style}{Optional override for token endpoint authentication
 method. One of "header" (client_secret_basic), "body"
-(client_secret_post), "private_key_jwt", or "client_secret_jwt". When
-\code{NULL} (default), discovery will infer the preferred method based on the
-provider's \code{token_endpoint_auth_methods_supported} metadata.}
+(client_secret_post), "private_key_jwt", or "client_secret_jwt". Defaults
+to "body" for Keycloak, which works for both confidential clients and
+public PKCE clients (secretless). If you pass \code{NULL}, discovery will infer
+the method from the provider's
+\code{token_endpoint_auth_methods_supported} metadata.}
 }
 \value{
 \link{OAuthProvider} object configured for the specified Keycloak realm

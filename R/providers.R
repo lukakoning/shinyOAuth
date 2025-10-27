@@ -318,9 +318,11 @@ oauth_provider_slack <- function(name = "slack") {
 #' @param name Optional provider name. Defaults to `paste0('keycloak-', realm)`
 #' @param token_auth_style Optional override for token endpoint authentication
 #'  method. One of "header" (client_secret_basic), "body"
-#'  (client_secret_post), "private_key_jwt", or "client_secret_jwt". When
-#'  `NULL` (default), discovery will infer the preferred method based on the
-#'  provider's `token_endpoint_auth_methods_supported` metadata.
+#'  (client_secret_post), "private_key_jwt", or "client_secret_jwt". Defaults
+#'  to "body" for Keycloak, which works for both confidential clients and
+#'  public PKCE clients (secretless). If you pass `NULL`, discovery will infer
+#'  the method from the provider's
+#'  `token_endpoint_auth_methods_supported` metadata.
 #'
 #' @return [OAuthProvider] object configured for the specified Keycloak realm
 #'
@@ -331,7 +333,7 @@ oauth_provider_keycloak <- function(
   base_url,
   realm,
   name = paste0("keycloak-", realm),
-  token_auth_style = NULL
+  token_auth_style = "body"
 ) {
   stopifnot(nzchar(base_url), nzchar(realm))
 
