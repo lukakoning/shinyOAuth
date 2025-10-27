@@ -9,9 +9,9 @@ vignette: >
 
 ## Overview
 
-The 'shinyOAuth' package implements provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
-authorization/authentication for Shiny apps, built with modern S7 classes and secure defaults.
-It streamlines the full authorization/authentication flow:
+'shinyOAuth' implements provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
+authorization/authentication for Shiny apps, with modern S7 classes and secure defaults.
+It streamlines the full authorization/authentication flow, including:
 
 - Building authorization URLs and redirecting unauthenticated users
 - State, nonce, and PKCE generation, sealing, and verification
@@ -27,7 +27,7 @@ For a detailed explanation of audit logging key events during the flow, see:
 
 ## Minimal Shiny module example
 
-Below is the minimal example using GitHub's OAuth app (same as shown in the README). 
+Below is a minimal example using a GitHub's OAuth 2.0 app (same as shown in the README). 
 Register an OAuth application at <https://github.com/settings/developers> and set
 environment variables `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
 
