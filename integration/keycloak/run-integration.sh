@@ -59,7 +59,7 @@ echo "[run-integration] Running integration tests (SHINYOAUTH_INT=1) ..." >&2
   export SHINYOAUTH_INT=1
   # Ensure tests don't behave as if running on CRAN; needed for {shinytest2} which skips on CRAN
   export NOT_CRAN=true
-  Rscript -e "testthat::test_dir('integration/keycloak')"
+  Rscript -e "pkgload::load_all('.') ; testthat::test_dir('integration/keycloak')"
 )
 TEST_RC=$?
 

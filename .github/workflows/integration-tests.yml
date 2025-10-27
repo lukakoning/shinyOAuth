@@ -1,0 +1,73 @@
+name: Integration tests (Keycloak)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Set up Chrome (for shinytest2/chromote)
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2.1.0
+
+      - name: Query dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::webfakes
+            any::xml2
+            any::rvest
+            any::shinytest2
+            any::chromote
+          cache-version: 1
+
+      - name: Print session info (debug)
+        run: |
+          Rscript -e "sessionInfo()"
+
+      - name: Docker info (debug)
+        run: |
+          docker --version
+          docker compose version || true
+
+      - name: Run integration tests (Keycloak)
+        env:
+          # Ensure tests that skip on CRAN will run
+          NOT_CRAN: true
+          # Point chromote to the installed Chrome
+          CHROMOTE_CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
+        shell: bash
+        run: |
+          bash integration/keycloak/run-integration.sh
+
+      - name: Upload integration logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keycloak-logs
+          path: |
+            integration/keycloak/.generated/**
+            integration/keycloak/_snaps/**
+          if-no-files-found: ignore
