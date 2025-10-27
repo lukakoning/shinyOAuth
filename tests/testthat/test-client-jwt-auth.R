@@ -1,0 +1,124 @@
+test_that("client_secret_jwt composes client_assertion and omits secret in body", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "client_secret_jwt",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = paste(rep("s", 32), collapse = ""),
+    redirect_uri = "http://localhost:8100",
+    scopes = c("openid")
+  )
+
+  captured <- NULL
+  # Capture the form params passed to req_body_form and return request
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  # Return a simple JSON token response
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = cli@provider@token_url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"at","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    }
+  )
+
+  ts <- shinyOAuth:::swap_code_for_token_set(
+    cli,
+    code = "code",
+    code_verifier = "ver"
+  )
+  expect_equal(ts$access_token, "at")
+  # Ensure client assertion fields present
+  expect_identical(
+    captured$client_assertion_type,
+    "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+  )
+  expect_true(
+    is.character(captured$client_assertion) && nzchar(captured$client_assertion)
+  )
+  # Ensure client_secret not sent in body
+  expect_false("client_secret" %in% names(captured))
+})
+
+test_that("private_key_jwt composes client_assertion with kid and claims", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "private_key_jwt",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  key <- openssl::rsa_keygen()
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    client_private_key = key,
+    client_private_key_kid = "kid-123",
+    redirect_uri = "http://localhost:8100",
+    scopes = c("openid")
+  )
+
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = cli@provider@token_url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"at","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    }
+  )
+
+  ts <- shinyOAuth:::swap_code_for_token_set(
+    cli,
+    code = "code",
+    code_verifier = "ver"
+  )
+  expect_equal(ts$access_token, "at")
+  # Validate assertion header/payload basics
+  assertion <- captured$client_assertion
+  hdr <- shinyOAuth:::parse_jwt_header(assertion)
+  pl <- shinyOAuth:::parse_jwt_payload(assertion)
+  expect_identical(hdr$typ, "JWT")
+  expect_true(toupper(hdr$alg) %in% c("RS256", "PS256", "ES256", "EDDSA"))
+  expect_identical(hdr$kid, "kid-123")
+  expect_identical(pl$iss, "abc")
+  expect_identical(pl$sub, "abc")
+  expect_identical(pl$aud, prov@token_url)
+  expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
+  expect_true(is.character(pl$jti) && nzchar(pl$jti))
+})

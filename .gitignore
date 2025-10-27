@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+inst/doc
+docs/
+/doc/
+/Meta/
+.DS_Store
+lib/*
+cobertura.xml
+coverage.html
+coverage.xml

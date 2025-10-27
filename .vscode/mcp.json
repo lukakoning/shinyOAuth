@@ -1,0 +1,14 @@
+{
+	"servers": {
+			"r-mcp-server": {
+				"type": "stdio",
+				"command": "Rscript",
+				"args": [
+				  "-e",
+				  "mcptools::mcp_server(tools='.vscode/tools.R')"
+				]
+
+			}
+	},
+	"inputs": []
+}

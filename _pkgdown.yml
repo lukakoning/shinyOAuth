@@ -1,0 +1,51 @@
+url: https://github.com/lukakoning/shinyOAuth
+template:
+  bootstrap: 5
+reference:
+
+- title: Shiny module
+- contents:
+  - oauth_module_server
+  - use_shinyOAuth
+
+- title: S7 classes
+- contents:
+  - OAuthProvider
+  - OAuthClient
+  - OAuthToken
+  
+- title: OAuth provider configuration
+- subtitle: Generic
+- contents:
+  - oauth_provider
+  - oauth_provider_oidc
+  - oauth_provider_oidc_discover
+- subtitle: Preconfigured
+- contents:
+  - starts_with("oauth_provider_")
+  - -oauth_provider_oidc
+  - -oauth_provider_oidc_discover
+  
+- title: OAuth client configuration
+- contents:
+  - oauth_client
+  
+- title: Authentication flow
+- subtitle: Prepare & handle OAuth 2.0 calls; typically not needed by end users
+- contents:
+  - prepare_call
+  - handle_callback
+  
+- title: Token methods
+- subtitle: Methods for OAuthToken objects
+- contents:
+  - get_userinfo
+  - refresh_token
+  - introspect_token
+  - client_bearer_req
+  
+- title: Miscellaneous
+- contents:
+  - is_ok_host
+  - error_on_softened
+  - custom_cache

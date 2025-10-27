@@ -1,0 +1,47 @@
+Package: shinyOAuth
+Title: Provider-Agnostic OAuth Authentication for Shiny Applications
+Version: 0.0.0.9000
+Authors@R: 
+    person("Luka", "Koning", email = "koningluka@gmail.com", role = c("aut", "cre"))
+Description: Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and
+    'OpenID Connect' ('OIDC') authentication framework for 'shiny' applications
+    using 'S7' classes. Defines providers, clients, and tokens, as well
+    as various supporting functions and a 'shiny' module. Features include
+    'Cross Site Request Forgery' ('CSRF') protection, 'Proof Key for Code Exchange' 
+    ('PKCE') handling, validation of 'OIDC' identity tokens (nonces, signatures, claims),
+    automatic user info retrieval, asynchronous flows, and hooks for
+    audit logging. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    S7 (>= 0.2.0),
+    R6 (>= 2.0),
+    rlang (>= 1.0.0),
+    shiny (>= 1.7.0),
+    jsonlite (>= 1.0),
+    openssl (>= 2.0.0),
+    httr2 (>= 1.0.0),
+    cachem (>= 1.1.0),
+    jose (>= 1.2.0),
+    cli (>= 3.0.0),
+    htmltools (>= 0.5.0)
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    webfakes,
+    promises,
+    future,
+    withr,
+    later,
+    sodium,
+    shinytest2,
+    xml2
+Depends:
+    R (>= 4.1.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/lukakoning/shinyOAuth
+BugReports: https://github.com/lukakoning/shinyOAuth/issues
