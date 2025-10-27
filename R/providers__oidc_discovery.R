@@ -54,9 +54,12 @@
 #'   for this provider. Defaults to TRUE
 #' @param token_auth_style Authentication style for token requests: "header"
 #'   (client_secret_basic) or "body" (client_secret_post). If NULL (default),
-#'   it is inferred conservatively from discovery, preferring "header" when
-#'   available, then "body"; JWT-based methods are not auto-selected unless
-#'   explicitly requested
+#'   it is inferred conservatively from discovery. When PKCE is enabled and the
+#'   provider advertises support for public clients via `none`, a secretless
+#'   flow is preferred (modeled as `"body"` without credentials). Otherwise,
+#'   the helper prefers `"header"` (client_secret_basic) when available, then
+#'   `"body"` (client_secret_post). JWT-based methods are not auto-selected
+#'   unless explicitly requested
 #' @param allowed_algs Character vector of allowed ID token signing algorithms.
 #'  Defaults to a broad set of common algorithms, including RSA (RS*), RSA-PSS
 #'  (PS*), ECDSA (ES*), and EdDSA. If the discovery document advertises
@@ -415,6 +418,13 @@ oauth_provider_oidc_discover <- function(
   methods <- disc[["token_endpoint_auth_methods_supported"]] %||% character(0)
   methods <- tolower(as.character(methods))
 
+  # Public clients: if discovery advertises 'none' and PKCE is enabled, prefer
+  # secretless token requests regardless of other advertised methods. We model
+  # this as 'body' style without credentials (code_verifier only).
+  if ("none" %in% methods && isTRUE(use_pkce)) {
+    return("body")
+  }
+
   # Conservative default: prefer client_secret_basic, then client_secret_post.
   if ("client_secret_basic" %in% methods) {
     return("header")
@@ -424,12 +434,9 @@ oauth_provider_oidc_discover <- function(
     return("body")
   }
 
-  # Public clients: allow 'none' only with PKCE. We still submit token requests
-  # as form posts (body), but without client credentials.
+  # Public clients: if 'none' is advertised but PKCE is disabled, surface a
+  # configuration error to encourage enabling PKCE instead of falling back.
   if ("none" %in% methods) {
-    if (identical(use_pkce, NULL) || isTRUE(use_pkce)) {
-      return("body")
-    }
     err_config(
       c(
         "x" = "OIDC discovery indicates `token_endpoint_auth_methods_supported = ['none']` for public clients",

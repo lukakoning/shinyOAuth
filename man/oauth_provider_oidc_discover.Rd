@@ -37,9 +37,12 @@ for this provider. Defaults to TRUE}
 
 \item{token_auth_style}{Authentication style for token requests: "header"
 (client_secret_basic) or "body" (client_secret_post). If NULL (default),
-it is inferred conservatively from discovery, preferring "header" when
-available, then "body"; JWT-based methods are not auto-selected unless
-explicitly requested}
+it is inferred conservatively from discovery. When PKCE is enabled and the
+provider advertises support for public clients via \code{none}, a secretless
+flow is preferred (modeled as \code{"body"} without credentials). Otherwise,
+the helper prefers \code{"header"} (client_secret_basic) when available, then
+\code{"body"} (client_secret_post). JWT-based methods are not auto-selected
+unless explicitly requested}
 
 \item{allowed_algs}{Character vector of allowed ID token signing algorithms.
 Defaults to a broad set of common algorithms, including RSA (RS*), RSA-PSS
