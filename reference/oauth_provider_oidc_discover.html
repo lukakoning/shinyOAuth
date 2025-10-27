@@ -102,9 +102,12 @@ for this provider. Defaults to TRUE</p></dd>
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
 <dd><p>Authentication style for token requests: "header"
 (client_secret_basic) or "body" (client_secret_post). If NULL (default),
-it is inferred conservatively from discovery, preferring "header" when
-available, then "body"; JWT-based methods are not auto-selected unless
-explicitly requested</p></dd>
+it is inferred conservatively from discovery. When PKCE is enabled and the
+provider advertises support for public clients via <code>none</code>, a secretless
+flow is preferred (modeled as <code>"body"</code> without credentials). Otherwise,
+the helper prefers <code>"header"</code> (client_secret_basic) when available, then
+<code>"body"</code> (client_secret_post). JWT-based methods are not auto-selected
+unless explicitly requested</p></dd>
 
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>

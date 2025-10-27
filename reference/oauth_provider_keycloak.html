@@ -49,7 +49,7 @@
 <span>  <span class="va">base_url</span>,</span>
 <span>  <span class="va">realm</span>,</span>
 <span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"keycloak-"</span>, <span class="va">realm</span><span class="op">)</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  token_auth_style <span class="op">=</span> <span class="st">"body"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -73,9 +73,11 @@
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
 <dd><p>Optional override for token endpoint authentication
 method. One of "header" (client_secret_basic), "body"
-(client_secret_post), "private_key_jwt", or "client_secret_jwt". When
-<code>NULL</code> (default), discovery will infer the preferred method based on the
-provider's <code>token_endpoint_auth_methods_supported</code> metadata.</p></dd>
+(client_secret_post), "private_key_jwt", or "client_secret_jwt". Defaults
+to "body" for Keycloak, which works for both confidential clients and
+public PKCE clients (secretless). If you pass <code>NULL</code>, discovery will infer
+the method from the provider's
+<code>token_endpoint_auth_methods_supported</code> metadata.</p></dd>
 
 </dl></div>
     <div class="section level2">
