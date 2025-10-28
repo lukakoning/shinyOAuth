@@ -42,6 +42,7 @@ options(shinyOAuth.audit_hook = NULL)
 ## Event structure
 
 All audit events share the following base shape:
+
 - `type`: a string starting with `audit_...`
 - `trace_id`: a short correlation id for linking related records
 - `timestamp`: POSIXct time when the event was created (from `Sys.time()`)
@@ -50,6 +51,7 @@ All audit events share the following base shape:
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
 is attached to every event to correlate audit activity with the HTTP request and session. 
 The structure is designed to be directly serializable with `jsonlite::toJSON()`:
+
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
 - `shiny_session$http`: a compact HTTP summary with fields:
 	- `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
@@ -69,6 +71,7 @@ If you forward events to a log sink, this may include sensitive material such as
 
 - When: after `prepare_call()` builds the authorization URL
 - Context:
+
 	- `provider`, `issuer`
 	- `client_id_digest`
 	- `state_digest`
