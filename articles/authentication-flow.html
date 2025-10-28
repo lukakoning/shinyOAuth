@@ -107,30 +107,23 @@ call <code>$request_login()</code> (e.g., via a button) to begin the
 flow.</p>
 </div>
 <div class="section level3">
-<h3 id="build-the-authorization-url-prepare_call">3. Build the authorization URL (<code>prepare_call</code>)<a class="anchor" aria-label="anchor" href="#build-the-authorization-url-prepare_call"></a>
+<h3 id="build-the-authorization-url-prepare_call">3. Build the authorization URL (<code>prepare_call()</code>)<a class="anchor" aria-label="anchor" href="#build-the-authorization-url-prepare_call"></a>
 </h3>
-<p>A secure authorization request requires multiple high-entropy and
+<p>The authorization request contains multiple high-entropy and
 contextual elements:</p>
 <ul>
-<li>
-<strong>state</strong>: high-entropy random string to prevent CSRF;
-<em>sealed</em> before being sent</li>
-<li>
-<strong>PKCE</strong>: a <code>code_verifier</code> (random) and
+<li>State: high-entropy random string to prevent CSRF; <em>sealed</em>
+before being sent</li>
+<li>PKCE: a <code>code_verifier</code> (random) and
 <code>code_challenge</code> (S256 hash) proving the same party finishes
 the flow</li>
-<li>
-<strong>nonce</strong> (OIDC): random string echoed back in the ID
-token, mitigating replay attacks</li>
-<li>
-<strong>Server-side one-time state store</strong>: keyed by a
-cache-safe hash of the raw state (derived from the state to satisfy
-cache backends); stores: browser token, code_verifier, nonce. Purged
-after callback</li>
-<li>
-<strong>Sealed state payload</strong>: Instead of sending raw state,
-the package seals (AES-GCM AEAD: encrypts + authenticates) a payload
-containing:
+<li>Nonce (OIDC): random string echoed back in the ID token, mitigating
+replay attacks</li>
+<li>Server-side one-time state store: keyed by a cache-safe hash of the
+raw state (derived from the state to satisfy cache backends); stores:
+browser token, code_verifier, nonce. Purged after callback</li>
+<li>Sealed state payload: instead of sending raw state, the package
+seals (AES-GCM AEAD: encrypts + authenticates) a payload containing:
 <ul>
 <li>state, client_id, redirect_uri</li>
 <li>requested scopes</li>
@@ -161,13 +154,14 @@ log in and authorize the app to access the requested scopes.</p>
 <div class="section level3">
 <h3 id="provider-redirects-back">6. Provider redirects back<a class="anchor" aria-label="anchor" href="#provider-redirects-back"></a>
 </h3>
-<p>Provider calls your <code>redirect_uri</code> with <code>code</code>
-and <code>state</code> (or <code>error</code>,
+<p>The provider redirects the user’s browser back to your Shiny app
+(your <code>redirect_uri</code>), including the <code>code</code> and
+<code>state</code> parameters (and optionally <code>error</code> and
 <code>error_description</code> on failure).</p>
 </div>
 <div class="section level3">
 <h3 id="callback-processing-state-verification-handle_callback">7. Callback processing &amp; state verification
-(<code>handle_callback</code>)<a class="anchor" aria-label="anchor" href="#callback-processing-state-verification-handle_callback"></a>
+(<code>handle_callback()</code>)<a class="anchor" aria-label="anchor" href="#callback-processing-state-verification-handle_callback"></a>
 </h3>
 <ul>
 <li>Wait for the browser token input if not yet visible (page load race)
@@ -205,9 +199,9 @@ single‑use and strict failure behavior.</p>
 on provider style: HTTP Basic header (<code>client_secret_basic</code>),
 body params (<code>client_secret_post</code>), or JWT-based assertions
 (<code>client_secret_jwt</code>, <code>private_key_jwt</code>) when
-configured. Response must include at least <code>access_token</code>.
-Malformed or error responses abort the flow. When successful, the
-package also applies two safety rails:</p>
+configured. The response must include at least
+<code>access_token</code>. Malformed or error responses abort the flow.
+When successful, the package also applies two safety rails:</p>
 <ul>
 <li>If the token response includes <code>scope</code>, all scopes
 requested by the client must be present in the granted set; otherwise
@@ -222,26 +216,32 @@ flow.</li>
 <div class="section level3">
 <h3 id="optional-fetch-userinfo">9. (Optional) Fetch userinfo<a class="anchor" aria-label="anchor" href="#optional-fetch-userinfo"></a>
 </h3>
-<p>If <code>userinfo_required = TRUE</code>, the module calls the
-userinfo endpoint with the access token and stores returned claims.
-Failure aborts the flow.</p>
+<p>If <code>oauth_module_server(userinfo_required = TRUE)</code>, the
+module calls the userinfo endpoint with the access token and stores
+returned claims. Failure aborts the flow.</p>
 </div>
 <div class="section level3">
 <h3 id="oidc-validate-id-token">10. (OIDC) Validate ID token<a class="anchor" aria-label="anchor" href="#oidc-validate-id-token"></a>
 </h3>
-<p>When <code>id_token_validation = TRUE</code>: -
-<strong>Signature</strong>: Verified against provider JWKS (with
-optional thumbprint pinning) for RS256/ES256; HS256 only with explicit
-opt-in and server-held secret - <strong>Claims</strong>:
-<code>iss</code> matches expected issuer; <code>aud</code> vector
-contains <code>client_id</code>; <code>sub</code> present;
+<p>When using
+<code>oauth_module_server(id_token_validation = TRUE)</code>, the
+following verifications are performed:</p>
+<ul>
+<li>Signature: verified against provider JWKS (with optional thumbprint
+pinning) for RS256/ES256; HS256 only with explicit opt-in and
+server-held secret</li>
+<li>Claims: <code>iss</code> matches expected issuer; <code>aud</code>
+vector contains <code>client_id</code>; <code>sub</code> present;
 <code>iat</code> is REQUIRED and must be a single finite numeric;
 time-based claims (<code>exp</code> REQUIRED, <code>nbf</code> optional)
 are evaluated with a small configurable leeway; tokens issued in the
-future are rejected - <strong>Nonce</strong>: If used, matches stored
-value - <strong>Subject match</strong>: If
-<code>userinfo_id_token_match = TRUE</code>, ensure <code>sub</code> in
-userinfo equals ID token <code>sub</code></p>
+future are rejected</li>
+<li>Nonce: if used, matches stored value</li>
+<li>Subject match: If
+<code>oauth_module_server(userinfo_id_token_match = TRUE)</code>, ensure
+<code>sub</code> in userinfo equals ID token <code>sub</code>
+</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="materialize-the-oauthtoken">11. Materialize the <code>OAuthToken</code><a class="anchor" aria-label="anchor" href="#materialize-the-oauthtoken"></a>
@@ -249,7 +249,7 @@ userinfo equals ID token <code>sub</code></p>
 <p>Constructs an S7 <code>OAuthToken</code> capturing
 <code>access_token</code>, optional <code>refresh_token</code>, expiry
 time, <code>id_token</code>, <code>userinfo</code>, and verification
-results. <code>auth$authenticated</code> becomes TRUE only after all
+results. <code>$authenticated</code> becomes TRUE only after all
 requested verifications pass.</p>
 </div>
 <div class="section level3">
@@ -264,13 +264,11 @@ future flow.</p>
 <h3 id="keeping-the-session-alive">13. Keeping the session alive<a class="anchor" aria-label="anchor" href="#keeping-the-session-alive"></a>
 </h3>
 <ul>
-<li>
-<strong>Proactive refresh</strong>: If enabled and a refresh token
-exists, refresh before expiry.</li>
-<li>
-<strong>Expiration &amp; reauth</strong>: Expired tokens are
-cleared. Optional <code>reauth_after_seconds</code> forces periodic
-re-authentication.</li>
+<li>Proactive refresh: if enabled and a refresh token exists, refresh
+before expiry.</li>
+<li>Expiration &amp; reauth: expired tokens are cleared. Optional
+<code>oauth_module_server(reauth_after_seconds = ...)</code> forces
+periodic re-authentication.</li>
 </ul>
 </div>
 <div class="section level3">

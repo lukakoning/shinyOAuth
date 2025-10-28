@@ -105,24 +105,44 @@ error traces</li>
 <div class="section level2">
 <h2 id="event-structure">Event structure<a class="anchor" aria-label="anchor" href="#event-structure"></a>
 </h2>
-<p>All audit events share the following base shape: - <code>type</code>:
-a string starting with <code>audit_...</code> - <code>trace_id</code>: a
-short correlation id for linking related records -
-<code>timestamp</code>: POSIXct time when the event was created (from
-<code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>) - Additional key/value fields depending on the
-event (see event catalog)</p>
+<p>All audit events share the following base shape:</p>
+<ul>
+<li>
+<code>type</code>: a string starting with
+<code>audit_...</code>
+</li>
+<li>
+<code>trace_id</code>: a short correlation id for linking related
+records</li>
+<li>
+<code>timestamp</code>: POSIXct time when the event was created
+(from <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>)</li>
+<li>Additional key/value fields depending on the event (see event
+catalog)</li>
+</ul>
 <p>When events are emitted from within a Shiny session, a JSON-friendly
 <code>shiny_session</code> list is attached to every event to correlate
 audit activity with the HTTP request and session. The structure is
 designed to be directly serializable with
-<code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>: - <code>shiny_session$token</code>: the
-Shiny per-session token (<code>session$token</code>) when available. -
-<code>shiny_session$http</code>: a compact HTTP summary with fields: -
+<code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>:</p>
+<ul>
+<li>
+<code>shiny_session$token</code>: the Shiny per-session token
+(<code>session$token</code>) when available.</li>
+<li>
+<code>shiny_session$http</code>: a compact HTTP summary with fields:
+<ul>
+<li>
 <code>method</code>, <code>path</code>, <code>query_string</code>,
-<code>host</code>, <code>scheme</code>, <code>remote_addr</code> -
+<code>host</code>, <code>scheme</code>, <code>remote_addr</code>
+</li>
+<li>
 <code>headers</code>: a list of request headers derived from
 <code>HTTP_*</code> environment variables, with lowercase names (e.g.,
-<code>user_agent</code>, <code>x_forwarded_for</code>).</p>
+<code>user_agent</code>, <code>x_forwarded_for</code>).</li>
+</ul>
+</li>
+</ul>
 <p>Note: the raw <code>session$request</code> from Shiny is not included
 to keep the event JSON-serializable and concise.</p>
 <p>Note: the <code>shiny_session$http</code> summary intentionally
@@ -144,9 +164,10 @@ query parameters in your hook before exporting.</p>
 <h4 id="event-audit_redirect_issued">Event: <code>audit_redirect_issued</code><a class="anchor" aria-label="anchor" href="#event-audit_redirect_issued"></a>
 </h4>
 <ul>
-<li>When: after <code><a href="../reference/prepare_call.html">prepare_call()</a></code> builds the authorization
-URL</li>
-<li>Context:
+<li><p>When: after <code><a href="../reference/prepare_call.html">prepare_call()</a></code> builds the authorization
+URL</p></li>
+<li>
+<p>Context:</p>
 <ul>
 <li>
 <code>provider</code>, <code>issuer</code>
