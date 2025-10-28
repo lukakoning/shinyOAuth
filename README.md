@@ -57,6 +57,11 @@ Install the development version from GitHub:
 remotes::install_github("lukakoning/shinyOAuth")
 ```
 
+Or, install from CRAN (once accepted for release):
+```r
+install.packages("shinyOAuth")
+```
+
 ## Usage
 
 For complete usage documentation (i.e., making a manual login button, making authenticated
