@@ -111,6 +111,14 @@
     var base = 'shinyOAuth_sid';
     var target = inst ? (base + '-' + inst) : base;
     clearCookiesFor(target, sameSite, cookiePath);
+    // Also clear the mirrored Shiny input so a subsequent set with the same
+    // value is not suppressed by client-side de-duplication.
+    try {
+      var shiny = ensureShiny();
+      if (shiny && payload.inputId) {
+        shiny.setInputValue(payload.inputId, null, {priority:'event'});
+      }
+    } catch(e) { /* ignore */ }
   }
 
   function handleRedirect(payload){

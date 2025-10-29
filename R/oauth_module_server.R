@@ -448,7 +448,10 @@ oauth_module_server <- function(
         message = list(
           instance = instance,
           sameSite = same_site,
-          path = path
+          path = path,
+          # Let the client also clear the mirrored Shiny input so a subsequent
+          # cookie reissue will always propagate a changed value back to the server
+          inputId = session$ns("shinyOAuth_sid")
         )
       )
     }
@@ -847,6 +850,10 @@ oauth_module_server <- function(
       values$error_description <- NULL
       values$token_stale <- FALSE
       .clear_browser_token()
+      # Proactively re-issue a fresh browser token so that a subsequent
+      # manual login can redirect immediately without a preparatory click.
+      # This maintains session binding without authenticating the user.
+      .set_browser_token()
     }
 
     # Handle callback + auto-redirect ------------------------------------------
@@ -972,6 +979,9 @@ oauth_module_server <- function(
                 values$token_stale <- FALSE
                 .clear_query_and_fix_title()
                 .clear_browser_token()
+                # Immediately re-issue a fresh browser token so that
+                # subsequent manual logins can redirect on the first click.
+                .set_browser_token()
                 # A successful login completes any prior reauth cycle
                 values$reauth_triggered <- FALSE
               }) |>
@@ -1006,6 +1016,9 @@ oauth_module_server <- function(
             values$token_stale <- FALSE
             .clear_query_and_fix_title()
             .clear_browser_token()
+            # Immediately re-issue a fresh browser token so that
+            # subsequent manual logins can redirect on the first click.
+            .set_browser_token()
             # Reset reauth guard on successful sync login
             values$reauth_triggered <- FALSE
           }
