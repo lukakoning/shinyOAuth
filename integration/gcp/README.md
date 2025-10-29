@@ -18,11 +18,19 @@ Environment variables used by the app:
 - `GITHUB_OAUTH_CLIENT_SECRET` 
 - `OAUTH_REDIRECT_URI` (must exactly match the URL configured in your GitHub OAuth app (typically your Cloud Run service URL))
 
-### Option 1: build and deploy to Cloud Run
+### Build and deploy to Cloud Run
 
-You may setup a Google Cloud run app based on the Dockerfile, building from a GitHub repository with this Dockerfile.
+You may setup a Google Cloud Run service that builds from this repository.
 
-### Option 2: build & run locally
+Important: ensure the Docker build context is the repository root (.) while the Dockerfile path is integration/gcp/Dockerfile. If the build context is set to integration/gcp, the image will not contain the package sources (DESCRIPTION will be missing) and installation will fail.
+
+Two ways to do this:
+
+- Use the provided `integration/gcp/cloudbuild.yaml` as the build configuration in your trigger; it runs:
+  - docker build -f integration/gcp/Dockerfile .
+- Or, if using a Dockerfile trigger, set the Build Context/Root Directory to the repository root (.) and the Dockerfile location to integration/gcp/Dockerfile.
+
+### Build & run locally (to test)
 
 Build the image:
 
@@ -41,3 +49,8 @@ docker run --rm --name shinyoauth-demo \
   -e PORT=8100 \
   shinyoauth-demo:latest
 ```
+
+Notes:
+- A sample environment file is provided at `integration/gcp/.env.example`.
+- When deploying to Cloud Run, set these variables in the service configuration UI (Variables & Secrets) and ensure `OAUTH_REDIRECT_URI` matches your Cloud Run service URL exactly.
+- If you use a Dockerfile trigger instead of the provided `cloudbuild.yaml`, double‑check the build context is the repo root (`.`) and the Dockerfile path is `integration/gcp/Dockerfile`.

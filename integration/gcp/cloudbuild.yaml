@@ -1,0 +1,16 @@
+# Cloud Build config for shinyOAuth demo on Cloud Run
+# Ensures docker build context is the repo root (.) while using the Dockerfile in integration/gcp/
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'integration/gcp/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/shinyoauth-demo:$COMMIT_SHA', '.']
+
+images:
+  - 'gcr.io/$PROJECT_ID/shinyoauth-demo:$COMMIT_SHA'
+
+# Optionally also tag :latest; uncomment to enable
+#  - name: 'gcr.io/cloud-builders/docker'
+#    args: ['tag', 'gcr.io/$PROJECT_ID/shinyoauth-demo:$COMMIT_SHA', 'gcr.io/$PROJECT_ID/shinyoauth-demo:latest']
+#
+# tags:
+#   - latest
