@@ -14,8 +14,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Install R packages needed to run the app and install this package
-RUN R -e "options(repos='https://cloud.r-project.org'); install.packages(c('shiny','remotes'))"
+# Configure R to use Posit Package Manager (PPM) binaries for this distro
+# - Sets HTTPUserAgent so PPM can serve the correct binaries
+# - Sets CRAN repo to the appropriate PPM endpoint based on /etc/os-release
+RUN set -eux; \
+  DISTRO_ID=$(awk -F= '/^ID=/{gsub("\"","",$2);print $2}' /etc/os-release); \
+  DISTRO_CODENAME=$(awk -F= '/^VERSION_CODENAME=/{gsub("\"","",$2);print $2}' /etc/os-release); \
+  if [ "$DISTRO_ID" = "debian" ]; then \
+    PPM_PATH="debian/${DISTRO_CODENAME}"; \
+  elif [ "$DISTRO_ID" = "ubuntu" ]; then \
+    PPM_PATH="${DISTRO_CODENAME}"; \
+  else \
+    # Fallback to codename-only; adjust here if you target other distros
+    PPM_PATH="${DISTRO_CODENAME}"; \
+  fi; \
+  RPROFILE_SITE=$(R RHOME)/etc/Rprofile.site; \
+  echo 'options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version["platform"], R.version["arch"], R.version["os"])))' >> "$RPROFILE_SITE"; \
+  echo "options(repos = c(CRAN = 'https://packagemanager.posit.co/cran/__linux__/${PPM_PATH}/latest'))" >> "$RPROFILE_SITE"
+
+# Install base R packages needed to run the app and install this package
+# Uses the configured PPM binary repo
+RUN R -e "install.packages(c('shiny','remotes'))"
 
 # Copy the repository and install shinyOAuth from source
 WORKDIR /opt/shinyOAuth
