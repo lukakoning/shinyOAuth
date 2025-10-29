@@ -31,7 +31,7 @@ Below is a minimal example using a GitHub's OAuth 2.0 app (same as shown in the 
 Register an OAuth application at <https://github.com/settings/developers> and set
 environment variables `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
 
-```r
+```{r, eval = FALSE}
 library(shiny)
 library(shinyOAuth)
 
@@ -79,7 +79,7 @@ or `bslib::page()`).
 
 Below is an example where the user clicks a button to start the login process instead of being redirected immediately on page load.
 
-```r
+```{r, eval = FALSE}
 library(shiny)
 library(shinyOAuth)
 
@@ -132,7 +132,7 @@ Once authenticated, you may want to call an API on behalf of the user using the 
 Use `client_bearer_req()` to quickly build an authorized `httr2` request with the correct Bearer token.
 See the example app below; it calls the GitHub API to obtain the user's repositories.
 
-```r
+```{r, eval = FALSE}
 library(shiny)
 library(shinyOAuth)
 

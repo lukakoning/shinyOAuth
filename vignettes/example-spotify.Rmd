@@ -21,7 +21,7 @@ see: `vignette("usage", package = "shinyOAuth")`.
 
 ## Code
 
-```r
+```{r, eval = FALSE}
 # Example Shiny app using shinyOAuth to connect to Spotify API
 #
 # This app demonstrates logging into Spotify with shinyOAuth and fetching
