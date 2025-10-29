@@ -384,7 +384,7 @@ oauth_provider_okta <- function(
 #' @param name Optional provider name (default "auth0")
 #' @param audience Optional audience to request in auth flows
 #'
-#' @returns [OAuthProvider] object configured for the specified Auth0 domain
+#' @return [OAuthProvider] object configured for the specified Auth0 domain
 #'
 #' @example inst/examples/oauth_provider.R
 #'

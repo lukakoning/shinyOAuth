@@ -24,3 +24,4 @@ codex/*
 ^Meta$
 ^\.github$
 integration/*
+.dockerignore

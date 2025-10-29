@@ -1,3 +1,3 @@
-# shinyOAuth (development version)
+# shinyOAuth 0.1.0
 
 * Initial CRAN submission.

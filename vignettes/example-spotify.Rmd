@@ -2,7 +2,7 @@
 title: "Example: Spotify login to display listening data"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{example-spotify}
+  %\VignetteIndexEntry{Example: Spotify login to display listening data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
