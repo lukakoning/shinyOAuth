@@ -1,0 +1,27 @@
+# Exclude IDE state and transient files that can lock on Windows
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# VCS and CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Build artifacts and docs we don't need inside the image
+inst/doc/
+docs/
+pkgdown/
+vignettes/
+playground/
+
+# Python and misc caches
+__pycache__/
+*.pyc
