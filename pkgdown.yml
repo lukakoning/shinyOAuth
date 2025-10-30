@@ -6,7 +6,7 @@ articles:
   authentication-flow: authentication-flow.html
   example-spotify: example-spotify.html
   usage: usage.html
-last_built: 2025-10-30T17:03Z
+last_built: 2025-10-30T18:58Z
 urls:
   reference: https://lukakoning.github.io/shinyOAuth/reference
   article: https://lukakoning.github.io/shinyOAuth/articles
