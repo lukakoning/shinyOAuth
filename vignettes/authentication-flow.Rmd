@@ -93,19 +93,19 @@ Malformed or error responses abort the flow. When successful, the package also a
 
 ### 9. (Optional) Fetch userinfo
 
-If `oauth_module_server(userinfo_required = TRUE)`,
+If `oauth_provider(userinfo_required = TRUE)`,
 the module calls the userinfo endpoint with the access token and stores returned claims.
 Failure aborts the flow.
 
 ### 10. (OIDC) Validate ID token
 
-When using `oauth_module_server(id_token_validation = TRUE)`, the following verifications
+When using `oauth_provider(id_token_validation = TRUE)`, the following verifications
 are performed:
 
 - Signature: verified against provider JWKS (with optional thumbprint pinning) for RS256/ES256; HS256 only with explicit opt-in and server-held secret
 - Claims: `iss` matches expected issuer; `aud` vector contains `client_id`; `sub` present; `iat` is REQUIRED and must be a single finite numeric; time-based claims (`exp` REQUIRED, `nbf` optional) are evaluated with a small configurable leeway; tokens issued in the future are rejected
 - Nonce: if used, matches stored value
-- Subject match: If `oauth_module_server(userinfo_id_token_match = TRUE)`, ensure `sub` in userinfo equals ID token `sub`
+- Subject match: If `oauth_provider(userinfo_id_token_match = TRUE)`, ensure `sub` in userinfo equals ID token `sub`
 
 ### 11. Materialize the `OAuthToken`
 
