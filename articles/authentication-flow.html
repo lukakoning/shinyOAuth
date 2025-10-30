@@ -217,16 +217,15 @@ flow.</li>
 <div class="section level3">
 <h3 id="optional-fetch-userinfo">9. (Optional) Fetch userinfo<a class="anchor" aria-label="anchor" href="#optional-fetch-userinfo"></a>
 </h3>
-<p>If <code>oauth_module_server(userinfo_required = TRUE)</code>, the
-module calls the userinfo endpoint with the access token and stores
-returned claims. Failure aborts the flow.</p>
+<p>If <code>oauth_provider(userinfo_required = TRUE)</code>, the module
+calls the userinfo endpoint with the access token and stores returned
+claims. Failure aborts the flow.</p>
 </div>
 <div class="section level3">
 <h3 id="oidc-validate-id-token">10. (OIDC) Validate ID token<a class="anchor" aria-label="anchor" href="#oidc-validate-id-token"></a>
 </h3>
-<p>When using
-<code>oauth_module_server(id_token_validation = TRUE)</code>, the
-following verifications are performed:</p>
+<p>When using <code>oauth_provider(id_token_validation = TRUE)</code>,
+the following verifications are performed:</p>
 <ul>
 <li>Signature: verified against provider JWKS (with optional thumbprint
 pinning) for RS256/ES256; HS256 only with explicit opt-in and
@@ -239,7 +238,7 @@ are evaluated with a small configurable leeway; tokens issued in the
 future are rejected</li>
 <li>Nonce: if used, matches stored value</li>
 <li>Subject match: If
-<code>oauth_module_server(userinfo_id_token_match = TRUE)</code>, ensure
+<code>oauth_provider(userinfo_id_token_match = TRUE)</code>, ensure
 <code>sub</code> in userinfo equals ID token <code>sub</code>
 </li>
 </ul>
