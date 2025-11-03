@@ -214,7 +214,7 @@ generic_provider <- oauth_provider(
   name = "example",
   auth_url = "https://example.com/oauth/authorize",
   token_url = "https://example.com/oauth/token",
-  # Optional; S
+  # Optional URL for fetching user info:
   userinfo_url = "https://example.com/oauth/userinfo"
 )
 
@@ -226,8 +226,8 @@ generic_oidc_provider <- oauth_provider_oidc(
 )
 
 # Configure OIDC provider via OIDC discovery
-# (example requires network access; is therefore not run)
-\dontrun{
+# (requires network access)
+\donttest{
 oidc_discovery_provider <- oauth_provider_oidc_discover(
   issuer = "https://accounts.google.com"
 )
@@ -245,22 +245,27 @@ google_provider <- oauth_provider_google()
 # Spotify preconfigured provider 
 spotify_provider <- oauth_provider_spotify()
 
-# Other providers
-# (all requiring network access; example is therefore not run)
-\dontrun{
 # Slack via OIDC discovery
+# (requires network access)
+\donttest{
 slack_provider <- oauth_provider_slack()
-
+}
+  
 # Keycloak
-# (requires configured Keycloak realm)
+# (requires configured Keycloak realm; example below is therefore not run)
+\dontrun{
 oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
+}
 
 # Auth0
-# (requires configured Auth0 domain)
+# (requires configured Auth0 domain; example below is therefore not run)
+\dontrun{
 oauth_provider_auth0(domain = "your-tenant.auth0.com")
+}
 
 # Okta
-# (requires configured Okta domain)
+# (requires configured Okta domain; example below is therefore not run)
+\dontrun{
 oauth_provider_okta(domain = "dev-123456.okta.com")
 }
 }

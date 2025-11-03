@@ -81,15 +81,9 @@ my_cache <- custom_cache(
       rm(list = key, envir = mem)
       return(TRUE) # signal successful deletion
     }
-    return(FALSE) # key did not exist
+    return(TRUE) # key did not exist
   },
 
   info = function() list(max_age = 600)
 )
-
-# Can be used as state_store:
-# oauth_client(..., state_store = my_cache)
-
-# Or as JWKS cache:
-# oauth_provider(..., jwks_cache = my_cache)
 }

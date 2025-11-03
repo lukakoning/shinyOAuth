@@ -1,9 +1,9 @@
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)
 \dontrun{
-# Get OAuthToken
+# Get an OAuthToken
 # (typically provided as reactive return value by `oauth_module_server()`)
-token <- OAuthToken(...)
+token <- OAuthToken()
 
 # Build request
 request <- client_bearer_req(
@@ -12,6 +12,6 @@ request <- client_bearer_req(
   query = list(limit = 5)
 )
 
-# Perform rquest
+# Perform request
 response <- httr2::req_perform(request)
 }

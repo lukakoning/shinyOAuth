@@ -4,9 +4,9 @@
 \name{shinyOAuth-package}
 \alias{shinyOAuth}
 \alias{shinyOAuth-package}
-\title{shinyOAuth: Provider-Agnostic OAuth Authentication for Shiny Applications}
+\title{shinyOAuth: Provider-Agnostic OAuth Authentication for 'shiny' Applications}
 \description{
-Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and 'OpenID Connect' ('OIDC') authentication framework for 'shiny' applications using 'S7' classes. Defines providers, clients, and tokens, as well as various supporting functions and a 'shiny' module. Features include 'Cross Site Request Forgery' ('CSRF') protection, state encryption, 'Proof Key for Code Exchange' ('PKCE') handling, validation of 'OIDC' identity tokens (nonces, signatures, claims), automatic user info retrieval, asynchronous flows, and hooks for audit logging.
+Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and 'OpenID Connect' (OIDC) authentication framework for 'shiny' applications using 'S7' classes. Defines providers, clients, and tokens, as well as various supporting functions and a 'shiny' module. Features include cross site request forgery (CSRF) protection, state encryption, 'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity tokens (nonces, signatures, claims), automatic user info retrieval, asynchronous flows, and hooks for audit logging.
 }
 \seealso{
 Useful links:

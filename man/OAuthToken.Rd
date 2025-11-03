@@ -36,7 +36,7 @@ S7 class representing OAuth tokens and (optionally) user information.
 # call these functions directly
 
 # Example requires a real token from a completed OAuth flow
-# (code is therefore not run; would require user interaction)
+# (code is therefore not run; would error with placeholder values below)
 \dontrun{
 # Define client
 client <- oauth_client(
