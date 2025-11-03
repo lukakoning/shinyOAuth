@@ -201,11 +201,17 @@ with <code>options(shinyOAuth.allowed_non_https_hosts)</code> (see <code><a href
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Configure OIDC provider via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu">oauth_provider_oidc_discover</span><span class="op">(</span></span></span>
-<span class="r-in"><span>    issuer <span class="op">=</span> <span class="st">"https://accounts.google.com"</span></span></span>
-<span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu">oauth_provider_oidc_discover</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  issuer <span class="op">=</span> <span class="st">"https://accounts.google.com"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in err_abort(msg, class = "shinyOAuth_config_error", context = context):</span> [<span style="color: #0000BB;">shinyOAuth</span>] - <span style="font-weight: bold;">Configuration error</span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Endpoint host or scheme not allowed (see `?is_ok_host`)</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Got endpoint: https://oauth2.googleapis.com/token</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Allowed hosts: accounts.google.com</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Trace ID: LMR53ejg9yhH</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># GitHub preconfigured provider </span></span></span>
 <span class="r-in"><span><span class="va">github_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span></span>
@@ -220,9 +226,10 @@ with <code>options(shinyOAuth.allowed_non_https_hosts)</code> (see <code><a href
 <span class="r-in"><span><span class="va">spotify_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Slack via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">slack_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_slack.html">oauth_provider_slack</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="va">slack_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_slack.html">oauth_provider_slack</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span><span class="co"># Keycloak</span></span></span>
 <span class="r-in"><span><span class="co"># (requires configured Keycloak realm; example below is therefore not run)</span></span></span>
