@@ -100,9 +100,9 @@ performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Make request using OAuthToken object</span></span></span>
 <span class="r-in"><span><span class="co"># (code is not run because it requires a real token from user interaction)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Get OAuthToken</span></span></span>
+<span class="r-in"><span><span class="co"># Get an OAuthToken</span></span></span>
 <span class="r-in"><span><span class="co"># (typically provided as reactive return value by `oauth_module_server()`)</span></span></span>
-<span class="r-in"><span><span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="OAuthToken.html">OAuthToken</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="OAuthToken.html">OAuthToken</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Build request</span></span></span>
 <span class="r-in"><span><span class="va">request</span> <span class="op">&lt;-</span> <span class="fu">client_bearer_req</span><span class="op">(</span></span></span>
@@ -111,7 +111,7 @@ performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html
 <span class="r-in"><span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Perform rquest</span></span></span>
+<span class="r-in"><span><span class="co"># Perform request</span></span></span>
 <span class="r-in"><span><span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">request</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>

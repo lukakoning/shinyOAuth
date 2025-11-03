@@ -75,7 +75,7 @@ Configure the client ID &amp; secret in your <a href="OAuthClient.html">OAuthCli
 <span class="r-in"><span>  name <span class="op">=</span> <span class="st">"example"</span>,</span></span>
 <span class="r-in"><span>  auth_url <span class="op">=</span> <span class="st">"https://example.com/oauth/authorize"</span>,</span></span>
 <span class="r-in"><span>  token_url <span class="op">=</span> <span class="st">"https://example.com/oauth/token"</span>,</span></span>
-<span class="r-in"><span>  <span class="co"># Optional; S</span></span></span>
+<span class="r-in"><span>  <span class="co"># Optional; needed for fetching user info</span></span></span>
 <span class="r-in"><span>  userinfo_url <span class="op">=</span> <span class="st">"https://example.com/oauth/userinfo"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
@@ -87,12 +87,11 @@ Configure the client ID &amp; secret in your <a href="OAuthClient.html">OAuthCli
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Configure OIDC provider via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="co"># (example requires network access; is therefore not run)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  issuer <span class="op">=</span> <span class="st">"https://accounts.google.com"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    issuer <span class="op">=</span> <span class="st">"https://accounts.google.com"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># GitHub preconfigured provider </span></span></span>
 <span class="r-in"><span><span class="va">github_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span></span>
@@ -106,22 +105,26 @@ Configure the client ID &amp; secret in your <a href="OAuthClient.html">OAuthCli
 <span class="r-in"><span><span class="co"># Spotify preconfigured provider </span></span></span>
 <span class="r-in"><span><span class="va">spotify_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Other providers</span></span></span>
-<span class="r-in"><span><span class="co"># (all requiring network access; example is therefore not run)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># Slack via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="va">slack_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_slack.html">oauth_provider_slack</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">slack_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_slack.html">oauth_provider_slack</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span>  </span></span>
 <span class="r-in"><span><span class="co"># Keycloak</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Keycloak realm)</span></span></span>
+<span class="r-in"><span><span class="co"># (requires configured Keycloak realm; example below is therefore not run)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span>base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"myrealm"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Auth0</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Auth0 domain)</span></span></span>
+<span class="r-in"><span><span class="co"># (requires configured Auth0 domain; example below is therefore not run)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="oauth_provider_auth0.html">oauth_provider_auth0</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"your-tenant.auth0.com"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Okta</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Okta domain)</span></span></span>
+<span class="r-in"><span><span class="co"># (requires configured Okta domain; example below is therefore not run)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="oauth_provider_okta.html">oauth_provider_okta</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"dev-123456.okta.com"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
