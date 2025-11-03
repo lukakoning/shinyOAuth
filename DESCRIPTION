@@ -7,7 +7,7 @@ Description: Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and
     'OpenID Connect' (OIDC) authentication framework for 'shiny' applications
     using 'S7' classes. Defines providers, clients, and tokens, as well
     as various supporting functions and a 'shiny' module. Features include
-    cross site request forgery (CSRF) protection, state encryption,
+    cross-site request forgery (CSRF) protection, state encryption,
     'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity
     tokens (nonces, signatures, claims), automatic user info retrieval, asynchronous
     flows, and hooks for audit logging.
