@@ -110,7 +110,7 @@ manually (use: <code>$request_login()</code>)</p></dd>
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
 <dd><p>If TRUE, performs token exchange and refresh in the background
 using the promises package (future_promise), and updates values when the
-promise resolves. Requires the <a href="https://rdrr.io/r/base/delayedAssign.html" class="external-link">promises</a> package and a suitable
+promise resolves. Requires the <a href="https://rstudio.github.io/promises/reference/promises-package.html" class="external-link">promises::promises</a> package and a suitable
 backend to be configured with <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code>.
 If FALSE (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop; it is thus strongly recommended to set
