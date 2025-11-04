@@ -67,7 +67,7 @@ server <- function(input, output, session) {
   })
 }
 
-# runApp(shinyApp(ui, server), port = 8100)
+runApp(shinyApp(ui, server), port = 8100)
 ```
 
 Note that `ui` includes `use_shinyOAuth()` to load the necessary JavaScript
@@ -129,7 +129,7 @@ runApp(shinyApp(ui, server), port = 8100)
 ## Making authenticated API calls
 
 Once authenticated, you may want to call an API on behalf of the user using the access token.
-Use `client_bearer_req()` to quickly build an authorized `httr2` request with the correct Bearer token.
+Use `client_bearer_req()` to quickly build an authorized 'httr2' request with the correct Bearer token.
 See the example app below; it calls the GitHub API to obtain the user's repositories.
 
 ```{r, eval = FALSE}
@@ -214,8 +214,6 @@ By default, `oauth_module_server()` performs network operations (authorization c
 To avoid blocking, enable async mode and configure a future backend:
 
 ```r
-# in global.R or at app startup
-# Use a background process pool for promises
 future::plan(future::multisession)
 
 server <- function(input, output, session) {
@@ -223,7 +221,7 @@ server <- function(input, output, session) {
     "auth",
     client,
     auto_redirect = TRUE,
-    async = TRUE # Run token exchange/refresh off the main thread
+    async = TRUE # Run token exchange & refresh off the main thread
   )
   
   # ...
@@ -268,8 +266,7 @@ Avoid this unless you truly intend to accept any host; prefer pinning to your do
 ### HTTP settings (timeout, retries, user agent)
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds) applied to all outbound requests
-  (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow; can be overridden
-  per‑session via `options()` before making requests
+  (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for transient failures (network errors, 408, 429, 5xx)
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in seconds used for exponential backoff with jitter
 - `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on backoff seconds (before jitter)
