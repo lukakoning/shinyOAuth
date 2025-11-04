@@ -134,7 +134,7 @@ environment variables <code>GITHUB_OAUTH_CLIENT_ID</code> and
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># runApp(shinyApp(ui, server), port = 8100)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span><span class="op">)</span></span></code></pre></div>
 <p>Note that <code>ui</code> includes <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> to
 load the necessary JavaScript dependency. Always place
 <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> in your UI; otherwise, the module will not
@@ -198,9 +198,9 @@ process instead of being redirected immediately on page load.</p>
 </h2>
 <p>Once authenticated, you may want to call an API on behalf of the user
 using the access token. Use <code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> to quickly
-build an authorized <code>httr2</code> request with the correct Bearer
-token. See the example app below; it calls the GitHub API to obtain the
-user’s repositories.</p>
+build an authorized ‘httr2’ request with the correct Bearer token. See
+the example app below; it calls the GitHub API to obtain the user’s
+repositories.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -286,16 +286,14 @@ for the worker process.</p>
 <p>To avoid blocking, enable async mode and configure a future
 backend:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># in global.R or at app startup</span></span>
-<span><span class="co"># Use a background process pool for promises</span></span>
-<span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>    <span class="st">"auth"</span>,</span>
 <span>    <span class="va">client</span>,</span>
 <span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    async <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Run token exchange/refresh off the main thread</span></span>
+<span>    async <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Run token exchange &amp; refresh off the main thread</span></span>
 <span>  <span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># ...</span></span>
@@ -379,9 +377,7 @@ intend to accept any host; prefer pinning to your domain(s), e.g.,
 <li>
 <code>options(shinyOAuth.timeout = 5)</code> – default HTTP timeout
 (seconds) applied to all outbound requests (discovery, JWKS, token
-exchange, userinfo). Increase if your provider/network is slow; can be
-overridden per‑session via <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code> before making
-requests</li>
+exchange, userinfo). Increase if your provider/network is slow</li>
 <li>
 <code>options(shinyOAuth.retry_max_tries = 3L)</code> – maximum
 attempts for transient failures (network errors, 408, 429, 5xx)</li>
