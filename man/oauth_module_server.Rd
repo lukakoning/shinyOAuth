@@ -33,7 +33,7 @@ manually (use: \verb{$request_login()})}
 
 \item{async}{If TRUE, performs token exchange and refresh in the background
 using the promises package (future_promise), and updates values when the
-promise resolves. Requires the \link{promises} package and a suitable
+promise resolves. Requires the \link[promises:promises-package]{promises::promises} package and a suitable
 backend to be configured with \code{\link[future:plan]{future::plan()}}.
 If FALSE (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop; it is thus strongly recommended to set

@@ -1,14 +1,13 @@
 ## Resubmission
+
 This is a resubmission. In this version I have:
 
-* Adjusted the DESCRIPTION to (only) writing package, software, and API names
-  in quotes.
+* Adjusted the DESCRIPTION to (only) write package, software, and API names
+in quotes.
   
 * Adjusted the examples, replacing `\dontrun{}` with calls to `if (interactive()) {}`
-  and `\donttest{}` where appropriate. Ensured that there are no commented out 
-  lines of code in examples.
-
-Thank you for handling this submission.
+and `\donttest{}` where appropriate. Ensured that there are no commented out 
+lines of code in examples.
 
 ## R CMD check results
 

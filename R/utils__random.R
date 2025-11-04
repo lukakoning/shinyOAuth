@@ -39,7 +39,7 @@ gen_oidc_nonce <- function(length = 32) {
 #' Validate OAuth/OIDC nonce
 #'
 #' A nonce should be a high-entropy, URL-safe string. We accept the RFC 3986
-#' "unreserved" characters: [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~".
+#' "unreserved" characters: \[A-Z\] / \[a-z\] / \[0-9\] / "-" / "." / "_" / "~".
 #' To approximate >=128 bits of entropy for base64url-like strings, we require
 #' a minimum length of 22 characters. Max is capped at 255.
 #'
@@ -93,7 +93,7 @@ gen_code_verifier <- function(n = 64) {
 #' Validate PKCE code verifier per RFC 7636
 #'
 #' A code_verifier is a high-entropy cryptographic random string using the
-#' characters [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~" with a minimum
+#' characters \[A-Z\] / \[a-z\] / \[0-9\] / "-" / "." / "_" / "~" with a minimum
 #' length of 43 characters and a maximum length of 128 characters.
 #'
 #' @keywords internal
@@ -121,7 +121,7 @@ validate_code_verifier <- function(verifier) {
 #' Validate browser token (shinyOAuth_sid)
 #'
 #' JS sets a 64-byte random token encoded as lowercase hex
-#' (128 chars, [0-9a-f]). Enforce lowercase only to match JS
+#' (128 chars, \[0-9a-f\]). Enforce lowercase only to match JS
 #' and avoid accepting mixed/uppercase variants.
 #'
 #' @param token String to validate (e.g., input$shinyOAuth_sid)
@@ -171,7 +171,7 @@ validate_browser_token <- function(token, expected_bytes = 64L) {
 #'
 #' The `state` parameter should be an opaque, high-entropy, URL-safe string.
 #' We accept RFC 3986 "unreserved" characters:
-#'   [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~".
+#'   \[A-Z\] / \[a-z\] / \[0-9\] / "-" / "." / "_" / "~".
 #' To approximate >=128 bits of entropy for base64url-like strings (~6 bits/char),
 #' the default minimum length is 22 characters. Upper bound is conservative.
 #'
