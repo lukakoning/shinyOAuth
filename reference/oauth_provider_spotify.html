@@ -96,17 +96,13 @@ display the user's listening data, see <code><a href="../articles/example-spotif
 <span class="r-in"><span>  base_url <span class="op">=</span> <span class="st">"https://my-issuer.example.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure OIDC provider via OIDC discovery</span></span></span>
+<span class="r-in"><span><span class="co"># Configure a OIDC provider via OIDC discovery</span></span></span>
 <span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Using Auth0 sample issuer as an example</span></span></span>
 <span class="r-in"><span><span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  issuer <span class="op">=</span> <span class="st">"https://accounts.google.com"</span></span></span>
+<span class="r-in"><span>  issuer <span class="op">=</span> <span class="st">"https://samples.auth0.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in err_abort(msg, class = "shinyOAuth_config_error", context = context):</span> [<span style="color: #0000BB;">shinyOAuth</span>] - <span style="font-weight: bold;">Configuration error</span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> Endpoint host or scheme not allowed (see `?is_ok_host`)</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Got endpoint: https://oauth2.googleapis.com/token</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Allowed hosts: accounts.google.com</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Trace ID: AgBp45PFr3pp</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># GitHub preconfigured provider </span></span></span>
