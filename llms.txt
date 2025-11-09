@@ -69,16 +69,20 @@ providers and protocol features.
 
 ## Installation
 
-Install the development version from GitHub:
-
-``` r
-remotes::install_github("lukakoning/shinyOAuth")
-```
-
-Or, install from CRAN (once accepted for release):
+Install from CRAN:
 
 ``` r
 install.packages("shinyOAuth")
+```
+
+Install the development version from GitHub:
+
+``` r
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+remotes::install_github("lukakoning/shinyOAuth")
 ```
 
 ## Usage
