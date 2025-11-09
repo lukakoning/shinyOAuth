@@ -69,7 +69,8 @@ providers and protocol features.
 
 ## Installation
 
-Install from CRAN:
+Install from
+[CRAN](https://cran.r-project.org/web/packages/shinyOAuth/index.html):
 
 ``` r
 install.packages("shinyOAuth")
