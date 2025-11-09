@@ -3,6 +3,7 @@
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/lukakoning/shinyOAuth/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/lukakoning/shinyOAuth/actions/workflows/R-CMD-check.yaml)
 [![Integration tests (Keycloak)](https://github.com/lukakoning/shinyOAuth/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/lukakoning/shinyOAuth/actions/workflows/integration-tests.yml)
+[![CRAN status](https://www.r-pkg.org/badges/version/shinyOAuth)](https://CRAN.R-project.org/package=shinyOAuth)
 <!-- badges: end -->
 
 '[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
@@ -52,15 +53,20 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 
 ## Installation
 
+Install from [CRAN](https://cran.r-project.org/web/packages/shinyOAuth/index.html):
+
+```r
+install.packages("shinyOAuth")
+```
+
 Install the development version from GitHub:
 
 ```r
-remotes::install_github("lukakoning/shinyOAuth")
-```
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
 
-Or, install from CRAN (once accepted for release):
-```r
-install.packages("shinyOAuth")
+remotes::install_github("lukakoning/shinyOAuth")
 ```
 
 ## Usage
