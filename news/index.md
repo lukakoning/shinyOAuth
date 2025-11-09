@@ -2,7 +2,7 @@
 
 ## shinyOAuth (development version)
 
-- Skip a timing-sensitive tests on CRAN.
+- Skip timing-sensitive tests on CRAN.
 
 ## shinyOAuth 0.1.1
 
