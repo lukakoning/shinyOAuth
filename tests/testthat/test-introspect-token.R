@@ -107,6 +107,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
 })
 
 testthat::test_that("introspect_token async returns a resolved promise", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")

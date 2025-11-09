@@ -1,4 +1,5 @@
 testthat::test_that("async login flow resolves token and sets flags", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")
@@ -66,6 +67,7 @@ testthat::test_that("async login flow resolves token and sets flags", {
 })
 
 testthat::test_that("async login failure surfaces error and keeps authenticated FALSE", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")
@@ -128,6 +130,7 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
 })
 
 testthat::test_that("pending callback resumes after cookie arrives (async)", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")

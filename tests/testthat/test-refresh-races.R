@@ -1,4 +1,5 @@
 testthat::test_that("proactive async refresh may trigger multiple attempts but settles to a valid token", {
+  testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")
