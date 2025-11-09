@@ -1,0 +1,329 @@
+# OAuthClient S7 class
+
+S7 class representing an OAuth 2.0 client configuration, including a
+provider, client credentials, redirect URI, requested scopes, and state
+management.
+
+This is a low-level constructor intended for advanced use. Most users
+should prefer the helper constructor
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+
+## Usage
+
+``` r
+OAuthClient(
+  provider = NULL,
+  client_id = character(0),
+  client_secret = character(0),
+  client_private_key = NULL,
+  client_private_key_kid = NA_character_,
+  client_assertion_alg = NA_character_,
+  redirect_uri = character(0),
+  scopes = character(0),
+  state_store = cachem::cache_mem(max_age = 300),
+  state_entropy = 64,
+  state_key = random_urlsafe(n = 128)
+)
+```
+
+## Arguments
+
+- provider:
+
+  [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
+  object
+
+- client_id:
+
+  OAuth client ID
+
+- client_secret:
+
+  OAuth client secret.
+
+  Validation rules:
+
+  - Required (non-empty) when the provider authenticates the client with
+    HTTP Basic auth at the token endpoint
+    (`token_auth_style = "header"`, also known as
+    `client_secret_basic`).
+
+  - Optional for public PKCE-only clients when the provider is
+    configured with `use_pkce = TRUE` and uses form-body client
+    authentication at the token endpoint (`token_auth_style = "body"`,
+    also known as `client_secret_post`). In this case, the secret is
+    omitted from token requests.
+
+  Note: If your provider issues HS256 ID tokens and
+  `id_token_validation` is enabled, a non-empty `client_secret` is
+  required for signature validation.
+
+- client_private_key:
+
+  Optional private key for `private_key_jwt` client authentication at
+  the token endpoint. Can be an `openssl::key` or a PEM string
+  containing a private key. Required when the provider's
+  `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
+
+- client_private_key_kid:
+
+  Optional key identifier (kid) to include in the JWT header for
+  `private_key_jwt` assertions. Useful when the authorization server
+  uses kid to select the correct verification key.
+
+- client_assertion_alg:
+
+  Optional JWT signing algorithm to use for client assertions. When
+  omitted, defaults to `HS256` for `client_secret_jwt`. For
+  `private_key_jwt`, a compatible default is selected based on the
+  private key type/curve (e.g., `RS256` for RSA, `ES256`/`ES384`/`ES512`
+  for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
+  value is provided but incompatible with the key, validation fails
+  early with a configuration error. Supported values are `HS256`,
+  `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
+  supported by
+  [`jose::jwt_encode_sig`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html)
+  (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
+
+- redirect_uri:
+
+  Redirect URI registered with provider
+
+- scopes:
+
+  Vector of scopes to request
+
+- state_store:
+
+  State storage backend. Defaults to `cachem::cache_mem(max_age = 300)`.
+  Alternative backends could include
+  [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
+  or a custom implementation (which you can create with
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md).
+  The backend must implement cachem-like methods `$get(key, missing)`,
+  `$set(key, value)`, and `$remove(key)`; `$info()` is optional.
+
+  Trade-offs: `cache_mem` is in-memory and thus scoped to a single R
+  process (good default for a single Shiny process). `cache_disk`
+  persists to disk and can be shared across multiple R processes (useful
+  for multi-process deployments or when Shiny workers aren't sticky). A
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  backend could use a database or external store (e.g., Redis,
+  Memcached). See also
+  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+
+  The client automatically generates, persists (in `state_store`), and
+  validates the OAuth `state` parameter (and OIDC `nonce` when
+  applicable) during the authorization code flow
+
+- state_entropy:
+
+  Integer. The length (in characters) of the randomly generated state
+  parameter. Higher values provide more entropy and better security
+  against CSRF attacks. Must be between 22 and 128 (to align with
+  `validate_state()`'s default minimum which targets ~128 bits for
+  base64url‑like strings). Default is 64, which provides approximately
+  384 bits of entropy
+
+- state_key:
+
+  Optional per-client secret used as the state sealing key for AES-GCM
+  AEAD (authenticated encryption) of the state payload that travels via
+  the `state` query parameter. This provides confidentiality and
+  integrity (via authentication tag) for the embedded data used during
+  callback verification. If you omit this argument, a random value is
+  generated via `random_urlsafe(128)`. This key is distinct from the
+  OAuth `client_secret` and may be used with public clients.
+
+  Type: character string (\>= 32 bytes when encoded) or raw vector (\>=
+  32 bytes). Raw keys enable direct use of high-entropy secrets from
+  external stores. Both forms are normalized internally by cryptographic
+  helpers.
+
+  Multi-process deployments: if your app runs with multiple R workers or
+  behind a non-sticky load balancer, you must configure a shared
+  `state_store` and the same `state_key` across all workers. Otherwise
+  callbacks that land on a different worker will be unable to
+  decrypt/validate the state envelope and authentication will fail. In
+  such environments, do not rely on the random per-process default:
+  provide an explicit, high-entropy key (for example via a secret store
+  or environment variable). Prefer values with substantial entropy
+  (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
+  human‑memorable passphrases. See also
+  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+
+## Examples
+
+``` r
+if (
+  # Example requires configured GitHub OAuth 2.0 app
+  # (go to https://github.com/settings/developers to create one):
+  nzchar(Sys.getenv("GITHUB_OAUTH_CLIENT_ID")) 
+  && nzchar(Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"))
+  && interactive()
+) {
+  library(shiny)
+  library(shinyOAuth)
+  
+  # Define client
+  client <- oauth_client(
+    provider = oauth_provider_github(),
+    client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
+    client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"),
+    redirect_uri = "http://127.0.0.1:8100"
+  )
+  
+  # Choose which app you want to run
+  app_to_run <- NULL
+  while (!isTRUE(app_to_run %in% c(1:4))) {
+    app_to_run <- readline(
+      prompt = paste0(
+        "Which example app do you want to run?\n",
+        "  1: Auto-redirect login\n",
+        "  2: Manual login button\n",
+        "  3: Fetch additional resource with access token\n",
+        "  4: No app (all will be defined but none run)\n",
+        "Enter 1, 2, 3, or 4... "
+      )
+    )
+  }
+  
+  
+  # Example app with auto-redirect (1) -----------------------------------------
+  
+  ui_1 <- fluidPage(
+    use_shinyOAuth(),
+    uiOutput("login")
+  )
+  
+  server_1 <- function(input, output, session) {
+    # Auto-redirect (default):
+    auth <- oauth_module_server(
+      "auth",
+      client,
+      auto_redirect = TRUE
+    )
+    
+    output$login <- renderUI({
+      if (auth$authenticated) {
+        user_info <- auth$token@userinfo
+        tagList(
+          tags$p("You are logged in!"),
+          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+        )
+      } else {
+        tags$p("You are not logged in.")
+      }
+    })
+  }
+  
+  app_1 <- shinyApp(ui_1, server_1)
+  if (app_to_run == "1") {
+    runApp(app_1, port = 8100)
+  }
+  
+  
+  # Example app with manual login button (2) -----------------------------------
+  
+  ui_2 <- fluidPage(
+    use_shinyOAuth(),
+    actionButton("login_btn", "Login"),
+    uiOutput("login")
+  )
+  
+  server_2 <- function(input, output, session) {
+    auth <- oauth_module_server(
+      "auth",
+      client,
+      auto_redirect = FALSE
+    )
+    
+    observeEvent(input$login_btn, {
+      auth$request_login()
+    })
+    
+    output$login <- renderUI({
+      if (auth$authenticated) {
+        user_info <- auth$token@userinfo
+        tagList(
+          tags$p("You are logged in!"),
+          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+        )
+      } else {
+        tags$p("You are not logged in.")
+      }
+    })
+  }
+  
+  app_2 <- shinyApp(ui_2, server_2)
+  if (app_to_run == "2") {
+    runApp(app_2, port = 8100)
+  }
+  
+
+  # Example app requesting additional resource with access token (3) -----------
+  
+  # Below app shows the authenticated username + their GitHub repositories,
+  # fetched via GitHub API using the access token obtained during login
+  
+  ui_3 <- fluidPage(
+    use_shinyOAuth(),
+    uiOutput("ui")
+  )
+  
+  server_3 <- function(input, output, session) {
+    auth <- oauth_module_server(
+      "auth",
+      client,
+      auto_redirect = TRUE
+    )
+    
+    repositories <- reactiveVal(NULL)
+    
+    observe({
+      req(auth$authenticated)
+      
+      # Example additional API request using the access token
+      # (e.g., fetch user repositories from GitHub)
+      req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
+      resp <- httr2::req_perform(req)
+      
+      if (httr2::resp_is_error(resp)) {
+        repositories(NULL)
+      } else {
+        repos_data <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+        repositories(repos_data)
+      }
+    })
+    
+    # Render username + their repositories
+    output$ui <- renderUI({
+      if (isTRUE(auth$authenticated)) {
+        user_info <- auth$token@userinfo
+        repos <- repositories()
+        
+        return(tagList(
+          tags$p(paste("You are logged in as:", user_info$login)),
+          tags$h4("Your repositories:"),
+          if (!is.null(repos)) {
+            tags$ul(
+              Map(function(url, name) {
+                tags$li(tags$a(href = url, target = "_blank", name))
+              }, repos$html_url, repos$full_name)
+            )
+          } else {
+            tags$p("Loading repositories...")
+          }
+        ))
+      }
+      
+      return(tags$p("You are not logged in."))
+    })
+  }
+  
+  app_3 <- shinyApp(ui_3, server_3)
+  if (app_to_run == "3") {
+    runApp(app_3, port = 8100)
+  }
+}
+```
