@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- Rewrote
+  [`vignette("authentication-flow")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
+  to improve clarity.
+
 - Skip timing-sensitive tests on CRAN.
 
 ## shinyOAuth 0.1.1
