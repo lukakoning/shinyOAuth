@@ -124,15 +124,25 @@ the flow</li>
 replay attacks</li>
 </ul>
 <p>This package seals the state, meaning it encrypts and authenticates
-(AES-GCM AEAD) a payload containing: - state, client_id, redirect_uri -
-requested scopes - provider fingerprint (issuer/auth/token URLs) -
-issued_at timestamp</p>
+(AES-GCM AEAD) a payload containing:</p>
+<ul>
+<li>state, client_id, redirect_uri</li>
+<li>requested scopes</li>
+<li>provider fingerprint (issuer/auth/token URLs)</li>
+<li>issued_at timestamp</li>
+</ul>
 <p>Sealing the state prevents tampering, stale callbacks, and mix-ups
 with other providers/clients.</p>
 <p>On the server side, the package will store the sealed state (as a
-cache-safe hash key) in the state store (e.g., cachem backend) along
-with the following data: - browser token - code_verifier - nonce
-(OIDC)</p>
+cache-safe hash key) in the state store (e.g., a ‘cachem’ backend) along
+with the following data:</p>
+<ul>
+<li>browser token</li>
+<li>code_verifier</li>
+<li>nonce (OIDC)</li>
+</ul>
+<p>All this data will be used for validation during the callback
+processing.</p>
 </div>
 <div class="section level3">
 <h3 id="app-redirects-to-the-provider">4. App redirects to the provider<a class="anchor" aria-label="anchor" href="#app-redirects-to-the-provider"></a>
@@ -163,12 +173,12 @@ log in and authorize the app to access the requested scopes.</p>
 (<code>handle_callback()</code>)<a class="anchor" aria-label="anchor" href="#callback-processing-state-verification-handle_callback"></a>
 </h3>
 <p>Once the user is redirected back to the app, the module processes the
-callback:</p>
+callback. This consists of the following steps:</p>
 <ul>
-<li>Wait for the browser token input if not yet visible (page load race)
-before proceeding</li>
-<li>Decrypt + verify the sealed state, ensuring integrity, authenticity,
-and freshness (using the <code>issued_at</code> window)</li>
+<li>Wait for the browser token input if not yet visible</li>
+<li>Decrypt and verify the sealed state, ensuring integrity,
+authenticity, and freshness (using the <code>issued_at</code>
+window)</li>
 <li>Check that embedded context matches expected client/provider
 (defends against misconfiguration/multi-tenant mix-ups)</li>
 <li>Fetch and immediately delete the one-time state entry from the
@@ -179,11 +189,11 @@ aborts with a <code>shinyOAuth_state_error</code>
 </li>
 <li>Audit events are emitted on failures (e.g.,
 <code>audit_state_store_lookup_failed</code>,
-<code>audit_state_store_removal_failed</code>) with redacted
-context</li>
+<code>audit_state_store_removal_failed</code>)</li>
 </ul>
 </li>
-<li>Verify browser token equality with stored value</li>
+<li>Verify that user’s browser token matches the previously stored
+browser token</li>
 <li>Ensure PKCE components are available when required</li>
 </ul>
 <p>Note: in asynchronous token exchange mode, the module may pre‑decrypt
@@ -210,18 +220,18 @@ flow.</p>
 <ul>
 <li>If the token response includes <code>scope</code>, all scopes
 requested by the client must be present in the granted set; otherwise
-the flow fails fast to avoid downstream surprises.</li>
+the flow fails fast to avoid downstream surprises</li>
 <li>If the token response includes <code>token_type</code>, and the
 provider was configured with <code>allowed_token_types</code>, the
 <code>token_type</code> must be present in the response and be one of
 the allowed types (e.g., <code>Bearer</code>). Failure aborts the
-flow.</li>
+flow</li>
 </ul>
 </div>
 <div class="section level3">
 <h3 id="fetch-userinfo-optional">9. Fetch userinfo (optional)<a class="anchor" aria-label="anchor" href="#fetch-userinfo-optional"></a>
 </h3>
-<p>If a userinfo is requested via
+<p>If userinfo is requested via
 <code>oauth_provider(userinfo_required = TRUE)</code> (for which you
 should have a <code>userinfo_url</code> configured), the module calls
 the userinfo endpoint with the access token and stores returned claims.
@@ -253,12 +263,21 @@ ID token</li>
 <h3 id="build-the-oauthtoken-object">11. Build the <code>OAuthToken</code> object<a class="anchor" aria-label="anchor" href="#build-the-oauthtoken-object"></a>
 </h3>
 <p>Now that all verifications have passed, the module builds the final
-token object. This is an S7 <code>OAuthToken</code> capturing: -
-<code>access_token</code> (string) - <code>refresh_token</code>
-(optional string) - <code>expires_at</code> (POSIXct; optional) -
-<code>id_token</code> (optional string) - <code>userinfo</code>
-(optional list)</p>
-<p><code>$authenticated</code> as returned by
+token object. This is an S7 <code>OAuthToken</code> object which
+contains:</p>
+<ul>
+<li>
+<code>access_token</code> (string)</li>
+<li>
+<code>refresh_token</code> (optional string)</li>
+<li>
+<code>expires_at</code> (POSIXct; optional)</li>
+<li>
+<code>id_token</code> (optional string)</li>
+<li>
+<code>userinfo</code> (optional list)</li>
+</ul>
+<p>The <code>$authenticated</code> value as returned by
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now becomes TRUE, meaning all
 requested verifications have passed.</p>
 </div>
@@ -267,22 +286,25 @@ requested verifications have passed.</p>
 </h3>
 <p>The user’s browser was redirected to your app with OAuth query
 parameters (<code>code</code>, <code>state</code>, etc.). To improve UX
-and avoid leaking sensitive data, these are removed from the address bar
-with JavaScript. Optionally, the page title may also be adjusted.</p>
-<p>The browser token cookie is cleared to allow a fresh future flow.</p>
+and avoid leaking sensitive data, these values are removed from the
+address bar with JavaScript. Optionally, the page title may also be
+adjusted (see the <code>tab_title_</code> arguments in
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>).</p>
+<p>The browser token cookie is also cleared to allow a fresh future
+flow.</p>
 </div>
 <div class="section level3">
-<h3 id="keeping-the-session-alive">13. Keeping the session alive<a class="anchor" aria-label="anchor" href="#keeping-the-session-alive"></a>
+<h3 id="post-flow-session-management">13. Post-flow session management<a class="anchor" aria-label="anchor" href="#post-flow-session-management"></a>
 </h3>
-<p>Now that the flow is complete, the module manages token lifetime
-during the session:</p>
+<p>Now that the flow is complete, the module will manage the token
+lifetime during the active session. This may consist of:</p>
 <ul>
 <li>Proactive refresh: if enabled and a refresh token exists, the access
 token is refreshed before expiry</li>
-<li>Expiration: expired tokens are cleared automatically, setting
-<code>$authenticated</code> to FALSE</li>
+<li>Expiration: expired tokens are cleared automatically, setting the
+<code>$authenticated</code> flag to FALSE</li>
 <li>Re-authentication: optionally,
-<code>oauth_module_server(reauth_after_seconds = ...)</code> forces
+<code>oauth_module_server(reauth_after_seconds = ...)</code> can force
 periodic re-authentication</li>
 </ul>
 </div>

@@ -54,16 +54,26 @@ security and proper context tracking:
   replay attacks
 
 This package seals the state, meaning it encrypts and authenticates
-(AES-GCM AEAD) a payload containing: - state, client_id, redirect_uri -
-requested scopes - provider fingerprint (issuer/auth/token URLs) -
-issued_at timestamp
+(AES-GCM AEAD) a payload containing:
+
+- state, client_id, redirect_uri
+- requested scopes
+- provider fingerprint (issuer/auth/token URLs)
+- issued_at timestamp
 
 Sealing the state prevents tampering, stale callbacks, and mix-ups with
 other providers/clients.
 
 On the server side, the package will store the sealed state (as a
-cache-safe hash key) in the state store (e.g., cachem backend) along
-with the following data: - browser token - code_verifier - nonce (OIDC)
+cache-safe hash key) in the state store (e.g., a ‘cachem’ backend) along
+with the following data:
+
+- browser token
+- code_verifier
+- nonce (OIDC)
+
+All this data will be used for validation during the callback
+processing.
 
 ### 4. App redirects to the provider
 
@@ -87,11 +97,10 @@ optionally `error` and `error_description` on failure).
 ### 7. Callback processing & state verification (`handle_callback()`)
 
 Once the user is redirected back to the app, the module processes the
-callback:
+callback. This consists of the following steps:
 
-- Wait for the browser token input if not yet visible (page load race)
-  before proceeding
-- Decrypt + verify the sealed state, ensuring integrity, authenticity,
+- Wait for the browser token input if not yet visible
+- Decrypt and verify the sealed state, ensuring integrity, authenticity,
   and freshness (using the `issued_at` window)
 - Check that embedded context matches expected client/provider (defends
   against misconfiguration/multi-tenant mix-ups)
@@ -101,8 +110,9 @@ callback:
     aborts with a `shinyOAuth_state_error`
   - Audit events are emitted on failures (e.g.,
     `audit_state_store_lookup_failed`,
-    `audit_state_store_removal_failed`) with redacted context
-- Verify browser token equality with stored value
+    `audit_state_store_removal_failed`)
+- Verify that user’s browser token matches the previously stored browser
+  token
 - Ensure PKCE components are available when required
 
 Note: in asynchronous token exchange mode, the module may pre‑decrypt
@@ -127,19 +137,18 @@ When successful, the package also applies two safety rails:
 
 - If the token response includes `scope`, all scopes requested by the
   client must be present in the granted set; otherwise the flow fails
-  fast to avoid downstream surprises.
+  fast to avoid downstream surprises
 - If the token response includes `token_type`, and the provider was
   configured with `allowed_token_types`, the `token_type` must be
   present in the response and be one of the allowed types (e.g.,
-  `Bearer`). Failure aborts the flow.
+  `Bearer`). Failure aborts the flow
 
 ### 9. Fetch userinfo (optional)
 
-If a userinfo is requested via
-`oauth_provider(userinfo_required = TRUE)` (for which you should have a
-`userinfo_url` configured), the module calls the userinfo endpoint with
-the access token and stores returned claims. If this request fails, the
-flow aborts with an error.
+If userinfo is requested via `oauth_provider(userinfo_required = TRUE)`
+(for which you should have a `userinfo_url` configured), the module
+calls the userinfo endpoint with the access token and stores returned
+claims. If this request fails, the flow aborts with an error.
 
 ### 10. Validate ID token (OIDC only)
 
@@ -161,11 +170,15 @@ verifications are performed:
 ### 11. Build the `OAuthToken` object
 
 Now that all verifications have passed, the module builds the final
-token object. This is an S7 `OAuthToken` capturing: - `access_token`
-(string) - `refresh_token` (optional string) - `expires_at` (POSIXct;
-optional) - `id_token` (optional string) - `userinfo` (optional list)
+token object. This is an S7 `OAuthToken` object which contains:
 
-`$authenticated` as returned by
+- `access_token` (string)
+- `refresh_token` (optional string)
+- `expires_at` (POSIXct; optional)
+- `id_token` (optional string)
+- `userinfo` (optional list)
+
+The `$authenticated` value as returned by
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 now becomes TRUE, meaning all requested verifications have passed.
 
@@ -173,20 +186,22 @@ now becomes TRUE, meaning all requested verifications have passed.
 
 The user’s browser was redirected to your app with OAuth query
 parameters (`code`, `state`, etc.). To improve UX and avoid leaking
-sensitive data, these are removed from the address bar with JavaScript.
-Optionally, the page title may also be adjusted.
+sensitive data, these values are removed from the address bar with
+JavaScript. Optionally, the page title may also be adjusted (see the
+`tab_title_` arguments in
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)).
 
-The browser token cookie is cleared to allow a fresh future flow.
+The browser token cookie is also cleared to allow a fresh future flow.
 
-### 13. Keeping the session alive
+### 13. Post-flow session management
 
-Now that the flow is complete, the module manages token lifetime during
-the session:
+Now that the flow is complete, the module will manage the token lifetime
+during the active session. This may consist of:
 
 - Proactive refresh: if enabled and a refresh token exists, the access
   token is refreshed before expiry
-- Expiration: expired tokens are cleared automatically, setting
-  `$authenticated` to FALSE
+- Expiration: expired tokens are cleared automatically, setting the
+  `$authenticated` flag to FALSE
 - Re-authentication: optionally,
-  `oauth_module_server(reauth_after_seconds = ...)` forces periodic
+  `oauth_module_server(reauth_after_seconds = ...)` can force periodic
   re-authentication
