@@ -1,4 +1,4 @@
-# shinyOAuth 0.1.2
+# shinyOAuth 0.1.3
 
 * Rewrote `vignette("authentication-flow")` to improve clarity.
 

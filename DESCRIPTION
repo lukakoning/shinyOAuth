@@ -1,6 +1,6 @@
 Package: shinyOAuth
 Title: Provider-Agnostic OAuth Authentication for 'shiny' Applications
-Version: 0.1.2
+Version: 0.1.3
 Authors@R: 
     person("Luka", "Koning", email = "koningluka@gmail.com", role = c("aut", "cre", "cph"))
 Description: Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and

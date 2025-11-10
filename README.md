@@ -53,7 +53,7 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 
 ## Installation
 
-Install from [CRAN](https://cran.r-project.org/web/packages/shinyOAuth/index.html):
+Install from [CRAN](https://CRAN.R-project.org/package=shinyOAuth):
 
 ```r
 install.packages("shinyOAuth")
