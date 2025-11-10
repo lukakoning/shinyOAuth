@@ -1,18 +1,12 @@
-## Resubmission
-
-This is a resubmission. In this version I have:
-
-* Adjusted the DESCRIPTION to (only) write package, software, and API names
-in quotes.
-  
-* Adjusted the examples, replacing `\dontrun{}` with calls to `if (interactive()) {}`
-and `\donttest{}` where appropriate. Ensured that there are no commented out 
-lines of code in examples.
-
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 note
 
-* This is a new release.
+* Fixes failing time-sensitive tests on CRAN, as requested by CRAN team.
 
-* There are no references describing the methods in this package.
+## revdepcheck results
+
+We checked 0 reverse dependencies, comparing R CMD check results across CRAN and dev versions of this package.
+
+ * We saw 0 new problems
+ * We failed to check 0 packages
