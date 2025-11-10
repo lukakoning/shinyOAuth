@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.1.3
 
+CRAN release: 2025-11-10
+
 - Rewrote
   [`vignette("authentication-flow")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
   to improve clarity.
