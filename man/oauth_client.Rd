@@ -148,6 +148,13 @@ if (
     )
   }
   
+  if (app_to_run \%in\% c(1:3)) {
+    cli::cli_alert_info(paste0(
+      "Will run example app {app_to_run} on {.url http://127.0.0.1:8100}\n",
+      "Open this URL in a regular browser (viewers in RStudio/Positron/etc. ",
+      "cannot perform necessary redirects)"
+    ))
+  }
   
   # Example app with auto-redirect (1) -----------------------------------------
   
@@ -179,7 +186,10 @@ if (
   
   app_1 <- shinyApp(ui_1, server_1)
   if (app_to_run == "1") {
-    runApp(app_1, port = 8100)
+    runApp(
+      app_1, port = 8100,
+      launch.browser = FALSE
+    )
   }
   
   
@@ -217,7 +227,10 @@ if (
   
   app_2 <- shinyApp(ui_2, server_2)
   if (app_to_run == "2") {
-    runApp(app_2, port = 8100)
+    runApp(
+      app_2, port = 8100,
+      launch.browser = FALSE
+    )
   }
   
 
@@ -283,7 +296,10 @@ if (
   
   app_3 <- shinyApp(ui_3, server_3)
   if (app_to_run == "3") {
-    runApp(app_3, port = 8100)
+    runApp(
+      app_3, port = 8100,
+      launch.browser = FALSE
+    )
   }
 }
 }

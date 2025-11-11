@@ -67,13 +67,23 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 Note that `ui` includes `use_shinyOAuth()` to load the necessary JavaScript
 dependency. Always place `use_shinyOAuth()` in your UI; otherwise, the module will not function.
 You may place it near the top-level of your UI (e.g., inside `fluidPage()`, `tagList()`,
 or `bslib::page()`).
+
+Note also that you must access the app in a regular browser.
+This is because the necesarry redirects that the browser must perform can usually
+not be handled inside embedded viewers of IDEs like RStudio or Positron.
 
 ## Manual login button variant
 
@@ -123,7 +133,13 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 ## Making authenticated API calls
@@ -201,7 +217,13 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 For an example application which fetches data from the Spotify web API, see:

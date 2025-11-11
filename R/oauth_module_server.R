@@ -266,6 +266,15 @@ oauth_module_server <- function(
       !is.na(indefinite_session),
     is.null(browser_cookie_path) || is_valid_string(browser_cookie_path)
   )
+  
+  rlang::warn(
+    c(
+      "!" = "Running `oauth_module_server()`; remember to open your Shiny app in a regular browser",
+      "i" = "Viewers in RStudio/Positron/etc. cannot perform necesarry redirects for OAuth 2.0 flows"
+    ),
+    .frequency = "once",
+    .frequency_id = "oauth_module_server_remind_browser"
+  )
 
   warn_about_missing_js_dependency()
 

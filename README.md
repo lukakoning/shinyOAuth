@@ -127,7 +127,13 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100, 
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 ### Logging/auditing
