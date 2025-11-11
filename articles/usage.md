@@ -63,7 +63,12 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  # Ensure the app opens in an external browser window; 
+  # RStudio's viewer cannot handle necesarry redirects properly:
+  launch.browser = .rs.invokeShinyWindowExternal
+)
 ```
 
 Note that `ui` includes
@@ -76,6 +81,10 @@ near the top-level of your UI (e.g., inside
 [`tagList()`](https://rstudio.github.io/htmltools/reference/tagList.html),
 or
 [`bslib::page()`](https://rstudio.github.io/bslib/reference/page.html)).
+
+Note also that you must access the app in a regular browser window (not
+RStudio’s viewer pane). This is because the necesarry redirects that the
+browser must perform cannot be handled properly inside RStudio’s viewer.
 
 ## Manual login button variant
 
@@ -126,7 +135,12 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  # Ensure the app opens in an external browser window; 
+  # RStudio's viewer cannot handle necesarry redirects properly:
+  launch.browser = .rs.invokeShinyWindowExternal
+)
 ```
 
 ## Making authenticated API calls
@@ -207,7 +221,12 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100,
+  # Ensure the app opens in an external browser window; 
+  # RStudio's viewer cannot handle necesarry redirects properly:
+  launch.browser = .rs.invokeShinyWindowExternal
+)
 ```
 
 For an example application which fetches data from the Spotify web API,

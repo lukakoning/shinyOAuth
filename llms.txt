@@ -147,8 +147,17 @@ server <- function(input, output, session) {
   })
 }
 
-runApp(shinyApp(ui, server), port = 8100)
+runApp(
+  shinyApp(ui, server), port = 8100, 
+  # Ensure the app opens in an external browser window; 
+  # RStudio's viewer cannot handle necesarry redirects properly:
+  launch.browser = .rs.invokeShinyWindowExternal
+)
 ```
+
+> **Important**: when running an app with ‘shinyOAuth’, you must access
+> it in your browser. RSTudio’s built-in viewer cannot handle the
+> necessary redirects.
 
 ### Logging/auditing
 

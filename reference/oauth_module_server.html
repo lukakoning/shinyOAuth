@@ -378,7 +378,12 @@ permanently, you can set <code>options(shinyOAuth.disable_watchdog_warning = TRU
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="va">app_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_1</span>, <span class="va">server_1</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"1"</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="va">app_1</span>, port <span class="op">=</span> <span class="fl">8100</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      <span class="va">app_1</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="co"># Ensure the app opens in an external browser window; </span></span></span>
+<span class="r-in"><span>      <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  </span></span>
@@ -416,7 +421,12 @@ permanently, you can set <code>options(shinyOAuth.disable_watchdog_warning = TRU
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="va">app_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_2</span>, <span class="va">server_2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"2"</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="va">app_2</span>, port <span class="op">=</span> <span class="fl">8100</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      <span class="va">app_2</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="co"># Ensure the app opens in an external browser window; </span></span></span>
+<span class="r-in"><span>      <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span></span></span>
@@ -482,7 +492,12 @@ permanently, you can set <code>options(shinyOAuth.disable_watchdog_warning = TRU
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="va">app_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_3</span>, <span class="va">server_3</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"3"</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="va">app_3</span>, port <span class="op">=</span> <span class="fl">8100</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      <span class="va">app_3</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="co"># Ensure the app opens in an external browser window; </span></span></span>
+<span class="r-in"><span>      <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>

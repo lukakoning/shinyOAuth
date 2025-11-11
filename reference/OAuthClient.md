@@ -219,7 +219,12 @@ if (
   
   app_1 <- shinyApp(ui_1, server_1)
   if (app_to_run == "1") {
-    runApp(app_1, port = 8100)
+    runApp(
+      app_1, port = 8100,
+      # Ensure the app opens in an external browser window; 
+      # RStudio's viewer cannot handle necesarry redirects properly:
+      launch.browser = .rs.invokeShinyWindowExternal
+    )
   }
   
   
@@ -257,7 +262,12 @@ if (
   
   app_2 <- shinyApp(ui_2, server_2)
   if (app_to_run == "2") {
-    runApp(app_2, port = 8100)
+    runApp(
+      app_2, port = 8100,
+      # Ensure the app opens in an external browser window; 
+      # RStudio's viewer cannot handle necesarry redirects properly:
+      launch.browser = .rs.invokeShinyWindowExternal
+    )
   }
   
 
@@ -323,7 +333,12 @@ if (
   
   app_3 <- shinyApp(ui_3, server_3)
   if (app_to_run == "3") {
-    runApp(app_3, port = 8100)
+    runApp(
+      app_3, port = 8100,
+      # Ensure the app opens in an external browser window; 
+      # RStudio's viewer cannot handle necesarry redirects properly:
+      launch.browser = .rs.invokeShinyWindowExternal
+    )
   }
 }
 ```
