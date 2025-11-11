@@ -29,7 +29,7 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 
 ## Features
 
-- Shiny module: `oauth_module_server()` gives you a ready‑to‑use OAuth authentication flow
+- Shiny module: `oauth_module_server()` gives you a ready‑to‑use OAuth 2.0/OIDC authentication flow
   with secure defaults. Easily read authentication status, token details, & user info as reactive values
   in your Shiny server logic
 
@@ -83,7 +83,7 @@ this example yourself, you can register an app at your [GitHub Developer Setting
 library(shiny)
 library(shinyOAuth)
 
-# GitHub OAuth provider has been preconfigured in the package
+# GitHub OAuth 2.0 provider has been preconfigured in the package
 #  - You can quickly configure OIDC providers with `oauth_provider_oidc_discover()`
 #  - You can manually configure every other provider with `oauth_provider()`
 provider <- oauth_provider_github()
