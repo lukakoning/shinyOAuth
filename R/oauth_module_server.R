@@ -270,7 +270,8 @@ oauth_module_server <- function(
   if (!.is_test()) {
     rlang::warn(
       c(
-        "!" = "Running `oauth_module_server()`; remember to open your Shiny app in a regular browser",
+        "[{.pkg shinyOAuth}] - {.strong Open your Shiny app in a regular browser}",
+        "!" = "{.code oauth_module_server()} was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
         "i" = "Viewers in RStudio/Positron/etc. cannot perform necesarry redirects for OAuth 2.0 flows"
       ),
       .frequency = "once",
@@ -282,14 +283,16 @@ oauth_module_server <- function(
 
   browser_cookie_samesite <- match.arg(browser_cookie_samesite)
   if (identical(browser_cookie_samesite, "Lax")) {
-    cli::cli_warn(c(
-      "!" = "`browser_cookie_samesite = \"Lax\"` relaxes cross-site protections for the session-binding cookie.",
-      "i" = "Ensure this mode is strictly required for your deployment."
+    rlang::warn(c(
+      "[{.pkg shinyOAuth}] - {.strong Verify browser token cookie settings}",
+      "!" = "`browser_cookie_samesite = \"Lax\"` relaxes cross-site protections for the session-binding cookie",
+      "i" = "Ensure this mode is strictly required for your deployment"
     ))
   }
   if (identical(browser_cookie_samesite, "None")) {
-    cli::cli_inform(c(
-      "i" = "`browser_cookie_samesite = \"None\"` requires HTTPS. The browser cookie writer will force `Secure` and error on non-HTTPS origins."
+    rlang::inform(c(
+      "[{.pkg shinyOAuth}] - {.strong Enforcing Secure for SameSite=None cookie}",
+      "i" = "`browser_cookie_samesite = \"None\"` requires HTTPS. The browser cookie writer will force `Secure` and error on non-HTTPS origins"
     ))
   }
 
@@ -298,8 +301,9 @@ oauth_module_server <- function(
     if (!.is_test()) {
       rlang::warn(
         c(
-          "!" = "`oauth_module_server(async = FALSE)` may block the Shiny event loop during network calls, potentially freezing the UI",
-          "i" = "Consider setting `async = TRUE` and configuring a 'future' backend (e.g., `future::plan(future::multisession)`)"
+          "[{.pkg shinyOAuth}] - {.strong Consider using `async = TRUE` for responsive UIs}",
+          "!" = "{.code oauth_module_server(async = FALSE)} may block the Shiny event loop during network calls, potentially freezing the UI",
+          "i" = "Consider setting `async = TRUE` and configuring a {.pkg future} backend (e.g., {.code future::plan(future::multisession)})"
         ),
         .frequency = "once",
         .frequency_id = "oauth_module_server_no_async"
@@ -318,12 +322,14 @@ oauth_module_server <- function(
     })
     if (!is.finite(n_workers) || is.na(n_workers) || n_workers < 1) {
       rlang::warn(c(
-        "!" = "`oauth_module_server(async = TRUE)` but no future workers are available (`future::nbrOfWorkers()` < 1); calls will run synchronously.",
-        "i" = "Set a plan with at least one worker, e.g., `future::plan(multisession, workers = 2)`"
+        "[{.pkg shinyOAuth}] - {.strong No future workers available for async operations}",
+        "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} workers are available ({.code future::nbrOfWorkers()} < 1); calls will run synchronously",
+        "i" = "Set a plan with at least one worker, e.g., {.code future::plan(multisession, workers = 2)}"
       ))
     } else if (n_workers == 1 && !.is_test()) {
       rlang::warn(c(
-        "!" = "`oauth_module_server(async = TRUE)` but with a single future worker (`future::nbrOfWorkers()` == 1)",
+        "[{.pkg shinyOAuth}] - {.strong Consider using multiple future workers for concurrency}",
+        "!" = "{.code oauth_module_server(async = TRUE)} but with a single future worker ({.code future::nbrOfWorkers()} == 1)",
         "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more workers"
       ))
     }
