@@ -207,12 +207,12 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
-<span class="r-in"><span>  <span class="co"># Ensure the app opens in an external browser window; </span></span></span>
-<span class="r-in"><span>  <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span></span>
-<span class="r-in"><span>  <span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="va">.rs.invokeShinyWindowExternal</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli_alert_info</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>      <span class="st">"Will run example app {app_to_run} on {.url http://127.0.0.1:8100}\n"</span>,</span></span>
+<span class="r-in"><span>      <span class="st">"Open this URL in a regular browser (viewers in RStudio/Positron/etc. "</span>,</span></span>
+<span class="r-in"><span>      <span class="st">"cannot perform necessary redirects)"</span></span></span>
+<span class="r-in"><span>    <span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="co"># Example app with auto-redirect (1) -----------------------------------------</span></span></span>
@@ -247,7 +247,7 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"1"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="va">app_1</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
-<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">browser_window</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
@@ -288,7 +288,7 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"2"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="va">app_2</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
-<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">browser_window</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span>  </span></span>
@@ -357,7 +357,7 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"3"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="va">app_3</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
-<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="va">browser_window</span></span></span>
+<span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>

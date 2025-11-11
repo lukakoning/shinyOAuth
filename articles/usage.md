@@ -63,18 +63,13 @@ server <- function(input, output, session) {
   })
 }
 
-# Ensure the app opens in an external browser window; 
-# RStudio's viewer cannot handle necesarry redirects properly:
-browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
-  .rs.invokeShinyWindowExternal
-} else {
-  getOption("shiny.launch.browser", interactive())
-}
-
 runApp(
   shinyApp(ui, server), port = 8100,
-  launch.browser = browser_window
+  launch.browser = FALSE
 )
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 Note that `ui` includes
@@ -88,9 +83,10 @@ near the top-level of your UI (e.g., inside
 or
 [`bslib::page()`](https://rstudio.github.io/bslib/reference/page.html)).
 
-Note also that you must access the app in a regular browser window (not
-RStudio’s viewer pane). This is because the necesarry redirects that the
-browser must perform cannot be handled properly inside RStudio’s viewer.
+Note also that you must access the app in a regular browser. This is
+because the necesarry redirects that the browser must perform can
+usually not be handled inside embedded viewers of IDEs like RStudio or
+Positron.
 
 ## Manual login button variant
 
@@ -141,18 +137,13 @@ server <- function(input, output, session) {
   })
 }
 
-# Ensure the app opens in an external browser window; 
-# RStudio's viewer cannot handle necesarry redirects properly:
-browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
-  .rs.invokeShinyWindowExternal
-} else {
-  getOption("shiny.launch.browser", interactive())
-}
-
 runApp(
   shinyApp(ui, server), port = 8100,
-  launch.browser = browser_window
+  launch.browser = FALSE
 )
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 ## Making authenticated API calls
@@ -233,18 +224,13 @@ server <- function(input, output, session) {
   })
 }
 
-# Ensure the app opens in an external browser window; 
-# RStudio's viewer cannot handle necesarry redirects properly:
-browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
-  .rs.invokeShinyWindowExternal
-} else {
-  getOption("shiny.launch.browser", interactive())
-}
-
 runApp(
   shinyApp(ui, server), port = 8100,
-  launch.browser = browser_window
+  launch.browser = FALSE
 )
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
 For an example application which fetches data from the Spotify web API,

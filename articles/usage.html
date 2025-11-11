@@ -134,28 +134,23 @@ environment variables <code>GITHUB_OAUTH_CLIENT_ID</code> and
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Open the app in your regular browser at http://127.0.01:8100</span></span>
+<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
 <p>Note that <code>ui</code> includes <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> to
 load the necessary JavaScript dependency. Always place
 <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> in your UI; otherwise, the module will not
 function. You may place it near the top-level of your UI (e.g., inside
 <code><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage()</a></code>, <code><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList()</a></code>, or
 <code><a href="https://rstudio.github.io/bslib/reference/page.html" class="external-link">bslib::page()</a></code>).</p>
-<p>Note also that you must access the app in a regular browser window
-(not RStudio’s viewer pane). This is because the necesarry redirects
-that the browser must perform cannot be handled properly inside
-RStudio’s viewer.</p>
+<p>Note also that you must access the app in a regular browser. This is
+because the necesarry redirects that the browser must perform can
+usually not be handled inside embedded viewers of IDEs like RStudio or
+Positron.</p>
 </div>
 <div class="section level2">
 <h2 id="manual-login-button-variant">Manual login button variant<a class="anchor" aria-label="anchor" href="#manual-login-button-variant"></a>
@@ -206,18 +201,13 @@ process instead of being redirected immediately on page load.</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Open the app in your regular browser at http://127.0.01:8100</span></span>
+<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="making-authenticated-api-calls">Making authenticated API calls<a class="anchor" aria-label="anchor" href="#making-authenticated-api-calls"></a>
@@ -296,18 +286,13 @@ repositories.</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Open the app in your regular browser at http://127.0.01:8100</span></span>
+<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
 <p>For an example application which fetches data from the Spotify web
 API, see:
 <code><a href="../articles/example-spotify.html">vignette("example-spotify", package = "shinyOAuth")</a></code>.</p>

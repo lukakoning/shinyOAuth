@@ -1083,16 +1083,11 @@ server <- function(input, output, session) {
 
 # Run app ----------------------------------------------------------------------
 
-# Ensure the app opens in an external browser window; 
-# RStudio's viewer cannot handle necesarry redirects properly:
-browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
-  .rs.invokeShinyWindowExternal
-} else {
-  getOption("shiny.launch.browser", interactive())
-}
-
 shiny::runApp(
   shinyApp(ui, server), port = 8100,
-  launch.browser = browser_window
+  launch.browser = FALSE
 )
+
+# Open the app in your regular browser at http://127.0.01:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
