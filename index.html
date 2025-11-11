@@ -173,6 +173,11 @@
 </h3>
 <p>For a checklist of security considerations and best practices for production use, see: <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist">link</a>).</p>
 </div>
+<div class="section level3">
+<h3 id="for-developers-tests--integration-tests">For developers: tests &amp; integration tests<a class="anchor" aria-label="anchor" href="#for-developers-tests--integration-tests"></a>
+</h3>
+<p>The package has a standard ‘testthat’ test suite under <code>tests/testthat/</code>. An additional set of integration tests against a local Keycloak instance (in Docker/Podman) is provided under <code>integration/keycloak/</code>. These integrations tests also include browser-driven end-to-end tests using ‘shinytest2’ and ‘chromote’. Finally, a minimal demo app deployment is provided under <code>integration/gcp/</code> for Google Cloud Run using a GitHub OAuth 2.0 app.</p>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

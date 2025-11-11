@@ -179,3 +179,13 @@ For a checklist of security considerations and best practices for
 production use, see:
 [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)
 ([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist)).
+
+### For developers: tests & integration tests
+
+The package has a standard ‘testthat’ test suite under
+`tests/testthat/`. An additional set of integration tests against a
+local Keycloak instance (in Docker/Podman) is provided under
+`integration/keycloak/`. These integrations tests also include
+browser-driven end-to-end tests using ‘shinytest2’ and ‘chromote’.
+Finally, a minimal demo app deployment is provided under
+`integration/gcp/` for Google Cloud Run using a GitHub OAuth 2.0 app.
