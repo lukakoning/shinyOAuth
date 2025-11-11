@@ -23,7 +23,7 @@ see:
 ## Minimal Shiny module example
 
 Below is a minimal example using a GitHub’s OAuth 2.0 app (same as shown
-in the README). Register an OAuth application at
+in the README). Register an OAuth 2.0 application at
 <https://github.com/settings/developers> and set environment variables
 `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
 

@@ -68,7 +68,7 @@
 <h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
 </h2>
 <ul>
-<li><p>Shiny module: <code><a href="reference/oauth_module_server.html">oauth_module_server()</a></code> gives you a ready‑to‑use OAuth authentication flow with secure defaults. Easily read authentication status, token details, &amp; user info as reactive values in your Shiny server logic</p></li>
+<li><p>Shiny module: <code><a href="reference/oauth_module_server.html">oauth_module_server()</a></code> gives you a ready‑to‑use OAuth 2.0/OIDC authentication flow with secure defaults. Easily read authentication status, token details, &amp; user info as reactive values in your Shiny server logic</p></li>
 <li><p>S7 classes: <code>OAuthProvider</code>, <code>OAuthClient</code>, <code>OAuthToken</code>, for a structured representation of key elements of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Functions: <code><a href="reference/prepare_call.html">prepare_call()</a></code>, <code><a href="reference/handle_callback.html">handle_callback()</a></code>, <code><a href="reference/introspect_token.html">introspect_token()</a></code>, <code><a href="reference/refresh_token.html">refresh_token()</a></code>, and more, should you wish to manually implement parts of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Provider helpers: you can configure your own OAuth 2.0/OIDC providers, but the package also includes an <code><a href="reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> function for quick OIDC setup, and contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).</p></li>
@@ -102,7 +102,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># GitHub OAuth provider has been preconfigured in the package</span></span>
+<span><span class="co"># GitHub OAuth 2.0 provider has been preconfigured in the package</span></span>
 <span><span class="co">#  - You can quickly configure OIDC providers with `oauth_provider_oidc_discover()`</span></span>
 <span><span class="co">#  - You can manually configure every other provider with `oauth_provider()`</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span>

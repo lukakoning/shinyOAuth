@@ -27,7 +27,7 @@ sequence of operations and the rationale behind each step.
 On the first load of your app, the module sets a small random cookie in
 the user’s browser (SameSite=Strict; Secure when over HTTPS). This
 browser token is mirrored to Shiny as an input. Its purpose is to ensure
-that the same browser that starts the OAuth flow is the one that
+that the same browser that starts the OAuth 2.0 flow is the one that
 finishes it (a “double-submit” style CSRF defense).
 
 ### 2. Decide whether to start login
@@ -184,7 +184,7 @@ now becomes TRUE, meaning all requested verifications have passed.
 
 ### 12. Clean URL & tidy UI; clear browser token
 
-The user’s browser was redirected to your app with OAuth query
+The user’s browser was redirected to your app with OAuth 2.0 query
 parameters (`code`, `state`, etc.). To improve UX and avoid leaking
 sensitive data, these values are removed from the address bar with
 JavaScript. Optionally, the page title may also be adjusted (see the
