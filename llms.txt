@@ -155,10 +155,6 @@ runApp(
 )
 ```
 
-> **Important**: when running an app with ‘shinyOAuth’, you must access
-> it in your browser. RSTudio’s built-in viewer cannot handle the
-> necessary redirects.
-
 ### Logging/auditing
 
 The package provides hooks for logging/auditing crucial events (e.g.,
