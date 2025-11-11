@@ -63,11 +63,17 @@ server <- function(input, output, session) {
   })
 }
 
+# Ensure the app opens in an external browser window; 
+# RStudio's viewer cannot handle necesarry redirects properly:
+browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
+  .rs.invokeShinyWindowExternal
+} else {
+  getOption("shiny.launch.browser", interactive())
+}
+
 runApp(
   shinyApp(ui, server), port = 8100,
-  # Ensure the app opens in an external browser window; 
-  # RStudio's viewer cannot handle necesarry redirects properly:
-  launch.browser = .rs.invokeShinyWindowExternal
+  launch.browser = browser_window
 )
 ```
 
@@ -135,11 +141,17 @@ server <- function(input, output, session) {
   })
 }
 
+# Ensure the app opens in an external browser window; 
+# RStudio's viewer cannot handle necesarry redirects properly:
+browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
+  .rs.invokeShinyWindowExternal
+} else {
+  getOption("shiny.launch.browser", interactive())
+}
+
 runApp(
   shinyApp(ui, server), port = 8100,
-  # Ensure the app opens in an external browser window; 
-  # RStudio's viewer cannot handle necesarry redirects properly:
-  launch.browser = .rs.invokeShinyWindowExternal
+  launch.browser = browser_window
 )
 ```
 
@@ -221,11 +233,17 @@ server <- function(input, output, session) {
   })
 }
 
+# Ensure the app opens in an external browser window; 
+# RStudio's viewer cannot handle necesarry redirects properly:
+browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
+  .rs.invokeShinyWindowExternal
+} else {
+  getOption("shiny.launch.browser", interactive())
+}
+
 runApp(
   shinyApp(ui, server), port = 8100,
-  # Ensure the app opens in an external browser window; 
-  # RStudio's viewer cannot handle necesarry redirects properly:
-  launch.browser = .rs.invokeShinyWindowExternal
+  launch.browser = browser_window
 )
 ```
 

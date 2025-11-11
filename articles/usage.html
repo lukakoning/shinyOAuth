@@ -134,11 +134,17 @@ environment variables <code>GITHUB_OAUTH_CLIENT_ID</code> and
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
+<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
+<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
+<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  <span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span>  <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span>  launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Note that <code>ui</code> includes <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> to
 load the necessary JavaScript dependency. Always place
@@ -200,11 +206,17 @@ process instead of being redirected immediately on page load.</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
+<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
+<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
+<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  <span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span>  <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span>  launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -284,11 +296,17 @@ repositories.</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
+<span><span class="co"># Ensure the app opens in an external browser window; </span></span>
+<span><span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
+<span><span class="va">browser_window</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="st">".rs.invokeShinyWindowExternal"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shiny.launch.browser"</span>, <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  <span class="co"># Ensure the app opens in an external browser window; </span></span>
-<span>  <span class="co"># RStudio's viewer cannot handle necesarry redirects properly:</span></span>
-<span>  launch.browser <span class="op">=</span> <span class="va">.rs.invokeShinyWindowExternal</span></span>
+<span>  launch.browser <span class="op">=</span> <span class="va">browser_window</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>For an example application which fetches data from the Spotify web
 API, see:

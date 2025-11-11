@@ -335,6 +335,13 @@ if (
     )
   }
   
+  # Ensure the app opens in an external browser window; 
+  # RStudio's viewer cannot handle necesarry redirects properly:
+  browser_window <- if (exists(".rs.invokeShinyWindowExternal")) {
+    .rs.invokeShinyWindowExternal
+  } else {
+    getOption("shiny.launch.browser", interactive())
+  }
   
   # Example app with auto-redirect (1) -----------------------------------------
   
@@ -368,9 +375,7 @@ if (
   if (app_to_run == "1") {
     runApp(
       app_1, port = 8100,
-      # Ensure the app opens in an external browser window; 
-      # RStudio's viewer cannot handle necesarry redirects properly:
-      launch.browser = .rs.invokeShinyWindowExternal
+      launch.browser = browser_window
     )
   }
   
@@ -411,9 +416,7 @@ if (
   if (app_to_run == "2") {
     runApp(
       app_2, port = 8100,
-      # Ensure the app opens in an external browser window; 
-      # RStudio's viewer cannot handle necesarry redirects properly:
-      launch.browser = .rs.invokeShinyWindowExternal
+      launch.browser = browser_window
     )
   }
   
@@ -482,9 +485,7 @@ if (
   if (app_to_run == "3") {
     runApp(
       app_3, port = 8100,
-      # Ensure the app opens in an external browser window; 
-      # RStudio's viewer cannot handle necesarry redirects properly:
-      launch.browser = .rs.invokeShinyWindowExternal
+      launch.browser = browser_window
     )
   }
 }
