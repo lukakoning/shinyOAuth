@@ -27,7 +27,7 @@ testthat::test_that("session_started audit event is emitted and enriched", {
 
   # Extract types and find session_started
   types <- vapply(events, function(e) as.character(e$type), character(1))
-  idx <- which(grepl("^audit_session_started$", types))
+  idx <- grep("^audit_session_started$", types)
   testthat::expect_true(length(idx) >= 1)
 
   ev <- events[[idx[[1]]]]

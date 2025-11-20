@@ -304,13 +304,13 @@ OAuthProvider <- S7::new_class(
         )
       }
       nms <- names(eth)
-      if (is.null(nms) || any(!nzchar(nms))) {
+      if (is.null(nms) || !all(nzchar(nms))) {
         return(
           "OAuthProvider: extra_token_headers must have non-empty names for all headers"
         )
       }
       # Ensure each entry is a single string (not vector)
-      bad_len <- vapply(eth, length, integer(1)) != 1L
+      bad_len <- lengths(eth) != 1L
       if (any(bad_len)) {
         return("OAuthProvider: each extra_token_headers value must be length 1")
       }

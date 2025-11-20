@@ -268,7 +268,7 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
   if (
     !(is.character(aud) &&
       length(aud) >= 1 &&
-      all(!is.na(aud)) &&
+      !anyNA(aud) &&
       all(nzchar(aud)))
   ) {
     err_id_token("Audience invalid")
