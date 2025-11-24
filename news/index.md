@@ -1,6 +1,6 @@
 # Changelog
 
-## shinyOAuth (development version)
+## shinyOAuth 0.1.4
 
 - Added a console warning about needing to access Shiny apps with
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
@@ -8,7 +8,8 @@
   clarify this.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
-  improved formatting of error messages shown to users
+  improved formatting style of warning messages (now consistent with
+  error messages)
 
 ## shinyOAuth 0.1.3
 
