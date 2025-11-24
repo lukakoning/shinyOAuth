@@ -7,10 +7,6 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
-concurrency:
-  group: integration-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   integration:
     name: Run integration tests
