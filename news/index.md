@@ -9,7 +9,7 @@
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
   improved formatting style of warning messages (now consistent with
-  error messages)
+  error messages).
 
 ## shinyOAuth 0.1.3
 
