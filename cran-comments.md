@@ -1,10 +1,6 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 0 note
-
-* Fixes CRAN page URL in README to use canonical form.
-
-* Fixes failing time-sensitive tests on CRAN, as requested by CRAN team.
+0 errors | 0 warnings | 0 notes
 
 ## revdepcheck results
 
