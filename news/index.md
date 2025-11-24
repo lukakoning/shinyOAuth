@@ -1,6 +1,10 @@
 # Changelog
 
+## shinyOAuth (development version)
+
 ## shinyOAuth 0.1.4
+
+CRAN release: 2025-11-24
 
 - Added a console warning about needing to access Shiny apps with
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
