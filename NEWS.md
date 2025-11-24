@@ -1,3 +1,5 @@
+# shinyOAuth (development version)
+
 # shinyOAuth 0.1.4
 
 * Added a console warning about needing to access Shiny apps with
