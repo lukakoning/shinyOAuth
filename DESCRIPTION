@@ -22,7 +22,7 @@ Imports:
     shiny (>= 1.7.0),
     jsonlite (>= 1.0),
     openssl (>= 2.0.0),
-    httr2 (>= 1.0.0),
+    httr2 (>= 1.1.0),
     cachem (>= 1.1.0),
     jose (>= 1.2.0),
     cli (>= 3.0.0),
