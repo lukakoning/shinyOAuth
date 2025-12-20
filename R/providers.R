@@ -261,10 +261,10 @@ oauth_provider_microsoft <- function(
 #' @return [OAuthProvider] object for use with a Spotify OAuth 2.0 app
 #'
 #' @example inst/examples/oauth_provider.R
-#' @seealso 
+#' @seealso
 #' For an example application which using Spotify OAuth 2.0 login to
-#' display the user's listening data, see `vignette("example-spotify")`. 
-#' 
+#' display the user's listening data, see `vignette("example-spotify")`.
+#'
 #' @export
 oauth_provider_spotify <- function(
   name = "spotify",

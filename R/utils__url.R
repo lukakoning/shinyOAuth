@@ -92,7 +92,7 @@ is_ok_host <- function(
       plausible <- (grepl("^\\[", x) ||
         grepl("localhost", x, ignore.case = TRUE) ||
         grepl("^[0-9]{1,3}(\\.[0-9]{1,3}){3}", x) ||
-        grepl("::", x) ||
+        grepl("::", x, fixed = TRUE) ||
         grepl("\\.", x) ||
         grepl(":[0-9]{1,5}", x)) &&
         !grepl("\\s", x)
@@ -145,7 +145,9 @@ is_ok_host <- function(
     if (!host_matches_any(host, allowed_hosts)) {
       # Defensive fallback: direct equality for IPv6 literals against normalized patterns
       if (
-        !is.null(allowed_hosts) && length(allowed_hosts) > 0 && grepl(":", host)
+        !is.null(allowed_hosts) &&
+          length(allowed_hosts) > 0 &&
+          grepl(":", host, fixed = TRUE)
       ) {
         ah <- tolower(vapply(
           allowed_hosts,
@@ -326,7 +328,7 @@ host_matches_any <- function(host, patterns) {
   if (host_lc %in% patterns) {
     return(TRUE)
   }
-  host_br <- if (grepl(":", host_lc) && !grepl("^\\[", host_lc)) {
+  host_br <- if (grepl(":", host_lc, fixed = TRUE) && !grepl("^\\[", host_lc)) {
     paste0("[", host_lc, "]")
   } else {
     host_lc

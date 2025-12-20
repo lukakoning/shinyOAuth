@@ -57,7 +57,7 @@ test_that("validate_state enforces length and charset, strict mode toggles", {
   # strict base64url allows only [-_A-Za-z0-9]
   expect_true(
     shinyOAuth:::validate_state(
-      gsub("b", "_", ok),
+      gsub("b", "_", ok, fixed = TRUE),
       strict_base64url = TRUE
     ) %||%
       TRUE

@@ -1,7 +1,7 @@
 testthat::test_that("state failure delay jitter respects configured bounds (0,0)", {
   # Timing-sensitive test: skip on CRAN
   testthat::skip_on_cran()
-  
+
   # Configure zero-delay to keep tests fast
   withr::local_options(list(shinyOAuth.state_fail_delay_ms = c(0, 0)))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))

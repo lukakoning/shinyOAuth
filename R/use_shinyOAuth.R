@@ -25,7 +25,7 @@
 #' @seealso [oauth_module_server()]
 use_shinyOAuth <- function() {
   .set_flag(".called_js_dependency", TRUE)
-  
+
   # Resolve a safe version string for the dependency. In dev contexts
   # (e.g., load_all), packageVersion() may not always be available; fall back
   # to "dev" to avoid erroring during UI rendering.
@@ -36,7 +36,7 @@ use_shinyOAuth <- function() {
   if (is.null(ver) || !nzchar(ver)) {
     ver <- "dev"
   }
-  
+
   dep <- htmltools::htmlDependency(
     name = "shinyOAuth",
     version = ver,
@@ -44,7 +44,7 @@ use_shinyOAuth <- function() {
     package = "shinyOAuth",
     script = "shinyOAuth.js"
   )
-  
+
   htmltools::tagList(
     dep
   )
@@ -81,7 +81,7 @@ warn_about_missing_js_dependency <- function() {
   if (.get_flag(".called_js_dependency")) {
     return(invisible(NULL))
   }
-  
+
   rlang::warn(
     c(
       "[{.pkg shinyOAuth}] - {.strong JavaScript dependency not called}",
@@ -94,6 +94,6 @@ warn_about_missing_js_dependency <- function() {
     .frequency = "once",
     .frequency_id = "js_dependency_warning"
   )
-  
+
   invisible(TRUE)
 }

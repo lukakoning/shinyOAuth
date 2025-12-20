@@ -14,12 +14,15 @@ options(shinyOAuth.print_traceback = TRUE)
 # Provider and client configured via env vars
 provider <- oauth_provider_github()
 client <- oauth_client(
-  provider      = provider,
-  client_id     = Sys.getenv("GITHUB_OAUTH_CLIENT_ID", ""),
+  provider = provider,
+  client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID", ""),
   client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET", ""),
   # For Cloud Run, set this to the service URL, e.g. https://<service>-<hash>-<region>.a.run.app
-  redirect_uri  = Sys.getenv("OAUTH_REDIRECT_URI", paste0("http://127.0.0.1:", Sys.getenv("PORT", "8100"))),
-  scopes        = character(0) # add scopes if you need more than public user info
+  redirect_uri = Sys.getenv(
+    "OAUTH_REDIRECT_URI",
+    paste0("http://127.0.0.1:", Sys.getenv("PORT", "8100"))
+  ),
+  scopes = character(0) # add scopes if you need more than public user info
 )
 
 ui <- fluidPage(
@@ -28,9 +31,15 @@ ui <- fluidPage(
   fluidRow(
     column(
       width = 4,
-      div(style = "margin-bottom: 1rem;",
-          actionButton("login_btn", "Login with GitHub", class = "btn-primary"),
-          actionButton("logout_btn", "Logout", class = "btn-secondary", style = "margin-left: .5rem;")
+      div(
+        style = "margin-bottom: 1rem;",
+        actionButton("login_btn", "Login with GitHub", class = "btn-primary"),
+        actionButton(
+          "logout_btn",
+          "Logout",
+          class = "btn-secondary",
+          style = "margin-left: .5rem;"
+        )
       ),
       uiOutput("oauth_error"),
       tags$hr(),
@@ -65,9 +74,15 @@ server <- function(input, output, session) {
     err <- auth$error
 
     paste0(
-      "Authenticated? ", if (isTRUE(authenticated)) "YES" else "NO", "\n",
-      "Has token? ", if (!is.null(tok)) "YES" else "NO", "\n",
-      "Has error? ", if (!is.null(err)) "YES" else "NO", "\n\n",
+      "Authenticated? ",
+      if (isTRUE(authenticated)) "YES" else "NO",
+      "\n",
+      "Has token? ",
+      if (!is.null(tok)) "YES" else "NO",
+      "\n",
+      "Has error? ",
+      if (!is.null(err)) "YES" else "NO",
+      "\n\n",
       "Token (str):\n",
       paste(capture.output(str(tok)), collapse = "\n")
     )

@@ -174,8 +174,8 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
       # We return only when 'authenticated' is TRUE, or 'error' is not '<none>'
       if (
         nchar(auth_state) > 0 &&
-          (grepl("authenticated: TRUE", auth_state) ||
-            !grepl("error_description: <none>", auth_state))
+          (grepl("authenticated: TRUE", auth_state, fixed = TRUE) ||
+            !grepl("error_description: <none>", auth_state, fixed = TRUE))
       ) {
         return(trimws(auth_state))
       }

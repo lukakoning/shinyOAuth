@@ -77,7 +77,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       url <- as.character(req$url)
-      if (grepl("/token", url)) {
+      if (grepl("/token", url, fixed = TRUE)) {
         calls$token <<- calls$token + 1L
         httr2::response(
           url = url,
@@ -85,7 +85,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
           headers = list("content-type" = "application/json"),
           body = charToRaw('{"access_token":"at3","expires_in":120}')
         )
-      } else if (grepl("/userinfo", url)) {
+      } else if (grepl("/userinfo", url, fixed = TRUE)) {
         calls$userinfo <<- calls$userinfo + 1L
         httr2::response(
           url = url,
@@ -93,7 +93,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
           headers = list("content-type" = "application/json"),
           body = charToRaw('{"sub":"u-42"}')
         )
-      } else if (grepl("/introspect", url)) {
+      } else if (grepl("/introspect", url, fixed = TRUE)) {
         calls$introspection <<- calls$introspection + 1L
         httr2::response(
           url = url,

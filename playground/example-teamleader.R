@@ -35,12 +35,12 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Start OAuth flow via module and receive results
   auth <- oauth_module_server("auth", client)
-  
+
   output$auth_print <- renderText({
     authenticated <- auth$authenticated
     tok <- auth$token
     err <- auth$error
-    
+
     paste0(
       "Authenticated?",
       if (isTRUE(authenticated)) " YES" else " NO",
@@ -55,12 +55,12 @@ server <- function(input, output, session) {
       paste(capture.output(str(tok)), collapse = "\n")
     )
   })
-  
+
   output$user_info <- renderPrint({
     req(auth$token)
     auth$token@userinfo
   })
-  
+
   output$oauth_error <- renderUI({
     if (!is.null(auth$error)) {
       msg <- auth$error

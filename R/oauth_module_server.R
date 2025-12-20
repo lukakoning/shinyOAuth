@@ -266,7 +266,7 @@ oauth_module_server <- function(
       !is.na(indefinite_session),
     is.null(browser_cookie_path) || is_valid_string(browser_cookie_path)
   )
-  
+
   if (!.is_test()) {
     rlang::warn(
       c(
@@ -1069,7 +1069,7 @@ oauth_module_server <- function(
       values$browser_token,
       {
         pc <- shiny::isolate(values$pending_callback)
-        if (!is.null(pc) & .has_browser_token()) {
+        if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
           .handle_callback(pc$code, pc$state)
         }

@@ -36,7 +36,10 @@ keycloak_reachable <- function() {
 }
 
 maybe_skip_keycloak <- function() {
-  testthat::skip_if_not(keycloak_reachable(), "Keycloak not reachable at localhost:8080")
+  testthat::skip_if_not(
+    keycloak_reachable(),
+    "Keycloak not reachable at localhost:8080"
+  )
 }
 
 parse_query_param <- function(url, name) {
@@ -46,14 +49,22 @@ parse_query_param <- function(url, name) {
   }
   parts <- strsplit(q, "&", fixed = TRUE)[[1]]
   kv <- strsplit(parts, "=", fixed = TRUE)
-  vals <- vapply(kv, function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "", "")
+  vals <- vapply(
+    kv,
+    function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
+    ""
+  )
   names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
   vals[[name]] %||% NA_character_
 }
 
 get_cookies <- function(resp) {
-  sc <- httr2::resp_headers(resp)[tolower(names(httr2::resp_headers(resp))) == "set-cookie"]
-  if (length(sc) == 0) return("")
+  sc <- httr2::resp_headers(resp)[
+    tolower(names(httr2::resp_headers(resp))) == "set-cookie"
+  ]
+  if (length(sc) == 0) {
+    return("")
+  }
   kv <- vapply(sc, function(x) sub(";.*$", "", x), "")
   paste(kv, collapse = "; ")
 }
@@ -68,18 +79,25 @@ follow_once <- function(resp, cookie_hdr) {
     httr2::req_headers(Accept = "text/html", Cookie = cookie_hdr) |>
     httr2::req_options(followlocation = FALSE) |>
     httr2::req_perform()
-  list(done = (httr2::resp_status(r) < 300 || httr2::resp_status(r) >= 400), url = loc, resp = r)
+  list(
+    done = (httr2::resp_status(r) < 300 || httr2::resp_status(r) >= 400),
+    url = loc,
+    resp = r
+  )
 }
 
 make_provider <- function() {
-  shinyOAuth::oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "shinyoauth")
+  shinyOAuth::oauth_provider_keycloak(
+    base_url = "http://localhost:8080",
+    realm = "shinyoauth"
+  )
 }
 
 make_public_client <- function(prov) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-public",
-    client_secret = "",  # public client (no secret)
+    client_secret = "", # public client (no secret)
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid")
   )
@@ -108,9 +126,17 @@ perform_login_form <- function(auth_url) {
   data[["password"]] <- "alice"
   cookie_hdr <- get_cookies(resp1)
   to_abs <- function(base, path) {
-    if (grepl("^https?://", path)) return(path)
+    if (grepl("^https?://", path)) {
+      return(path)
+    }
     u <- httr2::url_parse(base)
-    paste0(u$scheme, "://", u$hostname, if (!is.na(u$port)) paste0(":", u$port) else "", path)
+    paste0(
+      u$scheme,
+      "://",
+      u$hostname,
+      if (!is.na(u$port)) paste0(":", u$port) else "",
+      path
+    )
   }
   post_url <- to_abs(auth_url, action)
   req_post <- httr2::request(post_url) |>
@@ -155,21 +181,31 @@ testthat::test_that("Keycloak PKCE happy path (public client)", {
   client <- make_public_client(prov)
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
-    args = list(id = "auth", client = client, auto_redirect = FALSE, indefinite_session = TRUE),
+    args = list(
+      id = "auth",
+      client = client,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
     expr = {
       url <- values$build_auth_url()
       testthat::expect_true(is.character(url) && nzchar(url))
       # Drive login form -> obtain code
       res <- perform_login_form(url)
       # Callback
-      values$.process_query(paste0("?code=", utils::URLencode(res$code), "&state=", utils::URLencode(res$state_payload)))
+      values$.process_query(paste0(
+        "?code=",
+        utils::URLencode(res$code),
+        "&state=",
+        utils::URLencode(res$state_payload)
+      ))
       session$flushReact()
       # Assertions
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_null(values$error)
       testthat::expect_false(is.null(values$token))
       testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_true(prov@use_pkce)  # Provider PKCE enabled
+      testthat::expect_true(prov@use_pkce) # Provider PKCE enabled
     }
   )
 })
@@ -187,7 +223,12 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
   client <- make_public_client(prov)
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
-    args = list(id = "auth", client = client, auto_redirect = FALSE, indefinite_session = TRUE),
+    args = list(
+      id = "auth",
+      client = client,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
     expr = {
       url <- values$build_auth_url()
       # Extract & decrypt payload to derive cache key
@@ -197,17 +238,33 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
       # Tamper: remove code_verifier from state store prior to login form
       orig <- client@state_store$get(key, missing = NULL)
       testthat::expect_true(is.list(orig))
-      client@state_store$set(key = key, value = list(browser_token = orig$browser_token, pkce_code_verifier = NULL, nonce = orig$nonce))
+      client@state_store$set(
+        key = key,
+        value = list(
+          browser_token = orig$browser_token,
+          pkce_code_verifier = NULL,
+          nonce = orig$nonce
+        )
+      )
       # Proceed with login form to get code
       res <- perform_login_form(url)
       # Callback (should fail fast before token exchange)
-      values$.process_query(paste0("?code=", utils::URLencode(res$code), "&state=", utils::URLencode(res$state_payload)))
+      values$.process_query(paste0(
+        "?code=",
+        utils::URLencode(res$code),
+        "&state=",
+        utils::URLencode(res$state_payload)
+      ))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
       # Error description should mention PKCE/code verifier
       combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl("code verifier|PKCE", combo, ignore.case = TRUE))
+      testthat::expect_true(grepl(
+        "code verifier|PKCE",
+        combo,
+        ignore.case = TRUE
+      ))
     }
   )
 })
@@ -225,7 +282,12 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
   client <- make_public_client(prov)
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
-    args = list(id = "auth", client = client, auto_redirect = FALSE, indefinite_session = TRUE),
+    args = list(
+      id = "auth",
+      client = client,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
     expr = {
       url <- values$build_auth_url()
       sealed <- parse_query_param(url, "state")
@@ -237,20 +299,42 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
       # Generate a different verifier (ensure different by simple loop)
       new_ver <- orig$pkce_code_verifier
       for (i in 1:5) {
-        cand <- paste0(sample(c(letters, LETTERS, 0:9, '-', '_', '.', '~'), 64, TRUE), collapse = '')
-        if (!identical(cand, new_ver)) { new_ver <- cand; break }
+        cand <- paste0(
+          sample(c(letters, LETTERS, 0:9, '-', '_', '.', '~'), 64, TRUE),
+          collapse = ''
+        )
+        if (!identical(cand, new_ver)) {
+          new_ver <- cand
+          break
+        }
       }
-      client@state_store$set(key = key, value = list(browser_token = orig$browser_token, pkce_code_verifier = new_ver, nonce = orig$nonce))
+      client@state_store$set(
+        key = key,
+        value = list(
+          browser_token = orig$browser_token,
+          pkce_code_verifier = new_ver,
+          nonce = orig$nonce
+        )
+      )
       # Complete login form
       res <- perform_login_form(url)
       # Callback -> expect token exchange failure (server-side invalid_grant)
-      values$.process_query(paste0("?code=", utils::URLencode(res$code), "&state=", utils::URLencode(res$state_payload)))
+      values$.process_query(paste0(
+        "?code=",
+        utils::URLencode(res$code),
+        "&state=",
+        utils::URLencode(res$state_payload)
+      ))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
       combo <- paste(values$error, values$error_description)
       # Should reference token exchange or HTTP failure; be tolerant of wording
-      testthat::expect_true(grepl("Token exchange failed|invalid_grant|http_", combo, ignore.case = TRUE))
+      testthat::expect_true(grepl(
+        "Token exchange failed|invalid_grant|http_",
+        combo,
+        ignore.case = TRUE
+      ))
     }
   )
 })

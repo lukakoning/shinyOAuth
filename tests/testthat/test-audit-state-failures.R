@@ -33,7 +33,7 @@ test_that("audit events fire on malformed state tokens", {
 
   # Assert at least one audit_state_parse_failure event was emitted
   types <- vapply(events, function(e) as.character(e$type), character(1))
-  expect_true(any(grepl("audit_state_parse_failure", types)))
+  expect_true(any(grepl("audit_state_parse_failure", types, fixed = TRUE)))
 
   # Validate context shape for one event
   idx <- which(grepl("audit_state_parse_failure", types))[1]

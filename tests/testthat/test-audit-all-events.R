@@ -170,14 +170,14 @@ testthat::test_that("every audit event fires and serializes to JSON", {
       req_with_retry = function(req) {
         # Return success responses; body content depends on URL
         url <- req$url %||% ""
-        if (grepl("/token", url)) {
+        if (grepl("/token", url, fixed = TRUE)) {
           httr2::response(
             url = url,
             status = 200,
             headers = list("content-type" = "application/json"),
             body = charToRaw('{"access_token":"new","expires_in":3600}')
           )
-        } else if (grepl("/userinfo", url)) {
+        } else if (grepl("/userinfo", url, fixed = TRUE)) {
           httr2::response(
             url = url,
             status = 200,

@@ -423,7 +423,11 @@ build_client_assertion <- function(client, aud) {
           "!" = paste0("Got alg: ", as.character(alg)),
           "i" = "Supported values are HS256, HS384, HS512"
         ),
-        context = list(phase = "build_client_assertion", style = "client_secret_jwt", alg = as.character(alg))
+        context = list(
+          phase = "build_client_assertion",
+          style = "client_secret_jwt",
+          alg = as.character(alg)
+        )
       )
     )
     secret <- client@client_secret %||%
