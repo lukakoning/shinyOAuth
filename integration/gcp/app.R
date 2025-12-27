@@ -11,97 +11,142 @@ library(shinyOAuth)
 options(shinyOAuth.print_errors = TRUE)
 options(shinyOAuth.print_traceback = TRUE)
 
-# Provider and client configured via env vars
+# Provider and client configured via env vars.
+#
+# Cloud Run will fail the deployment if the process exits during startup.
+# In practice, missing/invalid OAuth env vars can cause `oauth_client()` to
+# throw (e.g., empty client_id), which would crash the container before it
+# starts listening on $PORT.
 provider <- oauth_provider_github()
-client <- oauth_client(
-  provider = provider,
-  client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID", ""),
-  client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET", ""),
-  # For Cloud Run, set this to the service URL, e.g. https://<service>-<hash>-<region>.a.run.app
-  redirect_uri = Sys.getenv(
-    "OAUTH_REDIRECT_URI",
-    paste0("http://127.0.0.1:", Sys.getenv("PORT", "8100"))
-  ),
-  scopes = character(0) # add scopes if you need more than public user info
-)
 
-ui <- fluidPage(
-  use_shinyOAuth(),
-  titlePanel("shinyOAuth on Cloud Run (GitHub)"),
-  fluidRow(
-    column(
-      width = 4,
-      div(
-        style = "margin-bottom: 1rem;",
-        actionButton("login_btn", "Login with GitHub", class = "btn-primary"),
-        actionButton(
-          "logout_btn",
-          "Logout",
-          class = "btn-secondary",
-          style = "margin-left: .5rem;"
-        )
-      ),
-      uiOutput("oauth_error"),
-      tags$hr(),
-      h4("Auth summary"),
-      verbatimTextOutput("auth_print"),
-      tags$hr(),
-      h4("User info"),
-      verbatimTextOutput("user_info")
-    )
-  )
-)
+client_id <- Sys.getenv("GITHUB_OAUTH_CLIENT_ID", "")
+client_secret <- Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET", "")
+redirect_uri <- Sys.getenv("OAUTH_REDIRECT_URI", "")
 
-server <- function(input, output, session) {
-  # Keep login manual to avoid redirecting Cloud Run health checks
-  auth <- oauth_module_server(
-    "auth",
-    client,
-    auto_redirect = FALSE
-  )
-
-  observeEvent(input$login_btn, {
-    auth$request_login()
-  })
-
-  observeEvent(input$logout_btn, {
-    auth$logout()
-  })
-
-  output$auth_print <- renderText({
-    authenticated <- auth$authenticated
-    tok <- auth$token
-    err <- auth$error
-
-    paste0(
-      "Authenticated? ",
-      if (isTRUE(authenticated)) "YES" else "NO",
-      "\n",
-      "Has token? ",
-      if (!is.null(tok)) "YES" else "NO",
-      "\n",
-      "Has error? ",
-      if (!is.null(err)) "YES" else "NO",
-      "\n\n",
-      "Token (str):\n",
-      paste(capture.output(str(tok)), collapse = "\n")
-    )
-  })
-
-  output$user_info <- renderPrint({
-    req(auth$token)
-    auth$token@userinfo
-  })
-
-  output$oauth_error <- renderUI({
-    if (!is.null(auth$error)) {
-      msg <- auth$error
-      if (!is.null(auth$error_description)) {
-        msg <- paste0(msg, ": ", auth$error_description)
-      }
-      div(class = "alert alert-danger", role = "alert", msg)
+client_or_error <- tryCatch(
+  {
+    if (!nzchar(client_id) || !nzchar(client_secret) || !nzchar(redirect_uri)) {
+      stop("Missing required environment variables")
     }
-  })
-}
+    oauth_client(
+      provider = provider,
+      client_id = client_id,
+      client_secret = client_secret,
+      redirect_uri = redirect_uri,
+      scopes = character(0) # add scopes if you need more than public user info
+    )
+  },
+  error = function(e) {
+    e
+  }
+)
 
-shinyApp(ui, server)
+if (inherits(client_or_error, "error")) {
+  ui <- fluidPage(
+    use_shinyOAuth(),
+    titlePanel("shinyOAuth on Cloud Run (GitHub)"),
+    div(
+      class = "alert alert-warning",
+      role = "alert",
+      tags$p(
+        "OAuth client configuration is missing or invalid. The app is running so",
+        "Cloud Run health checks can succeed, but login is disabled until the",
+        "required environment variables are set."
+      ),
+      tags$ul(
+        tags$li(tags$code("GITHUB_OAUTH_CLIENT_ID")),
+        tags$li(tags$code("GITHUB_OAUTH_CLIENT_SECRET")),
+        tags$li(tags$code("OAUTH_REDIRECT_URI"))
+      ),
+      tags$details(
+        tags$summary("Startup error"),
+        tags$pre(conditionMessage(client_or_error))
+      )
+    )
+  )
+  server <- function(input, output, session) {}
+  shinyApp(ui, server)
+} else {
+  client <- client_or_error
+
+  ui <- fluidPage(
+    use_shinyOAuth(),
+    titlePanel("shinyOAuth on Cloud Run (GitHub)"),
+    fluidRow(
+      column(
+        width = 4,
+        div(
+          style = "margin-bottom: 1rem;",
+          actionButton("login_btn", "Login with GitHub", class = "btn-primary"),
+          actionButton(
+            "logout_btn",
+            "Logout",
+            class = "btn-secondary",
+            style = "margin-left: .5rem;"
+          )
+        ),
+        uiOutput("oauth_error"),
+        tags$hr(),
+        h4("Auth summary"),
+        verbatimTextOutput("auth_print"),
+        tags$hr(),
+        h4("User info"),
+        verbatimTextOutput("user_info")
+      )
+    )
+  )
+
+  server <- function(input, output, session) {
+    # Keep login manual to avoid redirecting Cloud Run health checks
+    auth <- oauth_module_server(
+      "auth",
+      client,
+      auto_redirect = FALSE
+    )
+
+    observeEvent(input$login_btn, {
+      auth$request_login()
+    })
+
+    observeEvent(input$logout_btn, {
+      auth$logout()
+    })
+
+    output$auth_print <- renderText({
+      authenticated <- auth$authenticated
+      tok <- auth$token
+      err <- auth$error
+
+      paste0(
+        "Authenticated? ",
+        if (isTRUE(authenticated)) "YES" else "NO",
+        "\n",
+        "Has token? ",
+        if (!is.null(tok)) "YES" else "NO",
+        "\n",
+        "Has error? ",
+        if (!is.null(err)) "YES" else "NO",
+        "\n\n",
+        "Token (str):\n",
+        paste(capture.output(str(tok)), collapse = "\n")
+      )
+    })
+
+    output$user_info <- renderPrint({
+      req(auth$token)
+      auth$token@userinfo
+    })
+
+    output$oauth_error <- renderUI({
+      if (!is.null(auth$error)) {
+        msg <- auth$error
+        if (!is.null(auth$error_description)) {
+          msg <- paste0(msg, ": ", auth$error_description)
+        }
+        div(class = "alert alert-danger", role = "alert", msg)
+      }
+    })
+  }
+
+  shinyApp(ui, server)
+}
