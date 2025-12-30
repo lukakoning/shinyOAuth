@@ -300,10 +300,10 @@ for details about audit and trace hooks.
 - `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID
   tokens (HS256/HS384/HS512). Requires a strictly server‑side
   `client_secret`
-- `options(shinyOAuth.client_assertion_ttl = 300L)` – lifetime in
+- `options(shinyOAuth.client_assertion_ttl = 120L)` – lifetime in
   seconds for JWT client assertions used with `client_secret_jwt` or
   `private_key_jwt` token endpoint authentication. Values below 60
-  seconds are coerced up to a safe minimum; default is 300 seconds
+  seconds are coerced up to a safe minimum; default is 120 seconds
 - `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small
   randomized delay (in milliseconds) before any state validation failure
   (e.g., malformed token, IV/tag/ciphertext issues, or GCM

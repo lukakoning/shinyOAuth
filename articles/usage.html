@@ -373,11 +373,11 @@ validation for ID tokens (HS256/HS384/HS512). Requires a strictly
 server‑side <code>client_secret</code>
 </li>
 <li>
-<code>options(shinyOAuth.client_assertion_ttl = 300L)</code> –
+<code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
 lifetime in seconds for JWT client assertions used with
 <code>client_secret_jwt</code> or <code>private_key_jwt</code> token
 endpoint authentication. Values below 60 seconds are coerced up to a
-safe minimum; default is 300 seconds</li>
+safe minimum; default is 120 seconds</li>
 <li>
 <code>options(shinyOAuth.state_fail_delay_ms = c(10, 30))</code> –
 adds a small randomized delay (in milliseconds) before any state
