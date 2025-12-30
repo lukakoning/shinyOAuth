@@ -424,7 +424,7 @@ state_decrypt_gcm <- function(
     state_fail(
       c(
         "x" = "state token decrypted payload is not valid JSON",
-        "!" = "This can happen if the state key/secret is wrong (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret); the decrypted bytes won’t decode as JSON."
+        "!" = "This can happen if the state key/secret is wrong (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret); the decrypted bytes won't decode as JSON."
       ),
       context = list(phase = "decrypt")
     )
