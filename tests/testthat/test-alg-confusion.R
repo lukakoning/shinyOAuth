@@ -39,7 +39,9 @@ minimal_client <- function(
 
 test_that("'none' algorithm is rejected unless skipping signature", {
   client <- minimal_client()
-  client@provider@allowed_algs <- c("HS256")
+  withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
+    client@provider@allowed_algs <- c("HS256")
+  })
   payload <- list(
     iss = client@provider@issuer,
     aud = client@client_id,
@@ -65,9 +67,11 @@ test_that("'none' algorithm is rejected unless skipping signature", {
 
 test_that("HS* requires opt-in and client_secret", {
   client <- minimal_client()
-  client@provider@allowed_algs <- c("HS256")
   # Allow HS256 so we reach the HS* code path rather than provider alg block
-  client@provider@allowed_algs <- c("HS256")
+  # (setting allowed_algs itself is gated behind shinyOAuth.allow_hs)
+  withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
+    client@provider@allowed_algs <- c("HS256")
+  })
 
   # Fake HS256 token (unsigned body; jose check will fail unless skip)
   pl <- list(
@@ -91,9 +95,9 @@ test_that("HS* requires opt-in and client_secret", {
   # Allow empty secret by switching to token_auth_style body + PKCE
   client2@provider@token_auth_style <- "body"
   client2@provider@use_pkce <- TRUE
-  client2@provider@allowed_algs <- c("HS256")
   client2@client_secret <- NA_character_
   withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
+    client2@provider@allowed_algs <- c("HS256")
     expect_error(
       shinyOAuth:::validate_id_token(client2, jwt_hs),
       class = "shinyOAuth_input_error"

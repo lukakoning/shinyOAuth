@@ -467,12 +467,25 @@ OAuthProvider <- S7::new_class(
         "HS384",
         "HS512"
       )
-      bad <- setdiff(toupper(self@allowed_algs), supported)
+      aa <- toupper(self@allowed_algs)
+      bad <- setdiff(aa, supported)
       if (length(bad) > 0) {
         return(paste0(
           "OAuthProvider: allowed_algs contains unsupported entries: ",
           paste(bad, collapse = ", ")
         ))
+      }
+
+      # Fail fast: HS* algs are supported but gated behind an opt-in option.
+      # Without the option, validation would fail later at ID token validation
+      # time, which is confusing for users who configured allowed_algs.
+      if (any(aa %in% c("HS256", "HS384", "HS512"))) {
+        allow_hs <- isTRUE(getOption("shinyOAuth.allow_hs", FALSE))
+        if (!allow_hs) {
+          return(
+            "OAuthProvider: allowed_algs includes HS* but `options(shinyOAuth.allow_hs = TRUE)` is not enabled"
+          )
+        }
       }
     }
 

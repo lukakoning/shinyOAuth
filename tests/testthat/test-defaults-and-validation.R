@@ -43,3 +43,27 @@ test_that("OAuthProvider default jwks_host_issuer_match is FALSE", {
   )
   expect_identical(p@jwks_host_issuer_match, FALSE)
 })
+
+test_that("OAuthProvider HS* algs require allow_hs opt-in", {
+  base_args <- list(
+    name = "t",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://issuer.example.com",
+    id_token_validation = TRUE,
+    id_token_required = TRUE,
+    allowed_algs = c("HS256")
+  )
+
+  withr::with_options(list(shinyOAuth.allow_hs = FALSE), {
+    expect_error(
+      do.call(oauth_provider, base_args),
+      regexp = "allow_hs|HS\\*",
+      fixed = FALSE
+    )
+  })
+
+  withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
+    expect_no_error(do.call(oauth_provider, base_args))
+  })
+})
