@@ -226,3 +226,42 @@ test_that("normalize_key32 error paths bubble through decrypt", {
     class = "shinyOAuth_config_error"
   )
 })
+
+test_that("state_decrypt_gcm includes state-key mismatch hints", {
+  # Disable random delay to keep tests snappy and deterministic
+  old <- options(shinyOAuth.state_fail_delay_ms = 0)
+  on.exit(options(old), add = TRUE)
+
+  key <- strrep("k", 64)
+  tok <- shinyOAuth:::state_encrypt_gcm(list(state = "ok", issued_at = 1), key = key)
+
+  # 1) Force GCM auth failure branch
+  testthat::local_mocked_bindings(
+    aes_gcm_decrypt = function(...) stop("auth failed"),
+    .package = "openssl"
+  )
+  e1 <- tryCatch(
+    shinyOAuth:::state_decrypt_gcm(tok, key = key),
+    error = function(e) e
+  )
+  expect_s3_class(e1, "shinyOAuth_state_error")
+  m1 <- conditionMessage(e1)
+  expect_match(m1, "GCM authentication failed", fixed = TRUE)
+  expect_match(m1, "state key/secret", fixed = TRUE)
+  expect_match(m1, "OAuthClient created inside a Shiny session", fixed = TRUE)
+
+  # 2) Force decrypted JSON invalid branch
+  testthat::local_mocked_bindings(
+    aes_gcm_decrypt = function(...) charToRaw("not-json"),
+    .package = "openssl"
+  )
+  e2 <- tryCatch(
+    shinyOAuth:::state_decrypt_gcm(tok, key = key),
+    error = function(e) e
+  )
+  expect_s3_class(e2, "shinyOAuth_state_error")
+  m2 <- conditionMessage(e2)
+  expect_match(m2, "state token decrypted payload is not valid JSON", fixed = TRUE)
+  expect_match(m2, "state key/secret", fixed = TRUE)
+  expect_match(m2, "OAuthClient created inside a Shiny session", fixed = TRUE)
+})

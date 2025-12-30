@@ -41,6 +41,7 @@ test_that("state_encrypt_gcm <-> state_decrypt_gcm roundtrip and properties", {
   wrong_key <- strrep("x", 64)
   expect_error(
     shinyOAuth:::state_decrypt_gcm(enc1, key = wrong_key),
+    "state key/secret",
     class = "shinyOAuth_state_error"
   )
 })

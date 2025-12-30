@@ -405,7 +405,13 @@ state_decrypt_gcm <- function(
   )
   if (inherits(res, "try-error")) {
     audit_fail("gcm_auth_failed")
-    state_fail("GCM authentication failed", context = list(phase = "decrypt"))
+    state_fail(
+      c(
+        "x" = "GCM authentication failed",
+        "!" = "This often indicates the state key/secret does not match the one used to encrypt the state (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret)."
+      ),
+      context = list(phase = "decrypt")
+    )
   }
   parsed <- try(
     jsonlite::fromJSON(rawToChar(res), simplifyVector = FALSE),
@@ -416,7 +422,10 @@ state_decrypt_gcm <- function(
   ) {
     audit_fail("decrypted_json_invalid")
     state_fail(
-      "state token decrypted payload is not valid JSON",
+      c(
+        "x" = "state token decrypted payload is not valid JSON",
+        "!" = "This can happen if the state key/secret is wrong (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret); the decrypted bytes won’t decode as JSON."
+      ),
       context = list(phase = "decrypt")
     )
   }
