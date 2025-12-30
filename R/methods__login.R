@@ -174,12 +174,25 @@ prepare_call <- function(
   return(auth_url)
 }
 
-# Helper: turn key provider properties into a fingerprint string
+# Helper: turn key provider properties into a stable fingerprint string
 provider_fingerprint <- function(provider) {
   iss <- provider@issuer %||% ""
   au <- provider@auth_url %||% ""
   tu <- provider@token_url %||% ""
-  paste0("iss=", iss, "|au=", au, "|tu=", tu)
+
+  # Use a length-prefixed canonical representation to avoid delimiter-based
+  # collisions when any component contains separators.
+  iss_u <- enc2utf8(iss)
+  au_u <- enc2utf8(au)
+  tu_u <- enc2utf8(tu)
+
+  canonical <- paste0(
+    "iss:", nchar(iss_u, type = "bytes"), ":", iss_u, "\n",
+    "au:", nchar(au_u, type = "bytes"), ":", au_u, "\n",
+    "tu:", nchar(tu_u, type = "bytes"), ":", tu_u
+  )
+
+  paste0("sha256:", string_digest(enc2utf8(canonical)))
 }
 
 # Helper: build authorization URL with all params
