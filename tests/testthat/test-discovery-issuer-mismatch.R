@@ -34,8 +34,42 @@ test_that("validate_discovery_issuer can be overridden via arg", {
     f(
       "https://login.example.com",
       "https://accounts.example.com",
-      issuer_match = FALSE
+      issuer_match = "none"
     ),
     "https://accounts.example.com"
+  )
+})
+
+test_that("validate_discovery_issuer errors on issuer path mismatch by default", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_error(
+    f(
+      "https://login.example.com/tenant-a",
+      "https://login.example.com/tenant-b"
+    ),
+    class = "shinyOAuth_config_error"
+  )
+})
+
+test_that("validate_discovery_issuer normalizes trailing slashes", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_identical(
+    f(
+      "https://login.example.com/tenant-a/",
+      "https://login.example.com/tenant-a"
+    ),
+    "https://login.example.com/tenant-a"
+  )
+})
+
+test_that("validate_discovery_issuer can opt out to host-only matching", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_identical(
+    f(
+      "https://login.example.com/tenant-a",
+      "https://login.example.com/tenant-b",
+      issuer_match = "host"
+    ),
+    "https://login.example.com/tenant-b"
   )
 })

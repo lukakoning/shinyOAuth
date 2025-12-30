@@ -74,10 +74,16 @@
 #'  `jwks_host_allow_only` to the exact hostname instead of disabling this.
 #'  Disabling (`FALSE`) is not recommended unless you also pin JWKS via
 #'  `jwks_host_allow_only` or `jwks_pins`
-#' @param issuer_match Logical, default TRUE. When TRUE, requires the discovery
-#'  issuer's scheme/host to match the input `issuer`. When FALSE, host mismatch
-#'  is allowed. Prefer tightening hosts via `options(shinyOAuth.allowed_hosts)`
-#'  when feasible
+#' @param issuer_match Character scalar controlling how strictly to validate the
+#'  discovery document's `issuer` against the input `issuer`.
+#'
+#'  - `"url"` (default): require the full issuer URL to match after
+#'    trailing-slash normalization (recommended).
+#'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
+#'  - `"none"`: do not validate issuer consistency.
+#'
+#'  Prefer `"url"` and tighten hosts via `options(shinyOAuth.allowed_hosts)`
+#'  when feasible.
 #' @param ... Additional fields passed to [oauth_provider()]
 #'
 #' @return [OAuthProvider] object configured from discovery
@@ -106,9 +112,11 @@ oauth_provider_oidc_discover <- function(
   ),
   allowed_token_types = c('Bearer'),
   jwks_host_issuer_match = TRUE,
-  issuer_match = TRUE,
+  issuer_match = c("url", "host", "none"),
   ...
 ) {
+  issuer_match <- match.arg(issuer_match)
+
   # 1) Validate issuer input
   .discover_assert_valid_issuer(issuer)
 

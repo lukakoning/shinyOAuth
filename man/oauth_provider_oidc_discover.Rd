@@ -15,7 +15,7 @@ oauth_provider_oidc_discover(
     "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
-  issuer_match = TRUE,
+  issuer_match = c("url", "host", "none"),
   ...
 )
 }
@@ -61,10 +61,17 @@ providers that serve JWKS from a different host, set
 Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
 \code{jwks_host_allow_only} or \code{jwks_pins}}
 
-\item{issuer_match}{Logical, default TRUE. When TRUE, requires the discovery
-issuer's scheme/host to match the input \code{issuer}. When FALSE, host mismatch
-is allowed. Prefer tightening hosts via \code{options(shinyOAuth.allowed_hosts)}
-when feasible}
+\item{issuer_match}{Character scalar controlling how strictly to validate the
+discovery document's \code{issuer} against the input \code{issuer}.
+\itemize{
+\item \code{"url"} (default): require the full issuer URL to match after
+trailing-slash normalization (recommended).
+\item \code{"host"}: compare only scheme + host (explicit opt-out; not recommended).
+\item \code{"none"}: do not validate issuer consistency.
+}
+
+Prefer \code{"url"} and tighten hosts via \code{options(shinyOAuth.allowed_hosts)}
+when feasible.}
 
 \item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}}}
 }
