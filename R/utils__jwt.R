@@ -355,7 +355,7 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
 #'  - sub: client_id
 #'  - aud: token endpoint URL (passed as `aud`)
 #'  - iat: current epoch seconds
-#'  - exp: iat + ttl (default 300s; override with options(shinyOAuth.client_assertion_ttl))
+#'  - exp: iat + ttl (default 120s; override with options(shinyOAuth.client_assertion_ttl))
 #'  - jti: random unique identifier
 #'
 #' @keywords internal
@@ -379,13 +379,13 @@ build_client_assertion <- function(client, aud) {
       alg <- choose_default_alg_for_private_key(key0)
     }
   }
-  # TTL (seconds) for client assertion; default 5 minutes
+  # TTL (seconds) for client assertion; default 2 minutes
   ttl <- suppressWarnings(as.integer(getOption(
     "shinyOAuth.client_assertion_ttl",
-    300L
+    120L
   )))
   if (!is.finite(ttl) || is.na(ttl) || ttl < 60L) {
-    ttl <- 300L
+    ttl <- 120L
   }
   now <- floor(as.numeric(Sys.time()))
   claims <- list(
