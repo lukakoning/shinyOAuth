@@ -66,7 +66,7 @@ for RFC 7662 support.</p>
 <span>    <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  issuer_match <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"url"</span>, <span class="st">"host"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -135,10 +135,13 @@ Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
 
 
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
-<dd><p>Logical, default TRUE. When TRUE, requires the discovery
-issuer's scheme/host to match the input <code>issuer</code>. When FALSE, host mismatch
-is allowed. Prefer tightening hosts via <code>options(shinyOAuth.allowed_hosts)</code>
-when feasible</p></dd>
+<dd><p>Character scalar controlling how strictly to validate the
+discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the full issuer URL to match after
+trailing-slash normalization (recommended).</p></li>
+<li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
+<li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
+</ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>
+when feasible.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

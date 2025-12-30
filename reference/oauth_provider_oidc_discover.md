@@ -20,7 +20,7 @@ oauth_provider_oidc_discover(
     "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
-  issuer_match = TRUE,
+  issuer_match = c("url", "host", "none"),
   ...
 )
 ```
@@ -91,10 +91,19 @@ oauth_provider_oidc_discover(
 
 - issuer_match:
 
-  Logical, default TRUE. When TRUE, requires the discovery issuer's
-  scheme/host to match the input `issuer`. When FALSE, host mismatch is
-  allowed. Prefer tightening hosts via
-  `options(shinyOAuth.allowed_hosts)` when feasible
+  Character scalar controlling how strictly to validate the discovery
+  document's `issuer` against the input `issuer`.
+
+  - `"url"` (default): require the full issuer URL to match after
+    trailing-slash normalization (recommended).
+
+  - `"host"`: compare only scheme + host (explicit opt-out; not
+    recommended).
+
+  - `"none"`: do not validate issuer consistency.
+
+  Prefer `"url"` and tighten hosts via
+  `options(shinyOAuth.allowed_hosts)` when feasible.
 
 - ...:
 
