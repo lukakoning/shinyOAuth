@@ -131,6 +131,8 @@ OAuthClient <- S7::new_class(
     )
   ),
   validator = function(self) {
+    warn_about_oauth_client_created_in_shiny(state_key_missing = NA)
+
     if (!S7::S7_inherits(self@provider, OAuthProvider)) {
       return("OAuthClient: provider must be an OAuthProvider object")
     }
@@ -138,6 +140,17 @@ OAuthClient <- S7::new_class(
     # Require a non-empty client_id
     if (!is_valid_string(self@client_id)) {
       return("OAuthClient: client_id must be a non-empty string")
+    }
+
+    parsed <- try(httr2::url_parse(self@redirect_uri), silent = TRUE)
+    if (
+      inherits(parsed, "try-error") ||
+        !nzchar((parsed$scheme %||% "")) ||
+        !nzchar((parsed$hostname %||% ""))
+    ) {
+      return(
+        "OAuthClient: redirect_uri must be an absolute URL (including scheme and hostname)"
+      )
     }
 
     if (!is_ok_host(self@redirect_uri)) {
@@ -362,6 +375,51 @@ OAuthClient <- S7::new_class(
   }
 )
 
+warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
+  if (.is_test()) {
+    return(invisible(NULL))
+  }
+
+  sess <- get_current_shiny_session()
+  if (is.null(sess)) {
+    return(invisible(NULL))
+  }
+
+  bullets <- c(
+    "[{.pkg shinyOAuth}] - OAuthClient created inside Shiny",
+    "!" = paste0(
+      "Detected OAuth client construction while a Shiny session is active. ",
+      "This is usually a bug: the OAuth login flow involves a redirect which creates a new session."
+    )
+  )
+
+  if (isTRUE(state_key_missing)) {
+    bullets <- c(
+      bullets,
+      "x" = paste0(
+        "Because you did not supply {.code state_key}, it will be auto-generated for this session ",
+        "and callbacks in the post-redirect session will be unable to decrypt/validate state."
+      )
+    )
+  } else {
+    bullets <- c(
+      bullets,
+      "i" = paste0(
+        "Construct your {.code OAuthClient} once outside server logic (e.g., in global scope) and reuse it.",
+        " If you must create clients dynamically, ensure {.code state_key} is stable across sessions and (for multi-worker deployments) shared across workers."
+      )
+    )
+  }
+
+  rlang::warn(
+    bullets,
+    .frequency = "once",
+    .frequency_id = "oauth-client-created-in-shiny"
+  )
+
+  invisible(TRUE)
+}
+
 #' Create generic [OAuthClient]
 #'
 #' @inheritParams OAuthClient
@@ -384,6 +442,8 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL
 ) {
+  warn_about_oauth_client_created_in_shiny(state_key_missing = missing(state_key))
+
   OAuthClient(
     provider = provider,
     client_id = client_id,
