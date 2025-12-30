@@ -605,14 +605,6 @@ payload_verify_client_binding <- function(client, payload) {
 
   S7::check_is_S7(client, class = OAuthClient)
 
-  to_chr <- function(x) {
-    if (is.null(x)) {
-      character()
-    } else {
-      as.character(x)
-    }
-  }
-
   # Client ID ------------------------------------------------------------------
 
   expected_client_id <- client@client_id
@@ -646,8 +638,8 @@ payload_verify_client_binding <- function(client, payload) {
 
   # Scopes (order-insensitive set comparison) ----------------------------------
 
-  expected_scopes <- to_chr(client@scopes %||% character())
-  payload_scopes <- to_chr(payload$scopes %||% character())
+  expected_scopes <- as_scope_tokens(client@scopes %||% NULL)
+  payload_scopes <- as_scope_tokens(payload$scopes %||% NULL)
 
   # Normalize by unique + sort so we can produce clear differences
   exp_norm <- sort(unique(expected_scopes))

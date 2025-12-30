@@ -38,7 +38,11 @@ test_that("payload_verify_issued_at rejects future and old payloads", {
 })
 
 test_that("payload_verify_client_binding enforces client_id/redirect/scopes/provider", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("openid", "profile")
+  )
   base <- list(
     state = "s",
     client_id = cli@client_id,
@@ -48,6 +52,15 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
     issued_at = as.numeric(Sys.time())
   )
   expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base))
+
+  # Robustness: allow equivalent representations
+  base2 <- base
+  base2$scopes <- paste(cli@scopes, collapse = " ")
+  expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base2))
+
+  base3 <- base
+  base3$scopes <- as.list(cli@scopes)
+  expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base3))
 
   bad <- base
   bad$client_id <- "other"

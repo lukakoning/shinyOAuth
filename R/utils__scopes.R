@@ -49,3 +49,36 @@ validate_scopes <- function(scopes) {
 
   invisible(TRUE)
 }
+
+#' Coerce scope input into scope tokens
+#'
+#' Accepts scopes in a few common shapes (NULL, character vector, list) and
+#' returns a character vector of individual scope tokens.
+#'
+#' Rationale: while OAuth scope tokens cannot contain whitespace, user code may
+#' accidentally provide a single space-delimited string (e.g. "openid profile").
+#' This helper makes internal comparisons robust by splitting on whitespace.
+#'
+#' @param scopes NULL, character, or list-like scope values
+#'
+#' @keywords internal
+#' @noRd
+as_scope_tokens <- function(scopes) {
+  if (is.null(scopes)) {
+    return(character())
+  }
+
+  if (is.list(scopes)) {
+    scopes <- unlist(scopes, recursive = TRUE, use.names = FALSE)
+  }
+
+  scopes <- as.character(scopes)
+  scopes <- scopes[!is.na(scopes)]
+  if (length(scopes) == 0L) {
+    return(character())
+  }
+
+  tokens <- unlist(strsplit(scopes, "\\s+"), use.names = FALSE)
+  tokens <- tokens[nzchar(tokens)]
+  tokens
+}

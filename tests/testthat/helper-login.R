@@ -54,7 +54,8 @@ make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
 make_test_client <- function(
   use_pkce = TRUE,
   use_nonce = FALSE,
-  state_max_age = 600
+  state_max_age = 600,
+  scopes = character(0)
 ) {
   prov <- make_test_provider(use_pkce = use_pkce, use_nonce = use_nonce)
   oauth_client(
@@ -62,7 +63,7 @@ make_test_client <- function(
     client_id = "abc",
     client_secret = "", # public client
     redirect_uri = "http://localhost:8100",
-    scopes = character(0),
+    scopes = scopes,
     state_store = cachem::cache_mem(max_age = state_max_age),
     state_entropy = 64,
     state_key = paste0(
