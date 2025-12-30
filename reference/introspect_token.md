@@ -64,10 +64,10 @@ Best-effort semantics:
 - If the endpoint responds with an HTTP error (e.g., 404/500) or the
   body cannot be parsed or does not include a usable `active` field, the
   function does not throw. It returns `supported = TRUE`, `active = NA`,
-  and a descriptive `status` (for example, `"http_404"`). In this
-  context, `NA` means "unknown" and will not break flows unless your
-  code explicitly requires a definitive result (i.e.,
-  `isTRUE(result$active)`).
+  and a descriptive `status` (for example, `"http_404"`,
+  `"invalid_json"`, `"missing_active"`). In this context, `NA` means
+  "unknown" and will not break flows unless your code explicitly
+  requires a definitive result (i.e., `isTRUE(result$active)`).
 
 - Providers vary in how they encode the RFC 7662 `active` field
   (logical, numeric, or character variants like "true"/"false", 1/0).

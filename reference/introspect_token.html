@@ -122,7 +122,8 @@ returns <code>supported = FALSE</code>, <code>active = NA</code>, and <code>stat
 <li><p>If the endpoint responds with an HTTP error (e.g., 404/500) or the body
 cannot be parsed or does not include a usable <code>active</code> field, the function
 does not throw. It returns <code>supported = TRUE</code>, <code>active = NA</code>, and a
-descriptive <code>status</code> (for example, <code>"http_404"</code>). In this context, <code>NA</code>
+descriptive <code>status</code> (for example, <code>"http_404"</code>, <code>"invalid_json"</code>,
+<code>"missing_active"</code>). In this context, <code>NA</code>
 means "unknown" and will not break flows unless your code explicitly
 requires a definitive result (i.e., <code>isTRUE(result$active)</code>).</p></li>
 <li><p>Providers vary in how they encode the RFC 7662 <code>active</code> field (logical,
