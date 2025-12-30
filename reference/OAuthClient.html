@@ -182,13 +182,13 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="co"># Example requires configured GitHub OAuth 2.0 app</span></span></span>
 <span class="r-in"><span>  <span class="co"># (go to https://github.com/settings/developers to create one):</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span><span class="op">)</span> </span></span>
-<span class="r-in"><span>  <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Define client</span></span></span>
 <span class="r-in"><span>  <span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    provider <span class="op">=</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
@@ -196,7 +196,7 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Choose which app you want to run</span></span></span>
 <span class="r-in"><span>  <span class="va">app_to_run</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span></span>
 <span class="r-in"><span>  <span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">app_to_run</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -211,7 +211,7 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>      <span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu">cli</span><span class="fu">::</span><span class="fu"><a href="https://cli.r-lib.org/reference/cli_alert.html" class="external-link">cli_alert_info</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="st">"Will run example app {app_to_run} on {.url http://127.0.0.1:8100}\n"</span>,</span></span>
@@ -219,14 +219,14 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>      <span class="st">"cannot perform necessary redirects)"</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Example app with auto-redirect (1) -----------------------------------------</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">ui_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">server_1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Auto-redirect (default):</span></span></span>
 <span class="r-in"><span>    <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span></span>
@@ -234,7 +234,7 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>      <span class="va">client</span>,</span></span>
 <span class="r-in"><span>      auto_redirect <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>        <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span></span>
@@ -247,35 +247,35 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>      <span class="op">}</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">app_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_1</span>, <span class="va">server_1</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"1"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="va">app_1</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="va">app_1</span>,</span></span>
+<span class="r-in"><span>      port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
 <span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Example app with manual login button (2) -----------------------------------</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">ui_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"login_btn"</span>, <span class="st">"Login"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">server_2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="st">"auth"</span>,</span></span>
 <span class="r-in"><span>      <span class="va">client</span>,</span></span>
 <span class="r-in"><span>      auto_redirect <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">login_btn</span>, <span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="va">auth</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>        <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span></span>
@@ -288,43 +288,43 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>      <span class="op">}</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">app_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_2</span>, <span class="va">server_2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"2"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="va">app_2</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="va">app_2</span>,</span></span>
+<span class="r-in"><span>      port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
 <span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Example app requesting additional resource with access token (3) -----------</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Below app shows the authenticated username + their GitHub repositories,</span></span></span>
 <span class="r-in"><span>  <span class="co"># fetched via GitHub API using the access token obtained during login</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">ui_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"ui"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">server_3</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>      <span class="st">"auth"</span>,</span></span>
 <span class="r-in"><span>      <span class="va">client</span>,</span></span>
 <span class="r-in"><span>      auto_redirect <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">repositories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observe.html" class="external-link">observe</a></span><span class="op">(</span><span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="co"># Example additional API request using the access token</span></span></span>
 <span class="r-in"><span>      <span class="co"># (e.g., fetch user repositories from GitHub)</span></span></span>
 <span class="r-in"><span>      <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span>, <span class="st">"https://api.github.com/user/repos"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>        <span class="fu">repositories</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span></span>
@@ -332,36 +332,41 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <span class="r-in"><span>        <span class="fu">repositories</span><span class="op">(</span><span class="va">repos_data</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="op">}</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="co"># Render username + their repositories</span></span></span>
 <span class="r-in"><span>    <span class="va">output</span><span class="op">$</span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>        <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span></span>
 <span class="r-in"><span>        <span class="va">repos</span> <span class="op">&lt;-</span> <span class="fu">repositories</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span>        </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>        <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>          <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"You are logged in as:"</span>, <span class="va">user_info</span><span class="op">$</span><span class="va">login</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>          <span class="va">tags</span><span class="op">$</span><span class="fu">h4</span><span class="op">(</span><span class="st">"Your repositories:"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>          <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>            <span class="va">tags</span><span class="op">$</span><span class="fu">ul</span><span class="op">(</span></span></span>
-<span class="r-in"><span>              <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">url</span>, <span class="va">name</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>                <span class="va">tags</span><span class="op">$</span><span class="fu">li</span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">a</span><span class="op">(</span>href <span class="op">=</span> <span class="va">url</span>, target <span class="op">=</span> <span class="st">"_blank"</span>, <span class="va">name</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>              <span class="op">}</span>, <span class="va">repos</span><span class="op">$</span><span class="va">html_url</span>, <span class="va">repos</span><span class="op">$</span><span class="va">full_name</span><span class="op">)</span></span></span>
+<span class="r-in"><span>              <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>                <span class="kw">function</span><span class="op">(</span><span class="va">url</span>, <span class="va">name</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>                  <span class="va">tags</span><span class="op">$</span><span class="fu">li</span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">a</span><span class="op">(</span>href <span class="op">=</span> <span class="va">url</span>, target <span class="op">=</span> <span class="st">"_blank"</span>, <span class="va">name</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>                <span class="op">}</span>,</span></span>
+<span class="r-in"><span>                <span class="va">repos</span><span class="op">$</span><span class="va">html_url</span>,</span></span>
+<span class="r-in"><span>                <span class="va">repos</span><span class="op">$</span><span class="va">full_name</span></span></span>
+<span class="r-in"><span>              <span class="op">)</span></span></span>
 <span class="r-in"><span>            <span class="op">)</span></span></span>
 <span class="r-in"><span>          <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>            <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"Loading repositories..."</span><span class="op">)</span></span></span>
 <span class="r-in"><span>          <span class="op">}</span></span></span>
 <span class="r-in"><span>        <span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="op">}</span></span></span>
-<span class="r-in"><span>      </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  </span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">app_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui_3</span>, <span class="va">server_3</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="va">app_to_run</span> <span class="op">==</span> <span class="st">"3"</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="va">app_3</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
+<span class="r-in"><span>      <span class="va">app_3</span>,</span></span>
+<span class="r-in"><span>      port <span class="op">=</span> <span class="fl">8100</span>,</span></span>
 <span class="r-in"><span>      launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>    <span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
