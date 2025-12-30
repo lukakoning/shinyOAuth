@@ -233,7 +233,10 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   on.exit(options(old), add = TRUE)
 
   key <- strrep("k", 64)
-  tok <- shinyOAuth:::state_encrypt_gcm(list(state = "ok", issued_at = 1), key = key)
+  tok <- shinyOAuth:::state_encrypt_gcm(
+    list(state = "ok", issued_at = 1),
+    key = key
+  )
 
   # 1) Force GCM auth failure branch
   testthat::local_mocked_bindings(
@@ -261,7 +264,11 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   )
   expect_s3_class(e2, "shinyOAuth_state_error")
   m2 <- conditionMessage(e2)
-  expect_match(m2, "state token decrypted payload is not valid JSON", fixed = TRUE)
+  expect_match(
+    m2,
+    "state token decrypted payload is not valid JSON",
+    fixed = TRUE
+  )
   expect_match(m2, "state key/secret", fixed = TRUE)
   expect_match(m2, "OAuthClient created inside a Shiny session", fixed = TRUE)
 })

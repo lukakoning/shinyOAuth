@@ -442,7 +442,9 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL
 ) {
-  warn_about_oauth_client_created_in_shiny(state_key_missing = missing(state_key))
+  warn_about_oauth_client_created_in_shiny(
+    state_key_missing = missing(state_key)
+  )
 
   OAuthClient(
     provider = provider,

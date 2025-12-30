@@ -166,7 +166,10 @@ introspect_token <- function(
   status <- "ok"
   # Try parse JSON; RFC 7662 requires JSON body with at least { active: boolean }
   body_txt <- httr2::resp_body_string(resp)
-  parsed <- try(jsonlite::fromJSON(body_txt, simplifyVector = TRUE), silent = TRUE)
+  parsed <- try(
+    jsonlite::fromJSON(body_txt, simplifyVector = TRUE),
+    silent = TRUE
+  )
 
   if (inherits(parsed, "try-error") || !is.list(parsed)) {
     status <- "invalid_json"
