@@ -149,7 +149,11 @@ testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
   )
 
   before <- as.numeric(Sys.time())
-  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
+  testthat::expect_warning(
+    t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    regexp = "expires_in = 0",
+    fixed = TRUE
+  )
   after <- as.numeric(Sys.time())
 
   testthat::expect_true(is.finite(t2@expires_at))

@@ -368,6 +368,10 @@ refresh_token <- function(
         context = list(phase = "refresh_token")
       )
     }
+
+    if (tok$expires_in <= 0) {
+      warn_about_nonpositive_expires_in(tok$expires_in, phase = "refresh_token")
+    }
   }
 
   # Verify the response contains a new access token

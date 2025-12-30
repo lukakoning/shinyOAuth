@@ -134,6 +134,53 @@ client_state_store_max_age <- function(client, default = 300) {
   max_age
 }
 
+#' Internal: warn when expires_in is non-positive
+#'
+#' `expires_in <= 0` is technically valid (meaning "expires now"), but is often
+#' surprising and can indicate a provider/configuration issue.
+#'
+#' @keywords internal
+#' @noRd
+warn_about_nonpositive_expires_in <- function(expires_in, phase = NULL) {
+  if (is.null(expires_in)) {
+    return(invisible(FALSE))
+  }
+
+  if (!is.numeric(expires_in) || length(expires_in) != 1L || !is.finite(expires_in)) {
+    return(invisible(FALSE))
+  }
+
+  if (expires_in > 0) {
+    return(invisible(FALSE))
+  }
+
+  phase_msg <- if (is_valid_string(phase)) {
+    paste0(" (phase: ", phase, ")")
+  } else {
+    ""
+  }
+
+  rlang::warn(
+    c(
+      format_header("Token expires immediately"),
+      "!" = paste0(
+        "Token response returned expires_in = ",
+        expires_in,
+        ", so the token is immediately expired",
+        phase_msg
+      ),
+      "i" = "This is unusual and may indicate provider misconfiguration"
+    ),
+    .frequency = "once",
+    .frequency_id = paste0(
+      "expires_in_nonpositive",
+      if (is_valid_string(phase)) paste0("-", phase) else ""
+    )
+  )
+
+  invisible(TRUE)
+}
+
 #' Internal: normalize state payload freshness window (issued_at) to seconds
 #'
 #' This is intentionally independent of the state store TTL. The state store TTL

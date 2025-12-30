@@ -803,6 +803,13 @@ swap_code_for_token_set <- function(
     ) {
       err_token("Invalid expires_in in token response")
     }
+
+    if (token_set$expires_in <= 0) {
+      warn_about_nonpositive_expires_in(
+        token_set$expires_in,
+        phase = "exchange_code"
+      )
+    }
   }
 
   return(token_set)
