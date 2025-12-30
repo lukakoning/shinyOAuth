@@ -1,5 +1,10 @@
 test_that("payload_verify_issued_at rejects future and old payloads", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE, state_max_age = 2)
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    state_max_age = 600,
+    state_payload_max_age = 2
+  )
 
   # Build a fake payload and validate
   now <- as.numeric(Sys.time())
@@ -28,7 +33,8 @@ test_that("payload_verify_issued_at rejects future and old payloads", {
   cli2 <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
-    state_max_age = 1
+    state_max_age = 600,
+    state_payload_max_age = 1
   )
   expect_error(
     shinyOAuth:::payload_verify_issued_at(cli2, p3),

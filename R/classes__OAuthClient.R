@@ -64,6 +64,18 @@
 #'    validates the OAuth `state` parameter (and OIDC `nonce` when applicable)
 #'    during the authorization code flow
 #'
+#' @param state_payload_max_age Positive number of seconds. Maximum allowed age
+#'   for the decrypted state payload's `issued_at` timestamp during callback
+#'   validation.
+#'
+#'   This value is an independent freshness backstop against replay attacks on
+#'   the encrypted `state` payload. It is intentionally decoupled from
+#'   `state_store` TTL (which controls how long the single-use state entry can
+#'   exist in the server-side cache, and also drives browser cookie max-age in
+#'   [oauth_module_server()]).
+#'
+#'   Default is 300 seconds.
+#'
 #' @param state_entropy Integer. The length (in characters) of the randomly
 #'   generated state parameter. Higher values provide more entropy and better
 #'   security against CSRF attacks. Must be between 22 and 128 (to align with
@@ -124,6 +136,7 @@ OAuthClient <- S7::new_class(
       S7::class_any,
       default = quote(cachem::cache_mem(max_age = 300))
     ),
+    state_payload_max_age = S7::new_property(S7::class_numeric, default = 300),
     state_entropy = S7::new_property(S7::class_numeric, default = 64),
     state_key = S7::new_property(
       S7::class_any,
@@ -158,6 +171,14 @@ OAuthClient <- S7::new_class(
         "OAuthClient: redirect URI not accepted as a host ",
         "(see `?is_ok_host` for details)"
       ))
+    }
+
+    # State payload freshness window (issued_at)
+    spma <- suppressWarnings(as.numeric(self@state_payload_max_age))
+    if (length(spma) != 1L || !is.finite(spma) || spma <= 0) {
+      return(
+        "OAuthClient: state_payload_max_age must be a finite positive number of seconds"
+      )
     }
 
     # Validate client_secret presence based on provider auth style and PKCE
@@ -436,6 +457,7 @@ oauth_client <- function(
   redirect_uri,
   scopes = character(0),
   state_store = cachem::cache_mem(max_age = 300),
+  state_payload_max_age = 300,
   state_entropy = 64,
   state_key = random_urlsafe(128),
   client_private_key = NULL,
@@ -453,6 +475,7 @@ oauth_client <- function(
     redirect_uri = redirect_uri,
     scopes = scopes,
     state_store = state_store,
+    state_payload_max_age = state_payload_max_age,
     state_entropy = state_entropy,
     state_key = state_key,
     client_private_key = client_private_key,

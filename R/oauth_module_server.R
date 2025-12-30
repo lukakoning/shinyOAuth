@@ -40,8 +40,9 @@
 #'   `client@state_store$info()$max_age` and uses that value for the cookie's
 #'   `Max-Age`/`Expires`. When the cache does not expose a finite `max_age`, a
 #'   conservative default of 5 minutes (300 seconds) is used to align with the
-#'   built-in `cachem::cache_mem(max_age = 300)` default and the state payload's
-#'   `issued_at` validation window.
+#'   built-in `cachem::cache_mem(max_age = 300)` default. Separately, the state
+#'   payload `issued_at` freshness window is controlled by the client's
+#'   `state_payload_max_age` (default 300 seconds).
 #'
 #' - Watchdog for missing browser token: to catch misconfiguration early during
 #'   development, the module includes a short watchdog. If the browser token

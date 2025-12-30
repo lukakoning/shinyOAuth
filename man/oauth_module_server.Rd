@@ -219,8 +219,9 @@ client's \code{state_store} TTL. Internally, the module reads
 \code{client@state_store$info()$max_age} and uses that value for the cookie's
 \code{Max-Age}/\code{Expires}. When the cache does not expose a finite \code{max_age}, a
 conservative default of 5 minutes (300 seconds) is used to align with the
-built-in \code{cachem::cache_mem(max_age = 300)} default and the state payload's
-\code{issued_at} validation window.
+built-in \code{cachem::cache_mem(max_age = 300)} default. Separately, the state
+payload \code{issued_at} freshness window is controlled by the client's
+\code{state_payload_max_age} (default 300 seconds).
 \item Watchdog for missing browser token: to catch misconfiguration early during
 development, the module includes a short watchdog. If the browser token
 cookie is not set within 1500ms of module initialization, a warning

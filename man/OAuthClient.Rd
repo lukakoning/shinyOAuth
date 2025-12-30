@@ -14,6 +14,7 @@ OAuthClient(
   redirect_uri = character(0),
   scopes = character(0),
   state_store = cachem::cache_mem(max_age = 300),
+  state_payload_max_age = 300,
   state_entropy = 64,
   state_key = random_urlsafe(n = 128)
 )
@@ -78,6 +79,18 @@ See also \code{vignette("usage", package = "shinyOAuth")}.
 The client automatically generates, persists (in \code{state_store}), and
 validates the OAuth \code{state} parameter (and OIDC \code{nonce} when applicable)
 during the authorization code flow}
+
+\item{state_payload_max_age}{Positive number of seconds. Maximum allowed age
+for the decrypted state payload's \code{issued_at} timestamp during callback
+validation.
+
+This value is an independent freshness backstop against replay attacks on
+the encrypted \code{state} payload. It is intentionally decoupled from
+\code{state_store} TTL (which controls how long the single-use state entry can
+exist in the server-side cache, and also drives browser cookie max-age in
+\code{\link[=oauth_module_server]{oauth_module_server()}}).
+
+Default is 300 seconds.}
 
 \item{state_entropy}{Integer. The length (in characters) of the randomly
 generated state parameter. Higher values provide more entropy and better

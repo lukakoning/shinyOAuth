@@ -134,6 +134,29 @@ client_state_store_max_age <- function(client, default = 300) {
   max_age
 }
 
+#' Internal: normalize state payload freshness window (issued_at) to seconds
+#'
+#' This is intentionally independent of the state store TTL. The state store TTL
+#' controls server-side single-use state caching and browser cookie max-age;
+#' this value controls how old the decrypted state payload's `issued_at` is
+#' allowed to be.
+#'
+#' @keywords internal
+#' @noRd
+client_state_payload_max_age <- function(client, default = 300) {
+  max_age <- suppressWarnings(as.numeric(client@state_payload_max_age))
+
+  if (length(max_age) != 1L || !is.finite(max_age) || max_age <= 0) {
+    fallback <- suppressWarnings(as.numeric(default))
+    if (length(fallback) != 1L || !is.finite(fallback) || fallback <= 0) {
+      fallback <- 300
+    }
+    return(fallback)
+  }
+
+  max_age
+}
+
 # Helpers to compute non-reversible digests for sensitive strings (tokens, ids)
 string_digest <- function(x) {
   # Normalize to a length-1 character scalar for consistent hashing

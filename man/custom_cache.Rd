@@ -61,7 +61,8 @@ The resulting object can be used in both places where 'shinyOAuth' accepts a cac
 }
 
 The \verb{$info()} method is optional, but if provided and it returns a list with
-\code{max_age} (seconds), shinyOAuth will align cookie/issued_at TTLs to that value.
+\code{max_age} (seconds), shinyOAuth will align browser cookie max-age in
+\code{\link[=oauth_module_server]{oauth_module_server()}} to that value.
 }
 \examples{
 mem <- new.env(parent = emptyenv())

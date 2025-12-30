@@ -590,8 +590,8 @@ handle_callback <- function(
 
 # Verify payload is not too old
 payload_verify_issued_at <- function(client, payload) {
-  # Align TTL with cookie lifetime if cache omits max_age metadata
-  max_age <- client_state_store_max_age(client)
+  # Freshness backstop for the encrypted state payload (independent of store TTL)
+  max_age <- client_state_payload_max_age(client)
 
   # Validate issued_at (integer seconds OK)
   ia <- payload$issued_at

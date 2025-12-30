@@ -1,6 +1,6 @@
 test_that("issued_at boundary behavior around max_age", {
   # Small max_age to keep tests fast and deterministic
-  cli <- make_test_client(state_max_age = 2)
+  cli <- make_test_client(state_max_age = 600, state_payload_max_age = 2)
 
   now <- as.numeric(Sys.time())
   base <- list(

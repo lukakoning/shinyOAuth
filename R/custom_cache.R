@@ -16,7 +16,8 @@
 #' - OAuthProvider@jwks_cache (requires `$get`, `$set`; optional `$remove`, `$info`)
 #'
 #' The `$info()` method is optional, but if provided and it returns a list with
-#' `max_age` (seconds), shinyOAuth will align cookie/issued_at TTLs to that value.
+#' `max_age` (seconds), shinyOAuth will align browser cookie max-age in
+#' [oauth_module_server()] to that value.
 #'
 #' @param get A function(key, missing = NULL) -> value. Required.
 #' Should return the stored value, or the `missing` argument if the key is not present.
