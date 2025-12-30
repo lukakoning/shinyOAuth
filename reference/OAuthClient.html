@@ -65,6 +65,7 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  redirect_uri <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
+<span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
 <span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -143,6 +144,18 @@ See also <code><a href="../articles/usage.html">vignette("usage", package = "shi
 <p>The client automatically generates, persists (in <code>state_store</code>), and
 validates the OAuth <code>state</code> parameter (and OIDC <code>nonce</code> when applicable)
 during the authorization code flow</p></dd>
+
+
+<dt id="arg-state-payload-max-age">state_payload_max_age<a class="anchor" aria-label="anchor" href="#arg-state-payload-max-age"></a></dt>
+<dd><p>Positive number of seconds. Maximum allowed age
+for the decrypted state payload's <code>issued_at</code> timestamp during callback
+validation.</p>
+<p>This value is an independent freshness backstop against replay attacks on
+the encrypted <code>state</code> payload. It is intentionally decoupled from
+<code>state_store</code> TTL (which controls how long the single-use state entry can
+exist in the server-side cache, and also drives browser cookie max-age in
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>).</p>
+<p>Default is 300 seconds.</p></dd>
 
 
 <dt id="arg-state-entropy">state_entropy<a class="anchor" aria-label="anchor" href="#arg-state-entropy"></a></dt>

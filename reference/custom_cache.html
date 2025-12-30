@@ -13,7 +13,8 @@ OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
 
 The $info() method is optional, but if provided and it returns a list with
-max_age (seconds), shinyOAuth will align cookie/issued_at TTLs to that value."><meta property="og:description" content="Builds a minimal cachem-like cache backend object that exposes cachem-compatible methods:
+max_age (seconds), shinyOAuth will align browser cookie max-age in
+oauth_module_server() to that value."><meta property="og:description" content="Builds a minimal cachem-like cache backend object that exposes cachem-compatible methods:
 $get(key, missing), $set(key, value), $remove(key), and $info().
 Use this helper when you want to plug a custom state store or JWKS cache
 into 'shinyOAuth', when cachem::cache_mem() or cachem::cache_disk()
@@ -27,7 +28,8 @@ OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
 
 The $info() method is optional, but if provided and it returns a list with
-max_age (seconds), shinyOAuth will align cookie/issued_at TTLs to that value."></head><body>
+max_age (seconds), shinyOAuth will align browser cookie max-age in
+oauth_module_server() to that value."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -80,7 +82,8 @@ Redis, Memcached).</p>
 <p>The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:</p><ul><li><p>OAuthClient@state_store (requires <code>$get</code>, <code>$set</code>, <code>$remove</code>; optional <code>$info</code>)</p></li>
 <li><p>OAuthProvider@jwks_cache (requires <code>$get</code>, <code>$set</code>; optional <code>$remove</code>, <code>$info</code>)</p></li>
 </ul><p>The <code>$info()</code> method is optional, but if provided and it returns a list with
-<code>max_age</code> (seconds), shinyOAuth will align cookie/issued_at TTLs to that value.</p>
+<code>max_age</code> (seconds), shinyOAuth will align browser cookie max-age in
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code> to that value.</p>
     </div>
 
     <div class="section level2">

@@ -24,8 +24,10 @@ accepts a cache-like object:
   `$info`)
 
 The `$info()` method is optional, but if provided and it returns a list
-with `max_age` (seconds), shinyOAuth will align cookie/issued_at TTLs to
-that value.
+with `max_age` (seconds), shinyOAuth will align browser cookie max-age
+in
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+to that value.
 
 ## Usage
 
