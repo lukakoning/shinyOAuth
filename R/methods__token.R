@@ -328,6 +328,21 @@ refresh_token <- function(
     tok$expires_in <- coerce_expires_in(tok$expires_in)
   }
 
+  # Validate expires_in if present (align with swap_code_for_token_set())
+  if (!is.null(tok$expires_in)) {
+    if (
+      !is.numeric(tok$expires_in) ||
+        length(tok$expires_in) != 1L ||
+        !is.finite(tok$expires_in) ||
+        tok$expires_in < 0
+    ) {
+      err_token(
+        "Invalid expires_in in token response",
+        context = list(phase = "refresh_token")
+      )
+    }
+  }
+
   # Verify the response contains a new access token
   if (!is_valid_string(tok$access_token)) {
     err_token(
@@ -357,10 +372,11 @@ refresh_token <- function(
     nonce = NULL
   )
 
-  # Align expiry handling with login path: if expires_in missing/invalid -> Inf
-  ex <- suppressWarnings(as.numeric(token_set$expires_in %||% NA))
-  expires_at <- if (!is.na(ex) && is.finite(ex) && ex > 0) {
-    as.numeric(Sys.time()) + ex
+  # Align expiry handling with login path: expires_in==0 means "expires now".
+  expires_at <- if (
+    is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
+  ) {
+    as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
   } else {
     Inf
   }

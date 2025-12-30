@@ -125,3 +125,62 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   # it should have been called once.
   testthat::expect_gte(calls$introspection, 1L)
 })
+
+testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"access_token":"new_at","expires_in":0}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  before <- as.numeric(Sys.time())
+  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
+  after <- as.numeric(Sys.time())
+
+  testthat::expect_true(is.finite(t2@expires_at))
+  testthat::expect_gte(t2@expires_at, before)
+  testthat::expect_lte(t2@expires_at, after + 1)
+})
+
+testthat::test_that("refresh_token rejects negative expires_in", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"access_token":"new_at","expires_in":-1}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    class = "shinyOAuth_token_error"
+  )
+})
