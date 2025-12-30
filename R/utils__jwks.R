@@ -113,6 +113,51 @@ fetch_jwks <- function(
   jwks
 }
 
+#' Internal: Rate-limit forced JWKS refresh attempts
+#'
+#' This is used as a defense-in-depth measure against attackers sending tokens
+#' with random `kid` values to trigger repeated forced JWKS refreshes.
+#'
+#' Implementation notes:
+#' - The rate-limit state is stored in the existing `jwks_cache` backend so it
+#'   can be shared when users provide a shared cache (e.g., Redis) and so tests
+#'   naturally isolate by using fresh caches.
+#' - The key is derived from `jwks_cache_key()` (issuer + pinning policy).
+#'
+#' @keywords internal
+#' @noRd
+jwks_force_refresh_allowed <- function(
+  issuer,
+  jwks_cache,
+  pins = NULL,
+  pin_mode = c("any", "all"),
+  min_interval = 30,
+  now = as.numeric(Sys.time())
+) {
+  pin_mode <- match.arg(pin_mode)
+  stopifnot(
+    is.numeric(min_interval),
+    length(min_interval) == 1L,
+    !is.na(min_interval),
+    min_interval >= 0
+  )
+
+  # Derive a stable, cache-safe key for the throttle entry
+  base_key <- jwks_cache_key(issuer, pins = pins, pin_mode = pin_mode)
+  throttle_key <- paste0(base_key, "xfr")
+
+  last <- jwks_cache$get(throttle_key, missing = NULL)
+  if (is.numeric(last) && length(last) == 1L && !is.na(last)) {
+    if ((now - last) < min_interval) {
+      return(FALSE)
+    }
+  }
+
+  # Record the attempt time before any network work happens.
+  jwks_cache$set(throttle_key, now)
+  TRUE
+}
+
 #' Internal: Select candidate JWKs for signature verification
 #'
 #' Filters keys that declare use != "sig" while retaining keys that omit `use`.

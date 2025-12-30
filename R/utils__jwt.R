@@ -71,6 +71,8 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
   )
   leeway <- prov@leeway %||% getOption("shinyOAuth.leeway", 30)
   jwks_cache <- prov@jwks_cache
+  pins <- prov@jwks_pins %||% character()
+  pin_mode <- prov@jwks_pin_mode %||% "any"
   client_id <- client@client_id
   client_secret <- client@client_secret
   skip_signature <- isTRUE(allow_skip_signature())
@@ -130,8 +132,8 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
       jwks <- fetch_jwks(
         issuer,
         jwks_cache,
-        pins = prov@jwks_pins %||% character(),
-        pin_mode = prov@jwks_pin_mode %||% "any",
+        pins = pins,
+        pin_mode = pin_mode,
         provider = prov
       )
       verified <- FALSE
@@ -140,18 +142,32 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
         # If header has kid, try only matching keys. If none match, refresh JWKS once and try again.
         kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
         if (length(kid_keys) == 0L) {
-          jwks <- fetch_jwks(
+          did_force_refresh <- FALSE
+          if (isTRUE(jwks_force_refresh_allowed(
             issuer,
             jwks_cache,
-            force_refresh = TRUE,
-            pins = prov@jwks_pins %||% character(),
-            pin_mode = prov@jwks_pin_mode %||% "any",
-            provider = prov
-          )
-          kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
+            pins = pins,
+            pin_mode = pin_mode,
+            min_interval = 30
+          ))) {
+            did_force_refresh <- TRUE
+            jwks <- fetch_jwks(
+              issuer,
+              jwks_cache,
+              force_refresh = TRUE,
+              pins = pins,
+              pin_mode = pin_mode,
+              provider = prov
+            )
+            kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
+          }
         }
         if (length(kid_keys) == 0L) {
-          err_id_token("No JWKS key matches kid")
+          if (isTRUE(did_force_refresh)) {
+            err_id_token("No JWKS key matches kid")
+          } else {
+            err_id_token("No JWKS key matches kid (JWKS refresh rate-limited)")
+          }
         }
         keys <- kid_keys
       } else {
