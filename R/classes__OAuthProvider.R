@@ -270,7 +270,23 @@ OAuthProvider <- S7::new_class(
           name
         ))
       }
-      if (is_valid_string(value) && !is_ok_host(value)) {
+      if (!is_valid_string(value)) {
+        return(NULL)
+      }
+
+      parsed <- try(httr2::url_parse(value), silent = TRUE)
+      if (
+        inherits(parsed, "try-error") ||
+          !nzchar((parsed$scheme %||% "")) ||
+          !nzchar((parsed$hostname %||% ""))
+      ) {
+        return(sprintf(
+          "OAuthProvider: %s must be an absolute URL (including scheme and hostname)",
+          name
+        ))
+      }
+
+      if (!is_ok_host(value)) {
         return(sprintf(
           "OAuthProvider: %s provided but not accepted as a host (see `?is_ok_host` for details)",
           name

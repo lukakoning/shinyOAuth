@@ -197,6 +197,20 @@ oauth_provider_oidc_discover <- function(
     err_input("issuer must be a non-empty URL")
   }
 
+  parsed <- try(httr2::url_parse(issuer), silent = TRUE)
+  if (
+    inherits(parsed, "try-error") ||
+      !nzchar((parsed$scheme %||% "")) ||
+      !nzchar((parsed$hostname %||% ""))
+  ) {
+    err_input(
+      c(
+        "x" = "issuer must be an absolute URL (including scheme and hostname)",
+        "i" = paste0("Got issuer: ", as.character(issuer))
+      )
+    )
+  }
+
   if (!is_ok_host(issuer)) {
     err_input(
       c(
