@@ -896,6 +896,9 @@ oauth_module_server <- function(
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.
       if (!is.null(qs$error)) {
+        # Clear sensitive callback params even on failure paths to reduce
+        # leak risk via referrers, browser history, or logs.
+        .clear_query_and_fix_title()
         values$error <- qs$error
         values$error_description <- qs$error_description %||% NULL
         return(invisible(NULL))
@@ -917,6 +920,14 @@ oauth_module_server <- function(
 
     # Function to handle code & state once received in query string
     .handle_callback <- function(code, state) {
+      # Always clear callback params once we've parsed them (success or failure)
+      on.exit(
+        {
+          try(.clear_query_and_fix_title(), silent = TRUE)
+        },
+        add = TRUE
+      )
+
       # If browser token isn't here yet, defer (set as pending) and wait for browser token
       if (!is_valid_string(values$browser_token)) {
         values$pending_callback <- list(code = code, state = state)
@@ -994,7 +1005,6 @@ oauth_module_server <- function(
                 values$error_description <- NULL
                 values$auth_started_at <- as.numeric(Sys.time())
                 values$token_stale <- FALSE
-                .clear_query_and_fix_title()
                 .clear_browser_token()
                 # Immediately re-issue a fresh browser token so that
                 # subsequent manual logins can redirect on the first click.
@@ -1031,7 +1041,6 @@ oauth_module_server <- function(
             values$error_description <- NULL
             values$auth_started_at <- as.numeric(Sys.time())
             values$token_stale <- FALSE
-            .clear_query_and_fix_title()
             .clear_browser_token()
             # Immediately re-issue a fresh browser token so that
             # subsequent manual logins can redirect on the first click.

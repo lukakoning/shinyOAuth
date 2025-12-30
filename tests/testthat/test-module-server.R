@@ -169,6 +169,14 @@ testthat::test_that("provider error in query sets error and authenticated FALSE"
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
+  seen <- character(0)
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    seen <<- c(seen, type)
+    orig(type, message)
+  }
+
   shiny::testServer(
     app = oauth_module_server,
     args = list(
@@ -176,12 +184,64 @@ testthat::test_that("provider error in query sets error and authenticated FALSE"
       client = cli,
       auto_redirect = FALSE
     ),
+    session = sess,
     expr = {
       values$.process_query("?error=access_denied&error_description=Nope")
       session$flushReact()
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_match(values$error_description, "Nope")
       testthat::expect_false(values$authenticated)
+
+      testthat::expect_true(
+        any(seen == "shinyOAuth:clearQueryAndFixTitle"),
+        info = "Expected clearQueryAndFixTitle on provider error response"
+      )
+    }
+  )
+})
+
+testthat::test_that("callback code/state clears query even when token exchange fails", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  seen <- character(0)
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    seen <<- c(seen, type)
+    orig(type, message)
+  }
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    session = sess,
+    expr = {
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          rlang::abort("exchange_failed")
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=bad&state=", enc))
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_true(
+        any(seen == "shinyOAuth:clearQueryAndFixTitle"),
+        info = "Expected clearQueryAndFixTitle on token-exchange error"
+      )
     }
   )
 })
