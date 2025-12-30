@@ -67,7 +67,8 @@ testthat::test_that("introspect_token parses active variants and http errors", {
     '{"active":"false"}',
     '{"active":1}',
     '{"active":0}',
-    '{"note":"no active field"}'
+    '{"note":"no active field"}',
+    'not-json'
   )
   i <- 0
   testthat::local_mocked_bindings(
@@ -104,6 +105,12 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   # missing field -> NA
   r7 <- introspect_token(cli, t, which = "access", async = FALSE)
   testthat::expect_true(is.na(r7$active))
+  testthat::expect_identical(r7$status, "missing_active")
+
+  # invalid JSON -> NA + descriptive status
+  r8 <- introspect_token(cli, t, which = "access", async = FALSE)
+  testthat::expect_true(is.na(r8$active))
+  testthat::expect_identical(r8$status, "invalid_json")
 })
 
 testthat::test_that("introspect_token async returns a resolved promise", {

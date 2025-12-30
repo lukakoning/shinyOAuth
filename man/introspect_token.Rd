@@ -49,7 +49,8 @@ returns \code{supported = FALSE}, \code{active = NA}, and \code{status = "intros
 \item If the endpoint responds with an HTTP error (e.g., 404/500) or the body
 cannot be parsed or does not include a usable \code{active} field, the function
 does not throw. It returns \code{supported = TRUE}, \code{active = NA}, and a
-descriptive \code{status} (for example, \code{"http_404"}). In this context, \code{NA}
+descriptive \code{status} (for example, \code{"http_404"}, \code{"invalid_json"},
+\code{"missing_active"}). In this context, \code{NA}
 means "unknown" and will not break flows unless your code explicitly
 requires a definitive result (i.e., \code{isTRUE(result$active)}).
 \item Providers vary in how they encode the RFC 7662 \code{active} field (logical,

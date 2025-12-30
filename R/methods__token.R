@@ -25,7 +25,8 @@
 #' - If the endpoint responds with an HTTP error (e.g., 404/500) or the body
 #'   cannot be parsed or does not include a usable `active` field, the function
 #'   does not throw. It returns `supported = TRUE`, `active = NA`, and a
-#'   descriptive `status` (for example, `"http_404"`). In this context, `NA`
+#'   descriptive `status` (for example, `"http_404"`, `"invalid_json"`,
+#'   `"missing_active"`). In this context, `NA`
 #'   means "unknown" and will not break flows unless your code explicitly
 #'   requires a definitive result (i.e., `isTRUE(result$active)`).
 #' - Providers vary in how they encode the RFC 7662 `active` field (logical,
@@ -162,10 +163,16 @@ introspect_token <- function(
   }
   raw <- NULL
   active <- NA
+  status <- "ok"
   # Try parse JSON; RFC 7662 requires JSON body with at least { active: boolean }
   body_txt <- httr2::resp_body_string(resp)
-  raw <- try(jsonlite::fromJSON(body_txt, simplifyVector = TRUE), silent = TRUE)
-  if (!inherits(raw, "try-error") && is.list(raw)) {
+  parsed <- try(jsonlite::fromJSON(body_txt, simplifyVector = TRUE), silent = TRUE)
+
+  if (inherits(parsed, "try-error") || !is.list(parsed)) {
+    status <- "invalid_json"
+    raw <- NULL
+  } else {
+    raw <- parsed
     # Coerce various encodings of the RFC 7662 `active` field into a single logical
     # TRUE/FALSE. Some providers return strings ("true"/"false") or numbers (1/0).
     coerce_active <- function(x) {
@@ -194,16 +201,33 @@ introspect_token <- function(
       }
       NA
     }
-    if (!is.null(raw$active)) active <- coerce_active(raw$active)
+
+    if (is.null(raw$active)) {
+      status <- "missing_active"
+    } else {
+      active <- coerce_active(raw$active)
+      if (is.na(active)) {
+        status <- "invalid_active"
+      }
+    }
   }
+
+  # Defensive: ensure we never claim success when the result is unknown.
+  if (identical(status, "ok") && is.null(raw)) {
+    status <- "invalid_json"
+  }
+  if (identical(status, "ok") && is.na(active)) {
+    status <- "missing_active"
+  }
+
   # If parsing failed or the response didn't include an active field,
   # leave active as NA (unknown). The caller's all_passed logic requires
   # TRUE to pass, so NA will not pass.
   list(
     supported = TRUE,
     active = active,
-    raw = if (inherits(raw, "try-error")) NULL else raw,
-    status = "ok"
+    raw = raw,
+    status = status
   )
 }
 
