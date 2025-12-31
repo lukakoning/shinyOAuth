@@ -143,13 +143,15 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
         kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
         if (length(kid_keys) == 0L) {
           did_force_refresh <- FALSE
-          if (isTRUE(jwks_force_refresh_allowed(
-            issuer,
-            jwks_cache,
-            pins = pins,
-            pin_mode = pin_mode,
-            min_interval = 30
-          ))) {
+          if (
+            isTRUE(jwks_force_refresh_allowed(
+              issuer,
+              jwks_cache,
+              pins = pins,
+              pin_mode = pin_mode,
+              min_interval = 30
+            ))
+          ) {
             did_force_refresh <- TRUE
             jwks <- fetch_jwks(
               issuer,

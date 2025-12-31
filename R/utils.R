@@ -146,7 +146,11 @@ warn_about_nonpositive_expires_in <- function(expires_in, phase = NULL) {
     return(invisible(FALSE))
   }
 
-  if (!is.numeric(expires_in) || length(expires_in) != 1L || !is.finite(expires_in)) {
+  if (
+    !is.numeric(expires_in) ||
+      length(expires_in) != 1L ||
+      !is.finite(expires_in)
+  ) {
     return(invisible(FALSE))
   }
 

@@ -27,9 +27,12 @@ test_that("provider_fingerprint avoids delimiter collisions", {
   # values contain the delimiter tokens.
   old_fp <- function(p) {
     paste0(
-      "iss=", p@issuer,
-      "|au=", p@auth_url,
-      "|tu=", p@token_url
+      "iss=",
+      p@issuer,
+      "|au=",
+      p@auth_url,
+      "|tu=",
+      p@token_url
     )
   }
 

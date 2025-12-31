@@ -187,9 +187,20 @@ provider_fingerprint <- function(provider) {
   tu_u <- enc2utf8(tu)
 
   canonical <- paste0(
-    "iss:", nchar(iss_u, type = "bytes"), ":", iss_u, "\n",
-    "au:", nchar(au_u, type = "bytes"), ":", au_u, "\n",
-    "tu:", nchar(tu_u, type = "bytes"), ":", tu_u
+    "iss:",
+    nchar(iss_u, type = "bytes"),
+    ":",
+    iss_u,
+    "\n",
+    "au:",
+    nchar(au_u, type = "bytes"),
+    ":",
+    au_u,
+    "\n",
+    "tu:",
+    nchar(tu_u, type = "bytes"),
+    ":",
+    tu_u
   )
 
   paste0("sha256:", string_digest(enc2utf8(canonical)))
