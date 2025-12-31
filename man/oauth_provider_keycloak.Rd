@@ -13,7 +13,7 @@ oauth_provider_keycloak(
 }
 \arguments{
 \item{base_url}{Base URL of the Keycloak server, e.g.,
-"localhost:8080"}
+"http://localhost:8080"}
 
 \item{realm}{Keycloak realm name, e.g., "myrealm"}
 

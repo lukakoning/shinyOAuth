@@ -23,13 +23,13 @@ values are stored in the client's state store for later verification during
 the callback phase of the OAuth 2.0 flow.
 }
 \examples{
-# Please note: `prepare_callback()` & `handle_callback()` are typically
+# Please note: `prepare_call()` & `handle_callback()` are typically
 # not called by users of this package directly, but are called 
 # internally by `oauth_module_server()`. These functions are exported
 # nonetheless for advanced use cases. Most users will not need to
 # call these functions directly
 
-# Below code shows generic usage of `prepare_callback()` and `handle_callback()`
+# Below code shows generic usage of `prepare_call()` and `handle_callback()`
 # (code is not run because it would require user interaction)
 \dontrun{
 # Define client
@@ -44,7 +44,7 @@ client <- oauth_client(
 # `<browser_token>` is a token that identifies the browser session
 #  and would typically be stored in a browser cookie
 #  (`oauth_module_server()` handles this typically)
-authorization_url <- prepare_callback(client, "<browser_token>")
+authorization_url <- prepare_call(client, "<browser_token>")
 
 # Redirect user to authorization URL; retrieve code & payload from query;
 # read also `<browser_token>` from browser cookie
