@@ -81,13 +81,13 @@ should be used to redirect the user to the OAuth provider's authorization endpoi
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Please note: `prepare_callback()` &amp; `handle_callback()` are typically</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Please note: `prepare_call()` &amp; `handle_callback()` are typically</span></span></span>
 <span class="r-in"><span><span class="co"># not called by users of this package directly, but are called </span></span></span>
 <span class="r-in"><span><span class="co"># internally by `oauth_module_server()`. These functions are exported</span></span></span>
 <span class="r-in"><span><span class="co"># nonetheless for advanced use cases. Most users will not need to</span></span></span>
 <span class="r-in"><span><span class="co"># call these functions directly</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Below code shows generic usage of `prepare_callback()` and `handle_callback()`</span></span></span>
+<span class="r-in"><span><span class="co"># Below code shows generic usage of `prepare_call()` and `handle_callback()`</span></span></span>
 <span class="r-in"><span><span class="co"># (code is not run because it would require user interaction)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># Define client</span></span></span>
@@ -102,7 +102,7 @@ should be used to redirect the user to the OAuth provider's authorization endpoi
 <span class="r-in"><span><span class="co"># `&lt;browser_token&gt;` is a token that identifies the browser session</span></span></span>
 <span class="r-in"><span><span class="co">#  and would typically be stored in a browser cookie</span></span></span>
 <span class="r-in"><span><span class="co">#  (`oauth_module_server()` handles this typically)</span></span></span>
-<span class="r-in"><span><span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu">prepare_callback</span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu">prepare_call</span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Redirect user to authorization URL; retrieve code &amp; payload from query;</span></span></span>
 <span class="r-in"><span><span class="co"># read also `&lt;browser_token&gt;` from browser cookie</span></span></span>

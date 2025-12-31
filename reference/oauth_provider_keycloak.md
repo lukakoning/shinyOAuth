@@ -19,7 +19,7 @@ oauth_provider_keycloak(
 
 - base_url:
 
-  Base URL of the Keycloak server, e.g., "localhost:8080"
+  Base URL of the Keycloak server, e.g., "http://localhost:8080"
 
 - realm:
 
