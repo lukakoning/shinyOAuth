@@ -910,6 +910,47 @@ oauth_module_server <- function(
 
       qs <- shiny::parseQueryString(query_string %||% "")
 
+      # Defensive: cap untrusted callback params to avoid memory/log amplification
+      # and middleware edge cases with extremely long URLs.
+      ok <- tryCatch(
+        {
+          validate_untrusted_query_param("code", qs$code, max_bytes = 4096)
+          validate_untrusted_query_param("state", qs$state, max_bytes = 8192)
+          validate_untrusted_query_param("error", qs$error, max_bytes = 256)
+          validate_untrusted_query_param(
+            "error_description",
+            qs$error_description,
+            max_bytes = 4096,
+            allow_empty = TRUE
+          )
+          TRUE
+        },
+        error = function(e) {
+          .clear_query_and_fix_title()
+          .set_error(
+            "invalid_callback_query",
+            e,
+            phase = "callback_query_validation"
+          )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                error_class = paste(class(e), collapse = ", ")
+              )
+            ),
+            silent = TRUE
+          )
+          FALSE
+        }
+      )
+      if (!isTRUE(ok)) {
+        return(invisible(NULL))
+      }
+
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.

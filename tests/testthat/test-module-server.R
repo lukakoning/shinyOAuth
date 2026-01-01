@@ -200,6 +200,71 @@ testthat::test_that("provider error in query sets error and authenticated FALSE"
   )
 })
 
+testthat::test_that("oversized callback query params are rejected", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      # Build a real state payload
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # Oversized code should short-circuit before token exchange
+      called <- FALSE
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          called <<- TRUE
+          list(access_token = "t", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0(
+            "?code=",
+            strrep("a", 5000),
+            "&state=",
+            enc
+          ))
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_false(called)
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "exceeded maximum length"
+      )
+
+      # Oversized error_description should also be rejected
+      values$error <- NULL
+      values$error_description <- NULL
+      values$.process_query(
+        paste0(
+          "?error=access_denied&error_description=",
+          strrep("x", 5000),
+          "&state=",
+          enc
+        )
+      )
+      session$flushReact()
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "error_description"
+      )
+    }
+  )
+})
+
 testthat::test_that("callback code/state clears query even when token exchange fails", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

@@ -310,6 +310,11 @@ handle_callback <- function(
   }
   # (Browser token gets validated below)
 
+  # Defensive: avoid hashing/storing arbitrarily large query-derived inputs.
+  # This duplicates the check in oauth_module_server's .process_query() by
+  # design, so that direct callers of handle_callback() are also protected.
+  validate_untrusted_query_param("code", code, max_bytes = 4096)
+
   # Audit: callback received
   try(
     {
