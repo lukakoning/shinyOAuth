@@ -870,11 +870,16 @@ verify_token_set <- function(client, token_set, nonce) {
   }
 
   # Scope reconciliation --------------------------------------------------------
-  # If the provider returned granted scopes, ensure all requested scopes are present.
-  # RFC 6749 allows servers to reduce scopes; we choose to fail fast to avoid
-  # surprising downstream authorization failures.
+  # If the provider returned granted scopes, check if requested scopes are present.
+  # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
+  # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
+  scope_validation_mode <- client@scope_validation %||% "strict"
   requested_scopes <- as.character(client@scopes %||% character())
-  if (length(requested_scopes) > 0 && !is.null(token_set$scope)) {
+  if (
+    !identical(scope_validation_mode, "none") &&
+      length(requested_scopes) > 0 &&
+      !is.null(token_set$scope)
+  ) {
     granted_raw <- token_set$scope
     # Providers may return space- or comma-separated scopes; normalize to vector
     if (length(granted_raw) == 1L) {
@@ -902,10 +907,25 @@ verify_token_set <- function(client, token_set, nonce) {
     )])))
     missing <- setdiff(requested, granted)
     if (length(missing) > 0) {
-      err_token(paste0(
+      msg <- paste0(
         "Granted scopes missing requested entries: ",
         paste(missing, collapse = ", ")
-      ))
+      )
+      if (identical(scope_validation_mode, "strict")) {
+        err_token(c(
+          "x" = msg,
+          "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+        ))
+      } else if (identical(scope_validation_mode, "warn")) {
+        rlang::warn(
+          c(
+            "!" = msg,
+            "i" = "Set scope_validation = 'none' to suppress this warning"
+          ),
+          .frequency = "once",
+          .frequency_id = "scope-validation-missing-scopes"
+        )
+      }
     }
   }
 

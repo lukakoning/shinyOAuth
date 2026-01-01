@@ -110,6 +110,16 @@
 #'   entropy (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
 #'   human‑memorable passphrases. See also `vignette("usage", package = "shinyOAuth")`.
 #'
+#' @param scope_validation Controls how scope discrepancies are handled when
+#'   the authorization server grants fewer scopes than requested. RFC 6749
+#'   Section 3.3 permits servers to issue tokens with reduced scope.
+#'
+#'   - `"strict"` (default): Throws an error if any requested scope is missing
+#'     from the granted scopes.
+#'   - `"warn"`: Emits a warning but continues authentication if scopes are
+#'     missing.
+#'   - `"none"`: Skips scope validation entirely.
+#'
 #' @example inst/examples/oauth_module_server.R
 #'
 #' @export
@@ -151,7 +161,8 @@ OAuthClient <- S7::new_class(
     state_key = S7::new_property(
       S7::class_any,
       default = quote(random_urlsafe(n = 128))
-    )
+    ),
+    scope_validation = S7::new_property(S7::class_character, default = "strict")
   ),
   validator = function(self) {
     warn_about_oauth_client_created_in_shiny(state_key_missing = NA)
@@ -412,6 +423,16 @@ OAuthClient <- S7::new_class(
     if (inherits(scopes_valid, "try-error")) {
       return(paste0("OAuthClient: scopes validation error: ", scopes_valid))
     }
+
+    # Validate scope_validation
+    if (
+      !is_valid_string(self@scope_validation) ||
+        !self@scope_validation %in% c("strict", "warn", "none")
+    ) {
+      return(
+        "OAuthClient: scope_validation must be one of 'strict', 'warn', or 'none'"
+      )
+    }
   }
 )
 
@@ -481,12 +502,16 @@ oauth_client <- function(
   state_key = random_urlsafe(128),
   client_private_key = NULL,
   client_private_key_kid = NULL,
+
   client_assertion_alg = NULL,
-  client_assertion_audience = NULL
+  client_assertion_audience = NULL,
+  scope_validation = c("strict", "warn", "none")
 ) {
   warn_about_oauth_client_created_in_shiny(
     state_key_missing = missing(state_key)
   )
+
+  scope_validation <- match.arg(scope_validation)
 
   OAuthClient(
     provider = provider,
@@ -501,6 +526,7 @@ oauth_client <- function(
     client_private_key = client_private_key,
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
-    client_assertion_audience = client_assertion_audience %||% NA_character_
+    client_assertion_audience = client_assertion_audience %||% NA_character_,
+    scope_validation = scope_validation
   )
 }
