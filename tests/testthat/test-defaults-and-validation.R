@@ -91,3 +91,73 @@ test_that("oauth_provider_microsoft enables issuer+nonce for GUID tenant", {
   expect_identical(p@use_nonce, TRUE)
   expect_identical(p@allowed_algs, c("RS256"))
 })
+
+test_that("OAuthProvider rejects reserved keys in extra_auth_params", {
+  reserved <- c(
+    "response_type",
+    "client_id",
+    "redirect_uri",
+    "state",
+    "code_challenge",
+    "code_challenge_method",
+    "nonce"
+  )
+
+  for (key in reserved) {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_auth_params = setNames(list("bad"), key)
+      ),
+      regexp = "extra_auth_params must not contain reserved keys",
+      info = paste("should reject reserved auth param:", key)
+    )
+  }
+
+  # Non-reserved keys should be accepted
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
+    extra_auth_params = list(
+      prompt = "consent",
+      login_hint = "user@example.com"
+    )
+  ))
+})
+
+test_that("OAuthProvider rejects reserved keys in extra_token_params", {
+  reserved <- c(
+    "grant_type",
+    "code",
+    "redirect_uri",
+    "code_verifier",
+    "client_id",
+    "client_secret",
+    "client_assertion",
+    "client_assertion_type"
+  )
+
+  for (key in reserved) {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_token_params = setNames(list("bad"), key)
+      ),
+      regexp = "extra_token_params must not contain reserved keys",
+      info = paste("should reject reserved token param:", key)
+    )
+  }
+
+  # Non-reserved keys should be accepted
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
+    extra_token_params = list(audience = "https://api.example.com")
+  ))
+})

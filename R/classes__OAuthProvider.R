@@ -338,6 +338,58 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    # Validate extra_auth_params: block reserved keys that could desync state,
+    # bypass PKCE, or corrupt the authorization request.
+    # These fields are managed internally by shinyOAuth and must not be overridden.
+    reserved_auth_keys <- c(
+      "response_type",
+      "client_id",
+      "redirect_uri",
+      "state",
+      "code_challenge",
+      "code_challenge_method",
+      "nonce"
+    )
+    if (length(self@extra_auth_params) > 0) {
+      nms <- names(self@extra_auth_params)
+      bad <- intersect(nms, reserved_auth_keys)
+      if (length(bad) > 0) {
+        return(sprintf(
+          paste0(
+            "OAuthProvider: extra_auth_params must not contain reserved keys ",
+            "managed by shinyOAuth: %s"
+          ),
+          paste(sQuote(bad), collapse = ", ")
+        ))
+      }
+    }
+
+    # Validate extra_token_params: block reserved keys that could corrupt the
+    # token request, bypass PKCE verification, or interfere with client auth.
+    reserved_token_keys <- c(
+      "grant_type",
+      "code",
+      "redirect_uri",
+      "code_verifier",
+      "client_id",
+      "client_secret",
+      "client_assertion",
+      "client_assertion_type"
+    )
+    if (length(self@extra_token_params) > 0) {
+      nms <- names(self@extra_token_params)
+      bad <- intersect(nms, reserved_token_keys)
+      if (length(bad) > 0) {
+        return(sprintf(
+          paste0(
+            "OAuthProvider: extra_token_params must not contain reserved keys ",
+            "managed by shinyOAuth: %s"
+          ),
+          paste(sQuote(bad), collapse = ", ")
+        ))
+      }
+    }
+
     # token_auth_style must be one of:
     # - "header" (client_secret_basic)
     # - "body" (client_secret_post)
