@@ -668,7 +668,13 @@ oauth_module_server <- function(
       ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
       # strip trailing "-" that Shiny adds, then keep only [A-Za-z0-9_-]
       instance <- sub("-$", "", ns_prefix)
+
+      # Calculate hash of the original namespace to ensure uniqueness
+      # even if sanitization causes collisions
+      ns_hash <- substr(as.character(openssl::md5(ns_prefix)), 1, 8)
+
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
+      instance <- paste0(instance, "-", ns_hash)
 
       # Compute configured path once per session (NULL means derive in JS)
       # Delegate to custom JS handler
@@ -688,7 +694,13 @@ oauth_module_server <- function(
       ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
       # strip trailing "-" that Shiny adds, then keep only [A-Za-z0-9_-]
       instance <- sub("-$", "", ns_prefix)
+
+      # Calculate hash of the original namespace to ensure uniqueness
+      # even if sanitization causes collisions
+      ns_hash <- substr(as.character(openssl::md5(ns_prefix)), 1, 8)
+
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
+      instance <- paste0(instance, "-", ns_hash)
       .client_clear_browser_token(
         instance = instance,
         same_site = browser_cookie_samesite,
