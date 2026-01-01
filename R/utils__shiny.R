@@ -44,9 +44,16 @@ augment_with_shiny_context <- function(event) {
     return(event)
   }
 
-  req <- get_current_shiny_request()
-  http <- build_http_summary(req)
   tok <- get_current_shiny_session_token()
+
+  # Check if HTTP context should be included (default: TRUE)
+  include_http <- isTRUE(getOption("shinyOAuth.audit_include_http", TRUE))
+  http <- if (include_http) {
+    req <- get_current_shiny_request()
+    build_http_summary(req)
+  } else {
+    NULL
+  }
 
   # Only attach if we have at least one useful datum
   if (!is.null(http) || !is.na(tok)) {

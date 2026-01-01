@@ -45,3 +45,46 @@ testthat::test_that("session_started audit event is emitted and enriched", {
   j <- jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null")
   testthat::expect_true(nchar(as.character(j)) > 0)
 })
+
+testthat::test_that("shinyOAuth.audit_include_http = FALSE excludes http from events", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.audit_include_http = FALSE
+  ))
+
+  # Capture audit events via option hook
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(TRUE)
+    }
+  )
+
+  # Find session_started event
+  types <- vapply(events, function(e) as.character(e$type), character(1))
+  idx <- grep("^audit_session_started$", types)
+  testthat::expect_true(length(idx) >= 1)
+
+  ev <- events[[idx[[1]]]]
+  ss <- ev$shiny_session
+
+  # http should be NULL when audit_include_http = FALSE
+
+  testthat::expect_null(ss$http)
+  # token should still be present
+  testthat::expect_true("token" %in% names(ss))
+})

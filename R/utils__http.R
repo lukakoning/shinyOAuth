@@ -261,6 +261,14 @@ parse_token_response <- function(resp) {
 }
 
 # Internal: derive a compact, JSON-serializable HTTP summary from a request
+#
+# The returned summary is sanitized by default to prevent secret leakage in
+# audit logs. Sensitive OAuth query params (code, state, access_token, etc.)
+# and headers (Cookie, Authorization, x-* proxy headers) are redacted.
+#
+# Control via: options(shinyOAuth.audit_redact_http = FALSE) to disable.
+#
+# See sanitize_http_summary() for the redaction logic.
 build_http_summary <- function(req) {
   if (is.null(req)) {
     return(NULL)
@@ -311,7 +319,7 @@ build_http_summary <- function(req) {
     hdrs <- Filter(Negate(is.null), hdrs)
   }
 
-  list(
+  raw <- list(
     method = if (!is.na(method) && nzchar(method)) method else NULL,
     path = if (!is.na(path) && nzchar(path)) path else NULL,
     query_string = if (!is.na(query_string) && nzchar(query_string)) {
@@ -324,4 +332,148 @@ build_http_summary <- function(req) {
     remote_addr = if (!is.na(ra) && nzchar(ra)) ra else NULL,
     headers = if (length(hdrs)) hdrs else NULL
   )
+
+  # Sanitize by default to prevent secret leakage in audit logs
+  # Controlled by options(shinyOAuth.audit_redact_http = TRUE/FALSE)
+  if (isTRUE(getOption("shinyOAuth.audit_redact_http", TRUE))) {
+    sanitize_http_summary(raw)
+  } else {
+    raw
+  }
+}
+
+# Internal: redact sensitive data from HTTP summary for safe audit logging
+#
+# This function removes or redacts:
+# - OAuth-related query params: code, state, access_token, refresh_token, id_token
+# - Sensitive headers: cookie, authorization, set_cookie, x_* (proxy headers)
+#
+# Called automatically by build_http_summary() to make audit logging safe by default.
+sanitize_http_summary <- function(summary) {
+  if (is.null(summary)) {
+    return(NULL)
+  }
+
+  # Redact sensitive query params from query_string
+  if (!is.null(summary$query_string) && nzchar(summary$query_string)) {
+    summary$query_string <- redact_query_string(summary$query_string)
+  }
+
+  # Redact sensitive headers
+  if (!is.null(summary$headers) && length(summary$headers) > 0) {
+    summary$headers <- redact_headers(summary$headers)
+  }
+
+  summary
+}
+
+# Internal: redact sensitive OAuth params from a query string
+# Returns the redacted query string
+redact_query_string <- function(qs) {
+  if (is.null(qs) || !nzchar(qs)) {
+    return(qs)
+  }
+
+  # OAuth-related params that may contain secrets or single-use tokens
+  sensitive_params <- c(
+    "code",
+    "state",
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "token",
+    "session_state",
+    "code_verifier",
+    "nonce"
+  )
+
+  # Parse query string into named list
+  parsed <- tryCatch(
+    httr2::url_query_parse(qs),
+    error = function(...) NULL
+  )
+
+  if (is.null(parsed) || length(parsed) == 0) {
+    return(qs)
+  }
+
+  # Redact sensitive params (case-insensitive matching)
+  param_names_lower <- tolower(names(parsed))
+  for (i in seq_along(parsed)) {
+    if (param_names_lower[[i]] %in% sensitive_params) {
+      parsed[[i]] <- "[REDACTED]"
+    }
+  }
+
+  # Rebuild query string
+  # Use paste manually to preserve format (httr2 doesn't have a rebuild function)
+  if (length(parsed) == 0) {
+    return("")
+  }
+  parts <- vapply(
+    names(parsed),
+    function(nm) {
+      val <- parsed[[nm]]
+      if (is.null(val) || length(val) == 0) {
+        nm
+      } else {
+        paste0(nm, "=", utils::URLencode(as.character(val), reserved = TRUE))
+      }
+    },
+    character(1)
+  )
+  paste(parts, collapse = "&")
+}
+
+# Internal: redact sensitive headers from a headers list
+# Returns the redacted headers list
+redact_headers <- function(hdrs) {
+  if (is.null(hdrs) || length(hdrs) == 0) {
+    return(hdrs)
+  }
+
+  # Headers to completely remove (contain secrets or tokens)
+  remove_headers <- c(
+    "cookie",
+    "set_cookie",
+    "authorization"
+  )
+
+  # Headers to redact (contain potentially sensitive routing/client info)
+  # x_* headers often contain internal infrastructure details
+  redact_prefixes <- c(
+    "x_"
+  )
+
+  nms <- names(hdrs)
+  nms_lower <- tolower(nms)
+
+  # Build a new list to avoid modifying during iteration
+  result <- list()
+  for (i in seq_along(hdrs)) {
+    nm <- nms[[i]]
+    nm_lower <- nms_lower[[i]]
+
+    # Skip headers that should be removed
+    if (nm_lower %in% remove_headers) {
+      next
+    }
+
+    # Check if header should be redacted by prefix
+    should_redact <- FALSE
+    for (prefix in redact_prefixes) {
+      if (startsWith(nm_lower, prefix)) {
+        should_redact <- TRUE
+        break
+      }
+    }
+
+    if (should_redact) {
+      result[[nm]] <- "[REDACTED]"
+    } else {
+      result[[nm]] <- hdrs[[i]]
+    }
+  }
+
+  result
 }

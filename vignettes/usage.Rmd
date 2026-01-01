@@ -265,6 +265,8 @@ Below is a list of all available options.
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
 - `options(shinyOAuth.trace_hook = function(event){ ... })` – structured events (errors, http, etc.)
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – separate audit stream
+- `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP request details from audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic redaction of sensitive data in audit events (default: `TRUE`)
 
 See `vignette("audit-logging", package = "shinyOAuth")` for details about
 audit and trace hooks.

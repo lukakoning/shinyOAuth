@@ -95,3 +95,180 @@ test_that("normalize_bullets preserves named types and defaults unnamed", {
   b3 <- shinyOAuth:::normalize_bullets(v)
   expect_identical(names(b3), c("!", "i"))
 })
+
+# HTTP summary sanitization tests -----------------------------------------
+
+test_that("redact_query_string redacts sensitive OAuth params", {
+  qs <- "code=abc123&state=xyz789&redirect_uri=http://example.com"
+  result <- shinyOAuth:::redact_query_string(qs)
+
+  # Check redacted params
+
+  expect_match(result, "code=%5BREDACTED%5D")
+  expect_match(result, "state=%5BREDACTED%5D")
+  # Non-sensitive params should remain
+  expect_match(result, "redirect_uri=")
+  expect_no_match(result, "abc123")
+  expect_no_match(result, "xyz789")
+})
+
+test_that("redact_query_string handles all sensitive param types", {
+  qs <- paste(
+    "access_token=tok1",
+    "refresh_token=tok2",
+    "id_token=tok3",
+    "token=tok4",
+    "session_state=sess1",
+    "code_verifier=cv1",
+    "nonce=n1",
+    "safe_param=keep_me",
+    sep = "&"
+  )
+  result <- shinyOAuth:::redact_query_string(qs)
+
+  # All sensitive params should be redacted
+  expect_no_match(result, "tok1")
+  expect_no_match(result, "tok2")
+  expect_no_match(result, "tok3")
+  expect_no_match(result, "tok4")
+  expect_no_match(result, "sess1")
+  expect_no_match(result, "cv1")
+  expect_no_match(result, "n1")
+  # Safe param should remain
+  expect_match(result, "keep_me")
+})
+
+test_that("redact_query_string handles empty/null input gracefully", {
+  expect_null(shinyOAuth:::redact_query_string(NULL))
+  expect_equal(shinyOAuth:::redact_query_string(""), "")
+})
+
+test_that("redact_headers removes cookie and authorization", {
+  hdrs <- list(
+    cookie = "session=abc123",
+    authorization = "Bearer secret",
+    user_agent = "TestClient/1.0",
+    accept = "application/json"
+  )
+  result <- shinyOAuth:::redact_headers(hdrs)
+
+  # Sensitive headers should be removed
+  expect_null(result$cookie)
+  expect_null(result$authorization)
+  # Safe headers should remain
+  expect_equal(result$user_agent, "TestClient/1.0")
+  expect_equal(result$accept, "application/json")
+})
+
+test_that("redact_headers redacts x_ prefixed headers", {
+  hdrs <- list(
+    x_forwarded_for = "192.168.1.1",
+    x_real_ip = "10.0.0.1",
+    x_request_id = "req123",
+    user_agent = "TestClient/1.0"
+  )
+  result <- shinyOAuth:::redact_headers(hdrs)
+
+  # x_ headers should be redacted (not removed)
+  expect_equal(result$x_forwarded_for, "[REDACTED]")
+  expect_equal(result$x_real_ip, "[REDACTED]")
+  expect_equal(result$x_request_id, "[REDACTED]")
+  # Safe headers should remain unchanged
+  expect_equal(result$user_agent, "TestClient/1.0")
+})
+
+test_that("redact_headers handles empty/null input gracefully", {
+  expect_null(shinyOAuth:::redact_headers(NULL))
+  expect_equal(shinyOAuth:::redact_headers(list()), list())
+})
+
+test_that("sanitize_http_summary sanitizes both query_string and headers", {
+  summary <- list(
+    method = "GET",
+    path = "/callback",
+    query_string = "code=secret&state=abc",
+    host = "example.com",
+    headers = list(
+      cookie = "session=xyz",
+      user_agent = "Test/1.0",
+      x_forwarded_for = "1.2.3.4"
+    )
+  )
+  result <- shinyOAuth:::sanitize_http_summary(summary)
+
+  # Query string should be sanitized
+  expect_no_match(result$query_string, "secret")
+  expect_match(result$query_string, "REDACTED")
+  # Headers should be sanitized
+  expect_null(result$headers$cookie)
+  expect_equal(result$headers$user_agent, "Test/1.0")
+  expect_equal(result$headers$x_forwarded_for, "[REDACTED]")
+  # Other fields should remain
+  expect_equal(result$method, "GET")
+  expect_equal(result$path, "/callback")
+  expect_equal(result$host, "example.com")
+})
+
+test_that("sanitize_http_summary handles NULL input", {
+  expect_null(shinyOAuth:::sanitize_http_summary(NULL))
+})
+
+test_that("build_http_summary returns sanitized output", {
+  # Create a mock request object
+  req <- list(
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/callback",
+    QUERY_STRING = "code=authcode123&state=mystate",
+    HTTP_HOST = "example.com",
+    HTTP_COOKIE = "session=secret123",
+    HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_USER_AGENT = "TestClient/1.0",
+    HTTP_X_FORWARDED_FOR = "192.168.1.1"
+  )
+  result <- shinyOAuth:::build_http_summary(req)
+
+  # Sensitive values should be redacted
+  expect_no_match(result$query_string, "authcode123")
+  expect_no_match(result$query_string, "mystate")
+  expect_null(result$headers$cookie)
+  expect_null(result$headers$authorization)
+  expect_equal(result$headers$x_forwarded_for, "[REDACTED]")
+  # Safe values should remain
+  expect_equal(result$headers$user_agent, "TestClient/1.0")
+  expect_equal(result$method, "GET")
+  expect_equal(result$path, "/callback")
+})
+
+test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
+  req <- list(
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/callback",
+    QUERY_STRING = "code=authcode123&state=mystate",
+    HTTP_HOST = "example.com",
+    HTTP_COOKIE = "session=secret123",
+    HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_USER_AGENT = "TestClient/1.0",
+    HTTP_X_FORWARDED_FOR = "192.168.1.1"
+  )
+
+  # When option is FALSE, raw values should be returned
+  withr::with_options(list(shinyOAuth.audit_redact_http = FALSE), {
+    result <- shinyOAuth:::build_http_summary(req)
+
+    # Sensitive values should NOT be redacted
+    expect_match(result$query_string, "authcode123")
+    expect_match(result$query_string, "mystate")
+    expect_equal(result$headers$cookie, "session=secret123")
+    expect_equal(result$headers$authorization, "Bearer token123")
+    expect_equal(result$headers$x_forwarded_for, "192.168.1.1")
+    expect_equal(result$headers$user_agent, "TestClient/1.0")
+  })
+
+  # When option is TRUE (explicit), should still redact
+
+  withr::with_options(list(shinyOAuth.audit_redact_http = TRUE), {
+    result <- shinyOAuth:::build_http_summary(req)
+    expect_no_match(result$query_string, "authcode123")
+    expect_null(result$headers$cookie)
+  })
+})
