@@ -9,14 +9,14 @@
 Source:
 [`DESCRIPTION`](https://github.com/lukakoning/shinyOAuth/blob/master/DESCRIPTION)
 
-Koning L (2025). *shinyOAuth: Provider-Agnostic OAuth Authentication for
+Koning L (2026). *shinyOAuth: Provider-Agnostic OAuth Authentication for
 'shiny' Applications*. R package version 0.1.4.9000,
 <https://github.com/lukakoning/shinyOAuth>.
 
     @Manual{,
       title = {shinyOAuth: Provider-Agnostic OAuth Authentication for 'shiny' Applications},
       author = {Luka Koning},
-      year = {2025},
+      year = {2026},
       note = {R package version 0.1.4.9000},
       url = {https://github.com/lukakoning/shinyOAuth},
     }
