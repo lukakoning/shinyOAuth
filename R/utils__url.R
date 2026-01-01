@@ -285,18 +285,24 @@ host_glob_to_regex <- function(pat) {
 
   if (startsWith(pat, ".")) {
     core <- substr(pat, 2, nchar(pat))
+    # Escape regex metacharacters EXCEPT * and ? which are glob wildcards
     core_esc <- gsub(
-      "([.\\^$|()\\[\\]{}+?\\\\])",
+      "([.\\^$|()\\[\\]{}+\\\\])",
       "\\\\\\1",
       core,
       perl = TRUE
     )
+    # Convert glob wildcards to regex equivalents
+    core_esc <- gsub("*", ".*", core_esc, fixed = TRUE)
+    core_esc <- gsub("?", ".", core_esc, fixed = TRUE)
     return(paste0("^(?:", core_esc, "|(?:[^.]+\\.)+", core_esc, ")$"))
   }
 
-  esc <- gsub("([.\\^$|()\\[\\]{}+?\\\\])", "\\\\\\1", pat, perl = TRUE)
-  esc <- gsub("\\*", ".*", esc, perl = TRUE)
-  esc <- gsub("\\?", ".", esc, perl = TRUE)
+  # Escape regex metacharacters EXCEPT * and ? which are glob wildcards
+  esc <- gsub("([.\\^$|()\\[\\]{}+\\\\])", "\\\\\\1", pat, perl = TRUE)
+  # Convert glob wildcards to regex equivalents
+  esc <- gsub("*", ".*", esc, fixed = TRUE)
+  esc <- gsub("?", ".", esc, fixed = TRUE)
   paste0("^", esc, "$")
 }
 

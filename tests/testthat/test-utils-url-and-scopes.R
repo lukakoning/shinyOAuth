@@ -43,6 +43,42 @@ test_that("is_ok_host enforces https and host allowlists", {
   expect_false(is_ok_host(c("https://ok.com", "not a url")))
 })
 
+test_that("is_ok_host respects ? single-char wildcard in allowed_hosts", {
+  # ? matches exactly one character
+  expect_true(is_ok_host(
+    "https://api1.example.com/cb",
+    allowed_hosts = c("api?.example.com")
+  ))
+  expect_true(is_ok_host(
+    "https://apiX.example.com/cb",
+    allowed_hosts = c("api?.example.com")
+  ))
+  # ? does NOT match zero chars
+  expect_false(is_ok_host(
+    "https://api.example.com/cb",
+    allowed_hosts = c("api?.example.com")
+  ))
+  # ? does NOT match multiple chars
+  expect_false(is_ok_host(
+    "https://api12.example.com/cb",
+    allowed_hosts = c("api?.example.com")
+  ))
+
+  # Leading-dot patterns with ? wildcard
+  expect_true(is_ok_host(
+    "https://foo1.org/cb",
+    allowed_hosts = c(".foo?.org")
+  ))
+  expect_true(is_ok_host(
+    "https://sub.fooX.org/cb",
+    allowed_hosts = c(".foo?.org")
+  ))
+  expect_false(is_ok_host(
+    "https://foo.org/cb",
+    allowed_hosts = c(".foo?.org")
+  ))
+})
+
 test_that("normalize_url collapses path slashes and preserves query/fragment", {
   f <- shinyOAuth:::normalize_url
   u <- "https://example.com//a///b?q=1#frag"
@@ -110,4 +146,33 @@ test_that("coerce_expires_in parses digit-only strings and trims space", {
   # Non-digit strings left unchanged
   expect_identical(g("3600s"), "3600s")
   expect_identical(g(c("1", "2")), c("1", "2"))
+})
+
+test_that("host_glob_to_regex converts * and ? wildcards correctly", {
+  f <- shinyOAuth:::host_glob_to_regex
+
+  # Basic cases: * matches any sequence, ? matches single char
+
+  expect_identical(f("*.example.com"), "^.*\\.example\\.com$")
+  expect_identical(f("foo?.com"), "^foo.\\.com$")
+  expect_identical(f("a*b?.org"), "^a.*b.\\.org$")
+
+  # Leading-dot patterns also support * and ? wildcards
+  expect_identical(
+    f(".foo*.com"),
+    "^(?:foo.*\\.com|(?:[^.]+\\.)+foo.*\\.com)$"
+  )
+  expect_identical(
+    f(".bar?.org"),
+    "^(?:bar.\\.org|(?:[^.]+\\.)+bar.\\.org)$"
+  )
+
+  # Edge: just * matches any host (subdomain wildcard)
+  expect_identical(f("*"), "^.*$")
+
+  # Edge: NA, NULL, blank -> NULL
+  expect_null(f(NULL))
+  expect_null(f(NA))
+  expect_null(f(""))
+  expect_null(f("   "))
 })
