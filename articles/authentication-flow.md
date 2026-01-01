@@ -163,6 +163,9 @@ verifications are performed:
   finite numeric; time-based claims (`exp` is required, `nbf` optional)
   are evaluated with a small configurable leeway; tokens issued in the
   future are rejected
+- Header `typ` (when present): must indicate a JWT (`JWT`,
+  case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID
+  tokens.
 - Nonce: must match the previously stored value (if configured)
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token

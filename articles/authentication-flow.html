@@ -252,6 +252,9 @@ vector contains <code>client_id</code>; <code>sub</code> present;
 time-based claims (<code>exp</code> is required, <code>nbf</code>
 optional) are evaluated with a small configurable leeway; tokens issued
 in the future are rejected</li>
+<li>Header <code>typ</code> (when present): must indicate a JWT
+(<code>JWT</code>, case-insensitive). Other values (e.g.,
+<code>at+jwt</code>) are rejected for ID tokens.</li>
 <li>Nonce: must match the previously stored value (if configured)</li>
 <li>Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
