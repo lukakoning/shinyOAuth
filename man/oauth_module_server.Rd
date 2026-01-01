@@ -124,6 +124,9 @@ contain even more sensitive information which could aid an attacker.
 double-submit protection; NULL if not yet set
 \item \code{pending_callback}: internal list(code, state); used to defer token
 exchange until \code{browser_token} is available; NULL otherwise.
+\item \code{pending_error}: internal list(error, error_description, state); used to
+defer error-response state consumption until \code{browser_token} is available;
+NULL otherwise.
 \item \code{pending_login}: internal logical; TRUE when a login was requested but must
 wait for \code{browser_token} to be set, FALSE otherwise.
 \item \code{auto_redirected}: internal logical; TRUE once the module has initiated an
