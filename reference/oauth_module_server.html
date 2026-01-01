@@ -217,6 +217,9 @@ contain even more sensitive information which could aid an attacker.</p></li>
 double-submit protection; NULL if not yet set</p></li>
 <li><p><code>pending_callback</code>: internal list(code, state); used to defer token
 exchange until <code>browser_token</code> is available; NULL otherwise.</p></li>
+<li><p><code>pending_error</code>: internal list(error, error_description, state); used to
+defer error-response state consumption until <code>browser_token</code> is available;
+NULL otherwise.</p></li>
 <li><p><code>pending_login</code>: internal logical; TRUE when a login was requested but must
 wait for <code>browser_token</code> to be set, FALSE otherwise.</p></li>
 <li><p><code>auto_redirected</code>: internal logical; TRUE once the module has initiated an
