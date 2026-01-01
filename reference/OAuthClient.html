@@ -62,6 +62,7 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  client_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  client_assertion_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
@@ -119,6 +120,13 @@ value is provided but incompatible with the key, validation fails early with a c
 error.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
 supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_encode_sig</a></code> (e.g., <code>RS256</code>, <code>PS256</code>, <code>ES256</code>, <code>EdDSA</code>) for private keys.</p></dd>
+
+
+<dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
+<dd><p>Optional override for the <code>aud</code> claim used when building
+JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
+uses the exact token endpoint request URL. Some identity providers require a different
+audience value; set this to the exact value your IdP expects.</p></dd>
 
 
 <dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>

@@ -58,7 +58,8 @@
 <span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span><span class="fl">128</span><span class="op">)</span>,</span>
 <span>  client_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  client_assertion_alg <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  client_assertion_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -178,6 +179,13 @@ value is provided but incompatible with the key, validation fails early with a c
 error.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
 supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_encode_sig</a></code> (e.g., <code>RS256</code>, <code>PS256</code>, <code>ES256</code>, <code>EdDSA</code>) for private keys.</p></dd>
+
+
+<dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
+<dd><p>Optional override for the <code>aud</code> claim used when building
+JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
+uses the exact token endpoint request URL. Some identity providers require a different
+audience value; set this to the exact value your IdP expects.</p></dd>
 
 </dl></div>
     <div class="section level2">

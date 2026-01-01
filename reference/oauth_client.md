@@ -18,7 +18,8 @@ oauth_client(
   state_key = random_urlsafe(128),
   client_private_key = NULL,
   client_private_key_kid = NULL,
-  client_assertion_alg = NULL
+  client_assertion_alg = NULL,
+  client_assertion_audience = NULL
 )
 ```
 
@@ -161,6 +162,14 @@ oauth_client(
   supported by
   [`jose::jwt_encode_sig`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html)
   (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
+
+- client_assertion_audience:
+
+  Optional override for the `aud` claim used when building JWT client
+  assertions (`client_secret_jwt` / `private_key_jwt`). By default,
+  shinyOAuth uses the exact token endpoint request URL. Some identity
+  providers require a different audience value; set this to the exact
+  value your IdP expects.
 
 ## Value
 
