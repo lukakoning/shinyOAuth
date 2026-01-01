@@ -972,8 +972,15 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      # Otherwise, initiate authentication via automatic redirect
-      if (isTRUE(auto_redirect) && is.null(values$pending_callback)) {
+      # Otherwise, initiate authentication via automatic redirect.
+      # Skip if an error has already been surfaced (e.g. access_denied,
+      # consent_required) to avoid a redirect loop: clearing the URL after
+      # an error re-triggers this observer but we must not re-initiate login.
+      if (
+        isTRUE(auto_redirect) &&
+          is.null(values$pending_callback) &&
+          is.null(values$error)
+      ) {
         .request_login()
       }
 
