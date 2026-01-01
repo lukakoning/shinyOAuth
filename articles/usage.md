@@ -284,6 +284,10 @@ is a list of all available options.
   events (errors, http, etc.)
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – separate
   audit stream
+- `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
+  request details from audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
+  redaction of sensitive data in audit events (default: `TRUE`)
 
 See
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)

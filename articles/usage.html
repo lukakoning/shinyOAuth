@@ -348,6 +348,14 @@ sanitized HTTP bodies (may reveal details)</li>
 <li>
 <code>options(shinyOAuth.audit_hook = function(event){ ... })</code>
 – separate audit stream</li>
+<li>
+<code>options(shinyOAuth.audit_include_http = FALSE)</code> –
+exclude HTTP request details from audit events (default:
+<code>TRUE</code>)</li>
+<li>
+<code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
+automatic redaction of sensitive data in audit events (default:
+<code>TRUE</code>)</li>
 </ul>
 <p>See <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>
 for details about audit and trace hooks.</p>

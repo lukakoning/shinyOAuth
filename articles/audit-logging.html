@@ -140,20 +140,52 @@ designed to be directly serializable with
 <li>
 <code>headers</code>: a list of request headers derived from
 <code>HTTP_*</code> environment variables, with lowercase names (e.g.,
-<code>user_agent</code>, <code>x_forwarded_for</code>).</li>
+<code>user_agent</code>).</li>
 </ul>
 </li>
 </ul>
 <p>Note: the raw <code>session$request</code> from Shiny is not included
 to keep the event JSON-serializable and concise.</p>
-<p>Note: the <code>shiny_session$http</code> summary intentionally
-captures all <code>HTTP_*</code> headers and the raw
-<code>QUERY_STRING</code> from the active Shiny request. If you forward
-events to a log sink, this may include sensitive material such as the
-authorization code, <code>state</code>, and every request header
-(including <code>Cookie</code>, <code>Authorization</code>, and other
-bearer tokens). Consider stripping or redacting sensitive headers and
-query parameters in your hook before exporting.</p>
+<div class="section level3">
+<h3 id="http-context-sanitization">HTTP context sanitization<a class="anchor" aria-label="anchor" href="#http-context-sanitization"></a>
+</h3>
+<p>For safety, the <code>shiny_session$http</code> summary is
+automatically sanitized before being attached to events. This prevents
+accidental secret leakage when forwarding events to log sinks:</p>
+<ul>
+<li>
+<strong>OAuth query parameters are redacted</strong>:
+<code>code</code>, <code>state</code>, <code>access_token</code>,
+<code>refresh_token</code>, <code>id_token</code>, <code>token</code>,
+<code>session_state</code>, <code>code_verifier</code>, and
+<code>nonce</code> are replaced with <code>[REDACTED]</code>.</li>
+<li>
+<strong>Sensitive headers are removed</strong>: <code>Cookie</code>,
+<code>Authorization</code>, and <code>Set-Cookie</code> headers are
+stripped entirely.</li>
+<li>
+<strong>Proxy headers are redacted</strong>: Headers starting with
+<code>x_</code> (e.g., <code>x_forwarded_for</code>,
+<code>x_real_ip</code>) are replaced with <code>[REDACTED]</code> to
+avoid leaking internal infrastructure details.</li>
+</ul>
+<p>This means you can safely forward the <code>shiny_session$http</code>
+object to external logging systems without manually stripping
+secrets.</p>
+<p>If you need the raw, unsanitized HTTP context in audit events, you
+can disable redaction:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_redact_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="excluding-http-context-entirely">Excluding HTTP context entirely<a class="anchor" aria-label="anchor" href="#excluding-http-context-entirely"></a>
+</h3>
+<p>To completely exclude HTTP request details from audit events:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>This means that the <code>shiny_session$http</code> field will be
+<code>NULL</code> in all audit events.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="event-catalog">Event catalog<a class="anchor" aria-label="anchor" href="#event-catalog"></a>
@@ -522,7 +554,7 @@ exporting</li>
 </li>
 </ul>
 <p>Example of a JSON export hook:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">json_hook</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>        <span class="va">line</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">toJSON</a></span><span class="op">(</span><span class="va">event</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, null <span class="op">=</span> <span class="st">"null"</span><span class="op">)</span></span>

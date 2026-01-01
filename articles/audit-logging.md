@@ -58,19 +58,46 @@ be directly serializable with
 - `shiny_session$http`: a compact HTTP summary with fields:
   - `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
   - `headers`: a list of request headers derived from `HTTP_*`
-    environment variables, with lowercase names (e.g., `user_agent`,
-    `x_forwarded_for`).
+    environment variables, with lowercase names (e.g., `user_agent`).
 
 Note: the raw `session$request` from Shiny is not included to keep the
 event JSON-serializable and concise.
 
-Note: the `shiny_session$http` summary intentionally captures all
-`HTTP_*` headers and the raw `QUERY_STRING` from the active Shiny
-request. If you forward events to a log sink, this may include sensitive
-material such as the authorization code, `state`, and every request
-header (including `Cookie`, `Authorization`, and other bearer tokens).
-Consider stripping or redacting sensitive headers and query parameters
-in your hook before exporting.
+### HTTP context sanitization
+
+For safety, the `shiny_session$http` summary is automatically sanitized
+before being attached to events. This prevents accidental secret leakage
+when forwarding events to log sinks:
+
+- **OAuth query parameters are redacted**: `code`, `state`,
+  `access_token`, `refresh_token`, `id_token`, `token`, `session_state`,
+  `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
+- **Sensitive headers are removed**: `Cookie`, `Authorization`, and
+  `Set-Cookie` headers are stripped entirely.
+- **Proxy headers are redacted**: Headers starting with `x_` (e.g.,
+  `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to
+  avoid leaking internal infrastructure details.
+
+This means you can safely forward the `shiny_session$http` object to
+external logging systems without manually stripping secrets.
+
+If you need the raw, unsanitized HTTP context in audit events, you can
+disable redaction:
+
+``` r
+options(shinyOAuth.audit_redact_http = FALSE)
+```
+
+### Excluding HTTP context entirely
+
+To completely exclude HTTP request details from audit events:
+
+``` r
+options(shinyOAuth.audit_include_http = FALSE)
+```
+
+This means that the `shiny_session$http` field will be `NULL` in all
+audit events.
 
 ## Event catalog
 
