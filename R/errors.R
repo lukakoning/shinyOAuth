@@ -149,7 +149,7 @@ err_http <- function(msg, resp = NULL, context = list()) {
   # Allow named bullets for msg and ensure subsequent lines are named bullets too
   bullets <- normalize_bullets(msg, default_type = "!")
   status_msg <- if (length(status) == 1 && !is.na(status)) {
-    if (!is.null(desc) && length(desc) == 1 && nzchar(desc)) {
+    if (is_valid_string(desc)) {
       stats::setNames(paste0("Status ", status, ": ", desc, "."), "x")
     } else {
       stats::setNames(paste0("Status ", status, "."), "x")

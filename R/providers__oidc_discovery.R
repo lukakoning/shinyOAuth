@@ -563,7 +563,7 @@ oauth_provider_oidc_discover <- function(
   parsed <- try(httr2::url_parse(iss), silent = TRUE)
   host <- if (!inherits(parsed, "try-error")) parsed$hostname else NA_character_
 
-  if (!is.null(host) && nzchar(host)) {
+  if (is_valid_string(host)) {
     return(host)
   }
 

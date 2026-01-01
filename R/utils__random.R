@@ -52,7 +52,7 @@ validate_oidc_nonce <- function(nonce, min_chars = 22, max_chars = 255) {
   if (!is.character(nonce)) {
     err_pkce("nonce must be character")
   }
-  if (is.na(nonce) || !nzchar(nonce)) {
+  if (!is_valid_string(nonce)) {
     err_pkce("nonce missing or empty")
   }
 
@@ -105,7 +105,7 @@ validate_code_verifier <- function(verifier) {
   if (!is.character(verifier)) {
     err_pkce("code_verifier must be character")
   }
-  if (is.na(verifier) || !nzchar(verifier)) {
+  if (!is_valid_string(verifier)) {
     err_pkce("code_verifier missing or empty")
   }
   n <- nchar(verifier, type = "bytes")
@@ -137,7 +137,7 @@ validate_browser_token <- function(token, expected_bytes = 64L) {
   if (!is.character(token)) {
     err_pkce("browser token must be character")
   }
-  if (is.na(token) || !nzchar(token)) {
+  if (!is_valid_string(token)) {
     err_pkce("browser token missing or empty")
   }
 
@@ -195,7 +195,7 @@ validate_state <- function(
   if (!is.character(state)) {
     err_pkce("state must be character")
   }
-  if (is.na(state) || !nzchar(state)) {
+  if (!is_valid_string(state)) {
     err_pkce("state missing or empty")
   }
 

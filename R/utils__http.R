@@ -103,7 +103,7 @@ req_with_retry <- function(req) {
 
   parse_retry_after <- function(resp) {
     ra <- try(httr2::resp_header(resp, "retry-after"), silent = TRUE)
-    if (inherits(ra, "try-error") || is.null(ra) || !nzchar(ra)) {
+    if (inherits(ra, "try-error") || !is_valid_string(ra)) {
       return(NA_real_)
     }
     ra <- trimws(as.character(ra))
@@ -279,7 +279,7 @@ build_http_summary <- function(req) {
     req$HTTP_X_FORWARDED_PROTO,
     error = function(...) NULL
   ))
-  if (is.na(scheme) || !nzchar(scheme)) {
+  if (!is_valid_string(scheme)) {
     # Try rook scheme when not behind proxy
     scheme <- .scalar_chr(tryCatch(
       req[["rook.url_scheme"]],
@@ -291,7 +291,7 @@ build_http_summary <- function(req) {
   xff <- .scalar_chr(tryCatch(req$HTTP_X_FORWARDED_FOR, error = function(...) {
     NULL
   }))
-  if (!is.na(xff) && nzchar(xff)) {
+  if (is_valid_string(xff)) {
     # If multiple comma-separated IPs, take the first hop
     ra <- strsplit(xff, ",", fixed = TRUE)[[1]]
     ra <- .scalar_chr(if (length(ra)) trimws(ra[[1]]) else NULL)
@@ -305,7 +305,7 @@ build_http_summary <- function(req) {
     for (nm in nms[hdr_idx]) {
       key <- tolower(sub("^HTTP_", "", nm))
       val <- .scalar_chr(tryCatch(req[[nm]], error = function(...) NULL))
-      hdrs[[key]] <- if (!is.na(val) && nzchar(val)) val else NULL
+      hdrs[[key]] <- if (is_valid_string(val)) val else NULL
     }
     # Remove NULLs to keep JSON clean
     hdrs <- Filter(Negate(is.null), hdrs)

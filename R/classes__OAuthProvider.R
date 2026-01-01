@@ -491,7 +491,7 @@ OAuthProvider <- S7::new_class(
 
     # Fail fast: cannot enable nonce without a configured issuer
     if (isTRUE(self@use_nonce)) {
-      if (is.null(self@issuer) || is.na(self@issuer) || !nzchar(self@issuer)) {
+      if (!is_valid_string(self@issuer)) {
         return(
           "OAuthProvider: use_nonce = TRUE requires a non-empty provider issuer"
         )
@@ -514,7 +514,7 @@ OAuthProvider <- S7::new_class(
 
     # Fail fast: cannot enable ID token validation without a configured issuer
     if (isTRUE(self@id_token_validation)) {
-      if (is.null(self@issuer) || is.na(self@issuer) || !nzchar(self@issuer)) {
+      if (!is_valid_string(self@issuer)) {
         return(
           "OAuthProvider: id_token_validation = TRUE requires a non-empty provider issuer"
         )

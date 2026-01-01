@@ -6,7 +6,7 @@ normalize_key32 <- function(key, min_chars = 32L) {
     err_config("state key is NULL", context = list(phase = "key_derivation"))
   }
   if (is.character(key)) {
-    if (length(key) != 1L || !nzchar(key)) {
+    if (!is_valid_string(key)) {
       err_config(
         "state key must be a non-empty single string",
         context = list(phase = "key_derivation")
@@ -73,7 +73,7 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
     digits = NA,
     null = "null"
   )
-  if (!nzchar(json)) {
+  if (!is_valid_string(json)) {
     err_input(
       c("x" = "payload serialized to empty JSON string"),
       context = list(phase = "encrypt")

@@ -33,7 +33,7 @@ use_shinyOAuth <- function() {
     as.character(utils::packageVersion("shinyOAuth")),
     error = function(...) NULL
   )
-  if (is.null(ver) || !nzchar(ver)) {
+  if (!is_valid_string(ver)) {
     ver <- "dev"
   }
 

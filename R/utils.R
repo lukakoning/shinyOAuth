@@ -218,7 +218,7 @@ string_digest <- function(x) {
   x1 <- x[[1L]]
   # Coerce to character before nzchar to avoid type errors (e.g., numeric ids)
   x_chr <- tryCatch(as.character(x1), error = function(...) NA_character_)
-  if (length(x_chr) != 1L || is.na(x_chr) || !nzchar(x_chr)) {
+  if (!is_valid_string(x_chr)) {
     return(NA_character_)
   }
   dig <- try(openssl::sha256(charToRaw(x_chr)), silent = TRUE)

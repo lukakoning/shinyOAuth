@@ -63,7 +63,7 @@ introspect_token <- function(
   which <- match.arg(which)
 
   url <- oauth_client@provider@introspection_url %||% NA_character_
-  if (is.na(url) || !nzchar(url)) {
+  if (!is_valid_string(url)) {
     return(list(
       supported = FALSE,
       active = NA,
@@ -93,7 +93,7 @@ introspect_token <- function(
   } else {
     oauth_token@refresh_token
   }
-  if (is.null(tok_val) || is.na(tok_val) || !nzchar(tok_val)) {
+  if (!is_valid_string(tok_val)) {
     return(list(
       supported = TRUE,
       active = NA,
@@ -295,7 +295,7 @@ refresh_token <- function(
       )
     }))
   }
-  if (is.na(token@refresh_token) || !nzchar(token@refresh_token)) {
+  if (!is_valid_string(token@refresh_token)) {
     err_input("No refresh token available")
   }
 

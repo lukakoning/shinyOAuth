@@ -94,10 +94,6 @@ verify_userinfo_id_token_subject_match <- function(
 
   S7::check_is_S7(oauth_client, OAuthClient)
 
-  is_valid_string <- function(x) {
-    is.character(x) && length(x) == 1L && !is.na(x) && nzchar(x)
-  }
-
   if (!is.list(userinfo) || length(userinfo) == 0) {
     err_input("userinfo must be a non-empty list")
   }

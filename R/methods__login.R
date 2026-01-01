@@ -571,7 +571,7 @@ handle_callback <- function(
           sub_val <- token@userinfo$sub %||% NA_character_
         }
       }
-      if (is.na(sub_val) || !nzchar(sub_val)) {
+      if (!is_valid_string(sub_val)) {
         # Attempt parse id_token payload for sub (without revalidation)
         it <- token@id_token
         if (is_valid_string(it)) {
@@ -848,7 +848,7 @@ verify_token_set <- function(client, token_set, nonce) {
       err_token("Token response missing token_type")
     }
     tt <- as.character(tt)[1]
-    if (is.na(tt) || !nzchar(tt)) {
+    if (!is_valid_string(tt)) {
       err_token("Invalid token_type in token response")
     }
     allowed <- tolower(as.character(allowed_vec))
