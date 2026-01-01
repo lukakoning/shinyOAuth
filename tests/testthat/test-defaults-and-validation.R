@@ -67,3 +67,27 @@ test_that("OAuthProvider HS* algs require allow_hs opt-in", {
     expect_no_error(do.call(oauth_provider, base_args))
   })
 })
+
+test_that("oauth_provider_microsoft defaults are compatible with multi-tenant aliases", {
+  p <- oauth_provider_microsoft(tenant = "common")
+
+  # Multi-tenant issuer varies by signing tenant; default disables validation.
+  expect_true(is.na(p@issuer))
+  expect_identical(p@id_token_validation, FALSE)
+  expect_identical(p@id_token_required, FALSE)
+  expect_identical(p@use_nonce, FALSE)
+  expect_identical(p@allowed_algs, c("RS256"))
+})
+
+test_that("oauth_provider_microsoft enables issuer+nonce for GUID tenant", {
+  tenant_guid <- "00000000-0000-0000-0000-000000000000"
+  p <- oauth_provider_microsoft(tenant = tenant_guid)
+
+  expect_true(is.character(p@issuer) && nzchar(p@issuer))
+  expect_match(p@issuer, tenant_guid, fixed = TRUE)
+
+  expect_identical(p@id_token_validation, TRUE)
+  expect_identical(p@id_token_required, TRUE)
+  expect_identical(p@use_nonce, TRUE)
+  expect_identical(p@allowed_algs, c("RS256"))
+})

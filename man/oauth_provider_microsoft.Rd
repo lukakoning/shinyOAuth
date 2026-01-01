@@ -40,6 +40,10 @@ signs in and therefore ID token validation is disabled by default to avoid
 false negatives. You can override this via \code{id_token_validation} if you know
 the environment guarantees a fixed issuer.
 
+Note: ID token validation requires a stable issuer. For multi-tenant aliases,
+this provider sets \code{issuer = NA} and therefore also disables \code{use_nonce} by
+default (nonce validation relies on validating the ID token).
+
 Microsoft issues RS256 ID tokens; \code{allowed_algs} is restricted accordingly.
 The userinfo endpoint is provided by Microsoft Graph
 (https://graph.microsoft.com/oidc/userinfo).

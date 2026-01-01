@@ -169,6 +169,10 @@ oauth_provider_google <- function(name = "google") {
 #' false negatives. You can override this via `id_token_validation` if you know
 #' the environment guarantees a fixed issuer.
 #'
+#' Note: ID token validation requires a stable issuer. For multi-tenant aliases,
+#' this provider sets `issuer = NA` and therefore also disables `use_nonce` by
+#' default (nonce validation relies on validating the ID token).
+#'
 #' Microsoft issues RS256 ID tokens; `allowed_algs` is restricted accordingly.
 #' The userinfo endpoint is provided by Microsoft Graph
 #' (https://graph.microsoft.com/oidc/userinfo).
@@ -228,7 +232,7 @@ oauth_provider_microsoft <- function(
 
     issuer = issuer,
 
-    use_nonce = TRUE,
+    use_nonce = isTRUE(id_token_validation),
     use_pkce = TRUE,
     pkce_method = "S256",
 
