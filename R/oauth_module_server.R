@@ -150,6 +150,9 @@
 #'    double-submit protection; NULL if not yet set
 #'    \item `pending_callback`: internal list(code, state); used to defer token
 #'    exchange until `browser_token` is available; NULL otherwise.
+#'    \item `pending_error`: internal list(error, error_description, state); used to
+#'    defer error-response state consumption until `browser_token` is available;
+#'    NULL otherwise.
 #'    \item `pending_login`: internal logical; TRUE when a login was requested but must
 #'    wait for `browser_token` to be set, FALSE otherwise.
 #'    \item `auto_redirected`: internal logical; TRUE once the module has initiated an
@@ -356,6 +359,7 @@ oauth_module_server <- function(
       token_stale = FALSE,
       browser_token = browser_token_initial,
       pending_callback = NULL,
+      pending_error = NULL,
       pending_login = FALSE,
       auto_redirected = FALSE,
       reauth_triggered = FALSE,
@@ -372,6 +376,7 @@ oauth_module_server <- function(
       authenticated = values$authenticated,
       browser_token = values$browser_token,
       pending_callback = values$pending_callback,
+      pending_error = values$pending_error,
       pending_login = values$pending_login,
       auto_redirected = values$auto_redirected,
       reauth_triggered = values$reauth_triggered,
@@ -912,8 +917,11 @@ oauth_module_server <- function(
         # Clear sensitive callback params even on failure paths to reduce
         # leak risk via referrers, browser history, or logs.
         .clear_query_and_fix_title()
-        values$error <- qs$error
-        values$error_description <- qs$error_description %||% NULL
+        .handle_error_response(
+          error = qs$error,
+          error_description = qs$error_description,
+          state = qs$state
+        )
         return(invisible(NULL))
       }
 
@@ -929,6 +937,79 @@ oauth_module_server <- function(
       }
 
       return(invisible(NULL))
+    }
+
+    # Function to handle OAuth error responses and consume state if present
+    .handle_error_response <- function(error, error_description, state) {
+      # Surface the error to the module's reactive state immediately.
+      # Even if we can't consume state yet, callers should see the provider error.
+      values$error <- error
+      values$error_description <- error_description %||% NULL
+
+      # If state is present, we should consume it from the state store to:
+      #   1. Reduce stale entries in the cache
+      #   2. Align with "always validate state when returned" guidance
+      # If the browser token isn't available yet, defer the cleanup until it is.
+      if (!is.null(state) && is_valid_string(state)) {
+        if (!is_valid_string(values$browser_token)) {
+          # Defer until browser_token is available
+          values$pending_error <- list(
+            error = error,
+            error_description = error_description,
+            state = state
+          )
+          return(invisible(NULL))
+        }
+        # Attempt to validate and consume the state; failures are logged but
+        # do not override the original OAuth error from the provider.
+        .consume_error_state(state)
+      }
+      invisible(NULL)
+    }
+
+    # Helper to consume (validate/remove) state from an error response
+    .consume_error_state <- function(state) {
+      tryCatch(
+        {
+          # Decrypt and validate the state payload
+          payload <- state_payload_decrypt_validate(client, state)
+          # Consume the state store entry (single-use enforcement)
+          state_store_get_remove(client, payload$state)
+          # Audit success
+          try(
+            audit_event(
+              "error_state_consumed",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                state_digest = string_digest(state)
+              )
+            ),
+            silent = TRUE
+          )
+        },
+        error = function(e) {
+          # State consumption failed; log but don't override original error.
+          # This can happen if the state was already consumed, expired, or
+          # was tampered with. Not a critical failure for error responses.
+          try(
+            audit_event(
+              "error_state_consumption_failed",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                state_digest = string_digest(state),
+                error_class = paste(class(e), collapse = ", "),
+                error_message = conditionMessage(e)
+              )
+            ),
+            silent = TRUE
+          )
+        }
+      )
+      invisible(NULL)
     }
 
     # Function to handle code & state once received in query string
@@ -1094,6 +1175,22 @@ oauth_module_server <- function(
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
           .handle_callback(pc$code, pc$state)
+        }
+      },
+      ignoreInit = FALSE
+    )
+
+    # Resume deferred error-response state consumption once browser_token is available
+    shiny::observeEvent(
+      values$browser_token,
+      {
+        pe <- shiny::isolate(values$pending_error)
+        if (!is.null(pe) && .has_browser_token()) {
+          values$pending_error <- NULL
+          # Attempt to consume the state (best-effort, failures logged)
+          if (!is.null(pe$state) && is_valid_string(pe$state)) {
+            .consume_error_state(pe$state)
+          }
         }
       },
       ignoreInit = FALSE
