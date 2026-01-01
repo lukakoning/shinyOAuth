@@ -68,7 +68,8 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
 <span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
-<span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span></span>
+<span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span>,</span>
+<span>  scope_validation <span class="op">=</span> <span class="st">"strict"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -195,6 +196,17 @@ per-process default: provide an explicit, high-entropy key (for example via
 a secret store or environment variable). Prefer values with substantial
 entropy (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
 human‑memorable passphrases. See also <code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p></dd>
+
+
+<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
+<dd><p>Controls how scope discrepancies are handled when
+the authorization server grants fewer scopes than requested. RFC 6749
+Section 3.3 permits servers to issue tokens with reduced scope.</p><ul><li><p><code>"strict"</code> (default): Throws an error if any requested scope is missing
+from the granted scopes.</p></li>
+<li><p><code>"warn"</code>: Emits a warning but continues authentication if scopes are
+missing.</p></li>
+<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
+</ul></dd>
 
 </dl></div>
 

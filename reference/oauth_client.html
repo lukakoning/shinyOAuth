@@ -59,7 +59,8 @@
 <span>  client_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strict"</span>, <span class="st">"warn"</span>, <span class="st">"none"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -186,6 +187,17 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.</p></dd>
+
+
+<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
+<dd><p>Controls how scope discrepancies are handled when
+the authorization server grants fewer scopes than requested. RFC 6749
+Section 3.3 permits servers to issue tokens with reduced scope.</p><ul><li><p><code>"strict"</code> (default): Throws an error if any requested scope is missing
+from the granted scopes.</p></li>
+<li><p><code>"warn"</code>: Emits a warning but continues authentication if scopes are
+missing.</p></li>
+<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
+</ul></dd>
 
 </dl></div>
     <div class="section level2">

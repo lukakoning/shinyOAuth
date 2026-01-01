@@ -19,7 +19,8 @@ oauth_client(
   client_private_key = NULL,
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
-  client_assertion_audience = NULL
+  client_assertion_audience = NULL,
+  scope_validation = c("strict", "warn", "none")
 )
 ```
 
@@ -170,6 +171,20 @@ oauth_client(
   shinyOAuth uses the exact token endpoint request URL. Some identity
   providers require a different audience value; set this to the exact
   value your IdP expects.
+
+- scope_validation:
+
+  Controls how scope discrepancies are handled when the authorization
+  server grants fewer scopes than requested. RFC 6749 Section 3.3
+  permits servers to issue tokens with reduced scope.
+
+  - `"strict"` (default): Throws an error if any requested scope is
+    missing from the granted scopes.
+
+  - `"warn"`: Emits a warning but continues authentication if scopes are
+    missing.
+
+  - `"none"`: Skips scope validation entirely.
 
 ## Value
 

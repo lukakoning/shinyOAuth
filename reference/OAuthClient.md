@@ -24,7 +24,8 @@ OAuthClient(
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
-  state_key = random_urlsafe(n = 128)
+  state_key = random_urlsafe(n = 128),
+  scope_validation = "strict"
 )
 ```
 
@@ -175,6 +176,20 @@ OAuthClient(
   (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
   human‑memorable passphrases. See also
   [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+
+- scope_validation:
+
+  Controls how scope discrepancies are handled when the authorization
+  server grants fewer scopes than requested. RFC 6749 Section 3.3
+  permits servers to issue tokens with reduced scope.
+
+  - `"strict"` (default): Throws an error if any requested scope is
+    missing from the granted scopes.
+
+  - `"warn"`: Emits a warning but continues authentication if scopes are
+    missing.
+
+  - `"none"`: Skips scope validation entirely.
 
 ## Examples
 
