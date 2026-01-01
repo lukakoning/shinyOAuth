@@ -93,6 +93,9 @@ validation (issuer match). When using the multi-tenant aliases ("common",
 signs in and therefore ID token validation is disabled by default to avoid
 false negatives. You can override this via <code>id_token_validation</code> if you know
 the environment guarantees a fixed issuer.</p>
+<p>Note: ID token validation requires a stable issuer. For multi-tenant aliases,
+this provider sets <code>issuer = NA</code> and therefore also disables <code>use_nonce</code> by
+default (nonce validation relies on validating the ID token).</p>
 <p>Microsoft issues RS256 ID tokens; <code>allowed_algs</code> is restricted accordingly.
 The userinfo endpoint is provided by Microsoft Graph
 (https://graph.microsoft.com/oidc/userinfo).</p>
