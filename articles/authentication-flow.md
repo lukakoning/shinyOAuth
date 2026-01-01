@@ -177,7 +177,8 @@ token object. This is an S7 `OAuthToken` object which contains:
 
 - `access_token` (string)
 - `refresh_token` (optional string)
-- `expires_at` (POSIXct; optional)
+- `expires_at` (numeric timestamp, seconds since epoch; `Inf` for
+  non-expiring tokens)
 - `id_token` (optional string)
 - `userinfo` (optional list)
 
