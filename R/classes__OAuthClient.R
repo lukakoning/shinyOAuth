@@ -43,6 +43,11 @@
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
 #'   supported by `jose::jwt_encode_sig` (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
 #'
+#' @param client_assertion_audience Optional override for the `aud` claim used when building
+#'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
+#'   uses the exact token endpoint request URL. Some identity providers require a different
+#'   audience value; set this to the exact value your IdP expects.
+#'
 #' @param redirect_uri Redirect URI registered with provider
 #'
 #' @param scopes Vector of scopes to request
@@ -127,6 +132,11 @@ OAuthClient <- S7::new_class(
     # Optional override for client assertion signing algorithm. If NULL, defaults
     # to HS256 for client_secret_jwt and RS256 for private_key_jwt
     client_assertion_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the client assertion audience claim.
+    client_assertion_audience = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
@@ -296,6 +306,15 @@ OAuthClient <- S7::new_class(
       }
     }
 
+    # Validate client_assertion_audience when provided
+    caa <- self@client_assertion_audience %||% NA_character_
+    caa_chr <- as.character(caa[[1]])
+    if (!is.na(caa_chr) && nzchar(caa_chr) && !is_valid_string(caa_chr)) {
+      return(
+        "OAuthClient: client_assertion_audience must be a non-empty string when provided"
+      )
+    }
+
     # Validate state_entropy: must be a finite length-1 numeric integer in [22, 128]
     ent <- self@state_entropy
     if (is.null(ent) || length(ent) != 1L || is.na(ent)) {
@@ -462,7 +481,8 @@ oauth_client <- function(
   state_key = random_urlsafe(128),
   client_private_key = NULL,
   client_private_key_kid = NULL,
-  client_assertion_alg = NULL
+  client_assertion_alg = NULL,
+  client_assertion_audience = NULL
 ) {
   warn_about_oauth_client_created_in_shiny(
     state_key_missing = missing(state_key)
@@ -480,6 +500,7 @@ oauth_client <- function(
     state_key = state_key,
     client_private_key = client_private_key,
     client_private_key_kid = client_private_key_kid %||% NA_character_,
-    client_assertion_alg = client_assertion_alg %||% NA_character_
+    client_assertion_alg = client_assertion_alg %||% NA_character_,
+    client_assertion_audience = client_assertion_audience %||% NA_character_
   )
 }

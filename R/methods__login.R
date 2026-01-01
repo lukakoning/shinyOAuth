@@ -752,7 +752,7 @@ swap_code_for_token_set <- function(
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params$client_assertion <- build_client_assertion(
       client,
-      aud = client@provider@token_url
+      aud = resolve_client_assertion_audience(client, req)
     )
   }
 

@@ -122,3 +122,93 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
   expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
   expect_true(is.character(pl$jti) && nzchar(pl$jti))
 })
+
+test_that("client_assertion_audience overrides aud for token endpoint assertions", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "private_key_jwt",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  key <- openssl::rsa_keygen()
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    client_private_key = key,
+    redirect_uri = "http://localhost:8100",
+    scopes = c("openid"),
+    # Intentionally differ from token_url to verify override is respected
+    client_assertion_audience = "https://example.com/token/"
+  )
+
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = cli@provider@token_url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"at","expires_in":3600,"token_type":"Bearer","refresh_token":"rt"}'
+        )
+      )
+    }
+  )
+
+  ts <- shinyOAuth:::swap_code_for_token_set(
+    cli,
+    code = "code",
+    code_verifier = "ver"
+  )
+  expect_equal(ts$access_token, "at")
+
+  pl <- shinyOAuth:::parse_jwt_payload(captured$client_assertion)
+  expect_identical(pl$aud, "https://example.com/token/")
+
+  # Also cover refresh_token() path which uses the same resolver
+  tok <- OAuthToken(
+    access_token = "at-old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+
+  captured2 <- NULL
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured2 <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = cli@provider@token_url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"at-new","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    }
+  )
+
+  tok2 <- refresh_token(cli, tok, async = FALSE, introspect = FALSE)
+  expect_identical(tok2@access_token, "at-new")
+  pl2 <- shinyOAuth:::parse_jwt_payload(captured2$client_assertion)
+  expect_identical(pl2$aud, "https://example.com/token/")
+})

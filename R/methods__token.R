@@ -327,7 +327,7 @@ refresh_token <- function(
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params$client_assertion <- build_client_assertion(
       oauth_client,
-      aud = oauth_client@provider@token_url
+      aud = resolve_client_assertion_audience(oauth_client, req)
     )
   }
 
@@ -392,6 +392,7 @@ refresh_token <- function(
   # subject consistency between userinfo and ID token. No nonce during refresh.
   token_set <- list(
     access_token = tok$access_token,
+    token_type = tok$token_type,
     refresh_token = tok$refresh_token,
     id_token = tok$id_token,
     userinfo = tok$userinfo,

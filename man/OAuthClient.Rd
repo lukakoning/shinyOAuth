@@ -11,6 +11,7 @@ OAuthClient(
   client_private_key = NULL,
   client_private_key_kid = NA_character_,
   client_assertion_alg = NA_character_,
+  client_assertion_audience = NA_character_,
   redirect_uri = character(0),
   scopes = character(0),
   state_store = cachem::cache_mem(max_age = 300),
@@ -58,6 +59,11 @@ value is provided but incompatible with the key, validation fails early with a c
 error.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
 supported by \code{jose::jwt_encode_sig} (e.g., \code{RS256}, \code{PS256}, \code{ES256}, \code{EdDSA}) for private keys.}
+
+\item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
+JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
+uses the exact token endpoint request URL. Some identity providers require a different
+audience value; set this to the exact value your IdP expects.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 

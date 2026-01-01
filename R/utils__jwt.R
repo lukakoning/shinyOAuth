@@ -495,6 +495,35 @@ build_client_assertion <- function(client, aud) {
   )
 }
 
+#' Resolve the audience (`aud`) value for a JWT client assertion.
+#'
+#' Uses an explicit client override when present, otherwise uses the exact URL
+#' on the httr2 request (so any URL normalization/modification stays consistent
+#' with the audience claim). Falls back to the provider token_url for non-httr2
+#' request doubles used in tests.
+#'
+#' @keywords internal
+#' @noRd
+resolve_client_assertion_audience <- function(client, req) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  override <- client@client_assertion_audience %||% NA_character_
+  override_chr <- as.character(override[[1]])
+  if (!is.na(override_chr) && nzchar(override_chr)) {
+    return(override_chr)
+  }
+
+  if (inherits(req, "httr2_request")) {
+    url0 <- req$url %||% NA_character_
+    url_chr <- as.character(url0[[1]])
+    if (!is.na(url_chr) && nzchar(url_chr)) {
+      return(url_chr)
+    }
+  }
+
+  client@provider@token_url
+}
+
 #' Normalize a client private key input to an openssl::key
 #'
 #' Accepts either an openssl::key-like object or a PEM string. Password-protected
