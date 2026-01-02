@@ -14,7 +14,10 @@ client <- oauth_client(
   client_id = Sys.getenv("SPOTIFY_OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("SPOTIFY_OAUTH_CLIENT_SECRET"),
   redirect_uri = "http://127.0.0.1:8100",
-  scopes = character(0) # add scopes if you need more than public user info
+  scopes = c(
+    "user-read-email",
+    "user-read-private"
+  )
 )
 
 # UI

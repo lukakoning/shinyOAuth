@@ -98,6 +98,7 @@ test_that("OAuthProvider rejects reserved keys in extra_auth_params", {
     "client_id",
     "redirect_uri",
     "state",
+    "scope",
     "code_challenge",
     "code_challenge_method",
     "nonce"

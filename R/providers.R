@@ -259,8 +259,9 @@ oauth_provider_microsoft <- function(
 #' Uses /v1/me as "userinfo". No ID token (not OIDC).
 #'
 #' @param name Optional provider name (default "spotify")
-#' @param scope Optional space-separated scope string (default
-#'   "user-read-email user-read-private")
+#' @details
+#' Spotify requires scopes to be included in the authorization request.
+#' Set requested scopes on the client with `oauth_client(..., scopes = ...)`.
 #'
 #' @return [OAuthProvider] object for use with a Spotify OAuth 2.0 app
 #'
@@ -271,8 +272,7 @@ oauth_provider_microsoft <- function(
 #'
 #' @export
 oauth_provider_spotify <- function(
-  name = "spotify",
-  scope = "user-read-email user-read-private"
+  name = "spotify"
 ) {
   oauth_provider(
     name = name,
@@ -287,7 +287,7 @@ oauth_provider_spotify <- function(
     use_pkce = TRUE,
     pkce_method = "S256",
 
-    extra_auth_params = list(scope = scope),
+    extra_auth_params = list(),
     extra_token_params = list(),
     extra_token_headers = character(),
     token_auth_style = "header",

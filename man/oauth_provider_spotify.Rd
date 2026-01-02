@@ -4,16 +4,10 @@
 \alias{oauth_provider_spotify}
 \title{Create a Spotify \link{OAuthProvider}}
 \usage{
-oauth_provider_spotify(
-  name = "spotify",
-  scope = "user-read-email user-read-private"
-)
+oauth_provider_spotify(name = "spotify")
 }
 \arguments{
 \item{name}{Optional provider name (default "spotify")}
-
-\item{scope}{Optional space-separated scope string (default
-"user-read-email user-read-private")}
 }
 \value{
 \link{OAuthProvider} object for use with a Spotify OAuth 2.0 app
@@ -21,6 +15,10 @@ oauth_provider_spotify(
 \description{
 Pre-configured OAuth 2.0 provider for Spotify.
 Uses /v1/me as "userinfo". No ID token (not OIDC).
+}
+\details{
+Spotify requires scopes to be included in the authorization request.
+Set requested scopes on the client with \code{oauth_client(..., scopes = ...)}.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

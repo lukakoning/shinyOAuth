@@ -250,7 +250,14 @@ build_auth_url <- function(
     params$scope <- paste(oauth_client@scopes, collapse = " ")
   }
   if (length(oauth_client@provider@extra_auth_params) > 0) {
-    params <- c(params, oauth_client@provider@extra_auth_params)
+    extra <- oauth_client@provider@extra_auth_params
+    if ("scope" %in% names(extra)) {
+      err_config(c(
+        "OAuthProvider.extra_auth_params must not include 'scope'",
+        "i" = "Set scopes via oauth_client(..., scopes = ...) so state binding and scope reconciliation stay consistent."
+      ))
+    }
+    params <- c(params, extra)
   }
 
   # Critically: drop NULLs so httr2 doesn't choke

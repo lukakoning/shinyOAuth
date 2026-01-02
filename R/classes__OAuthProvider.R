@@ -346,6 +346,7 @@ OAuthProvider <- S7::new_class(
       "client_id",
       "redirect_uri",
       "state",
+      "scope",
       "code_challenge",
       "code_challenge_method",
       "nonce"
