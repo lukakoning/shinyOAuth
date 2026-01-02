@@ -6,10 +6,7 @@ Pre-configured OAuth 2.0 provider for Spotify. Uses /v1/me as
 ## Usage
 
 ``` r
-oauth_provider_spotify(
-  name = "spotify",
-  scope = "user-read-email user-read-private"
-)
+oauth_provider_spotify(name = "spotify")
 ```
 
 ## Arguments
@@ -18,15 +15,15 @@ oauth_provider_spotify(
 
   Optional provider name (default "spotify")
 
-- scope:
-
-  Optional space-separated scope string (default "user-read-email
-  user-read-private")
-
 ## Value
 
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 object for use with a Spotify OAuth 2.0 app
+
+## Details
+
+Spotify requires scopes to be included in the authorization request. Set
+requested scopes on the client with `oauth_client(..., scopes = ...)`.
 
 ## See also
 

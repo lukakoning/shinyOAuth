@@ -49,10 +49,7 @@ Uses /v1/me as "userinfo". No ID token (not OIDC).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_provider_spotify</span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"spotify"</span>,</span>
-<span>  scope <span class="op">=</span> <span class="st">"user-read-email user-read-private"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_provider_spotify</span><span class="op">(</span>name <span class="op">=</span> <span class="st">"spotify"</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -62,15 +59,15 @@ Uses /v1/me as "userinfo". No ID token (not OIDC).</p>
 <dl><dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
 <dd><p>Optional provider name (default "spotify")</p></dd>
 
-
-<dt id="arg-scope">scope<a class="anchor" aria-label="anchor" href="#arg-scope"></a></dt>
-<dd><p>Optional space-separated scope string (default
-"user-read-email user-read-private")</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><a href="OAuthProvider.html">OAuthProvider</a> object for use with a Spotify OAuth 2.0 app</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Spotify requires scopes to be included in the authorization request.
+Set requested scopes on the client with <code>oauth_client(..., scopes = ...)</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

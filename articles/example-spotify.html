@@ -108,27 +108,21 @@ features, see:
 <span></span>
 <span><span class="co"># Configure provider and client for Spotify</span></span>
 <span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span></span>
-<span>  <span class="co"># For Spotify, scopes have to be given in the authentication request itself;</span></span>
-<span>  <span class="co"># `oauth_provider_spotify()` handles this via the `scope` argument</span></span>
-<span>  scope <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>      <span class="st">"user-read-email"</span>,</span>
-<span>      <span class="st">"user-read-private"</span>,</span>
-<span>      <span class="st">"user-top-read"</span>,</span>
-<span>      <span class="st">"user-read-recently-played"</span>,</span>
-<span>      <span class="st">"user-read-playback-state"</span>,</span>
-<span>      <span class="st">"user-read-currently-playing"</span></span>
-<span>    <span class="op">)</span>,</span>
-<span>    collapse <span class="op">=</span> <span class="st">" "</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SPOTIFY_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SPOTIFY_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"user-read-email"</span>,</span>
+<span>    <span class="st">"user-read-private"</span>,</span>
+<span>    <span class="st">"user-top-read"</span>,</span>
+<span>    <span class="st">"user-read-recently-played"</span>,</span>
+<span>    <span class="st">"user-read-playback-state"</span>,</span>
+<span>    <span class="st">"user-read-currently-playing"</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span></span>
@@ -141,7 +135,7 @@ features, see:
 <span>  <span class="va">url</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"https://api.spotify.com"</span>, <span class="va">path</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">token</span>, <span class="va">url</span>, query <span class="op">=</span> <span class="va">query</span><span class="op">)</span></span>
-<span>  <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">req_with_retry</span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
+<span>  <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">msg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"Spotify API error: HTTP %s"</span>, <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_status</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span></span>
@@ -156,7 +150,7 @@ features, see:
 <span>  <span class="va">url</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"https://api.spotify.com"</span>, <span class="va">path</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">token</span>, <span class="va">url</span>, query <span class="op">=</span> <span class="va">query</span><span class="op">)</span></span>
-<span>  <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">req_with_retry</span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
+<span>  <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="va">status</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_status</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">status</span> <span class="op">==</span> <span class="fl">204L</span><span class="op">)</span> <span class="op">{</span></span>

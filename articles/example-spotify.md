@@ -40,27 +40,21 @@ library(DT)
 
 # Configure provider and client for Spotify
 
-provider <- oauth_provider_spotify(
-  # For Spotify, scopes have to be given in the authentication request itself;
-  # `oauth_provider_spotify()` handles this via the `scope` argument
-  scope = paste(
-    c(
-      "user-read-email",
-      "user-read-private",
-      "user-top-read",
-      "user-read-recently-played",
-      "user-read-playback-state",
-      "user-read-currently-playing"
-    ),
-    collapse = " "
-  )
-)
+provider <- oauth_provider_spotify()
 
 client <- oauth_client(
   provider = provider,
   client_id = Sys.getenv("SPOTIFY_OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("SPOTIFY_OAUTH_CLIENT_SECRET"),
-  redirect_uri = "http://127.0.0.1:8100"
+  redirect_uri = "http://127.0.0.1:8100",
+  scopes = c(
+    "user-read-email",
+    "user-read-private",
+    "user-top-read",
+    "user-read-recently-played",
+    "user-read-playback-state",
+    "user-read-currently-playing"
+  )
 )
 
 
@@ -73,7 +67,7 @@ spotify_get <- function(token, path, query = list()) {
   url <- paste0("https://api.spotify.com", path)
 
   req <- client_bearer_req(token, url, query = query)
-  resp <- req_with_retry(req)
+  resp <- httr2::req_perform(req)
 
   if (httr2::resp_is_error(resp)) {
     msg <- sprintf("Spotify API error: HTTP %s", httr2::resp_status(resp))
@@ -88,7 +82,7 @@ spotify_get_maybe_empty <- function(token, path, query = list()) {
   url <- paste0("https://api.spotify.com", path)
   
   req <- client_bearer_req(token, url, query = query)
-  resp <- req_with_retry(req)
+  resp <- httr2::req_perform(req)
   
   status <- httr2::resp_status(resp)
   if (status == 204L) {
