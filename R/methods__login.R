@@ -539,7 +539,8 @@ handle_callback <- function(
   token_set <- verify_token_set(
     oauth_client,
     token_set = token_set,
-    nonce = nonce
+    nonce = nonce,
+    is_refresh = FALSE
   )
 
   # Return ---------------------------------------------------------------------
@@ -831,7 +832,13 @@ swap_code_for_token_set <- function(
   return(token_set)
 }
 
-verify_token_set <- function(client, token_set, nonce) {
+verify_token_set <- function(
+  client,
+  token_set,
+  nonce,
+  is_refresh = FALSE,
+  original_id_token = NULL
+) {
   # Helpers/types --------------------------------------------------------------
 
   S7::check_is_S7(client, class = OAuthClient)
@@ -931,33 +938,121 @@ verify_token_set <- function(client, token_set, nonce) {
 
   # ID token -------------------------------------------------------------------
 
-  # Check if ID token is required
-  id_token_required <- isTRUE(client@provider@id_token_validation) |
-    isTRUE(client@provider@id_token_required) |
-    isTRUE(client@provider@userinfo_id_token_match) |
-    isTRUE(is_valid_string(nonce))
-
   # Check that it is present if required
   id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
+
+  # Strict refresh policy: if a refresh response includes an ID token, we
+  # require an original ID token from the initial login so we can enforce
+  # OIDC Core section 12.2 subject continuity (sub MUST match). Without an original
+  # token, we cannot bind identity across refresh and must reject.
+  if (
+    isTRUE(is_refresh) &&
+      isTRUE(id_token_present) &&
+      !is_valid_string(original_id_token)
+  ) {
+    err_id_token(
+      "Refresh returned an ID token but no original ID token is available to verify sub claim (OIDC 12.2)"
+    )
+  }
+
+  # ID token is required when (only during initial login, not refresh):
+  # - id_token_required = TRUE
+  # - id_token_validation = TRUE
+  # - userinfo_id_token_match = TRUE (need both to compare subjects)
+  # - nonce was sent (must validate nonce claim in ID token)
+  # During refresh, none of these apply. OIDC Core Section 12.2 allows refresh
+  # responses to omit the ID token. Identity was already established at login.
+  id_token_required <- !isTRUE(is_refresh) &&
+    (isTRUE(client@provider@id_token_required) |
+      isTRUE(client@provider@id_token_validation) |
+      isTRUE(client@provider@userinfo_id_token_match) |
+      isTRUE(is_valid_string(nonce)))
 
   if (isTRUE(id_token_required) && !isTRUE(id_token_present)) {
     err_id_token("ID token required but not present")
   }
 
-  if (
-    isTRUE(client@provider@id_token_validation) ||
+  # OIDC Core 12.2: During refresh, if a new ID token is returned, its sub
+  # claim MUST match the original. We always enforce this sub continuity when
+  # a refresh returns an ID token, even if signature/claim validation is
+  # disabled (id_token_validation = FALSE).
+  expected_sub <- NULL
+  should_validate_id_token <- isTRUE(id_token_present) &&
+    (isTRUE(client@provider@id_token_validation) ||
       isTRUE(client@provider@use_nonce) ||
-      isTRUE(is_valid_string(nonce))
-  ) {
-    id_token <- token_set[["id_token"]]
+      isTRUE(is_valid_string(nonce)))
+
+  id_token <- token_set[["id_token"]]
+  if (isTRUE(is_refresh) && isTRUE(id_token_present)) {
+    original_payload <- tryCatch(
+      parse_jwt_payload(original_id_token),
+      error = function(e) NULL
+    )
+    # Security: if we have an original ID token but can't extract its sub,
+    # that's an error - don't silently skip the check.
+    if (is.null(original_payload)) {
+      err_id_token(
+        "Cannot parse original ID token to verify sub claim (OIDC 12.2)"
+      )
+    }
+    if (!is_valid_string(original_payload$sub)) {
+      err_id_token("Original ID token missing sub claim (OIDC 12.2)")
+    }
+    expected_sub <- original_payload$sub
+
+    if (!isTRUE(should_validate_id_token)) {
+      # Even when full ID token validation is disabled (id_token_validation = FALSE),
+      # we still must enforce OIDC 12.2 subject continuity on refresh when the
+      # provider returns an ID token. That requires parsing the (unsigned/unchecked)
+      # payload so we can compare its sub claim to the original.
+      new_payload <- tryCatch(
+        parse_jwt_payload(id_token),
+        error = function(e) NULL
+      )
+      if (is.null(new_payload)) {
+        err_id_token(
+          "Cannot parse refreshed ID token to verify sub claim (OIDC 12.2)"
+        )
+      }
+      if (!is_valid_string(new_payload$sub)) {
+        err_id_token("Refreshed ID token missing sub claim (OIDC 12.2)")
+      }
+      if (!identical(new_payload$sub, expected_sub)) {
+        err_id_token(
+          "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
+        )
+      }
+    }
+  }
+
+  # Validate ID token when present and validation is requested.
+  # Covers: id_token_validation, use_nonce, or explicit nonce passed.
+  if (isTRUE(should_validate_id_token)) {
     # Verifies signature & claims of ID token
     # Will error if invalid
-    validate_id_token(client, id_token, expected_nonce = nonce)
+    validate_id_token(
+      client,
+      id_token,
+      expected_nonce = nonce,
+      expected_sub = expected_sub
+    )
   }
 
   # Validate match between userinfo & ID token ---------------------------------
 
-  if (isTRUE(client@provider@userinfo_id_token_match)) {
+  # During initial login: always validate when userinfo_id_token_match = TRUE.
+  # During refresh: validate only if BOTH userinfo and id_token are present.
+  # (userinfo is fetched when userinfo_required = TRUE; id_token may be omitted
+  # per OIDC 12.2). When both are available, verify subjects still match.
+
+  id_token_present <- is_valid_string(token_set[["id_token"]])
+  userinfo_present <- is.list(token_set[["userinfo"]]) &&
+    length(token_set[["userinfo"]]) > 0
+
+  should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
+    (!isTRUE(is_refresh) || (id_token_present && userinfo_present))
+
+  if (should_match) {
     verify_userinfo_id_token_subject_match(
       client,
       userinfo = token_set[["userinfo"]],

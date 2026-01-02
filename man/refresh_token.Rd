@@ -23,15 +23,45 @@ introspection of the new access token for audit/diagnostics. The result
 is not stored on the token object.}
 }
 \value{
-An updated \link{OAuthToken} object with a new access token. If the
-provider issues a new refresh token, that replaces the old one. When the
-provider returns an ID token and \code{id_token_validation = TRUE}, it is
-validated. When \code{userinfo_required = TRUE}, fresh userinfo is fetched and
-stored on the token. \code{expires_at} is computed from \code{expires_in} when
-provided; otherwise set to \code{Inf}.
+An updated \link{OAuthToken} object with refreshed credentials.
+
+\strong{What changes:}
+\itemize{
+\item \code{access_token}: Always updated to the fresh token
+\item \code{expires_at}: Computed from \code{expires_in} when provided; otherwise \code{Inf}
+\item \code{refresh_token}: Updated if the provider rotates it; otherwise preserved
+\item \code{id_token}: Updated only if the provider returns one (and it validates);
+otherwise the original from login is preserved
+\item \code{userinfo}: Refreshed if \code{userinfo_required = TRUE}; otherwise preserved
+}
+
+\strong{Validation failures cause errors:} If the provider returns a new ID
+token that fails validation (wrong issuer, audience, expired, or subject
+mismatch with original), or if userinfo subject doesn't match the new ID
+token, the refresh fails with an error. In \code{oauth_module_server()}, this
+clears the session and sets \code{authenticated = FALSE}.
 }
 \description{
-Refreshes an OAuth 2.0 access token using a refresh token.
+Refreshes an OAuth session by obtaining a fresh access token using the
+refresh token. When configured, also re-fetches userinfo and validates any
+new ID token returned by the provider.
+
+Per OIDC Core Section 12.2, providers may omit the ID token from refresh
+responses. When omitted, the original ID token from the initial login is
+preserved.
+
+If the provider does return a new ID token during refresh, \code{refresh_token()}
+requires that an original ID token from the initial login is available so it
+can enforce subject continuity (OIDC 12.2: \code{sub} MUST match). If no original
+ID token is available, refresh fails with an error.
+
+When \code{id_token_validation = TRUE}, any refresh-returned ID token is also
+fully validated (signature and claims) in addition to the OIDC 12.2 \code{sub}
+continuity check.
+
+When \code{userinfo_required = TRUE}, userinfo is re-fetched using the fresh
+access token. If both a new ID token and fresh userinfo are present and
+\code{userinfo_id_token_match = TRUE}, their subjects are verified to match.
 }
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`

@@ -394,7 +394,6 @@ oauth_provider_oidc_discover <- function(
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
   jwks_ok <- if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
     is_ok_host(paste0("https://", jwks_host, "/"), allowed_hosts = opt_allowed)
-
   } else {
     # Allow exact match or subdomain of issuer host
     identical(jwks_host, iss_host) ||

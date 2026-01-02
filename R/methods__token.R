@@ -238,7 +238,26 @@ introspect_token <- function(
 #' Refresh an OAuth 2.0 token
 #'
 #' @description
-#' Refreshes an OAuth 2.0 access token using a refresh token.
+#' Refreshes an OAuth session by obtaining a fresh access token using the
+#' refresh token. When configured, also re-fetches userinfo and validates any
+#' new ID token returned by the provider.
+#'
+#' Per OIDC Core Section 12.2, providers may omit the ID token from refresh
+#' responses. When omitted, the original ID token from the initial login is
+#' preserved.
+#'
+#' If the provider does return a new ID token during refresh, `refresh_token()`
+#' requires that an original ID token from the initial login is available so it
+#' can enforce subject continuity (OIDC 12.2: `sub` MUST match). If no original
+#' ID token is available, refresh fails with an error.
+#'
+#' When `id_token_validation = TRUE`, any refresh-returned ID token is also
+#' fully validated (signature and claims) in addition to the OIDC 12.2 `sub`
+#' continuity check.
+#'
+#' When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
+#' access token. If both a new ID token and fresh userinfo are present and
+#' `userinfo_id_token_match = TRUE`, their subjects are verified to match.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
@@ -252,12 +271,21 @@ introspect_token <- function(
 #'   introspection of the new access token for audit/diagnostics. The result
 #'   is not stored on the token object.
 #'
-#' @return An updated [OAuthToken] object with a new access token. If the
-#'   provider issues a new refresh token, that replaces the old one. When the
-#'   provider returns an ID token and `id_token_validation = TRUE`, it is
-#'   validated. When `userinfo_required = TRUE`, fresh userinfo is fetched and
-#'   stored on the token. `expires_at` is computed from `expires_in` when
-#'   provided; otherwise set to `Inf`.
+#' @return An updated [OAuthToken] object with refreshed credentials.
+#'
+#'   **What changes:**
+#'   - `access_token`: Always updated to the fresh token
+#'   - `expires_at`: Computed from `expires_in` when provided; otherwise `Inf`
+#'   - `refresh_token`: Updated if the provider rotates it; otherwise preserved
+#'   - `id_token`: Updated only if the provider returns one (and it validates);
+#'     otherwise the original from login is preserved
+#'   - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise preserved
+#'
+#'   **Validation failures cause errors:** If the provider returns a new ID
+#'   token that fails validation (wrong issuer, audience, expired, or subject
+#'   mismatch with original), or if userinfo subject doesn't match the new ID
+#'   token, the refresh fails with an error. In `oauth_module_server()`, this
+#'   clears the session and sets `authenticated = FALSE`.
 #'
 #' @example inst/examples/token_methods.R
 #'
@@ -388,8 +416,11 @@ refresh_token <- function(
     tok$userinfo <- ui
   }
 
-  # Reuse login's verification routine to validate ID token and, if present,
-  # subject consistency between userinfo and ID token. No nonce during refresh.
+  # Verify token set. During refresh (is_refresh = TRUE):
+  # - ID token is NOT required (OIDC allows omission per Section 12.2)
+  # - If ID token IS present and id_token_validation = TRUE, it's validated
+  #   and its sub MUST match the original (OIDC 12.2)
+  # - userinfo_id_token_match runs when both userinfo and id_token are present
   token_set <- list(
     access_token = tok$access_token,
     token_type = tok$token_type,
@@ -401,7 +432,9 @@ refresh_token <- function(
   token_set <- verify_token_set(
     oauth_client,
     token_set = token_set,
-    nonce = NULL
+    nonce = NULL,
+    is_refresh = TRUE,
+    original_id_token = token@id_token
   )
 
   # Align expiry handling with login path: expires_in==0 means "expires now".
@@ -421,11 +454,15 @@ refresh_token <- function(
     token@refresh_token <- token_set$refresh_token
   }
   token@expires_at <- expires_at
-  # Preserve existing id_token if not re-issued
-  if (!is.null(token_set$id_token)) {
+
+  # ID token: update only if provider returned a new one (and it passed
+  # validation if id_token_validation = TRUE). Otherwise preserve the original
+  # from login - this is the common case per OIDC spec.
+  if (is_valid_string(token_set$id_token)) {
     token@id_token <- token_set$id_token
   }
-  # If we fetched userinfo during refresh, update the token
+
+  # Userinfo: update if fetched during refresh (userinfo_required = TRUE)
   if (!is.null(token_set$userinfo)) {
     token@userinfo <- token_set$userinfo
   }

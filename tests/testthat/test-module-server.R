@@ -338,3 +338,76 @@ testthat::test_that("strip_oauth_query removes only OAuth params", {
     }
   )
 })
+
+testthat::test_that("oauth_module_server clears token and sets error when proactive refresh fails", {
+  testthat::skip_if_not_installed("later")
+
+  # Integration test: trigger the module's proactive refresh observer and
+  # assert that the module (not the test) clears token and sets error.
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.skip_id_sig = TRUE
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = FALSE,
+      indefinite_session = FALSE,
+      refresh_proactively = TRUE,
+      # Make the lead window larger than remaining so refresh is attempted
+      # immediately, but keep expiry far enough in the future to avoid the
+      # separate expiry watcher racing this test.
+      refresh_lead_seconds = 4000,
+      refresh_check_interval = 100
+    ),
+    expr = {
+      # Seed a token that is "valid" but will be proactively refreshed
+      t <- OAuthToken(
+        access_token = "old_at",
+        refresh_token = "rt",
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      values$auth_started_at <- as.numeric(Sys.time())
+      # Ensure we start from a clean error state
+      values$error <- NULL
+      values$error_description <- NULL
+      session$flushReact()
+
+      # Force refresh_token() to error as if ID token validation failed.
+      testthat::with_mocked_bindings(
+        refresh_token = function(
+          oauth_client,
+          token,
+          async = FALSE,
+          introspect = FALSE
+        ) {
+          shinyOAuth:::err_id_token("Invalid ID token")
+        },
+        .package = "shinyOAuth",
+        {
+          # Pump the event loop until the observer runs or timeout
+          deadline <- Sys.time() + 2
+          while (is.null(values$error) && Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+            Sys.sleep(0.01)
+          }
+        }
+      )
+
+      testthat::expect_identical(values$error, "token_refresh_error")
+      testthat::expect_false(is.null(values$error_description))
+      testthat::expect_true(is.null(values$token))
+      testthat::expect_false(values$authenticated)
+      testthat::expect_false(isTRUE(values$refresh_in_progress))
+    }
+  )
+})

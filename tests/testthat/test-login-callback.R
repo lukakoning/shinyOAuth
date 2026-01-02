@@ -138,7 +138,12 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
         token_type = "Bearer"
       )
     },
-    validate_id_token = function(client, id_token, expected_nonce = NULL) {
+    validate_id_token = function(
+      client,
+      id_token,
+      expected_nonce = NULL,
+      expected_sub = NULL
+    ) {
       # Pretend success if expected_nonce non-empty
       if (isTRUE(client@provider@use_nonce)) {
         testthat::expect_true(

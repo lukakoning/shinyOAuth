@@ -171,3 +171,33 @@ during the active session. This may consist of:
 - Proactive refresh: if enabled and a refresh token exists, the access token is refreshed before expiry
 - Expiration: expired tokens are cleared automatically, setting the `$authenticated` flag to FALSE
 - Re-authentication: optionally, `oauth_module_server(reauth_after_seconds = ...)` can force periodic re-authentication
+
+#### Refresh behavior (`refresh_token()`)
+
+When the module refreshes a session (or when you call `refresh_token()` directly), it performs an OAuth 2.0
+refresh token grant against the provider's token endpoint and updates the `OAuthToken` object. This works as follows:
+
+- A token request is sent with `grant_type=refresh_token` and the current `refresh_token`.
+- The response must include a new `access_token`. `expires_at` is updated from `expires_in` when present.
+- The response must include a new `access_token`. `expires_at` is updated from `expires_in` when present; otherwise it is set to `Inf`.
+- If the provider rotates the refresh token (returns a new `refresh_token`), it is stored; otherwise the
+  original is preserved.
+- If `oauth_provider(userinfo_required = TRUE)`, userinfo is re-fetched using the fresh access token.
+
+With respect to OIDC ID token handling:
+
+- Per OIDC Core Section 12.2, refresh responses may omit `id_token`. When omitted, the original `id_token`
+  from the initial login is preserved. Thus, a refresh does not necessarily revalidate identity.
+- If the provider does return an `id_token` during refresh, shinyOAuth enforces OIDC 12.2 subject continuity:
+  the refresh-returned `id_token` must have the same `sub` as the original `id_token` from login.
+  - If an original `id_token` did not exist in the session, and the refresh does return one, the refresh fails
+    (cannot establish subject claim match with no baseline).
+  - If `id_token_validation = TRUE`, the refresh-returned `id_token` is fully validated (signature + claims);
+    the `sub` claim match is enforced as part of validation.
+  - If `id_token_validation = FALSE`, shinyOAuth still enforces the `sub` match by parsing the JWT payload
+    (ensuring that the `sub` claim still matches but without full validation).
+
+If refresh fails inside `oauth_module_server()`, the module exposes the failure via its reactive state
+(for example, `token_refresh_error`). By default it also clears the current session token; if
+`oauth_module_server(indefinite_session = TRUE)`, the token is kept but marked stale. In all cases, the
+`$authenticated` flag becomes `FALSE` while the error is present.

@@ -46,9 +46,18 @@ parse_jwt_header <- function(jwt) {
 #'
 #' This function validates an ID token, by checking its signature and claims.
 #'
+#' @param expected_sub If provided, the `sub` claim MUST match this value.
+#'   Used during refresh to ensure the new ID token is for the same user
+#'   (OIDC Core Section 12.2 requirement).
+#'
 #' @keywords internal
 #' @noRd
-validate_id_token <- function(client, id_token, expected_nonce = NULL) {
+validate_id_token <- function(
+  client,
+  id_token,
+  expected_nonce = NULL,
+  expected_sub = NULL
+) {
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(id_token))
 
@@ -296,6 +305,10 @@ validate_id_token <- function(client, id_token, expected_nonce = NULL) {
   }
   if (!is_valid_string(payload$sub)) {
     err_id_token("ID token missing sub claim")
+  }
+  # OIDC Core 12.2: During refresh, sub MUST match the original ID token's sub
+  if (is_valid_string(expected_sub) && !identical(payload$sub, expected_sub)) {
+    err_id_token("ID token sub claim does not match original (OIDC 12.2)")
   }
   if (is.null(payload$exp)) {
     err_id_token("ID token missing exp claim")
