@@ -176,15 +176,26 @@ prepare_call <- function(
 
 # Helper: turn key provider properties into a stable fingerprint string
 provider_fingerprint <- function(provider) {
-  iss <- provider@issuer %||% ""
-  au <- provider@auth_url %||% ""
-  tu <- provider@token_url %||% ""
+  norm_chr <- function(x) {
+    if (is.null(x) || length(x) != 1L || is.na(x)) {
+      return("")
+    }
+    as.character(x)
+  }
+
+  iss <- norm_chr(provider@issuer)
+  au <- norm_chr(provider@auth_url)
+  tu <- norm_chr(provider@token_url)
+  ui <- norm_chr(provider@userinfo_url)
+  it <- norm_chr(provider@introspection_url)
 
   # Use a length-prefixed canonical representation to avoid delimiter-based
   # collisions when any component contains separators.
   iss_u <- enc2utf8(iss)
   au_u <- enc2utf8(au)
   tu_u <- enc2utf8(tu)
+  ui_u <- enc2utf8(ui)
+  it_u <- enc2utf8(it)
 
   canonical <- paste0(
     "iss:",
@@ -200,7 +211,17 @@ provider_fingerprint <- function(provider) {
     "tu:",
     nchar(tu_u, type = "bytes"),
     ":",
-    tu_u
+    tu_u,
+    "\n",
+    "ui:",
+    nchar(ui_u, type = "bytes"),
+    ":",
+    ui_u,
+    "\n",
+    "it:",
+    nchar(it_u, type = "bytes"),
+    ":",
+    it_u
   )
 
   paste0("sha256:", string_digest(enc2utf8(canonical)))

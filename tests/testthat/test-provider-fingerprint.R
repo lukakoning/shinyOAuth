@@ -7,7 +7,15 @@ test_that("provider_fingerprint avoids delimiter collisions", {
     properties = list(
       issuer = S7::class_character,
       auth_url = S7::class_character,
-      token_url = S7::class_character
+      token_url = S7::class_character,
+      userinfo_url = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      ),
+      introspection_url = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      )
     )
   )
 
