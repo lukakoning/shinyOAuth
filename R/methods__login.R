@@ -325,7 +325,11 @@ handle_callback <- function(
   # Browser token is not query-derived in the module, but handle_callback() is
   # exported and may be called directly with attacker-controlled inputs.
   # Cap it before any hashing/auditing to avoid a DoS footgun.
-  validate_untrusted_query_param("browser_token", browser_token, max_bytes = 256)
+  validate_untrusted_query_param(
+    "browser_token",
+    browser_token,
+    max_bytes = 256
+  )
 
   # Audit: callback received
   try(
