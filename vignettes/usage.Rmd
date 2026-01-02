@@ -252,6 +252,36 @@ server <- function(input, output, session) {
 If you need to keep `async = FALSE`, you may consider reducing retry behaviour
 to limit blocking during provider incidents. See 'Global options' and then 
 'HTTP timeout/retries'.
+
+## Logout
+
+To log out the user, call `auth$logout()`. This clears the local session and
+attempts to revoke tokens at the provider (if a revocation endpoint is available):
+
+```r
+observeEvent(input$logout_btn, {
+  auth$logout()
+})
+```
+
+Revocation uses RFC 7009 and runs asynchronously when `oauth_module_server(async = TRUE)`.
+See `?revoke_token` for programmatic use outside the module.
+
+### Automatic revocation on session end
+
+To revoke tokens when the Shiny session ends (e.g., browser tab closed, timeout), 
+set `revoke_on_session_end = TRUE`:
+
+```r
+auth <- oauth_module_server(
+  "auth",
+  client = client,
+  revoke_on_session_end = TRUE
+)
+```
+
+Note: this is a best-effort operation; network failures or provider unavailability may prevent revocation. 
+Combine with appropriate token lifetimes on the provider side for defense in depth.
   
 ## Global options
 
@@ -359,6 +389,7 @@ your app registration only the permissions it needs
 - Sanitize user inputs before rendering them in the UI (e.g., using `htmltools::htmlEscape()`)
 - Make use of audit logging (see `vignette("audit-logging", package = "shinyOAuth")`) and
 monitor these logs
+- Consider enabling automatic revocation on session end (`revoke_on_session_end = TRUE`)
 - Use a provider which enforces strong authentication (e.g., multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading and mitigate XSS attacks;
 (requires middleware; can't be done in Shiny)

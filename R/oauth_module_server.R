@@ -96,6 +96,16 @@
 #'  adaptive scheduling to wake up exactly when needed; this interval is used
 #'  as a safety net or when expiry is unknown/infinite
 #'
+#' @param revoke_on_session_end If TRUE, automatically revokes provider tokens
+#'   when the Shiny session ends (e.g., browser tab closed, session timeout).
+#'   This is a best-effort operation. Revocation runs asynchronously only when
+#'   the module is configured with `async = TRUE` (otherwise it runs
+#'   synchronously).
+#'   Requires the provider to have a `revocation_url` configured. Default is
+#'   FALSE. Note that session-end revocation may not always succeed (e.g.,
+#'   network issues, provider unavailable), so combine with appropriate token
+#'   lifetimes on the provider side.
+#'
 #' @param tab_title_cleaning If TRUE (default), removes any query string suffix
 #'   from the browser tab title after the OAuth callback, so titles like
 #'   "localhost:8100?code=...&state=..." become "localhost:8100"
@@ -229,6 +239,8 @@ oauth_module_server <- function(
   refresh_lead_seconds = 60,
   refresh_check_interval = 10000,
 
+  revoke_on_session_end = FALSE,
+
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
 
@@ -268,7 +280,10 @@ oauth_module_server <- function(
     is.logical(indefinite_session) &
       length(indefinite_session) == 1 &
       !is.na(indefinite_session),
-    is.null(browser_cookie_path) || is_valid_string(browser_cookie_path)
+    is.null(browser_cookie_path) || is_valid_string(browser_cookie_path),
+    is.logical(revoke_on_session_end) &
+      length(revoke_on_session_end) == 1 &
+      !is.na(revoke_on_session_end)
   )
 
   if (!.is_test()) {
@@ -402,6 +417,45 @@ oauth_module_server <- function(
       ),
       silent = TRUE
     )
+    
+
+    # Session-end hook: revoke tokens if configured ----------------------------
+    
+    if (isTRUE(revoke_on_session_end)) {
+      session$onSessionEnded(function() {
+        # Capture token at session end; may be NULL if never authenticated
+        tok <- shiny::isolate(values$token)
+        if (!is.null(tok)) {
+          # Audit: session ending with revocation attempt
+          try(
+            audit_event(
+              "session_ended_revoke",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id)
+              )
+            ),
+            silent = TRUE
+          )
+          # Best-effort revocation: async only when module async = TRUE
+          use_async_revocation <- isTRUE(async)
+          try(revoke_token(
+            client,
+            tok,
+            which = "refresh",
+            async = use_async_revocation
+          ))
+          try(revoke_token(
+            client,
+            tok,
+            which = "access",
+            async = use_async_revocation
+          ))
+        }
+      })
+    }
+    
 
     # Error handling helpers --------------------------------------------------
 
@@ -441,6 +495,7 @@ oauth_module_server <- function(
       values$error_description <- description %||%
         if (!is.null(e)) .compose_error(e, phase) else NULL
     }
+    
 
     # Client-side actions (CSP-friendly via custom messages) ------------------
 
@@ -554,6 +609,7 @@ oauth_module_server <- function(
       )
     }
 
+    
     # Browser token cookie -----------------------------------------------------
 
     # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
@@ -726,6 +782,7 @@ oauth_module_server <- function(
       }
       return(FALSE)
     }
+    
 
     # Track authentication status ----------------------------------------------
 
@@ -802,6 +859,7 @@ oauth_module_server <- function(
       },
       ignoreInit = FALSE
     )
+    
 
     # Auth URL & redirection helpers -------------------------------------------
 
@@ -867,6 +925,26 @@ oauth_module_server <- function(
     values$build_auth_url <- function() .build_auth_url()
     values$request_login <- function() .request_login()
     values$logout <- function(reason = "manual_logout") {
+      # Best-effort: revoke provider tokens asynchronously if supported.
+      # Fire-and-forget so logout returns immediately.
+      tok <- values$token
+      if (!is.null(tok)) {
+        # Async revocation follows module async setting
+        use_async_revocation <- isTRUE(async)
+        try(revoke_token(
+          client,
+          tok,
+          which = "refresh",
+          async = use_async_revocation
+        ))
+        try(revoke_token(
+          client,
+          tok,
+          which = "access",
+          async = use_async_revocation
+        ))
+      }
+
       # Clear token and browser cookie, emit audit trail
       try(
         audit_event(
@@ -877,8 +955,7 @@ oauth_module_server <- function(
             client_id_digest = string_digest(client@client_id),
             reason = reason
           )
-        ),
-        silent = TRUE
+        )
       )
       values$token <- NULL
       values$error <- "logged_out"
@@ -890,6 +967,7 @@ oauth_module_server <- function(
       # This maintains session binding without authenticating the user.
       .set_browser_token()
     }
+    
 
     # Handle callback + auto-redirect ------------------------------------------
 
@@ -1275,8 +1353,9 @@ oauth_module_server <- function(
     # Testing hooks: expose helpers for unit tests
     values$.process_query <- .process_query
     values$.strip_oauth_query <- .strip_oauth_query
+    
 
-    # Proactive refresh -------------------------------------------------------
+    # Proactive refresh --------------------------------------------------------
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
@@ -1487,6 +1566,7 @@ oauth_module_server <- function(
         shiny::invalidateLater(wake_ms, session)
       })
     }
+    
 
     # Expiry watch -------------------------------------------------------------
 
@@ -1596,8 +1676,9 @@ oauth_module_server <- function(
 
       shiny::invalidateLater(wake_ms, session)
     })
+    
 
-    # Return reactive values --------------------------------------------------
+    # Return reactive values ---------------------------------------------------
 
     return(values)
   })

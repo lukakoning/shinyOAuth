@@ -1,6 +1,213 @@
 # This file contains methods to introspect and refresh an OAuthToken
 
 #' @title
+#' Revoke an OAuth 2.0 token
+#'
+#' @description
+#' Attempts to revoke an access or refresh token using RFC 7009 when the
+#' provider exposes a revocation endpoint.
+#'
+#' Authentication mirrors the provider's `token_auth_style` (same as token
+#' exchange and introspection).
+#'
+#' Best-effort semantics:
+#' - If the provider does not expose a revocation endpoint, returns
+#'   `supported = FALSE`, `revoked = NA`, and `status = "revocation_unsupported"`.
+#' - If the selected token value is missing, returns `supported = TRUE`,
+#'   `revoked = NA`, and `status = "missing_token"`.
+#' - If the endpoint returns a 2xx, returns `supported = TRUE`, `revoked = TRUE`,
+#'   and `status = "ok"`.
+#' - If the endpoint returns an HTTP error, returns `supported = TRUE`,
+#'   `revoked = NA`, and `status = "http_<code>"`.
+#'
+#' @param oauth_client [OAuthClient] object
+#' @param oauth_token [OAuthToken] object containing tokens to revoke
+#' @param which Which token to revoke: "refresh" (default) or "access"
+#' @param async Logical, default FALSE. If TRUE and promises is available, run
+#'   in background and return a promise resolving to the result list
+#'
+#' @return A list with fields: supported, revoked, status
+#'
+#' @export
+revoke_token <- function(
+  oauth_client,
+  oauth_token,
+  which = c("refresh", "access"),
+  async = FALSE
+) {
+  S7::check_is_S7(oauth_client, OAuthClient)
+  S7::check_is_S7(oauth_token, OAuthToken)
+  stopifnot(
+    is.logical(async),
+    length(async) == 1,
+    !is.na(async)
+  )
+
+  which <- match.arg(which)
+
+  url <- oauth_client@provider@revocation_url %||% NA_character_
+  if (!is_valid_string(url)) {
+    try(
+      audit_event(
+        "token_revocation",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          which = which,
+          supported = FALSE,
+          revoked = NA,
+          status = "revocation_unsupported"
+        )
+      ),
+      silent = TRUE
+    )
+    return(list(
+      supported = FALSE,
+      revoked = NA,
+      status = "revocation_unsupported"
+    ))
+  }
+
+  if (isTRUE(async)) {
+    rlang::check_installed(
+      c("promises", "future"),
+      reason = "to use `async = TRUE` in `revoke_token()`"
+    )
+
+    return(promises::future_promise({
+      revoke_token(
+        oauth_client = oauth_client,
+        oauth_token = oauth_token,
+        which = which,
+        async = FALSE
+      )
+    }))
+  }
+
+  tok_val <- if (which == "access") {
+    oauth_token@access_token
+  } else {
+    oauth_token@refresh_token
+  }
+
+  if (!is_valid_string(tok_val)) {
+    try(
+      audit_event(
+        "token_revocation",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          which = which,
+          supported = TRUE,
+          revoked = NA,
+          status = "missing_token"
+        )
+      ),
+      silent = TRUE
+    )
+    return(list(
+      supported = TRUE,
+      revoked = NA,
+      status = "missing_token"
+    ))
+  }
+
+  params <- list(token = tok_val)
+  params$token_type_hint <- if (which == "access") {
+    "access_token"
+  } else {
+    "refresh_token"
+  }
+
+  req <- httr2::request(url)
+  tas <- oauth_client@provider@token_auth_style %||% "header"
+  if (identical(tas, "header")) {
+    req <- req |>
+      httr2::req_auth_basic(oauth_client@client_id, oauth_client@client_secret)
+  } else if (identical(tas, "body")) {
+    params$client_id <- oauth_client@client_id
+    if (is_valid_string(oauth_client@client_secret)) {
+      params$client_secret <- oauth_client@client_secret
+    }
+  } else if (
+    identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
+  ) {
+    params$client_id <- oauth_client@client_id
+    params$client_assertion_type <-
+      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    params$client_assertion <- build_client_assertion(
+      oauth_client,
+      aud = url
+    )
+  } else {
+    err_config(
+      c(
+        "x" = "Unsupported token_auth_style for revocation.",
+        "i" = paste0(
+          "Got: '",
+          tas,
+          "'. Allowed: 'header', 'body', 'client_secret_jwt', 'private_key_jwt'."
+        )
+      ),
+      context = list(phase = "revoke_token", style = tas)
+    )
+  }
+
+  req <- add_req_defaults(req)
+  req <- do.call(httr2::req_body_form, c(list(req), params))
+  req <- httr2::req_error(req, is_error = function(resp) FALSE)
+  resp <- req_with_retry(req)
+
+  if (httr2::resp_is_error(resp)) {
+    status_code <- paste0("http_", httr2::resp_status(resp))
+    try(
+      audit_event(
+        "token_revocation",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          which = which,
+          supported = TRUE,
+          revoked = NA,
+          status = status_code
+        )
+      ),
+      silent = TRUE
+    )
+    return(list(
+      supported = TRUE,
+      revoked = NA,
+      status = status_code
+    ))
+  }
+
+  try(
+    audit_event(
+      "token_revocation",
+      context = list(
+        provider = oauth_client@provider@name %||% NA_character_,
+        issuer = oauth_client@provider@issuer %||% NA_character_,
+        client_id_digest = string_digest(oauth_client@client_id),
+        which = which,
+        supported = TRUE,
+        revoked = TRUE,
+        status = "ok"
+      )
+    ),
+    silent = TRUE
+  )
+
+  list(
+    supported = TRUE,
+    revoked = TRUE,
+    status = "ok"
+  )
+}
+
+#' @title
 #' Introspect an OAuth 2.0 token
 #'
 #' @description

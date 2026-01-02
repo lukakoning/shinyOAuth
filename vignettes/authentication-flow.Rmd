@@ -202,3 +202,30 @@ If refresh fails inside `oauth_module_server()`, the module exposes the failure 
 (for example, `token_refresh_error`). By default it also clears the current session token; if
 `oauth_module_server(indefinite_session = TRUE)`, the token is kept but marked stale. In all cases, the
 `$authenticated` flag becomes `FALSE` while the error is present.
+
+### 14. Logout and token revocation
+
+When `auth$logout()` is called, the module:
+
+1. Attempts to revoke both refresh and access tokens at the provider (RFC 7009) if a `revocation_url`
+  is configured. This runs asynchronously only when `oauth_module_server(async = TRUE)`
+2. Clears the local session (`OAuthToken`, browser cookie)
+3. Emits a `"logout"` audit event
+4. Re-issues a fresh browser token for subsequent logins
+
+You can also revoke tokens directly via `revoke_token(client, token, which = "refresh")`.
+
+To automatically attempt revocation when a Shiny session ends (for example, a tab close or session timeout),
+set `revoke_on_session_end = TRUE`:
+
+```r
+auth <- oauth_module_server(
+  "auth",
+  client = client,
+  revoke_on_session_end = TRUE
+)
+```
+
+This is best-effort: the session may end while the provider is unavailable, and revocation failures do not
+block session cleanup.
+

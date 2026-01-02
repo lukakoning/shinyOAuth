@@ -131,6 +131,7 @@ oauth_provider_google <- function(name = "google") {
 
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth",
     token_url = "https://oauth2.googleapis.com/token",
+    revocation_url = "https://oauth2.googleapis.com/revoke",
     userinfo_url = "https://openidconnect.googleapis.com/v1/userinfo",
     issuer = "https://accounts.google.com",
 

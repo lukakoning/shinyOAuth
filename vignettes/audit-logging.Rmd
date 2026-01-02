@@ -234,6 +234,11 @@ State parsing failures occur while decoding and validating the encrypted wrapper
 - When: the authentication module (`oauth_module_server()`) is initialized for a Shiny session
 - Context: `module_id`, `ns_prefix`, `client_provider`, `client_issuer`, `client_id_digest`, plus the standard `shiny_session` context described above
 
+#### Event: `audit_session_ended_revoke`
+
+- When: a Shiny session ends with `revoke_on_session_end = TRUE` and a token was present
+- Context: `provider`, `issuer`, `client_id_digest`; the actual revocation attempt is logged separately as `audit_revoke_token_*` events
+
 ## Where to find these in code
 
 - Redirect and login audits are emitted from `R/methods__login.R`

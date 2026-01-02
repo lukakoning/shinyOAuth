@@ -18,6 +18,7 @@
 #' @param token_url Token endpoint URL
 #' @param userinfo_url User info endpoint URL (optional)
 #' @param introspection_url Token introspection endpoint URL (optional; RFC 7662)
+#' @param revocation_url Token revocation endpoint URL (optional; RFC 7009)
 #'
 #' @param issuer OIDC issuer URL (optional; required for ID token validation).
 #' This is the base URL that identifies the OpenID Provider (OP). It is used
@@ -183,6 +184,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    revocation_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
 
     issuer = S7::new_property(S7::class_character, default = NA_character_),
 
@@ -301,6 +306,7 @@ OAuthProvider <- S7::new_class(
       token_url = list(val = self@token_url, required = TRUE),
       userinfo_url = list(val = self@userinfo_url, required = FALSE),
       introspection_url = list(val = self@introspection_url, required = FALSE),
+      revocation_url = list(val = self@revocation_url, required = FALSE),
       issuer = list(val = self@issuer, required = FALSE)
     )
     for (nm in names(fields)) {
@@ -680,6 +686,7 @@ oauth_provider <- function(
   token_url,
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
+  revocation_url = NA_character_,
 
   issuer = NA_character_,
 
@@ -726,6 +733,7 @@ oauth_provider <- function(
   token_url <- normalize_url(token_url)
   userinfo_url <- normalize_url(userinfo_url)
   introspection_url <- normalize_url(introspection_url)
+  revocation_url <- normalize_url(revocation_url)
 
   if (is.null(jwks_cache)) {
     jwks_cache <- cachem::cache_mem(max_age = 3600)
@@ -844,6 +852,7 @@ oauth_provider <- function(
     token_url = token_url,
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
+    revocation_url = revocation_url,
 
     issuer = issuer,
 

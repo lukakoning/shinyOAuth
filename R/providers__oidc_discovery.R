@@ -174,6 +174,7 @@ oauth_provider_oidc_discover <- function(
     token_url = endpoints$token_url,
     userinfo_url = endpoints$userinfo_url,
     introspection_url = endpoints$introspection_url,
+    revocation_url = endpoints$revocation_url,
     issuer = iss,
     use_nonce = use_nonce,
     id_token_validation = id_token_validation,
@@ -319,11 +320,14 @@ oauth_provider_oidc_discover <- function(
 
   introspection_url <- disc[["introspection_endpoint"]] %||% NA_character_
 
+  revocation_url <- disc[["revocation_endpoint"]] %||% NA_character_
+
   list(
     auth_url = auth_url,
     token_url = token_url,
     userinfo_url = userinfo_url,
-    introspection_url = introspection_url
+    introspection_url = introspection_url,
+    revocation_url = revocation_url
   )
 }
 
@@ -359,6 +363,7 @@ oauth_provider_oidc_discover <- function(
   validate_endpoint(endpoints$token_url, allowed_hosts_vec)
   validate_endpoint(endpoints$userinfo_url, allowed_hosts_vec)
   validate_endpoint(endpoints$introspection_url, allowed_hosts_vec)
+  validate_endpoint(endpoints$revocation_url, allowed_hosts_vec)
 
   invisible(TRUE)
 }

@@ -10,6 +10,7 @@ OAuthProvider(
   token_url = character(0),
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
+  revocation_url = NA_character_,
   issuer = NA_character_,
   use_nonce = FALSE,
   use_pkce = TRUE,
@@ -45,6 +46,8 @@ only; used in logging and audit events}
 \item{userinfo_url}{User info endpoint URL (optional)}
 
 \item{introspection_url}{Token introspection endpoint URL (optional; RFC 7662)}
+
+\item{revocation_url}{Token revocation endpoint URL (optional; RFC 7009)}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
