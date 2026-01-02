@@ -1,6 +1,26 @@
 # Refresh an OAuth 2.0 token
 
-Refreshes an OAuth 2.0 access token using a refresh token.
+Refreshes an OAuth session by obtaining a fresh access token using the
+refresh token. When configured, also re-fetches userinfo and validates
+any new ID token returned by the provider.
+
+Per OIDC Core Section 12.2, providers may omit the ID token from refresh
+responses. When omitted, the original ID token from the initial login is
+preserved.
+
+If the provider does return a new ID token during refresh,
+`refresh_token()` requires that an original ID token from the initial
+login is available so it can enforce subject continuity (OIDC 12.2:
+`sub` MUST match). If no original ID token is available, refresh fails
+with an error.
+
+When `id_token_validation = TRUE`, any refresh-returned ID token is also
+fully validated (signature and claims) in addition to the OIDC 12.2
+`sub` continuity check.
+
+When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
+access token. If both a new ID token and fresh userinfo are present and
+`userinfo_id_token_match = TRUE`, their subjects are verified to match.
 
 ## Usage
 
@@ -40,12 +60,30 @@ refresh_token(oauth_client, token, async = FALSE, introspect = FALSE)
 
 An updated
 [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-object with a new access token. If the provider issues a new refresh
-token, that replaces the old one. When the provider returns an ID token
-and `id_token_validation = TRUE`, it is validated. When
-`userinfo_required = TRUE`, fresh userinfo is fetched and stored on the
-token. `expires_at` is computed from `expires_in` when provided;
-otherwise set to `Inf`.
+object with refreshed credentials.
+
+**What changes:**
+
+- `access_token`: Always updated to the fresh token
+
+- `expires_at`: Computed from `expires_in` when provided; otherwise
+  `Inf`
+
+- `refresh_token`: Updated if the provider rotates it; otherwise
+  preserved
+
+- `id_token`: Updated only if the provider returns one (and it
+  validates); otherwise the original from login is preserved
+
+- `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise
+  preserved
+
+**Validation failures cause errors:** If the provider returns a new ID
+token that fails validation (wrong issuer, audience, expired, or subject
+mismatch with original), or if userinfo subject doesn't match the new ID
+token, the refresh fails with an error. In
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+this clears the session and sets `authenticated = FALSE`.
 
 ## Examples
 
