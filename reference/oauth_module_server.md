@@ -25,6 +25,7 @@ oauth_module_server(
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
   refresh_check_interval = 10000,
+  revoke_on_session_end = FALSE,
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
@@ -101,6 +102,17 @@ oauth_module_server(
   10000 ms). When expiry is known, the module uses adaptive scheduling
   to wake up exactly when needed; this interval is used as a safety net
   or when expiry is unknown/infinite
+
+- revoke_on_session_end:
+
+  If TRUE, automatically revokes provider tokens when the Shiny session
+  ends (e.g., browser tab closed, session timeout). This is a
+  best-effort operation. Revocation runs asynchronously only when the
+  module is configured with `async = TRUE` (otherwise it runs
+  synchronously). Requires the provider to have a `revocation_url`
+  configured. Default is FALSE. Note that session-end revocation may not
+  always succeed (e.g., network issues, provider unavailable), so
+  combine with appropriate token lifetimes on the provider side.
 
 - tab_title_cleaning:
 

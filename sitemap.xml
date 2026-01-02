@@ -39,6 +39,7 @@
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/prepare_call.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/refresh_token.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/revoke_token.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/shinyOAuth-package.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/state_payload_decrypt_validate.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/state_store_get_remove.html</loc></url>

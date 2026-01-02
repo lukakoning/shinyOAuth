@@ -304,6 +304,14 @@ wrapper prior to extracting the logical state value.
   `client_id_digest`, plus the standard `shiny_session` context
   described above
 
+#### Event: `audit_session_ended_revoke`
+
+- When: a Shiny session ends with `revoke_on_session_end = TRUE` and a
+  token was present
+- Context: `provider`, `issuer`, `client_id_digest`; the actual
+  revocation attempt is logged separately as `audit_revoke_token_*`
+  events
+
 ## Where to find these in code
 
 - Redirect and login audits are emitted from `R/methods__login.R`

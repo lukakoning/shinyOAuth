@@ -267,6 +267,40 @@ If you need to keep `async = FALSE`, you may consider reducing retry
 behaviour to limit blocking during provider incidents. See ‘Global
 options’ and then ‘HTTP timeout/retries’.
 
+## Logout
+
+To log out the user, call `auth$logout()`. This clears the local session
+and attempts to revoke tokens at the provider (if a revocation endpoint
+is available):
+
+``` r
+observeEvent(input$logout_btn, {
+  auth$logout()
+})
+```
+
+Revocation uses RFC 7009 and runs asynchronously when
+`oauth_module_server(async = TRUE)`. See
+[`?revoke_token`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
+for programmatic use outside the module.
+
+### Automatic revocation on session end
+
+To revoke tokens when the Shiny session ends (e.g., browser tab closed,
+timeout), set `revoke_on_session_end = TRUE`:
+
+``` r
+auth <- oauth_module_server(
+  "auth",
+  client = client,
+  revoke_on_session_end = TRUE
+)
+```
+
+Note: this is a best-effort operation; network failures or provider
+unavailability may prevent revocation. Combine with appropriate token
+lifetimes on the provider side for defense in depth.
+
 ## Global options
 
 The package provides several global options to customize behavior. Below
@@ -440,6 +474,8 @@ your app to production:
 - Make use of audit logging (see
   [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md))
   and monitor these logs
+- Consider enabling automatic revocation on session end
+  (`revoke_on_session_end = TRUE`)
 - Use a provider which enforces strong authentication (e.g.,
   multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading

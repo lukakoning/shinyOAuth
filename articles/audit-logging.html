@@ -522,6 +522,17 @@ is initialized for a Shiny session</li>
 <code>shiny_session</code> context described above</li>
 </ul>
 </div>
+<div class="section level4">
+<h4 id="event-audit_session_ended_revoke">Event: <code>audit_session_ended_revoke</code><a class="anchor" aria-label="anchor" href="#event-audit_session_ended_revoke"></a>
+</h4>
+<ul>
+<li>When: a Shiny session ends with
+<code>revoke_on_session_end = TRUE</code> and a token was present</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>; the actual revocation attempt is logged
+separately as <code>audit_revoke_token_*</code> events</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="section level2">

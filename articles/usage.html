@@ -325,6 +325,35 @@ reducing retry behaviour to limit blocking during provider incidents.
 See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 </div>
 <div class="section level2">
+<h2 id="logout">Logout<a class="anchor" aria-label="anchor" href="#logout"></a>
+</h2>
+<p>To log out the user, call <code>auth$logout()</code>. This clears the
+local session and attempts to revoke tokens at the provider (if a
+revocation endpoint is available):</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
+<span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>Revocation uses RFC 7009 and runs asynchronously when
+<code>oauth_module_server(async = TRUE)</code>. See
+<code><a href="../reference/revoke_token.html">?revoke_token</a></code> for programmatic use outside the module.</p>
+<div class="section level3">
+<h3 id="automatic-revocation-on-session-end">Automatic revocation on session end<a class="anchor" aria-label="anchor" href="#automatic-revocation-on-session-end"></a>
+</h3>
+<p>To revoke tokens when the Shiny session ends (e.g., browser tab
+closed, timeout), set <code>revoke_on_session_end = TRUE</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
+<span>  <span class="st">"auth"</span>,</span>
+<span>  client <span class="op">=</span> <span class="va">client</span>,</span>
+<span>  revoke_on_session_end <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Note: this is a best-effort operation; network failures or provider
+unavailability may prevent revocation. Combine with appropriate token
+lifetimes on the provider side for defense in depth.</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="global-options">Global options<a class="anchor" aria-label="anchor" href="#global-options"></a>
 </h2>
 <p>The package provides several global options to customize behavior.
@@ -541,6 +570,8 @@ expose tokens in UI or logs</li>
 <li>Make use of audit logging (see
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>) and
 monitor these logs</li>
+<li>Consider enabling automatic revocation on session end
+(<code>revoke_on_session_end = TRUE</code>)</li>
 <li>Use a provider which enforces strong authentication (e.g.,
 multi-factor authentication)</li>
 <li>Set Content Security Policy (CSP) headers to restrict resource

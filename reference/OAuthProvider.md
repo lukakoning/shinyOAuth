@@ -23,6 +23,7 @@ OAuthProvider(
   token_url = character(0),
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
+  revocation_url = NA_character_,
   issuer = NA_character_,
   use_nonce = FALSE,
   use_pkce = TRUE,
@@ -70,6 +71,10 @@ OAuthProvider(
 - introspection_url:
 
   Token introspection endpoint URL (optional; RFC 7662)
+
+- revocation_url:
+
+  Token revocation endpoint URL (optional; RFC 7009)
 
 - issuer:
 

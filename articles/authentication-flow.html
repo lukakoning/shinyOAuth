@@ -368,6 +368,35 @@ is kept but marked stale. In all cases, the <code>$authenticated</code>
 flag becomes <code>FALSE</code> while the error is present.</p>
 </div>
 </div>
+<div class="section level3">
+<h3 id="logout-and-token-revocation">14. Logout and token revocation<a class="anchor" aria-label="anchor" href="#logout-and-token-revocation"></a>
+</h3>
+<p>When <code>auth$logout()</code> is called, the module:</p>
+<ol style="list-style-type: decimal">
+<li>Attempts to revoke both refresh and access tokens at the provider
+(RFC 7009) if a <code>revocation_url</code> is configured. This runs
+asynchronously only when
+<code>oauth_module_server(async = TRUE)</code>
+</li>
+<li>Clears the local session (<code>OAuthToken</code>, browser
+cookie)</li>
+<li>Emits a <code>"logout"</code> audit event</li>
+<li>Re-issues a fresh browser token for subsequent logins</li>
+</ol>
+<p>You can also revoke tokens directly via
+<code>revoke_token(client, token, which = "refresh")</code>.</p>
+<p>To automatically attempt revocation when a Shiny session ends (for
+example, a tab close or session timeout), set
+<code>revoke_on_session_end = TRUE</code>:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
+<span>  <span class="st">"auth"</span>,</span>
+<span>  client <span class="op">=</span> <span class="va">client</span>,</span>
+<span>  revoke_on_session_end <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This is best-effort: the session may end while the provider is
+unavailable, and revocation failures do not block session cleanup.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

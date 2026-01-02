@@ -70,6 +70,8 @@
   : Get user info from OAuth 2.0 provider
 - [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
   : Refresh an OAuth 2.0 token
+- [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
+  : Revoke an OAuth 2.0 token
 - [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
   : Introspect an OAuth 2.0 token
 - [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
