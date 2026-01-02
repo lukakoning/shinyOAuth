@@ -109,8 +109,7 @@ callback. This consists of the following steps:
   - If the entry is missing, malformed, or deletion fails, the flow
     aborts with a `shinyOAuth_state_error`
   - Audit events are emitted on failures (e.g.,
-    `audit_state_store_lookup_failed`,
-    `audit_state_store_removal_failed`)
+    `state_store_lookup_failed`, `state_store_removal_failed`)
 - Verify that user’s browser token matches the previously stored browser
   token
 - Ensure PKCE components are available when required
@@ -135,13 +134,12 @@ style: HTTP Basic header (`client_secret_basic`), body params
 
 When successful, the package also applies two safety rails:
 
-- If the token response includes `scope`, all scopes requested by the
-  client must be present in the granted set; otherwise the flow fails
-  fast to avoid downstream surprises
-- If the token response includes `token_type`, and the provider was
-  configured with `allowed_token_types`, the `token_type` must be
-  present in the response and be one of the allowed types (e.g.,
-  `Bearer`). Failure aborts the flow
+- If the token response includes `scope`, shinyOAuth can reconcile it
+  against the requested scopes (defaults to strict enforcement;
+  configurable via the client `scope_validation` setting)
+- If the provider was configured with a non-empty `allowed_token_types`,
+  the token response must include `token_type` and its value must be one
+  of the allowed types (case-insensitive, e.g., `Bearer`)
 
 ### 9. Fetch userinfo (optional)
 
@@ -155,8 +153,10 @@ claims. If this request fails, the flow aborts with an error.
 When using `oauth_provider(id_token_validation = TRUE)`, the following
 verifications are performed:
 
-- Signature: verified against provider JWKS (with optional thumbprint
-  pinning) for RS256/ES256; HS256 only with explicit opt-in and
+- Signature: verified against provider JWKS (with optional pinning) for
+  standard asymmetric algorithms (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA).
+  HMAC algorithms (HS256/384/512) are only allowed with explicit opt-in
+  (`options(shinyOAuth.allow_hs = TRUE)`) and a sufficiently strong
   server-held secret
 - Claims: `iss` matches expected issuer; `aud` vector contains
   `client_id`; `sub` present; `iat` is required and must be a single
@@ -165,7 +165,7 @@ verifications are performed:
   future are rejected
 - Header `typ` (when present): must indicate a JWT (`JWT`,
   case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID
-  tokens.
+  tokens
 - Nonce: must match the previously stored value (if configured)
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token
@@ -195,7 +195,8 @@ JavaScript. Optionally, the page title may also be adjusted (see the
 `tab_title_` arguments in
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)).
 
-The browser token cookie is also cleared to allow a fresh future flow.
+The browser token cookie is also cleared and immediately re-issued with
+a fresh value, so a future flow can start with a new per-session token.
 
 ### 13. Post-flow session management
 
@@ -219,33 +220,31 @@ provider’s token endpoint and updates the `OAuthToken` object. This
 works as follows:
 
 - A token request is sent with `grant_type=refresh_token` and the
-  current `refresh_token`.
+  current `refresh_token`
 - The response must include a new `access_token`. `expires_at` is
-  updated from `expires_in` when present.
-- The response must include a new `access_token`. `expires_at` is
-  updated from `expires_in` when present; otherwise it is set to `Inf`.
+  updated from `expires_in` when present; otherwise it is set to `Inf`
 - If the provider rotates the refresh token (returns a new
-  `refresh_token`), it is stored; otherwise the original is preserved.
+  `refresh_token`), it is stored; otherwise the original is preserved
 - If `oauth_provider(userinfo_required = TRUE)`, userinfo is re-fetched
-  using the fresh access token.
+  using the fresh access token
 
 With respect to OIDC ID token handling:
 
 - Per OIDC Core Section 12.2, refresh responses may omit `id_token`.
   When omitted, the original `id_token` from the initial login is
-  preserved. Thus, a refresh does not necessarily revalidate identity.
+  preserved. Thus, a refresh does not necessarily revalidate identity
 - If the provider does return an `id_token` during refresh, shinyOAuth
   enforces OIDC 12.2 subject continuity: the refresh-returned `id_token`
-  must have the same `sub` as the original `id_token` from login.
+  must have the same `sub` as the original `id_token` from login
   - If an original `id_token` did not exist in the session, and the
     refresh does return one, the refresh fails (cannot establish subject
-    claim match with no baseline).
+    claim match with no baseline)
   - If `id_token_validation = TRUE`, the refresh-returned `id_token` is
     fully validated (signature + claims); the `sub` claim match is
-    enforced as part of validation.
+    enforced as part of validation
   - If `id_token_validation = FALSE`, shinyOAuth still enforces the
     `sub` match by parsing the JWT payload (ensuring that the `sub`
-    claim still matches but without full validation).
+    claim still matches but without full validation)
 
 If refresh fails inside
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),

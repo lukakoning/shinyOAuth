@@ -188,8 +188,8 @@ configured state store
 aborts with a <code>shinyOAuth_state_error</code>
 </li>
 <li>Audit events are emitted on failures (e.g.,
-<code>audit_state_store_lookup_failed</code>,
-<code>audit_state_store_removal_failed</code>)</li>
+<code>state_store_lookup_failed</code>,
+<code>state_store_removal_failed</code>)</li>
 </ul>
 </li>
 <li>Verify that user’s browser token matches the previously stored
@@ -218,14 +218,14 @@ configured. The response must include at least
 flow.</p>
 <p>When successful, the package also applies two safety rails:</p>
 <ul>
-<li>If the token response includes <code>scope</code>, all scopes
-requested by the client must be present in the granted set; otherwise
-the flow fails fast to avoid downstream surprises</li>
-<li>If the token response includes <code>token_type</code>, and the
-provider was configured with <code>allowed_token_types</code>, the
-<code>token_type</code> must be present in the response and be one of
-the allowed types (e.g., <code>Bearer</code>). Failure aborts the
-flow</li>
+<li>If the token response includes <code>scope</code>, shinyOAuth can
+reconcile it against the requested scopes (defaults to strict
+enforcement; configurable via the client <code>scope_validation</code>
+setting)</li>
+<li>If the provider was configured with a non-empty
+<code>allowed_token_types</code>, the token response must include
+<code>token_type</code> and its value must be one of the allowed types
+(case-insensitive, e.g., <code>Bearer</code>)</li>
 </ul>
 </div>
 <div class="section level3">
@@ -243,9 +243,11 @@ If this request fails, the flow aborts with an error.</p>
 <p>When using <code>oauth_provider(id_token_validation = TRUE)</code>,
 the following verifications are performed:</p>
 <ul>
-<li>Signature: verified against provider JWKS (with optional thumbprint
-pinning) for RS256/ES256; HS256 only with explicit opt-in and
-server-held secret</li>
+<li>Signature: verified against provider JWKS (with optional pinning)
+for standard asymmetric algorithms (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA).
+HMAC algorithms (HS256/384/512) are only allowed with explicit opt-in
+(<code>options(shinyOAuth.allow_hs = TRUE)</code>) and a sufficiently
+strong server-held secret</li>
 <li>Claims: <code>iss</code> matches expected issuer; <code>aud</code>
 vector contains <code>client_id</code>; <code>sub</code> present;
 <code>iat</code> is required and must be a single finite numeric;
@@ -254,7 +256,7 @@ optional) are evaluated with a small configurable leeway; tokens issued
 in the future are rejected</li>
 <li>Header <code>typ</code> (when present): must indicate a JWT
 (<code>JWT</code>, case-insensitive). Other values (e.g.,
-<code>at+jwt</code>) are rejected for ID tokens.</li>
+<code>at+jwt</code>) are rejected for ID tokens</li>
 <li>Nonce: must match the previously stored value (if configured)</li>
 <li>Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
@@ -294,8 +296,9 @@ and avoid leaking sensitive data, these values are removed from the
 address bar with JavaScript. Optionally, the page title may also be
 adjusted (see the <code>tab_title_</code> arguments in
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>).</p>
-<p>The browser token cookie is also cleared to allow a fresh future
-flow.</p>
+<p>The browser token cookie is also cleared and immediately re-issued
+with a fresh value, so a future flow can start with a new per-session
+token.</p>
 </div>
 <div class="section level3">
 <h3 id="post-flow-session-management">13. Post-flow session management<a class="anchor" aria-label="anchor" href="#post-flow-session-management"></a>
@@ -320,40 +323,39 @@ token grant against the provider’s token endpoint and updates the
 <code>OAuthToken</code> object. This works as follows:</p>
 <ul>
 <li>A token request is sent with <code>grant_type=refresh_token</code>
-and the current <code>refresh_token</code>.</li>
+and the current <code>refresh_token</code>
+</li>
 <li>The response must include a new <code>access_token</code>.
 <code>expires_at</code> is updated from <code>expires_in</code> when
-present.</li>
-<li>The response must include a new <code>access_token</code>.
-<code>expires_at</code> is updated from <code>expires_in</code> when
-present; otherwise it is set to <code>Inf</code>.</li>
+present; otherwise it is set to <code>Inf</code>
+</li>
 <li>If the provider rotates the refresh token (returns a new
 <code>refresh_token</code>), it is stored; otherwise the original is
-preserved.</li>
+preserved</li>
 <li>If <code>oauth_provider(userinfo_required = TRUE)</code>, userinfo
-is re-fetched using the fresh access token.</li>
+is re-fetched using the fresh access token</li>
 </ul>
 <p>With respect to OIDC ID token handling:</p>
 <ul>
 <li>Per OIDC Core Section 12.2, refresh responses may omit
 <code>id_token</code>. When omitted, the original <code>id_token</code>
 from the initial login is preserved. Thus, a refresh does not
-necessarily revalidate identity.</li>
+necessarily revalidate identity</li>
 <li>If the provider does return an <code>id_token</code> during refresh,
 shinyOAuth enforces OIDC 12.2 subject continuity: the refresh-returned
 <code>id_token</code> must have the same <code>sub</code> as the
-original <code>id_token</code> from login.
+original <code>id_token</code> from login
 <ul>
 <li>If an original <code>id_token</code> did not exist in the session,
 and the refresh does return one, the refresh fails (cannot establish
-subject claim match with no baseline).</li>
+subject claim match with no baseline)</li>
 <li>If <code>id_token_validation = TRUE</code>, the refresh-returned
 <code>id_token</code> is fully validated (signature + claims); the
-<code>sub</code> claim match is enforced as part of validation.</li>
+<code>sub</code> claim match is enforced as part of validation</li>
 <li>If <code>id_token_validation = FALSE</code>, shinyOAuth still
 enforces the <code>sub</code> match by parsing the JWT payload (ensuring
 that the <code>sub</code> claim still matches but without full
-validation).</li>
+validation)</li>
 </ul>
 </li>
 </ul>
