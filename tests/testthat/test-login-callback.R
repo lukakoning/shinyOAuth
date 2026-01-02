@@ -187,6 +187,58 @@ test_that("handle_callback rejects oversized authorization code", {
   )
 })
 
+test_that("handle_callback rejects oversized payload before hashing/auditing", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  digested <- FALSE
+  testthat::with_mocked_bindings(
+    string_digest = function(x) {
+      digested <<- TRUE
+      "digest"
+    },
+    .package = "shinyOAuth",
+    {
+      expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = strrep("a", 9000),
+          browser_token = valid_browser_token()
+        ),
+        class = "shinyOAuth_state_error",
+        regexp = "Callback query parameter 'state'|exceeded maximum length"
+      )
+    }
+  )
+  expect_false(digested)
+})
+
+test_that("handle_callback rejects oversized browser_token before hashing/auditing", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  digested <- FALSE
+  testthat::with_mocked_bindings(
+    string_digest = function(x) {
+      digested <<- TRUE
+      "digest"
+    },
+    .package = "shinyOAuth",
+    {
+      expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = "x",
+          browser_token = strrep("b", 300)
+        ),
+        class = "shinyOAuth_state_error",
+        regexp = "Callback query parameter 'browser_token'|exceeded maximum length"
+      )
+    }
+  )
+  expect_false(digested)
+})
+
 test_that("state store is single-use during handle_callback", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   tok <- valid_browser_token()
