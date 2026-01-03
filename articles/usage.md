@@ -435,7 +435,9 @@ are intended for local testing only. Use
 at startup to fail fast if softening flags are enabled in an environment
 where they should not be.
 
-### State envelope size caps
+### Size caps
+
+#### State envelope
 
 - `options(shinyOAuth.state_max_token_chars = 8192)` – maximum allowed
   length of the base64url-encoded `state` query parameter
@@ -448,6 +450,23 @@ where they should not be.
 
 These prevent maliciously large state parameters from causing excessive
 CPU or memory usage during decoding and decryption.
+
+#### Callback query
+
+- `options(shinyOAuth.callback_max_code_bytes = 4096)` – maximum byte
+  length of the `code` query parameter
+- `options(shinyOAuth.callback_max_state_bytes = 8192)` – maximum byte
+  length of the `state` query parameter (outer token string)
+- `options(shinyOAuth.callback_max_error_bytes = 256)` – maximum byte
+  length of the `error` query parameter
+- `options(shinyOAuth.callback_max_error_description_bytes = 4096)` –
+  maximum byte length of the `error_description` query parameter
+- `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum
+  byte length of the `browser_token` argument accepted by
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+
+These apply before any hashing/auditing/state parsing, and exist to
+prevent memory/log amplification from extremely large callback URLs.
 
 ## Browser cookie & preventing XSS
 

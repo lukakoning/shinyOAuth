@@ -523,8 +523,11 @@ and are intended for local testing only. Use
 flags are enabled in an environment where they should not be.</p>
 </div>
 <div class="section level3">
-<h3 id="state-envelope-size-caps">State envelope size caps<a class="anchor" aria-label="anchor" href="#state-envelope-size-caps"></a>
+<h3 id="size-caps">Size caps<a class="anchor" aria-label="anchor" href="#size-caps"></a>
 </h3>
+<div class="section level4">
+<h4 id="state-envelope">State envelope<a class="anchor" aria-label="anchor" href="#state-envelope"></a>
+</h4>
 <ul>
 <li>
 <code>options(shinyOAuth.state_max_token_chars = 8192)</code> –
@@ -545,6 +548,34 @@ decrypt</li>
 </ul>
 <p>These prevent maliciously large state parameters from causing
 excessive CPU or memory usage during decoding and decryption.</p>
+</div>
+<div class="section level4">
+<h4 id="callback-query">Callback query<a class="anchor" aria-label="anchor" href="#callback-query"></a>
+</h4>
+<ul>
+<li>
+<code>options(shinyOAuth.callback_max_code_bytes = 4096)</code> –
+maximum byte length of the <code>code</code> query parameter</li>
+<li>
+<code>options(shinyOAuth.callback_max_state_bytes = 8192)</code> –
+maximum byte length of the <code>state</code> query parameter (outer
+token string)</li>
+<li>
+<code>options(shinyOAuth.callback_max_error_bytes = 256)</code> –
+maximum byte length of the <code>error</code> query parameter</li>
+<li>
+<code>options(shinyOAuth.callback_max_error_description_bytes = 4096)</code>
+– maximum byte length of the <code>error_description</code> query
+parameter</li>
+<li>
+<code>options(shinyOAuth.callback_max_browser_token_bytes = 256)</code>
+– maximum byte length of the <code>browser_token</code> argument
+accepted by <code><a href="../reference/handle_callback.html">handle_callback()</a></code>
+</li>
+</ul>
+<p>These apply before any hashing/auditing/state parsing, and exist to
+prevent memory/log amplification from extremely large callback URLs.</p>
+</div>
 </div>
 </div>
 <div class="section level2">
