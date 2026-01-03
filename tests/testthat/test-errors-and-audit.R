@@ -143,6 +143,32 @@ test_that("redact_query_string handles empty/null input gracefully", {
   expect_equal(shinyOAuth:::redact_query_string(""), "")
 })
 
+test_that("redact_query_string handles repeated keys", {
+  qs <- "code=a&code=b&state=x&state=y&safe=1&safe=2"
+
+  expect_no_error({
+    result <- shinyOAuth:::redact_query_string(qs)
+  })
+
+  result <- shinyOAuth:::redact_query_string(qs)
+
+  # Should not leak sensitive values
+  expect_false(grepl("code=a", result, fixed = TRUE))
+  expect_false(grepl("code=b", result, fixed = TRUE))
+  expect_false(grepl("state=x", result, fixed = TRUE))
+  expect_false(grepl("state=y", result, fixed = TRUE))
+
+  # Should redact each occurrence
+  code_hits <- gregexpr("code=%5BREDACTED%5D", result, fixed = TRUE)[[1]]
+  state_hits <- gregexpr("state=%5BREDACTED%5D", result, fixed = TRUE)[[1]]
+  expect_equal(if (code_hits[[1]] == -1) 0 else length(code_hits), 2)
+  expect_equal(if (state_hits[[1]] == -1) 0 else length(state_hits), 2)
+
+  # Non-sensitive repeated params should remain
+  expect_match(result, "safe=1")
+  expect_match(result, "safe=2")
+})
+
 test_that("redact_headers removes cookie and authorization", {
   hdrs <- list(
     cookie = "session=abc123",

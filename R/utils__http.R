@@ -401,7 +401,12 @@ redact_query_string <- function(qs) {
   param_names_lower <- tolower(names(parsed))
   for (i in seq_along(parsed)) {
     if (param_names_lower[[i]] %in% sensitive_params) {
-      parsed[[i]] <- "[REDACTED]"
+      n <- length(parsed[[i]])
+      parsed[[i]] <- if (is.null(n) || n == 0) {
+        "[REDACTED]"
+      } else {
+        rep("[REDACTED]", n)
+      }
     }
   }
 
@@ -410,17 +415,21 @@ redact_query_string <- function(qs) {
   if (length(parsed) == 0) {
     return("")
   }
-  parts <- vapply(
-    names(parsed),
-    function(nm) {
-      val <- parsed[[nm]]
+  nms <- names(parsed)
+  parts <- unlist(
+    lapply(seq_along(parsed), function(i) {
+      nm <- nms[[i]]
+      val <- parsed[[i]]
+
       if (is.null(val) || length(val) == 0) {
-        nm
-      } else {
-        paste0(nm, "=", utils::URLencode(as.character(val), reserved = TRUE))
+        return(nm)
       }
-    },
-    character(1)
+
+      val_chr <- as.character(val)
+      val_chr[is.na(val_chr)] <- ""
+      paste0(nm, "=", utils::URLencode(val_chr, reserved = TRUE))
+    }),
+    use.names = FALSE
   )
   paste(parts, collapse = "&")
 }
