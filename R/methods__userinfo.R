@@ -62,7 +62,71 @@ get_userinfo <- function(
   }
 
   # Parse from response
-  ui <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+  if (inherits(ui, "try-error")) {
+    # Extract non-sensitive context to aid debugging without leaking tokens
+    url <- try(httr2::resp_url(resp), silent = TRUE)
+    if (inherits(url, "try-error")) {
+      url <- NA_character_
+    }
+    status <- try(httr2::resp_status(resp), silent = TRUE)
+    if (inherits(status, "try-error")) {
+      status <- NA_integer_
+    }
+    headers <- try(httr2::resp_headers(resp), silent = TRUE)
+    ct <- NA_character_
+    if (!inherits(headers, "try-error") && is.list(headers)) {
+      ct <- headers[["content-type"]] %||% NA_character_
+    }
+    body_str <- try(httr2::resp_body_string(resp), silent = TRUE)
+    if (inherits(body_str, "try-error")) {
+      body_str <- NA_character_
+    }
+    body_digest <- NA_character_
+    if (is_valid_string(body_str)) {
+      dig <- try(openssl::sha256(charToRaw(body_str)), silent = TRUE)
+      if (!inherits(dig, "try-error")) {
+        body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
+      }
+    }
+
+    # Emit audit event even on parse failures
+    try(
+      audit_event(
+        "userinfo",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          sub_digest = NA_character_,
+          status = "parse_error",
+          http_status = status,
+          url = url,
+          content_type = ct,
+          body_digest = body_digest
+        )
+      ),
+      silent = TRUE
+    )
+
+    err_userinfo(
+      c(
+        "x" = "Failed to parse userinfo response as JSON",
+        "!" = conditionMessage(attr(ui, "condition")),
+        "i" = if (is_valid_string(ct)) paste0("Content-Type: ", ct) else NULL,
+        "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
+        "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
+      ),
+      context = list(
+        phase = "userinfo",
+        parse = "json",
+        http_status = status,
+        url = url,
+        content_type = ct,
+        body_digest = body_digest
+      )
+    )
+  }
 
   # Emit audit event for userinfo fetch (redacted)
   subject <- try(oauth_client@provider@userinfo_id_selector(ui), silent = TRUE)
@@ -76,7 +140,8 @@ get_userinfo <- function(
         provider = oauth_client@provider@name %||% NA_character_,
         issuer = oauth_client@provider@issuer %||% NA_character_,
         client_id_digest = string_digest(oauth_client@client_id),
-        sub_digest = string_digest(subject)
+        sub_digest = string_digest(subject),
+        status = "ok"
       )
     ),
     silent = TRUE
