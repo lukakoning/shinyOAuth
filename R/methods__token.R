@@ -152,7 +152,7 @@ revoke_token <- function(
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params$client_assertion <- build_client_assertion(
       oauth_client,
-      aud = url
+      aud = resolve_client_assertion_audience(oauth_client, req)
     )
   } else {
     err_config(
@@ -237,8 +237,9 @@ revoke_token <- function(
 #'  - "body": form fields `client_id` and (when available) `client_secret`.
 #'  - "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
 #'    is generated (RFC 7523) and sent via `client_assertion_type` and
-#'    `client_assertion`, with `aud` set to the provider's
-#'    `introspection_url`.
+#'    `client_assertion`, with `aud` resolved via
+#'    `resolve_client_assertion_audience()` (so `client_assertion_audience`
+#'    overrides are honored).
 #'
 #' @details
 #' Best-effort semantics:
@@ -416,7 +417,7 @@ introspect_token <- function(
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params$client_assertion <- build_client_assertion(
       oauth_client,
-      aud = url
+      aud = resolve_client_assertion_audience(oauth_client, req)
     )
   } else {
     err_config(

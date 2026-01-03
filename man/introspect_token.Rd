@@ -42,8 +42,9 @@ Authentication to the introspection endpoint mirrors the provider's
 \item "body": form fields \code{client_id} and (when available) \code{client_secret}.
 \item "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
 is generated (RFC 7523) and sent via \code{client_assertion_type} and
-\code{client_assertion}, with \code{aud} set to the provider's
-\code{introspection_url}.
+\code{client_assertion}, with \code{aud} resolved via
+\code{resolve_client_assertion_audience()} (so \code{client_assertion_audience}
+overrides are honored).
 }
 }
 \details{
