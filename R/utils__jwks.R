@@ -18,7 +18,7 @@
 #' @param pins Optional character vector of JWK thumbprints (base64url, RFC 7638)
 #'  to pin against
 #' @param pin_mode Either "any" (at least one key matches a pin) or "all"
-#'  (every RSA/EC key must match a pin)
+#'  (every RSA/EC/OKP key must match a pin)
 #'
 #' @return The JWKS as a list
 #'
@@ -353,7 +353,7 @@ compute_jwk_thumbprint <- function(jwk) {
 #' @param pins Optional character vector of JWK thumbprints (base64url, RFC 7638)
 #'   to pin against.
 #' @param pin_mode Either "any" (at least one key matches a pin) or "all"
-#'   (every RSA/EC key must match a pin).
+#'   (every RSA/EC/OKP key must match a pin).
 #'
 #' @keywords internal
 #' @noRd

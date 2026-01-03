@@ -122,7 +122,7 @@
 #'   Use to reduce key substitution risks by pre-authorizing expected keys
 #' @param jwks_pin_mode Pinning policy when `jwks_pins` is provided. Either
 #'   "any" (default; at least one key in JWKS must match) or "all" (every
-#'   RSA/EC public key in JWKS must match one of the configured pins)
+#'   RSA/EC/OKP public key in JWKS must match one of the configured pins)
 #' @param jwks_host_issuer_match When TRUE, enforce that the discovery `jwks_uri` host
 #'   matches the issuer host (or a subdomain). Defaults to FALSE at the class
 #'   level, but helper constructors for OIDC (e.g., [oauth_provider_oidc()] and
