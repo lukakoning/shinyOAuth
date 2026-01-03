@@ -387,7 +387,12 @@ test_that("introspect_elements can require scopes", {
 
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600, token_type = "Bearer")
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "openid profile"
+      )
     },
     req_with_retry = function(req) {
       httr2::response(
@@ -422,7 +427,12 @@ test_that("introspect_elements can require scopes", {
   encw <- parse_query_param(urlw, "state")
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600, token_type = "Bearer")
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "openid profile"
+      )
     },
     req_with_retry = function(req) {
       httr2::response(
@@ -457,7 +467,12 @@ test_that("introspect_elements can require scopes", {
   encn <- parse_query_param(urln, "state")
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600, token_type = "Bearer")
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "openid profile"
+      )
     },
     req_with_retry = function(req) {
       httr2::response(
@@ -484,7 +499,12 @@ test_that("introspect_elements can require scopes", {
   enc2 <- parse_query_param(url2, "state")
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600, token_type = "Bearer")
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "openid profile"
+      )
     },
     req_with_retry = function(req) {
       httr2::response(

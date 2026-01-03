@@ -1135,51 +1135,27 @@ verify_token_set <- function(
   }
 
   # Scope reconciliation --------------------------------------------------------
-  # If the provider returned granted scopes, check if requested scopes are present.
+  # If requested scopes exist, verify the provider returned them (or a superset).
   # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
   # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
+  # Note: Some providers omit scope from the token response entirely. In strict
+  # mode this is treated as an error (we cannot verify scopes were granted);
+  # in warn mode we issue a warning.
   scope_validation_mode <- client@scope_validation %||% "strict"
   requested_scopes <- as.character(client@scopes %||% character())
+  requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
+
   if (
     !identical(scope_validation_mode, "none") &&
-      length(requested_scopes) > 0 &&
-      !is.null(token_set$scope)
+      length(requested_scopes) > 0
   ) {
-    granted_raw <- token_set$scope
-    # Providers may return space- or comma-separated scopes; normalize to vector
-    if (length(granted_raw) == 1L) {
-      # Prefer space separation per RFC; fall back to comma when spaces absent
-      if (
-        grepl(",", granted_raw, fixed = TRUE) &&
-          !grepl(" ", granted_raw, fixed = TRUE)
-      ) {
-        granted <- unlist(
-          strsplit(granted_raw, ",", fixed = TRUE),
-          use.names = FALSE
-        )
-      } else {
-        granted <- unlist(
-          strsplit(granted_raw, " ", fixed = TRUE),
-          use.names = FALSE
-        )
-      }
-    } else {
-      granted <- as.character(granted_raw)
-    }
-    granted <- sort(unique(granted[nzchar(granted)]))
-    requested <- sort(unique(as.character(requested_scopes[nzchar(
-      requested_scopes
-    )])))
-    missing <- setdiff(requested, granted)
-    if (length(missing) > 0) {
-      msg <- paste0(
-        "Granted scopes missing requested entries: ",
-        paste(missing, collapse = ", ")
-      )
+    if (is.null(token_set$scope)) {
+      # Provider did not return scope — we cannot verify requested scopes were granted
+      msg <- "Token response missing scope; cannot verify requested scopes were granted"
       if (identical(scope_validation_mode, "strict")) {
         err_token(c(
           "x" = msg,
-          "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+          "i" = "Set scope_validation = 'warn' or 'none' to allow missing scope in response"
         ))
       } else if (identical(scope_validation_mode, "warn")) {
         rlang::warn(
@@ -1188,8 +1164,53 @@ verify_token_set <- function(
             "i" = "Set scope_validation = 'none' to suppress this warning"
           ),
           .frequency = "once",
-          .frequency_id = "scope-validation-missing-scopes"
+          .frequency_id = "scope-validation-missing-scope"
         )
+      }
+    } else {
+      granted_raw <- token_set$scope
+      # Providers may return space- or comma-separated scopes; normalize to vector
+      if (length(granted_raw) == 1L) {
+        # Prefer space separation per RFC; fall back to comma when spaces absent
+        if (
+          grepl(",", granted_raw, fixed = TRUE) &&
+            !grepl(" ", granted_raw, fixed = TRUE)
+        ) {
+          granted <- unlist(
+            strsplit(granted_raw, ",", fixed = TRUE),
+            use.names = FALSE
+          )
+        } else {
+          granted <- unlist(
+            strsplit(granted_raw, " ", fixed = TRUE),
+            use.names = FALSE
+          )
+        }
+      } else {
+        granted <- as.character(granted_raw)
+      }
+      granted <- sort(unique(granted[nzchar(granted)]))
+      missing <- setdiff(requested_scopes, granted)
+      if (length(missing) > 0) {
+        msg <- paste0(
+          "Granted scopes missing requested entries: ",
+          paste(missing, collapse = ", ")
+        )
+        if (identical(scope_validation_mode, "strict")) {
+          err_token(c(
+            "x" = msg,
+            "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+          ))
+        } else if (identical(scope_validation_mode, "warn")) {
+          rlang::warn(
+            c(
+              "!" = msg,
+              "i" = "Set scope_validation = 'none' to suppress this warning"
+            ),
+            .frequency = "once",
+            .frequency_id = "scope-validation-missing-scopes"
+          )
+        }
       }
     }
   }

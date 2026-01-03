@@ -144,7 +144,9 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
     redirect_uri = "http://localhost:8100",
     scopes = c("openid"),
     # Intentionally differ from token_url to verify override is respected
-    client_assertion_audience = "https://example.com/token/"
+    client_assertion_audience = "https://example.com/token/",
+    # Disable scope validation since this test is about JWT assertions
+    scope_validation = "none"
   )
 
   captured <- NULL
@@ -162,10 +164,11 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"at","expires_in":3600,"token_type":"Bearer","refresh_token":"rt"}'
+          '{"access_token":"at","expires_in":3600,"token_type":"Bearer","refresh_token":"rt","scope":"openid"}'
         )
       )
-    }
+    },
+    .package = "shinyOAuth"
   )
 
   ts <- shinyOAuth:::swap_code_for_token_set(
@@ -201,10 +204,11 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"at-new","expires_in":3600,"token_type":"Bearer"}'
+          '{"access_token":"at-new","expires_in":3600,"token_type":"Bearer","scope":"openid"}'
         )
       )
-    }
+    },
+    .package = "shinyOAuth"
   )
 
   tok2 <- refresh_token(cli, tok, async = FALSE, introspect = FALSE)
