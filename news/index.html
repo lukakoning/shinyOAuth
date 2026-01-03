@@ -72,6 +72,10 @@
 <li><p>Added hints in error messages when sealed state payload decryption fails.</p></li>
 <li><p>Immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm but <code>allow_symmetric_alg</code> is not enabled; also immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm and ID token verification can happen but <code>client_secret</code> is absent or too weak.</p></li>
 </ul></div>
+<div class="section level4">
+<h4 id="other-development-version">Other<a class="anchor" aria-label="anchor" href="#other-development-version"></a></h4>
+<ul><li>When fetching JWKS, if <code>key_ops</code> is present on keys, only keys with <code>key_ops</code> including <code>"verify"</code> are considered.</li>
+</ul></div>
 </div>
 <div class="section level3">
 <h3 id="fixed-development-version">Fixed<a class="anchor" aria-label="anchor" href="#fixed-development-version"></a></h3>
