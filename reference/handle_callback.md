@@ -13,8 +13,6 @@ handle_callback(
   browser_token,
   decrypted_payload = NULL,
   state_store_values = NULL,
-  introspect = FALSE,
-  introspect_elements = character(0),
   shiny_session = NULL
 )
 ```
@@ -61,28 +59,6 @@ handle_callback(
   provided values instead. This supports async flows that prefetch and
   remove the single-use state entry on the main thread to avoid
   cross-process cache visibility issues.
-
-- introspect:
-
-  If TRUE, the login flow will call the provider's token introspection
-  endpoint (RFC 7662) to validate the access token. The login is not
-  considered complete unless introspection succeeds and returns
-  `active = TRUE`. Default FALSE.
-
-- introspect_elements:
-
-  Optional character vector of additional requirements to enforce on the
-  introspection response when `introspect = TRUE`. Supported values:
-
-  - "sub": require an RFC 7662 `sub` field and require it to match the
-    identity from the ID token (preferred) or userinfo (fallback).
-
-  - "client_id": require an RFC 7662 `client_id` field matching
-    `oauth_client@client_id`.
-
-  - "scope": require an RFC 7662 `scope` field and require it to include
-    all scopes requested by `oauth_client@scopes`. Default is
-    `character(0)` (no extra requirements beyond `active = TRUE`).
 
 - shiny_session:
 
