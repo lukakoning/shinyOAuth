@@ -248,6 +248,8 @@ test_that("build_http_summary returns sanitized output", {
     HTTP_HOST = "example.com",
     HTTP_COOKIE = "session=secret123",
     HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_PROXY_AUTHORIZATION = "Basic proxysecret123",
+    HTTP_WWW_AUTHENTICATE = "Bearer realm=example",
     HTTP_USER_AGENT = "TestClient/1.0",
     HTTP_X_FORWARDED_FOR = "192.168.1.1"
   )
@@ -258,6 +260,8 @@ test_that("build_http_summary returns sanitized output", {
   expect_no_match(result$query_string, "mystate")
   expect_null(result$headers$cookie)
   expect_null(result$headers$authorization)
+  expect_null(result$headers$proxy_authorization)
+  expect_null(result$headers$www_authenticate)
   expect_equal(result$headers$x_forwarded_for, "[REDACTED]")
   # Safe values should remain
   expect_equal(result$headers$user_agent, "TestClient/1.0")
@@ -273,6 +277,8 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     HTTP_HOST = "example.com",
     HTTP_COOKIE = "session=secret123",
     HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_PROXY_AUTHORIZATION = "Basic proxysecret123",
+    HTTP_WWW_AUTHENTICATE = "Bearer realm=example",
     HTTP_USER_AGENT = "TestClient/1.0",
     HTTP_X_FORWARDED_FOR = "192.168.1.1"
   )
@@ -286,6 +292,8 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     expect_match(result$query_string, "mystate")
     expect_equal(result$headers$cookie, "session=secret123")
     expect_equal(result$headers$authorization, "Bearer token123")
+    expect_equal(result$headers$proxy_authorization, "Basic proxysecret123")
+    expect_equal(result$headers$www_authenticate, "Bearer realm=example")
     expect_equal(result$headers$x_forwarded_for, "192.168.1.1")
     expect_equal(result$headers$user_agent, "TestClient/1.0")
   })

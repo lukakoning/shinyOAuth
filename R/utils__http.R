@@ -452,7 +452,10 @@ redact_headers <- function(hdrs) {
   remove_headers <- c(
     "cookie",
     "set_cookie",
-    "authorization"
+    "authorization",
+    "proxy_authorization",
+    "proxy_authenticate",
+    "www_authenticate"
   )
 
   # Headers to redact (contain potentially sensitive routing/client info)
