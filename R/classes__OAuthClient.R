@@ -120,6 +120,26 @@
 #'     missing.
 #'   - `"none"`: Skips scope validation entirely.
 #'
+#' @param introspect If TRUE, the login flow will call the provider's token
+#'   introspection endpoint (RFC 7662) to validate the access token. The login
+#'   is not considered complete unless introspection succeeds and returns
+#'   `active = TRUE`; otherwise the login fails and `authenticated` remains
+#'   FALSE. Default is FALSE. Requires the provider to have an
+#'   `introspection_url` configured.
+#'
+#' @param introspect_elements Optional character vector of additional
+#'   requirements to enforce on the introspection response when
+#'   `introspect = TRUE`. Supported values:
+#'   - `"sub"`: require the introspected `sub` to match the session subject
+#'     (from ID token `sub` when available, else from userinfo `sub`).
+#'   - `"client_id"`: require the introspected `client_id` to match your OAuth
+#'     client id.
+#'   - `"scope"`: validate introspected `scope` against requested scopes
+#'     (respects the client's `scope_validation` mode).
+#'   Default is `character(0)`.
+#'   (Note that not all providers may return each of these fields in
+#'   introspection responses.)
+#'
 #' @example inst/examples/oauth_module_server.R
 #'
 #' @export
@@ -162,7 +182,18 @@ OAuthClient <- S7::new_class(
       S7::class_any,
       default = quote(random_urlsafe(n = 128))
     ),
-    scope_validation = S7::new_property(S7::class_character, default = "strict")
+    scope_validation = S7::new_property(
+      S7::class_character,
+      default = "strict"
+    ),
+
+    # Token introspection settings (RFC 7662): control whether login validates
+    # the access token via the provider's introspection endpoint.
+    introspect = S7::new_property(S7::class_logical, default = FALSE),
+    introspect_elements = S7::new_property(
+      S7::class_character,
+      default = character(0)
+    )
   ),
   validator = function(self) {
     warn_about_oauth_client_created_in_shiny(state_key_missing = NA)
@@ -433,6 +464,57 @@ OAuthClient <- S7::new_class(
         "OAuthClient: scope_validation must be one of 'strict', 'warn', or 'none'"
       )
     }
+
+    # Validate introspect
+    if (
+      !is.logical(self@introspect) ||
+        length(self@introspect) != 1L ||
+        is.na(self@introspect)
+    ) {
+      return("OAuthClient: introspect must be TRUE or FALSE (non-NA)")
+    }
+
+    # Validate introspect_elements
+    ie <- self@introspect_elements
+    if (!is.character(ie)) {
+      return("OAuthClient: introspect_elements must be a character vector")
+    }
+    if (anyNA(ie)) {
+      return("OAuthClient: introspect_elements must not contain NA")
+    }
+    if (!all(nzchar(ie))) {
+      return("OAuthClient: introspect_elements must not contain empty strings")
+    }
+    ie <- unique(ie)
+    if (!isTRUE(self@introspect) && length(ie) > 0) {
+      return(
+        "OAuthClient: introspect_elements was provided but introspect = FALSE; set introspect = TRUE or pass introspect_elements = character(0)"
+      )
+    }
+    if (isTRUE(self@introspect) && length(ie) > 0) {
+      allowed_ie <- c("sub", "client_id", "scope")
+      bad <- setdiff(ie, allowed_ie)
+      if (length(bad) > 0) {
+        return(
+          paste0(
+            "OAuthClient: invalid introspect_elements value(s): ",
+            paste(bad, collapse = ", "),
+            "; allowed: ",
+            paste(allowed_ie, collapse = ", ")
+          )
+        )
+      }
+    }
+
+    # Fail fast: introspect = TRUE requires introspection_url
+    if (isTRUE(self@introspect)) {
+      introspection_url <- self@provider@introspection_url %||% NA_character_
+      if (!is_valid_string(introspection_url)) {
+        return(
+          "OAuthClient: introspect = TRUE requires the provider to have an introspection_url configured"
+        )
+      }
+    }
   }
 )
 
@@ -502,10 +584,11 @@ oauth_client <- function(
   state_key = random_urlsafe(128),
   client_private_key = NULL,
   client_private_key_kid = NULL,
-
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
-  scope_validation = c("strict", "warn", "none")
+  scope_validation = c("strict", "warn", "none"),
+  introspect = FALSE,
+  introspect_elements = character(0)
 ) {
   warn_about_oauth_client_created_in_shiny(
     state_key_missing = missing(state_key)
@@ -527,6 +610,8 @@ oauth_client <- function(
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
-    scope_validation = scope_validation
+    scope_validation = scope_validation,
+    introspect = introspect,
+    introspect_elements = introspect_elements
   )
 }

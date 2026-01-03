@@ -1,40 +1,58 @@
-test_that("oauth_module_server validates introspection args", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+test_that("OAuthClient validates introspection args", {
+  base_provider <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
 
+  # introspect = TRUE requires introspection_url
   testthat::expect_error(
-    shinyOAuth::oauth_module_server(
-      "oauth",
-      client = cli,
+    shinyOAuth::oauth_client(
+      provider = base_provider,
+      client_id = "abc",
+      client_secret = "xyz",
+      redirect_uri = "https://localhost:8100/callback",
       introspect = TRUE,
       introspect_elements = character(0)
     ),
-    class = "shinyOAuth_config_error",
     regexp = "introspection_url"
   )
 
+  # introspect_elements with introspect = FALSE is an error
   testthat::expect_error(
-    shinyOAuth::oauth_module_server(
-      "oauth",
-      client = cli,
+    shinyOAuth::oauth_client(
+      provider = base_provider,
+      client_id = "abc",
+      client_secret = "xyz",
+      redirect_uri = "https://localhost:8100/callback",
       introspect = FALSE,
       introspect_elements = "sub"
     ),
-    class = "shinyOAuth_config_error",
     regexp = "introspect_elements.*introspect = FALSE"
   )
 
   # For introspect_elements validation, we need a provider with introspection_url
-  cli_with_introspect <- cli
-  cli_with_introspect@provider@introspection_url <- "https://example.com/introspect"
+  prov_with_introspect <- base_provider
+  prov_with_introspect@introspection_url <- "https://example.com/introspect"
 
+  # Invalid introspect_elements values
   testthat::expect_error(
-    shinyOAuth::oauth_module_server(
-      "oauth",
-      client = cli_with_introspect,
+    shinyOAuth::oauth_client(
+      provider = prov_with_introspect,
+      client_id = "abc",
+      client_secret = "xyz",
+      redirect_uri = "https://localhost:8100/callback",
       introspect = TRUE,
       introspect_elements = c("sub", "nope")
     ),
-    class = "shinyOAuth_config_error",
-    regexp = "Invalid `introspect_elements`"
+    regexp = "invalid introspect_elements"
   )
+
+  # Valid configuration should work
+  cli <- shinyOAuth::oauth_client(
+    provider = prov_with_introspect,
+    client_id = "abc",
+    client_secret = "xyz",
+    redirect_uri = "https://localhost:8100/callback",
+    introspect = TRUE,
+    introspect_elements = c("sub", "client_id")
+  )
+  testthat::expect_true(cli@introspect)
+  testthat::expect_equal(cli@introspect_elements, c("sub", "client_id"))
 })

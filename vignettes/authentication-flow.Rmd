@@ -146,13 +146,13 @@ that `sub` in userinfo equals `sub` in the ID token
 Some providers support RFC 7662 token introspection (an additional endpoint where the server can
 ask the provider whether an access token is currently active and retrieve related metadata).
 
-If you enable `oauth_module_server(introspect = TRUE)`, the module calls the provider's
+If you enable `introspect = TRUE` when creating your `oauth_client()`, the module calls the provider's
 introspection endpoint during callback processing and requires the response to indicate
 `active = TRUE`. If introspection is unsupported by the provider or the introspection request
 fails, the login is aborted and `$authenticated` is not set to `TRUE`.
 
 You can optionally enforce additional provider-dependent fields via
-`oauth_module_server(introspect_elements = ...)`:
+`oauth_client(introspect_elements = ...)`:
 
 - `"sub"` – require introspection `sub` to match the session subject
 - `"client_id"` – require introspection `client_id` to match your OAuth client id

@@ -106,17 +106,6 @@
 #'   network issues, provider unavailable), so combine with appropriate token
 #'   lifetimes on the provider side.
 #'
-#' @param introspect If TRUE, the login flow will call the provider's token
-#'   introspection endpoint (RFC 7662) to validate the access token. The login is
-#'   not considered complete unless introspection succeeds and returns
-#'   `active = TRUE`; otherwise the login fails and `authenticated` remains
-#'   FALSE. Default is FALSE. Requires the provider to have an
-#'   `introspection_url` configured.
-#' @param introspect_elements Optional character vector of additional
-#'   requirements to enforce on the introspection response when
-#'   `introspect = TRUE`. Supported values: "sub", "client_id", "scope".
-#'   Default is `character(0)`.
-#'
 #' @param tab_title_cleaning If TRUE (default), removes any query string suffix
 #'   from the browser tab title after the OAuth callback, so titles like
 #'   "localhost:8100?code=...&state=..." become "localhost:8100"
@@ -247,8 +236,6 @@ oauth_module_server <- function(
   refresh_lead_seconds = 60,
   refresh_check_interval = 10000,
   revoke_on_session_end = FALSE,
-  introspect = FALSE,
-  introspect_elements = character(0),
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
@@ -290,51 +277,12 @@ oauth_module_server <- function(
     is.null(browser_cookie_path) || is_valid_string(browser_cookie_path),
     is.logical(revoke_on_session_end) &
       length(revoke_on_session_end) == 1 &
-      !is.na(revoke_on_session_end),
-    is.logical(introspect) &
-      length(introspect) == 1 &
-      !is.na(introspect),
-    is.null(introspect_elements) || is.character(introspect_elements)
+      !is.na(revoke_on_session_end)
   )
 
-  # Introspection arguments: fail fast + canonicalize
-  if (isTRUE(introspect)) {
-    introspection_url <- client@provider@introspection_url %||% NA_character_
-    if (!is_valid_string(introspection_url)) {
-      err_config(c(
-        "x" = "`introspect = TRUE` requires the provider to have an introspection_url configured",
-        "i" = "Either set `introspect = FALSE` or configure provider@introspection_url"
-      ))
-    }
-  }
-  if (is.null(introspect_elements)) {
-    introspect_elements <- character(0)
-  }
-  if (anyNA(introspect_elements)) {
-    err_config("`introspect_elements` must not contain NA")
-  }
-  introspect_elements <- as.character(introspect_elements)
-  if (!all(nzchar(introspect_elements))) {
-    err_config("`introspect_elements` must not contain empty strings")
-  }
-  introspect_elements <- unique(introspect_elements)
-  if (!isTRUE(introspect) && length(introspect_elements) > 0) {
-    err_config(c(
-      "x" = "`introspect_elements` was provided but `introspect = FALSE`",
-      "i" = "Either set `introspect = TRUE` or pass `introspect_elements = character(0)`"
-    ))
-  }
-  if (isTRUE(introspect) && length(introspect_elements) > 0) {
-    allowed <- c("sub", "client_id", "scope")
-    bad <- setdiff(introspect_elements, allowed)
-    if (length(bad) > 0) {
-      err_config(c(
-        "x" = "Invalid `introspect_elements` value(s)",
-        "!" = paste(bad, collapse = ", "),
-        "i" = paste0("Allowed: ", paste(allowed, collapse = ", "))
-      ))
-    }
-  }
+  # Read introspection settings from client (validated by OAuthClient)
+  introspect <- isTRUE(client@introspect)
+  introspect_elements <- client@introspect_elements %||% character(0)
 
   if (!.is_test()) {
     rlang::warn(
