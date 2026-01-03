@@ -317,6 +317,113 @@ testthat::test_that("oversized callback query params are rejected", {
   )
 })
 
+testthat::test_that("oversized raw callback query string is rejected", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      # Build a real state payload
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # Construct a very large query string that would otherwise proceed to
+      # token exchange (code+state are valid), but should be rejected before
+      # parsing due to total size.
+      big_query <- paste0(
+        "?code=ok&state=",
+        enc,
+        "&pad=",
+        strrep("x", 20000)
+      )
+
+      called <- FALSE
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          called <<- TRUE
+          list(access_token = "t", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(big_query)
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_false(called)
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "query string"
+      )
+      testthat::expect_null(values$token)
+    }
+  )
+})
+
+testthat::test_that("callback_max_query_bytes option is enforced", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      query <- paste0("?code=ok&state=", enc)
+      query_bytes <- nchar(query, type = "bytes")
+
+      # Too-small cap rejects the query before parsing continues
+      withr::local_options(list(
+        shinyOAuth.callback_max_query_bytes = query_bytes - 1
+      ))
+      values$.process_query(query)
+      session$flushReact()
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(values$error_description %||% "", "query string")
+      testthat::expect_null(values$token)
+
+      # Large enough cap allows the normal flow to proceed
+      values$error <- NULL
+      values$error_description <- NULL
+      called <- FALSE
+      withr::local_options(list(
+        shinyOAuth.callback_max_query_bytes = query_bytes + 1
+      ))
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          called <<- TRUE
+          list(access_token = "t", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(query)
+          session$flushReact()
+        }
+      )
+      testthat::expect_true(called)
+      testthat::expect_false(is.null(values$token))
+      testthat::expect_null(values$error)
+    }
+  )
+})
+
 testthat::test_that("callback code/state clears query even when token exchange fails", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

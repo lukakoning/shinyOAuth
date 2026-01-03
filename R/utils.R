@@ -91,6 +91,62 @@ validate_untrusted_query_param <- function(
   invisible(NULL)
 }
 
+#' Internal: validate untrusted callback query string sizes
+#'
+#' This helper guards against extremely large callback query strings causing
+#' substantial allocation during parsing.
+#'
+#' @keywords internal
+#' @noRd
+validate_untrusted_query_string <- function(query_string, max_bytes) {
+  if (is.null(query_string)) {
+    return(invisible(NULL))
+  }
+
+  if (
+    !is.character(query_string) ||
+      length(query_string) != 1L ||
+      is.na(query_string)
+  ) {
+    err_invalid_state(
+      "Callback query string must be a single string",
+      context = list(component = "query_string")
+    )
+  }
+
+  max_bytes <- as.numeric(max_bytes)
+  if (!is.finite(max_bytes) || is.na(max_bytes) || max_bytes <= 0) {
+    err_invalid_state(
+      "Internal error: invalid max_bytes in query string validator",
+      context = list(component = "query_string")
+    )
+  }
+
+  actual_bytes <- nchar(query_string, type = "bytes")
+  if (!is.finite(actual_bytes) || is.na(actual_bytes)) {
+    err_invalid_state(
+      "Callback query string had invalid length",
+      context = list(component = "query_string")
+    )
+  }
+
+  if (actual_bytes > max_bytes) {
+    err_invalid_state(
+      sprintf(
+        "Callback query string exceeded maximum length (%s bytes)",
+        format(max_bytes, scientific = FALSE, trim = TRUE)
+      ),
+      context = list(
+        component = "query_string",
+        max_bytes = max_bytes,
+        actual_bytes = actual_bytes
+      )
+    )
+  }
+
+  invisible(NULL)
+}
+
 #' Internal: read a positive numeric scalar option
 #'
 #' Returns `default` when the option is unset or invalid.

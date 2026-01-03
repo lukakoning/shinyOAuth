@@ -1058,10 +1058,9 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      qs <- shiny::parseQueryString(query_string %||% "")
-
-      # Defensive: cap untrusted callback params to avoid memory/log amplification
-      # and middleware edge cases with extremely long URLs.
+      # Defensive: cap untrusted callback query sizes to reduce DoS surface.
+      # Apply a pre-parse guard on the raw query string so that
+      # shiny::parseQueryString() doesn't have to process arbitrarily long input.
       max_code_bytes <- get_option_positive_number(
         "shinyOAuth.callback_max_code_bytes",
         4096
@@ -1078,8 +1077,30 @@ oauth_module_server <- function(
         "shinyOAuth.callback_max_error_description_bytes",
         4096
       )
+      # Derived overall cap: sum of individual caps plus overhead for names,
+      # separators, URL encoding, and unexpected extra params.
+      max_query_overhead_bytes <- 2048
+      derived_query_bytes <-
+        max_code_bytes +
+        max_state_bytes +
+        max_error_bytes +
+        max_error_desc_bytes +
+        max_query_overhead_bytes
+      max_query_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_query_bytes",
+        derived_query_bytes
+      )
+
+      qs <- NULL
       ok <- tryCatch(
         {
+          validate_untrusted_query_string(
+            query_string %||% "",
+            max_bytes = max_query_bytes
+          )
+
+          qs <- shiny::parseQueryString(query_string %||% "")
+
           validate_untrusted_query_param(
             "code",
             qs$code,
