@@ -292,3 +292,105 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   seen <- (ev$shiny_session %||% list())$token %||% NA_character_
   testthat::expect_identical(seen, session_token)
 })
+
+testthat::test_that("session_ended event is emitted even without revoke_on_session_end", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  # Capture audit events
+  audit_events <- list()
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(event) {
+      audit_events <<- c(audit_events, list(event))
+    }
+  ))
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE,
+      revoke_on_session_end = FALSE # default; no revocation
+    ),
+    expr = {
+      # Seed a valid token
+      t <- OAuthToken(
+        access_token = "access_tok",
+        refresh_token = "refresh_tok",
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      testthat::expect_true(values$authenticated)
+    }
+  )
+
+  # Find the session_ended audit event (should always be emitted)
+  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  testthat::expect_true("audit_session_ended" %in% types)
+
+  # Verify session_ended contains was_authenticated = TRUE
+  idx <- match("audit_session_ended", types)
+  ev <- audit_events[[idx]]
+  testthat::expect_true(isTRUE(ev$was_authenticated))
+})
+
+testthat::test_that("authenticated_changed event is emitted on token set", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  # Capture audit events
+  audit_events <- list()
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(event) {
+      audit_events <<- c(audit_events, list(event))
+    }
+  ))
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      # Initially not authenticated
+      testthat::expect_false(values$authenticated)
+
+      # Seed a valid token -> should trigger authenticated_changed
+      t <- OAuthToken(
+        access_token = "access_tok",
+        refresh_token = "refresh_tok",
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      testthat::expect_true(values$authenticated)
+    }
+  )
+
+  # Find the authenticated_changed audit event
+  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  testthat::expect_true("audit_authenticated_changed" %in% types)
+
+  # Verify at least one change to TRUE was emitted
+  auth_changed_events <- audit_events[types == "audit_authenticated_changed"]
+  to_true <- vapply(
+    auth_changed_events,
+    function(e) {
+      isTRUE(e$authenticated) && !isTRUE(e$previous_authenticated)
+    },
+    logical(1)
+  )
+  testthat::expect_true(any(to_true))
+})

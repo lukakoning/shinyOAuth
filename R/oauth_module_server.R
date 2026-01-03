@@ -239,24 +239,18 @@
 oauth_module_server <- function(
   id,
   client,
-
   auto_redirect = TRUE,
   async = FALSE,
-
   indefinite_session = FALSE,
   reauth_after_seconds = NULL,
-
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
   refresh_check_interval = 10000,
-
   revoke_on_session_end = FALSE,
   introspect = FALSE,
   introspect_elements = character(0),
-
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
-
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
@@ -474,13 +468,38 @@ oauth_module_server <- function(
       silent = TRUE
     )
 
-    # Session-end hook: revoke tokens if configured ----------------------------
+    # Session-end hook ---------------------------------------------------------
 
+    # Capture session context now while we still have it (it won't be
+    # available in onSessionEnded callback)
+    captured_session_end_context <- capture_shiny_session_context()
+
+    # Always log session end, regardless of revoke_on_session_end setting
+    session$onSessionEnded(function() {
+      # Capture authentication state at session end
+      was_authenticated <- tryCatch(
+        isTRUE(shiny::isolate(values$authenticated)),
+        error = function(...) FALSE
+      )
+
+      # Audit: session ended (always emitted)
+      try(
+        audit_event(
+          "session_ended",
+          context = list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            was_authenticated = was_authenticated
+          ),
+          shiny_session = captured_session_end_context
+        ),
+        silent = TRUE
+      )
+    })
+
+    # Session-end revocation: revoke tokens if configured
     if (isTRUE(revoke_on_session_end)) {
-      # Capture session context now while we still have it (it won't be
-      # available in onSessionEnded callback)
-      captured_session_end_context <- capture_shiny_session_context()
-
       session$onSessionEnded(function() {
         # Capture token at session end; may be NULL if never authenticated
         tok <- shiny::isolate(values$token)
@@ -878,7 +897,9 @@ oauth_module_server <- function(
       if (!isTRUE(indefinite_session)) {
         exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
         if (is.finite(exp) && !is.na(exp)) {
-          if (now >= exp) return(FALSE)
+          if (now >= exp) {
+            return(FALSE)
+          }
         }
       }
       # If exp is NA or Inf, treat as not expired here.
@@ -886,13 +907,47 @@ oauth_module_server <- function(
     }
 
     # Keep authenticated in sync like other values; store a plain logical
+    # Also emit audit event when authenticated state changes
+    .previous_authenticated <- FALSE
     shiny::observe({
       # depend on these so we recalc when any changes
       values$token
       values$error
       values$error_description
       values$browser_token
-      values$authenticated <- .compute_authenticated()
+      new_authenticated <- .compute_authenticated()
+
+      # Emit audit event if authenticated state changed
+      if (!identical(new_authenticated, .previous_authenticated)) {
+        # Derive reason from current state
+        reason <- if (isTRUE(new_authenticated)) {
+          "login"
+        } else if (!is.null(values$error)) {
+          values$error
+        } else if (is.null(values$token)) {
+          "token_cleared"
+        } else {
+          "unknown"
+        }
+
+        try(
+          audit_event(
+            "authenticated_changed",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              issuer = client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id),
+              authenticated = new_authenticated,
+              previous_authenticated = .previous_authenticated,
+              reason = reason
+            )
+          ),
+          silent = TRUE
+        )
+        .previous_authenticated <<- new_authenticated
+      }
+
+      values$authenticated <- new_authenticated
     })
 
     # Keep token_stale consistent when the token changes directly

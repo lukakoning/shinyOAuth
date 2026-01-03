@@ -235,15 +235,25 @@ testthat::test_that("every audit event fires and serializes to JSON", {
     "audit_refresh_failed_but_kept_session", # may not be seen in this run; don't strictly require
     "audit_browser_cookie_error",
     "audit_session_started",
+    "audit_session_ended",
+    "audit_authenticated_changed",
     "audit_invalid_browser_token",
     "audit_state_parse_failure",
     "audit_token_refresh",
     "audit_userinfo"
   )
 
-  # We may not deterministically hit refresh_failed_but_kept_session in this test,
-  # so treat it as optional for presence but ensure all other ones are seen.
-  required <- setdiff(expected, "audit_refresh_failed_but_kept_session")
+  # We may not deterministically hit some events in this single test run:
+  # - refresh_failed_but_kept_session requires a failed refresh with indefinite_session
+  # - session_ended fires on onSessionEnded callback which may race with assertions
+  # - authenticated_changed fires on reactive state changes and may not be captured
+  # Treat these as optional for presence but ensure all other ones are seen.
+  optional_events <- c(
+    "audit_refresh_failed_but_kept_session",
+    "audit_session_ended",
+    "audit_authenticated_changed"
+  )
+  required <- setdiff(expected, optional_events)
   testthat::expect_true(all(required %in% seen))
 
   # Ensure documentation lists all events we actually emit ---------------------
