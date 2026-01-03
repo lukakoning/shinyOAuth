@@ -339,7 +339,7 @@ validate_id_token <- function(
     err_id_token("iat claim must be a single finite number when present")
   }
   iat_val <- as.numeric(payload$iat)
-  if ((iat_val - lwe) >= now) {
+  if (iat_val > (now + lwe)) {
     err_id_token("ID token issued in the future")
   }
   if (!is.null(payload$nbf)) {
@@ -348,8 +348,8 @@ validate_id_token <- function(
     }
     nbf_val <- as.numeric(payload$nbf)
     # Token is not yet valid when the not-before time is beyond allowed clock skew.
-    # Use a >= comparison to avoid test flakiness around second boundaries.
-    if (nbf_val >= (now + lwe)) {
+    # Use a > comparison for consistency with exp/iat boundary handling.
+    if (nbf_val > (now + lwe)) {
       err_id_token("ID token not yet valid (nbf)")
     }
   }
