@@ -15,8 +15,6 @@ oauth_module_server(
   refresh_lead_seconds = 60,
   refresh_check_interval = 10000,
   revoke_on_session_end = FALSE,
-  introspect = FALSE,
-  introspect_elements = character(0),
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
@@ -79,18 +77,6 @@ Requires the provider to have a \code{revocation_url} configured. Default is
 FALSE. Note that session-end revocation may not always succeed (e.g.,
 network issues, provider unavailable), so combine with appropriate token
 lifetimes on the provider side.}
-
-\item{introspect}{If TRUE, the login flow will call the provider's token
-introspection endpoint (RFC 7662) to validate the access token. The login is
-not considered complete unless introspection succeeds and returns
-\code{active = TRUE}; otherwise the login fails and \code{authenticated} remains
-FALSE. Default is FALSE. Requires the provider to have an
-\code{introspection_url} configured.}
-
-\item{introspect_elements}{Optional character vector of additional
-requirements to enforce on the introspection response when
-\code{introspect = TRUE}. Supported values: "sub", "client_id", "scope".
-Default is \code{character(0)}.}
 
 \item{tab_title_cleaning}{If TRUE (default), removes any query string suffix
 from the browser tab title after the OAuth callback, so titles like
