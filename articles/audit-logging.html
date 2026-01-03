@@ -131,6 +131,12 @@ designed to be directly serializable with
 <code>shiny_session$token</code>: the Shiny per-session token
 (<code>session$token</code>) when available.</li>
 <li>
+<code>shiny_session$is_async</code>: a logical indicating whether
+the event was emitted from the main R process (<code>FALSE</code>) or
+from an async worker (<code>TRUE</code>). This helps distinguish logs
+produced by background tasks (e.g., async token exchange or refresh)
+from those in the main reactive flow.</li>
+<li>
 <code>shiny_session$http</code>: a compact HTTP summary with fields:
 <ul>
 <li>
