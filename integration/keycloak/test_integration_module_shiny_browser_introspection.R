@@ -81,7 +81,9 @@
     client_id = client_id,
     client_secret = client_secret,
     redirect_uri = sprintf("http://127.0.0.1:%d", as.integer(app_port)),
-    scopes = c("openid", "profile", "email")
+    scopes = c("openid", "profile", "email"),
+    introspect = introspect,
+    introspect_elements = introspect_elements
   )
 
   ui <- shiny::fluidPage(
@@ -99,9 +101,7 @@
     # auto_redirect = TRUE (default) — the module redirects immediately
     auth <- shinyOAuth::oauth_module_server(
       "auth",
-      client,
-      introspect = introspect,
-      introspect_elements = introspect_elements
+      client
     )
 
     output$auth_state <- shiny::renderText({

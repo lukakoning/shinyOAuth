@@ -53,6 +53,8 @@ testthat::test_that("login fails when introspection validation fails", {
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli@introspect_elements <- character(0)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -60,9 +62,7 @@ testthat::test_that("login fails when introspection validation fails", {
       id = "auth",
       client = cli,
       auto_redirect = FALSE,
-      indefinite_session = TRUE,
-      introspect = TRUE,
-      introspect_elements = character(0)
+      indefinite_session = TRUE
     ),
     expr = {
       testthat::expect_true(values$has_browser_token())

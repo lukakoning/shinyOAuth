@@ -292,7 +292,8 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
     client_id = "shiny-confidential",
     client_secret = "secret",
     redirect_uri = sprintf("http://127.0.0.1:%d", app_port),
-    scopes = c("openid", "profile", "email")
+    scopes = c("openid", "profile", "email"),
+    introspect = TRUE
   )
 
   ui <- shiny::fluidPage(
@@ -301,7 +302,7 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
     shiny::verbatimTextOutput("auth_state")
   )
   server <- function(input, output, session) {
-    auth <- shinyOAuth::oauth_module_server("auth", client, introspect = TRUE)
+    auth <- shinyOAuth::oauth_module_server("auth", client)
     output$auth_state <- shiny::renderText({
       paste(
         "authenticated:",
