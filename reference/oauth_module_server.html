@@ -81,8 +81,6 @@ necessary JavaScript dependencies.</p>
 <span>  refresh_lead_seconds <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  refresh_check_interval <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  revoke_on_session_end <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  tab_title_cleaning <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  tab_title_replacement <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  browser_cookie_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -168,22 +166,6 @@ Requires the provider to have a <code>revocation_url</code> configured. Default 
 FALSE. Note that session-end revocation may not always succeed (e.g.,
 network issues, provider unavailable), so combine with appropriate token
 lifetimes on the provider side.</p></dd>
-
-
-<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
-<dd><p>If TRUE, the login flow will call the provider's token
-introspection endpoint (RFC 7662) to validate the access token. The login is
-not considered complete unless introspection succeeds and returns
-<code>active = TRUE</code>; otherwise the login fails and <code>authenticated</code> remains
-FALSE. Default is FALSE. Requires the provider to have an
-<code>introspection_url</code> configured.</p></dd>
-
-
-<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
-<dd><p>Optional character vector of additional
-requirements to enforce on the introspection response when
-<code>introspect = TRUE</code>. Supported values: "sub", "client_id", "scope".
-Default is <code>character(0)</code>.</p></dd>
 
 
 <dt id="arg-tab-title-cleaning">tab_title_cleaning<a class="anchor" aria-label="anchor" href="#arg-tab-title-cleaning"></a></dt>

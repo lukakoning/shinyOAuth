@@ -69,7 +69,9 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
 <span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span>,</span>
-<span>  scope_validation <span class="op">=</span> <span class="st">"strict"</span></span>
+<span>  scope_validation <span class="op">=</span> <span class="st">"strict"</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -206,6 +208,30 @@ from the granted scopes.</p></li>
 <li><p><code>"warn"</code>: Emits a warning but continues authentication if scopes are
 missing.</p></li>
 <li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
+</ul></dd>
+
+
+<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
+<dd><p>If TRUE, the login flow will call the provider's token
+introspection endpoint (RFC 7662) to validate the access token. The login
+is not considered complete unless introspection succeeds and returns
+<code>active = TRUE</code>; otherwise the login fails and <code>authenticated</code> remains
+FALSE. Default is FALSE. Requires the provider to have an
+<code>introspection_url</code> configured.</p></dd>
+
+
+<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
+<dd><p>Optional character vector of additional
+requirements to enforce on the introspection response when
+<code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
+(from ID token <code>sub</code> when available, else from userinfo <code>sub</code>).</p></li>
+<li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
+client id.</p></li>
+<li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes
+(respects the client's <code>scope_validation</code> mode).
+Default is <code>character(0)</code>.
+(Note that not all providers may return each of these fields in
+introspection responses.)</p></li>
 </ul></dd>
 
 </dl></div>

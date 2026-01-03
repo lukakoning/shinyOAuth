@@ -25,7 +25,9 @@ OAuthClient(
   state_payload_max_age = 300,
   state_entropy = 64,
   state_key = random_urlsafe(n = 128),
-  scope_validation = "strict"
+  scope_validation = "strict",
+  introspect = FALSE,
+  introspect_elements = character(0)
 )
 ```
 
@@ -190,6 +192,31 @@ OAuthClient(
     missing.
 
   - `"none"`: Skips scope validation entirely.
+
+- introspect:
+
+  If TRUE, the login flow will call the provider's token introspection
+  endpoint (RFC 7662) to validate the access token. The login is not
+  considered complete unless introspection succeeds and returns
+  `active = TRUE`; otherwise the login fails and `authenticated` remains
+  FALSE. Default is FALSE. Requires the provider to have an
+  `introspection_url` configured.
+
+- introspect_elements:
+
+  Optional character vector of additional requirements to enforce on the
+  introspection response when `introspect = TRUE`. Supported values:
+
+  - `"sub"`: require the introspected `sub` to match the session subject
+    (from ID token `sub` when available, else from userinfo `sub`).
+
+  - `"client_id"`: require the introspected `client_id` to match your
+    OAuth client id.
+
+  - `"scope"`: validate introspected `scope` against requested scopes
+    (respects the client's `scope_validation` mode). Default is
+    `character(0)`. (Note that not all providers may return each of
+    these fields in introspection responses.)
 
 ## Examples
 
