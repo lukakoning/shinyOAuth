@@ -298,6 +298,31 @@ OAuthClient <- S7::new_class(
       }
     }
 
+    # Fail fast: HS* ID token verification requires a strong client_secret.
+    #
+    # For PKCE/public clients, client_secret may legitimately be empty for token
+    # exchange (token_auth_style = 'body' with PKCE), but if the provider allows
+    # HS* ID token algs and the flow may validate ID tokens (id_token_validation
+    # or use_nonce), validate_id_token() will later error when client_secret is
+    # missing/too short.
+    aa <- toupper(as.character(self@provider@allowed_algs %||% character(0)))
+    hs_algs <- c("HS256", "HS384", "HS512")
+    should_validate_id_token <-
+      isTRUE(self@provider@id_token_validation) ||
+      isTRUE(self@provider@use_nonce)
+    if (any(aa %in% hs_algs) && isTRUE(should_validate_id_token)) {
+      if (!is_valid_string(self@client_secret)) {
+        return(
+          "OAuthClient: client_secret is required for HS* ID token validation when id_token_validation or use_nonce is enabled"
+        )
+      }
+      if (nchar(self@client_secret, type = "bytes") < 32) {
+        return(
+          "OAuthClient: HS* ID token validation requires client_secret >= 32 bytes"
+        )
+      }
+    }
+
     # If an explicit client_assertion_alg is provided, validate compatibility
     # with the configured token authentication style so we fail fast with a
     # clear input error rather than later inside JWT signing.
