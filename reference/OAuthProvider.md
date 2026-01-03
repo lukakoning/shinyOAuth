@@ -240,8 +240,8 @@ OAuthProvider(
 - jwks_pin_mode:
 
   Pinning policy when `jwks_pins` is provided. Either "any" (default; at
-  least one key in JWKS must match) or "all" (every RSA/EC public key in
-  JWKS must match one of the configured pins)
+  least one key in JWKS must match) or "all" (every RSA/EC/OKP public
+  key in JWKS must match one of the configured pins)
 
 - jwks_host_issuer_match:
 
