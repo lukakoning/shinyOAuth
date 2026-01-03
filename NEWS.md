@@ -85,6 +85,9 @@ absent or too weak.
 
 * Package now correctly requires `httr2` >= 1.1.0.
 
+* HTTP error responses (4xx/5xx) are now correctly returned to the caller 
+immediately instead of being misclassified as transport errors and retried.
+
 * `oauth_provider_microsoft()`: fixed incorrect default which blocked 
 multi-tenant configuration.
 

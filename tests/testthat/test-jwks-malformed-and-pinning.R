@@ -4,7 +4,10 @@ test_that("fetch_jwks does not cache on invalid JSON", {
   app <- webfakes::new_app()
   base <- NULL
   app$get("/.well-known/openid-configuration", function(req, res) {
-    res$json(list(jwks_uri = paste0(base, "/jwks")))
+    res$send_json(
+      object = list(jwks_uri = paste0(base, "/jwks")),
+      auto_unbox = TRUE
+    )
   })
   app$get("/jwks", function(req, res) {
     res$status <- 200

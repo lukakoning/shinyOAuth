@@ -71,6 +71,13 @@ req_with_retry <- function(req) {
     return(httr2::req_perform(req))
   }
 
+  # Note: httr2 throws on HTTP error statuses (4xx/5xx) by default
+  # We disable that behavior so we can distinguish transport errors (network
+  # failures, timeouts) from HTTP errors (server returned a response with
+  # error status). This lets us retry only on transient HTTP statuses while
+  # immediately returning non-retryable error responses to the caller.
+  req <- httr2::req_error(req, is_error = \(resp) FALSE)
+
   max_tries <- suppressWarnings(as.integer(getOption(
     "shinyOAuth.retry_max_tries",
     3L

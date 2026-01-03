@@ -7,6 +7,7 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
     res$set_type("application/json")
     res$send(jsonlite::toJSON(list(error = "invalid_grant"), auto_unbox = TRUE))
   })
+
   srv <- webfakes::local_app_process(app)
   base <- srv$url()
 
@@ -43,15 +44,18 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  expect_error(
+  # Must throw a token error (not a transport error)
+  err <- expect_error(
     shinyOAuth:::handle_callback(
       cli,
       code = "any",
       payload = enc,
       browser_token = tok
     ),
-    regexp = "Token exchange failed|access_token|HTTP|error"
+    class = "shinyOAuth_token_error"
   )
+  # Should NOT be a transport error (which would indicate HTTP response was lost)
+  expect_false(inherits(err, "shinyOAuth_transport_error"))
 })
 
 test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required", {
@@ -59,10 +63,13 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
 
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
-    res$json(list(access_token = "t", expires_in = 3600))
+    res$send_json(
+      object = list(access_token = "t", expires_in = 3600),
+      auto_unbox = TRUE
+    )
   })
   app$get("/userinfo", function(req, res) {
-    res$status <- 500
+    res$set_status(500)
     res$set_type("application/json")
     res$send(jsonlite::toJSON(list(error = "boom"), auto_unbox = TRUE))
   })
@@ -102,15 +109,18 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  expect_error(
+  # Must throw an HTTP error (not a transport error)
+  err <- expect_error(
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
       payload = enc,
       browser_token = tok
     ),
-    regexp = "user info|userinfo|Failed to get user info|HTTP"
+    class = "shinyOAuth_http_error"
   )
+  # Should NOT be a transport error
+  expect_false(inherits(err, "shinyOAuth_transport_error"))
 })
 
 test_that("userinfo success populates token userinfo when required", {
@@ -118,10 +128,13 @@ test_that("userinfo success populates token userinfo when required", {
 
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
-    res$json(list(access_token = "t", expires_in = 60))
+    res$send_json(
+      object = list(access_token = "t", expires_in = 60),
+      auto_unbox = TRUE
+    )
   })
   app$get("/userinfo", function(req, res) {
-    res$json(list(sub = "u-1", name = "Test"))
+    res$send_json(object = list(sub = "u-1", name = "Test"), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
   base <- srv$url()
