@@ -399,15 +399,32 @@ handle_callback <- function(
   # Defensive: avoid hashing/storing arbitrarily large query-derived inputs.
   # This duplicates the check in oauth_module_server's .process_query() by
   # design, so that direct callers of handle_callback() are also protected.
-  validate_untrusted_query_param("code", code, max_bytes = 4096)
-  validate_untrusted_query_param("state", payload, max_bytes = 8192)
+  validate_untrusted_query_param(
+    "code",
+    code,
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_code_bytes",
+      4096
+    )
+  )
+  validate_untrusted_query_param(
+    "state",
+    payload,
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_state_bytes",
+      8192
+    )
+  )
   # Browser token is not query-derived in the module, but handle_callback() is
   # exported and may be called directly with attacker-controlled inputs.
   # Cap it before any hashing/auditing to avoid a DoS footgun.
   validate_untrusted_query_param(
     "browser_token",
     browser_token,
-    max_bytes = 256
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_browser_token_bytes",
+      256
+    )
   )
 
   # Audit: callback received

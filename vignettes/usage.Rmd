@@ -376,7 +376,9 @@ Avoid this unless you truly intend to accept any host; prefer pinning to your do
 Don't enable these in production. They disable key security checks and are intended for local testing only.
 Use `error_on_softened()` at startup to fail fast if softening flags are enabled in an environment where they should not be.
 
-### State envelope size caps
+### Size caps
+
+#### State envelope
 
 - `options(shinyOAuth.state_max_token_chars = 8192)` – maximum allowed length of the base64url-encoded `state` query parameter
 - `options(shinyOAuth.state_max_wrapper_bytes = 8192)` – maximum decoded byte size of the outer JSON wrapper (before parsing)
@@ -384,6 +386,16 @@ Use `error_on_softened()` at startup to fail fast if softening flags are enabled
 - `options(shinyOAuth.state_max_ct_bytes = 8192)` – maximum decoded byte size of the ciphertext before attempting AES-GCM decrypt
 
 These prevent maliciously large state parameters from causing excessive CPU or memory usage during decoding and decryption.
+
+#### Callback query
+
+- `options(shinyOAuth.callback_max_code_bytes = 4096)` – maximum byte length of the `code` query parameter
+- `options(shinyOAuth.callback_max_state_bytes = 8192)` – maximum byte length of the `state` query parameter (outer token string)
+- `options(shinyOAuth.callback_max_error_bytes = 256)` – maximum byte length of the `error` query parameter
+- `options(shinyOAuth.callback_max_error_description_bytes = 4096)` – maximum byte length of the `error_description` query parameter
+- `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum byte length of the `browser_token` argument accepted by `handle_callback()`
+
+These apply before any hashing/auditing/state parsing, and exist to prevent memory/log amplification from extremely large callback URLs.
 
 ## Browser cookie & preventing XSS
 

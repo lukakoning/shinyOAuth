@@ -1066,15 +1066,43 @@ oauth_module_server <- function(
 
       # Defensive: cap untrusted callback params to avoid memory/log amplification
       # and middleware edge cases with extremely long URLs.
+      max_code_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_code_bytes",
+        4096
+      )
+      max_state_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_state_bytes",
+        8192
+      )
+      max_error_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_error_bytes",
+        256
+      )
+      max_error_desc_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_error_description_bytes",
+        4096
+      )
       ok <- tryCatch(
         {
-          validate_untrusted_query_param("code", qs$code, max_bytes = 4096)
-          validate_untrusted_query_param("state", qs$state, max_bytes = 8192)
-          validate_untrusted_query_param("error", qs$error, max_bytes = 256)
+          validate_untrusted_query_param(
+            "code",
+            qs$code,
+            max_bytes = max_code_bytes
+          )
+          validate_untrusted_query_param(
+            "state",
+            qs$state,
+            max_bytes = max_state_bytes
+          )
+          validate_untrusted_query_param(
+            "error",
+            qs$error,
+            max_bytes = max_error_bytes
+          )
           validate_untrusted_query_param(
             "error_description",
             qs$error_description,
-            max_bytes = 4096,
+            max_bytes = max_error_desc_bytes,
             allow_empty = TRUE
           )
           TRUE

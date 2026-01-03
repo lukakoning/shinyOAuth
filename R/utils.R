@@ -91,6 +91,28 @@ validate_untrusted_query_param <- function(
   invisible(NULL)
 }
 
+#' Internal: read a positive numeric scalar option
+#'
+#' Returns `default` when the option is unset or invalid.
+#'
+#' @keywords internal
+#' @noRd
+get_option_positive_number <- function(name, default) {
+  val <- getOption(name, NULL)
+  if (is.null(val)) {
+    return(as.numeric(default))
+  }
+
+  val <- suppressWarnings(as.numeric(val))
+  if (!is.numeric(val) || length(val) != 1L || is.na(val) || !is.finite(val)) {
+    return(as.numeric(default))
+  }
+  if (val <= 0) {
+    return(as.numeric(default))
+  }
+  val
+}
+
 # Internal: safely coerce to scalar character or NA
 .scalar_chr <- function(x) {
   if (is.null(x) || length(x) == 0) {
