@@ -136,7 +136,10 @@
 #' @param jwks_host_allow_only Optional explicit hostname that the jwks_uri must match.
 #'   When provided, jwks_uri host must equal this value (exact match). You can
 #'   pass either just the host (e.g., "www.googleapis.com") or a full URL; only
-#'   the host component will be used. Takes precedence over `jwks_host_issuer_match`
+#'   the host component will be used. If you need to include a port or an IPv6
+#'   literal, pass a full URL (e.g., \verb{https://[::1]:8443}) — the port is ignored
+#'   and only the hostname part is used for matching. Takes precedence over
+#'   `jwks_host_issuer_match`
 #'
 #' @param allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
@@ -650,7 +653,8 @@ OAuthProvider <- S7::new_class(
           return("OAuthProvider: jwks_host_allow_only URL could not be parsed")
         }
       } else {
-        # Validate host characters roughly: letters, digits, hyphen, dot, colon (IPv6 bracket variants handled elsewhere)
+        # Validate host characters roughly: letters, digits, hyphen, dot.
+        # Note: bare-host form does not support ports or IPv6 literals; use URL form instead.
         if (!grepl("^[A-Za-z0-9.-]+$", host_only)) {
           return(
             "OAuthProvider: jwks_host_allow_only must be a hostname or a URL containing a hostname"

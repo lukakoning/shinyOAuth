@@ -780,7 +780,7 @@ oauth_module_server <- function(
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
       instance <- paste0(instance, "-", ns_hash)
 
-      # Compute configured path once per session (NULL means derive in JS)
+      # Compute configured path once per session (NULL means JS defaults to '/')
       # Delegate to custom JS handler
       .client_set_browser_token(
         instance = instance,
@@ -791,7 +791,7 @@ oauth_module_server <- function(
     }
 
     .clear_browser_token <- function() {
-      # Compute configured path once per session (NULL means derive in JS)
+      # Compute configured path once per session (NULL means JS defaults to '/')
 
       # Delegate to custom JS handler
       # Build a safe instance suffix from this module's namespace/id (match setter)
