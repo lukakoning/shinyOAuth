@@ -24,7 +24,8 @@ introspect_token(
   oauth_client,
   oauth_token,
   which = c("access", "refresh"),
-  async = FALSE
+  async = FALSE,
+  shiny_session = NULL
 )
 ```
 
@@ -48,6 +49,13 @@ introspect_token(
 
   Logical, default FALSE. If TRUE and promises is available, run in
   background and return a promise resolving to the result list
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events. Used
+  when calling from async workers that lack access to the reactive
+  domain.
 
 ## Value
 

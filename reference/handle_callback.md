@@ -14,7 +14,8 @@ handle_callback(
   decrypted_payload = NULL,
   state_store_values = NULL,
   introspect = FALSE,
-  introspect_elements = character(0)
+  introspect_elements = character(0),
+  shiny_session = NULL
 )
 ```
 
@@ -82,6 +83,13 @@ handle_callback(
   - "scope": require an RFC 7662 `scope` field and require it to include
     all scopes requested by `oauth_client@scopes`. Default is
     `character(0)` (no extra requirements beyond `active = TRUE`).
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events. Used
+  when calling from async workers that lack access to the reactive
+  domain.
 
 ## Value
 

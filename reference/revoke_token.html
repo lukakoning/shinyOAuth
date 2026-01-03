@@ -89,7 +89,8 @@ and <code>status = "ok"</code>.</p></li>
 <span>  <span class="va">oauth_client</span>,</span>
 <span>  <span class="va">oauth_token</span>,</span>
 <span>  which <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"refresh"</span>, <span class="st">"access"</span><span class="op">)</span>,</span>
-<span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -112,6 +113,12 @@ and <code>status = "ok"</code>.</p></li>
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
 <dd><p>Logical, default FALSE. If TRUE and promises is available, run
 in background and return a promise resolving to the result list</p></dd>
+
+
+<dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
+<dd><p>Optional pre-captured Shiny session context (from
+<code>capture_shiny_session_context()</code>) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.</p></dd>
 
 </dl></div>
     <div class="section level2">

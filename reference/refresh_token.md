@@ -25,7 +25,13 @@ access token. If both a new ID token and fresh userinfo are present and
 ## Usage
 
 ``` r
-refresh_token(oauth_client, token, async = FALSE, introspect = FALSE)
+refresh_token(
+  oauth_client,
+  token,
+  async = FALSE,
+  introspect = FALSE,
+  shiny_session = NULL
+)
 ```
 
 ## Arguments
@@ -55,6 +61,13 @@ refresh_token(oauth_client, token, async = FALSE, introspect = FALSE)
   exposes an introspection endpoint, perform a best-effort introspection
   of the new access token for audit/diagnostics. The result is not
   stored on the token object.
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events. Used
+  when calling from async workers that lack access to the reactive
+  domain.
 
 ## Value
 

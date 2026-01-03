@@ -54,7 +54,8 @@
 <span>  decrypted_payload <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  state_store_values <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -114,6 +115,12 @@ identity from the ID token (preferred) or userinfo (fallback).</p></li>
 all scopes requested by <code>oauth_client@scopes</code>.
 Default is <code>character(0)</code> (no extra requirements beyond <code>active = TRUE</code>).</p></li>
 </ul></dd>
+
+
+<dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
+<dd><p>Optional pre-captured Shiny session context (from
+<code>capture_shiny_session_context()</code>) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.</p></dd>
 
 </dl></div>
     <div class="section level2">

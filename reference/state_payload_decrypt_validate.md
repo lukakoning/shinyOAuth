@@ -6,7 +6,7 @@ client's `state_key`, then validates freshness and client binding.
 ## Usage
 
 ``` r
-state_payload_decrypt_validate(client, encrypted_payload)
+state_payload_decrypt_validate(client, encrypted_payload, shiny_session = NULL)
 ```
 
 ## Arguments
@@ -20,6 +20,13 @@ state_payload_decrypt_validate(client, encrypted_payload)
 
   Encrypted state payload string received via the `state` query
   parameter.
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events. Used
+  when calling from async workers that lack access to the reactive
+  domain.
 
 ## Value
 

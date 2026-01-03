@@ -6,7 +6,7 @@ removes the entry to enforce single-use semantics.
 ## Usage
 
 ``` r
-state_store_get_remove(client, state)
+state_store_get_remove(client, state, shiny_session = NULL)
 ```
 
 ## Arguments
@@ -19,6 +19,13 @@ state_store_get_remove(client, state)
 - state:
 
   Plain (decrypted) state string used as the logical key
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events. Used
+  when calling from async workers that lack access to the reactive
+  domain.
 
 ## Value
 

@@ -91,7 +91,13 @@ access token. If both a new ID token and fresh userinfo are present and
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">refresh_token</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span>, async <span class="op">=</span> <span class="cn">FALSE</span>, introspect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">refresh_token</span><span class="op">(</span></span>
+<span>  <span class="va">oauth_client</span>,</span>
+<span>  <span class="va">token</span>,</span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -119,6 +125,12 @@ back to synchronous behavior</p></dd>
 provider exposes an introspection endpoint, perform a best-effort
 introspection of the new access token for audit/diagnostics. The result
 is not stored on the token object.</p></dd>
+
+
+<dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
+<dd><p>Optional pre-captured Shiny session context (from
+<code>capture_shiny_session_context()</code>) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.</p></dd>
 
 </dl></div>
     <div class="section level2">
