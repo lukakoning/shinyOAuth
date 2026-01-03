@@ -125,6 +125,13 @@ audit events.
   - `scopes_count`
   - `redirect_uri`
 
+### Callback query rejected
+
+#### Event: `audit_callback_query_rejected`
+
+- When: the callback query parameters fail validation (e.g., too large)
+- Context: `provider`, `issuer`, `client_id_digest`, `error_class`
+
 ### Callback received
 
 #### Event: `audit_callback_received`
@@ -203,6 +210,20 @@ For state store events the digest reflects the plaintext state string.
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`,
   `error_class`
 
+### Token introspection
+
+#### Event: `audit_token_introspection`
+
+- When:
+  [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
+  is called (e.g., during login if `introspect = TRUE`)
+- Context:
+  - `provider`, `issuer`, `client_id_digest`
+  - `which` (“access” or “refresh”)
+  - `supported` (logical), `active` (logical\|NA), `status`
+  - `sub_digest`, `introspected_client_id_digest`, `scope_digest` (when
+    available)
+
 ### Login result
 
 #### Event: `audit_login_success`
@@ -232,6 +253,18 @@ For state store events the digest reflects the plaintext state string.
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`,
   `reauth_window`, `token_expired`
+
+### Token revocation
+
+#### Event: `audit_token_revocation`
+
+- When:
+  [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
+  is called (e.g., during logout or session end)
+- Context:
+  - `provider`, `issuer`, `client_id_digest`
+  - `which` (“access” or “refresh”)
+  - `supported` (logical), `revoked` (logical\|NA), `status`
 
 ### Refresh failures while keeping the session (indefinite sessions)
 
@@ -298,6 +331,23 @@ wrapper prior to extracting the logical state value.
   and any additional details (such as lengths). Emitted best-effort from
   parsing utilities and never interferes with control flow.
 
+### Error response state consumption
+
+When the provider returns an error response (e.g., `access_denied`) but
+includes the `state` parameter, the module attempts to consume the state
+to prevent replay and clean up the store.
+
+#### Event: `audit_error_state_consumed`
+
+- When: state from an error response is successfully consumed
+- Context: `provider`, `issuer`, `client_id_digest`, `state_digest`
+
+#### Event: `audit_error_state_consumption_failed`
+
+- When: consumption of state from an error response fails
+- Context: `provider`, `issuer`, `client_id_digest`, `state_digest`,
+  `error_class`, `error_message`
+
 ### Module/session lifecycle
 
 #### Event: `audit_session_started`
@@ -320,7 +370,7 @@ wrapper prior to extracting the logical state value.
 - When: a Shiny session ends with `revoke_on_session_end = TRUE` and a
   token was present
 - Context: `provider`, `issuer`, `client_id_digest`; the actual
-  revocation attempt is logged separately as `audit_revoke_token_*`
+  revocation attempt is logged separately as `audit_token_revocation`
   events
 
 ### Authentication state changes

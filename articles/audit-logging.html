@@ -227,6 +227,21 @@ URL</p></li>
 </div>
 </div>
 <div class="section level3">
+<h3 id="callback-query-rejected">Callback query rejected<a class="anchor" aria-label="anchor" href="#callback-query-rejected"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_callback_query_rejected">Event: <code>audit_callback_query_rejected</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_query_rejected"></a>
+</h4>
+<ul>
+<li>When: the callback query parameters fail validation (e.g., too
+large)</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>error_class</code>
+</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
 <h3 id="callback-received">Callback received<a class="anchor" aria-label="anchor" href="#callback-received"></a>
 </h3>
 <div class="section level4">
@@ -351,6 +366,35 @@ reflects the plaintext state string.</p>
 </div>
 </div>
 <div class="section level3">
+<h3 id="token-introspection">Token introspection<a class="anchor" aria-label="anchor" href="#token-introspection"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_token_introspection">Event: <code>audit_token_introspection</code><a class="anchor" aria-label="anchor" href="#event-audit_token_introspection"></a>
+</h4>
+<ul>
+<li>When: <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is called (e.g., during login
+if <code>introspect = TRUE</code>)</li>
+<li>Context:
+<ul>
+<li>
+<code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>
+</li>
+<li>
+<code>which</code> (“access” or “refresh”)</li>
+<li>
+<code>supported</code> (logical), <code>active</code> (logical|NA),
+<code>status</code>
+</li>
+<li>
+<code>sub_digest</code>, <code>introspected_client_id_digest</code>,
+<code>scope_digest</code> (when available)</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
 <h3 id="login-result">Login result<a class="anchor" aria-label="anchor" href="#login-result"></a>
 </h3>
 <div class="section level4">
@@ -403,6 +447,32 @@ Shiny module</li>
 <li>Reasons include: <code>refresh_failed_async</code>,
 <code>refresh_failed_sync</code>, <code>reauth_window</code>,
 <code>token_expired</code>
+</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
+<h3 id="token-revocation">Token revocation<a class="anchor" aria-label="anchor" href="#token-revocation"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_token_revocation">Event: <code>audit_token_revocation</code><a class="anchor" aria-label="anchor" href="#event-audit_token_revocation"></a>
+</h4>
+<ul>
+<li>When: <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is called (e.g., during logout or
+session end)</li>
+<li>Context:
+<ul>
+<li>
+<code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>
+</li>
+<li>
+<code>which</code> (“access” or “refresh”)</li>
+<li>
+<code>supported</code> (logical), <code>revoked</code> (logical|NA),
+<code>status</code>
+</li>
+</ul>
 </li>
 </ul>
 </div>
@@ -514,6 +584,35 @@ control flow.</li>
 </div>
 </div>
 <div class="section level3">
+<h3 id="error-response-state-consumption">Error response state consumption<a class="anchor" aria-label="anchor" href="#error-response-state-consumption"></a>
+</h3>
+<p>When the provider returns an error response (e.g.,
+<code>access_denied</code>) but includes the <code>state</code>
+parameter, the module attempts to consume the state to prevent replay
+and clean up the store.</p>
+<div class="section level4">
+<h4 id="event-audit_error_state_consumed">Event: <code>audit_error_state_consumed</code><a class="anchor" aria-label="anchor" href="#event-audit_error_state_consumed"></a>
+</h4>
+<ul>
+<li>When: state from an error response is successfully consumed</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>state_digest</code>
+</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="event-audit_error_state_consumption_failed">Event: <code>audit_error_state_consumption_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_error_state_consumption_failed"></a>
+</h4>
+<ul>
+<li>When: consumption of state from an error response fails</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>state_digest</code>,
+<code>error_class</code>, <code>error_message</code>
+</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
 <h3 id="modulesession-lifecycle">Module/session lifecycle<a class="anchor" aria-label="anchor" href="#modulesession-lifecycle"></a>
 </h3>
 <div class="section level4">
@@ -547,7 +646,7 @@ is initialized for a Shiny session</li>
 <code>revoke_on_session_end = TRUE</code> and a token was present</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>; the actual revocation attempt is logged
-separately as <code>audit_revoke_token_*</code> events</li>
+separately as <code>audit_token_revocation</code> events</li>
 </ul>
 </div>
 </div>
