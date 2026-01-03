@@ -1,8 +1,55 @@
 test_that("handle_callback with introspect=TRUE fails when introspection unsupported", {
-  # Provider without introspection_url
+  # To test that handle_callback fails when introspection is enabled but the
+  # provider doesn't support it, we need to mock introspect_token to simulate
+  # an unsupported scenario (since OAuthClient validation now catches missing
+  # introspection_url at construction time).
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- NA_character_
+  # First, configure an introspection_url on the provider so the client can be created
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer"
+      )
+    },
+    # Mock introspect_token to return unsupported (simulates provider not supporting it)
+    introspect_token = function(oauth_client, oauth_token, which, async) {
+      list(
+        supported = FALSE,
+        active = NA,
+        status = "introspection_unsupported"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      # With introspect=TRUE and mock returning unsupported, should fail
+      testthat::expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_token_error",
+        regexp = "introspection required but provider does not support"
+      )
+    }
+  )
+})
+
+test_that("handle_callback respects client@introspect setting (no introspect by default)", {
+  # Test that a client with introspect = FALSE doesn't do introspection
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  # introspect defaults to FALSE
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -23,86 +70,67 @@ test_that("handle_callback with introspect=TRUE fails when introspection unsuppo
         cli,
         code = "abc",
         payload = enc,
-        browser_token = tok,
-        introspect = FALSE
+        browser_token = tok
       )
       testthat::expect_s3_class(tok_ok, "shinyOAuth::OAuthToken")
-
-      # Re-prepare state for next call
-      url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
-      enc2 <- parse_query_param(url2, "state")
-
-      # With introspect=TRUE and no introspection_url, should fail
-      testthat::expect_error(
-        shinyOAuth:::handle_callback(
-          cli,
-          code = "abc",
-          payload = enc2,
-          browser_token = tok,
-          introspect = TRUE
-        ),
-        class = "shinyOAuth_token_error",
-        regexp = "introspection required but provider does not support"
-      )
     }
   )
 })
 
-test_that("handle_callback fails fast for invalid introspection arguments", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+test_that("OAuthClient validates introspect configuration at construction time", {
+  # These checks are done when creating/modifying the OAuthClient
 
-  # Providing elements while introspect is FALSE is a config error
+  # Providing elements while introspect is FALSE is an error
+  # (S7 validation returns an S7_error, not shinyOAuth_config_error)
   testthat::expect_error(
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "abc",
-      payload = "state",
-      browser_token = valid_browser_token(),
+    make_test_client(
+      use_pkce = TRUE,
+      use_nonce = FALSE,
       introspect = FALSE,
       introspect_elements = "sub"
     ),
-    class = "shinyOAuth_config_error",
     regexp = "introspect_elements.*introspect = FALSE"
   )
 
-  # Invalid element values should be rejected as config errors
+  # Invalid element values should be rejected
+  # Need to first set up introspection_url for this to work
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@introspection_url <- "https://example.com/introspect"
+
   testthat::expect_error(
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "abc",
-      payload = "state",
-      browser_token = valid_browser_token(),
+    shinyOAuth::oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
       introspect = TRUE,
       introspect_elements = c("sub", "nope")
     ),
-    class = "shinyOAuth_config_error",
-    regexp = "Invalid `introspect_elements`"
+    regexp = "invalid introspect_elements"
   )
 
   # NA / empty string should be rejected
   testthat::expect_error(
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "abc",
-      payload = "state",
-      browser_token = valid_browser_token(),
+    shinyOAuth::oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
       introspect = TRUE,
       introspect_elements = c(NA_character_)
     ),
-    class = "shinyOAuth_config_error",
     regexp = "must not contain NA"
   )
 
   testthat::expect_error(
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "abc",
-      payload = "state",
-      browser_token = valid_browser_token(),
+    shinyOAuth::oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
       introspect = TRUE,
       introspect_elements = c("")
     ),
-    class = "shinyOAuth_config_error",
     regexp = "must not contain empty"
   )
 })
@@ -121,9 +149,16 @@ test_that("handle_callback fails fast for invalid introspection arguments", {
   paste0(h, ".", p, ".")
 }
 
-test_that("handle_callback with introspect=TRUE fails when token is inactive", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+# Helper to create a test client with introspection configured
+make_introspect_client <- function(...) {
+  cli <- make_test_client(...)
   cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli
+}
+
+test_that("handle_callback with introspect=TRUE fails when token is inactive", {
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -153,8 +188,7 @@ test_that("handle_callback with introspect=TRUE fails when token is inactive", {
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "introspection indicates the access token is not active"
@@ -164,8 +198,7 @@ test_that("handle_callback with introspect=TRUE fails when token is inactive", {
 })
 
 test_that("handle_callback with introspect=TRUE succeeds when token is active", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -194,8 +227,7 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
         cli,
         code = "abc",
         payload = enc,
-        browser_token = tok,
-        introspect = TRUE
+        browser_token = tok
       )
       testthat::expect_s3_class(tok_obj, "shinyOAuth::OAuthToken")
       testthat::expect_equal(tok_obj@access_token, "at")
@@ -204,8 +236,8 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
 })
 
 test_that("introspect_elements can require sub match (id_token)", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@introspect_elements <- "sub"
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -236,9 +268,7 @@ test_that("introspect_elements can require sub match (id_token)", {
         cli,
         code = "abc",
         payload = enc,
-        browser_token = tok,
-        introspect = TRUE,
-        introspect_elements = "sub"
+        browser_token = tok
       )
       testthat::expect_equal(tok_obj@access_token, "at")
     }
@@ -271,9 +301,7 @@ test_that("introspect_elements can require sub match (id_token)", {
           cli,
           code = "abc",
           payload = enc2,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "sub"
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "sub does not match"
@@ -283,8 +311,8 @@ test_that("introspect_elements can require sub match (id_token)", {
 })
 
 test_that("introspect_elements can require client_id match", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@introspect_elements <- "client_id"
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -309,9 +337,7 @@ test_that("introspect_elements can require client_id match", {
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "client_id"
+          browser_token = tok
         )
       )
     }
@@ -338,9 +364,7 @@ test_that("introspect_elements can require client_id match", {
           cli,
           code = "abc",
           payload = enc2,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "client_id"
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "client_id does not match"
@@ -350,12 +374,12 @@ test_that("introspect_elements can require client_id match", {
 })
 
 test_that("introspect_elements can require scopes", {
-  cli <- make_test_client(
+  cli <- make_introspect_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
     scopes = c("openid", "profile")
   )
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect_elements <- "scope"
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -380,22 +404,20 @@ test_that("introspect_elements can require scopes", {
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "scope"
+          browser_token = tok
         )
       )
     }
   )
 
   # Reduced scopes should follow client@scope_validation
-  cli_warn <- make_test_client(
+  cli_warn <- make_introspect_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
     scopes = c("openid", "profile")
   )
   cli_warn@scope_validation <- "warn"
-  cli_warn@provider@introspection_url <- "https://example.com/introspect"
+  cli_warn@introspect_elements <- "scope"
   urlw <- shinyOAuth:::prepare_call(cli_warn, browser_token = tok)
   encw <- parse_query_param(urlw, "state")
   testthat::with_mocked_bindings(
@@ -417,22 +439,20 @@ test_that("introspect_elements can require scopes", {
           cli_warn,
           code = "abc",
           payload = encw,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "scope"
+          browser_token = tok
         ),
         regexp = "Introspected scopes missing requested entries"
       )
     }
   )
 
-  cli_none <- make_test_client(
+  cli_none <- make_introspect_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
     scopes = c("openid", "profile")
   )
   cli_none@scope_validation <- "none"
-  cli_none@provider@introspection_url <- "https://example.com/introspect"
+  cli_none@introspect_elements <- "scope"
   urln <- shinyOAuth:::prepare_call(cli_none, browser_token = tok)
   encn <- parse_query_param(urln, "state")
   testthat::with_mocked_bindings(
@@ -454,9 +474,7 @@ test_that("introspect_elements can require scopes", {
           cli_none,
           code = "abc",
           payload = encn,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "scope"
+          browser_token = tok
         )
       )
     }
@@ -483,9 +501,7 @@ test_that("introspect_elements can require scopes", {
           cli,
           code = "abc",
           payload = enc2,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "scope"
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "Introspected scopes missing"
@@ -495,8 +511,8 @@ test_that("introspect_elements can require scopes", {
 })
 
 test_that("introspect_elements errors when required fields are missing", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@introspect_elements <- "sub"
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -529,9 +545,7 @@ test_that("introspect_elements errors when required fields are missing", {
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE,
-          introspect_elements = "sub"
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "missing required sub"
@@ -541,8 +555,7 @@ test_that("introspect_elements errors when required fields are missing", {
 })
 
 test_that("handle_callback with introspect=TRUE fails on introspection http error", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -573,8 +586,7 @@ test_that("handle_callback with introspect=TRUE fails on introspection http erro
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "introspection indicates the access token is not active"
@@ -584,8 +596,7 @@ test_that("handle_callback with introspect=TRUE fails on introspection http erro
 })
 
 test_that("introspect_token emits audit events during login", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -620,8 +631,7 @@ test_that("introspect_token emits audit events during login", {
         cli,
         code = "abc",
         payload = enc,
-        browser_token = tok,
-        introspect = TRUE
+        browser_token = tok
       )
     }
   )
@@ -637,8 +647,7 @@ test_that("introspect_token emits audit events during login", {
 })
 
 test_that("introspect_token emits audit events even when login fails", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -674,8 +683,7 @@ test_that("introspect_token emits audit events even when login fails", {
           cli,
           code = "abc",
           payload = enc,
-          browser_token = tok,
-          introspect = TRUE
+          browser_token = tok
         ),
         class = "shinyOAuth_token_error",
         regexp = "introspection indicates the access token is not active"

@@ -297,10 +297,6 @@ oauth_module_server <- function(
     }
   }
 
-  # Read introspection settings from client (validated by OAuthClient)
-  introspect <- isTRUE(client@introspect)
-  introspect_elements <- client@introspect_elements %||% character(0)
-
   if (!.is_test()) {
     rlang::warn(
       c(
@@ -1321,8 +1317,6 @@ oauth_module_server <- function(
                   browser_token = captured_browser_token,
                   decrypted_payload = pre_payload,
                   state_store_values = pre_state,
-                  introspect = introspect,
-                  introspect_elements = introspect_elements,
                   shiny_session = captured_shiny_session
                 )
               })
@@ -1332,9 +1326,7 @@ oauth_module_server <- function(
               client,
               code = code,
               payload = state,
-              browser_token = values$browser_token,
-              introspect = introspect,
-              introspect_elements = introspect_elements
+              browser_token = values$browser_token
             )
           }
 

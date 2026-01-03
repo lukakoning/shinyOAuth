@@ -56,7 +56,9 @@ make_test_client <- function(
   use_nonce = FALSE,
   state_max_age = 600,
   state_payload_max_age = 300,
-  scopes = character(0)
+  scopes = character(0),
+  introspect = FALSE,
+  introspect_elements = character(0)
 ) {
   prov <- make_test_provider(use_pkce = use_pkce, use_nonce = use_nonce)
   oauth_client(
@@ -71,6 +73,8 @@ make_test_client <- function(
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    )
+    ),
+    introspect = introspect,
+    introspect_elements = introspect_elements
   )
 }

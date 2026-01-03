@@ -92,13 +92,10 @@ prepare_call <- function(
 
   payload <- list(
     state = state,
-
     client_id = oauth_client@client_id,
     redirect_uri = oauth_client@redirect_uri,
     scopes = oauth_client@scopes,
-
     provider = oauth_client@provider |> provider_fingerprint(),
-
     issued_at = as.numeric(Sys.time())
   ) |>
     state_encrypt_gcm(key = oauth_client@state_key)
@@ -308,20 +305,6 @@ build_auth_url <- function(
 #'   the provided values instead. This supports async flows that prefetch and
 #'   remove the single-use state entry on the main thread to avoid cross-process
 #'   cache visibility issues.
-#' @param introspect If TRUE, the login flow will call the provider's token
-#'   introspection endpoint (RFC 7662) to validate the access token. The login
-#'   is not considered complete unless introspection succeeds and returns
-#'   `active = TRUE`. Default FALSE.
-#' @param introspect_elements Optional character vector of additional
-#'   requirements to enforce on the introspection response when
-#'   `introspect = TRUE`. Supported values:
-#'   - "sub": require an RFC 7662 `sub` field and require it to match the
-#'     identity from the ID token (preferred) or userinfo (fallback).
-#'   - "client_id": require an RFC 7662 `client_id` field matching
-#'     `oauth_client@client_id`.
-#'   - "scope": require an RFC 7662 `scope` field and require it to include
-#'     all scopes requested by `oauth_client@scopes`.
-#'   Default is `character(0)` (no extra requirements beyond `active = TRUE`).
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -341,51 +324,15 @@ handle_callback <- function(
   browser_token,
   decrypted_payload = NULL,
   state_store_values = NULL,
-  introspect = FALSE,
-  introspect_elements = character(0),
   shiny_session = NULL
 ) {
   # Type checks ----------------------------------------------------------------
 
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
-  # Validate introspection knobs early (fail fast) -----------------------------
-
-  stopifnot(is.logical(introspect), length(introspect) == 1, !is.na(introspect))
-
-  if (is.null(introspect_elements)) {
-    introspect_elements <- character(0)
-  }
-  if (!is.character(introspect_elements)) {
-    err_config("`introspect_elements` must be a character vector")
-  }
-  if (anyNA(introspect_elements)) {
-    err_config("`introspect_elements` must not contain NA")
-  }
-  introspect_elements <- as.character(introspect_elements)
-  # Treat empty strings as invalid (usually indicates a bug or bad user input)
-  if (!all(nzchar(introspect_elements))) {
-    err_config("`introspect_elements` must not contain empty strings")
-  }
-  introspect_elements <- unique(introspect_elements)
-  if (!isTRUE(introspect) && length(introspect_elements) > 0) {
-    err_config(c(
-      "x" = "`introspect_elements` was provided but `introspect = FALSE`",
-      "i" = "Either set `introspect = TRUE` or pass `introspect_elements = character(0)`"
-    ))
-  }
-  # Validate allowed values when introspection is enabled
-  if (isTRUE(introspect) && length(introspect_elements) > 0) {
-    allowed <- c("sub", "client_id", "scope")
-    bad <- setdiff(introspect_elements, allowed)
-    if (length(bad) > 0) {
-      err_config(c(
-        "x" = "Invalid `introspect_elements` value(s)",
-        "!" = paste(bad, collapse = ", "),
-        "i" = paste0("Allowed: ", paste(allowed, collapse = ", "))
-      ))
-    }
-  }
+  # Read introspection settings from client (already validated by OAuthClient)
+  introspect <- isTRUE(oauth_client@introspect)
+  introspect_elements <- oauth_client@introspect_elements %||% character(0)
 
   # Validate required callback params without leaking raw assertion messages
   if (!is_valid_string(code)) {
