@@ -345,16 +345,16 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
     )
     if (
       nchar(auth_state) > 0 &&
-        (grepl("authenticated: TRUE", auth_state) ||
-          (grepl("error_desc:", auth_state) &&
-            !grepl("error_desc: <none>", auth_state)))
+        (grepl("authenticated: TRUE", auth_state, fixed = TRUE) ||
+          (grepl("error_desc:", auth_state, fixed = TRUE) &&
+            !grepl("error_desc: <none>", auth_state, fixed = TRUE)))
     ) {
       break
     }
     Sys.sleep(0.5)
   }
   testthat::expect_true(
-    grepl("authenticated: TRUE", auth_state),
+    grepl("authenticated: TRUE", auth_state, fixed = TRUE),
     info = paste0("auth_state was: ", auth_state)
   )
 })

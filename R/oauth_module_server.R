@@ -320,7 +320,7 @@ oauth_module_server <- function(
     err_config("`introspect_elements` must not contain NA")
   }
   introspect_elements <- as.character(introspect_elements)
-  if (any(!nzchar(introspect_elements))) {
+  if (!all(nzchar(introspect_elements))) {
     err_config("`introspect_elements` must not contain empty strings")
   }
   introspect_elements <- unique(introspect_elements)

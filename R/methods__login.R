@@ -360,7 +360,7 @@ handle_callback <- function(
   }
   introspect_elements <- as.character(introspect_elements)
   # Treat empty strings as invalid (usually indicates a bug or bad user input)
-  if (any(!nzchar(introspect_elements))) {
+  if (!all(nzchar(introspect_elements))) {
     err_config("`introspect_elements` must not contain empty strings")
   }
   introspect_elements <- unique(introspect_elements)

@@ -160,9 +160,12 @@ test_that("scope_validation = 'none' skips validation entirely", {
   enc <- parse_query_param(url, "state")
 
   # Should NOT warn or error, just return the token
-  expect_no_warning(
-    expect_no_error(
-      result <- testthat::with_mocked_bindings(
+  result <- NULL
+  warned <- FALSE
+  err <- NULL
+  result <- withCallingHandlers(
+    tryCatch(
+      testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
           list(
             access_token = "my_access_token",
@@ -178,9 +181,19 @@ test_that("scope_validation = 'none' skips validation entirely", {
           payload = enc,
           browser_token = tok
         )
-      )
-    )
+      ),
+      error = function(e) {
+        err <<- e
+        NULL
+      }
+    ),
+    warning = function(w) {
+      warned <<- TRUE
+      invokeRestart("muffleWarning")
+    }
   )
+  expect_false(warned)
+  expect_null(err)
 
   # Token should be returned
   expect_true(S7::S7_inherits(result, OAuthToken))

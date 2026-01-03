@@ -1160,7 +1160,7 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       url <- as.character(req$url)
-      if (grepl("userinfo", url)) {
+      if (grepl("userinfo", url, fixed = TRUE)) {
         # Userinfo returns different sub
         httr2::response(
           url = url,
@@ -1231,7 +1231,7 @@ testthat::test_that("refresh_token skips userinfo_id_token_match when id_token m
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       url <- as.character(req$url)
-      if (grepl("userinfo", url)) {
+      if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
           status = 200,
@@ -1338,7 +1338,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       url <- as.character(req$url)
-      if (grepl("userinfo", url)) {
+      if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
           status = 200,
@@ -1435,7 +1435,7 @@ testthat::test_that("refresh_token updates userinfo even when id_token omitted",
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       url <- as.character(req$url)
-      if (grepl("userinfo", url)) {
+      if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
           status = 200,

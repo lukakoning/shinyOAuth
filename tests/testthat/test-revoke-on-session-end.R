@@ -50,7 +50,7 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
   testthat::expect_true("access" %in% which_values)
 
   async_values <- vapply(revoke_calls, function(x) isTRUE(x$async), logical(1))
-  testthat::expect_true(all(async_values == FALSE))
+  testthat::expect_true(!any(async_values))
 })
 
 testthat::test_that("revoke_on_session_end uses async only when module async = TRUE", {
@@ -112,7 +112,7 @@ testthat::test_that("revoke_on_session_end uses async only when module async = T
 
   testthat::expect_length(revoke_calls, 2)
   async_values <- vapply(revoke_calls, function(x) isTRUE(x$async), logical(1))
-  testthat::expect_true(all(async_values == TRUE))
+  testthat::expect_true(all(async_values))
 })
 
 testthat::test_that("revoke_on_session_end does NOT call revoke_token when FALSE", {
