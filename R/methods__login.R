@@ -308,6 +308,20 @@ build_auth_url <- function(
 #'   the provided values instead. This supports async flows that prefetch and
 #'   remove the single-use state entry on the main thread to avoid cross-process
 #'   cache visibility issues.
+#' @param introspect If TRUE, the login flow will call the provider's token
+#'   introspection endpoint (RFC 7662) to validate the access token. The login
+#'   is not considered complete unless introspection succeeds and returns
+#'   `active = TRUE`. Default FALSE.
+#' @param introspect_elements Optional character vector of additional
+#'   requirements to enforce on the introspection response when
+#'   `introspect = TRUE`. Supported values:
+#'   - "sub": require an RFC 7662 `sub` field and require it to match the
+#'     identity from the ID token (preferred) or userinfo (fallback).
+#'   - "client_id": require an RFC 7662 `client_id` field matching
+#'     `oauth_client@client_id`.
+#'   - "scope": require an RFC 7662 `scope` field and require it to include
+#'     all scopes requested by `oauth_client@scopes`.
+#'   Default is `character(0)` (no extra requirements beyond `active = TRUE`).
 #'
 #' @return An [OAuthToken]` object containing the access token, refresh token,
 #' expiration time, user information (if requested), and ID token (if applicable).
@@ -323,11 +337,51 @@ handle_callback <- function(
   payload,
   browser_token,
   decrypted_payload = NULL,
-  state_store_values = NULL
+  state_store_values = NULL,
+  introspect = FALSE,
+  introspect_elements = character(0)
 ) {
   # Type checks ----------------------------------------------------------------
 
   S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  # Validate introspection knobs early (fail fast) -----------------------------
+
+  stopifnot(is.logical(introspect), length(introspect) == 1, !is.na(introspect))
+
+  if (is.null(introspect_elements)) {
+    introspect_elements <- character(0)
+  }
+  if (!is.character(introspect_elements)) {
+    err_config("`introspect_elements` must be a character vector")
+  }
+  if (anyNA(introspect_elements)) {
+    err_config("`introspect_elements` must not contain NA")
+  }
+  introspect_elements <- as.character(introspect_elements)
+  # Treat empty strings as invalid (usually indicates a bug or bad user input)
+  if (any(!nzchar(introspect_elements))) {
+    err_config("`introspect_elements` must not contain empty strings")
+  }
+  introspect_elements <- unique(introspect_elements)
+  if (!isTRUE(introspect) && length(introspect_elements) > 0) {
+    err_config(c(
+      "x" = "`introspect_elements` was provided but `introspect = FALSE`",
+      "i" = "Either set `introspect = TRUE` or pass `introspect_elements = character(0)`"
+    ))
+  }
+  # Validate allowed values when introspection is enabled
+  if (isTRUE(introspect) && length(introspect_elements) > 0) {
+    allowed <- c("sub", "client_id", "scope")
+    bad <- setdiff(introspect_elements, allowed)
+    if (length(bad) > 0) {
+      err_config(c(
+        "x" = "Invalid `introspect_elements` value(s)",
+        "!" = paste(bad, collapse = ", "),
+        "i" = paste0("Allowed: ", paste(allowed, collapse = ", "))
+      ))
+    }
+  }
 
   # Validate required callback params without leaking raw assertion messages
   if (!is_valid_string(code)) {
@@ -599,6 +653,190 @@ handle_callback <- function(
   )
   # Set userinfo separately for compatibility with some S7 dispatchers
   token@userinfo <- token_set$userinfo %||% list()
+
+  # Optional token introspection validation -----------------------------------
+
+  if (isTRUE(introspect)) {
+    intro_res <- introspect_token(
+      oauth_client = oauth_client,
+      oauth_token = token,
+      which = "access",
+      async = FALSE
+    )
+
+    # Fail login if introspection is unsupported when requested
+
+    if (!isTRUE(intro_res$supported)) {
+      err_token(c(
+        "x" = "Token introspection required but provider does not support it",
+        "i" = "Set `introspect = FALSE` or configure an introspection_url on the provider"
+      ))
+    }
+
+    # Fail login if token is not active
+    if (!isTRUE(intro_res$active)) {
+      err_token(c(
+        "x" = "Token introspection indicates the access token is not active",
+        "i" = paste0("Introspection status: ", intro_res$status %||% "unknown")
+      ))
+    }
+
+    ## Extra requirements for token introspection ------------------------------
+
+    raw <- intro_res$raw %||% list()
+    if (!is.list(raw)) {
+      raw <- list()
+    }
+
+    # client_id requirement
+    if ("client_id" %in% introspect_elements) {
+      cid <- raw$client_id %||% NA_character_
+      if (!is_valid_string(cid)) {
+        err_token(c(
+          "x" = "Token introspection response missing required client_id",
+          "i" = "Disable this check or ensure your provider returns client_id in introspection"
+        ))
+      }
+      if (
+        !identical(
+          as.character(cid)[1],
+          as.character(oauth_client@client_id)[1]
+        )
+      ) {
+        err_token(c(
+          "x" = "Token introspection client_id does not match configured client_id",
+          "!" = paste0("Got: ", as.character(cid)[1])
+        ))
+      }
+    }
+
+    # sub requirement (binds access token identity to ID token or userinfo)
+    if ("sub" %in% introspect_elements) {
+      intro_sub <- raw$sub %||% NA_character_
+      if (!is_valid_string(intro_sub)) {
+        err_token(c(
+          "x" = "Token introspection response missing required sub",
+          "i" = "Disable this check or ensure your provider returns sub in introspection"
+        ))
+      }
+
+      expected_sub <- NA_character_
+      # Prefer ID token subject if present
+      if (is_valid_string(token@id_token)) {
+        pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
+        if (!inherits(pl, "try-error")) {
+          expected_sub <- pl$sub %||% NA_character_
+        }
+      }
+      # Fallback: userinfo subject
+      if (!is_valid_string(expected_sub)) {
+        ui <- token@userinfo %||% list()
+        if (is.list(ui)) {
+          expected_sub <- ui$sub %||% NA_character_
+        }
+      }
+
+      if (!is_valid_string(expected_sub)) {
+        err_token(c(
+          "x" = "Cannot validate introspection sub: no subject is available from ID token or userinfo",
+          "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
+        ))
+      }
+
+      if (
+        !identical(as.character(intro_sub)[1], as.character(expected_sub)[1])
+      ) {
+        err_token(c(
+          "x" = "Token introspection sub does not match authenticated subject",
+          "i" = "This may indicate a provider inconsistency or a token mix-up"
+        ))
+      }
+    }
+
+    # scope requirement
+    if ("scope" %in% introspect_elements) {
+      scope_validation_mode <- oauth_client@scope_validation %||% "strict"
+
+      # Mirror token response scope reconciliation behavior:
+      # - "none": skip scope checks
+      # - "warn": warn (do not fail login)
+      # - "strict": error
+      requested_scopes <- as.character(oauth_client@scopes %||% character())
+      requested_scopes <- sort(unique(requested_scopes[nzchar(
+        requested_scopes
+      )]))
+
+      if (
+        !identical(scope_validation_mode, "none") &&
+          length(requested_scopes) > 0
+      ) {
+        intro_scope_raw <- raw$scope %||% NULL
+
+        if (is.null(intro_scope_raw)) {
+          msg <- "Token introspection response missing scope; cannot validate requested scopes"
+          if (identical(scope_validation_mode, "strict")) {
+            err_token(c(
+              "x" = msg,
+              "i" = "Set scope_validation = 'warn' or 'none', or disable the scope introspection requirement"
+            ))
+          } else if (identical(scope_validation_mode, "warn")) {
+            rlang::warn(
+              c(
+                "!" = msg,
+                "i" = "Set scope_validation = 'none' to suppress this warning"
+              ),
+              .frequency = "once",
+              .frequency_id = "introspection-scope-validation-missing-scope"
+            )
+          }
+        } else {
+          # Normalize scope to vector (providers may return space- or comma-separated scopes)
+          if (length(intro_scope_raw) == 1L) {
+            if (
+              grepl(",", intro_scope_raw, fixed = TRUE) &&
+                !grepl(" ", intro_scope_raw, fixed = TRUE)
+            ) {
+              intro_scopes <- unlist(
+                strsplit(intro_scope_raw, ",", fixed = TRUE),
+                use.names = FALSE
+              )
+            } else {
+              intro_scopes <- unlist(
+                strsplit(intro_scope_raw, " ", fixed = TRUE),
+                use.names = FALSE
+              )
+            }
+          } else {
+            intro_scopes <- as.character(intro_scope_raw)
+          }
+          intro_scopes <- sort(unique(intro_scopes[nzchar(intro_scopes)]))
+
+          missing <- setdiff(requested_scopes, intro_scopes)
+          if (length(missing) > 0) {
+            msg <- paste0(
+              "Introspected scopes missing requested entries: ",
+              paste(missing, collapse = ", ")
+            )
+            if (identical(scope_validation_mode, "strict")) {
+              err_token(c(
+                "x" = msg,
+                "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+              ))
+            } else if (identical(scope_validation_mode, "warn")) {
+              rlang::warn(
+                c(
+                  "!" = msg,
+                  "i" = "Set scope_validation = 'none' to suppress this warning"
+                ),
+                .frequency = "once",
+                .frequency_id = "introspection-scope-validation-missing-scopes"
+              )
+            }
+          }
+        }
+      }
+    }
+  }
 
   # Audit: login success with redacted identifiers
   try(

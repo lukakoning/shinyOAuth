@@ -10,7 +10,9 @@ handle_callback(
   payload,
   browser_token,
   decrypted_payload = NULL,
-  state_store_values = NULL
+  state_store_values = NULL,
+  introspect = FALSE,
+  introspect_elements = character(0)
 )
 }
 \arguments{
@@ -35,6 +37,24 @@ function will skip reading/removing from \code{oauth_client@state_store} and use
 the provided values instead. This supports async flows that prefetch and
 remove the single-use state entry on the main thread to avoid cross-process
 cache visibility issues.}
+
+\item{introspect}{If TRUE, the login flow will call the provider's token
+introspection endpoint (RFC 7662) to validate the access token. The login
+is not considered complete unless introspection succeeds and returns
+\code{active = TRUE}. Default FALSE.}
+
+\item{introspect_elements}{Optional character vector of additional
+requirements to enforce on the introspection response when
+\code{introspect = TRUE}. Supported values:
+\itemize{
+\item "sub": require an RFC 7662 \code{sub} field and require it to match the
+identity from the ID token (preferred) or userinfo (fallback).
+\item "client_id": require an RFC 7662 \code{client_id} field matching
+\code{oauth_client@client_id}.
+\item "scope": require an RFC 7662 \code{scope} field and require it to include
+all scopes requested by \code{oauth_client@scopes}.
+Default is \code{character(0)} (no extra requirements beyond \code{active = TRUE}).
+}}
 }
 \value{
 An \link{OAuthToken}` object containing the access token, refresh token,

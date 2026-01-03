@@ -48,6 +48,58 @@ testthat::test_that("manual login flow yields authenticated TRUE on success", {
   )
 })
 
+testthat::test_that("login fails when introspection validation fails", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE,
+      introspect = TRUE,
+      introspect_elements = character(0)
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          list(access_token = "t", expires_in = 3600)
+        },
+        req_with_retry = function(req) {
+          httr2::response(
+            url = as.character(req$url),
+            status = 200,
+            headers = list("content-type" = "application/json"),
+            body = charToRaw('{"active":false}')
+          )
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=ok&state=", enc))
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_null(values$token)
+      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_true(
+        is.character(values$error_description) &&
+          grepl("not active", values$error_description, ignore.case = TRUE)
+      )
+    }
+  )
+})
+
 testthat::test_that("auto_redirect triggers when unauthenticated and cookie present", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

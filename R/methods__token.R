@@ -269,14 +269,66 @@ introspect_token <- function(
 
   which <- match.arg(which)
 
+  .audit_introspection <- function(result) {
+    # Best-effort audit logging for introspection (do not fail the caller).
+    # Avoid including raw introspection payloads as they may contain PII.
+    raw <- result$raw %||% NULL
+    if (!is.list(raw)) {
+      raw <- NULL
+    }
+
+    # Include digested identifiers when present in raw payload.
+    sub_digest <- NA_character_
+    if (!is.null(raw) && is_valid_string(raw$sub %||% NA_character_)) {
+      sub_digest <- string_digest(as.character(raw$sub)[1])
+    }
+    introspected_client_id_digest <- NA_character_
+    if (!is.null(raw) && is_valid_string(raw$client_id %||% NA_character_)) {
+      introspected_client_id_digest <- string_digest(as.character(
+        raw$client_id
+      )[1])
+    }
+    scope_digest <- NA_character_
+    if (
+      !is.null(raw) &&
+        !is.null(raw$scope) &&
+        is_valid_string(as.character(raw$scope)[1])
+    ) {
+      scope_digest <- string_digest(as.character(raw$scope)[1])
+    }
+
+    try(
+      audit_event(
+        "token_introspection",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          which = which,
+          supported = isTRUE(result$supported),
+          active = if (is.na(result$active)) NA else isTRUE(result$active),
+          status = result$status %||% NA_character_,
+          sub_digest = sub_digest,
+          introspected_client_id_digest = introspected_client_id_digest,
+          scope_digest = scope_digest
+        )
+      ),
+      silent = TRUE
+    )
+
+    invisible(NULL)
+  }
+
   url <- oauth_client@provider@introspection_url %||% NA_character_
   if (!is_valid_string(url)) {
-    return(list(
+    result <- list(
       supported = FALSE,
       active = NA,
       raw = NULL,
       status = "introspection_unsupported"
-    ))
+    )
+    .audit_introspection(result)
+    return(result)
   }
 
   if (isTRUE(async)) {
@@ -301,12 +353,14 @@ introspect_token <- function(
     oauth_token@refresh_token
   }
   if (!is_valid_string(tok_val)) {
-    return(list(
+    result <- list(
       supported = TRUE,
       active = NA,
       raw = NULL,
       status = "missing_token"
-    ))
+    )
+    .audit_introspection(result)
+    return(result)
   }
 
   params <- list(token = tok_val)
@@ -361,12 +415,14 @@ introspect_token <- function(
     # confirm token validity. Mark active as NA (unknown). The overall
     # all_passed logic requires active == TRUE when requested, so NA will
     # still result in all_passed = FALSE.
-    return(list(
+    result <- list(
       supported = TRUE,
       active = NA,
       raw = NULL,
       status = paste0("http_", httr2::resp_status(resp))
-    ))
+    )
+    .audit_introspection(result)
+    return(result)
   }
   raw <- NULL
   active <- NA
@@ -433,12 +489,15 @@ introspect_token <- function(
   # If parsing failed or the response didn't include an active field,
   # leave active as NA (unknown). The caller's all_passed logic requires
   # TRUE to pass, so NA will not pass.
-  list(
+  result <- list(
     supported = TRUE,
     active = active,
     raw = raw,
     status = status
   )
+
+  .audit_introspection(result)
+  result
 }
 
 #' @title

@@ -106,6 +106,17 @@
 #'   network issues, provider unavailable), so combine with appropriate token
 #'   lifetimes on the provider side.
 #'
+#' @param introspect If TRUE, the login flow will call the provider's token
+#'   introspection endpoint (RFC 7662) to validate the access token. The login is
+#'   not considered complete unless introspection succeeds and returns
+#'   `active = TRUE`; otherwise the login fails and `authenticated` remains
+#'   FALSE. Default is FALSE. Requires the provider to have an
+#'   `introspection_url` configured.
+#' @param introspect_elements Optional character vector of additional
+#'   requirements to enforce on the introspection response when
+#'   `introspect = TRUE`. Supported values: "sub", "client_id", "scope".
+#'   Default is `character(0)`.
+#'
 #' @param tab_title_cleaning If TRUE (default), removes any query string suffix
 #'   from the browser tab title after the OAuth callback, so titles like
 #'   "localhost:8100?code=...&state=..." become "localhost:8100"
@@ -240,6 +251,8 @@ oauth_module_server <- function(
   refresh_check_interval = 10000,
 
   revoke_on_session_end = FALSE,
+  introspect = FALSE,
+  introspect_elements = character(0),
 
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
@@ -283,8 +296,51 @@ oauth_module_server <- function(
     is.null(browser_cookie_path) || is_valid_string(browser_cookie_path),
     is.logical(revoke_on_session_end) &
       length(revoke_on_session_end) == 1 &
-      !is.na(revoke_on_session_end)
+      !is.na(revoke_on_session_end),
+    is.logical(introspect) &
+      length(introspect) == 1 &
+      !is.na(introspect),
+    is.null(introspect_elements) || is.character(introspect_elements)
   )
+
+  # Introspection arguments: fail fast + canonicalize
+  if (isTRUE(introspect)) {
+    introspection_url <- client@provider@introspection_url %||% NA_character_
+    if (!is_valid_string(introspection_url)) {
+      err_config(c(
+        "x" = "`introspect = TRUE` requires the provider to have an introspection_url configured",
+        "i" = "Either set `introspect = FALSE` or configure provider@introspection_url"
+      ))
+    }
+  }
+  if (is.null(introspect_elements)) {
+    introspect_elements <- character(0)
+  }
+  if (anyNA(introspect_elements)) {
+    err_config("`introspect_elements` must not contain NA")
+  }
+  introspect_elements <- as.character(introspect_elements)
+  if (any(!nzchar(introspect_elements))) {
+    err_config("`introspect_elements` must not contain empty strings")
+  }
+  introspect_elements <- unique(introspect_elements)
+  if (!isTRUE(introspect) && length(introspect_elements) > 0) {
+    err_config(c(
+      "x" = "`introspect_elements` was provided but `introspect = FALSE`",
+      "i" = "Either set `introspect = TRUE` or pass `introspect_elements = character(0)`"
+    ))
+  }
+  if (isTRUE(introspect) && length(introspect_elements) > 0) {
+    allowed <- c("sub", "client_id", "scope")
+    bad <- setdiff(introspect_elements, allowed)
+    if (length(bad) > 0) {
+      err_config(c(
+        "x" = "Invalid `introspect_elements` value(s)",
+        "!" = paste(bad, collapse = ", "),
+        "i" = paste0("Allowed: ", paste(allowed, collapse = ", "))
+      ))
+    }
+  }
 
   if (!.is_test()) {
     rlang::warn(
@@ -417,10 +473,9 @@ oauth_module_server <- function(
       ),
       silent = TRUE
     )
-    
 
     # Session-end hook: revoke tokens if configured ----------------------------
-    
+
     if (isTRUE(revoke_on_session_end)) {
       session$onSessionEnded(function() {
         # Capture token at session end; may be NULL if never authenticated
@@ -455,7 +510,6 @@ oauth_module_server <- function(
         }
       })
     }
-    
 
     # Error handling helpers --------------------------------------------------
 
@@ -495,7 +549,6 @@ oauth_module_server <- function(
       values$error_description <- description %||%
         if (!is.null(e)) .compose_error(e, phase) else NULL
     }
-    
 
     # Client-side actions (CSP-friendly via custom messages) ------------------
 
@@ -609,7 +662,6 @@ oauth_module_server <- function(
       )
     }
 
-    
     # Browser token cookie -----------------------------------------------------
 
     # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
@@ -782,7 +834,6 @@ oauth_module_server <- function(
       }
       return(FALSE)
     }
-    
 
     # Track authentication status ----------------------------------------------
 
@@ -859,7 +910,6 @@ oauth_module_server <- function(
       },
       ignoreInit = FALSE
     )
-    
 
     # Auth URL & redirection helpers -------------------------------------------
 
@@ -967,7 +1017,6 @@ oauth_module_server <- function(
       # This maintains session binding without authenticating the user.
       .set_browser_token()
     }
-    
 
     # Handle callback + auto-redirect ------------------------------------------
 
@@ -1201,7 +1250,9 @@ oauth_module_server <- function(
                 payload = state,
                 browser_token = captured_browser_token,
                 decrypted_payload = pre_payload,
-                state_store_values = pre_state
+                state_store_values = pre_state,
+                introspect = introspect,
+                introspect_elements = introspect_elements
               )
             })
           } else {
@@ -1209,7 +1260,9 @@ oauth_module_server <- function(
               client,
               code = code,
               payload = state,
-              browser_token = values$browser_token
+              browser_token = values$browser_token,
+              introspect = introspect,
+              introspect_elements = introspect_elements
             )
           }
 
@@ -1353,7 +1406,6 @@ oauth_module_server <- function(
     # Testing hooks: expose helpers for unit tests
     values$.process_query <- .process_query
     values$.strip_oauth_query <- .strip_oauth_query
-    
 
     # Proactive refresh --------------------------------------------------------
 
@@ -1566,7 +1618,6 @@ oauth_module_server <- function(
         shiny::invalidateLater(wake_ms, session)
       })
     }
-    
 
     # Expiry watch -------------------------------------------------------------
 
@@ -1676,7 +1727,6 @@ oauth_module_server <- function(
 
       shiny::invalidateLater(wake_ms, session)
     })
-    
 
     # Return reactive values ---------------------------------------------------
 

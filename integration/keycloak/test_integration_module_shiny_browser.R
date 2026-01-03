@@ -239,3 +239,122 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   testthat::expect_identical(user_info$name, "Alice Test")
   testthat::expect_identical(user_info$email, "alice@example.com")
 })
+
+testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
+  # Skip if Keycloak isn't reachable
+  issuer <- "http://localhost:8080/realms/shinyoauth"
+  disc <- paste0(issuer, "/.well-known/openid-configuration")
+  ok <- tryCatch(
+    {
+      resp <- httr2::request(disc) |>
+        httr2::req_error(is_error = function(resp) FALSE) |>
+        httr2::req_headers(Accept = "application/json") |>
+        httr2::req_perform()
+      !httr2::resp_is_error(resp)
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if_not(ok, "Keycloak not reachable at localhost:8080")
+
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT", "8100"))
+
+  is_port_in_use <- function(port) {
+    con <- suppressWarnings(try(
+      socketConnection(
+        host = "127.0.0.1",
+        port = as.integer(port),
+        server = FALSE,
+        blocking = TRUE,
+        open = "r+",
+        timeout = 1
+      ),
+      silent = TRUE
+    ))
+    if (!inherits(con, "try-error")) {
+      try(close(con), silent = TRUE)
+      return(TRUE)
+    }
+    FALSE
+  }
+  if (is_port_in_use(app_port)) {
+    testthat::skip(paste0("Port ", app_port, " already in use"))
+  }
+
+  provider <- shinyOAuth::oauth_provider_keycloak(
+    base_url = "http://localhost:8080",
+    realm = "shinyoauth"
+  )
+  client <- shinyOAuth::oauth_client(
+    provider = provider,
+    client_id = "shiny-confidential",
+    client_secret = "secret",
+    redirect_uri = sprintf("http://127.0.0.1:%d", app_port),
+    scopes = c("openid", "profile", "email")
+  )
+
+  ui <- shiny::fluidPage(
+    shinyOAuth::use_shinyOAuth(),
+    shiny::h3("E2E introspect"),
+    shiny::verbatimTextOutput("auth_state")
+  )
+  server <- function(input, output, session) {
+    auth <- shinyOAuth::oauth_module_server("auth", client, introspect = TRUE)
+    output$auth_state <- shiny::renderText({
+      paste(
+        "authenticated:",
+        isTRUE(auth$authenticated),
+        "error:",
+        if (!is.null(auth$error)) auth$error else "<none>",
+        "error_desc:",
+        if (!is.null(auth$error_description)) {
+          auth$error_description
+        } else {
+          "<none>"
+        }
+      )
+    })
+  }
+  app <- shiny::shinyApp(ui, server)
+
+  drv <- shinytest2::AppDriver$new(
+    app,
+    name = "keycloak-e2e-introspect",
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 10000)
+  drv$run_js(
+    "document.querySelector('#username').value = 'alice'; document.querySelector('#password').value = 'alice'; document.querySelector('#kc-login').click();"
+  )
+  drv$wait_for_js(
+    "(function () { var el = document.querySelector('#auth_state'); if (!el) return false; var t = el.innerText; return t.includes('authenticated: TRUE') || t.includes('error_desc:') && !t.includes('error_desc: <none>'); })();",
+    timeout = 20000
+  )
+
+  # Poll a few times to get a stable auth_state
+  auth_state <- ""
+  for (i in 1:15) {
+    auth_state <- drv$get_js(
+      "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
+    )
+    if (
+      nchar(auth_state) > 0 &&
+        (grepl("authenticated: TRUE", auth_state) ||
+          (grepl("error_desc:", auth_state) &&
+            !grepl("error_desc: <none>", auth_state)))
+    ) {
+      break
+    }
+    Sys.sleep(0.5)
+  }
+  testthat::expect_true(
+    grepl("authenticated: TRUE", auth_state),
+    info = paste0("auth_state was: ", auth_state)
+  )
+})
