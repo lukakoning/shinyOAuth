@@ -108,6 +108,9 @@
 - When fetching JWKS, if `key_ops` is present on keys, only keys with
   `key_ops` including `"verify"` are considered.
 
+- Token type is now validated before making a call to the userinfo
+  endpoint.
+
 ### Fixed
 
 - Package now correctly requires `httr2` \>= 1.1.0.
