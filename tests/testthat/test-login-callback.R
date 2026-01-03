@@ -356,7 +356,12 @@ test_that("handle_callback fails when nonce is required but missing in state sto
   # Stub token swap to avoid network
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 10, id_token = "dummy.jwt.token")
+      list(
+        access_token = "at",
+        token_type = "Bearer",
+        expires_in = 10,
+        id_token = "dummy.jwt.token"
+      )
     },
     .package = "shinyOAuth",
     {

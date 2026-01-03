@@ -126,6 +126,57 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   testthat::expect_gte(calls$introspection, 1L)
 })
 
+testthat::test_that("refresh_token validates token_type before fetching userinfo", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@allowed_token_types <- c("Bearer")
+  # Set URL to satisfy provider validation when enabling userinfo
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@userinfo_required <- TRUE
+
+  calls <- list(token = 0L, userinfo = 0L)
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      url <- as.character(req$url)
+      if (grepl("/token", url, fixed = TRUE)) {
+        calls$token <<- calls$token + 1L
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            '{"access_token":"new_at","token_type":"DPoP","expires_in":120}'
+          )
+        )
+      } else if (grepl("/userinfo", url, fixed = TRUE)) {
+        calls$userinfo <<- calls$userinfo + 1L
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"u-42"}')
+        )
+      } else {
+        httr2::response(url = url, status = 200)
+      }
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    regexp = "token_type|Unsupported token_type",
+    class = "shinyOAuth_token_error"
+  )
+  testthat::expect_identical(calls$userinfo, 0L)
+})
+
 testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 

@@ -715,6 +715,9 @@ refresh_token <- function(
     )
   }
 
+  # Validate token_type immediately after refresh, before any userinfo call.
+  verify_token_type_allowlist(oauth_client, tok)
+
   # If configured, (re-)fetch userinfo using the fresh access token
   if (isTRUE(oauth_client@provider@userinfo_required)) {
     ui <- get_userinfo(oauth_client, token = tok$access_token)

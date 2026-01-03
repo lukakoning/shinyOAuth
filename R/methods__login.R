@@ -564,6 +564,11 @@ handle_callback <- function(
   # - id_token
   # - ... plus any extra fields returned by the provider
 
+  # Validate token_type immediately after token exchange, before any userinfo
+  # call. This prevents sending an inappropriate Bearer token to the provider
+  # when a non-Bearer token_type (e.g., DPoP) is returned.
+  verify_token_type_allowlist(oauth_client, token_set)
+
   # Fetch userinfo -------------------------------------------------------------
 
   if (isTRUE(oauth_client@provider@userinfo_required)) {
@@ -1105,34 +1110,7 @@ verify_token_set <- function(
     err_token("Invalid token set: must be a non-empty list")
   }
 
-  # Token type guardrail -------------------------------------------------------
-  # Policy:
-  # - If provider@allowed_token_types is empty (length 0 or NULL), we do not
-  #   enforce token_type presence or value (provider may omit it).
-  # - If allowed_token_types is non-empty, token_type MUST be present and one
-  #   of the allowed values (case-insensitive).
-  allowed_vec <- client@provider@allowed_token_types %||% character(0)
-  if (length(allowed_vec) > 0) {
-    tt <- token_set$token_type
-    if (is.null(tt)) {
-      err_token("Token response missing token_type")
-    }
-    tt <- as.character(tt)[1]
-    if (!is_valid_string(tt)) {
-      err_token("Invalid token_type in token response")
-    }
-    allowed <- tolower(as.character(allowed_vec))
-    if (!tolower(tt) %in% allowed) {
-      err_token(c(
-        "x" = "Unsupported token_type received",
-        "!" = paste0("Got: ", tt),
-        "i" = paste0(
-          "Expected one of: ",
-          paste(unique(allowed_vec), collapse = ", ")
-        )
-      ))
-    }
-  }
+  verify_token_type_allowlist(client, token_set)
 
   # Scope reconciliation --------------------------------------------------------
   # If requested scopes exist, verify the provider returned them (or a superset).
@@ -1340,4 +1318,43 @@ verify_token_set <- function(
   }
 
   return(token_set)
+}
+
+verify_token_type_allowlist <- function(client, token_set) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  if (!is.list(token_set)) {
+    err_token("Invalid token set: must be a list")
+  }
+
+  # Token type guardrail -------------------------------------------------------
+  # Policy:
+  # - If provider@allowed_token_types is empty (length 0 or NULL), we do not
+  #   enforce token_type presence or value (provider may omit it).
+  # - If allowed_token_types is non-empty, token_type MUST be present and one
+  #   of the allowed values (case-insensitive).
+  allowed_vec <- client@provider@allowed_token_types %||% character(0)
+  if (length(allowed_vec) > 0) {
+    tt <- token_set$token_type
+    if (is.null(tt)) {
+      err_token("Token response missing token_type")
+    }
+    tt <- as.character(tt)[1]
+    if (!is_valid_string(tt)) {
+      err_token("Invalid token_type in token response")
+    }
+    allowed <- tolower(as.character(allowed_vec))
+    if (!tolower(tt) %in% allowed) {
+      err_token(c(
+        "x" = "Unsupported token_type received",
+        "!" = paste0("Got: ", tt),
+        "i" = paste0(
+          "Expected one of: ",
+          paste(unique(allowed_vec), collapse = ", ")
+        )
+      ))
+    }
+  }
+
+  invisible(TRUE)
 }
