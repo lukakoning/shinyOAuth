@@ -25,6 +25,9 @@
 #' @param which Which token to revoke: "refresh" (default) or "access"
 #' @param async Logical, default FALSE. If TRUE and promises is available, run
 #'   in background and return a promise resolving to the result list
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #'
 #' @return A list with fields: supported, revoked, status
 #'
@@ -33,7 +36,8 @@ revoke_token <- function(
   oauth_client,
   oauth_token,
   which = c("refresh", "access"),
-  async = FALSE
+  async = FALSE,
+  shiny_session = NULL
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
@@ -58,7 +62,8 @@ revoke_token <- function(
           supported = FALSE,
           revoked = NA,
           status = "revocation_unsupported"
-        )
+        ),
+        shiny_session = shiny_session
       ),
       silent = TRUE
     )
@@ -75,13 +80,20 @@ revoke_token <- function(
       reason = "to use `async = TRUE` in `revoke_token()`"
     )
 
+    # Capture shiny_session for propagation into the async worker
+    captured_shiny_session <- shiny_session
+
     return(promises::future_promise({
-      revoke_token(
-        oauth_client = oauth_client,
-        oauth_token = oauth_token,
-        which = which,
-        async = FALSE
-      )
+      # Set async context so errors include session info with is_async = TRUE
+      with_async_session_context(captured_shiny_session, {
+        revoke_token(
+          oauth_client = oauth_client,
+          oauth_token = oauth_token,
+          which = which,
+          async = FALSE,
+          shiny_session = captured_shiny_session
+        )
+      })
     }))
   }
 
@@ -103,7 +115,8 @@ revoke_token <- function(
           supported = TRUE,
           revoked = NA,
           status = "missing_token"
-        )
+        ),
+        shiny_session = shiny_session
       ),
       silent = TRUE
     )
@@ -173,7 +186,8 @@ revoke_token <- function(
           supported = TRUE,
           revoked = NA,
           status = status_code
-        )
+        ),
+        shiny_session = shiny_session
       ),
       silent = TRUE
     )
@@ -195,7 +209,8 @@ revoke_token <- function(
         supported = TRUE,
         revoked = TRUE,
         status = "ok"
-      )
+      ),
+      shiny_session = shiny_session
     ),
     silent = TRUE
   )
@@ -246,6 +261,9 @@ revoke_token <- function(
 #' @param which Which token to introspect: "access" (default) or "refresh".
 #' @param async Logical, default FALSE. If TRUE and promises is available, run
 #'   in background and return a promise resolving to the result list
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #'
 #' @return A list with fields: supported, active, raw, status
 #'
@@ -256,7 +274,8 @@ introspect_token <- function(
   oauth_client,
   oauth_token,
   which = c("access", "refresh"),
-  async = FALSE
+  async = FALSE,
+  shiny_session = NULL
 ) {
   # Type checks
   S7::check_is_S7(oauth_client, OAuthClient)
@@ -311,7 +330,8 @@ introspect_token <- function(
           sub_digest = sub_digest,
           introspected_client_id_digest = introspected_client_id_digest,
           scope_digest = scope_digest
-        )
+        ),
+        shiny_session = shiny_session
       ),
       silent = TRUE
     )
@@ -337,13 +357,20 @@ introspect_token <- function(
       reason = "to use `async = TRUE` in `introspect_token()`"
     )
 
+    # Capture shiny_session for propagation into the async worker
+    captured_shiny_session <- shiny_session
+
     return(promises::future_promise({
-      introspect_token(
-        oauth_client = oauth_client,
-        oauth_token = oauth_token,
-        which = which,
-        async = FALSE
-      )
+      # Set async context so errors include session info with is_async = TRUE
+      with_async_session_context(captured_shiny_session, {
+        introspect_token(
+          oauth_client = oauth_client,
+          oauth_token = oauth_token,
+          which = which,
+          async = FALSE,
+          shiny_session = captured_shiny_session
+        )
+      })
     }))
   }
 
@@ -536,6 +563,9 @@ introspect_token <- function(
 #'   provider exposes an introspection endpoint, perform a best-effort
 #'   introspection of the new access token for audit/diagnostics. The result
 #'   is not stored on the token object.
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #'
 #' @return An updated [OAuthToken] object with refreshed credentials.
 #'
@@ -560,7 +590,8 @@ refresh_token <- function(
   oauth_client,
   token,
   async = FALSE,
-  introspect = FALSE
+  introspect = FALSE,
+  shiny_session = NULL
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
@@ -580,13 +611,20 @@ refresh_token <- function(
       reason = "to use `async = TRUE` in `refresh_token()`"
     )
 
+    # Capture shiny_session for propagation into the async worker
+    captured_shiny_session <- shiny_session
+
     return(promises::future_promise({
-      refresh_token(
-        oauth_client = oauth_client,
-        token = token,
-        async = FALSE,
-        introspect = introspect
-      )
+      # Set async context so errors include session info with is_async = TRUE
+      with_async_session_context(captured_shiny_session, {
+        refresh_token(
+          oauth_client = oauth_client,
+          token = token,
+          async = FALSE,
+          introspect = introspect,
+          shiny_session = captured_shiny_session
+        )
+      })
     }))
   }
   if (!is_valid_string(token@refresh_token)) {
@@ -736,7 +774,13 @@ refresh_token <- function(
   # Optionally introspect the fresh access token (result currently not stored)
   if (isTRUE(introspect)) {
     try(
-      introspect_token(oauth_client, token, which = "access", async = FALSE),
+      introspect_token(
+        oauth_client,
+        token,
+        which = "access",
+        async = FALSE,
+        shiny_session = shiny_session
+      ),
       silent = TRUE
     )
   }
@@ -750,7 +794,8 @@ refresh_token <- function(
       had_refresh_token = !is.na(token@refresh_token) &&
         nzchar(token@refresh_token),
       new_expires_at = token@expires_at
-    )
+    ),
+    shiny_session = shiny_session
   )
 
   token

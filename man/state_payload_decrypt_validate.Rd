@@ -4,13 +4,17 @@
 \alias{state_payload_decrypt_validate}
 \title{Decrypt and validate OAuth state payload}
 \usage{
-state_payload_decrypt_validate(client, encrypted_payload)
+state_payload_decrypt_validate(client, encrypted_payload, shiny_session = NULL)
 }
 \arguments{
 \item{client}{\link{OAuthClient} instance}
 
 \item{encrypted_payload}{Encrypted state payload string received via the
 \code{state} query parameter.}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.}
 }
 \value{
 A named list payload (state, client_id, redirect_uri, scopes,

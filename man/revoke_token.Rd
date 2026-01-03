@@ -8,7 +8,8 @@ revoke_token(
   oauth_client,
   oauth_token,
   which = c("refresh", "access"),
-  async = FALSE
+  async = FALSE,
+  shiny_session = NULL
 )
 }
 \arguments{
@@ -20,6 +21,10 @@ revoke_token(
 
 \item{async}{Logical, default FALSE. If TRUE and promises is available, run
 in background and return a promise resolving to the result list}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.}
 }
 \value{
 A list with fields: supported, revoked, status

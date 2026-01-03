@@ -60,7 +60,8 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
           oauth_client,
           token,
           async = TRUE,
-          introspect = FALSE
+          introspect = FALSE,
+          shiny_session = NULL
         ) {
           calls <<- calls + 1L
           # Simulate a slow provider so scheduler may trigger another attempt

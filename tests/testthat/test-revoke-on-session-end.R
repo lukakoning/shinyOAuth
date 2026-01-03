@@ -6,7 +6,13 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
 
   # Track revoke_token calls
   revoke_calls <- list()
-  mock_revoke <- function(client, token, which, async = FALSE) {
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
     revoke_calls <<- c(revoke_calls, list(list(which = which, async = async)))
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
@@ -75,7 +81,13 @@ testthat::test_that("revoke_on_session_end uses async only when module async = T
   cli@provider@revocation_url <- "https://example.com/revoke"
 
   revoke_calls <- list()
-  mock_revoke <- function(client, token, which, async = FALSE) {
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
     revoke_calls <<- c(revoke_calls, list(list(which = which, async = async)))
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
@@ -123,7 +135,13 @@ testthat::test_that("revoke_on_session_end does NOT call revoke_token when FALSE
 
   # Track revoke_token calls
   revoke_calls <- list()
-  mock_revoke <- function(client, token, which, async = FALSE) {
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
     revoke_calls <<- c(revoke_calls, list(list(which = which)))
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
@@ -171,7 +189,13 @@ testthat::test_that("revoke_on_session_end skips revoke if no token present", {
 
   # Track revoke_token calls
   revoke_calls <- list()
-  mock_revoke <- function(client, token, which, async = FALSE) {
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
     revoke_calls <<- c(revoke_calls, list(list(which = which)))
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
@@ -216,9 +240,17 @@ testthat::test_that("revoke_on_session_end emits audit event", {
     }
   ))
 
-  mock_revoke <- function(client, token, which, async = FALSE) {
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
+
+  session_token <- NULL
 
   testthat::with_mocked_bindings(
     revoke_token = mock_revoke,
@@ -234,6 +266,8 @@ testthat::test_that("revoke_on_session_end emits audit event", {
           revoke_on_session_end = TRUE
         ),
         expr = {
+          session_token <<- .scalar_chr(session$token)
+
           # Seed a valid token
           t <- OAuthToken(
             access_token = "access_tok",
@@ -251,4 +285,10 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   # Find the session_ended_revoke audit event
   types <- vapply(audit_events, function(e) e$type %||% "", character(1))
   testthat::expect_true("audit_session_ended_revoke" %in% types)
+
+  testthat::expect_true(is.character(session_token) && nzchar(session_token))
+  idx <- match("audit_session_ended_revoke", types)
+  ev <- audit_events[[idx]]
+  seen <- (ev$shiny_session %||% list())$token %||% NA_character_
+  testthat::expect_identical(seen, session_token)
 })

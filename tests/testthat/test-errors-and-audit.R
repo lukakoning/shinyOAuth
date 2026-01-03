@@ -272,3 +272,168 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     expect_null(result$headers$cookie)
   })
 })
+
+
+# is_async tracking in audit events ---------------------------------------
+
+test_that("capture_shiny_session_context sets is_async = TRUE", {
+  # When capturing context for async workers, is_async should be TRUE
+  # because the context will be used in an async worker
+  shiny::testServer(
+    app = function(input, output, session) {
+      ctx <- shinyOAuth:::capture_shiny_session_context()
+      # Context should be captured (or NULL if no session info)
+      if (!is.null(ctx)) {
+        expect_true(isTRUE(ctx$is_async))
+      }
+    },
+    expr = {}
+  )
+})
+
+test_that("augment_with_shiny_context sets is_async = FALSE for main thread events", {
+  # Events augmented on the main thread should have is_async = FALSE
+  shiny::testServer(
+    app = function(input, output, session) {
+      event <- list(type = "test_event", trace_id = "abc123")
+      augmented <- shinyOAuth:::augment_with_shiny_context(event)
+      # Should have shiny_session with is_async = FALSE
+      if (!is.null(augmented$shiny_session)) {
+        expect_false(isTRUE(augmented$shiny_session$is_async))
+      }
+    },
+    expr = {}
+  )
+})
+
+test_that("augment_with_shiny_context preserves pre-captured is_async = TRUE", {
+  # When shiny_session is already set (from capture_shiny_session_context),
+
+  # augment should not override it
+  shiny::testServer(
+    app = function(input, output, session) {
+      # Simulate pre-captured context from async worker
+      pre_captured <- list(
+        token = "test-token",
+        http = NULL,
+        is_async = TRUE
+      )
+      event <- list(
+        type = "test_event",
+        trace_id = "abc123",
+        shiny_session = pre_captured
+      )
+      augmented <- shinyOAuth:::augment_with_shiny_context(event)
+      # Should preserve the pre-captured context with is_async = TRUE
+      expect_true(isTRUE(augmented$shiny_session$is_async))
+      expect_equal(augmented$shiny_session$token, "test-token")
+    },
+    expr = {}
+  )
+})
+
+test_that("audit_event includes is_async in shiny_session when captured", {
+  events <- list()
+  old <- options(shinyOAuth.trace_hook = function(ev) {
+    events[[length(events) + 1]] <<- ev
+  })
+  on.exit(options(old), add = TRUE)
+
+  shiny::testServer(
+    app = function(input, output, session) {
+      # Emit an event with pre-captured session (simulating async worker)
+      captured <- shinyOAuth:::capture_shiny_session_context()
+      shinyOAuth:::audit_event(
+        "test_async",
+        context = list(foo = "bar"),
+        shiny_session = captured
+      )
+
+      # Emit an event without pre-captured session (main thread)
+      shinyOAuth:::audit_event(
+        "test_sync",
+        context = list(baz = "qux")
+      )
+    },
+    expr = {}
+  )
+
+  # Find our test events
+  async_event <- Filter(function(e) e$type == "audit_test_async", events)
+  sync_event <- Filter(function(e) e$type == "audit_test_sync", events)
+
+  expect_length(async_event, 1)
+  expect_length(sync_event, 1)
+
+  # Async event should have is_async = TRUE (from pre-captured context)
+  if (!is.null(async_event[[1]]$shiny_session)) {
+    expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))
+  }
+
+  # Sync event should have is_async = FALSE (from augment on main thread)
+  if (!is.null(sync_event[[1]]$shiny_session)) {
+    expect_false(isTRUE(sync_event[[1]]$shiny_session$is_async))
+  }
+})
+
+
+# with_async_session_context for errors -----------------------------------
+
+test_that("with_async_session_context makes errors include async session info", {
+  events <- list()
+  old <- options(shinyOAuth.trace_hook = function(ev) {
+    events[[length(events) + 1]] <<- ev
+  })
+  on.exit(options(old), add = TRUE)
+
+  # Create a mock captured session context (simulating async worker)
+  captured_ctx <- list(
+    token = "mock-session-token",
+    http = NULL,
+    is_async = TRUE
+  )
+
+  # Error thrown inside with_async_session_context should pick up the context
+  tryCatch(
+    shinyOAuth:::with_async_session_context(captured_ctx, {
+      shinyOAuth:::err_token("Test error in async context")
+    }),
+    error = function(e) NULL
+  )
+
+  # Find the error trace event
+  error_events <- Filter(function(e) e$type == "error", events)
+  expect_length(error_events, 1)
+
+  # Error should have the async session context
+  expect_equal(error_events[[1]]$shiny_session$token, "mock-session-token")
+  expect_true(isTRUE(error_events[[1]]$shiny_session$is_async))
+})
+
+test_that("errors on main thread have is_async = FALSE", {
+  events <- list()
+  old <- options(shinyOAuth.trace_hook = function(ev) {
+    events[[length(events) + 1]] <<- ev
+  })
+  on.exit(options(old), add = TRUE)
+
+  shiny::testServer(
+    app = function(input, output, session) {
+      # Error thrown on main thread (inside reactive domain)
+      tryCatch(
+        shinyOAuth:::err_token("Test error on main thread"),
+        error = function(e) NULL
+      )
+    },
+    expr = {}
+  )
+
+  # Find the error trace event
+  error_events <- Filter(function(e) e$type == "error", events)
+  expect_length(error_events, 1)
+
+  # Error should have is_async = FALSE (main thread)
+  if (!is.null(error_events[[1]]$shiny_session)) {
+    expect_false(isTRUE(error_events[[1]]$shiny_session$is_async))
+  }
+})

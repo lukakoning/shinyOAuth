@@ -4,7 +4,13 @@
 \alias{refresh_token}
 \title{Refresh an OAuth 2.0 token}
 \usage{
-refresh_token(oauth_client, token, async = FALSE, introspect = FALSE)
+refresh_token(
+  oauth_client,
+  token,
+  async = FALSE,
+  introspect = FALSE,
+  shiny_session = NULL
+)
 }
 \arguments{
 \item{oauth_client}{\link{OAuthClient} object}
@@ -21,6 +27,10 @@ back to synchronous behavior}
 provider exposes an introspection endpoint, perform a best-effort
 introspection of the new access token for audit/diagnostics. The result
 is not stored on the token object.}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.}
 }
 \value{
 An updated \link{OAuthToken} object with refreshed credentials.

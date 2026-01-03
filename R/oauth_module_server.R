@@ -477,6 +477,10 @@ oauth_module_server <- function(
     # Session-end hook: revoke tokens if configured ----------------------------
 
     if (isTRUE(revoke_on_session_end)) {
+      # Capture session context now while we still have it (it won't be
+      # available in onSessionEnded callback)
+      captured_session_end_context <- capture_shiny_session_context()
+
       session$onSessionEnded(function() {
         # Capture token at session end; may be NULL if never authenticated
         tok <- shiny::isolate(values$token)
@@ -489,7 +493,8 @@ oauth_module_server <- function(
                 provider = client@provider@name %||% NA_character_,
                 issuer = client@provider@issuer %||% NA_character_,
                 client_id_digest = string_digest(client@client_id)
-              )
+              ),
+              shiny_session = captured_session_end_context
             ),
             silent = TRUE
           )
@@ -499,13 +504,15 @@ oauth_module_server <- function(
             client,
             tok,
             which = "refresh",
-            async = use_async_revocation
+            async = use_async_revocation,
+            shiny_session = captured_session_end_context
           ))
           try(revoke_token(
             client,
             tok,
             which = "access",
-            async = use_async_revocation
+            async = use_async_revocation,
+            shiny_session = captured_session_end_context
           ))
         }
       })
@@ -1210,8 +1217,17 @@ oauth_module_server <- function(
             # cross-process cache visibility issues with client@state_store,
             # pre-decrypt the payload and prefetch+remove the state_store entry on the
             # main thread, and pass these to handle_callback.
+
+            # Capture Shiny session context on the main thread for audit events
+            # emitted from the async worker (which lacks reactive domain access)
+            captured_shiny_session <- capture_shiny_session_context()
+
             pre_payload <- tryCatch(
-              state_payload_decrypt_validate(client, state),
+              state_payload_decrypt_validate(
+                client,
+                state,
+                shiny_session = captured_shiny_session
+              ),
               error = function(e) {
                 .set_error(
                   "token_exchange_error",
@@ -1223,7 +1239,11 @@ oauth_module_server <- function(
             )
 
             pre_state <- tryCatch(
-              state_store_get_remove(client, pre_payload$state),
+              state_store_get_remove(
+                client,
+                pre_payload$state,
+                shiny_session = captured_shiny_session
+              ),
               error = function(e) {
                 .set_error(
                   "token_exchange_error",
@@ -1244,16 +1264,20 @@ oauth_module_server <- function(
             client_for_worker <- client
 
             promises::future_promise({
-              handle_callback(
-                oauth_client = client_for_worker,
-                code = code,
-                payload = state,
-                browser_token = captured_browser_token,
-                decrypted_payload = pre_payload,
-                state_store_values = pre_state,
-                introspect = introspect,
-                introspect_elements = introspect_elements
-              )
+              # Set async context so errors include session info with is_async = TRUE
+              with_async_session_context(captured_shiny_session, {
+                handle_callback(
+                  oauth_client = client_for_worker,
+                  code = code,
+                  payload = state,
+                  browser_token = captured_browser_token,
+                  decrypted_payload = pre_payload,
+                  state_store_values = pre_state,
+                  introspect = introspect,
+                  introspect_elements = introspect_elements,
+                  shiny_session = captured_shiny_session
+                )
+              })
             })
           } else {
             handle_callback(
@@ -1300,7 +1324,8 @@ oauth_module_server <- function(
                       client_id_digest = string_digest(client@client_id),
                       phase = "async_token_exchange",
                       error_class = paste(class(e), collapse = ", ")
-                    )
+                    ),
+                    shiny_session = captured_shiny_session
                   ),
                   silent = TRUE
                 )
@@ -1438,6 +1463,10 @@ oauth_module_server <- function(
                 # Keep wake_ms short and bail out of starting a new refresh
                 # The enclosing observe will schedule the next wake.
               } else {
+                # Capture Shiny session context on the main thread for audit events
+                # emitted from the async worker (which lacks reactive domain access)
+                captured_shiny_session_refresh <- capture_shiny_session_context()
+
                 # Delegate to refresh_token with async and handle promise if returned
                 tryCatch(
                   {
@@ -1446,7 +1475,8 @@ oauth_module_server <- function(
                     res <- refresh_token(
                       client,
                       tok,
-                      async = async
+                      async = async,
+                      shiny_session = captured_shiny_session_refresh
                     )
 
                     # Handle async path (wait for promise to resolve; then set values)
@@ -1501,7 +1531,8 @@ oauth_module_server <- function(
                                   reason = "refresh_failed_async",
                                   kept_token = TRUE,
                                   error_class = paste(class(e), collapse = ", ")
-                                )
+                                ),
+                                shiny_session = captured_shiny_session_refresh
                               ),
                               silent = TRUE
                             )
@@ -1519,7 +1550,8 @@ oauth_module_server <- function(
                                   ),
                                   reason = "refresh_failed_async",
                                   error_class = paste(class(e), collapse = ", ")
-                                )
+                                ),
+                                shiny_session = captured_shiny_session_refresh
                               ),
                               silent = TRUE
                             )

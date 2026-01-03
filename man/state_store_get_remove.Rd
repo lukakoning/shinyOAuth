@@ -4,12 +4,16 @@
 \alias{state_store_get_remove}
 \title{Fetch and remove the single-use state entry}
 \usage{
-state_store_get_remove(client, state)
+state_store_get_remove(client, state, shiny_session = NULL)
 }
 \arguments{
 \item{client}{\link{OAuthClient} instance}
 
 \item{state}{Plain (decrypted) state string used as the logical key}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.}
 }
 \value{
 A list with \code{browser_token}, \code{pkce_code_verifier}, and \code{nonce}.

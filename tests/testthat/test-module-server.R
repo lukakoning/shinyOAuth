@@ -439,7 +439,8 @@ testthat::test_that("oauth_module_server clears token and sets error when proact
           oauth_client,
           token,
           async = FALSE,
-          introspect = FALSE
+          introspect = FALSE,
+          shiny_session = NULL
         ) {
           shinyOAuth:::err_id_token("Invalid ID token")
         },

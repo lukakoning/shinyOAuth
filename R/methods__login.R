@@ -322,6 +322,9 @@ build_auth_url <- function(
 #'   - "scope": require an RFC 7662 `scope` field and require it to include
 #'     all scopes requested by `oauth_client@scopes`.
 #'   Default is `character(0)` (no extra requirements beyond `active = TRUE`).
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #'
 #' @return An [OAuthToken]` object containing the access token, refresh token,
 #' expiration time, user information (if requested), and ID token (if applicable).
@@ -339,7 +342,8 @@ handle_callback <- function(
   decrypted_payload = NULL,
   state_store_values = NULL,
   introspect = FALSE,
-  introspect_elements = character(0)
+  introspect_elements = character(0),
+  shiny_session = NULL
 ) {
   # Type checks ----------------------------------------------------------------
 
@@ -418,7 +422,8 @@ handle_callback <- function(
           code_digest = string_digest(code),
           state_digest = string_digest(payload),
           browser_token_digest = string_digest(browser_token)
-        )
+        ),
+        shiny_session = shiny_session
       )
     },
     silent = TRUE
@@ -432,14 +437,22 @@ handle_callback <- function(
     payload <- decrypted_payload
   } else {
     # Centralized auditing now occurs inside state_payload_decrypt_validate()
-    payload <- state_payload_decrypt_validate(oauth_client, payload)
+    payload <- state_payload_decrypt_validate(
+      oauth_client,
+      payload,
+      shiny_session = shiny_session
+    )
   }
 
   # Retrieve state_info from state store ---------------------------------------
   # State is the key; value is a list with browser_token, pkce_code_verifier, nonce
   if (is.null(state_store_values)) {
     # Centralized auditing for state store lookup occurs in state_store_get_remove()
-    state_store_values <- state_store_get_remove(oauth_client, payload$state)
+    state_store_values <- state_store_get_remove(
+      oauth_client,
+      payload$state,
+      shiny_session = shiny_session
+    )
   }
 
   # Verify browser token -------------------------------------------------------
@@ -483,7 +496,8 @@ handle_callback <- function(
             browser_token_digest = string_digest(browser_token),
             error_class = paste(class(e), collapse = ", "),
             phase = "browser_token_validation"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -519,7 +533,8 @@ handle_callback <- function(
             state_digest = string_digest(payload$state %||% NA_character_),
             error_class = paste(class(e), collapse = ", "),
             phase = "pkce_verifier_validation"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -550,7 +565,8 @@ handle_callback <- function(
             received_refresh_token = isTRUE(is_valid_string(
               ts$refresh_token %||% NA_character_
             ))
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -566,7 +582,8 @@ handle_callback <- function(
             client_id_digest = string_digest(oauth_client@client_id),
             code_digest = string_digest(code),
             error_class = paste(class(e), collapse = ", ")
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -615,7 +632,8 @@ handle_callback <- function(
             state_digest = string_digest(payload$state %||% NA_character_),
             error_class = paste(class(e), collapse = ", "),
             phase = "nonce_validation"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -871,7 +889,8 @@ handle_callback <- function(
           sub_digest = string_digest(sub_val),
           refresh_token_present = isTRUE(is_valid_string(token@refresh_token)),
           expires_at = token@expires_at
-        )
+        ),
+        shiny_session = shiny_session
       )
     },
     silent = TRUE

@@ -12,8 +12,15 @@
 #' @return A named list payload (state, client_id, redirect_uri, scopes,
 #'   provider, issued_at) on success; otherwise throws an error via
 #'   `err_invalid_state()`.
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #' @keywords internal
-state_payload_decrypt_validate <- function(client, encrypted_payload) {
+state_payload_decrypt_validate <- function(
+  client,
+  encrypted_payload,
+  shiny_session = NULL
+) {
   S7::check_is_S7(client, class = OAuthClient)
 
   # Centralized auditing for decrypt + validation to align sync/async flows
@@ -37,7 +44,8 @@ state_payload_decrypt_validate <- function(client, encrypted_payload) {
             issuer = client@provider@issuer %||% NA_character_,
             client_id_digest = string_digest(client@client_id),
             state_digest = string_digest(pld$state)
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -55,7 +63,8 @@ state_payload_decrypt_validate <- function(client, encrypted_payload) {
             state_digest = string_digest(encrypted_payload),
             error_class = paste(class(e), collapse = ", "),
             phase = "payload_validation"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -78,12 +87,15 @@ state_payload_decrypt_validate <- function(client, encrypted_payload) {
 #'
 #' @param client [OAuthClient] instance
 #' @param state Plain (decrypted) state string used as the logical key
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events. Used when
+#'   calling from async workers that lack access to the reactive domain.
 #'
 #' @return A list with `browser_token`, `pkce_code_verifier`, and `nonce`.
 #'   Throws an error via `err_invalid_state()` if retrieval or removal fails,
 #'   or if the retrieved value is missing/malformed.
 #' @keywords internal
-state_store_get_remove <- function(client, state) {
+state_store_get_remove <- function(client, state, shiny_session = NULL) {
   S7::check_is_S7(client, class = OAuthClient)
   # Validate state early and emit audited error instead of raw assertion
   if (!is_valid_string(state)) {
@@ -97,7 +109,8 @@ state_store_get_remove <- function(client, state) {
           state_digest = string_digest(state %||% NA_character_),
           error_class = "shinyOAuth_state_error",
           phase = "state_store_lookup"
-        )
+        ),
+        shiny_session = shiny_session
       ),
       silent = TRUE
     )
@@ -144,7 +157,8 @@ state_store_get_remove <- function(client, state) {
             state_digest = string_digest(state),
             error_class = get_error_class,
             phase = "state_store_lookup"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )
@@ -188,7 +202,8 @@ state_store_get_remove <- function(client, state) {
             state_digest = string_digest(state),
             error_class = remove_error_class,
             phase = "state_store_removal"
-          )
+          ),
+          shiny_session = shiny_session
         ),
         silent = TRUE
       )

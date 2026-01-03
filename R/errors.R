@@ -262,15 +262,21 @@ err_parse <- function(msg, context = list()) {
 # Audit convenience to emit structured audit events
 # - type: short action name, e.g., "token_exchange", "token_refresh", "userinfo"
 # - context: named list of non-sensitive fields (redacted/digested values only)
+# - shiny_session: optional pre-captured session context list (with `token` and
+#   optionally `http`). When provided, this context is injected into the event
+#   before calling emit_trace_event(), allowing async workers (which lack access
+#   to the reactive domain) to include the originating Shiny session information.
+#   Use `capture_shiny_session_context()` on the main thread to prepare this.
 #
 # Emitted event shape (list):
 #   - type: "audit_<type>"
 #   - trace_id: opaque correlation id
 #   - timestamp: POSIXct time when the event was created (Sys.time())
+#   - shiny_session: list with session token and optional HTTP context
 #   - ...: fields from context
 
 # Broadcast audit events via the trace hook (if configured)
-audit_event <- function(type, context = list()) {
+audit_event <- function(type, context = list(), shiny_session = NULL) {
   trace_id <- gen_trace_id()
   event <- c(
     list(
@@ -280,6 +286,10 @@ audit_event <- function(type, context = list()) {
     ),
     context
   )
+  # Pre-inject shiny_session if provided (augment_with_shiny_context won't override)
+  if (!is.null(shiny_session)) {
+    event$shiny_session <- shiny_session
+  }
   emit_trace_event(event)
   invisible(trace_id)
 }

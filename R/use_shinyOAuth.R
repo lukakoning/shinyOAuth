@@ -78,6 +78,9 @@ mark_js_dependency_called <- function() {
 }
 
 warn_about_missing_js_dependency <- function() {
+  if (.is_test()) {
+    return(invisible(NULL))
+  }
   if (.get_flag(".called_js_dependency")) {
     return(invisible(NULL))
   }

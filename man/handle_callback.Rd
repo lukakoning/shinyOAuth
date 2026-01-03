@@ -12,7 +12,8 @@ handle_callback(
   decrypted_payload = NULL,
   state_store_values = NULL,
   introspect = FALSE,
-  introspect_elements = character(0)
+  introspect_elements = character(0),
+  shiny_session = NULL
 )
 }
 \arguments{
@@ -55,6 +56,10 @@ identity from the ID token (preferred) or userinfo (fallback).
 all scopes requested by \code{oauth_client@scopes}.
 Default is \code{character(0)} (no extra requirements beyond \code{active = TRUE}).
 }}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events. Used when
+calling from async workers that lack access to the reactive domain.}
 }
 \value{
 An \link{OAuthToken}` object containing the access token, refresh token,
