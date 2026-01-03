@@ -70,7 +70,8 @@
 <ul><li><p>Added warning about negative <code>expires_in</code> values in token responses.</p></li>
 <li><p>Added warning when <code>OAuthClient</code> is instantiated inside a Shiny session; may cause sealed satte payload decryption to fail when random secret is generated upon client creation.</p></li>
 <li><p>Added hints in error messages when sealed state payload decryption fails.</p></li>
-<li><p>Added a clearer error message when retrieved userinfo cannot be parsed as JSON.</p></li>
+<li><p>Ensured a clearer error message when token response is in unexpected format.</p></li>
+<li><p>Ensured a clearer error message when retrieved userinfo cannot be parsed as JSON.</p></li>
 <li><p>Immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm but <code>allow_symmetric_alg</code> is not enabled; also immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm and ID token verification can happen but <code>client_secret</code> is absent or too weak.</p></li>
 </ul></div>
 <div class="section level4">
