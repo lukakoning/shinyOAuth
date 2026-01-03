@@ -15,7 +15,8 @@ build_jwt <- function(header, claims, sig = "") {
 
 minimal_client <- function(
   issuer = "https://issuer.example.com",
-  client_id = "client-1"
+  client_id = "client-1",
+  client_secret = paste(rep("a", 32), collapse = "")
 ) {
   prov <- shinyOAuth::oauth_provider(
     name = "test",
@@ -32,16 +33,13 @@ minimal_client <- function(
   shinyOAuth::oauth_client(
     prov,
     client_id = client_id,
-    client_secret = "secret",
+    client_secret = client_secret,
     redirect_uri = "http://localhost:8100"
   )
 }
 
 test_that("'none' algorithm is rejected unless skipping signature", {
   client <- minimal_client()
-  withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
-    client@provider@allowed_algs <- c("HS256")
-  })
   payload <- list(
     iss = client@provider@issuer,
     aud = client@client_id,
@@ -97,10 +95,14 @@ test_that("HS* requires opt-in and client_secret", {
   client2@provider@use_pkce <- TRUE
   client2@client_secret <- NA_character_
   withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
-    client2@provider@allowed_algs <- c("HS256")
+    # With HS* allowed for ID token validation, a strong client_secret is
+    # required up-front (fail fast during client/provider configuration).
     expect_error(
-      shinyOAuth:::validate_id_token(client2, jwt_hs),
-      class = "shinyOAuth_input_error"
+      {
+        client2@provider@allowed_algs <- c("HS256")
+      },
+      regexp = "OAuthClient: client_secret is required for HS* ID token validation when id_token_validation or use_nonce is enabled",
+      fixed = TRUE
     )
   })
 })
