@@ -265,7 +265,36 @@ ID token</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="build-the-oauthtoken-object">11. Build the <code>OAuthToken</code> object<a class="anchor" aria-label="anchor" href="#build-the-oauthtoken-object"></a>
+<h3 id="token-introspection-optional">11. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
+</h3>
+<p>Some providers support RFC 7662 token introspection (an additional
+endpoint where the server can ask the provider whether an access token
+is currently active and retrieve related metadata).</p>
+<p>If you enable <code>oauth_module_server(introspect = TRUE)</code>,
+the module calls the provider’s introspection endpoint during callback
+processing and requires the response to indicate
+<code>active = TRUE</code>. If introspection is unsupported by the
+provider or the introspection request fails, the login is aborted and
+<code>$authenticated</code> is not set to <code>TRUE</code>.</p>
+<p>You can optionally enforce additional provider-dependent fields via
+<code>oauth_module_server(introspect_elements = ...)</code>:</p>
+<ul>
+<li>
+<code>"sub"</code> – require introspection <code>sub</code> to match
+the session subject</li>
+<li>
+<code>"client_id"</code> – require introspection
+<code>client_id</code> to match your OAuth client id</li>
+<li>
+<code>"scope"</code> – validate introspection <code>scope</code>
+against requested scopes (respects the client’s
+<code>scope_validation</code> mode)</li>
+</ul>
+<p>(Note that not all providers may return each of these fields in
+introspection responses.)</p>
+</div>
+<div class="section level3">
+<h3 id="build-the-oauthtoken-object">12. Build the <code>OAuthToken</code> object<a class="anchor" aria-label="anchor" href="#build-the-oauthtoken-object"></a>
 </h3>
 <p>Now that all verifications have passed, the module builds the final
 token object. This is an S7 <code>OAuthToken</code> object which
@@ -288,7 +317,7 @@ contains:</p>
 requested verifications have passed.</p>
 </div>
 <div class="section level3">
-<h3 id="clean-url-tidy-ui-clear-browser-token">12. Clean URL &amp; tidy UI; clear browser token<a class="anchor" aria-label="anchor" href="#clean-url-tidy-ui-clear-browser-token"></a>
+<h3 id="clean-url-tidy-ui-clear-browser-token">13. Clean URL &amp; tidy UI; clear browser token<a class="anchor" aria-label="anchor" href="#clean-url-tidy-ui-clear-browser-token"></a>
 </h3>
 <p>The user’s browser was redirected to your app with OAuth 2.0 query
 parameters (<code>code</code>, <code>state</code>, etc.). To improve UX
@@ -301,7 +330,7 @@ with a fresh value, so a future flow can start with a new per-session
 token.</p>
 </div>
 <div class="section level3">
-<h3 id="post-flow-session-management">13. Post-flow session management<a class="anchor" aria-label="anchor" href="#post-flow-session-management"></a>
+<h3 id="post-flow-session-management">14. Post-flow session management<a class="anchor" aria-label="anchor" href="#post-flow-session-management"></a>
 </h3>
 <p>Now that the flow is complete, the module will manage the token
 lifetime during the active session. This may consist of:</p>
@@ -369,7 +398,7 @@ flag becomes <code>FALSE</code> while the error is present.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="logout-and-token-revocation">14. Logout and token revocation<a class="anchor" aria-label="anchor" href="#logout-and-token-revocation"></a>
+<h3 id="logout-and-token-revocation">15. Logout and token revocation<a class="anchor" aria-label="anchor" href="#logout-and-token-revocation"></a>
 </h3>
 <p>When <code>auth$logout()</code> is called, the module:</p>
 <ol style="list-style-type: decimal">

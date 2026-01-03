@@ -237,6 +237,48 @@ For an example application which fetches data from the Spotify web API,
 see:
 [`vignette("example-spotify", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md).
 
+## Token introspection (optional)
+
+By default,
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+considers a login complete once the callback has been validated and
+token retrieval plus any configured OIDC checks have succeeded.
+
+If your provider supports RFC 7662 token introspection, you can
+optionally add an extra login-time validation step by enabling
+`introspect = TRUE`.
+
+When enabled, the module calls the provider introspection endpoint
+during callback processing and requires the response to indicate
+`active = TRUE`. If introspection is unsupported by the provider or the
+introspection request fails, the login is aborted and `$authenticated`
+is not set to `TRUE`.
+
+You can optionally request additional checks via `introspect_elements`:
+
+- `"sub"` – require the introspected `sub` to match the session subject
+  (from ID token `sub` when available; otherwise userinfo `sub` when
+  available)
+- `"client_id"` – require the introspected `client_id` to match your
+  OAuth client id
+- `"scope"` – validate returned scopes against requested scopes; this
+  follows the client’s `scope_validation` mode (`"strict"` errors,
+  `"warn"` warns, `"none"` skips scope checks)
+
+(Note that not all providers may return each of these fields in
+introspection responses.)
+
+``` r
+# Example with introspection enabled
+auth <- oauth_module_server(
+  "auth",
+  client,
+  auto_redirect = TRUE,
+  introspect = TRUE,
+  introspect_elements = c("sub", "client_id", "scope")
+)
+```
+
 ## Async mode to keep UI responsive
 
 By default,

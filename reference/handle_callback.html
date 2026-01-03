@@ -52,7 +52,9 @@
 <span>  <span class="va">payload</span>,</span>
 <span>  <span class="va">browser_token</span>,</span>
 <span>  decrypted_payload <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  state_store_values <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  state_store_values <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -92,6 +94,26 @@ function will skip reading/removing from <code>oauth_client@state_store</code> a
 the provided values instead. This supports async flows that prefetch and
 remove the single-use state entry on the main thread to avoid cross-process
 cache visibility issues.</p></dd>
+
+
+<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
+<dd><p>If TRUE, the login flow will call the provider's token
+introspection endpoint (RFC 7662) to validate the access token. The login
+is not considered complete unless introspection succeeds and returns
+<code>active = TRUE</code>. Default FALSE.</p></dd>
+
+
+<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
+<dd><p>Optional character vector of additional
+requirements to enforce on the introspection response when
+<code>introspect = TRUE</code>. Supported values:</p><ul><li><p>"sub": require an RFC 7662 <code>sub</code> field and require it to match the
+identity from the ID token (preferred) or userinfo (fallback).</p></li>
+<li><p>"client_id": require an RFC 7662 <code>client_id</code> field matching
+<code>oauth_client@client_id</code>.</p></li>
+<li><p>"scope": require an RFC 7662 <code>scope</code> field and require it to include
+all scopes requested by <code>oauth_client@scopes</code>.
+Default is <code>character(0)</code> (no extra requirements beyond <code>active = TRUE</code>).</p></li>
+</ul></dd>
 
 </dl></div>
     <div class="section level2">

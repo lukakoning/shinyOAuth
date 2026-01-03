@@ -298,6 +298,48 @@ API, see:
 <code><a href="../articles/example-spotify.html">vignette("example-spotify", package = "shinyOAuth")</a></code>.</p>
 </div>
 <div class="section level2">
+<h2 id="token-introspection-optional">Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
+</h2>
+<p>By default, <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> considers a login
+complete once the callback has been validated and token retrieval plus
+any configured OIDC checks have succeeded.</p>
+<p>If your provider supports RFC 7662 token introspection, you can
+optionally add an extra login-time validation step by enabling
+<code>introspect = TRUE</code>.</p>
+<p>When enabled, the module calls the provider introspection endpoint
+during callback processing and requires the response to indicate
+<code>active = TRUE</code>. If introspection is unsupported by the
+provider or the introspection request fails, the login is aborted and
+<code>$authenticated</code> is not set to <code>TRUE</code>.</p>
+<p>You can optionally request additional checks via
+<code>introspect_elements</code>:</p>
+<ul>
+<li>
+<code>"sub"</code> – require the introspected <code>sub</code> to
+match the session subject (from ID token <code>sub</code> when
+available; otherwise userinfo <code>sub</code> when available)</li>
+<li>
+<code>"client_id"</code> – require the introspected
+<code>client_id</code> to match your OAuth client id</li>
+<li>
+<code>"scope"</code> – validate returned scopes against requested
+scopes; this follows the client’s <code>scope_validation</code> mode
+(<code>"strict"</code> errors, <code>"warn"</code> warns,
+<code>"none"</code> skips scope checks)</li>
+</ul>
+<p>(Note that not all providers may return each of these fields in
+introspection responses.)</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Example with introspection enabled</span></span>
+<span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
+<span>  <span class="st">"auth"</span>,</span>
+<span>  <span class="va">client</span>,</span>
+<span>  auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sub"</span>, <span class="st">"client_id"</span>, <span class="st">"scope"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="async-mode-to-keep-ui-responsive">Async mode to keep UI responsive<a class="anchor" aria-label="anchor" href="#async-mode-to-keep-ui-responsive"></a>
 </h2>
 <p>By default, <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> performs network
@@ -307,7 +349,7 @@ backoff, and sleeping on the main thread can block the Shiny event loop
 for the worker process.</p>
 <p>To avoid blocking, enable async mode and configure a future
 backend:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
@@ -330,7 +372,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <p>To log out the user, call <code>auth$logout()</code>. This clears the
 local session and attempts to revoke tokens at the provider (if a
 revocation endpoint is available):</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
@@ -342,7 +384,7 @@ revocation endpoint is available):</p>
 </h3>
 <p>To revoke tokens when the Shiny session ends (e.g., browser tab
 closed, timeout), set <code>revoke_on_session_end = TRUE</code>:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  client <span class="op">=</span> <span class="va">client</span>,</span>

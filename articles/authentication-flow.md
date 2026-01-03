@@ -170,7 +170,31 @@ verifications are performed:
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token
 
-### 11. Build the `OAuthToken` object
+### 11. Token introspection (optional)
+
+Some providers support RFC 7662 token introspection (an additional
+endpoint where the server can ask the provider whether an access token
+is currently active and retrieve related metadata).
+
+If you enable `oauth_module_server(introspect = TRUE)`, the module calls
+the provider’s introspection endpoint during callback processing and
+requires the response to indicate `active = TRUE`. If introspection is
+unsupported by the provider or the introspection request fails, the
+login is aborted and `$authenticated` is not set to `TRUE`.
+
+You can optionally enforce additional provider-dependent fields via
+`oauth_module_server(introspect_elements = ...)`:
+
+- `"sub"` – require introspection `sub` to match the session subject
+- `"client_id"` – require introspection `client_id` to match your OAuth
+  client id
+- `"scope"` – validate introspection `scope` against requested scopes
+  (respects the client’s `scope_validation` mode)
+
+(Note that not all providers may return each of these fields in
+introspection responses.)
+
+### 12. Build the `OAuthToken` object
 
 Now that all verifications have passed, the module builds the final
 token object. This is an S7 `OAuthToken` object which contains:
@@ -186,7 +210,7 @@ The `$authenticated` value as returned by
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 now becomes TRUE, meaning all requested verifications have passed.
 
-### 12. Clean URL & tidy UI; clear browser token
+### 13. Clean URL & tidy UI; clear browser token
 
 The user’s browser was redirected to your app with OAuth 2.0 query
 parameters (`code`, `state`, etc.). To improve UX and avoid leaking
@@ -198,7 +222,7 @@ JavaScript. Optionally, the page title may also be adjusted (see the
 The browser token cookie is also cleared and immediately re-issued with
 a fresh value, so a future flow can start with a new per-session token.
 
-### 13. Post-flow session management
+### 14. Post-flow session management
 
 Now that the flow is complete, the module will manage the token lifetime
 during the active session. This may consist of:
@@ -254,7 +278,7 @@ token; if `oauth_module_server(indefinite_session = TRUE)`, the token is
 kept but marked stale. In all cases, the `$authenticated` flag becomes
 `FALSE` while the error is present.
 
-### 14. Logout and token revocation
+### 15. Logout and token revocation
 
 When `auth$logout()` is called, the module:
 
