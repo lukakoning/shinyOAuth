@@ -162,3 +162,28 @@ test_that("OAuthProvider rejects reserved keys in extra_token_params", {
     extra_token_params = list(audience = "https://api.example.com")
   ))
 })
+
+test_that("OAuthProvider rejects reserved headers in extra_token_headers", {
+  reserved <- c("Authorization", "Cookie", "AUTHORIZATION")
+
+  for (hdr in reserved) {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_token_headers = setNames("bad", hdr)
+      ),
+      regexp = "extra_token_headers must not contain reserved headers",
+      info = paste("should reject reserved token header:", hdr)
+    )
+  }
+
+  # Non-reserved headers should be accepted
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
+    extra_token_headers = c(Accept = "application/json")
+  ))
+})

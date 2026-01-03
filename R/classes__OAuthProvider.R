@@ -334,6 +334,20 @@ OAuthProvider <- S7::new_class(
           "OAuthProvider: extra_token_headers must have non-empty names for all headers"
         )
       }
+
+      # Block reserved headers that could break/override client auth in surprising
+      # ways during token exchange. Header names are case-insensitive in HTTP.
+      reserved_header_names <- c("authorization", "cookie")
+      bad_headers <- intersect(tolower(trimws(nms)), reserved_header_names)
+      if (length(bad_headers) > 0) {
+        return(sprintf(
+          paste0(
+            "OAuthProvider: extra_token_headers must not contain reserved headers: %s"
+          ),
+          paste(sQuote(bad_headers), collapse = ", ")
+        ))
+      }
+
       # Ensure each entry is a single string (not vector)
       bad_len <- lengths(eth) != 1L
       if (any(bad_len)) {
