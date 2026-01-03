@@ -11,8 +11,18 @@ will not function.
 ## Usage
 
 ``` r
-use_shinyOAuth()
+use_shinyOAuth(inject_referrer_meta = TRUE)
 ```
+
+## Arguments
+
+- inject_referrer_meta:
+
+  If TRUE (default), injects a
+  `<meta name="referrer" content="no-referrer">` tag into the document
+  head. This reduces the risk of leaking OAuth callback query parameters
+  (like `code` and `state`) via the `Referer` header to third-party
+  subresources during the initial callback page load.
 
 ## Value
 

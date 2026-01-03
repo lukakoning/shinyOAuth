@@ -58,6 +58,7 @@
 <li><p>DoS protection: callback query parameters and state payload/browser token sizes are validated before expensive operations (e.g., hashing for audit logs).</p></li>
 <li><p>HTTP log sanitization: sensitive data in HTTP contexts (headers, cookies) is now sanitized by default in audit logs. Can be disabled with <code>options(shinyOAuth.audit_redact_http = FALSE)</code>. Use <code>options(shinyOAuth.audit_include_http = FALSE)</code> to not include any HTTP data in logs.</p></li>
 <li><p>Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by unknown <code>kid</code>) are now rate-limited to prevent abuse.</p></li>
+<li><p><code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> now injects <code>&lt;meta name="referrer" content="no-referrer"&gt;</code> by default to reduce leaking ?code=…&amp;state=… via the Referer header on the callback page. Can be disabled with <code>use_shinyOAuth(inject_referrer_meta = FALSE)</code>.</p></li>
 <li><p>State is now also consumed on OAuth error responses, preventing re-use.</p></li>
 <li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.</p></li>
 <li><p>Callback URL parameters are now also cleared in login failure paths (not just success).</p></li>

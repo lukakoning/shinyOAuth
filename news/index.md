@@ -61,6 +61,12 @@
 - Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by
   unknown `kid`) are now rate-limited to prevent abuse.
 
+- [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+  now injects `<meta name="referrer" content="no-referrer">` by default
+  to reduce leaking ?code=…&state=… via the Referer header on the
+  callback page. Can be disabled with
+  `use_shinyOAuth(inject_referrer_meta = FALSE)`.
+
 - State is now also consumed on OAuth error responses, preventing
   re-use.
 
