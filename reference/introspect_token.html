@@ -9,8 +9,9 @@ token_auth_style:
 &quot;body&quot;: form fields client_id and (when available) client_secret.
 &quot;client_secret_jwt&quot; / &quot;private_key_jwt&quot;: a signed JWT client assertion
 is generated (RFC 7523) and sent via client_assertion_type and
-client_assertion, with aud set to the provider's
-introspection_url.
+client_assertion, with aud resolved via
+resolve_client_assertion_audience() (so client_assertion_audience
+overrides are honored).
 
 "><meta property="og:description" content="Introspects an access or refresh token using RFC 7662 when the
 provider exposes an introspection endpoint. Returns a list including at least
@@ -22,8 +23,9 @@ token_auth_style:
 &quot;body&quot;: form fields client_id and (when available) client_secret.
 &quot;client_secret_jwt&quot; / &quot;private_key_jwt&quot;: a signed JWT client assertion
 is generated (RFC 7523) and sent via client_assertion_type and
-client_assertion, with aud set to the provider's
-introspection_url.
+client_assertion, with aud resolved via
+resolve_client_assertion_audience() (so client_assertion_audience
+overrides are honored).
 
 "></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -76,8 +78,9 @@ any) under <code>raw</code>.</p>
 <li><p>"body": form fields <code>client_id</code> and (when available) <code>client_secret</code>.</p></li>
 <li><p>"client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
 is generated (RFC 7523) and sent via <code>client_assertion_type</code> and
-<code>client_assertion</code>, with <code>aud</code> set to the provider's
-<code>introspection_url</code>.</p></li>
+<code>client_assertion</code>, with <code>aud</code> resolved via
+<code>resolve_client_assertion_audience()</code> (so <code>client_assertion_audience</code>
+overrides are honored).</p></li>
 </ul></div>
 
     <div class="section level2">

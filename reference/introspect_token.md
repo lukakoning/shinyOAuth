@@ -14,8 +14,9 @@ Authentication to the introspection endpoint mirrors the provider's
 
 - "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
   is generated (RFC 7523) and sent via `client_assertion_type` and
-  `client_assertion`, with `aud` set to the provider's
-  `introspection_url`.
+  `client_assertion`, with `aud` resolved via
+  `resolve_client_assertion_audience()` (so `client_assertion_audience`
+  overrides are honored).
 
 ## Usage
 
