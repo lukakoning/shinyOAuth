@@ -280,6 +280,23 @@ oauth_module_server <- function(
       !is.na(revoke_on_session_end)
   )
 
+  # Fail fast: revoke_on_session_end requires a revocation URL
+
+  if (isTRUE(revoke_on_session_end)) {
+    revocation_url <- client@provider@revocation_url %||% NA_character_
+    if (!is_valid_string(revocation_url)) {
+      stop(
+        "`revoke_on_session_end = TRUE` requires the provider to have a ",
+        "`revocation_url` configured. The provider '",
+        client@provider@name %||% "(unnamed)",
+        "' does not expose a revocation endpoint. Either set ",
+        "`revoke_on_session_end = FALSE` or configure the provider with a ",
+        "valid `revocation_url`.",
+        call. = FALSE
+      )
+    }
+  }
+
   # Read introspection settings from client (validated by OAuthClient)
   introspect <- isTRUE(client@introspect)
   introspect_elements <- client@introspect_elements %||% character(0)
