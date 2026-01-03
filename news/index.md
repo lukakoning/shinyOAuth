@@ -93,7 +93,9 @@
   fails.
 
 - Immediate error when `OAuthProvider` uses `HS*` algorithm but
-  `allow_symmetric_alg` is not enabled (fail-fast).
+  `allow_symmetric_alg` is not enabled; also immediate error when
+  `OAuthProvider` uses `HS*` algorithm and ID token verification can
+  happen but `client_secret` is absent or too weak.
 
 ### Fixed
 
