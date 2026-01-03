@@ -77,8 +77,9 @@ when forwarding events to log sinks:
 - **OAuth query parameters are redacted**: `code`, `state`,
   `access_token`, `refresh_token`, `id_token`, `token`, `session_state`,
   `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
-- **Sensitive headers are removed**: `Cookie`, `Authorization`, and
-  `Set-Cookie` headers are stripped entirely.
+- **Sensitive headers are removed**: `Cookie`, `Set-Cookie`,
+  `Authorization`, `Proxy_Authorization`, `Proxy_Authenticate`, and
+  `WWW-Authenticate` headers are stripped entirely.
 - **Proxy headers are redacted**: Headers starting with `x_` (e.g.,
   `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to
   avoid leaking internal infrastructure details.

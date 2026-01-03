@@ -167,8 +167,9 @@ accidental secret leakage when forwarding events to log sinks:</p>
 <code>nonce</code> are replaced with <code>[REDACTED]</code>.</li>
 <li>
 <strong>Sensitive headers are removed</strong>: <code>Cookie</code>,
-<code>Authorization</code>, and <code>Set-Cookie</code> headers are
-stripped entirely.</li>
+<code>Set-Cookie</code>, <code>Authorization</code>,
+<code>Proxy_Authorization</code>, <code>Proxy_Authenticate</code>, and
+<code>WWW-Authenticate</code> headers are stripped entirely.</li>
 <li>
 <strong>Proxy headers are redacted</strong>: Headers starting with
 <code>x_</code> (e.g., <code>x_forwarded_for</code>,
