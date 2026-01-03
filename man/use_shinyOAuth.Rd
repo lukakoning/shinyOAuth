@@ -4,7 +4,14 @@
 \alias{use_shinyOAuth}
 \title{Add JavaScript dependency to the UI of a Shiny app}
 \usage{
-use_shinyOAuth()
+use_shinyOAuth(inject_referrer_meta = TRUE)
+}
+\arguments{
+\item{inject_referrer_meta}{If TRUE (default), injects a
+\verb{<meta name="referrer" content="no-referrer">} tag into the document
+head. This reduces the risk of leaking OAuth callback query parameters
+(like \code{code} and \code{state}) via the \code{Referer} header to third-party
+subresources during the initial callback page load.}
 }
 \value{
 A tagList containing a singleton dependency tag that ensures the JS

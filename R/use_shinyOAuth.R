@@ -11,6 +11,12 @@
 #' Place this near the top-level of your UI (e.g., inside `fluidPage()` or
 #' `tagList()`), similar to how you would use `shinyjs::useShinyjs()`.
 #'
+#' @param inject_referrer_meta If TRUE (default), injects a
+#'   `<meta name="referrer" content="no-referrer">` tag into the document
+#'   head. This reduces the risk of leaking OAuth callback query parameters
+#'   (like `code` and `state`) via the `Referer` header to third-party
+#'   subresources during the initial callback page load.
+#'
 #' @return A tagList containing a singleton dependency tag that ensures the JS
 #'   file `inst/www/shinyOAuth.js` is loaded
 #'
@@ -23,8 +29,12 @@
 #' )
 #'
 #' @seealso [oauth_module_server()]
-use_shinyOAuth <- function() {
+use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
   .set_flag(".called_js_dependency", TRUE)
+
+  stopifnot(
+    isTRUE(inject_referrer_meta) || identical(inject_referrer_meta, FALSE)
+  )
 
   # Resolve a safe version string for the dependency. In dev contexts
   # (e.g., load_all), packageVersion() may not always be available; fall back
@@ -45,7 +55,15 @@ use_shinyOAuth <- function() {
     script = "shinyOAuth.js"
   )
 
+  referrer_meta <- NULL
+  if (isTRUE(inject_referrer_meta)) {
+    referrer_meta <- htmltools::tags$head(
+      htmltools::tags$meta(name = "referrer", content = "no-referrer")
+    )
+  }
+
   htmltools::tagList(
+    referrer_meta,
     dep
   )
 }
