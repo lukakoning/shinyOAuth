@@ -309,6 +309,12 @@ wrapper prior to extracting the logical state value.
   `client_id_digest`, plus the standard `shiny_session` context
   described above
 
+#### Event: `audit_session_ended`
+
+- When: a Shiny session ends (always emitted by `onSessionEnded`,
+  regardless of configuration)
+- Context: `provider`, `issuer`, `client_id_digest`, `was_authenticated`
+
 #### Event: `audit_session_ended_revoke`
 
 - When: a Shiny session ends with `revoke_on_session_end = TRUE` and a
@@ -316,6 +322,17 @@ wrapper prior to extracting the logical state value.
 - Context: `provider`, `issuer`, `client_id_digest`; the actual
   revocation attempt is logged separately as `audit_revoke_token_*`
   events
+
+### Authentication state changes
+
+#### Event: `audit_authenticated_changed`
+
+- When: the `$authenticated` reactive value changes (TRUE ↔︎ FALSE)
+- Context: `provider`, `issuer`, `client_id_digest`, `authenticated`,
+  `previous_authenticated`, `reason`
+- Reasons include: `login` (when becoming authenticated), or the error
+  code/state that caused de-authentication (e.g., `token_expired`,
+  `logged_out`, `token_cleared`)
 
 ## Where to find these in code
 

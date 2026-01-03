@@ -529,6 +529,17 @@ is initialized for a Shiny session</li>
 </ul>
 </div>
 <div class="section level4">
+<h4 id="event-audit_session_ended">Event: <code>audit_session_ended</code><a class="anchor" aria-label="anchor" href="#event-audit_session_ended"></a>
+</h4>
+<ul>
+<li>When: a Shiny session ends (always emitted by
+<code>onSessionEnded</code>, regardless of configuration)</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>was_authenticated</code>
+</li>
+</ul>
+</div>
+<div class="section level4">
 <h4 id="event-audit_session_ended_revoke">Event: <code>audit_session_ended_revoke</code><a class="anchor" aria-label="anchor" href="#event-audit_session_ended_revoke"></a>
 </h4>
 <ul>
@@ -537,6 +548,26 @@ is initialized for a Shiny session</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>; the actual revocation attempt is logged
 separately as <code>audit_revoke_token_*</code> events</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
+<h3 id="authentication-state-changes">Authentication state changes<a class="anchor" aria-label="anchor" href="#authentication-state-changes"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_authenticated_changed">Event: <code>audit_authenticated_changed</code><a class="anchor" aria-label="anchor" href="#event-audit_authenticated_changed"></a>
+</h4>
+<ul>
+<li>When: the <code>$authenticated</code> reactive value changes (TRUE ↔︎
+FALSE)</li>
+<li>Context: <code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>authenticated</code>,
+<code>previous_authenticated</code>, <code>reason</code>
+</li>
+<li>Reasons include: <code>login</code> (when becoming authenticated),
+or the error code/state that caused de-authentication (e.g.,
+<code>token_expired</code>, <code>logged_out</code>,
+<code>token_cleared</code>)</li>
 </ul>
 </div>
 </div>
