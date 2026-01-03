@@ -135,7 +135,8 @@ environment variables <code>GITHUB_OAUTH_CLIENT_ID</code> and
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
+<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
 <span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -202,7 +203,8 @@ process instead of being redirected immediately on page load.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
+<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
 <span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -242,17 +244,17 @@ repositories.</p>
 <span>    <span class="va">client</span>,</span>
 <span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span>  <span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="va">repositories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observe.html" class="external-link">observe</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="co"># Example additional API request using the access token</span></span>
 <span>    <span class="co"># (e.g., fetch user repositories from GitHub)</span></span>
 <span>    <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span>, <span class="st">"https://api.github.com/user/repos"</span><span class="op">)</span></span>
 <span>    <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="fu">repositories</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
 <span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
@@ -260,13 +262,13 @@ repositories.</p>
 <span>      <span class="fu">repositories</span><span class="op">(</span><span class="va">repos_data</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
-<span>  </span>
+<span></span>
 <span>  <span class="co"># Render username + their repositories</span></span>
 <span>  <span class="va">output</span><span class="op">$</span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span>
 <span>      <span class="va">repos</span> <span class="op">&lt;-</span> <span class="fu">repositories</span><span class="op">(</span><span class="op">)</span></span>
-<span>      </span>
+<span></span>
 <span>      <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
 <span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"You are logged in as:"</span>, <span class="va">user_info</span><span class="op">$</span><span class="va">login</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>        <span class="va">tags</span><span class="op">$</span><span class="fu">h4</span><span class="op">(</span><span class="st">"Your repositories:"</span><span class="op">)</span>,</span>
@@ -281,13 +283,14 @@ repositories.</p>
 <span>        <span class="op">}</span></span>
 <span>      <span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="op">}</span></span>
-<span>    </span>
+<span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
+<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
 <span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -305,7 +308,8 @@ complete once the callback has been validated and token retrieval plus
 any configured OIDC checks have succeeded.</p>
 <p>If your provider supports RFC 7662 token introspection, you can
 optionally add an extra login-time validation step by enabling
-<code>introspect = TRUE</code>.</p>
+<code>introspect = TRUE</code> when creating your
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code>.</p>
 <p>When enabled, the module calls the provider introspection endpoint
 during callback processing and requires the response to indicate
 <code>active = TRUE</code>. If introspection is unsupported by the
@@ -331,13 +335,16 @@ scopes; this follows the client’s <code>scope_validation</code> mode
 introspection responses.)</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example with introspection enabled</span></span>
-<span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
-<span>  <span class="st">"auth"</span>,</span>
-<span>  <span class="va">client</span>,</span>
-<span>  auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span>,</span>
 <span>  introspect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sub"</span>, <span class="st">"client_id"</span>, <span class="st">"scope"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="async-mode-to-keep-ui-responsive">Async mode to keep UI responsive<a class="anchor" aria-label="anchor" href="#async-mode-to-keep-ui-responsive"></a>

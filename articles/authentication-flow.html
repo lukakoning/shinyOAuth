@@ -270,14 +270,15 @@ ID token</li>
 <p>Some providers support RFC 7662 token introspection (an additional
 endpoint where the server can ask the provider whether an access token
 is currently active and retrieve related metadata).</p>
-<p>If you enable <code>oauth_module_server(introspect = TRUE)</code>,
-the module calls the provider’s introspection endpoint during callback
-processing and requires the response to indicate
-<code>active = TRUE</code>. If introspection is unsupported by the
-provider or the introspection request fails, the login is aborted and
-<code>$authenticated</code> is not set to <code>TRUE</code>.</p>
+<p>If you enable <code>introspect = TRUE</code> when creating your
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code>, the module calls the provider’s
+introspection endpoint during callback processing and requires the
+response to indicate <code>active = TRUE</code>. If introspection is
+unsupported by the provider or the introspection request fails, the
+login is aborted and <code>$authenticated</code> is not set to
+<code>TRUE</code>.</p>
 <p>You can optionally enforce additional provider-dependent fields via
-<code>oauth_module_server(introspect_elements = ...)</code>:</p>
+<code>oauth_client(introspect_elements = ...)</code>:</p>
 <ul>
 <li>
 <code>"sub"</code> – require introspection <code>sub</code> to match

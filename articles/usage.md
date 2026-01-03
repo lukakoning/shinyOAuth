@@ -64,7 +64,8 @@ server <- function(input, output, session) {
 }
 
 runApp(
-  shinyApp(ui, server), port = 8100,
+  shinyApp(ui, server),
+  port = 8100,
   launch.browser = FALSE
 )
 
@@ -138,7 +139,8 @@ server <- function(input, output, session) {
 }
 
 runApp(
-  shinyApp(ui, server), port = 8100,
+  shinyApp(ui, server),
+  port = 8100,
   launch.browser = FALSE
 )
 
@@ -180,17 +182,17 @@ server <- function(input, output, session) {
     client,
     auto_redirect = TRUE
   )
-  
+
   repositories <- reactiveVal(NULL)
-  
+
   observe({
     req(auth$authenticated)
-    
+
     # Example additional API request using the access token
     # (e.g., fetch user repositories from GitHub)
     req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
     resp <- httr2::req_perform(req)
-    
+
     if (httr2::resp_is_error(resp)) {
       repositories(NULL)
     } else {
@@ -198,13 +200,13 @@ server <- function(input, output, session) {
       repositories(repos_data)
     }
   })
-  
+
   # Render username + their repositories
   output$ui <- renderUI({
     if (isTRUE(auth$authenticated)) {
       user_info <- auth$token@userinfo
       repos <- repositories()
-      
+
       return(tagList(
         tags$p(paste("You are logged in as:", user_info$login)),
         tags$h4("Your repositories:"),
@@ -219,13 +221,14 @@ server <- function(input, output, session) {
         }
       ))
     }
-    
+
     return(tags$p("You are not logged in."))
   })
 }
 
 runApp(
-  shinyApp(ui, server), port = 8100,
+  shinyApp(ui, server),
+  port = 8100,
   launch.browser = FALSE
 )
 
@@ -246,7 +249,8 @@ token retrieval plus any configured OIDC checks have succeeded.
 
 If your provider supports RFC 7662 token introspection, you can
 optionally add an extra login-time validation step by enabling
-`introspect = TRUE`.
+`introspect = TRUE` when creating your
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
 When enabled, the module calls the provider introspection endpoint
 during callback processing and requires the response to indicate
@@ -270,13 +274,16 @@ introspection responses.)
 
 ``` r
 # Example with introspection enabled
-auth <- oauth_module_server(
-  "auth",
-  client,
-  auto_redirect = TRUE,
+client <- oauth_client(
+  provider = provider,
+  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
+  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "http://127.0.0.1:8100",
   introspect = TRUE,
   introspect_elements = c("sub", "client_id", "scope")
 )
+
+auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
 ```
 
 ## Async mode to keep UI responsive
