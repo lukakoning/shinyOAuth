@@ -81,6 +81,11 @@ upon client creation.
 uses `HS*` algorithm and ID token verification can happen but `client_secret` is
 absent or too weak.
 
+### Other
+
+* When fetching JWKS, if `key_ops` is present on keys, only keys with `key_ops` 
+including `"verify"` are considered.
+
 ## Fixed
 
 * Package now correctly requires `httr2` >= 1.1.0.

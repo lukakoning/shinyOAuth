@@ -59,3 +59,58 @@ test_that("validate_jwks enforces structure and pins", {
     class = "shinyOAuth_parse_error"
   )
 })
+
+test_that("select_candidate_jwks honors key_ops field", {
+  # Minimal RSA JWK for signing/verification
+  rsa_verify <- list(
+    kty = "RSA",
+    n = "sXch2LwS8wKk7Lw7W2jvH8o7J3H_8cRkS6PZs5x8d6E5pESm7Yv2V7h0C2Xv4v5c",
+    e = "AQAB",
+    kid = "verify-key"
+  )
+
+  # Key with key_ops = "verify" should be kept
+  rsa_ops_verify <- rsa_verify
+  rsa_ops_verify$kid <- "ops-verify"
+  rsa_ops_verify$key_ops <- c("verify")
+
+  # Key with key_ops = "encrypt" only should be excluded
+  rsa_ops_encrypt <- rsa_verify
+  rsa_ops_encrypt$kid <- "ops-encrypt"
+  rsa_ops_encrypt$key_ops <- c("encrypt", "decrypt")
+
+  # Key with key_ops missing should be kept
+  rsa_no_ops <- rsa_verify
+  rsa_no_ops$kid <- "no-ops"
+
+  jwks <- list(keys = list(rsa_ops_verify, rsa_ops_encrypt, rsa_no_ops))
+
+  # Should filter out the encrypt-only key
+  result <- shinyOAuth:::select_candidate_jwks(jwks)
+  kids <- vapply(result, function(k) k$kid, character(1))
+  expect_true("ops-verify" %in% kids)
+  expect_true("no-ops" %in% kids)
+  expect_false("ops-encrypt" %in% kids)
+  expect_length(result, 2)
+
+  # Key with both sign and verify should be kept
+  rsa_ops_both <- rsa_verify
+  rsa_ops_both$kid <- "ops-both"
+  rsa_ops_both$key_ops <- c("sign", "verify")
+
+  jwks2 <- list(keys = list(rsa_ops_both, rsa_ops_encrypt))
+  result2 <- shinyOAuth:::select_candidate_jwks(jwks2)
+  kids2 <- vapply(result2, function(k) k$kid, character(1))
+  expect_true("ops-both" %in% kids2)
+  expect_false("ops-encrypt" %in% kids2)
+  expect_length(result2, 1)
+
+  # Case insensitivity: "VERIFY" should work
+  rsa_ops_upper <- rsa_verify
+  rsa_ops_upper$kid <- "ops-upper"
+  rsa_ops_upper$key_ops <- c("VERIFY")
+
+  jwks3 <- list(keys = list(rsa_ops_upper))
+  result3 <- shinyOAuth:::select_candidate_jwks(jwks3)
+  expect_length(result3, 1)
+})

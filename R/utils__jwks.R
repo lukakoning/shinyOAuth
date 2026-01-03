@@ -198,7 +198,7 @@ select_candidate_jwks <- function(jwks_or_keys, header_alg = NULL, kid = NULL) {
   }
 
   # Keep keys where use is missing or explicitly 'sig'
-  keep <- vapply(
+  keep_use <- vapply(
     keys,
     function(k) {
       u <- try(k$use, silent = TRUE)
@@ -209,7 +209,26 @@ select_candidate_jwks <- function(jwks_or_keys, header_alg = NULL, kid = NULL) {
     },
     logical(1)
   )
-  keys <- keys[keep]
+  keys <- keys[keep_use]
+
+  # Honor key_ops: keep keys where key_ops is missing or includes "verify"
+  # (RFC 7517 Section 4.3: key_ops restricts permitted operations)
+  keep_ops <- vapply(
+    keys,
+    function(k) {
+      ops <- try(k$key_ops, silent = TRUE)
+      if (inherits(ops, "try-error") || is.null(ops)) {
+        return(TRUE)
+      }
+      if (!is.character(ops) || length(ops) == 0L) {
+        return(TRUE)
+      }
+      # For signature verification, the key must support "verify"
+      tolower("verify") %in% tolower(ops)
+    },
+    logical(1)
+  )
+  keys <- keys[keep_ops]
 
   # If a kid is provided, restrict to matching keys
   if (!is.null(kid)) {
