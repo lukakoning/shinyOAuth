@@ -69,7 +69,7 @@ runApp(
   launch.browser = FALSE
 )
 
-# Open the app in your regular browser at http://127.0.01:8100
+# Open the app in your regular browser at http://127.0.0.1:8100
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
@@ -144,7 +144,7 @@ runApp(
   launch.browser = FALSE
 )
 
-# Open the app in your regular browser at http://127.0.01:8100
+# Open the app in your regular browser at http://127.0.0.1:8100
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
@@ -232,7 +232,7 @@ runApp(
   launch.browser = FALSE
 )
 
-# Open the app in your regular browser at http://127.0.01:8100
+# Open the app in your regular browser at http://127.0.0.1:8100
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
