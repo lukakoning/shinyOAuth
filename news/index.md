@@ -2,6 +2,109 @@
 
 ## shinyOAuth (development version)
 
+### New
+
+- Token revocation: tokens can now be revoked when Shiny session ends.
+  Enable via `revoke_on_session_end = TRUE` in
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+  The provider must expose a `revocation_url` (auto-discovered for OIDC,
+  or set manually via
+  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)).
+  New exported function
+  [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md).
+
+- Token introspection on login: validate tokens via the provider’s
+  introspection endpoint during login. Configure via `introspect` and
+  `introspect_elements` properties on `OAuthClient`. The provider must
+  expose an `introspection_url` (auto-discovered for OIDC, or set
+  manually via
+  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)).
+
+- Configurable scope validation: `validate_scopes` property on
+  `OAuthClient` controls whether returned scopes are validated against
+  requested scopes (`"strict"`, `"warn"`, or `"none"`). Scopes are now
+  normalized (alphabetically sorted) before comparison.
+
+- Audit events: `session_ended` (logged on Shiny session close),
+  `authenticated_changed` (logged when authentication status changes),
+  `token_introspection` (when
+  [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
+  is used), `token_revocation` (when
+  [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
+  is used), `error_state_consumed` and `error_state_consumption_failed`
+  (called when provider returns an error during callback handling and
+  the state is attempted to be consumed).
+
+- `client_assertion_audience` property on `OAuthClient` allows
+  overriding the JWT audience claim for client assertion authentication.
+
+- `state_max_age` property on `OAuthClient` for independent freshness
+  validation of the state payload’s `issued_at` timestamp.
+
+### Improved
+
+#### Security
+
+- `OAuthProvider` now requires absolute URLs (scheme + hostname) for all
+  endpoint URLs.
+
+- DoS protection: callback query parameters and state payload/browser
+  token sizes are validated before expensive operations (e.g., hashing
+  for audit logs).
+
+- HTTP log sanitization: sensitive data in HTTP contexts (headers,
+  cookies) is now sanitized by default in audit logs. Can be disabled
+  with `options(shinyOAuth.audit_redact_http = FALSE)`. Use
+  `options(shinyOAuth.audit_include_http = FALSE)` to not include any
+  HTTP data in logs.
+
+- Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by
+  unknown `kid`) are now rate-limited to prevent abuse.
+
+- State is now also consumed on OAuth error responses, preventing
+  re-use.
+
+- Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.
+
+- Callback URL parameters are now also cleared in login failure paths
+  (not just success).
+
+- Extra authorization URL parameters are now blocked from overriding
+  reserved OAuth keys.
+
+- Provider fingerprint now includes `userinfo_url` and
+  `introspection_url`.
+
+#### UX
+
+- Added warning about negative `expires_in` values in token responses.
+
+- Added warning when `OAuthClient` is instantiated inside a Shiny
+  session; may cause sealed satte payload decryption to fail when random
+  secret is generated upon client creation.
+
+- Added hints in error messages when sealed state payload decryption
+  fails.
+
+- Immediate error when `OAuthProvider` uses `HS*` algorithm but
+  `allow_symmetric_alg` is not enabled (fail-fast).
+
+### Fixed
+
+- Package now correctly requires `httr2` \>= 1.1.0.
+
+- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md):
+  fixed incorrect default which blocked multi-tenant configuration.
+
+- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md):
+  stricter host matching; `?` and `*` wildcards now correctly handled.
+
+- Token expiry handling during token refresh now aligns with how it is
+  handled during login.
+
+- Fixed potential auto-redirect loop after authentication error has
+  surfaced.
+
 ## shinyOAuth 0.1.4
 
 CRAN release: 2025-11-24
