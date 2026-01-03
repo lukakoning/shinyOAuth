@@ -265,8 +265,10 @@ OAuthProvider(
   Optional explicit hostname that the jwks_uri must match. When
   provided, jwks_uri host must equal this value (exact match). You can
   pass either just the host (e.g., "www.googleapis.com") or a full URL;
-  only the host component will be used. Takes precedence over
-  `jwks_host_issuer_match`
+  only the host component will be used. If you need to include a port or
+  an IPv6 literal, pass a full URL (e.g., `https://[::1]:8443`) — the
+  port is ignored and only the hostname part is used for matching. Takes
+  precedence over `jwks_host_issuer_match`
 
 - allowed_algs:
 
