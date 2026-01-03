@@ -461,6 +461,8 @@ CPU or memory usage during decoding and decryption.
   length of the `error` query parameter
 - `options(shinyOAuth.callback_max_error_description_bytes = 4096)` –
   maximum byte length of the `error_description` query parameter
+- `options(shinyOAuth.callback_max_query_bytes = <derived>)` – maximum
+  total byte length of the raw callback query string (pre-parse guard)
 - `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum
   byte length of the `browser_token` argument accepted by
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
