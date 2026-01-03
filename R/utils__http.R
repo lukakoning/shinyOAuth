@@ -214,6 +214,8 @@ req_with_retry <- function(req) {
 #' @description
 #' Internal helper to parse OAuth token endpoint responses. Supports JSON
 #' (application/json) and form-encoded (application/x-www-form-urlencoded).
+#' Errors on unsupported content types to avoid silently parsing garbage
+#' (e.g., HTML error pages from misconfigured proxies).
 #'
 #' @param resp httr2 response
 #'
@@ -246,25 +248,40 @@ parse_token_response <- function(resp) {
   }
 
   # GitHub historically returns form-encoded unless header Accept: application/json
-  # Handle application/x-www-form-urlencoded or unknown types by form parsing
-  if (
-    grepl("application/x-www-form-urlencoded", ct, fixed = TRUE) ||
-      ct == "" ||
-      grepl("text/plain", ct, fixed = TRUE)
-  ) {
+  # Handle application/x-www-form-urlencoded explicitly
+  if (grepl("application/x-www-form-urlencoded", ct, fixed = TRUE)) {
     # httr2::url_query_parse handles form-encoded strings
     return(httr2::url_query_parse(body))
   }
 
-  # Last resort: try JSON then form
-  out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
-  if (!inherits(out, "try-error")) {
-    if (is.data.frame(out)) {
-      out <- as.list(out)
+  # Empty content-type or text/plain: legacy providers may omit or mis-set headers.
+
+  # Try JSON first (many providers respond with JSON but wrong content-type),
+  # then fall back to form parsing.
+  if (ct == "" || grepl("text/plain", ct, fixed = TRUE)) {
+    # Try JSON first
+    out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
+    if (!inherits(out, "try-error")) {
+      if (is.data.frame(out)) {
+        out <- as.list(out)
+      }
+      return(out)
     }
-    return(out)
+    # Fall back to form parsing
+    return(httr2::url_query_parse(body))
   }
-  httr2::url_query_parse(body)
+
+  # Unsupported content type - fail explicitly rather than guessing
+
+  # This catches text/html (proxy error pages), XML, or other unexpected types
+  err_parse(
+    c(
+      "x" = "Unsupported content type in token response",
+      "i" = paste0("Content-Type: ", ct),
+      "i" = "Expected application/json or application/x-www-form-urlencoded"
+    ),
+    context = list(content_type = ct)
+  )
 }
 
 # Internal: derive a compact, JSON-serializable HTTP summary from a request

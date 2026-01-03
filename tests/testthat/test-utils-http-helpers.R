@@ -122,7 +122,7 @@ test_that("parse_token_response parses json and form encoded bodies", {
   expect_equal(shinyOAuth:::parse_token_response(form_resp)$scope, "read")
 })
 
-test_that("parse_token_response falls back to form parsing", {
+test_that("parse_token_response falls back to form parsing for text/plain", {
   plain_resp <- httr2::response(
     url = "https://example.com/token",
     status = 200,
@@ -132,6 +132,50 @@ test_that("parse_token_response falls back to form parsing", {
   parsed <- shinyOAuth:::parse_token_response(plain_resp)
   expect_equal(parsed$token_type, "bearer")
   expect_equal(parsed$expires_in, "3600")
+})
+
+test_that("parse_token_response tries JSON first for text/plain", {
+  # Some providers return JSON with text/plain content-type
+  json_plain_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "text/plain"),
+    body = charToRaw('{"access_token":"abc123","token_type":"bearer"}')
+  )
+  parsed <- shinyOAuth:::parse_token_response(json_plain_resp)
+  expect_equal(parsed$access_token, "abc123")
+  expect_equal(parsed$token_type, "bearer")
+})
+
+test_that("parse_token_response errors on unsupported content types", {
+  # HTML error page from misconfigured proxy
+
+  html_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "text/html"),
+    body = charToRaw("<html><body>502 Bad Gateway</body></html>")
+  )
+  expect_error(
+    shinyOAuth:::parse_token_response(html_resp),
+    class = "shinyOAuth_parse_error"
+  )
+  expect_error(
+    shinyOAuth:::parse_token_response(html_resp),
+    regexp = "Unsupported content type"
+  )
+
+  # XML response
+  xml_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/xml"),
+    body = charToRaw("<error>Something went wrong</error>")
+  )
+  expect_error(
+    shinyOAuth:::parse_token_response(xml_resp),
+    class = "shinyOAuth_parse_error"
+  )
 })
 
 test_that("parse_token_response signals parse error for invalid json", {

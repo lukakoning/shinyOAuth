@@ -76,7 +76,9 @@ upon client creation.
 
 * Added hints in error messages when sealed state payload decryption fails.
 
-* Added a clearer error message when retrieved userinfo cannot be parsed as JSON.
+* Ensured a clearer error message when token response is in unexpected format.
+
+* Ensured a clearer error message when retrieved userinfo cannot be parsed as JSON.
 
 * Immediate error when `OAuthProvider` uses `HS*` algorithm but 
 `allow_symmetric_alg` is not enabled; also immediate error when `OAuthProvider`
