@@ -116,6 +116,9 @@
 - Ensured a clearer error message when token response is in unexpected
   format.
 
+- Ensured a clearer error when retrieved state store entry is in
+  unexpected format.
+
 - Ensured a clearer error message when retrieved userinfo cannot be
   parsed as JSON.
 
