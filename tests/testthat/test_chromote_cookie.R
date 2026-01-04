@@ -70,7 +70,7 @@ make_test_app <- function(samesite = "Strict", id = "auth") {
       ns_prefix <- tryCatch(session$ns(""), error = function(...) id)
       instance <- sub("-$", "", ns_prefix)
 
-      ns_hash <- substr(as.character(openssl::md5(ns_prefix)), 1, 8)
+      ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
 
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
       instance <- paste0(instance, "-", ns_hash)
@@ -113,7 +113,7 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
   on.exit(app$stop(), add = TRUE)
 
   # The cookie name includes the module instance suffix derived from id "auth"
-  ns_hash <- substr(as.character(openssl::md5("auth-")), 1, 8)
+  ns_hash <- substr(as.character(openssl::sha256("auth-")), 1, 8)
   cookie_name <- paste0("shinyOAuth_sid-auth-", ns_hash)
 
   # Wait until the JS dependency is loaded and the module had a chance to set the cookie
@@ -156,7 +156,7 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
   on.exit(app$stop(), add = TRUE)
 
   # The cookie should not be created under HTTP when SameSite=None
-  ns_hash <- substr(as.character(openssl::md5("authnone-")), 1, 8)
+  ns_hash <- substr(as.character(openssl::sha256("authnone-")), 1, 8)
   cookie_name <- paste0("shinyOAuth_sid-authnone-", ns_hash)
   # Wait a bit for the attempted set + error path to run
   app$wait_for_idle(timeout = 8000)
@@ -189,7 +189,7 @@ testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
   )
   on.exit(app$stop(), add = TRUE)
 
-  ns_hash <- substr(as.character(openssl::md5("authzero-")), 1, 8)
+  ns_hash <- substr(as.character(openssl::sha256("authzero-")), 1, 8)
   cookie_name <- paste0("shinyOAuth_sid-authzero-", ns_hash)
 
   # Ensure a clean start: clear any existing cookie
