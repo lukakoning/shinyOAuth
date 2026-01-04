@@ -771,7 +771,7 @@ oauth_module_server <- function(
 
       # Calculate hash of the original namespace to ensure uniqueness
       # even if sanitization causes collisions
-      ns_hash <- substr(as.character(openssl::md5(ns_prefix)), 1, 8)
+      ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
 
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
       instance <- paste0(instance, "-", ns_hash)
@@ -797,7 +797,7 @@ oauth_module_server <- function(
 
       # Calculate hash of the original namespace to ensure uniqueness
       # even if sanitization causes collisions
-      ns_hash <- substr(as.character(openssl::md5(ns_prefix)), 1, 8)
+      ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
 
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
       instance <- paste0(instance, "-", ns_hash)
