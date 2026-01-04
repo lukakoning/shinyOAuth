@@ -258,7 +258,15 @@ For state store events the digest reflects the plaintext state string.
 
 - When: token set is verified and an `OAuthToken` is created
 - Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`,
-  `refresh_token_present`, `expires_at`
+  `sub_source`, `refresh_token_present`, `expires_at`
+
+`sub_source` indicates where `sub_digest` was derived from:
+
+- `userinfo`: subject came from the userinfo response
+- `id_token`: subject came from an ID token that was validated
+  (signature + claims)
+- `id_token_unverified`: subject came from an ID token payload parse
+  when ID token validation was not performed
 
 #### Event: `audit_login_failed`
 

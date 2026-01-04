@@ -427,8 +427,21 @@ if <code>introspect = TRUE</code>)</li>
 created</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>sub_digest</code>,
-<code>refresh_token_present</code>, <code>expires_at</code>
+<code>sub_source</code>, <code>refresh_token_present</code>,
+<code>expires_at</code>
 </li>
+</ul>
+<p><code>sub_source</code> indicates where <code>sub_digest</code> was
+derived from:</p>
+<ul>
+<li>
+<code>userinfo</code>: subject came from the userinfo response</li>
+<li>
+<code>id_token</code>: subject came from an ID token that was
+validated (signature + claims)</li>
+<li>
+<code>id_token_unverified</code>: subject came from an ID token
+payload parse when ID token validation was not performed</li>
 </ul>
 </div>
 <div class="section level4">
