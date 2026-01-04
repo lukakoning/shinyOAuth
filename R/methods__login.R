@@ -878,12 +878,24 @@ payload_verify_issued_at <- function(client, payload) {
     err_invalid_state("Invalid payload: missing or invalid issued_at")
   }
 
-  # Compute age in seconds using double math (robust even after 2038)
-  age <- as.numeric(Sys.time()) - as.numeric(ia)
+  # Use the same leeway as ID token checks for clock drift tolerance
+  leeway <- client@provider@leeway %||% getOption("shinyOAuth.leeway", 30)
+  lwe <- as.numeric(leeway %||% 0)
+  if (!is.finite(lwe) || is.na(lwe) || length(lwe) != 1) {
+    lwe <- 0
+  }
 
-  if (age < 0) {
+  # Compute age in seconds using double math (robust even after 2038)
+  now <- as.numeric(Sys.time())
+  ia_val <- as.numeric(ia)
+
+  # Reject if issued_at is in the future beyond leeway (clock drift tolerance)
+  if (ia_val > (now + lwe)) {
     err_invalid_state("Invalid payload: issued_at is in the future")
   }
+
+  # Compute age for max_age check
+  age <- now - ia_val
   if (age > max_age) {
     err_invalid_state("Invalid payload: issued_at is too old")
   }

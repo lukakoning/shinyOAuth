@@ -342,7 +342,7 @@ audit and trace hooks.
 
 ### Networking/security
 
-- `options(shinyOAuth.leeway = 30)` – default ID token exp/iat leeway seconds
+- `options(shinyOAuth.leeway = 30)` – default clock skew leeway (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload `issued_at` future check
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1"))` - allows hosts to use `http://` scheme instead of `https://`
 - `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts accepted hosts
 to this whitelist

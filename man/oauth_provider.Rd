@@ -203,8 +203,9 @@ provider. Helper constructors default this more strictly: for
 default; otherwise it remains empty. You can override to widen or disable
 enforcement by setting it explicitly}
 
-\item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat} checks.
-Default 30. Can be globally overridden via option \code{shinyOAuth.leeway}}
+\item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
+and state payload \code{issued_at} future check. Default 30. Can be globally
+overridden via option \code{shinyOAuth.leeway}}
 }
 \value{
 \link{OAuthProvider} object

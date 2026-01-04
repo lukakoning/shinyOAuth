@@ -164,8 +164,9 @@
 #'   default; otherwise it remains empty. You can override to widen or disable
 #'   enforcement by setting it explicitly
 #'
-#' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat` checks.
-#'   Default 30. Can be globally overridden via option `shinyOAuth.leeway`
+#' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
+#'   and state payload `issued_at` future check. Default 30. Can be globally
+#'   overridden via option `shinyOAuth.leeway`
 #'
 #' @example inst/examples/oauth_provider.R
 #'
@@ -175,10 +176,8 @@ OAuthProvider <- S7::new_class(
   package = "shinyOAuth",
   properties = list(
     name = S7::class_character,
-
     auth_url = S7::class_character,
     token_url = S7::class_character,
-
     userinfo_url = S7::new_property(
       S7::class_character,
       default = NA_character_
@@ -191,13 +190,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
-
     issuer = S7::new_property(S7::class_character, default = NA_character_),
-
     use_nonce = S7::new_property(S7::class_logical, default = FALSE),
     use_pkce = S7::new_property(S7::class_logical, default = TRUE),
     pkce_method = S7::new_property(S7::class_character, default = "S256"),
-
     userinfo_required = S7::new_property(S7::class_logical, default = FALSE),
     userinfo_id_selector = S7::new_property(
       S7::class_any,
@@ -207,22 +203,18 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
-
     id_token_required = S7::new_property(S7::class_logical, default = FALSE),
     id_token_validation = S7::new_property(S7::class_logical, default = FALSE),
-
     extra_auth_params = S7::class_list,
     extra_token_params = S7::class_list,
     extra_token_headers = S7::new_property(
       S7::class_character,
       default = character()
     ),
-
     token_auth_style = S7::new_property(
       S7::class_character,
       default = "header"
     ),
-
     jwks_cache = S7::new_property(
       S7::class_any,
       default = quote(cachem::cache_mem(max_age = 3600))
@@ -239,7 +231,6 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
-
     allowed_algs = S7::new_property(
       S7::class_character,
       default = c(
@@ -259,7 +250,6 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
-
     leeway = S7::new_property(
       S7::class_numeric,
       default = quote(getOption(
@@ -268,7 +258,6 @@ OAuthProvider <- S7::new_class(
       ))
     )
   ),
-
   validator = function(self) {
     # Small helper to validate a single field
     .check_host_field <- function(value, name, required = FALSE) {
@@ -315,7 +304,9 @@ OAuthProvider <- S7::new_class(
     for (nm in names(fields)) {
       f <- fields[[nm]]
       msg <- .check_host_field(f$val, nm, f$required)
-      if (!is.null(msg)) return(msg) # early exit on first violation
+      if (!is.null(msg)) {
+        return(msg)
+      } # early exit on first violation
     }
 
     # Validate extra_token_headers: must be named character vector of length n
@@ -699,37 +690,29 @@ OAuthProvider <- S7::new_class(
 #' @export
 oauth_provider <- function(
   name,
-
   auth_url,
   token_url,
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
-
   issuer = NA_character_,
-
   use_nonce = NULL,
   use_pkce = TRUE,
   pkce_method = "S256",
-
   userinfo_required = NULL,
   userinfo_id_token_match = NULL,
   userinfo_id_selector = function(userinfo) userinfo$sub,
-
   id_token_required = NULL,
   id_token_validation = NULL,
-
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(),
   token_auth_style = "header",
-
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
-
   allowed_algs = c(
     "RS256",
     "RS384",
@@ -743,7 +726,6 @@ oauth_provider <- function(
     "EdDSA"
   ),
   allowed_token_types = NULL,
-
   leeway = getOption("shinyOAuth.leeway", 30)
 ) {
   # Use shared internal helper to normalize only the path component
@@ -865,40 +847,31 @@ oauth_provider <- function(
 
   OAuthProvider(
     name = name,
-
     auth_url = auth_url,
     token_url = token_url,
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
     revocation_url = revocation_url,
-
     issuer = issuer,
-
     use_nonce = use_nonce,
-
     use_pkce = use_pkce,
     pkce_method = pkce_method,
-
     userinfo_required = userinfo_required,
     id_token_required = id_token_required,
     id_token_validation = id_token_validation,
     userinfo_id_token_match = userinfo_id_token_match,
     userinfo_id_selector = userinfo_id_selector,
-
     extra_auth_params = extra_auth_params,
     extra_token_params = extra_token_params,
     extra_token_headers = extra_token_headers,
     token_auth_style = token_auth_style,
-
     jwks_cache = jwks_cache,
     jwks_pins = jwks_pins,
     jwks_pin_mode = jwks_pin_mode,
     jwks_host_issuer_match = isTRUE(jwks_host_issuer_match),
     jwks_host_allow_only = jwks_host_allow_only,
-
     allowed_algs = allowed_algs,
     allowed_token_types = allowed_token_types,
-
     leeway = leeway
   )
 }
