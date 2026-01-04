@@ -85,9 +85,9 @@
 - All error paths should raise via `err_abort` wrappers (`err_token()`,
   `err_invalid_state()`, `err_userinfo()`, etc.) so trace ids and
   structured context propagate to Shiny logs and audit hooks.
-- Options like `shinyOAuth.print_errors`, `shinyOAuth.print_traceback`,
-  and `shinyOAuth.disable_watchdog_warning` let operators tune
-  verbosity; respect these flags instead of printing directly.
+- Options like `shinyOAuth.print_errors` and
+  `shinyOAuth.print_traceback` let operators tune verbosity; respect
+  these flags instead of printing directly.
 
 ## Error Handling
 

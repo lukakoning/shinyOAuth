@@ -78,7 +78,7 @@
 <ul><li>
 <code>audit_event()</code>/<code>emit_trace_event()</code> in R/errors.R send redacted telemetry to <code>options(shinyOAuth.trace_hook)</code> and <code>options(shinyOAuth.audit_hook)</code>; preserve hashed identifiers via <code>string_digest()</code> when logging new fields.</li>
 <li>All error paths should raise via <code>err_abort</code> wrappers (<code>err_token()</code>, <code>err_invalid_state()</code>, <code>err_userinfo()</code>, etc.) so trace ids and structured context propagate to Shiny logs and audit hooks.</li>
-<li>Options like <code>shinyOAuth.print_errors</code>, <code>shinyOAuth.print_traceback</code>, and <code>shinyOAuth.disable_watchdog_warning</code> let operators tune verbosity; respect these flags instead of printing directly.</li>
+<li>Options like <code>shinyOAuth.print_errors</code> and <code>shinyOAuth.print_traceback</code> let operators tune verbosity; respect these flags instead of printing directly.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="error-handling">Error Handling<a class="anchor" aria-label="anchor" href="#error-handling"></a></h2>

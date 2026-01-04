@@ -548,7 +548,7 @@ requires a specific format</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="development-softening">Development softening<a class="anchor" aria-label="anchor" href="#development-softening"></a>
+<h3 id="developmentdebugging">Development/debugging<a class="anchor" aria-label="anchor" href="#developmentdebugging"></a>
 </h3>
 <ul>
 <li>
@@ -557,11 +557,15 @@ browser cookie binding</li>
 <li>
 <code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
 signature verification</li>
+<li>
+<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
+during token exchange</li>
 </ul>
-<p>Don’t enable these in production. They disable key security checks
-and are intended for local testing only. Use
-<code><a href="../reference/error_on_softened.html">error_on_softened()</a></code> at startup to fail fast if softening
-flags are enabled in an environment where they should not be.</p>
+<p>Don’t enable these in production. They disable key security checks or
+alter error behavior, and are intended for local testing/debugging only.
+Use <code><a href="../reference/error_on_softened.html">error_on_softened()</a></code> at startup to fail fast if
+softening flags are enabled in an environment where they should not
+be.</p>
 </div>
 <div class="section level3">
 <h3 id="size-caps">Size caps<a class="anchor" aria-label="anchor" href="#size-caps"></a>

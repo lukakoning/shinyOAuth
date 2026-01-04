@@ -448,15 +448,18 @@ options:
   installed package/runtime versions; set a custom string here if your
   organization requires a specific format
 
-### Development softening
+### Development/debugging
 
 - `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie
   binding
 - `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature
   verification
+- `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
+  exchange
 
-Don’t enable these in production. They disable key security checks and
-are intended for local testing only. Use
+Don’t enable these in production. They disable key security checks or
+alter error behavior, and are intended for local testing/debugging only.
+Use
 [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
 at startup to fail fast if softening flags are enabled in an environment
 where they should not be.
