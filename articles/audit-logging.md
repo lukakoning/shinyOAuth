@@ -105,6 +105,33 @@ options(shinyOAuth.audit_include_http = FALSE)
 This means that the `shiny_session$http` field will be `NULL` in all
 audit events.
 
+### Digest fields and keying
+
+Many audit events include digest fields such as `client_id_digest`,
+`state_digest`, `code_digest`, `browser_token_digest`, and `sub_digest`.
+These are intended to let you correlate events without emitting raw
+sensitive values.
+
+By default, these digests use HMAC-SHA256 with an auto-generated
+per-process key. This reduces the risk of correlation or dictionary
+reidentification if logs leak.
+
+If you run multiple workers/processes and want digests to be comparable
+across them, configure a shared key:
+
+``` r
+options(shinyOAuth.audit_digest_key = Sys.getenv("AUDIT_DIGEST_KEY"))
+```
+
+To disable keying (legacy deterministic SHA-256 digests):
+
+``` r
+options(shinyOAuth.audit_digest_key = FALSE)
+```
+
+Note: unkeyed digests are pseudonymous, not anonymized—low-entropy
+identifiers (like email addresses) can be dictionary-attacked.
+
 ## Event catalog
 
 ### Authorization redirect issuance

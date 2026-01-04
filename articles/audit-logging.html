@@ -193,6 +193,27 @@ can disable redaction:</p>
 <p>This means that the <code>shiny_session$http</code> field will be
 <code>NULL</code> in all audit events.</p>
 </div>
+<div class="section level3">
+<h3 id="digest-fields-and-keying">Digest fields and keying<a class="anchor" aria-label="anchor" href="#digest-fields-and-keying"></a>
+</h3>
+<p>Many audit events include digest fields such as
+<code>client_id_digest</code>, <code>state_digest</code>,
+<code>code_digest</code>, <code>browser_token_digest</code>, and
+<code>sub_digest</code>. These are intended to let you correlate events
+without emitting raw sensitive values.</p>
+<p>By default, these digests use HMAC-SHA256 with an auto-generated
+per-process key. This reduces the risk of correlation or dictionary
+reidentification if logs leak.</p>
+<p>If you run multiple workers/processes and want digests to be
+comparable across them, configure a shared key:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>To disable keying (legacy deterministic SHA-256 digests):</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>Note: unkeyed digests are pseudonymous, not anonymized—low-entropy
+identifiers (like email addresses) can be dictionary-attacked.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="event-catalog">Event catalog<a class="anchor" aria-label="anchor" href="#event-catalog"></a>
@@ -702,7 +723,7 @@ exporting</li>
 </li>
 </ul>
 <p>Example of a JSON export hook:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">json_hook</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>        <span class="va">line</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">toJSON</a></span><span class="op">(</span><span class="va">event</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, null <span class="op">=</span> <span class="st">"null"</span><span class="op">)</span></span>

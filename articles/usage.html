@@ -434,6 +434,9 @@ exclude HTTP request details from audit events (default:
 <code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
 automatic redaction of sensitive data in audit events (default:
 <code>TRUE</code>)</li>
+<li>
+<code>options(shinyOAuth.audit_digest_key = ...)</code> – key for
+HMAC-SHA256 audit digests</li>
 </ul>
 <p>See <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>
 for details about audit and trace hooks.</p>

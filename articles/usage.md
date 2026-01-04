@@ -371,6 +371,8 @@ is a list of all available options.
   request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
   redaction of sensitive data in audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_digest_key = ...)` – key for HMAC-SHA256
+  audit digests
 
 See
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)

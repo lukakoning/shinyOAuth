@@ -58,6 +58,14 @@
   `options(shinyOAuth.audit_include_http = FALSE)` to not include any
   HTTP data in logs.
 
+- Audit digest keying: audit/event digests (e.g., `sub_digest`,
+  `browser_token_digest`) now default to HMAC-SHA256 with an
+  auto-generated per-process key to reduce reidentification/correlation
+  risk if logs leak. Configure a key with
+  `options(shinyOAuth.audit_digest_key = "...")`, or disable keying
+  (legacy deterministic SHA-256) with
+  `options(shinyOAuth.audit_digest_key = FALSE)`.
+
 - Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by
   unknown `kid`) are now rate-limited to prevent abuse.
 
