@@ -236,14 +236,6 @@ conservative default of 5 minutes (300 seconds) is used to align with the
 built-in \code{cachem::cache_mem(max_age = 300)} default. Separately, the state
 payload \code{issued_at} freshness window is controlled by the client's
 \code{state_payload_max_age} (default 300 seconds).
-\item Watchdog for missing browser token: to catch misconfiguration early during
-development, the module includes a short watchdog. If the browser token
-cookie is not set within 1500ms of module initialization, a warning
-is emitted to the R console. This likely means you forgot to include
-\code{use_shinyOAuth()} in your UI, but it may also indicate that a user
-of your app is using a browser with JavaScript disabled. The watchdog
-prints a warning only once per R session, but if you want to suppress it
-permanently, you can set \code{options(shinyOAuth.disable_watchdog_warning = TRUE)}.
 }
 }
 \examples{

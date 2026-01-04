@@ -360,7 +360,7 @@ log_condition <- function(e, context = list()) {
   ptb <- if (!is.null(print_traceback_override)) {
     isTRUE(print_traceback_override)
   } else {
-    isTRUE(getOption("shinyOAuth.print_traceback", TRUE))
+    isTRUE(getOption("shinyOAuth.print_traceback", FALSE))
   }
 
   # Compose header
