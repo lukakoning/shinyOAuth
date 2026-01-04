@@ -42,35 +42,33 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
 <div class="section level3">
-<h3 id="new-development-version">New<a class="anchor" aria-label="anchor" href="#new-development-version"></a></h3>
-<ul><li><p>Token revocation: tokens can now be revoked when Shiny session ends. Enable via <code>revoke_on_session_end = TRUE</code> in <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The provider must expose a <code>revocation_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>). New exported function <code><a href="../reference/revoke_token.html">revoke_token()</a></code>.</p></li>
-<li><p>Token introspection on login: validate tokens via the provider’s introspection endpoint during login. Configure via <code>introspect</code> and <code>introspect_elements</code> properties on <code>OAuthClient</code>. The provider must expose an <code>introspection_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>).</p></li>
-<li><p>Configurable scope validation: <code>validate_scopes</code> property on <code>OAuthClient</code> controls whether returned scopes are validated against requested scopes (<code>"strict"</code>, <code>"warn"</code>, or <code>"none"</code>). Scopes are now normalized (alphabetically sorted) before comparison.</p></li>
-<li><p>Audit events: <code>session_ended</code> (logged on Shiny session close), <code>authenticated_changed</code> (logged when authentication status changes), <code>token_introspection</code> (when <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is used), <code>token_revocation</code> (when <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is used), <code>error_state_consumed</code> and <code>error_state_consumption_failed</code> (called when provider returns an error during callback handling and the state is attempted to be consumed).</p></li>
-<li><p>Audit logs: <code>login_success</code> now includes <code>sub_source</code> to indicate whether the subject digest came from <code>userinfo</code>, <code>id_token</code> (verified), or <code>id_token_unverified</code>.</p></li>
-<li><p><code>client_assertion_audience</code> property on <code>OAuthClient</code> allows overriding the JWT audience claim for client assertion authentication.</p></li>
-<li><p><code>state_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
-</ul></div>
-<div class="section level3">
-<h3 id="improved-development-version">Improved<a class="anchor" aria-label="anchor" href="#improved-development-version"></a></h3>
+<h3 id="newimproved-development-version">New/Improved<a class="anchor" aria-label="anchor" href="#newimproved-development-version"></a></h3>
 <div class="section level4">
 <h4 id="security-development-version">Security<a class="anchor" aria-label="anchor" href="#security-development-version"></a></h4>
-<ul><li><p><code>OAuthProvider</code> now requires absolute URLs (scheme + hostname) for all endpoint URLs.</p></li>
+<ul><li><p>Token revocation: tokens can now be revoked when Shiny session ends. Enable via <code>revoke_on_session_end = TRUE</code> in <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The provider must expose a <code>revocation_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>). New exported function <code><a href="../reference/revoke_token.html">revoke_token()</a></code>.</p></li>
+<li><p>Token introspection on login: validate tokens via the provider’s introspection endpoint during login. Configure via <code>introspect</code> and <code>introspect_elements</code> properties on <code>OAuthClient</code>. The provider must expose an <code>introspection_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>).</p></li>
 <li><p>DoS protection: callback query parameters and state payload/browser token sizes are validated before expensive operations (e.g., hashing for audit logs). Maximum size may be configured via <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code>; see section ‘Size caps’ in <code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p></li>
-<li><p>HTTP log sanitization: sensitive data in HTTP contexts (headers, cookies) is now sanitized by default in audit logs. Can be disabled with <code>options(shinyOAuth.audit_redact_http = FALSE)</code>. Use <code>options(shinyOAuth.audit_include_http = FALSE)</code> to not include any HTTP data in logs.</p></li>
-<li><p>Audit digest keying: audit/event digests (e.g., <code>sub_digest</code>, <code>browser_token_digest</code>) now default to HMAC-SHA256 with an auto-generated per-process key to reduce reidentification/correlation risk if logs leak. Configure a key with <code>options(shinyOAuth.audit_digest_key = "...")</code>, or disable keying (legacy deterministic SHA-256) with <code>options(shinyOAuth.audit_digest_key = FALSE)</code>.</p></li>
-<li><p>Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by unknown <code>kid</code>) are now rate-limited to prevent abuse.</p></li>
+<li><p>DoS protection: rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by unknown <code>kid</code>) are now rate-limited to prevent abuse.</p></li>
 <li><p><code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> now injects <code>&lt;meta name="referrer" content="no-referrer"&gt;</code> by default to reduce leaking ?code=…&amp;state=… via the Referer header on the callback page. Can be disabled with <code>use_shinyOAuth(inject_referrer_meta = FALSE)</code>.</p></li>
-<li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.</p></li>
 <li><p>State is now also consumed in login failure paths (when the provider returns an error but also a state).</p></li>
 <li><p>Callback URL parameters are now also cleared in login failure paths.</p></li>
-<li><p>Extra provider parameters are now blocked from overriding reserved keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be explicitly overridden via <code>options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))</code>.</p></li>
+<li><p><code>OAuthProvider</code> now requires absolute URLs (scheme + hostname) for all endpoint URLs.</p></li>
 <li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>.</p></li>
-<li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now defaults <code>allowed_token_types</code> to <code>c("Bearer")</code> for all providers. This prevents accidentally misusing non-Bearer tokens (e.g., DPoP, MAC) as Bearer tokens. Set <code>allowed_token_types = character()</code> to opt out.</p></li>
+<li><p><code>state_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
+<li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="auditing-development-version">Auditing<a class="anchor" aria-label="anchor" href="#auditing-development-version"></a></h4>
+<ul><li><p>New audit events: <code>session_ended</code> (logged on Shiny session close), <code>authenticated_changed</code> (logged when authentication status changes), <code>token_introspection</code> (when <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is used), <code>token_revocation</code> (when <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is used), <code>error_state_consumed</code> and <code>error_state_consumption_failed</code> (called when provider returns an error during callback handling and the state is attempted to be consumed).</p></li>
+<li><p>Improved audit events: <code>login_success</code> now includes <code>sub_source</code> to indicate whether the subject digest came from <code>userinfo</code>, <code>id_token</code> (verified), or <code>id_token_unverified</code>.</p></li>
+<li><p>Audit digest keying: audit/event digests (e.g., <code>sub_digest</code>, <code>browser_token_digest</code>) now default to HMAC-SHA256 with an auto-generated per-process key to reduce reidentification/correlation risk if logs leak. Configure a key with <code>options(shinyOAuth.audit_digest_key = "...")</code>, or disable keying (legacy deterministic SHA-256) with <code>options(shinyOAuth.audit_digest_key = FALSE)</code>.</p></li>
+<li><p>HTTP log sanitization: sensitive data in HTTP contexts (headers, cookies) is now sanitized by default in audit logs. Can be disabled with <code>options(shinyOAuth.audit_redact_http = FALSE)</code>. Use <code>options(shinyOAuth.audit_include_http = FALSE)</code> to not include any HTTP data in logs.</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="ux-development-version">UX<a class="anchor" aria-label="anchor" href="#ux-development-version"></a></h4>
-<ul><li><p>Added warning about negative <code>expires_in</code> values in token responses.</p></li>
+<ul><li><p>Configurable scope validation: <code>validate_scopes</code> property on <code>OAuthClient</code> controls whether returned scopes are validated against requested scopes (<code>"strict"</code>, <code>"warn"</code>, or <code>"none"</code>). Scopes are now normalized (alphabetically sorted) before comparison.</p></li>
+<li><p>Extra provider parameters are now blocked from overriding reserved keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be explicitly overridden via <code>options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))</code>.</p></li>
+<li><p>Added warning about negative <code>expires_in</code> values in token responses.</p></li>
 <li><p>Added warning when <code>OAuthClient</code> is instantiated inside a Shiny session; may cause sealed satte payload decryption to fail when random secret is generated upon client creation.</p></li>
 <li><p>Added hints in error messages when sealed state payload decryption fails.</p></li>
 <li><p>Ensured a clearer error message when token response is in unexpected format.</p></li>
@@ -81,7 +79,8 @@
 <div class="section level4">
 <h4 id="other-development-version">Other<a class="anchor" aria-label="anchor" href="#other-development-version"></a></h4>
 <ul><li><p>When fetching JWKS, if <code>key_ops</code> is present on keys, only keys with <code>key_ops</code> including <code>"verify"</code> are considered.</p></li>
-<li><p>Token type is now validated before making a call to the userinfo endpoint.</p></li>
+<li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now defaults <code>allowed_token_types</code> to <code>c("Bearer")</code> for all providers. This prevents accidentally misusing non-Bearer tokens (e.g., DPoP, MAC) as Bearer tokens. Set <code>allowed_token_types = character()</code> to opt out. Token type is also now validated before calling the userinfo endpoint.</p></li>
+<li><p><code>client_assertion_audience</code> property on <code>OAuthClient</code> allows overriding the JWT audience claim for client assertion authentication.</p></li>
 </ul></div>
 </div>
 <div class="section level3">
@@ -90,9 +89,9 @@
 <li><p>HTTP error responses (4xx/5xx) are now correctly returned to the caller immediately instead of being misclassified as transport errors and retried.</p></li>
 <li><p><code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>: fixed incorrect default which blocked multi-tenant configuration.</p></li>
 <li><p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>: stricter host matching; <code>?</code> and <code>*</code> wildcards now correctly handled.</p></li>
-<li><p>Token expiry handling during token refresh now aligns with how it is handled during login.</p></li>
 <li><p>Fixed potential auto-redirect loop after authentication error has surfaced.</p></li>
 <li><p>Fixed potential race condition between proactive refresh and expiry watcher: the expiry watcher now defers clearing the token and triggering reauthentication while a refresh is in progress.</p></li>
+<li><p>Token expiry handling during token refresh now aligns with how it is handled during login.</p></li>
 <li><p>State payload <code>issued_at</code> validation now applies clock drift leeway (from <code>OAuthProvider@leeway</code> / <code>shinyOAuth.leeway</code> option), consistent with ID token <code>iat</code> check.</p></li>
 </ul></div>
 </div>

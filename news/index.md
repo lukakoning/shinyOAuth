@@ -2,7 +2,9 @@
 
 ## shinyOAuth (development version)
 
-### New
+### New/Improved
+
+#### Security
 
 - Token revocation: tokens can now be revoked when Shiny session ends.
   Enable via `revoke_on_session_end = TRUE` in
@@ -20,12 +22,41 @@
   manually via
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)).
 
-- Configurable scope validation: `validate_scopes` property on
-  `OAuthClient` controls whether returned scopes are validated against
-  requested scopes (`"strict"`, `"warn"`, or `"none"`). Scopes are now
-  normalized (alphabetically sorted) before comparison.
+- DoS protection: callback query parameters and state payload/browser
+  token sizes are validated before expensive operations (e.g., hashing
+  for audit logs). Maximum size may be configured via
+  [`options()`](https://rdrr.io/r/base/options.html); see section ‘Size
+  caps’ in
+  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
 
-- Audit events: `session_ended` (logged on Shiny session close),
+- DoS protection: rate-limited JWKS refresh: forced JWKS cache refreshes
+  (triggered by unknown `kid`) are now rate-limited to prevent abuse.
+
+- [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+  now injects `<meta name="referrer" content="no-referrer">` by default
+  to reduce leaking ?code=…&state=… via the Referer header on the
+  callback page. Can be disabled with
+  `use_shinyOAuth(inject_referrer_meta = FALSE)`.
+
+- State is now also consumed in login failure paths (when the provider
+  returns an error but also a state).
+
+- Callback URL parameters are now also cleared in login failure paths.
+
+- `OAuthProvider` now requires absolute URLs (scheme + hostname) for all
+  endpoint URLs.
+
+- Provider fingerprint now includes `userinfo_url` and
+  `introspection_url`.
+
+- `state_max_age` property on `OAuthClient` for independent freshness
+  validation of the state payload’s `issued_at` timestamp.
+
+- Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.
+
+#### Auditing
+
+- New audit events: `session_ended` (logged on Shiny session close),
   `authenticated_changed` (logged when authentication status changes),
   `token_introspection` (when
   [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
@@ -35,35 +66,9 @@
   (called when provider returns an error during callback handling and
   the state is attempted to be consumed).
 
-- Audit logs: `login_success` now includes `sub_source` to indicate
-  whether the subject digest came from `userinfo`, `id_token`
+- Improved audit events: `login_success` now includes `sub_source` to
+  indicate whether the subject digest came from `userinfo`, `id_token`
   (verified), or `id_token_unverified`.
-
-- `client_assertion_audience` property on `OAuthClient` allows
-  overriding the JWT audience claim for client assertion authentication.
-
-- `state_max_age` property on `OAuthClient` for independent freshness
-  validation of the state payload’s `issued_at` timestamp.
-
-### Improved
-
-#### Security
-
-- `OAuthProvider` now requires absolute URLs (scheme + hostname) for all
-  endpoint URLs.
-
-- DoS protection: callback query parameters and state payload/browser
-  token sizes are validated before expensive operations (e.g., hashing
-  for audit logs). Maximum size may be configured via
-  [`options()`](https://rdrr.io/r/base/options.html); see section ‘Size
-  caps’ in
-  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
-
-- HTTP log sanitization: sensitive data in HTTP contexts (headers,
-  cookies) is now sanitized by default in audit logs. Can be disabled
-  with `options(shinyOAuth.audit_redact_http = FALSE)`. Use
-  `options(shinyOAuth.audit_include_http = FALSE)` to not include any
-  HTTP data in logs.
 
 - Audit digest keying: audit/event digests (e.g., `sub_digest`,
   `browser_token_digest`) now default to HMAC-SHA256 with an
@@ -73,37 +78,23 @@
   (legacy deterministic SHA-256) with
   `options(shinyOAuth.audit_digest_key = FALSE)`.
 
-- Rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by
-  unknown `kid`) are now rate-limited to prevent abuse.
+- HTTP log sanitization: sensitive data in HTTP contexts (headers,
+  cookies) is now sanitized by default in audit logs. Can be disabled
+  with `options(shinyOAuth.audit_redact_http = FALSE)`. Use
+  `options(shinyOAuth.audit_include_http = FALSE)` to not include any
+  HTTP data in logs.
 
-- [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-  now injects `<meta name="referrer" content="no-referrer">` by default
-  to reduce leaking ?code=…&state=… via the Referer header on the
-  callback page. Can be disabled with
-  `use_shinyOAuth(inject_referrer_meta = FALSE)`.
+#### UX
 
-- Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.
-
-- State is now also consumed in login failure paths (when the provider
-  returns an error but also a state).
-
-- Callback URL parameters are now also cleared in login failure paths.
+- Configurable scope validation: `validate_scopes` property on
+  `OAuthClient` controls whether returned scopes are validated against
+  requested scopes (`"strict"`, `"warn"`, or `"none"`). Scopes are now
+  normalized (alphabetically sorted) before comparison.
 
 - Extra provider parameters are now blocked from overriding reserved
   keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be
   explicitly overridden via
   `options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))`.
-
-- Provider fingerprint now includes `userinfo_url` and
-  `introspection_url`.
-
-- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  now defaults `allowed_token_types` to `c("Bearer")` for all providers.
-  This prevents accidentally misusing non-Bearer tokens (e.g., DPoP,
-  MAC) as Bearer tokens. Set `allowed_token_types = character()` to opt
-  out.
-
-#### UX
 
 - Added warning about negative `expires_in` values in token responses.
 
@@ -135,8 +126,15 @@
 - When fetching JWKS, if `key_ops` is present on keys, only keys with
   `key_ops` including `"verify"` are considered.
 
-- Token type is now validated before making a call to the userinfo
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  now defaults `allowed_token_types` to `c("Bearer")` for all providers.
+  This prevents accidentally misusing non-Bearer tokens (e.g., DPoP,
+  MAC) as Bearer tokens. Set `allowed_token_types = character()` to opt
+  out. Token type is also now validated before calling the userinfo
   endpoint.
+
+- `client_assertion_audience` property on `OAuthClient` allows
+  overriding the JWT audience claim for client assertion authentication.
 
 ### Fixed
 
@@ -152,15 +150,15 @@
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md):
   stricter host matching; `?` and `*` wildcards now correctly handled.
 
-- Token expiry handling during token refresh now aligns with how it is
-  handled during login.
-
 - Fixed potential auto-redirect loop after authentication error has
   surfaced.
 
 - Fixed potential race condition between proactive refresh and expiry
   watcher: the expiry watcher now defers clearing the token and
   triggering reauthentication while a refresh is in progress.
+
+- Token expiry handling during token refresh now aligns with how it is
+  handled during login.
 
 - State payload `issued_at` validation now applies clock drift leeway
   (from `OAuthProvider@leeway` / `shinyOAuth.leeway` option), consistent
