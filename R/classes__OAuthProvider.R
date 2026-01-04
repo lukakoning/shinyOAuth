@@ -328,12 +328,19 @@ OAuthProvider <- S7::new_class(
 
       # Block reserved headers that could break/override client auth in surprising
       # ways during token exchange. Header names are case-insensitive in HTTP.
-      reserved_header_names <- c("authorization", "cookie")
+      # Users can unblock specific headers via shinyOAuth.unblock_token_headers.
+      default_reserved_headers <- c("authorization", "cookie")
+      unblocked <- tolower(getOption(
+        "shinyOAuth.unblock_token_headers",
+        character()
+      ))
+      reserved_header_names <- setdiff(default_reserved_headers, unblocked)
       bad_headers <- intersect(tolower(trimws(nms)), reserved_header_names)
       if (length(bad_headers) > 0) {
         return(sprintf(
           paste0(
-            "OAuthProvider: extra_token_headers must not contain reserved headers: %s"
+            "OAuthProvider: extra_token_headers must not contain reserved headers: %s. ",
+            "To unblock, set options(shinyOAuth.unblock_token_headers = c(...))"
           ),
           paste(sQuote(bad_headers), collapse = ", ")
         ))
@@ -355,7 +362,8 @@ OAuthProvider <- S7::new_class(
     # Validate extra_auth_params: block reserved keys that could desync state,
     # bypass PKCE, or corrupt the authorization request.
     # These fields are managed internally by shinyOAuth and must not be overridden.
-    reserved_auth_keys <- c(
+    # Users can unblock specific keys via shinyOAuth.unblock_auth_params.
+    default_reserved_auth_keys <- c(
       "response_type",
       "client_id",
       "redirect_uri",
@@ -365,6 +373,8 @@ OAuthProvider <- S7::new_class(
       "code_challenge_method",
       "nonce"
     )
+    unblocked_auth <- getOption("shinyOAuth.unblock_auth_params", character())
+    reserved_auth_keys <- setdiff(default_reserved_auth_keys, unblocked_auth)
     if (length(self@extra_auth_params) > 0) {
       nms <- names(self@extra_auth_params)
       bad <- intersect(nms, reserved_auth_keys)
@@ -372,7 +382,8 @@ OAuthProvider <- S7::new_class(
         return(sprintf(
           paste0(
             "OAuthProvider: extra_auth_params must not contain reserved keys ",
-            "managed by shinyOAuth: %s"
+            "managed by shinyOAuth: %s. ",
+            "To unblock, set options(shinyOAuth.unblock_auth_params = c(...))"
           ),
           paste(sQuote(bad), collapse = ", ")
         ))
@@ -381,7 +392,8 @@ OAuthProvider <- S7::new_class(
 
     # Validate extra_token_params: block reserved keys that could corrupt the
     # token request, bypass PKCE verification, or interfere with client auth.
-    reserved_token_keys <- c(
+    # Users can unblock specific keys via shinyOAuth.unblock_token_params.
+    default_reserved_token_keys <- c(
       "grant_type",
       "code",
       "redirect_uri",
@@ -391,6 +403,8 @@ OAuthProvider <- S7::new_class(
       "client_assertion",
       "client_assertion_type"
     )
+    unblocked_token <- getOption("shinyOAuth.unblock_token_params", character())
+    reserved_token_keys <- setdiff(default_reserved_token_keys, unblocked_token)
     if (length(self@extra_token_params) > 0) {
       nms <- names(self@extra_token_params)
       bad <- intersect(nms, reserved_token_keys)
@@ -398,7 +412,8 @@ OAuthProvider <- S7::new_class(
         return(sprintf(
           paste0(
             "OAuthProvider: extra_token_params must not contain reserved keys ",
-            "managed by shinyOAuth: %s"
+            "managed by shinyOAuth: %s. ",
+            "To unblock, set options(shinyOAuth.unblock_token_params = c(...))"
           ),
           paste(sQuote(bad), collapse = ", ")
         ))

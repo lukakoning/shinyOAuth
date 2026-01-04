@@ -129,6 +129,43 @@ test_that("OAuthProvider rejects reserved keys in extra_auth_params", {
   ))
 })
 
+test_that("shinyOAuth.unblock_auth_params allows reserved keys when configured", {
+  # By default, 'state' is blocked
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = list(state = "custom")
+    ),
+    regexp = "extra_auth_params must not contain reserved keys"
+  )
+
+  # With unblock option, 'state' is allowed
+  withr::with_options(list(shinyOAuth.unblock_auth_params = "state"), {
+    expect_no_error(OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = list(state = "custom")
+    ))
+  })
+
+  # Other params still blocked
+
+  withr::with_options(list(shinyOAuth.unblock_auth_params = "state"), {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_auth_params = list(nonce = "bad")
+      ),
+      regexp = "extra_auth_params must not contain reserved keys"
+    )
+  })
+})
+
 test_that("OAuthProvider rejects reserved keys in extra_token_params", {
   reserved <- c(
     "grant_type",

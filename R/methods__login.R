@@ -273,7 +273,8 @@ build_auth_url <- function(
     # Block parameters that are critical to OAuth security. Allowing these to be
     # overridden via extra_auth_params would break state binding, redirect_uri
     # validation, or PKCE integrity and could lead to unsafe configurations.
-    blocked_params <- c(
+    # Users can unblock specific keys via shinyOAuth.unblock_auth_params.
+    default_blocked_params <- c(
       "state",
       "redirect_uri",
       "response_type",
@@ -283,6 +284,8 @@ build_auth_url <- function(
       "code_challenge",
       "code_challenge_method"
     )
+    unblocked <- getOption("shinyOAuth.unblock_auth_params", character())
+    blocked_params <- setdiff(default_blocked_params, unblocked)
 
     conflicts <- intersect(names(extra), blocked_params)
     if (length(conflicts) > 0) {
@@ -292,7 +295,8 @@ build_auth_url <- function(
           paste(conflicts, collapse = ", ")
         ),
         "i" = "These parameters are managed internally to ensure OAuth security.",
-        "i" = "Set scopes via oauth_client(..., scopes = ...) and redirect_uri via oauth_client(..., redirect_uri = ...)."
+        "i" = "Set scopes via oauth_client(..., scopes = ...) and redirect_uri via oauth_client(..., redirect_uri = ...).",
+        "i" = "To unblock, set options(shinyOAuth.unblock_auth_params = c(...))"
       ))
     }
     params <- c(params, extra)
