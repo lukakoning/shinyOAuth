@@ -481,6 +481,42 @@ intend to accept any host; prefer pinning to your domain(s), e.g.,
 <code>c(".example.com")</code>.</p>
 </div>
 <div class="section level3">
+<h3 id="extra-parameter-overrides">Extra parameter overrides<a class="anchor" aria-label="anchor" href="#extra-parameter-overrides"></a>
+</h3>
+<p>By default, shinyOAuth blocks certain security‑critical parameters
+from being passed via <code>extra_auth_params</code>,
+<code>extra_token_params</code>, and <code>extra_token_headers</code>.
+This prevents accidental misconfiguration that could break state
+binding, PKCE integrity, or client authentication.</p>
+<p>If you have a specific, advanced use case where you need to override
+one of these blocked parameters, you can unblock them using the
+following options:</p>
+<ul>
+<li>
+<code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
+– allows overriding the specified authorization URL parameters. Default
+blocked: <code>response_type</code>, <code>client_id</code>,
+<code>redirect_uri</code>, <code>state</code>, <code>scope</code>,
+<code>code_challenge</code>, <code>code_challenge_method</code>,
+<code>nonce</code>
+</li>
+<li>
+<code>options(shinyOAuth.unblock_token_params = c(...))</code> –
+allows overriding the specified token exchange parameters. Default
+blocked: <code>grant_type</code>, <code>code</code>,
+<code>redirect_uri</code>, <code>code_verifier</code>,
+<code>client_id</code>, <code>client_secret</code>,
+<code>client_assertion</code>, <code>client_assertion_type</code>
+</li>
+<li>
+<code>options(shinyOAuth.unblock_token_headers = c("authorization"))</code>
+– allows overriding the specified token exchange headers
+(case-insensitive). Default blocked: <code>Authorization</code>,
+<code>Cookie</code>
+</li>
+</ul>
+</div>
+<div class="section level3">
 <h3 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
 </h3>
 <ul>

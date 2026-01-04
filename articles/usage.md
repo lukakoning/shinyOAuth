@@ -404,6 +404,29 @@ host restrictions (scheme rules still apply). Avoid this unless you
 truly intend to accept any host; prefer pinning to your domain(s), e.g.,
 `c(".example.com")`.
 
+### Extra parameter overrides
+
+By default, shinyOAuth blocks certain security‑critical parameters from
+being passed via `extra_auth_params`, `extra_token_params`, and
+`extra_token_headers`. This prevents accidental misconfiguration that
+could break state binding, PKCE integrity, or client authentication.
+
+If you have a specific, advanced use case where you need to override one
+of these blocked parameters, you can unblock them using the following
+options:
+
+- `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows
+  overriding the specified authorization URL parameters. Default
+  blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
+  `scope`, `code_challenge`, `code_challenge_method`, `nonce`
+- `options(shinyOAuth.unblock_token_params = c(...))` – allows
+  overriding the specified token exchange parameters. Default blocked:
+  `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
+  `client_secret`, `client_assertion`, `client_assertion_type`
+- `options(shinyOAuth.unblock_token_headers = c("authorization"))` –
+  allows overriding the specified token exchange headers
+  (case-insensitive). Default blocked: `Authorization`, `Cookie`
+
 ### HTTP settings (timeout, retries, user agent)
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)
