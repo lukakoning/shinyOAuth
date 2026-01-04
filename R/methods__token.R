@@ -729,13 +729,16 @@ refresh_token <- function(
   # - If ID token IS present and id_token_validation = TRUE, it's validated
   #   and its sub MUST match the original (OIDC 12.2)
   # - userinfo_id_token_match runs when both userinfo and id_token are present
+  # - scope: pass through provider's response; if NULL, verify_token_set skips
+  #   scope validation per RFC 6749 Section 6 (omitted = unchanged)
   token_set <- list(
     access_token = tok$access_token,
     token_type = tok$token_type,
     refresh_token = tok$refresh_token,
     id_token = tok$id_token,
     userinfo = tok$userinfo,
-    expires_in = tok$expires_in
+    expires_in = tok$expires_in,
+    scope = tok$scope
   )
   token_set <- verify_token_set(
     oauth_client,

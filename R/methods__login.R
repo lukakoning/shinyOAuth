@@ -1186,9 +1186,15 @@ verify_token_set <- function(
   verify_token_type_allowlist(client, token_set)
 
   # Scope reconciliation --------------------------------------------------------
+
   # If requested scopes exist, verify the provider returned them (or a superset).
   # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
   # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
+  #
+  # Refresh exception (RFC 6749 Section 6): providers MAY omit scope from refresh
+  # responses when unchanged. When is_refresh=TRUE and scope is NULL, we skip
+  # validation entirely—this is compliant behavior, not an error.
+  #
   # Note: Some providers omit scope from the token response entirely. In strict
   # mode this is treated as an error (we cannot verify scopes were granted);
   # in warn mode we issue a warning.
@@ -1196,9 +1202,11 @@ verify_token_set <- function(
   requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
   requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
 
+  # Skip scope validation during refresh when provider omits scope
   if (
     !identical(scope_validation_mode, "none") &&
-      length(requested_scopes) > 0
+      length(requested_scopes) > 0 &&
+      !(isTRUE(is_refresh) && is.null(token_set$scope))
   ) {
     if (is.null(token_set$scope)) {
       # Provider did not return scope — we cannot verify requested scopes were granted

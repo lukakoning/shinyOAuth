@@ -1516,3 +1516,118 @@ testthat::test_that("refresh_token updates userinfo even when id_token omitted",
   # Original id_token should be preserved (refresh didn't return a new one)
   testthat::expect_identical(t2@id_token, original_id_token)
 })
+
+# =============================================================================
+# Scope validation during refresh (RFC 6749 Section 6)
+# =============================================================================
+
+testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 §6)", {
+  # Per RFC 6749 Section 6, providers MAY omit scope from refresh responses
+
+  # when unchanged. With is_refresh=TRUE and scope=NULL, we skip validation.
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("openid", "profile", "email")
+  )
+  cli@scope_validation <- "strict"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        # Provider omits scope from refresh response
+        body = charToRaw(
+          '{"access_token":"refreshed_at","expires_in":3600}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  # Should NOT error even with strict scope_validation
+  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
+  testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
+  testthat::expect_identical(t2@access_token, "refreshed_at")
+})
+
+testthat::test_that("refresh_token validates scope when provider returns it", {
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("openid", "profile", "email")
+  )
+  cli@scope_validation <- "strict"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        # Provider returns scope matching requested scopes
+        body = charToRaw(
+          '{"access_token":"refreshed_at","scope":"openid profile email","expires_in":3600}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
+  testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
+  testthat::expect_identical(t2@access_token, "refreshed_at")
+})
+
+testthat::test_that("refresh_token errors when provider returns reduced scope (strict)", {
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("openid", "profile", "email")
+  )
+  cli@scope_validation <- "strict"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        # Provider returns only subset of requested scopes
+        body = charToRaw(
+          '{"access_token":"refreshed_at","scope":"openid profile","expires_in":3600}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    regexp = "email",
+    class = "shinyOAuth_token_error"
+  )
+})
