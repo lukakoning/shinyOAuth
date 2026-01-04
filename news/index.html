@@ -90,6 +90,7 @@
 <li><p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>: stricter host matching; <code>?</code> and <code>*</code> wildcards now correctly handled.</p></li>
 <li><p>Token expiry handling during token refresh now aligns with how it is handled during login.</p></li>
 <li><p>Fixed potential auto-redirect loop after authentication error has surfaced.</p></li>
+<li><p>Fixed potential race condition between proactive refresh and expiry watcher: the expiry watcher now defers clearing the token and triggering reauthentication while a refresh is in progress.</p></li>
 <li><p>State payload <code>issued_at</code> validation now applies clock drift leeway (from <code>OAuthProvider@leeway</code> / <code>shinyOAuth.leeway</code> option), consistent with ID token <code>iat</code> check.</p></li>
 </ul></div>
 </div>

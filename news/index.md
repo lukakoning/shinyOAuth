@@ -142,6 +142,10 @@
 - Fixed potential auto-redirect loop after authentication error has
   surfaced.
 
+- Fixed potential race condition between proactive refresh and expiry
+  watcher: the expiry watcher now defers clearing the token and
+  triggering reauthentication while a refresh is in progress.
+
 - State payload `issued_at` validation now applies clock drift leeway
   (from `OAuthProvider@leeway` / `shinyOAuth.leeway` option), consistent
   with ID token `iat` check.
