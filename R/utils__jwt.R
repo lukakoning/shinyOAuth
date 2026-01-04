@@ -149,7 +149,12 @@ validate_id_token <- function(
       # Determine candidate keys with safer kid handling
       if (!is.null(kid)) {
         # If header has kid, try only matching keys. If none match, refresh JWKS once and try again.
-        kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
+        kid_keys <- select_candidate_jwks(
+          jwks,
+          header_alg = alg,
+          kid = kid,
+          pins = pins
+        )
         if (length(kid_keys) == 0L) {
           did_force_refresh <- FALSE
           if (
@@ -170,7 +175,12 @@ validate_id_token <- function(
               pin_mode = pin_mode,
               provider = prov
             )
-            kid_keys <- select_candidate_jwks(jwks, header_alg = alg, kid = kid)
+            kid_keys <- select_candidate_jwks(
+              jwks,
+              header_alg = alg,
+              kid = kid,
+              pins = pins
+            )
           }
         }
         if (length(kid_keys) == 0L) {
@@ -183,7 +193,12 @@ validate_id_token <- function(
         keys <- kid_keys
       } else {
         # No kid: use usual candidate filtering (use='sig', alg preference)
-        keys <- select_candidate_jwks(jwks, header_alg = alg, kid = NULL)
+        keys <- select_candidate_jwks(
+          jwks,
+          header_alg = alg,
+          kid = NULL,
+          pins = pins
+        )
       }
 
       # Defense-in-depth: filter by key type/curve compatibility with alg

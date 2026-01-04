@@ -22,6 +22,13 @@ Maximum size may be configured via `options()`; see section 'Size caps' in
 * DoS protection: rate-limited JWKS refresh: forced JWKS cache refreshes (triggered by unknown 
 `kid`) are now rate-limited to prevent abuse.
 
+* JWKS pinning: pinning is now enforced during signature verification: previously, 
+`jwks_pins` with `jwks_pin_mode = "any"` only verified that at least one key 
+in the JWKS matched a pin, but signature verification could still use any 
+matching key (pinned or not). Now, signature verification is restricted to 
+only use keys whose thumbprints appear in the pin list, ensuring true key 
+pinning rather than presence-only checks.
+
 * `use_shinyOAuth()` now injects `<meta name="referrer" content="no-referrer">` 
 by default to reduce leaking ?code=...&state=... via the Referer header on the 
 callback page. Can be disabled with

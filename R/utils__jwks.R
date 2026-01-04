@@ -167,12 +167,20 @@ jwks_force_refresh_allowed <- function(
 #' @param jwks_or_keys A JWKS list (with $keys) or a normalized list of JWKs
 #' @param header_alg Optional JWT header alg (character)
 #' @param kid Optional key id to restrict candidates to
+#' @param pins Optional character vector of JWK thumbprints (base64url, RFC 7638)
+#'   to restrict candidate keys to. Only keys with matching thumbprints are
+#'   returned.
 #'
 #' @return A list of JWKs, filtered and ordered by preference
 #'
 #' @keywords internal
 #' @noRd
-select_candidate_jwks <- function(jwks_or_keys, header_alg = NULL, kid = NULL) {
+select_candidate_jwks <- function(
+  jwks_or_keys,
+  header_alg = NULL,
+  kid = NULL,
+  pins = NULL
+) {
   # Normalize input to a list of key objects
   keys <- jwks_or_keys
   if (is.list(jwks_or_keys) && !is.null(jwks_or_keys$keys)) {
@@ -265,6 +273,23 @@ select_candidate_jwks <- function(jwks_or_keys, header_alg = NULL, kid = NULL) {
     )
     idx <- order(ord_score)
     keys <- keys[idx]
+  }
+
+  # Filter by pins: only return keys whose thumbprint is in the pin list.
+  # This ensures signature verification uses only pinned keys, not merely
+  # that the JWKS passes a presence check.
+  if (!is.null(pins) && length(pins) > 0 && length(keys) > 0) {
+    pins <- unique(as.character(pins))
+    keys <- Filter(
+      function(k) {
+        tp <- try(compute_jwk_thumbprint(k), silent = TRUE)
+        if (inherits(tp, "try-error")) {
+          return(FALSE)
+        }
+        tp %in% pins
+      },
+      keys
+    )
   }
 
   keys

@@ -114,3 +114,78 @@ test_that("select_candidate_jwks honors key_ops field", {
   result3 <- shinyOAuth:::select_candidate_jwks(jwks3)
   expect_length(result3, 1)
 })
+
+test_that("select_candidate_jwks filters by pins when provided", {
+  # Minimal RSA JWK
+  rsa1 <- list(
+    kty = "RSA",
+    n = "sXch2LwS8wKk7Lw7W2jvH8o7J3H_8cRkS6PZs5x8d6E5pESm7Yv2V7h0C2Xv4v5c",
+    e = "AQAB",
+    kid = "rsa1"
+  )
+  rsa2 <- list(
+    kty = "RSA",
+    n = "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtV",
+    e = "AQAB",
+    kid = "rsa2"
+  )
+  ec1 <- list(
+    kty = "EC",
+    crv = "P-256",
+    x = "f83OJ3D2xF4G4Z4Qf83OJ3D2xF4G4Z4Qf83OJ3D2xF4",
+    y = "x_FEzRu9H7Wqkz2fYVb6x_FEzRu9H7Wqkz2fYVb6x_FE",
+    kid = "ec1"
+  )
+  jwks <- list(keys = list(rsa1, rsa2, ec1))
+
+  # Compute thumbprints
+
+  tp_rsa1 <- shinyOAuth:::compute_jwk_thumbprint(rsa1)
+  tp_rsa2 <- shinyOAuth:::compute_jwk_thumbprint(rsa2)
+  tp_ec1 <- shinyOAuth:::compute_jwk_thumbprint(ec1)
+
+  # Without pins, all 3 keys are returned
+  result_no_pins <- shinyOAuth:::select_candidate_jwks(jwks)
+  expect_length(result_no_pins, 3)
+
+  # With pins = only rsa1, only rsa1 is returned
+  result_pin_rsa1 <- shinyOAuth:::select_candidate_jwks(jwks, pins = tp_rsa1)
+  kids_pin_rsa1 <- vapply(result_pin_rsa1, function(k) k$kid, character(1))
+  expect_length(result_pin_rsa1, 1)
+  expect_equal(kids_pin_rsa1, "rsa1")
+
+  # With pins = rsa1 and ec1, only those two are returned
+  result_pin_two <- shinyOAuth:::select_candidate_jwks(
+    jwks,
+    pins = c(tp_rsa1, tp_ec1)
+  )
+  kids_pin_two <- vapply(result_pin_two, function(k) k$kid, character(1))
+  expect_length(result_pin_two, 2)
+  expect_true("rsa1" %in% kids_pin_two)
+  expect_true("ec1" %in% kids_pin_two)
+  expect_false("rsa2" %in% kids_pin_two)
+
+  # With pins = non-matching, empty list is returned
+  result_no_match <- shinyOAuth:::select_candidate_jwks(
+    jwks,
+    pins = c("nonexistent_thumbprint")
+  )
+  expect_length(result_no_match, 0)
+
+  # Pins filtering works in combination with kid filter
+  result_kid_pinned <- shinyOAuth:::select_candidate_jwks(
+    jwks,
+    kid = "rsa1",
+    pins = tp_rsa1
+  )
+  expect_length(result_kid_pinned, 1)
+  expect_equal(result_kid_pinned[[1]]$kid, "rsa1")
+
+  # If kid matches but pin doesn't, no keys returned
+  result_kid_unpinned <- shinyOAuth:::select_candidate_jwks(
+    jwks,
+    kid = "rsa2",
+    pins = tp_rsa1
+  )
+  expect_length(result_kid_unpinned, 0)
+})
