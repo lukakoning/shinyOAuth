@@ -336,6 +336,7 @@ Below is a list of all available options.
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – separate audit stream
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic redaction of sensitive data in audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_digest_key = ...)` – key for HMAC-SHA256 audit digests
 
 See `vignette("audit-logging", package = "shinyOAuth")` for details about
 audit and trace hooks.

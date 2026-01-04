@@ -23,6 +23,34 @@ test_that("string_digest returns hex digest or NA for bad inputs", {
   ))))
 })
 
+test_that("string_digest keying is controlled by shinyOAuth.audit_digest_key", {
+  hex <- function(raw) paste0(sprintf("%02x", as.integer(raw)), collapse = "")
+
+  # FALSE disables keying (legacy deterministic SHA-256) and should not warn
+  local_with_options(list(shinyOAuth.audit_digest_key = FALSE), {
+    expect_warning(d1 <- shinyOAuth:::string_digest("hello"), NA)
+    expect_identical(d1, hex(openssl::sha256(charToRaw("hello"))))
+  })
+
+  # A fixed key yields deterministic HMAC digests
+  local_with_options(list(shinyOAuth.audit_digest_key = "test-key"), {
+    d2 <- shinyOAuth:::string_digest("hello")
+    d3 <- shinyOAuth:::string_digest("hello")
+    expect_identical(d2, d3)
+    expect_identical(
+      d2,
+      hex(openssl::sha256(charToRaw("hello"), key = charToRaw("test-key")))
+    )
+  })
+
+  # Default behavior (option unset) should be keyed (HMAC), i.e. not equal to
+  # the unkeyed SHA-256 digest.
+  local_with_options(list(shinyOAuth.audit_digest_key = NULL), {
+    d_default <- shinyOAuth:::string_digest("hello")
+    expect_false(identical(d_default, hex(openssl::sha256(charToRaw("hello")))))
+  })
+})
+
 test_that("err_abort/err_pkce attach classes and trace ids", {
   expect_error(shinyOAuth:::err_pkce("boom"), class = "shinyOAuth_pkce_error")
   e <- tryCatch(shinyOAuth:::err_pkce("boom2"), error = identity)
