@@ -158,11 +158,12 @@
 #'   token response MUST include `token_type` and it must be one of the allowed
 #'   values; otherwise the flow fails fast with a `shinyOAuth_token_error`.
 #'   When empty, no check is performed and `token_type` may be omitted by the
-#'   provider. Helper constructors default this more strictly: for
-#'   [oauth_provider()] when an `issuer` is supplied or OIDC flags are enabled,
-#'   `allowed_token_types` defaults to `c("Bearer")` to enforce Bearer by
-#'   default; otherwise it remains empty. You can override to widen or disable
-#'   enforcement by setting it explicitly
+#'   provider. The [oauth_provider()] helper defaults to `c("Bearer")` for all
+#'   providers because the package only supports Bearer tokens (i.e.,
+#'   [client_bearer_req()] sends `Authorization: Bearer`). This ensures that if
+#'   a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
+#'   fails fast rather than misusing the token. Set `allowed_token_types =
+#'   character()` explicitly to opt out of enforcement.
 #'
 #' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
 #'   and state payload `issued_at` future check. Default 30. Can be globally
@@ -248,7 +249,7 @@ OAuthProvider <- S7::new_class(
     ),
     allowed_token_types = S7::new_property(
       S7::class_character,
-      default = character()
+      default = c("Bearer")
     ),
     leeway = S7::new_property(
       S7::class_numeric,
@@ -740,7 +741,7 @@ oauth_provider <- function(
     "ES512",
     "EdDSA"
   ),
-  allowed_token_types = NULL,
+  allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30)
 ) {
   # Use shared internal helper to normalize only the path component
@@ -808,18 +809,12 @@ oauth_provider <- function(
       (isTRUE(id_token_validation) || isTRUE(id_token_required))
   }
 
-  # Normalize allowed_token_types:
-  # - When NULL and provider looks OIDC-like (issuer present or OIDC flags on),
-  #   default to strict Bearer enforcement.
-  # - Otherwise, leave as empty (no enforcement).
+  # Default to Bearer for all providers. The package only supports Bearer tokens
+  # (client_bearer_req sends Authorization: Bearer). If a provider returns a
+  # non-Bearer token_type (e.g., DPoP, MAC), we fail fast rather than misusing
+  # it. Set allowed_token_types = character() to opt out of enforcement.
   if (is.null(allowed_token_types)) {
-    if (
-      has_issuer || isTRUE(id_token_required) || isTRUE(id_token_validation)
-    ) {
-      allowed_token_types <- c("Bearer")
-    } else {
-      allowed_token_types <- character()
-    }
+    allowed_token_types <- c("Bearer")
   }
 
   # Gentle host configuration reminder:

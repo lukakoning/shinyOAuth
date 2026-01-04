@@ -64,7 +64,11 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
     res$send_json(
-      object = list(access_token = "t", expires_in = 3600),
+      object = list(
+        access_token = "t",
+        token_type = "Bearer",
+        expires_in = 3600
+      ),
       auto_unbox = TRUE
     )
   })
@@ -129,7 +133,7 @@ test_that("userinfo success populates token userinfo when required", {
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
     res$send_json(
-      object = list(access_token = "t", expires_in = 60),
+      object = list(access_token = "t", token_type = "Bearer", expires_in = 60),
       auto_unbox = TRUE
     )
   })
@@ -174,7 +178,7 @@ test_that("userinfo success populates token userinfo when required", {
 
   token <- testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "t", expires_in = 60)
+      list(access_token = "t", token_type = "Bearer", expires_in = 60)
     },
     get_userinfo = function(oauth_client, token) {
       list(sub = "u-1", name = "Test")

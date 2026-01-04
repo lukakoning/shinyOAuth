@@ -31,7 +31,7 @@ OAuthProvider(
   jwks_host_allow_only = NA_character_,
   allowed_algs = c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256",
     "ES384", "ES512", "EdDSA"),
-  allowed_token_types = character(0),
+  allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30)
 )
 }
@@ -197,11 +197,11 @@ returned by the token endpoint (case-insensitive). When non-empty, the
 token response MUST include \code{token_type} and it must be one of the allowed
 values; otherwise the flow fails fast with a \code{shinyOAuth_token_error}.
 When empty, no check is performed and \code{token_type} may be omitted by the
-provider. Helper constructors default this more strictly: for
-\code{\link[=oauth_provider]{oauth_provider()}} when an \code{issuer} is supplied or OIDC flags are enabled,
-\code{allowed_token_types} defaults to \code{c("Bearer")} to enforce Bearer by
-default; otherwise it remains empty. You can override to widen or disable
-enforcement by setting it explicitly}
+provider. The \code{\link[=oauth_provider]{oauth_provider()}} helper defaults to \code{c("Bearer")} for all
+providers because the package only supports Bearer tokens (i.e.,
+\code{\link[=client_bearer_req]{client_bearer_req()}} sends \code{Authorization: Bearer}). This ensures that if
+a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
+fails fast rather than misusing the token. Set \code{allowed_token_types = character()} explicitly to opt out of enforcement.}
 
 \item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
 and state payload \code{issued_at} future check. Default 30. Can be globally

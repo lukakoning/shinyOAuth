@@ -47,6 +47,8 @@ make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
     jwks_pins = character(),
     jwks_pin_mode = "any",
     allowed_algs = c("RS256", "ES256"),
+    # Disable token_type enforcement in test helper; tested separately in test-token-type-policy.R
+    allowed_token_types = character(),
     leeway = 60
   )
 }
