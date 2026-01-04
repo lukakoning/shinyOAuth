@@ -103,7 +103,6 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
 
 
 testthat::test_that("expiry watcher defers clearing token while refresh is in progress", {
-
   # Regression test: verifies that the expiry watcher does not clear the token
 
   # or trigger reauth while an async refresh is in flight (refresh_in_progress = TRUE).
