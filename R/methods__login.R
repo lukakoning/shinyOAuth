@@ -612,18 +612,11 @@ handle_callback <- function(
   # when a non-Bearer token_type (e.g., DPoP) is returned.
   verify_token_type_allowlist(oauth_client, token_set)
 
-  # Fetch userinfo -------------------------------------------------------------
-
-  if (isTRUE(oauth_client@provider@userinfo_required)) {
-    userinfo <- get_userinfo(
-      oauth_client,
-      token = token_set[["access_token"]]
-    )
-
-    token_set[["userinfo"]] <- userinfo
-  }
-
   # Verify token ---------------------------------------------------------------
+  #
+  # Validate ID token signature/claims (including nonce) BEFORE fetching
+  # userinfo. This ensures cryptographic validation occurs before making
+  # external calls or exposing PII via userinfo endpoint.
 
   # Verify nonce is present if needed
   nonce <- state_store_values$nonce
@@ -655,16 +648,39 @@ handle_callback <- function(
     }
   )
 
-  # Now verify + modify token_set as needed
-  # If userinfo is requested, will also fetch user info and add to token_set
-  # If OIDC ID token, will validate its signature + claims (including nonce)
-  # If userinfo & OIDC ID token, verify the subject matches
+  # Verify token set: validates ID token signature + claims (including nonce),
+  # scope reconciliation, and token_type. Userinfo is NOT yet present; the
+  # subject match check will run after userinfo is fetched below.
   token_set <- verify_token_set(
     oauth_client,
     token_set = token_set,
     nonce = nonce,
     is_refresh = FALSE
   )
+
+  # Fetch userinfo -------------------------------------------------------------
+  #
+  # Fetch userinfo AFTER ID token validation. This ordering ensures we only
+  # make external calls after cryptographic validation passes.
+
+  if (isTRUE(oauth_client@provider@userinfo_required)) {
+    userinfo <- get_userinfo(
+      oauth_client,
+      token = token_set[["access_token"]]
+    )
+    token_set[["userinfo"]] <- userinfo
+
+    # Verify userinfo subject matches ID token subject (if configured).
+    # ID token is guaranteed present here: verify_token_set() already enforces
+    # id_token_required when userinfo_id_token_match = TRUE (see line ~1303).
+    if (isTRUE(oauth_client@provider@userinfo_id_token_match)) {
+      verify_userinfo_id_token_subject_match(
+        oauth_client,
+        userinfo = userinfo,
+        id_token = token_set[["id_token"]]
+      )
+    }
+  }
 
   # Return ---------------------------------------------------------------------
 

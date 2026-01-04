@@ -110,6 +110,10 @@ handling and audit logging.
 
 ### Other
 
+* ID token signature/claims validation now occurs before fetching
+userinfo. This ensures cryptographic validation passes before making external
+calls to the userinfo endpoint.
+
 * When fetching JWKS, if `key_ops` is present on keys, only keys with `key_ops` 
 including `"verify"` are considered.
 

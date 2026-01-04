@@ -718,25 +718,20 @@ refresh_token <- function(
   # Validate token_type immediately after refresh, before any userinfo call.
   verify_token_type_allowlist(oauth_client, tok)
 
-  # If configured, (re-)fetch userinfo using the fresh access token
-  if (isTRUE(oauth_client@provider@userinfo_required)) {
-    ui <- get_userinfo(oauth_client, token = tok$access_token)
-    tok$userinfo <- ui
-  }
-
-  # Verify token set. During refresh (is_refresh = TRUE):
+  # Verify token set BEFORE fetching userinfo. During refresh (is_refresh = TRUE):
   # - ID token is NOT required (OIDC allows omission per Section 12.2)
   # - If ID token IS present and id_token_validation = TRUE, it's validated
   #   and its sub MUST match the original (OIDC 12.2)
-  # - userinfo_id_token_match runs when both userinfo and id_token are present
   # - scope: pass through provider's response; if NULL, verify_token_set skips
   #   scope validation per RFC 6749 Section 6 (omitted = unchanged)
+  # Userinfo is fetched after this to ensure cryptographic validation occurs
+  # before making external calls.
   token_set <- list(
     access_token = tok$access_token,
     token_type = tok$token_type,
     refresh_token = tok$refresh_token,
     id_token = tok$id_token,
-    userinfo = tok$userinfo,
+    userinfo = NULL,
     expires_in = tok$expires_in,
     scope = tok$scope
   )
@@ -747,6 +742,28 @@ refresh_token <- function(
     is_refresh = TRUE,
     original_id_token = token@id_token
   )
+
+  # Fetch userinfo AFTER ID token validation. This ordering ensures we only
+  # make external calls after cryptographic validation passes.
+  if (isTRUE(oauth_client@provider@userinfo_required)) {
+    ui <- get_userinfo(oauth_client, token = tok$access_token)
+    token_set$userinfo <- ui
+
+    # Verify userinfo subject matches ID token subject (if configured).
+    # Unlike initial login, this check requires id_token presence because OIDC
+    # Core Section 12.2 allows providers to omit ID token from refresh responses.
+    # If no ID token is returned, we skip the match (compliant behavior).
+    if (
+      isTRUE(oauth_client@provider@userinfo_id_token_match) &&
+        is_valid_string(token_set[["id_token"]])
+    ) {
+      verify_userinfo_id_token_subject_match(
+        oauth_client,
+        userinfo = ui,
+        id_token = token_set[["id_token"]]
+      )
+    }
+  }
 
   # Align expiry handling with login path: expires_in==0 means "expires now".
   expires_at <- if (
