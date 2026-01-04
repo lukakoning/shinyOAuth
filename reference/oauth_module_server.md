@@ -302,17 +302,6 @@ It also contains the following helper functions, mainly useful when
   controlled by the client's `state_payload_max_age` (default 300
   seconds).
 
-- Watchdog for missing browser token: to catch misconfiguration early
-  during development, the module includes a short watchdog. If the
-  browser token cookie is not set within 1500ms of module
-  initialization, a warning is emitted to the R console. This likely
-  means you forgot to include
-  [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-  in your UI, but it may also indicate that a user of your app is using
-  a browser with JavaScript disabled. The watchdog prints a warning only
-  once per R session, but if you want to suppress it permanently, you
-  can set `options(shinyOAuth.disable_watchdog_warning = TRUE)`.
-
 ## See also
 
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
