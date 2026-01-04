@@ -89,6 +89,10 @@ upon client creation.
 uses `HS*` algorithm and ID token verification can happen but `client_secret` is
 absent or too weak.
 
+* `build_auth_url()` now uses package-typed errors (`err_invalid_state()`) 
+  instead of generic `stopifnot()` assertions, ensuring consistent error 
+  handling and audit logging.
+
 ### Other
 
 * When fetching JWKS, if `key_ops` is present on keys, only keys with `key_ops` 

@@ -235,17 +235,39 @@ build_auth_url <- function(
   # Type checks
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
-  stopifnot(
-    is_valid_string(payload),
-    (isTRUE(oauth_client@provider@use_pkce) &&
-      is_valid_string(pkce_code_challenge) &&
-      is_valid_string(pkce_method)) ||
-      (isFALSE(oauth_client@provider@use_pkce) &&
-        is.null(pkce_code_challenge) &&
-        is.null(pkce_method)),
-    (isTRUE(oauth_client@provider@use_nonce) && is_valid_string(nonce)) ||
-      (isFALSE(oauth_client@provider@use_nonce) && is.null(nonce))
-  )
+  if (!is_valid_string(payload)) {
+    err_invalid_state("build_auth_url: 'payload' must be a valid string")
+  }
+
+  if (isTRUE(oauth_client@provider@use_pkce)) {
+    if (
+      !is_valid_string(pkce_code_challenge) || !is_valid_string(pkce_method)
+    ) {
+      err_invalid_state(
+        "build_auth_url: PKCE is enabled but 'pkce_code_challenge' or 'pkce_method' is missing or invalid"
+      )
+    }
+  } else {
+    if (!is.null(pkce_code_challenge) || !is.null(pkce_method)) {
+      err_invalid_state(
+        "build_auth_url: PKCE is disabled but 'pkce_code_challenge' or 'pkce_method' was provided"
+      )
+    }
+  }
+
+  if (isTRUE(oauth_client@provider@use_nonce)) {
+    if (!is_valid_string(nonce)) {
+      err_invalid_state(
+        "build_auth_url: Nonce is enabled but 'nonce' is missing or invalid"
+      )
+    }
+  } else {
+    if (!is.null(nonce)) {
+      err_invalid_state(
+        "build_auth_url: Nonce is disabled but 'nonce' was provided"
+      )
+    }
+  }
 
   # Base params
   params <- list(
