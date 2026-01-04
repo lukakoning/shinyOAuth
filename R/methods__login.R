@@ -661,7 +661,7 @@ handle_callback <- function(
   )
 
   # Fetch userinfo -------------------------------------------------------------
-  #
+
   # Fetch userinfo AFTER ID token validation. This ordering ensures we only
   # make external calls after cryptographic validation passes.
 
@@ -1396,24 +1396,29 @@ verify_token_set <- function(
 
   # Validate match between userinfo & ID token ---------------------------------
 
-  # During initial login: always validate when userinfo_id_token_match = TRUE.
+  # During initial login (is_refresh = FALSE): this check is now performed by
+  # handle_callback() AFTER userinfo is fetched, not here. This function is
+  # called before userinfo fetch in the new flow, so we skip this check.
   # During refresh: validate only if BOTH userinfo and id_token are present.
   # (userinfo is fetched when userinfo_required = TRUE; id_token may be omitted
   # per OIDC 12.2). When both are available, verify subjects still match.
 
-  id_token_present <- is_valid_string(token_set[["id_token"]])
-  userinfo_present <- is.list(token_set[["userinfo"]]) &&
-    length(token_set[["userinfo"]]) > 0
+  if (isTRUE(is_refresh)) {
+    id_token_present <- is_valid_string(token_set[["id_token"]])
+    userinfo_present <- is.list(token_set[["userinfo"]]) &&
+      length(token_set[["userinfo"]]) > 0
 
-  should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
-    (!isTRUE(is_refresh) || (id_token_present && userinfo_present))
+    should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
+      id_token_present &&
+      userinfo_present
 
-  if (should_match) {
-    verify_userinfo_id_token_subject_match(
-      client,
-      userinfo = token_set[["userinfo"]],
-      id_token = token_set[["id_token"]]
-    )
+    if (should_match) {
+      verify_userinfo_id_token_subject_match(
+        client,
+        userinfo = token_set[["userinfo"]],
+        id_token = token_set[["id_token"]]
+      )
+    }
   }
 
   return(token_set)
