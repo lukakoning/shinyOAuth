@@ -621,6 +621,19 @@ oauth_client <- function(
 
   scope_validation <- match.arg(scope_validation)
 
+  # Normalize scopes early so callers can provide a single space-delimited
+  # string (common in OAuth examples) while internal code consistently sees
+  # a character vector of individual tokens.
+  if (!is.null(scopes)) {
+    scopes_for_validation <- if (is.list(scopes)) {
+      unlist(scopes, recursive = TRUE, use.names = FALSE)
+    } else {
+      scopes
+    }
+    validate_scopes(as.character(scopes_for_validation))
+  }
+  scopes <- as_scope_tokens(scopes %||% NULL)
+
   OAuthClient(
     provider = provider,
     client_id = client_id,

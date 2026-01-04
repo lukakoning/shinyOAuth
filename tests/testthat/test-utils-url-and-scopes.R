@@ -120,7 +120,8 @@ test_that("validate_scopes accepts common tokens and rejects bad ones", {
   # Empty string -> input error
   expect_error(v(c("ok", "")), class = "shinyOAuth_input_error")
   # Invalid characters -> input error
-  expect_error(v("sp ace"), class = "shinyOAuth_input_error")
+  expect_invisible(v("sp ace"))
+  expect_error(v("sp,ace"), class = "shinyOAuth_input_error")
   expect_error(v("quote\""), class = "shinyOAuth_input_error")
 })
 

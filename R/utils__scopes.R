@@ -21,7 +21,9 @@ validate_scopes <- function(scopes) {
     return(invisible(TRUE))
   }
 
-  # Check each scope value
+  # Check each scope value.
+  # Allow (and split) space-delimited scope strings, since user code may pass
+  # scopes = "openid profile" as a single value.
   for (i in seq_along(scopes)) {
     scope <- scopes[i]
 
@@ -33,17 +35,25 @@ validate_scopes <- function(scopes) {
       err_input(paste0("scope[", i, "] is empty"))
     }
 
-    # RFC 6749 allows alphanumeric + safe chars (common practice: alphanumeric, dash, underscore, period, colon, slash)
-    # We allow a slightly broader set including '*' and '+' to avoid false positives
-    # for providers with wider scope grammars.
-    if (!grepl("^[A-Za-z0-9._:/\\-*+]+$", scope, perl = TRUE)) {
-      err_input(paste0(
-        "scope[",
-        i,
-        "] contains invalid characters: '",
-        scope,
-        "' (only alphanumeric and ._:/- * + allowed)"
-      ))
+    tokens <- unlist(strsplit(scope, "\\s+"), use.names = FALSE)
+    tokens <- tokens[nzchar(tokens)]
+    if (length(tokens) == 0L) {
+      err_input(paste0("scope[", i, "] is empty"))
+    }
+
+    for (token in tokens) {
+      # RFC 6749 allows alphanumeric + safe chars (common practice: alphanumeric, dash, underscore, period, colon, slash)
+      # We allow a slightly broader set including '*' and '+' to avoid false positives
+      # for providers with wider scope grammars.
+      if (!grepl("^[A-Za-z0-9._:/\\-*+]+$", token, perl = TRUE)) {
+        err_input(paste0(
+          "scope[",
+          i,
+          "] contains invalid characters: '",
+          token,
+          "' (only alphanumeric and ._:/- * + allowed)"
+        ))
+      }
     }
   }
 

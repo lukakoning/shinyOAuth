@@ -415,6 +415,60 @@ test_that("introspect_elements can require scopes", {
     }
   )
 
+  # Space-delimited scope strings should be tokenized for comparisons
+  cli_str <- make_introspect_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = "openid profile"
+  )
+  cli_str@introspect_elements <- "scope"
+
+  urls <- shinyOAuth:::prepare_call(cli_str, browser_token = tok)
+  encs <- parse_query_param(urls, "state")
+
+  err <- NULL
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "openid profile"
+      )
+    },
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true,"scope":"openid"}')
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      tryCatch(
+        shinyOAuth:::handle_callback(
+          cli_str,
+          code = "abc",
+          payload = encs,
+          browser_token = tok
+        ),
+        error = function(e) {
+          err <<- e
+          NULL
+        }
+      )
+    }
+  )
+
+  testthat::expect_true(inherits(err, "shinyOAuth_token_error"))
+  testthat::expect_true(grepl("profile", conditionMessage(err), fixed = TRUE))
+  testthat::expect_false(grepl(
+    "openid profile",
+    conditionMessage(err),
+    fixed = TRUE
+  ))
+
   # Reduced scopes should follow client@scope_validation
   cli_warn <- make_introspect_client(
     use_pkce = TRUE,

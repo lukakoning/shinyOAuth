@@ -793,7 +793,7 @@ handle_callback <- function(
       # - "none": skip scope checks
       # - "warn": warn (do not fail login)
       # - "strict": error
-      requested_scopes <- as.character(oauth_client@scopes %||% character())
+      requested_scopes <- as_scope_tokens(oauth_client@scopes %||% NULL)
       requested_scopes <- sort(unique(requested_scopes[nzchar(
         requested_scopes
       )]))
@@ -1193,7 +1193,7 @@ verify_token_set <- function(
   # mode this is treated as an error (we cannot verify scopes were granted);
   # in warn mode we issue a warning.
   scope_validation_mode <- client@scope_validation %||% "strict"
-  requested_scopes <- as.character(client@scopes %||% character())
+  requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
   requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
 
   if (
