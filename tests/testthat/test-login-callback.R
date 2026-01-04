@@ -350,6 +350,7 @@ test_that("handle_callback fails when nonce is required but missing in state sto
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload$state)
   ssv <- cli@state_store$get(key, missing = NULL)
+
   ssv$nonce <- NULL
   cli@state_store$set(key, ssv)
 
@@ -374,6 +375,127 @@ test_that("handle_callback fails when nonce is required but missing in state sto
         ),
         class = "shinyOAuth_pkce_error",
         regexp = "nonce"
+      )
+    }
+  )
+})
+
+test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
+  key <- shinyOAuth:::state_cache_key(payload$state)
+  ssv <- cli@state_store$get(key, missing = NULL)
+
+  # Set verifier to a too-short value (RFC 7636 requires 43-128 chars)
+  ssv$pkce_code_verifier <- "tooshort"
+  cli@state_store$set(key, ssv)
+
+  expect_error(
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "abc",
+      payload = enc,
+      browser_token = tok
+    ),
+    class = "shinyOAuth_pkce_error",
+    regexp = "code_verifier|length"
+  )
+
+  # Re-prepare and test invalid characters
+  url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc2 <- parse_query_param(url2, "state")
+  payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
+  key2 <- shinyOAuth:::state_cache_key(payload2$state)
+  ssv2 <- cli@state_store$get(key2, missing = NULL)
+
+  # Valid length but invalid chars (contains '!')
+  ssv2$pkce_code_verifier <- paste0("!", strrep("a", 50))
+  cli@state_store$set(key2, ssv2)
+
+  expect_error(
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "abc",
+      payload = enc2,
+      browser_token = tok
+    ),
+    class = "shinyOAuth_pkce_error",
+    regexp = "code_verifier|invalid characters"
+  )
+})
+
+test_that("handle_callback fails when nonce is malformed (not NULL)", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
+  key <- shinyOAuth:::state_cache_key(payload$state)
+  ssv <- cli@state_store$get(key, missing = NULL)
+
+  # Set nonce to a too-short value (validate_oidc_nonce requires >= 22 chars)
+  ssv$nonce <- "short"
+  cli@state_store$set(key, ssv)
+
+  # Stub token swap to avoid network (nonce validation happens after swap)
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        token_type = "Bearer",
+        expires_in = 10,
+        id_token = "dummy.jwt.token"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_pkce_error",
+        regexp = "nonce|length"
+      )
+    }
+  )
+
+  # Re-prepare and test invalid characters
+  url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc2 <- parse_query_param(url2, "state")
+  payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
+  key2 <- shinyOAuth:::state_cache_key(payload2$state)
+  ssv2 <- cli@state_store$get(key2, missing = NULL)
+
+  # Valid length but invalid chars (contains '!')
+  ssv2$nonce <- "abc!defghijklmnopqrstuvwxyz"
+  cli@state_store$set(key2, ssv2)
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        token_type = "Bearer",
+        expires_in = 10,
+        id_token = "dummy.jwt.token"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc2,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_pkce_error",
+        regexp = "nonce|invalid characters"
       )
     }
   )

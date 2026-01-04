@@ -477,13 +477,10 @@ handle_callback <- function(
   code_verifier <- state_store_values$pkce_code_verifier
   tryCatch(
     {
-      if (
-        isTRUE(oauth_client@provider@use_pkce) &&
-          !validate_code_verifier(code_verifier)
-      ) {
-        err_invalid_state(
-          "Missing (valid) PKCE code verifier in state store values"
-        )
+      # validate_code_verifier() throws on invalid input; no return value check
+      # needed since the function either succeeds or aborts.
+      if (isTRUE(oauth_client@provider@use_pkce)) {
+        validate_code_verifier(code_verifier)
       }
     },
     error = function(e) {
@@ -586,8 +583,10 @@ handle_callback <- function(
   nonce <- state_store_values$nonce
   tryCatch(
     {
-      if (oauth_client@provider@use_nonce && !validate_oidc_nonce(nonce)) {
-        err_invalid_state("Missing (valid) nonce in state store values")
+      # validate_oidc_nonce() throws on invalid input; no return value check
+      # needed since the function either succeeds or aborts.
+      if (oauth_client@provider@use_nonce) {
+        validate_oidc_nonce(nonce)
       }
     },
     error = function(e) {
