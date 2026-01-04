@@ -126,6 +126,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
   get_succeeded <- FALSE
   remove_succeeded <- FALSE
   get_error_class <- NULL
+  get_error_message <- NULL
   remove_error_class <- NULL
 
   tryCatch(
@@ -142,11 +143,33 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
           class = c("shinyOAuth_state_error", "shinyOAuth_error")
         )
       }
+      # Validate required structure: must have all three expected keys
+      expected_keys <- c("browser_token", "pkce_code_verifier", "nonce")
+      missing_keys <- setdiff(expected_keys, names(ssv))
+      if (length(missing_keys) > 0) {
+        rlang::abort(
+          c(
+            "State store entry is malformed: missing required fields",
+            "i" = paste0("Missing: ", paste(missing_keys, collapse = ", "))
+          ),
+          class = c("shinyOAuth_state_error", "shinyOAuth_error")
+        )
+      }
+      # browser_token is always required and must be a non-empty string
+      if (!is_valid_string(ssv$browser_token)) {
+        rlang::abort(
+          c(
+            "State store entry is malformed: browser_token must be a non-empty string"
+          ),
+          class = c("shinyOAuth_state_error", "shinyOAuth_error")
+        )
+      }
       get_succeeded <- TRUE
     },
     error = function(e) {
       # Failure audit centralized here for consistent sync/async behavior
       get_error_class <<- paste(class(e), collapse = ", ")
+      get_error_message <<- conditionMessage(e)
       try(
         audit_event(
           "state_store_lookup_failed",
@@ -223,7 +246,13 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
       remove_error_class = remove_error_class %||% NA_character_,
       phase = "state_store_access"
     )
-    err_invalid_state("State access failed", context = ctx)
+    # Prefer specific error message from get/validation phase if available
+    final_msg <- if (!is.null(get_error_message)) {
+      get_error_message
+    } else {
+      "State access failed"
+    }
+    err_invalid_state(final_msg, context = ctx)
   }
 
   return(ssv)

@@ -282,11 +282,13 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload$state)
+
   ssv <- cli@state_store$get(key, missing = NULL)
-  # Simulate missing verifier
+  # Simulate missing verifier (removing field from state store entry)
   ssv$pkce_code_verifier <- NULL
   cli@state_store$set(key, ssv)
 
+  # Early validation in state_store_get_remove now catches malformed entries
   expect_error(
     shinyOAuth:::handle_callback(
       cli,
@@ -294,8 +296,8 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
       payload = enc,
       browser_token = tok
     ),
-    class = "shinyOAuth_pkce_error",
-    regexp = "code_verifier|PKCE"
+    class = "shinyOAuth_state_error",
+    regexp = "malformed.*missing required fields"
   )
 
   # Re-prepare and use malformed browser token
@@ -354,29 +356,17 @@ test_that("handle_callback fails when nonce is required but missing in state sto
   ssv$nonce <- NULL
   cli@state_store$set(key, ssv)
 
-  # Stub token swap to avoid network
-  testthat::with_mocked_bindings(
-    swap_code_for_token_set = function(client, code, code_verifier) {
-      list(
-        access_token = "at",
-        token_type = "Bearer",
-        expires_in = 10,
-        id_token = "dummy.jwt.token"
-      )
-    },
-    .package = "shinyOAuth",
-    {
-      expect_error(
-        shinyOAuth:::handle_callback(
-          cli,
-          code = "abc",
-          payload = enc,
-          browser_token = tok
-        ),
-        class = "shinyOAuth_pkce_error",
-        regexp = "nonce"
-      )
-    }
+  # Early validation in state_store_get_remove now catches malformed entries
+  # (nonce field removed = missing required field)
+  expect_error(
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "abc",
+      payload = enc,
+      browser_token = tok
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "malformed.*missing required fields"
   )
 })
 
