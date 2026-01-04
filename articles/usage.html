@@ -443,8 +443,10 @@ for details about audit and trace hooks.</p>
 </h3>
 <ul>
 <li>
-<code>options(shinyOAuth.leeway = 30)</code> – default ID token
-exp/iat leeway seconds</li>
+<code>options(shinyOAuth.leeway = 30)</code> – default clock skew
+leeway (seconds) for ID token
+<code>exp</code>/<code>iat</code>/<code>nbf</code> checks and state
+payload <code>issued_at</code> future check</li>
 <li>
 <code>options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1"))</code>
 - allows hosts to use <code>http://</code> scheme instead of

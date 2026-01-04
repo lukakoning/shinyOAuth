@@ -314,8 +314,9 @@ enforcement by setting it explicitly</p></dd>
 
 
 <dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>
-<dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code> checks.
-Default 30. Can be globally overridden via option <code>shinyOAuth.leeway</code></p></dd>
+<dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code>/<code>nbf</code> checks
+and state payload <code>issued_at</code> future check. Default 30. Can be globally
+overridden via option <code>shinyOAuth.leeway</code></p></dd>
 
 </dl></div>
 

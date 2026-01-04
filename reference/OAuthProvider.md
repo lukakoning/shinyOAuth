@@ -302,8 +302,9 @@ OAuthProvider(
 
 - leeway:
 
-  Clock skew leeway (seconds) applied to ID token `exp`/`iat` checks.
-  Default 30. Can be globally overridden via option `shinyOAuth.leeway`
+  Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
+  checks and state payload `issued_at` future check. Default 30. Can be
+  globally overridden via option `shinyOAuth.leeway`
 
 ## Examples
 

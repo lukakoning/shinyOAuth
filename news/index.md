@@ -131,6 +131,10 @@
 - Fixed potential auto-redirect loop after authentication error has
   surfaced.
 
+- State payload `issued_at` validation now applies clock drift leeway
+  (from `OAuthProvider@leeway` / `shinyOAuth.leeway` option), consistent
+  with ID token `iat` check.
+
 ## shinyOAuth 0.1.4
 
 CRAN release: 2025-11-24
