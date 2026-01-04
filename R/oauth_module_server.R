@@ -1771,7 +1771,26 @@ oauth_module_server <- function(
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           if (is.finite(exp) && !is.na(exp)) {
             remaining <- exp - now
+
+            # Grace window: if proactive refresh is enabled and a refresh is
+            # in progress, or we're still within the lead window plus a small
+            # buffer, defer clearing/reauth to allow the refresh to complete.
+            # This avoids a race where the expiry watcher triggers reauth
+            # while an async refresh is in flight under a slow IdP/network.
+            refresh_grace_seconds <- if (isTRUE(refresh_proactively)) {
+              refresh_lead_seconds + 5
+            } else {
+              0
+            }
+            in_grace_window <- (remaining > -refresh_grace_seconds)
+
             if (!is.na(remaining) && remaining <= 0) {
+              # Skip clearing if a refresh is in progress and we're within grace
+              if (isTRUE(values$refresh_in_progress) && in_grace_window) {
+                # Defer: wake soon and check again after refresh completes
+                shiny::invalidateLater(500L, session)
+                return()
+              }
               values$token <- NULL
               values$error <- "token_expired"
               values$error_description <- "Access token expired"
