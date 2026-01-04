@@ -221,7 +221,9 @@ provider_fingerprint <- function(provider) {
     it_u
   )
 
-  paste0("sha256:", string_digest(enc2utf8(canonical)))
+  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
+  # Keyed digests are only for audit logs where correlation prevention matters.
+  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
 }
 
 # Helper: build authorization URL with all params
