@@ -80,7 +80,8 @@
 </ul></div>
 <div class="section level4">
 <h4 id="other-development-version">Other<a class="anchor" aria-label="anchor" href="#other-development-version"></a></h4>
-<ul><li><p>When fetching JWKS, if <code>key_ops</code> is present on keys, only keys with <code>key_ops</code> including <code>"verify"</code> are considered.</p></li>
+<ul><li><p>ID token signature/claims validation now occurs before fetching userinfo. This ensures cryptographic validation passes before making external calls to the userinfo endpoint.</p></li>
+<li><p>When fetching JWKS, if <code>key_ops</code> is present on keys, only keys with <code>key_ops</code> including <code>"verify"</code> are considered.</p></li>
 <li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now defaults <code>allowed_token_types</code> to <code>c("Bearer")</code> for all providers. This prevents accidentally misusing non-Bearer tokens (e.g., DPoP, MAC) as Bearer tokens. Set <code>allowed_token_types = character()</code> to opt out. Token type is also now validated before calling the userinfo endpoint.</p></li>
 <li><p><code>client_assertion_audience</code> property on <code>OAuthClient</code> allows overriding the JWT audience claim for client assertion authentication.</p></li>
 </ul></div>
