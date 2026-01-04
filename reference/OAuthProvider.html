@@ -94,7 +94,7 @@ presence of an issuer and available endpoints.</p>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"PS256"</span>, <span class="st">"PS384"</span>, <span class="st">"PS512"</span>, <span class="st">"ES256"</span>,</span>
 <span>    <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
-<span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -306,11 +306,11 @@ returned by the token endpoint (case-insensitive). When non-empty, the
 token response MUST include <code>token_type</code> and it must be one of the allowed
 values; otherwise the flow fails fast with a <code>shinyOAuth_token_error</code>.
 When empty, no check is performed and <code>token_type</code> may be omitted by the
-provider. Helper constructors default this more strictly: for
-<code><a href="oauth_provider.html">oauth_provider()</a></code> when an <code>issuer</code> is supplied or OIDC flags are enabled,
-<code>allowed_token_types</code> defaults to <code>c("Bearer")</code> to enforce Bearer by
-default; otherwise it remains empty. You can override to widen or disable
-enforcement by setting it explicitly</p></dd>
+provider. The <code><a href="oauth_provider.html">oauth_provider()</a></code> helper defaults to <code>c("Bearer")</code> for all
+providers because the package only supports Bearer tokens (i.e.,
+<code><a href="client_bearer_req.html">client_bearer_req()</a></code> sends <code>Authorization: Bearer</code>). This ensures that if
+a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
+fails fast rather than misusing the token. Set <code>allowed_token_types = character()</code> explicitly to opt out of enforcement.</p></dd>
 
 
 <dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>

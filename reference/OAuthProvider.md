@@ -44,7 +44,7 @@ OAuthProvider(
   jwks_host_allow_only = NA_character_,
   allowed_algs = c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256",
     "ES384", "ES512", "EdDSA"),
-  allowed_token_types = character(0),
+  allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30)
 )
 ```
@@ -293,12 +293,16 @@ OAuthProvider(
   include `token_type` and it must be one of the allowed values;
   otherwise the flow fails fast with a `shinyOAuth_token_error`. When
   empty, no check is performed and `token_type` may be omitted by the
-  provider. Helper constructors default this more strictly: for
+  provider. The
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  when an `issuer` is supplied or OIDC flags are enabled,
-  `allowed_token_types` defaults to `c("Bearer")` to enforce Bearer by
-  default; otherwise it remains empty. You can override to widen or
-  disable enforcement by setting it explicitly
+  helper defaults to `c("Bearer")` for all providers because the package
+  only supports Bearer tokens (i.e.,
+  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  sends `Authorization: Bearer`). This ensures that if a provider
+  returns a non-Bearer token type (e.g., DPoP, MAC), the flow fails fast
+  rather than misusing the token. Set
+  `allowed_token_types = character()` explicitly to opt out of
+  enforcement.
 
 - leeway:
 
