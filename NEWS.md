@@ -24,6 +24,9 @@ sorted) before comparison.
 `error_state_consumption_failed` (called when provider returns an error during 
 callback handling and the state is attempted to be consumed).
 
+* Audit logs: `login_success` now includes `sub_source` to indicate whether the
+subject digest came from `userinfo`, `id_token` (verified), or `id_token_unverified`.
+
 * `client_assertion_audience` property on `OAuthClient` allows overriding the 
 JWT audience claim for client assertion authentication.
 

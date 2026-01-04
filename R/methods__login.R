@@ -874,7 +874,9 @@ handle_callback <- function(
   try(
     {
       # Best-effort subject extraction: prefer userinfo via selector, else ID token sub
+      # Track source for audit transparency (userinfo is trusted; ID token may not be)
       sub_val <- NA_character_
+      sub_source <- NA_character_
       if (!is.null(token@userinfo) && length(token@userinfo)) {
         sel <- oauth_client@provider@userinfo_id_selector
         if (!is.null(sel) && is.function(sel)) {
@@ -883,6 +885,7 @@ handle_callback <- function(
         } else {
           sub_val <- token@userinfo$sub %||% NA_character_
         }
+        if (is_valid_string(sub_val)) sub_source <- "userinfo"
       }
       if (!is_valid_string(sub_val)) {
         # Attempt parse id_token payload for sub (without revalidation)
@@ -891,6 +894,18 @@ handle_callback <- function(
           pl <- try(parse_jwt_payload(it), silent = TRUE)
           if (!inherits(pl, "try-error")) {
             sub_val <- pl$sub %||% NA_character_
+            if (is_valid_string(sub_val)) {
+              # Mark whether ID token was validated (signature + claims checked)
+              id_token_was_validated <- isTRUE(
+                oauth_client@provider@id_token_validation
+              ) ||
+                isTRUE(oauth_client@provider@use_nonce)
+              sub_source <- if (id_token_was_validated) {
+                "id_token"
+              } else {
+                "id_token_unverified"
+              }
+            }
           }
         }
       }
@@ -901,6 +916,7 @@ handle_callback <- function(
           issuer = oauth_client@provider@issuer %||% NA_character_,
           client_id_digest = string_digest(oauth_client@client_id),
           sub_digest = string_digest(sub_val),
+          sub_source = sub_source,
           refresh_token_present = isTRUE(is_valid_string(token@refresh_token)),
           expires_at = token@expires_at
         ),
