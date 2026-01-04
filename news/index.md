@@ -54,7 +54,10 @@
 
 - DoS protection: callback query parameters and state payload/browser
   token sizes are validated before expensive operations (e.g., hashing
-  for audit logs).
+  for audit logs). Maximum size may be configured via
+  [`options()`](https://rdrr.io/r/base/options.html); see section ‘Size
+  caps’ in
+  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
 
 - HTTP log sanitization: sensitive data in HTTP contexts (headers,
   cookies) is now sanitized by default in audit logs. Can be disabled
@@ -79,16 +82,17 @@
   callback page. Can be disabled with
   `use_shinyOAuth(inject_referrer_meta = FALSE)`.
 
-- State is now also consumed on OAuth error responses, preventing
-  re-use.
-
 - Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.
 
-- Callback URL parameters are now also cleared in login failure paths
-  (not just success).
+- State is now also consumed in login failure paths (when the provider
+  returns an error but also a state).
 
-- Extra authorization URL parameters are now blocked from overriding
-  reserved OAuth keys.
+- Callback URL parameters are now also cleared in login failure paths.
+
+- Extra provider parameters are now blocked from overriding reserved
+  keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be
+  explicitly overridden via
+  `options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))`.
 
 - Provider fingerprint now includes `userinfo_url` and
   `introspection_url`.
