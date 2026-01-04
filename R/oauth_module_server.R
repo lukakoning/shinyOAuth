@@ -840,7 +840,8 @@ oauth_module_server <- function(
 
       now <- as.numeric(Sys.time())
 
-      # Optional max session age (reauth window). Refresh does not reset this.
+      # Optional max session age (reauth window). Successful refresh resets this
+      # (rolling session age).
       # Ignored when indefinite_session = TRUE
       if (!isTRUE(indefinite_session) && !is.null(reauth_after_seconds)) {
         started <- tryCatch(values$auth_started_at, error = function(...) {
