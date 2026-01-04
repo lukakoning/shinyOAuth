@@ -64,6 +64,7 @@
 <li><p>Callback URL parameters are now also cleared in login failure paths (not just success).</p></li>
 <li><p>Extra authorization URL parameters are now blocked from overriding reserved OAuth keys.</p></li>
 <li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>.</p></li>
+<li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now defaults <code>allowed_token_types</code> to <code>c("Bearer")</code> for all providers. This prevents accidentally misusing non-Bearer tokens (e.g., DPoP, MAC) as Bearer tokens. Set <code>allowed_token_types = character()</code> to opt out.</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="ux-development-version">UX<a class="anchor" aria-label="anchor" href="#ux-development-version"></a></h4>

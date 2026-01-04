@@ -81,6 +81,12 @@
 - Provider fingerprint now includes `userinfo_url` and
   `introspection_url`.
 
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  now defaults `allowed_token_types` to `c("Bearer")` for all providers.
+  This prevents accidentally misusing non-Bearer tokens (e.g., DPoP,
+  MAC) as Bearer tokens. Set `allowed_token_types = character()` to opt
+  out.
+
 #### UX
 
 - Added warning about negative `expires_in` values in token responses.
