@@ -269,10 +269,30 @@ build_auth_url <- function(
   }
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params
-    if ("scope" %in% names(extra)) {
+
+    # Block parameters that are critical to OAuth security. Allowing these to be
+    # overridden via extra_auth_params would break state binding, redirect_uri
+    # validation, or PKCE integrity and could lead to unsafe configurations.
+    blocked_params <- c(
+      "state",
+      "redirect_uri",
+      "response_type",
+      "client_id",
+      "scope",
+      "nonce",
+      "code_challenge",
+      "code_challenge_method"
+    )
+
+    conflicts <- intersect(names(extra), blocked_params)
+    if (length(conflicts) > 0) {
       err_config(c(
-        "OAuthProvider.extra_auth_params must not include 'scope'",
-        "i" = "Set scopes via oauth_client(..., scopes = ...) so state binding and scope reconciliation stay consistent."
+        paste0(
+          "OAuthProvider.extra_auth_params must not override core OAuth parameters: ",
+          paste(conflicts, collapse = ", ")
+        ),
+        "i" = "These parameters are managed internally to ensure OAuth security.",
+        "i" = "Set scopes via oauth_client(..., scopes = ...) and redirect_uri via oauth_client(..., redirect_uri = ...)."
       ))
     }
     params <- c(params, extra)
