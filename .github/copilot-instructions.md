@@ -28,7 +28,7 @@
 ## Auditing & Diagnostics
 - `audit_event()`/`emit_trace_event()` in R/errors.R send redacted telemetry to `options(shinyOAuth.trace_hook)` and `options(shinyOAuth.audit_hook)`; preserve hashed identifiers via `string_digest()` when logging new fields.
 - All error paths should raise via `err_abort` wrappers (`err_token()`, `err_invalid_state()`, `err_userinfo()`, etc.) so trace ids and structured context propagate to Shiny logs and audit hooks.
-- Options like `shinyOAuth.print_errors`, `shinyOAuth.print_traceback`, and `shinyOAuth.disable_watchdog_warning` let operators tune verbosity; respect these flags instead of printing directly.
+- Options like `shinyOAuth.print_errors` and `shinyOAuth.print_traceback` let operators tune verbosity; respect these flags instead of printing directly.
 
 ## Error Handling
 - Throw failures with the typed helpers in R/errors.R (`err_abort()` plus `err_token()`/`err_invalid_state()`/`err_http()`, etc.); they wrap `rlang::abort` with package-specific classes and inject trace ids, so avoid base `stop()`.
