@@ -37,13 +37,19 @@ get_userinfo <- function(
 
   # Main logic -----------------------------------------------------------------
 
-  # Define request
+  # Define request; disable redirects to prevent leaking Bearer token
   req <- httr2::request(oauth_client@provider@userinfo_url) |>
     httr2::req_auth_bearer_token(access_token) |>
-    add_req_defaults()
+    add_req_defaults() |>
+    req_no_redirect()
 
   # Execute request
   resp <- try(req_with_retry(req), silent = TRUE)
+
+  # Security: reject redirect responses to prevent leaking Bearer token
+  if (!inherits(resp, "try-error")) {
+    reject_redirect_response(resp, context = "userinfo")
+  }
 
   # Check for errors
   if (inherits(resp, "try-error") || httr2::resp_is_error(resp)) {

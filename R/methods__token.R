@@ -169,9 +169,41 @@ revoke_token <- function(
   }
 
   req <- add_req_defaults(req)
+  req <- req_no_redirect(req)
   req <- do.call(httr2::req_body_form, c(list(req), params))
   req <- httr2::req_error(req, is_error = function(resp) FALSE)
   resp <- req_with_retry(req)
+
+  # Security: reject redirect responses to prevent credential leakage
+  # For revocation, we catch the error and return a structured result
+  redirect_err <- try(
+    reject_redirect_response(resp, context = "token_revocation"),
+    silent = TRUE
+  )
+  if (inherits(redirect_err, "try-error") || inherits(redirect_err, "error")) {
+    status_code <- paste0("http_", httr2::resp_status(resp))
+    try(
+      audit_event(
+        "token_revocation",
+        context = list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          which = which,
+          supported = TRUE,
+          revoked = NA,
+          status = status_code
+        ),
+        shiny_session = shiny_session
+      ),
+      silent = TRUE
+    )
+    return(list(
+      supported = TRUE,
+      revoked = NA,
+      status = status_code
+    ))
+  }
 
   if (httr2::resp_is_error(resp)) {
     status_code <- paste0("http_", httr2::resp_status(resp))
@@ -433,10 +465,28 @@ introspect_token <- function(
     )
   }
   req <- add_req_defaults(req)
+  req <- req_no_redirect(req)
   req <- do.call(httr2::req_body_form, c(list(req), params))
   req <- httr2::req_error(req, is_error = function(resp) FALSE)
   # Perform request with retry for transient failures
   resp <- req_with_retry(req)
+
+  # Security: reject redirect responses to prevent credential leakage
+  # For introspection, catch and return structured result instead of throwing
+  redirect_err <- try(
+    reject_redirect_response(resp, context = "token_introspection"),
+    silent = TRUE
+  )
+  if (inherits(redirect_err, "try-error") || inherits(redirect_err, "error")) {
+    result <- list(
+      supported = TRUE,
+      active = NA,
+      raw = NULL,
+      status = paste0("http_", httr2::resp_status(resp))
+    )
+    .audit_introspection(result)
+    return(result)
+  }
 
   if (httr2::resp_is_error(resp)) {
     # If the endpoint responds with an HTTP error (e.g., 404), we cannot
@@ -665,6 +715,7 @@ refresh_token <- function(
   }
 
   req <- add_req_defaults(req)
+  req <- req_no_redirect(req)
   # Allow provider to add custom token headers (mirrors login path)
   extra_headers <- as.list(oauth_client@provider@extra_token_headers)
   if (length(extra_headers)) {
@@ -673,6 +724,9 @@ refresh_token <- function(
   req <- do.call(httr2::req_body_form, c(list(req), params))
   # Perform request with retry for transient failures
   resp <- req_with_retry(req)
+
+  # Security: reject redirect responses to prevent credential leakage
+  reject_redirect_response(resp, context = "token_refresh")
 
   if (httr2::resp_is_error(resp)) {
     err_http(

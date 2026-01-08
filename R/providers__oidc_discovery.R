@@ -235,7 +235,8 @@ oauth_provider_oidc_discover <- function(
   req <- httr2::request(disco_url) |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "application/json") |>
-    add_req_defaults()
+    add_req_defaults() |>
+    req_no_redirect()
 
   req
 }
@@ -262,6 +263,9 @@ oauth_provider_oidc_discover <- function(
       )
     )
   }
+
+  # Security: reject redirect responses to prevent bypassing host validation
+  reject_redirect_response(resp, context = "oidc_discovery")
 
   if (httr2::resp_is_error(resp)) {
     err_http(

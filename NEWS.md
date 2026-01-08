@@ -34,6 +34,11 @@ by default to reduce leaking ?code=...&state=... via the Referer header on the
 callback page. Can be disabled with
 `use_shinyOAuth(inject_referrer_meta = FALSE)`.
 
+* Sensitive outbound HTTP requests (token exchange/refresh, introspection,
+revocation, userinfo, OIDC discovery, JWKS) now by default disable redirect 
+following and reject 3xx responses to prevent bypassing host/HTTPS policies. 
+Configurable via `options(shinyOAuth.allow_redirect = TRUE)`.
+
 * State is now also consumed in login failure paths (when the provider
 returns an error but also a state).
 

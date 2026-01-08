@@ -1116,8 +1116,9 @@ swap_code_for_token_set <- function(
     )
   }
 
-  # Apply defaults first
+  # Apply defaults first; disable redirects to prevent leaking secrets
   req <- add_req_defaults(req)
+  req <- req_no_redirect(req)
 
   # Add any extra token headers without using rlang splicing so tests can stub
   extra_headers <- as.list(client@provider@extra_token_headers)
@@ -1133,6 +1134,8 @@ swap_code_for_token_set <- function(
 
   # Perform request with retry for transient failures
   resp <- req_with_retry(req)
+  # Security: reject redirect responses to prevent credential leakage
+  reject_redirect_response(resp, context = "token_exchange")
   if (httr2::resp_is_error(resp)) {
     err_http(
       "Token exchange failed",

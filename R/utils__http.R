@@ -1,3 +1,95 @@
+#' Internal: Disable HTTP redirect following
+#'
+#' Security-hardened helper that prevents httr2 from automatically following
+#' redirect responses (3xx). This is critical for sensitive requests (token
+#' exchange, refresh, introspection, revocation, userinfo, OIDC discovery,
+#' JWKS) to prevent:
+#'
+#' - Leaking authorization codes, tokens, client secrets, PKCE verifiers, or
+#'   other credentials to malicious or misconfigured redirect targets.
+#' - Bypassing host validation (is_ok_host) since initial URL is validated but
+#'   the redirected URL would not be.
+#' - HTTPS downgrade attacks (HTTPS -> HTTP redirects would expose secrets).
+#'
+#' When a 3xx response is received, the request will return the redirect
+#' response itself rather than following it, allowing callers to fail with a
+#' clear error rather than silently leaking secrets.
+#'
+#' Behavior can be overridden via `options(shinyOAuth.allow_redirect = TRUE)`,
+#' but this is strongly discouraged in production as it undermines security.
+#'
+#' @keywords internal
+#' @noRd
+req_no_redirect <- function(req) {
+  if (!inherits(req, "httr2_request")) {
+    return(req)
+  }
+  # Allow redirects only if explicitly enabled (default: FALSE for security)
+  if (isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
+    return(req)
+  }
+  httr2::req_options(req, followlocation = FALSE)
+}
+
+#' Internal: Check if response is a redirect and reject it
+#'
+#' Security check to ensure 3xx redirect responses are treated as errors for
+#' sensitive endpoints. Since `req_no_redirect()` prevents following redirects,
+#' a 3xx response indicates the endpoint tried to redirect us (misconfig,
+#' attack, or proxy behavior). We should fail rather than parse an empty/wrong
+#' response body.
+#'
+#' Skipped when `options(shinyOAuth.allow_redirect = TRUE)` is set.
+#'
+#' @param resp httr2 response object
+#' @param context Character string describing the operation for error messages
+#'
+#' @return TRUE if the response is NOT a redirect; throws an error if it is
+#'
+#' @keywords internal
+#' @noRd
+reject_redirect_response <- function(resp, context = "request") {
+  # Skip rejection if redirects are explicitly allowed
+  if (isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
+    return(TRUE)
+  }
+  if (!inherits(resp, "httr2_response")) {
+    return(TRUE)
+  }
+  status <- try(httr2::resp_status(resp), silent = TRUE)
+  if (inherits(status, "try-error") || is.na(status)) {
+    return(TRUE)
+  }
+  # 3xx status codes are redirects
+
+  if (status >= 300 && status < 400) {
+    location <- try(httr2::resp_header(resp, "location"), silent = TRUE)
+    if (inherits(location, "try-error")) {
+      location <- NA_character_
+    }
+    err_http(
+      c(
+        "x" = paste0(
+          "Unexpected redirect response during ",
+          context,
+          " (status ",
+          status,
+          ")"
+        ),
+        "!" = "Redirects are disabled for security; endpoint may be misconfigured",
+        "i" = if (!is.na(location)) {
+          paste0("Would have redirected to: ", location)
+        } else {
+          NULL
+        }
+      ),
+      resp,
+      context = list(phase = context, redirect_blocked = TRUE)
+    )
+  }
+  TRUE
+}
+
 #' Internal: HTTP defaults (timeout and User-Agent)
 #'
 #' Applies a modest timeout and a descriptive User-Agent to an httr2 request.

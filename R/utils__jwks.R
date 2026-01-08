@@ -73,7 +73,10 @@ fetch_jwks <- function(
   disco_url <- paste0(rtrim_slash(issuer), "/.well-known/openid-configuration")
   resp <- httr2::request(disco_url) |>
     add_req_defaults() |>
+    req_no_redirect() |>
     req_with_retry()
+  # Security: reject redirect responses to prevent bypassing host validation
+  reject_redirect_response(resp, context = "jwks_discovery")
   if (httr2::resp_is_error(resp)) {
     err_http(
       c("x" = "Failed to fetch OIDC discovery document"),
@@ -97,7 +100,10 @@ fetch_jwks <- function(
 
   jresp <- httr2::request(jwks_uri) |>
     add_req_defaults() |>
+    req_no_redirect() |>
     req_with_retry()
+  # Security: reject redirect responses to prevent bypassing host validation
+  reject_redirect_response(jresp, context = "jwks_fetch")
   if (httr2::resp_is_error(jresp)) {
     err_http(
       c("x" = "Failed to fetch JWKS"),
