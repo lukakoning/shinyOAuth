@@ -86,6 +86,48 @@
         "use.jwks.url": "false",
         "jwt.credential.public.key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/6pIkDF621iVHCHgs45\nRcXl5UPKiFUyedTSqILy6hzuR3A0xs/k0LmJC8C37L82EPt/hvL3Roh54XFtihSN\nJAvDimg+T2tiiDLh8x8OGPUHTKBkh4ob905UIUOqHgnIe13y8tvw3opk+fqrW+Qr\n72F+rN7MUfy0bT0Wvbm021Ksl27FPKz6QkyKRsq+vzWY7DcR4LagARkXAONeD9uG\noHzi88x8o8iMQshWzZvAshvzOGgPdYtxtxKVwcD0l26fiYScR2OSSsNpyr1FuaYs\nVRpgXIR1c5E9KOQ4GEIlE4OE+GPV9aJLkV/ggcVITmo2ep0YUDbRYDGRyOJ8QQdy\nYwIDAQAB\n-----END PUBLIC KEY-----"
       }
+    },
+    {
+      "clientId": "shiny-shortlived",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "5"
+      }
+    },
+    {
+      "clientId": "shiny-shortlived-confidential",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "5"
+      }
     }
   ],
   "users": [

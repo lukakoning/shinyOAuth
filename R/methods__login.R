@@ -1223,13 +1223,18 @@ verify_token_set <- function(
   requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
   requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
 
-  # Skip scope validation during refresh when provider omits scope
+  # Helper to check if scope is missing or empty (some providers return "" for unset)
+  scope_is_missing <- is.null(token_set$scope) ||
+    (length(token_set$scope) == 1L && !nzchar(token_set$scope))
+
+  # Skip scope validation during refresh when provider omits scope (or returns empty)
+  # Per RFC 6749 Section 6, omitted scope in refresh response = unchanged from original
   if (
     !identical(scope_validation_mode, "none") &&
       length(requested_scopes) > 0 &&
-      !(isTRUE(is_refresh) && is.null(token_set$scope))
+      !(isTRUE(is_refresh) && scope_is_missing)
   ) {
-    if (is.null(token_set$scope)) {
+    if (scope_is_missing) {
       # Provider did not return scope — we cannot verify requested scopes were granted
       msg <- "Token response missing scope; cannot verify requested scopes were granted"
       if (identical(scope_validation_mode, "strict")) {

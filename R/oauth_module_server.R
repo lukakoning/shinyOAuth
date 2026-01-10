@@ -871,6 +871,43 @@ oauth_module_server <- function(
       values$browser_token
       new_authenticated <- .compute_authenticated()
 
+      # Schedule a timer to re-evaluate at the next relevant expiry boundary
+      # so that authenticated flips promptly even without other reactive changes.
+      # This addresses the gap where .compute_authenticated() uses Sys.time()
+      # but the observer only recalculates on reactive dependency changes.
+      if (isTRUE(new_authenticated) && !isTRUE(indefinite_session)) {
+        tok <- values$token
+        now <- as.numeric(Sys.time())
+        next_boundary <- Inf
+
+        # Check token expiry boundary
+        if (!is.null(tok)) {
+          exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
+          if (is.finite(exp) && !is.na(exp) && exp > now) {
+            next_boundary <- min(next_boundary, exp - now)
+          }
+        }
+
+        # Check reauth_after_seconds boundary
+        if (!is.null(reauth_after_seconds)) {
+          started <- tryCatch(values$auth_started_at, error = function(...) {
+            NA_real_
+          })
+          if (is.finite(started) && !is.na(started)) {
+            reauth_at <- started + reauth_after_seconds
+            if (reauth_at > now) {
+              next_boundary <- min(next_boundary, reauth_at - now)
+            }
+          }
+        }
+
+        # Schedule wakeup at boundary + small buffer to ensure we're past it
+        if (is.finite(next_boundary) && next_boundary > 0) {
+          wake_ms <- max(100L, as.integer((next_boundary + 0.05) * 1000))
+          shiny::invalidateLater(wake_ms, session)
+        }
+      }
+
       # Emit audit event if authenticated state changed
       if (!identical(new_authenticated, .previous_authenticated)) {
         # Derive reason from current state
