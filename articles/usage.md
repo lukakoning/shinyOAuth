@@ -447,6 +447,12 @@ options:
   requests. By default this string is built dynamically from the
   installed package/runtime versions; set a custom string here if your
   organization requires a specific format
+- `options(shinyOAuth.allow_redirect = FALSE)` – when `FALSE` (default),
+  all sensitive HTTP requests (token exchange, refresh, introspection,
+  revocation, userinfo, OIDC discovery, JWKS) refuse to follow redirects
+  and reject 3xx responses. This prevents authorization codes, tokens,
+  and PKCE verifiers from leaking to redirect targets. Only set to
+  `TRUE` if your provider legitimately requires redirect-following
 
 ### Development/debugging
 

@@ -545,6 +545,14 @@ cap on backoff seconds (before jitter)</li>
 requests. By default this string is built dynamically from the installed
 package/runtime versions; set a custom string here if your organization
 requires a specific format</li>
+<li>
+<code>options(shinyOAuth.allow_redirect = FALSE)</code> – when
+<code>FALSE</code> (default), all sensitive HTTP requests (token
+exchange, refresh, introspection, revocation, userinfo, OIDC discovery,
+JWKS) refuse to follow redirects and reject 3xx responses. This prevents
+authorization codes, tokens, and PKCE verifiers from leaking to redirect
+targets. Only set to <code>TRUE</code> if your provider legitimately
+requires redirect-following</li>
 </ul>
 </div>
 <div class="section level3">
