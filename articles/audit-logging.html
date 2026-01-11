@@ -137,6 +137,14 @@ from an async worker (<code>TRUE</code>). This helps distinguish logs
 produced by background tasks (e.g., async token exchange or refresh)
 from those in the main reactive flow.</li>
 <li>
+<code>shiny_session$process_id</code>: the process ID (PID) of the R
+process that emitted the event.</li>
+<li>
+<code>shiny_session$main_process_id</code>: (async events only) the
+PID of the main R process that spawned the async worker. This allows you
+to correlate events from workers back to the originating main
+process.</li>
+<li>
 <code>shiny_session$http</code>: a compact HTTP summary with fields:
 <ul>
 <li>

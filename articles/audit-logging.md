@@ -60,6 +60,11 @@ be directly serializable with
   (`TRUE`). This helps distinguish logs produced by background tasks
   (e.g., async token exchange or refresh) from those in the main
   reactive flow.
+- `shiny_session$process_id`: the process ID (PID) of the R process that
+  emitted the event.
+- `shiny_session$main_process_id`: (async events only) the PID of the
+  main R process that spawned the async worker. This allows you to
+  correlate events from workers back to the originating main process.
 - `shiny_session$http`: a compact HTTP summary with fields:
   - `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
   - `headers`: a list of request headers derived from `HTTP_*`
