@@ -90,9 +90,9 @@ revoke_token <- function(
 
     return(promises::future_promise({
       # Restore shinyOAuth.* options in the async worker
-      with_async_options(captured_async_options, {
+      shinyOAuth:::with_async_options(captured_async_options, {
         # Set async context so errors include session info with is_async = TRUE
-        with_async_session_context(captured_shiny_session, {
+        shinyOAuth:::with_async_session_context(captured_shiny_session, {
           revoke_token(
             oauth_client = oauth_client,
             oauth_token = oauth_token,
@@ -408,9 +408,9 @@ introspect_token <- function(
 
     return(promises::future_promise({
       # Restore shinyOAuth.* options in the async worker
-      with_async_options(captured_async_options, {
+      shinyOAuth:::with_async_options(captured_async_options, {
         # Set async context so errors include session info with is_async = TRUE
-        with_async_session_context(captured_shiny_session, {
+        shinyOAuth:::with_async_session_context(captured_shiny_session, {
           introspect_token(
             oauth_client = oauth_client,
             oauth_token = oauth_token,
@@ -688,9 +688,9 @@ refresh_token <- function(
 
     return(promises::future_promise({
       # Restore shinyOAuth.* options in the async worker
-      with_async_options(captured_async_options, {
+      shinyOAuth:::with_async_options(captured_async_options, {
         # Set async context so errors include session info with is_async = TRUE
-        with_async_session_context(captured_shiny_session, {
+        shinyOAuth:::with_async_session_context(captured_shiny_session, {
           refresh_token(
             oauth_client = oauth_client,
             token = token,

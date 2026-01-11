@@ -1365,19 +1365,22 @@ oauth_module_server <- function(
 
             promises::future_promise({
               # Restore shinyOAuth.* options in the async worker
-              with_async_options(captured_async_options, {
+              shinyOAuth:::with_async_options(captured_async_options, {
                 # Set async context so errors include session info with is_async = TRUE
-                with_async_session_context(captured_shiny_session, {
-                  handle_callback(
-                    oauth_client = client_for_worker,
-                    code = code,
-                    payload = state,
-                    browser_token = captured_browser_token,
-                    decrypted_payload = pre_payload,
-                    state_store_values = pre_state,
-                    shiny_session = captured_shiny_session
-                  )
-                })
+                shinyOAuth:::with_async_session_context(
+                  captured_shiny_session,
+                  {
+                    handle_callback(
+                      oauth_client = client_for_worker,
+                      code = code,
+                      payload = state,
+                      browser_token = captured_browser_token,
+                      decrypted_payload = pre_payload,
+                      state_store_values = pre_state,
+                      shiny_session = captured_shiny_session
+                    )
+                  }
+                )
               })
             })
           } else {

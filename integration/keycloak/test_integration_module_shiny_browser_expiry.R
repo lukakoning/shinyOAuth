@@ -125,8 +125,8 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
   drv$click("login_btn")
 
-  # Wait for KeyCloak login page
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 5000)
+  # Wait for KeyCloak login page (use longer timeout for slower CI environments)
+  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
 
   # Login
   drv$run_js(
@@ -311,8 +311,8 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
   drv$click("login_btn")
 
-  # Wait for KeyCloak login page
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 5000)
+  # Wait for KeyCloak login page (use longer timeout for slower CI environments)
+  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
 
   # Login
   drv$run_js(
