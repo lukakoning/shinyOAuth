@@ -1317,6 +1317,11 @@ oauth_module_server <- function(
             # emitted from the async worker (which lacks reactive domain access)
             captured_shiny_session <- capture_shiny_session_context()
 
+            # Capture shinyOAuth.* options for propagation to the async worker.
+            # This ensures audit hooks, HTTP settings, and other options are
+            # available in the worker process.
+            captured_async_options <- capture_async_options()
+
             pre_payload <- tryCatch(
               state_payload_decrypt_validate(
                 client,
@@ -1359,17 +1364,20 @@ oauth_module_server <- function(
             client_for_worker <- client
 
             promises::future_promise({
-              # Set async context so errors include session info with is_async = TRUE
-              with_async_session_context(captured_shiny_session, {
-                handle_callback(
-                  oauth_client = client_for_worker,
-                  code = code,
-                  payload = state,
-                  browser_token = captured_browser_token,
-                  decrypted_payload = pre_payload,
-                  state_store_values = pre_state,
-                  shiny_session = captured_shiny_session
-                )
+              # Restore shinyOAuth.* options in the async worker
+              with_async_options(captured_async_options, {
+                # Set async context so errors include session info with is_async = TRUE
+                with_async_session_context(captured_shiny_session, {
+                  handle_callback(
+                    oauth_client = client_for_worker,
+                    code = code,
+                    payload = state,
+                    browser_token = captured_browser_token,
+                    decrypted_payload = pre_payload,
+                    state_store_values = pre_state,
+                    shiny_session = captured_shiny_session
+                  )
+                })
               })
             })
           } else {

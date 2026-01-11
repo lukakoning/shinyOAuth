@@ -83,16 +83,24 @@ revoke_token <- function(
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
+    # Capture shinyOAuth.* options for propagation to the async worker.
+    # This ensures audit hooks, HTTP settings, and other options are
+    # available in the worker process.
+    captured_async_options <- capture_async_options()
+
     return(promises::future_promise({
-      # Set async context so errors include session info with is_async = TRUE
-      with_async_session_context(captured_shiny_session, {
-        revoke_token(
-          oauth_client = oauth_client,
-          oauth_token = oauth_token,
-          which = which,
-          async = FALSE,
-          shiny_session = captured_shiny_session
-        )
+      # Restore shinyOAuth.* options in the async worker
+      with_async_options(captured_async_options, {
+        # Set async context so errors include session info with is_async = TRUE
+        with_async_session_context(captured_shiny_session, {
+          revoke_token(
+            oauth_client = oauth_client,
+            oauth_token = oauth_token,
+            which = which,
+            async = FALSE,
+            shiny_session = captured_shiny_session
+          )
+        })
       })
     }))
   }
@@ -393,16 +401,24 @@ introspect_token <- function(
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
+    # Capture shinyOAuth.* options for propagation to the async worker.
+    # This ensures audit hooks, HTTP settings, and other options are
+    # available in the worker process.
+    captured_async_options <- capture_async_options()
+
     return(promises::future_promise({
-      # Set async context so errors include session info with is_async = TRUE
-      with_async_session_context(captured_shiny_session, {
-        introspect_token(
-          oauth_client = oauth_client,
-          oauth_token = oauth_token,
-          which = which,
-          async = FALSE,
-          shiny_session = captured_shiny_session
-        )
+      # Restore shinyOAuth.* options in the async worker
+      with_async_options(captured_async_options, {
+        # Set async context so errors include session info with is_async = TRUE
+        with_async_session_context(captured_shiny_session, {
+          introspect_token(
+            oauth_client = oauth_client,
+            oauth_token = oauth_token,
+            which = which,
+            async = FALSE,
+            shiny_session = captured_shiny_session
+          )
+        })
       })
     }))
   }
@@ -665,16 +681,24 @@ refresh_token <- function(
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
+    # Capture shinyOAuth.* options for propagation to the async worker.
+    # This ensures audit hooks, HTTP settings, and other options are
+    # available in the worker process.
+    captured_async_options <- capture_async_options()
+
     return(promises::future_promise({
-      # Set async context so errors include session info with is_async = TRUE
-      with_async_session_context(captured_shiny_session, {
-        refresh_token(
-          oauth_client = oauth_client,
-          token = token,
-          async = FALSE,
-          introspect = introspect,
-          shiny_session = captured_shiny_session
-        )
+      # Restore shinyOAuth.* options in the async worker
+      with_async_options(captured_async_options, {
+        # Set async context so errors include session info with is_async = TRUE
+        with_async_session_context(captured_shiny_session, {
+          refresh_token(
+            oauth_client = oauth_client,
+            token = token,
+            async = FALSE,
+            introspect = introspect,
+            shiny_session = captured_shiny_session
+          )
+        })
       })
     }))
   }
