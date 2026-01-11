@@ -91,6 +91,7 @@
 <div class="section level3">
 <h3 id="fixed-development-version">Fixed<a class="anchor" aria-label="anchor" href="#fixed-development-version"></a></h3>
 <ul><li><p>Package now correctly requires <code>httr2</code> &gt;= 1.1.0.</p></li>
+<li><p><code>authenticated</code> now flips to <code>FALSE</code> promptly when a token expires or <code>reauth_after_seconds</code> elapses, even without other reactive changes. Previously, the value could remain <code>TRUE</code> past expiry until an unrelated reactive update triggered re-evaluation.</p></li>
 <li><p>HTTP error responses (4xx/5xx) are now correctly returned to the caller immediately instead of being misclassified as transport errors and retried.</p></li>
 <li><p>Async worker options propagation: all R options are now automatically propagated to async workers when using <code>async = TRUE</code>. Previously, options set in the main process (including <code>audit_hook</code>, <code>trace_hook</code>, HTTP settings, and any custom options) were not available in <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> workers.</p></li>
 <li><p><code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>: fixed incorrect default which blocked multi-tenant configuration.</p></li>

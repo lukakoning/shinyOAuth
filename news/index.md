@@ -166,6 +166,11 @@
 
 - Package now correctly requires `httr2` \>= 1.1.0.
 
+- `authenticated` now flips to `FALSE` promptly when a token expires or
+  `reauth_after_seconds` elapses, even without other reactive changes.
+  Previously, the value could remain `TRUE` past expiry until an
+  unrelated reactive update triggered re-evaluation.
+
 - HTTP error responses (4xx/5xx) are now correctly returned to the
   caller immediately instead of being misclassified as transport errors
   and retried.
