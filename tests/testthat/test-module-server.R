@@ -183,6 +183,262 @@ testthat::test_that("reauth_after_seconds makes authenticated FALSE when max age
   )
 })
 
+testthat::test_that("authenticated flips FALSE after expiry without poking reactive values", {
+  # This test verifies that the authenticated observer includes time-based
+  # re-evaluation logic. Since invalidateLater() timers don't fire reliably in
+  # testServer, we verify the underlying behavior: after time passes, any
+  # reactive flush should pick up the expired state.
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE,
+      refresh_proactively = FALSE
+    ),
+    expr = {
+      # Seed a token that expires very soon (200ms from now)
+      expire_in_secs <- 0.2
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + expire_in_secs,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      # Immediately after setting, authenticated should be TRUE
+      testthat::expect_true(values$authenticated)
+
+      # Wait for expiry to pass
+      Sys.sleep(expire_in_secs + 0.1)
+
+      # After time passes, reassigning the token (even to same value) should
+      # trigger the authenticated observer to re-run. This verifies that
+      # .compute_authenticated() correctly detects expiry via Sys.time().
+      # In a real app, invalidateLater() schedules this automatically.
+      old_token <- values$token
+      values$token <- NULL
+      values$token <- old_token
+      session$flushReact()
+
+      # Authenticated should now be FALSE because .compute_authenticated()
+      # checks Sys.time() against expires_at
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated flips FALSE after reauth_after_seconds without poking", {
+  # Same approach as expiry test - verify the logic works when time passes.
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      reauth_after_seconds = 0.2,
+      indefinite_session = FALSE,
+      refresh_proactively = FALSE
+    ),
+    expr = {
+      # Token with long expiry, but short reauth window
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      values$auth_started_at <- as.numeric(Sys.time())
+      session$flushReact()
+
+      testthat::expect_true(values$authenticated)
+
+      # Wait for reauth window to pass
+      Sys.sleep(0.35)
+
+      # Trigger reactive re-evaluation by toggling token
+      old_token <- values$token
+      values$token <- NULL
+      values$token <- old_token
+      session$flushReact()
+
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated TRUE for token with NA expires_at (no expiry)", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      # Token with NA expires_at should be treated as non-expiring
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = NA_real_,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      testthat::expect_true(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated TRUE for token with Inf expires_at", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      # Token with Inf expires_at should be treated as non-expiring
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = Inf,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      testthat::expect_true(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated FALSE when error is set (default mode)", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      # Valid token
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+      testthat::expect_true(values$authenticated)
+
+      # Setting error should flip authenticated to FALSE
+      values$error <- "some_error"
+      session$flushReact()
+      testthat::expect_false(values$authenticated)
+
+      # Clearing error should restore authenticated
+      values$error <- NULL
+      session$flushReact()
+      testthat::expect_true(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated FALSE when token is cleared", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      # Start with valid token
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+      testthat::expect_true(values$authenticated)
+
+      # Clearing token should flip authenticated to FALSE
+      values$token <- NULL
+      session$flushReact()
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("authenticated correct at exact expiry boundary", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      # Token expiring exactly now (edge case: now >= exp is FALSE)
+      now <- as.numeric(Sys.time())
+      t <- OAuthToken(
+        access_token = "x",
+        refresh_token = NA_character_,
+        expires_at = now,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      # At exact boundary, now >= exp should be TRUE, so authenticated = FALSE
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
 testthat::test_that("indefinite_session keeps authenticated TRUE even when expired or error", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

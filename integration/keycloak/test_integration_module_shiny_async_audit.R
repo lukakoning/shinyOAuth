@@ -259,7 +259,10 @@ testthat::test_that("Shiny module async audit: events from main & worker process
       # Allow promise handlers to run for async token exchange
       # Wait for both token AND authenticated to be set (async may take time)
       deadline <- Sys.time() + 15
-      while ((!isTRUE(values$authenticated) || is.null(values$token)) && Sys.time() < deadline) {
+      while (
+        (!isTRUE(values$authenticated) || is.null(values$token)) &&
+          Sys.time() < deadline
+      ) {
         later::run_now(0.05)
         session$flushReact()
         Sys.sleep(0.02)
@@ -269,8 +272,10 @@ testthat::test_that("Shiny module async audit: events from main & worker process
       testthat::expect_true(
         isTRUE(values$authenticated),
         info = paste0(
-          "Expected authenticated=TRUE. error=", values$error %||% "<NULL>",
-          ", error_description=", values$error_description %||% "<NULL>"
+          "Expected authenticated=TRUE. error=",
+          values$error %||% "<NULL>",
+          ", error_description=",
+          values$error_description %||% "<NULL>"
         )
       )
       testthat::expect_null(values$error)
@@ -343,17 +348,27 @@ testthat::test_that("Shiny module async audit: events from main & worker process
 
   # 9) Verify we have events from both main process and async worker
   # Check for is_async marker in shiny_session
-  async_events <- Filter(function(e) {
-    sess <- e$shiny_session
-    if (is.null(sess)) return(FALSE)
-    isTRUE(sess$is_async)
-  }, events)
+  async_events <- Filter(
+    function(e) {
+      sess <- e$shiny_session
+      if (is.null(sess)) {
+        return(FALSE)
+      }
+      isTRUE(sess$is_async)
+    },
+    events
+  )
 
-  sync_events <- Filter(function(e) {
-    sess <- e$shiny_session
-    if (is.null(sess)) return(TRUE) # Events without session context treated as sync
-    isFALSE(sess$is_async) || is.null(sess$is_async)
-  }, events)
+  sync_events <- Filter(
+    function(e) {
+      sess <- e$shiny_session
+      if (is.null(sess)) {
+        return(TRUE)
+      } # Events without session context treated as sync
+      isFALSE(sess$is_async) || is.null(sess$is_async)
+    },
+    events
+  )
 
   cat("\n=== Event distribution ===\n")
   cat("Total events:", length(events), "\n")
@@ -362,7 +377,11 @@ testthat::test_that("Shiny module async audit: events from main & worker process
 
   # Print async event types for debugging
   if (length(async_events) > 0) {
-    async_types <- vapply(async_events, function(e) e$type %||% "unknown", character(1))
+    async_types <- vapply(
+      async_events,
+      function(e) e$type %||% "unknown",
+      character(1)
+    )
     cat("Async event types:", paste(async_types, collapse = ", "), "\n")
   }
 
@@ -408,9 +427,13 @@ testthat::test_that("Shiny module async audit: events from main & worker process
       # Print process info when available
       if (!is.null(sess$main_process_id)) {
         cat(
-          "Event:", evt$type,
-          "| main_pid:", sess$main_process_id,
-          "| worker_pid:", sess$process_id %||% "<inherited>", "\n"
+          "Event:",
+          evt$type,
+          "| main_pid:",
+          sess$main_process_id,
+          "| worker_pid:",
+          sess$process_id %||% "<inherited>",
+          "\n"
         )
       }
     }
@@ -421,7 +444,9 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     )
   } else {
     # Multisession may not be available; warn but don't fail
-    cat("\n[NOTE] No async events detected - multisession may have fallen back to sequential\n")
+    cat(
+      "\n[NOTE] No async events detected - multisession may have fallen back to sequential\n"
+    )
   }
 
   # 10) Verify all events have required base fields
