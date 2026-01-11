@@ -63,7 +63,11 @@ of the state payload's `issued_at` timestamp.
 `error_state_consumption_failed` (called when provider returns an error during 
 callback handling and the state is attempted to be consumed).
 
-* Improved audit events: `login_success` now includes `sub_source` to indicate whether the
+* All audit events now include `$process_id`, `$is_async`, and `$main_process_id`
+(if called from an async worker); these fields help identify which process
+generated the event and whether it was from an async worker.
+
+* Audit event `login_success` now includes `sub_source` to indicate whether the
 subject digest came from `userinfo`, `id_token` (verified), or `id_token_unverified`.
 
 * Audit digest keying: audit/event digests (e.g., `sub_digest`, `browser_token_digest`)
@@ -136,6 +140,11 @@ JWT audience claim for client assertion authentication.
 
 * HTTP error responses (4xx/5xx) are now correctly returned to the caller 
 immediately instead of being misclassified as transport errors and retried.
+
+* Async worker options propagation: all R options are now automatically 
+propagated to async workers when using `async = TRUE`. Previously, options set 
+in the main process (including `audit_hook`, `trace_hook`, HTTP settings, and 
+any custom options) were not available in `future::multisession` workers.
 
 * `oauth_provider_microsoft()`: fixed incorrect default which blocked 
 multi-tenant configuration.

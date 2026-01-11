@@ -50,7 +50,8 @@ get_current_shiny_session_token <- function() {
 #
 # The returned context includes is_async = TRUE to indicate that when this
 # context is used in an audit event, the event is being emitted from an
-# async worker rather than the main R process.
+# async worker rather than the main R process. It also includes the main
+# process_id to help correlate events across workers.
 capture_shiny_session_context <- function() {
   tok <- get_current_shiny_session_token()
 
@@ -64,12 +65,16 @@ capture_shiny_session_context <- function() {
     NULL
   }
 
+  # Capture main process ID for cross-worker correlation
+  main_pid <- Sys.getpid()
+
   # Only return a context if we have at least one useful datum
   if (!is.null(http) || !is.na(tok)) {
     list(
       token = if (!is.na(tok)) tok else NULL,
       http = http,
-      is_async = TRUE # When pre-captured context is used, we're in an async worker
+      is_async = TRUE, # When pre-captured context is used, we're in an async worker
+      main_process_id = main_pid
     )
   } else {
     NULL
@@ -99,10 +104,69 @@ clear_async_session_context <- function() {
 
 # Internal: execute code with a fallback session context set.
 # This is useful for wrapping async work so that errors include session info.
+# Also injects the worker's process_id into the context for cross-process tracing.
 with_async_session_context <- function(ctx, code) {
+  # Inject the worker's process_id into the context
+  if (!is.null(ctx)) {
+    ctx$process_id <- Sys.getpid()
+  }
+
   old <- set_async_session_context(ctx)
   on.exit(set_async_session_context(old), add = TRUE)
   force(code)
+}
+
+# Internal: capture ALL current options from the main process for propagation
+# to async workers. Call this on the main thread before spawning a future.
+# This ensures fully consistent behavior between main process and workers,
+# including logging hooks, HTTP settings, and any other package options.
+# Returns a named list of all option values.
+capture_async_options <- function() {
+  # Capture all current options
+  opts <- options()
+  # Also capture the originating process ID for audit event context
+  opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
+  opts
+}
+
+# Internal: execute code with captured options temporarily set.
+# This restores options from the main process inside an async worker.
+# Returns the result of evaluating `code`.
+with_async_options <- function(captured_opts, code) {
+  if (is.null(captured_opts) || length(captured_opts) == 0) {
+    return(force(code))
+  }
+  # Filter out only our internal marker
+  opts_to_set <- captured_opts[
+    !grepl("^\\.shinyOAuth\\.", names(captured_opts))
+  ]
+  if (length(opts_to_set) == 0) {
+    return(force(code))
+  }
+  # Temporarily set options and restore on exit
+  old_opts <- do.call(options, opts_to_set)
+  on.exit(do.call(options, old_opts), add = TRUE)
+  force(code)
+}
+
+# Internal: get the main process ID from captured async options.
+# Returns NA_integer_ if not available.
+get_main_process_id <- function(captured_opts) {
+  if (is.null(captured_opts)) {
+    return(NA_integer_)
+  }
+  pid <- captured_opts[[".shinyOAuth.main_process_id"]]
+  if (is.null(pid)) NA_integer_ else as.integer(pid)
+}
+
+# Internal: check if currently running in an async worker (different process).
+# Compares current PID against the captured main process PID.
+is_async_worker <- function(captured_opts) {
+  main_pid <- get_main_process_id(captured_opts)
+  if (is.na(main_pid)) {
+    return(NA)
+  }
+  Sys.getpid() != main_pid
 }
 
 # Internal: augment any event list with Shiny context when available.
@@ -135,7 +199,8 @@ augment_with_shiny_context <- function(event) {
     event$shiny_session <- list(
       token = if (!is.na(tok)) tok else NULL,
       http = http,
-      is_async = FALSE # Not pre-captured, so running on main R process
+      is_async = FALSE, # Not pre-captured, so running on main R process
+      process_id = Sys.getpid()
     )
     return(event)
   }
