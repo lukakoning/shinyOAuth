@@ -42,7 +42,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
 <div class="section level3">
-<h3 id="newimproved-development-version">New/Improved<a class="anchor" aria-label="anchor" href="#newimproved-development-version"></a></h3>
+<h3 id="newimproved-development-version">New/improved<a class="anchor" aria-label="anchor" href="#newimproved-development-version"></a></h3>
 <div class="section level4">
 <h4 id="security-development-version">Security<a class="anchor" aria-label="anchor" href="#security-development-version"></a></h4>
 <ul><li><p>Token revocation: tokens can now be revoked when Shiny session ends. Enable via <code>revoke_on_session_end = TRUE</code> in <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The provider must expose a <code>revocation_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>). New exported function <code><a href="../reference/revoke_token.html">revoke_token()</a></code>.</p></li>
@@ -55,14 +55,14 @@
 <li><p>State is now also consumed in login failure paths (when the provider returns an error but also a state).</p></li>
 <li><p>Callback URL parameters are now also cleared in login failure paths.</p></li>
 <li><p><code>OAuthProvider</code> now requires absolute URLs (scheme + hostname) for all endpoint URLs.</p></li>
-<li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>.</p></li>
+<li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>, reducing risk of misconfiguration when multiple providers share endpoints.</p></li>
 <li><p><code>state_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
-<li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.</p></li>
+<li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds, reducing the window for replay attacks.</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="auditing-development-version">Auditing<a class="anchor" aria-label="anchor" href="#auditing-development-version"></a></h4>
 <ul><li><p>New audit events: <code>session_ended</code> (logged on Shiny session close), <code>authenticated_changed</code> (logged when authentication status changes), <code>token_introspection</code> (when <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is used), <code>token_revocation</code> (when <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is used), <code>error_state_consumed</code> and <code>error_state_consumption_failed</code> (called when provider returns an error during callback handling and the state is attempted to be consumed).</p></li>
-<li><p>All audit events now include <code>$process_id</code>, <code>$is_async</code>, and <code>$main_process_id</code> (if called from an async worker); these fields help identify which process generated the event and whether it was from an async worker.</p></li>
+<li><p>All audit events now include <code>$process_id</code>, <code>$is_async</code>, and <code>$main_process_id</code> (if called from an async worker); these fields help identify which process generated the event and whether it was from an async worker. Async workers now also properly propagate audit hooks from the main process (see ‘Fixed’).</p></li>
 <li><p>Audit event <code>login_success</code> now includes <code>sub_source</code> to indicate whether the subject digest came from <code>userinfo</code>, <code>id_token</code> (verified), or <code>id_token_unverified</code>.</p></li>
 <li><p>Audit digest keying: audit/event digests (e.g., <code>sub_digest</code>, <code>browser_token_digest</code>) now default to HMAC-SHA256 with an auto-generated per-process key to reduce reidentification/correlation risk if logs leak. Configure a key with <code>options(shinyOAuth.audit_digest_key = "...")</code>, or disable keying (legacy deterministic SHA-256) with <code>options(shinyOAuth.audit_digest_key = FALSE)</code>.</p></li>
 <li><p>HTTP log sanitization: sensitive data in HTTP contexts (headers, cookies) is now sanitized by default in audit logs. Can be disabled with <code>options(shinyOAuth.audit_redact_http = FALSE)</code>. Use <code>options(shinyOAuth.audit_include_http = FALSE)</code> to not include any HTTP data in logs.</p></li>
