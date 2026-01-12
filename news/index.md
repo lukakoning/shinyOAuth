@@ -51,6 +51,9 @@
   default disable redirect following and reject 3xx responses to prevent
   bypassing host/HTTPS policies. Configurable via
   `options(shinyOAuth.allow_redirect = TRUE)`.
+  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  also gains `follow_redirect`, which defaults to `FALSE`, to similarly
+  control redirect behavior for requests using bearer tokens.
 
 - State is now also consumed in login failure paths (when the provider
   returns an error but also a state).

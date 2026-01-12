@@ -58,7 +58,14 @@ HTTP defaults (timeout and User-Agent).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">client_bearer_req</span><span class="op">(</span><span class="va">token</span>, <span class="va">url</span>, method <span class="op">=</span> <span class="st">"GET"</span>, headers <span class="op">=</span> <span class="cn">NULL</span>, query <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">client_bearer_req</span><span class="op">(</span></span>
+<span>  <span class="va">token</span>,</span>
+<span>  <span class="va">url</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"GET"</span>,</span>
+<span>  headers <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  query <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  follow_redirect <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -87,6 +94,13 @@ overridden.</p></dd>
 
 <dt id="arg-query">query<a class="anchor" aria-label="anchor" href="#arg-query"></a></dt>
 <dd><p>Optional named list of query parameters to append to the URL.</p></dd>
+
+
+<dt id="arg-follow-redirect">follow_redirect<a class="anchor" aria-label="anchor" href="#arg-follow-redirect"></a></dt>
+<dd><p>Logical. If <code>FALSE</code> (the default), HTTP redirects
+are disabled to prevent leaking the Bearer token to unexpected hosts.
+Set to <code>TRUE</code> only if you trust all possible redirect targets and
+understand the security implications.</p></dd>
 
 </dl></div>
     <div class="section level2">

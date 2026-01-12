@@ -13,7 +13,14 @@ object.
 ## Usage
 
 ``` r
-client_bearer_req(token, url, method = "GET", headers = NULL, query = NULL)
+client_bearer_req(
+  token,
+  url,
+  method = "GET",
+  headers = NULL,
+  query = NULL,
+  follow_redirect = FALSE
+)
 ```
 
 ## Arguments
@@ -42,6 +49,13 @@ client_bearer_req(token, url, method = "GET", headers = NULL, query = NULL)
 - query:
 
   Optional named list of query parameters to append to the URL.
+
+- follow_redirect:
+
+  Logical. If `FALSE` (the default), HTTP redirects are disabled to
+  prevent leaking the Bearer token to unexpected hosts. Set to `TRUE`
+  only if you trust all possible redirect targets and understand the
+  security implications.
 
 ## Value
 
