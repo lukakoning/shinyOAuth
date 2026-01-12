@@ -56,7 +56,7 @@
 <li><p>Callback URL parameters are now also cleared in login failure paths.</p></li>
 <li><p><code>OAuthProvider</code> now requires absolute URLs (scheme + hostname) for all endpoint URLs.</p></li>
 <li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>, reducing risk of misconfiguration when multiple providers share endpoints.</p></li>
-<li><p><code>state_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
+<li><p><code>state_payload_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
 <li><p>Default client assertion JWT TTL reduced from 5 minutes to 120 seconds, reducing the window for replay attacks while allowing for clock skew.</p></li>
 </ul></div>
 <div class="section level4">
@@ -72,12 +72,12 @@
 <ul><li><p>Configurable scope validation: <code>validate_scopes</code> property on <code>OAuthClient</code> controls whether returned scopes are validated against requested scopes (<code>"strict"</code>, <code>"warn"</code>, or <code>"none"</code>). Scopes are now normalized (alphabetically sorted) before comparison.</p></li>
 <li><p><code>OAuthProvider</code>: extra parameters are now blocked from overriding reserved keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be explicitly overridden via <code>options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))</code>. It is also validated early that all parameters are named, catching configuration errors sooner.</p></li>
 <li><p>Added warning about negative <code>expires_in</code> values in token responses.</p></li>
-<li><p>Added warning when <code>OAuthClient</code> is instantiated inside a Shiny session; may cause sealed satte payload decryption to fail when random secret is generated upon client creation.</p></li>
+<li><p>Added warning when <code>OAuthClient</code> is instantiated inside a Shiny session; may cause sealed state payload decryption to fail when random secret is generated upon client creation.</p></li>
 <li><p>Added hints in error messages when sealed state payload decryption fails.</p></li>
 <li><p>Ensured a clearer error message when token response is in unexpected format.</p></li>
 <li><p>Ensured a clearer error when retrieved state store entry is in unexpected format.</p></li>
 <li><p>Ensured a clearer error message when retrieved userinfo cannot be parsed as JSON.</p></li>
-<li><p>Immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm but <code>allow_symmetric_alg</code> is not enabled; also immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm and ID token verification can happen but <code>client_secret</code> is absent or too weak.</p></li>
+<li><p>Immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm but <code>options(shinyOAuth.allow_hs = TRUE)</code> is not enabled; also immediate error when <code>OAuthProvider</code> uses <code>HS*</code> algorithm and ID token verification can happen but <code>client_secret</code> is absent or too weak.</p></li>
 <li><p><code>build_auth_url()</code> now uses package-typed errors (<code>err_invalid_state()</code>) instead of generic <code><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot()</a></code> assertions, ensuring consistent error handling and audit logging.</p></li>
 </ul></div>
 <div class="section level4">

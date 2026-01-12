@@ -67,8 +67,8 @@
   `introspection_url`, reducing risk of misconfiguration when multiple
   providers share endpoints.
 
-- `state_max_age` property on `OAuthClient` for independent freshness
-  validation of the state payload’s `issued_at` timestamp.
+- `state_payload_max_age` property on `OAuthClient` for independent
+  freshness validation of the state payload’s `issued_at` timestamp.
 
 - Default client assertion JWT TTL reduced from 5 minutes to 120
   seconds, reducing the window for replay attacks while allowing for
@@ -127,7 +127,7 @@
 - Added warning about negative `expires_in` values in token responses.
 
 - Added warning when `OAuthClient` is instantiated inside a Shiny
-  session; may cause sealed satte payload decryption to fail when random
+  session; may cause sealed state payload decryption to fail when random
   secret is generated upon client creation.
 
 - Added hints in error messages when sealed state payload decryption
@@ -143,9 +143,9 @@
   parsed as JSON.
 
 - Immediate error when `OAuthProvider` uses `HS*` algorithm but
-  `allow_symmetric_alg` is not enabled; also immediate error when
-  `OAuthProvider` uses `HS*` algorithm and ID token verification can
-  happen but `client_secret` is absent or too weak.
+  `options(shinyOAuth.allow_hs = TRUE)` is not enabled; also immediate
+  error when `OAuthProvider` uses `HS*` algorithm and ID token
+  verification can happen but `client_secret` is absent or too weak.
 
 - `build_auth_url()` now uses package-typed errors
   (`err_invalid_state()`) instead of generic
