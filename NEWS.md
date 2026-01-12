@@ -1,6 +1,6 @@
 # shinyOAuth (development version)
 
-## New/Improved
+## New/improved
 
 ### Security
 
@@ -47,12 +47,14 @@ returns an error but also a state).
 * `OAuthProvider` now requires absolute URLs (scheme + hostname) for all 
 endpoint URLs.
 
-* Provider fingerprint now includes `userinfo_url` and `introspection_url`.
+* Provider fingerprint now includes `userinfo_url` and `introspection_url`,
+reducing risk of misconfiguration when multiple providers share endpoints.
 
 * `state_max_age` property on `OAuthClient` for independent freshness validation 
 of the state payload's `issued_at` timestamp.
 
-* Default client assertion JWT TTL reduced from 5 minutes to 60 seconds.
+* Default client assertion JWT TTL reduced from 5 minutes to 120 seconds,
+reducing the window for replay attacks while allowing for clock skew.
 
 ### Auditing
 
@@ -65,7 +67,8 @@ callback handling and the state is attempted to be consumed).
 
 * All audit events now include `$process_id`, `$is_async`, and `$main_process_id`
 (if called from an async worker); these fields help identify which process
-generated the event and whether it was from an async worker.
+generated the event and whether it was from an async worker. Async
+workers now also properly propagate audit hooks from the main process (see 'Fixed').
 
 * Audit event `login_success` now includes `sub_source` to indicate whether the
 subject digest came from `userinfo`, `id_token` (verified), or `id_token_unverified`.
