@@ -4,7 +4,14 @@
 \alias{client_bearer_req}
 \title{Build an authorized httr2 request with Bearer token}
 \usage{
-client_bearer_req(token, url, method = "GET", headers = NULL, query = NULL)
+client_bearer_req(
+  token,
+  url,
+  method = "GET",
+  headers = NULL,
+  query = NULL,
+  follow_redirect = FALSE
+)
 }
 \arguments{
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
@@ -20,6 +27,11 @@ header is ignored to ensure the Bearer token set by this function is not
 overridden.}
 
 \item{query}{Optional named list of query parameters to append to the URL.}
+
+\item{follow_redirect}{Logical. If \code{FALSE} (the default), HTTP redirects
+are disabled to prevent leaking the Bearer token to unexpected hosts.
+Set to \code{TRUE} only if you trust all possible redirect targets and
+understand the security implications.}
 }
 \value{
 An httr2 request object, ready to be further customized or

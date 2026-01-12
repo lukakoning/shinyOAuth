@@ -17,6 +17,10 @@
 #'   header is ignored to ensure the Bearer token set by this function is not
 #'   overridden.
 #' @param query Optional named list of query parameters to append to the URL.
+#' @param follow_redirect Logical. If `FALSE` (the default), HTTP redirects
+#'   are disabled to prevent leaking the Bearer token to unexpected hosts.
+#'   Set to `TRUE` only if you trust all possible redirect targets and
+#'   understand the security implications.
 #'
 #' @return An httr2 request object, ready to be further customized or
 #'   performed with [httr2::req_perform()].
@@ -29,7 +33,8 @@ client_bearer_req <- function(
   url,
   method = "GET",
   headers = NULL,
-  query = NULL
+  query = NULL,
+  follow_redirect = FALSE
 ) {
   # Resolve token to string ----------------------------------------------------
   access_token <- token
@@ -45,6 +50,11 @@ client_bearer_req <- function(
   req <- httr2::request(url) |>
     httr2::req_auth_bearer_token(access_token) |>
     add_req_defaults()
+
+  # Security: disable redirects by default to prevent leaking Bearer token
+  if (!isTRUE(follow_redirect)) {
+    req <- req_no_redirect(req)
+  }
 
   # Apply method if supplied
   if (is_valid_string(method)) {

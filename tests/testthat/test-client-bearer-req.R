@@ -107,3 +107,85 @@ test_that("custom Authorization header is ignored and warned", {
   expect_equal(dry$headers$authorization, "Bearer tok")
   expect_equal(dry$headers$`x-other`, "ok")
 })
+
+test_that("client_bearer_req disables redirects by default", {
+  req <- client_bearer_req(
+    token = "tok",
+    url = "https://example.com/resource"
+  )
+  # Check that followlocation is set to FALSE via req_no_redirect()
+  expect_false(req$options$followlocation)
+})
+
+test_that("client_bearer_req allows redirects when follow_redirect = TRUE", {
+  req <- client_bearer_req(
+    token = "tok",
+    url = "https://example.com/resource",
+    follow_redirect = TRUE
+  )
+  # When follow_redirect is TRUE, followlocation should not be set to FALSE
+  expect_null(req$options$followlocation)
+})
+
+test_that("client_bearer_req does not follow redirects by default (token leak prevention)", {
+  testthat::skip_if_not_installed("webfakes")
+
+  app <- webfakes::new_app()
+  # Endpoint that issues a redirect
+
+  app$get("/redirect-me", function(req, res) {
+    res$set_status(302)
+    res$set_header("Location", "/final")
+    res$send("")
+  })
+  # Final endpoint that would receive the token if redirect was followed
+  app$get("/final", function(req, res) {
+    res$set_type("application/json")
+    res$send(jsonlite::toJSON(
+      list(reached = TRUE, auth = req$get_header("authorization")),
+      auto_unbox = TRUE
+    ))
+  })
+  srv <- webfakes::local_app_process(app)
+
+  req <- client_bearer_req(
+    token = "secret-token",
+    url = paste0(srv$url(), "/redirect-me")
+  )
+
+  # With redirects disabled, we should get the 302 response directly
+  resp <- httr2::req_perform(req)
+  expect_equal(httr2::resp_status(resp), 302L)
+  expect_equal(httr2::resp_header(resp, "location"), "/final")
+})
+
+test_that("client_bearer_req follows redirects when follow_redirect = TRUE", {
+  testthat::skip_if_not_installed("webfakes")
+
+  app <- webfakes::new_app()
+  app$get("/redirect-me", function(req, res) {
+    res$set_status(302)
+    res$set_header("Location", "/final")
+    res$send("")
+  })
+  app$get("/final", function(req, res) {
+    res$set_type("application/json")
+    res$send(jsonlite::toJSON(
+      list(reached = TRUE, auth = req$get_header("authorization")),
+      auto_unbox = TRUE
+    ))
+  })
+  srv <- webfakes::local_app_process(app)
+
+  req <- client_bearer_req(
+    token = "secret-token",
+    url = paste0(srv$url(), "/redirect-me"),
+    follow_redirect = TRUE
+  )
+
+  # With redirects enabled, we should reach the final endpoint
+  resp <- httr2::req_perform(req)
+  expect_equal(httr2::resp_status(resp), 200L)
+  j <- httr2::resp_body_json(resp)
+  expect_true(j$reached)
+})

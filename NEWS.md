@@ -37,7 +37,9 @@ callback page. Can be disabled with
 * Sensitive outbound HTTP requests (token exchange/refresh, introspection,
 revocation, userinfo, OIDC discovery, JWKS) now by default disable redirect 
 following and reject 3xx responses to prevent bypassing host/HTTPS policies. 
-Configurable via `options(shinyOAuth.allow_redirect = TRUE)`.
+Configurable via `options(shinyOAuth.allow_redirect = TRUE)`. `client_bearer_req()`
+also gains `follow_redirect`, which defaults to `FALSE`, to similarly control redirect
+behavior for requests using bearer tokens.
 
 * State is now also consumed in login failure paths (when the provider
 returns an error but also a state).
