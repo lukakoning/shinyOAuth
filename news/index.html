@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,11 +40,11 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="shinyoauth-020">shinyOAuth 0.2.0<a class="anchor" aria-label="anchor" href="#shinyoauth-020"></a></h2>
 <div class="section level3">
-<h3 id="newimproved-development-version">New/improved<a class="anchor" aria-label="anchor" href="#newimproved-development-version"></a></h3>
+<h3 id="newimproved-0-2-0">New/improved<a class="anchor" aria-label="anchor" href="#newimproved-0-2-0"></a></h3>
 <div class="section level4">
-<h4 id="security-development-version">Security<a class="anchor" aria-label="anchor" href="#security-development-version"></a></h4>
+<h4 id="security-0-2-0">Security<a class="anchor" aria-label="anchor" href="#security-0-2-0"></a></h4>
 <ul><li><p>Token revocation: tokens can now be revoked when Shiny session ends. Enable via <code>revoke_on_session_end = TRUE</code> in <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The provider must expose a <code>revocation_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>). New exported function <code><a href="../reference/revoke_token.html">revoke_token()</a></code>.</p></li>
 <li><p>Token introspection on login: validate tokens via the provider’s introspection endpoint during login. Configure via <code>introspect</code> and <code>introspect_elements</code> properties on <code>OAuthClient</code>. The provider must expose an <code>introspection_url</code> (auto-discovered for OIDC, or set manually via <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>).</p></li>
 <li><p>DoS protection: callback query parameters and state payload/browser token sizes are validated before expensive operations (e.g., hashing for audit logs). Maximum size may be configured via <code><a href="https://rdrr.io/r/base/options.html" class="external-link">options()</a></code>; see section ‘Size caps’ in <code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p></li>
@@ -60,7 +60,7 @@
 <li><p>Default client assertion JWT TTL reduced from 5 minutes to 120 seconds, reducing the window for replay attacks while allowing for clock skew.</p></li>
 </ul></div>
 <div class="section level4">
-<h4 id="auditing-development-version">Auditing<a class="anchor" aria-label="anchor" href="#auditing-development-version"></a></h4>
+<h4 id="auditing-0-2-0">Auditing<a class="anchor" aria-label="anchor" href="#auditing-0-2-0"></a></h4>
 <ul><li><p>New audit events: <code>session_ended</code> (logged on Shiny session close), <code>authenticated_changed</code> (logged when authentication status changes), <code>token_introspection</code> (when <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is used), <code>token_revocation</code> (when <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is used), <code>error_state_consumed</code> and <code>error_state_consumption_failed</code> (called when provider returns an error during callback handling and the state is attempted to be consumed).</p></li>
 <li><p>All audit events now include <code>$process_id</code>, <code>$is_async</code>, and <code>$main_process_id</code> (if called from an async worker); these fields help identify which process generated the event and whether it was from an async worker. Async workers now also properly propagate audit hooks from the main process (see ‘Fixed’).</p></li>
 <li><p>Audit event <code>login_success</code> now includes <code>sub_source</code> to indicate whether the subject digest came from <code>userinfo</code>, <code>id_token</code> (verified), or <code>id_token_unverified</code>.</p></li>
@@ -68,7 +68,7 @@
 <li><p>HTTP log sanitization: sensitive data in HTTP contexts (headers, cookies) is now sanitized by default in audit logs. Can be disabled with <code>options(shinyOAuth.audit_redact_http = FALSE)</code>. Use <code>options(shinyOAuth.audit_include_http = FALSE)</code> to not include any HTTP data in logs.</p></li>
 </ul></div>
 <div class="section level4">
-<h4 id="ux-development-version">UX<a class="anchor" aria-label="anchor" href="#ux-development-version"></a></h4>
+<h4 id="ux-0-2-0">UX<a class="anchor" aria-label="anchor" href="#ux-0-2-0"></a></h4>
 <ul><li><p>Configurable scope validation: <code>validate_scopes</code> property on <code>OAuthClient</code> controls whether returned scopes are validated against requested scopes (<code>"strict"</code>, <code>"warn"</code>, or <code>"none"</code>). Scopes are now normalized (alphabetically sorted) before comparison.</p></li>
 <li><p><code>OAuthProvider</code>: extra parameters are now blocked from overriding reserved keys essential for the OAuth 2.0/OIDC flow. Reserved keys may be explicitly overridden via <code>options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...), shinyOAuth.unblock_token_headers = c(...))</code>. It is also validated early that all parameters are named, catching configuration errors sooner.</p></li>
 <li><p>Added warning about negative <code>expires_in</code> values in token responses.</p></li>
@@ -81,7 +81,7 @@
 <li><p><code>build_auth_url()</code> now uses package-typed errors (<code>err_invalid_state()</code>) instead of generic <code><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot()</a></code> assertions, ensuring consistent error handling and audit logging.</p></li>
 </ul></div>
 <div class="section level4">
-<h4 id="other-development-version">Other<a class="anchor" aria-label="anchor" href="#other-development-version"></a></h4>
+<h4 id="other-0-2-0">Other<a class="anchor" aria-label="anchor" href="#other-0-2-0"></a></h4>
 <ul><li><p>ID token signature/claims validation now occurs before fetching userinfo. This ensures cryptographic validation passes before making external calls to the userinfo endpoint.</p></li>
 <li><p>When fetching JWKS, if <code>key_ops</code> is present on keys, only keys with <code>key_ops</code> including <code>"verify"</code> are considered.</p></li>
 <li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now defaults <code>allowed_token_types</code> to <code>c("Bearer")</code> for all providers. This prevents accidentally misusing non-Bearer tokens (e.g., DPoP, MAC) as Bearer tokens. Set <code>allowed_token_types = character()</code> to opt out. Token type is also now validated before calling the userinfo endpoint.</p></li>
@@ -89,7 +89,7 @@
 </ul></div>
 </div>
 <div class="section level3">
-<h3 id="fixed-development-version">Fixed<a class="anchor" aria-label="anchor" href="#fixed-development-version"></a></h3>
+<h3 id="fixed-0-2-0">Fixed<a class="anchor" aria-label="anchor" href="#fixed-0-2-0"></a></h3>
 <ul><li><p>Package now correctly requires <code>httr2</code> &gt;= 1.1.0.</p></li>
 <li><p><code>authenticated</code> now flips to <code>FALSE</code> promptly when a token expires or <code>reauth_after_seconds</code> elapses, even without other reactive changes. Previously, the value could remain <code>TRUE</code> past expiry until an unrelated reactive update triggered re-evaluation.</p></li>
 <li><p>HTTP error responses (4xx/5xx) are now correctly returned to the caller immediately instead of being misclassified as transport errors and retried.</p></li>
