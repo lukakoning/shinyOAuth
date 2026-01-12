@@ -94,10 +94,11 @@ controls whether returned scopes are validated against requested scopes
 (`"strict"`, `"warn"`, or `"none"`). Scopes are now normalized (alphabetically 
 sorted) before comparison.
 
-* Extra provider parameters are now blocked from overriding reserved keys
+* `OAuthProvider`: extra parameters are now blocked from overriding reserved keys
 essential for the OAuth 2.0/OIDC flow. Reserved keys may be explicitly overridden via
 `options(shinyOAuth.unblock_auth_params = c(...), shinyOAuth.unblock_token_params = c(...),
-shinyOAuth.unblock_token_headers = c(...))`.
+shinyOAuth.unblock_token_headers = c(...))`. It is also validated early that
+all parameters are named, catching configuration errors sooner.
 
 * Added warning about negative `expires_in` values in token responses.
 

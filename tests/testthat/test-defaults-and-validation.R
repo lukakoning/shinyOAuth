@@ -166,6 +166,66 @@ test_that("shinyOAuth.unblock_auth_params allows reserved keys when configured",
   })
 })
 
+test_that("OAuthProvider rejects unnamed extra_auth_params", {
+  # Fully unnamed list
+
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = list("foo", "bar")
+    ),
+    regexp = "extra_auth_params must be a named list"
+  )
+
+  # Partially named list (some elements unnamed)
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = list(a = 1, "bar")
+    ),
+    regexp = "extra_auth_params must be a named list"
+  )
+
+  # Empty names (name = "")
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = setNames(list(1, 2), c("a", ""))
+    ),
+    regexp = "extra_auth_params must be a named list"
+  )
+})
+
+test_that("OAuthProvider rejects unnamed extra_token_params", {
+  # Fully unnamed list
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_token_params = list("foo", "bar")
+    ),
+    regexp = "extra_token_params must be a named list"
+  )
+
+  # Partially named list
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_token_params = list(audience = "https://api.example.com", "oops")
+    ),
+    regexp = "extra_token_params must be a named list"
+  )
+})
+
 test_that("OAuthProvider rejects reserved keys in extra_token_params", {
   reserved <- c(
     "grant_type",

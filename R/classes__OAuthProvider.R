@@ -360,6 +360,18 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    # Validate extra_auth_params: must be a named list if non-empty.
+    # Unnamed elements would cause httr2::url_modify() to fail with an unhelpful
+    # error, so we catch this early with a clearer message.
+    if (length(self@extra_auth_params) > 0) {
+      nms <- names(self@extra_auth_params)
+      if (is.null(nms) || !all(nzchar(nms))) {
+        return(
+          "OAuthProvider: extra_auth_params must be a named list (all elements must have names)"
+        )
+      }
+    }
+
     # Validate extra_auth_params: block reserved keys that could desync state,
     # bypass PKCE, or corrupt the authorization request.
     # These fields are managed internally by shinyOAuth and must not be overridden.
@@ -388,6 +400,18 @@ OAuthProvider <- S7::new_class(
           ),
           paste(sQuote(bad), collapse = ", ")
         ))
+      }
+    }
+
+    # Validate extra_token_params: must be a named list if non-empty.
+    # Unnamed elements would cause httr2::req_body_form() to fail with an
+    # unhelpful error, so we catch this early with a clearer message.
+    if (length(self@extra_token_params) > 0) {
+      nms <- names(self@extra_token_params)
+      if (is.null(nms) || !all(nzchar(nms))) {
+        return(
+          "OAuthProvider: extra_token_params must be a named list (all elements must have names)"
+        )
       }
     }
 
