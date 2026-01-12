@@ -1363,11 +1363,15 @@ oauth_module_server <- function(
             # Build a client clone for the worker; reuse existing state_store (already consumed)
             client_for_worker <- client
 
+            # Capture internal functions to avoid ::: in async worker
+            .with_async_options <- with_async_options
+            .with_async_session_context <- with_async_session_context
+
             promises::future_promise({
               # Restore shinyOAuth.* options in the async worker
-              shinyOAuth:::with_async_options(captured_async_options, {
+              .with_async_options(captured_async_options, {
                 # Set async context so errors include session info with is_async = TRUE
-                shinyOAuth:::with_async_session_context(
+                .with_async_session_context(
                   captured_shiny_session,
                   {
                     handle_callback(
