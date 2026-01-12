@@ -67,8 +67,9 @@
 - `state_max_age` property on `OAuthClient` for independent freshness
   validation of the state payload’s `issued_at` timestamp.
 
-- Default client assertion JWT TTL reduced from 5 minutes to 60 seconds,
-  reducing the window for replay attacks.
+- Default client assertion JWT TTL reduced from 5 minutes to 120
+  seconds, reducing the window for replay attacks while allowing for
+  clock skew.
 
 #### Auditing
 

@@ -57,7 +57,7 @@
 <li><p><code>OAuthProvider</code> now requires absolute URLs (scheme + hostname) for all endpoint URLs.</p></li>
 <li><p>Provider fingerprint now includes <code>userinfo_url</code> and <code>introspection_url</code>, reducing risk of misconfiguration when multiple providers share endpoints.</p></li>
 <li><p><code>state_max_age</code> property on <code>OAuthClient</code> for independent freshness validation of the state payload’s <code>issued_at</code> timestamp.</p></li>
-<li><p>Default client assertion JWT TTL reduced from 5 minutes to 60 seconds, reducing the window for replay attacks.</p></li>
+<li><p>Default client assertion JWT TTL reduced from 5 minutes to 120 seconds, reducing the window for replay attacks while allowing for clock skew.</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="auditing-development-version">Auditing<a class="anchor" aria-label="anchor" href="#auditing-development-version"></a></h4>
