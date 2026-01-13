@@ -1,3 +1,5 @@
+# shinyOAuth (development version)
+
 # shinyOAuth 0.2.0
 
 ## New/improved
