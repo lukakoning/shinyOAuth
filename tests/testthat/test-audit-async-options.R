@@ -156,8 +156,8 @@ testthat::test_that("with_async_options correctly restores options in worker", {
   testthat::expect_null(getOption("shinyOAuth.timeout"))
 })
 
-testthat::test_that("capture_async_options captures all current options", {
-  # Set some test options
+testthat::test_that("capture_async_options captures only shinyOAuth options", {
+  # Set some test options - both shinyOAuth and non-shinyOAuth
   withr::local_options(list(
     shinyOAuth.audit_hook = function(e) "hook",
     shinyOAuth.trace_hook = function(e) "trace",
@@ -175,8 +175,8 @@ testthat::test_that("capture_async_options captures all current options", {
 
   testthat::expect_equal(captured[["shinyOAuth.leeway"]], 60)
 
-  # Should also capture other options (all options are now captured)
-  testthat::expect_equal(captured[["my.custom.option"]], "custom_value")
+  # Should NOT capture non-shinyOAuth options (avoids serialization warnings)
+  testthat::expect_null(captured[["my.custom.option"]])
 
   # Should include main process ID marker
   testthat::expect_true(!is.null(captured[[".shinyOAuth.main_process_id"]]))
@@ -197,7 +197,7 @@ testthat::test_that("is_async_worker correctly detects worker context", {
   testthat::expect_true(is.na(shinyOAuth:::is_async_worker(NULL)))
 })
 
-testthat::test_that("all options are propagated to async workers via mirai", {
+testthat::test_that("shinyOAuth options are propagated to async workers via mirai", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("mirai")
@@ -207,71 +207,53 @@ testthat::test_that("all options are propagated to async workers via mirai", {
   mirai::daemons(sync = TRUE)
   withr::defer(mirai::daemons(0))
 
-  # Set a variety of options: shinyOAuth options, custom options, and functions
-  custom_fn_called <- FALSE
+  # Set a variety of options: shinyOAuth options and non-shinyOAuth options
   withr::local_options(list(
-    # shinyOAuth options
+    # shinyOAuth options (should be captured)
     shinyOAuth.timeout = 123,
     shinyOAuth.leeway = 456,
     shinyOAuth.custom_test = "shinyOAuth_value",
-    # Arbitrary custom options (not shinyOAuth prefixed)
+    # Arbitrary custom options (not shinyOAuth prefixed - should NOT be captured)
     my.app.setting = "my_setting_value",
-    my.app.number = 999,
-    my.app.list = list(a = 1, b = 2),
-    # A function option
-    my.app.callback = function(x) {
-      custom_fn_called <<- TRUE
-      x * 2
-    }
+    my.app.number = 999
   ))
 
   # Capture options on main thread
   captured_opts <- shinyOAuth:::capture_async_options()
 
-  # Verify capture includes all our options
+  # Verify capture includes only shinyOAuth.* options (not arbitrary app options)
   testthat::expect_equal(captured_opts[["shinyOAuth.timeout"]], 123)
   testthat::expect_equal(captured_opts[["shinyOAuth.leeway"]], 456)
   testthat::expect_equal(
     captured_opts[["shinyOAuth.custom_test"]],
     "shinyOAuth_value"
   )
-  testthat::expect_equal(captured_opts[["my.app.setting"]], "my_setting_value")
-  testthat::expect_equal(captured_opts[["my.app.number"]], 999)
-  testthat::expect_equal(captured_opts[["my.app.list"]], list(a = 1, b = 2))
-  testthat::expect_true(is.function(captured_opts[["my.app.callback"]]))
+  # Non-shinyOAuth options should NOT be captured (avoids serialization warnings)
+  testthat::expect_null(captured_opts[["my.app.setting"]])
+  testthat::expect_null(captured_opts[["my.app.number"]])
 
   # Simulate what happens in a mirai: options are restored in worker
   # Clear the options first to simulate a fresh worker environment
   withr::local_options(list(
     shinyOAuth.timeout = NULL,
-    my.app.setting = NULL,
-    my.app.number = NULL,
-    my.app.callback = NULL
+    shinyOAuth.leeway = NULL,
+    shinyOAuth.custom_test = NULL
   ))
 
   # Now use with_async_options to restore them (simulating worker behavior)
   result <- shinyOAuth:::with_async_options(captured_opts, {
-    # Inside the worker, all options should be available
+    # Inside the worker, shinyOAuth options should be available
     list(
       timeout = getOption("shinyOAuth.timeout"),
       leeway = getOption("shinyOAuth.leeway"),
-      custom_test = getOption("shinyOAuth.custom_test"),
-      setting = getOption("my.app.setting"),
-      number = getOption("my.app.number"),
-      app_list = getOption("my.app.list"),
-      callback_result = getOption("my.app.callback")(21)
+      custom_test = getOption("shinyOAuth.custom_test")
     )
   })
 
-  # Verify all options were available inside the "worker"
+  # Verify shinyOAuth options were available inside the "worker"
   testthat::expect_equal(result$timeout, 123)
   testthat::expect_equal(result$leeway, 456)
   testthat::expect_equal(result$custom_test, "shinyOAuth_value")
-  testthat::expect_equal(result$setting, "my_setting_value")
-  testthat::expect_equal(result$number, 999)
-  testthat::expect_equal(result$app_list, list(a = 1, b = 2))
-  testthat::expect_equal(result$callback_result, 42)
-  testthat::expect_true(custom_fn_called)
 })
 
 testthat::test_that("options propagation works with actual mirai", {
@@ -284,11 +266,10 @@ testthat::test_that("options propagation works with actual mirai", {
   mirai::daemons(sync = TRUE)
   withr::defer(mirai::daemons(0))
 
-  # Set custom options
+  # Set shinyOAuth options (only these are propagated to avoid serialization warnings)
   withr::local_options(list(
-    test.async.value = "hello_from_main",
-    test.async.number = 42,
-    test.async.fn = function() "function_result"
+    shinyOAuth.async.value = "hello_from_main",
+    shinyOAuth.async.number = 42
   ))
 
   # Capture options before spawning the mirai
@@ -304,9 +285,8 @@ testthat::test_that("options propagation works with actual mirai", {
     {
       .with_async_options(captured_opts, {
         list(
-          value = getOption("test.async.value"),
-          number = getOption("test.async.number"),
-          fn_result = getOption("test.async.fn")(),
+          value = getOption("shinyOAuth.async.value"),
+          number = getOption("shinyOAuth.async.number"),
           worker_pid = Sys.getpid(),
           main_pid_from_opts = captured_opts[[".shinyOAuth.main_process_id"]]
         )
@@ -334,6 +314,5 @@ testthat::test_that("options propagation works with actual mirai", {
   testthat::expect_false(is.null(promise_result))
   testthat::expect_equal(promise_result$value, "hello_from_main")
   testthat::expect_equal(promise_result$number, 42)
-  testthat::expect_equal(promise_result$fn_result, "function_result")
   testthat::expect_equal(promise_result$main_pid_from_opts, main_pid)
 })

@@ -116,29 +116,34 @@ with_async_session_context <- function(ctx, code) {
   force(code)
 }
 
-# Internal: capture ALL current options from the main process for propagation
-# to async workers. Call this on the main thread before spawning a future.
-# This ensures fully consistent behavior between main process and workers,
-# including logging hooks, HTTP settings, and any other package options.
-# Returns a named list of all option values.
+# Internal: capture shinyOAuth-specific options from the main process for
+# propagation to async workers. Call this on the main thread before spawning
+# a mirai or future. Only captures options starting with "shinyOAuth." to:
+# 1. Reduce serialization overhead
+# 2. Avoid serializing closures that may reference other package namespaces
+#    (which can cause R serialization warnings)
+# 3. Focus on package-specific behavior (audit hooks, HTTP settings, etc.)
+# Returns a named list of shinyOAuth option values.
 capture_async_options <- function() {
-  # Capture all current options
-  opts <- options()
+  all_opts <- options()
+  # Filter to only shinyOAuth.* options
+  shinyoauth_names <- grep("^shinyOAuth\\.", names(all_opts), value = TRUE)
+  opts <- all_opts[shinyoauth_names]
   # Also capture the originating process ID for audit event context
   opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
   opts
 }
 
-# Internal: execute code with captured options temporarily set.
-# This restores options from the main process inside an async worker.
+# Internal: execute code with captured shinyOAuth options temporarily set.
+# This restores package options from the main process inside an async worker.
 # Returns the result of evaluating `code`.
 with_async_options <- function(captured_opts, code) {
   if (is.null(captured_opts) || length(captured_opts) == 0) {
     return(force(code))
   }
-  # Filter out only our internal marker
+  # Filter out internal markers (start with ".")
   opts_to_set <- captured_opts[
-    !grepl("^\\.shinyOAuth\\.", names(captured_opts))
+    !startsWith(names(captured_opts), ".")
   ]
   if (length(opts_to_set) == 0) {
     return(force(code))
