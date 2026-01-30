@@ -227,3 +227,41 @@ testthat::test_that("async_dispatch returns promise when future is fallback", {
 
   testthat::expect_s3_class(p, "promise")
 })
+
+testthat::test_that("async_dispatch returns mirai object when mirai is configured", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  # Use mirai synchronous mode so the test runs in-process
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+
+  # Test that async_dispatch returns a mirai object when mirai is configured
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      x + y
+    }),
+    args = list(x = 5, y = 10)
+  )
+
+  # Should be a mirai object (recvAio)
+  testthat::expect_true(inherits(m, "mirai"))
+
+  # Should be usable with promises::then via as.promise coercion
+  result <- NULL
+  p <- m |>
+    promises::then(function(x) {
+      result <<- x
+    })
+
+  # Wait for resolution
+  deadline <- Sys.time() + 3
+  while (is.null(result) && Sys.time() < deadline) {
+    later::run_now(0.05)
+    Sys.sleep(0.01)
+  }
+
+  testthat::expect_equal(result, 15)
+})

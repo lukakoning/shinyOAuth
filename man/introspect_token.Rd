@@ -19,8 +19,11 @@ introspect_token(
 
 \item{which}{Which token to introspect: "access" (default) or "refresh".}
 
-\item{async}{Logical, default FALSE. If TRUE and promises is available, run
-in background and return a promise resolving to the result list}
+\item{async}{Logical, default FALSE. If TRUE and the \link[mirai:mirai]{mirai::mirai} package is
+available, the operation is performed off the main R session using
+\code{mirai::mirai()} and this function returns a mirai (which implements
+\code{as.promise()}) that resolves to the result list. Requires mirai
+daemons to be configured with \code{\link[mirai:daemons]{mirai::daemons()}}.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when

@@ -23,8 +23,11 @@
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object containing tokens to revoke
 #' @param which Which token to revoke: "refresh" (default) or "access"
-#' @param async Logical, default FALSE. If TRUE and promises is available, run
-#'   in background and return a promise resolving to the result list
+#' @param async Logical, default FALSE. If TRUE and the [mirai] package is
+#'   available, the operation is performed off the main R session using
+#'   `mirai::mirai()` and this function returns a mirai (which implements
+#'   `as.promise()`) that resolves to the result list. Requires mirai
+#'   daemons to be configured with [mirai::daemons()].
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -312,8 +315,11 @@ revoke_token <- function(
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object to introspect
 #' @param which Which token to introspect: "access" (default) or "refresh".
-#' @param async Logical, default FALSE. If TRUE and promises is available, run
-#'   in background and return a promise resolving to the result list
+#' @param async Logical, default FALSE. If TRUE and the [mirai] package is
+#'   available, the operation is performed off the main R session using
+#'   `mirai::mirai()` and this function returns a mirai (which implements
+#'   `as.promise()`) that resolves to the result list. Requires mirai
+#'   daemons to be configured with [mirai::daemons()].
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
