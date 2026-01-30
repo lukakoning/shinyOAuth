@@ -5,6 +5,9 @@ simpler and more efficient asynchronous execution. Use `mirai::daemons()` to
 configure async workers. A 'future' backend configured with `future::plan()`
 is still supported, but 'mirai' takes precedence if both are configured.
 
+* Test suite: fixed inconsistent results of several tests; tests not suitable
+for CRAN now skip on CRAN. Silenced test output messages to avoid confusion.
+
 # shinyOAuth 0.2.0
 
 ## New/improved
