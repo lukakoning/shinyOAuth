@@ -295,10 +295,24 @@ userinfo) on the main R thread. During transient network errors the
 package retries with backoff, and sleeping on the main thread can block
 the Shiny event loop for the worker process.
 
-To avoid blocking, enable async mode and configure a future backend:
+To avoid blocking, enable async mode and configure an async backend. The
+package supports both ‘mirai’ and ‘future’ for async execution (see
+below). The package auto-detects which backend is configured. If both
+are set up, mirai takes precedence (it offers lower overhead and
+non-blocking dispatch).
+
+If you need to keep `async = FALSE`, you may consider reducing retry
+behaviour to limit blocking during provider incidents. See ‘Global
+options’ and then ‘HTTP timeout/retries’.
+
+### ‘mirai’ async backend (recommended)
 
 ``` r
-future::plan(future::multisession)
+# Set up daemons at the top of your app (or in global.R)
+mirai::daemons(2)
+
+# Clean up daemons when the app stops
+onStop(function() mirai::daemons(0))
 
 server <- function(input, output, session) {
   auth <- oauth_module_server(
@@ -312,9 +326,23 @@ server <- function(input, output, session) {
 }
 ```
 
-If you need to keep `async = FALSE`, you may consider reducing retry
-behaviour to limit blocking during provider incidents. See ‘Global
-options’ and then ‘HTTP timeout/retries’.
+### ‘future’ async backend
+
+``` r
+# Set up workers at the top of your app
+future::plan(future::multisession, workers = 2)
+
+server <- function(input, output, session) {
+  auth <- oauth_module_server(
+    "auth",
+    client,
+    auto_redirect = TRUE,
+    async = TRUE # Run token exchange & refresh off the main thread
+  )
+  
+  # ...
+}
+```
 
 ## Logout
 

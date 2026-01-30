@@ -48,12 +48,14 @@ refresh_token(
 
 - async:
 
-  Logical, default FALSE. If TRUE and the `promises` package is
-  available, the refresh is performed off the main R session using
-  [`promises::future_promise()`](https://rstudio.github.io/promises/reference/future_promise.html)
-  and this function returns a promise that resolves to an updated
-  `OAuthToken`. If `promises` is not available, falls back to
-  synchronous behavior
+  Logical, default FALSE. If TRUE and the
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) package
+  is available, the refresh is performed off the main R session using
+  [`mirai::mirai()`](https://mirai.r-lib.org/reference/mirai.html) and
+  this function returns a mirai (which implements `as.promise()`) that
+  resolves to an updated `OAuthToken`. Requires mirai daemons to be
+  configured with
+  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
 
 - introspect:
 

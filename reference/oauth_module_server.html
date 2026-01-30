@@ -110,9 +110,9 @@ manually (use: <code>$request_login()</code>)</p></dd>
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
 <dd><p>If TRUE, performs token exchange and refresh in the background
-using the promises package (future_promise), and updates values when the
-promise resolves. Requires the <a href="https://rstudio.github.io/promises/reference/promises-package.html" class="external-link">promises::promises</a> package and a suitable
-backend to be configured with <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code>.
+using the <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> package, and updates values when the
+promise resolves. Requires the <a href="https://rstudio.github.io/promises/reference/promises-package.html" class="external-link">promises::promises</a> and <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> packages, and
+mirai daemons to be configured with <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>.
 If FALSE (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop; it is thus strongly recommended to set
 <code>async = TRUE</code> in production apps)</p></dd>
@@ -295,9 +295,10 @@ thread. Transient errors are retried by the package's internal
 In Shiny, <code><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep()</a></code> blocks the event loop for the entire worker
 process, potentially freezing UI updates for all sessions on that worker
 during slow provider responses or retry backoff. To keep the UI
-responsive: set <code>async = TRUE</code> so network calls run in a background future
-via the promises package (configure a multisession/multicore backend), or
-reduce/block retries (see <code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>).</p></li>
+responsive: set <code>async = TRUE</code> so network calls run in a background
+process via the <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> package (configure daemons with
+<code>mirai::daemons(n)</code>), or reduce/block retries (see
+<code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>).</p></li>
 <li><p>Browser requirements: the module relies on the browser's Web Crypto API to
 generate a secure, per-session browser token used for state double-submit
 protection. Specifically, the login flow requires

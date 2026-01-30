@@ -113,11 +113,11 @@ access token. If both a new ID token and fresh userinfo are present and
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
-<dd><p>Logical, default FALSE. If TRUE and the <code>promises</code> package is
+<dd><p>Logical, default FALSE. If TRUE and the <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> package is
 available, the refresh is performed off the main R session using
-<code><a href="https://rstudio.github.io/promises/reference/future_promise.html" class="external-link">promises::future_promise()</a></code> and this function returns a promise that
-resolves to an updated <code>OAuthToken</code>. If <code>promises</code> is not available, falls
-back to synchronous behavior</p></dd>
+<code><a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai()</a></code> and this function returns a mirai (which implements
+<code>as.promise()</code>) that resolves to an updated <code>OAuthToken</code>. Requires mirai
+daemons to be configured with <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>.</p></dd>
 
 
 <dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>

@@ -354,10 +354,23 @@ operations (authorization code exchange, refresh, userinfo) on the main
 R thread. During transient network errors the package retries with
 backoff, and sleeping on the main thread can block the Shiny event loop
 for the worker process.</p>
-<p>To avoid blocking, enable async mode and configure a future
-backend:</p>
+<p>To avoid blocking, enable async mode and configure an async backend.
+The package supports both ‘mirai’ and ‘future’ for async execution (see
+below). The package auto-detects which backend is configured. If both
+are set up, mirai takes precedence (it offers lower overhead and
+non-blocking dispatch).</p>
+<p>If you need to keep <code>async = FALSE</code>, you may consider
+reducing retry behaviour to limit blocking during provider incidents.
+See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
+<div class="section level3">
+<h3 id="mirai-async-backend-recommended">‘mirai’ async backend (recommended)<a class="anchor" aria-label="anchor" href="#mirai-async-backend-recommended"></a>
+</h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Set up daemons at the top of your app (or in global.R)</span></span>
+<span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Clean up daemons when the app stops</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
@@ -369,9 +382,25 @@ backend:</p>
 <span>  </span>
 <span>  <span class="co"># ...</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>If you need to keep <code>async = FALSE</code>, you may consider
-reducing retry behaviour to limit blocking during provider incidents.
-See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
+</div>
+<div class="section level3">
+<h3 id="future-async-backend">‘future’ async backend<a class="anchor" aria-label="anchor" href="#future-async-backend"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Set up workers at the top of your app</span></span>
+<span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
+<span>    <span class="st">"auth"</span>,</span>
+<span>    <span class="va">client</span>,</span>
+<span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    async <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Run token exchange &amp; refresh off the main thread</span></span>
+<span>  <span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># ...</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="logout">Logout<a class="anchor" aria-label="anchor" href="#logout"></a>
@@ -379,7 +408,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <p>To log out the user, call <code>auth$logout()</code>. This clears the
 local session and attempts to revoke tokens at the provider (if a
 revocation endpoint is available):</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
@@ -391,7 +420,7 @@ revocation endpoint is available):</p>
 </h3>
 <p>To revoke tokens when the Shiny session ends (e.g., browser tab
 closed, timeout), set <code>revoke_on_session_end = TRUE</code>:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  client <span class="op">=</span> <span class="va">client</span>,</span>

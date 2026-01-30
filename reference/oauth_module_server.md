@@ -55,11 +55,12 @@ oauth_module_server(
 - async:
 
   If TRUE, performs token exchange and refresh in the background using
-  the promises package (future_promise), and updates values when the
-  promise resolves. Requires the
+  the [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html)
+  package, and updates values when the promise resolves. Requires the
   [promises::promises](https://rstudio.github.io/promises/reference/promises-package.html)
-  package and a suitable backend to be configured with
-  [`future::plan()`](https://future.futureverse.org/reference/plan.html).
+  and [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html)
+  packages, and mirai daemons to be configured with
+  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
   If FALSE (default), token exchange and refresh are performed
   synchronously (which may block the Shiny event loop; it is thus
   strongly recommended to set `async = TRUE` in production apps)
@@ -276,8 +277,9 @@ It also contains the following helper functions, mainly useful when
   the event loop for the entire worker process, potentially freezing UI
   updates for all sessions on that worker during slow provider responses
   or retry backoff. To keep the UI responsive: set `async = TRUE` so
-  network calls run in a background future via the promises package
-  (configure a multisession/multicore backend), or reduce/block retries
+  network calls run in a background process via the
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) package
+  (configure daemons with `mirai::daemons(n)`), or reduce/block retries
   (see
   [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)).
 

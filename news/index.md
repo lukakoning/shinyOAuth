@@ -2,6 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- Async backend: the default async backend is now ‘mirai’ (\>= 2.0.0)
+  for simpler and more efficient asynchronous execution. Use
+  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html)
+  to configure async workers. A ‘future’ backend configured with
+  [`future::plan()`](https://future.futureverse.org/reference/plan.html)
+  is still supported, but ‘mirai’ takes precedence if both are
+  configured.
+
 ## shinyOAuth 0.2.0
 
 CRAN release: 2026-01-13
