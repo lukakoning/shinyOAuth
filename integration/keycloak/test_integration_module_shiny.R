@@ -53,19 +53,28 @@ testthat::test_that("Shiny module integration: full code flow against Keycloak",
       url <- values$build_auth_url()
       testthat::expect_true(is.character(url) && nzchar(url))
 
-      parse_query_param <- function(url, name) {
+      parse_query_param <- function(url, name, decode = FALSE) {
         q <- sub("^[^?]*\\?", "", url)
         if (identical(q, url) || !nzchar(q)) {
           return(NA_character_)
         }
         parts <- strsplit(q, "&", fixed = TRUE)[[1]]
         kv <- strsplit(parts, "=", fixed = TRUE)
-        vals <- vapply(
-          kv,
-          function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
-          ""
-        )
-        names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+        if (decode) {
+          vals <- vapply(
+            kv,
+            function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
+            ""
+          )
+          names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+        } else {
+          vals <- vapply(
+            kv,
+            function(p) if (length(p) > 1) p[2] else "",
+            ""
+          )
+          names(vals) <- vapply(kv, function(p) p[1], "")
+        }
         vals[[name]] %||% NA_character_
       }
 
@@ -155,7 +164,7 @@ testthat::test_that("Shiny module integration: full code flow against Keycloak",
       post_resp <- httr2::req_perform(req_post)
 
       # Iterate redirects until we hit our redirect_uri or we stop seeing 3xx
-      redirect_uri <- parse_query_param(url, "redirect_uri")
+      redirect_uri <- parse_query_param(url, "redirect_uri", decode = TRUE)
       testthat::expect_true(is.character(redirect_uri) && nzchar(redirect_uri))
 
       code <- NA_character_
@@ -167,7 +176,7 @@ testthat::test_that("Shiny module integration: full code flow against Keycloak",
           testthat::expect_true(nzchar(loc))
           # If location starts with our redirect_uri, extract code
           if (startsWith(loc, redirect_uri)) {
-            code <- parse_query_param(loc, "code")
+            code <- parse_query_param(loc, "code", decode = TRUE)
             break
           }
           step <- follow_once(cur_resp, cookie_hdr)

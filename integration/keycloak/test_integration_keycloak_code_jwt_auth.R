@@ -57,19 +57,28 @@ maybe_skip_keycloak <- function() {
   )
 }
 
-parse_query_param <- function(url, name) {
+parse_query_param <- function(url, name, decode = FALSE) {
   q <- sub("^[^?]*\\?", "", url)
   if (identical(q, url) || !nzchar(q)) {
     return(NA_character_)
   }
   parts <- strsplit(q, "&", fixed = TRUE)[[1]]
   kv <- strsplit(parts, "=", fixed = TRUE)
-  vals <- vapply(
-    kv,
-    function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
-    ""
-  )
-  names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  if (decode) {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  } else {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) p[2] else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) p[1], "")
+  }
   vals[[name]] %||% NA_character_
 }
 
@@ -172,7 +181,7 @@ for (case in cases) {
           url <- values$build_auth_url()
           testthat::expect_true(is.character(url) && nzchar(url))
           st <- parse_query_param(url, "state")
-          redirect_uri <- parse_query_param(url, "redirect_uri")
+          redirect_uri <- parse_query_param(url, "redirect_uri", decode = TRUE)
           testthat::expect_true(is.character(st) && nzchar(st))
           testthat::expect_true(
             is.character(redirect_uri) && nzchar(redirect_uri)
@@ -236,7 +245,7 @@ for (case in cases) {
               loc <- httr2::resp_header(cur_resp, "location")
               testthat::expect_true(nzchar(loc))
               if (startsWith(loc, redirect_uri)) {
-                code <- parse_query_param(loc, "code")
+                code <- parse_query_param(loc, "code", decode = TRUE)
                 break
               }
               step <- follow_once(cur_resp, cookie_hdr)

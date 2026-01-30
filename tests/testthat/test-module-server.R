@@ -683,7 +683,6 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
 })
 
 testthat::test_that("callback code/state clears query even when token exchange fails", {
-  testthat::skip_on_cran() # State cache timing can be flaky on slow CRAN machines
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)

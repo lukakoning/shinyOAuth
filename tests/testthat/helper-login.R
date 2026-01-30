@@ -1,18 +1,31 @@
 ## Helpers for login/callback tests
 
-parse_query_param <- function(url, name) {
+# NOTE: decode = FALSE by default because most usages extract `state` which
+# is then passed back to .process_query(). Keeping the value URL-encoded
+# ensures shiny::parseQueryString correctly parses special characters.
+# For other parameters like redirect_uri or code, pass decode = TRUE.
+parse_query_param <- function(url, name, decode = FALSE) {
   q <- sub("^[^?]*\\?", "", url)
   if (identical(q, url) || !nzchar(q)) {
     return(NA_character_)
   }
   parts <- strsplit(q, "&", fixed = TRUE)[[1]]
   kv <- strsplit(parts, "=", fixed = TRUE)
-  vals <- vapply(
-    kv,
-    function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
-    ""
-  )
-  names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  if (decode) {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  } else {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) p[2] else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) p[1], "")
+  }
   vals[[name]] %||% NA_character_
 }
 

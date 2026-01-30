@@ -42,19 +42,28 @@ maybe_skip_keycloak <- function() {
   )
 }
 
-parse_query_param <- function(url, name) {
+parse_query_param <- function(url, name, decode = FALSE) {
   q <- sub("^[^?]*\\?", "", url)
   if (identical(q, url) || !nzchar(q)) {
     return(NA_character_)
   }
   parts <- strsplit(q, "&", fixed = TRUE)[[1]]
   kv <- strsplit(parts, "=", fixed = TRUE)
-  vals <- vapply(
-    kv,
-    function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
-    ""
-  )
-  names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  if (decode) {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) utils::URLdecode(p[2]) else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) utils::URLdecode(p[1]), "")
+  } else {
+    vals <- vapply(
+      kv,
+      function(p) if (length(p) > 1) p[2] else "",
+      ""
+    )
+    names(vals) <- vapply(kv, function(p) p[1], "")
+  }
   vals[[name]] %||% NA_character_
 }
 
@@ -148,14 +157,14 @@ perform_login_form <- function(auth_url) {
   # Follow redirects up to 5 times looking for code param at redirect_uri
   code <- NA_character_
   cur_resp <- post_resp
-  redirect_uri <- parse_query_param(auth_url, "redirect_uri")
+  redirect_uri <- parse_query_param(auth_url, "redirect_uri", decode = TRUE)
   for (i in seq_len(5)) {
     status <- httr2::resp_status(cur_resp)
     if (status >= 300 && status < 400) {
       loc <- httr2::resp_header(cur_resp, "location")
       stopifnot(nzchar(loc))
       if (!is.na(redirect_uri) && startsWith(loc, redirect_uri)) {
-        code <- parse_query_param(loc, "code")
+        code <- parse_query_param(loc, "code", decode = TRUE)
         break
       }
       step <- follow_once(cur_resp, cookie_hdr)
