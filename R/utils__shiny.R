@@ -257,7 +257,12 @@ async_dispatch <- function(expr, args) {
   if (future_available) {
     # Build environment with captured args for future
     env <- list2env(args, parent = globalenv())
-    return(promises::future_promise(expr = expr, envir = env))
+    # expr is already a quoted expression, so disable substitution
+    return(promises::future_promise(
+      expr = expr,
+      envir = env,
+      substitute = FALSE
+    ))
   }
 
   # Neither backend is properly configured
