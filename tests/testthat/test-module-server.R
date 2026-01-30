@@ -188,6 +188,7 @@ testthat::test_that("authenticated flips FALSE after expiry without poking react
   # re-evaluation logic. Since invalidateLater() timers don't fire reliably in
   # testServer, we verify the underlying behavior: after time passes, any
   # reactive flush should pick up the expired state.
+  testthat::skip_on_cran() # Timing-sensitive test; may be flaky on slow CRAN machines
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -237,6 +238,7 @@ testthat::test_that("authenticated flips FALSE after expiry without poking react
 
 testthat::test_that("authenticated flips FALSE after reauth_after_seconds without poking", {
   # Same approach as expiry test - verify the logic works when time passes.
+  testthat::skip_on_cran() # Timing-sensitive test; may be flaky on slow CRAN machines
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -681,6 +683,7 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
 })
 
 testthat::test_that("callback code/state clears query even when token exchange fails", {
+  testthat::skip_on_cran() # State cache timing can be flaky on slow CRAN machines
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)

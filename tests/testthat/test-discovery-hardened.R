@@ -1,5 +1,6 @@
 testthat::test_that("discovery enforces absolute endpoints and host pinning; allows loopback HTTP via is_ok_host", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
 
   app$get("/.well-known/openid-configuration", function(req, res) {
@@ -68,6 +69,7 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
 
 testthat::test_that("discovery enforces JWKS host pinning early", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -95,6 +97,7 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
 
 testthat::test_that("allowed_hosts option allows cross-host endpoints", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -120,6 +123,7 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
 
 testthat::test_that("discovery rejects non-JSON content-type", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_header("content-type", "text/plain")$send("ok")
@@ -135,6 +139,7 @@ testthat::test_that("discovery rejects non-JSON content-type", {
 
 testthat::test_that("PKCE advisory does not block provider when S256 not advertised", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(

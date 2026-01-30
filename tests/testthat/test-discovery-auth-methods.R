@@ -1,5 +1,6 @@
 testthat::test_that("discovery selects conservative client auth methods (basic/post) and avoids JWT by default", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -27,6 +28,7 @@ testthat::test_that("discovery selects conservative client auth methods (basic/p
 
 testthat::test_that("discovery returns body when only client_secret_post is advertised", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -50,6 +52,7 @@ testthat::test_that("discovery returns body when only client_secret_post is adve
 
 testthat::test_that("discovery with 'none' requires PKCE and uses body when enabled", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -80,6 +83,7 @@ testthat::test_that("discovery with 'none' requires PKCE and uses body when enab
 
 testthat::test_that("JWT-only advertisement requires explicit token_auth_style", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(
@@ -113,6 +117,7 @@ testthat::test_that("JWT-only advertisement requires explicit token_auth_style",
 
 testthat::test_that("when methods are not advertised, fall back to header (historic default)", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
     res$set_status(200)$set_type("application/json")$send(

@@ -47,6 +47,7 @@ test_that("req_no_redirect passes through non-httr2 objects", {
 
 test_that("token exchange does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -122,6 +123,7 @@ test_that("token exchange does not follow redirects", {
 
 test_that("token refresh does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -190,6 +192,7 @@ test_that("token refresh does not follow redirects", {
 
 test_that("userinfo fetch does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -243,6 +246,7 @@ test_that("userinfo fetch does not follow redirects", {
 
 test_that("token introspection does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -305,6 +309,7 @@ test_that("token introspection does not follow redirects", {
 
 test_that("token revocation does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -369,6 +374,7 @@ test_that("token revocation does not follow redirects", {
 
 test_that("OIDC discovery does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
@@ -405,6 +411,7 @@ test_that("OIDC discovery does not follow redirects", {
 
 test_that("userinfo follows redirects when shinyOAuth.allow_redirect = TRUE", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   withr::local_options(list(shinyOAuth.allow_redirect = TRUE))
 
@@ -469,6 +476,7 @@ test_that("userinfo follows redirects when shinyOAuth.allow_redirect = TRUE", {
 
 test_that("token revocation follows redirects when shinyOAuth.allow_redirect = TRUE", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   withr::local_options(list(shinyOAuth.allow_redirect = TRUE))
 

@@ -1,5 +1,6 @@
 test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
@@ -60,6 +61,7 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
 
 test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {
@@ -129,6 +131,7 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
 
 test_that("userinfo success populates token userinfo when required", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$post("/token", function(req, res) {

@@ -197,6 +197,7 @@ test_that("parse_token_response signals parse error for invalid json", {
 
 test_that("req_with_retry returns 400 response immediately (no retry)", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$locals$attempts <- 0
@@ -238,6 +239,7 @@ test_that("req_with_retry returns 400 response immediately (no retry)", {
 
 test_that("req_with_retry returns 401 response immediately (no retry)", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$locals$attempts <- 0
@@ -274,6 +276,7 @@ test_that("req_with_retry returns 401 response immediately (no retry)", {
 
 test_that("req_with_retry retries 503 and returns last response", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$locals$attempts <- 0
@@ -317,6 +320,7 @@ test_that("req_with_retry retries 503 and returns last response", {
 
 test_that("req_with_retry succeeds on retry after transient 500", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   app$locals$attempts <- 0

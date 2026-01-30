@@ -1,5 +1,6 @@
 test_that("fetch_jwks does not cache on invalid JSON", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
   base <- NULL
@@ -92,6 +93,7 @@ test_that("validate_jwks_host_matches_issuer enforces policy only when configure
 
 test_that("fetch_jwks evicts poisoned cache on pin mismatch even if refetch fails", {
   testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   # Good JWKS the server will return
   good_rsa <- list(kty = "RSA", n = "n-good", e = "AQAB", kid = "good")
