@@ -651,11 +651,13 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
       query_bytes <- nchar(query, type = "bytes")
 
       # Too-small cap rejects the query before parsing continues
-      withr::local_options(list(
-        shinyOAuth.callback_max_query_bytes = query_bytes - 1
-      ))
-      values$.process_query(query)
-      session$flushReact()
+      withr::with_options(
+        list(shinyOAuth.callback_max_query_bytes = query_bytes - 1),
+        {
+          values$.process_query(query)
+          session$flushReact()
+        }
+      )
       testthat::expect_identical(values$error, "invalid_callback_query")
       testthat::expect_match(values$error_description %||% "", "query string")
       testthat::expect_null(values$token)
@@ -664,18 +666,20 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
       values$error <- NULL
       values$error_description <- NULL
       called <- FALSE
-      withr::local_options(list(
-        shinyOAuth.callback_max_query_bytes = query_bytes + 1
-      ))
-      testthat::with_mocked_bindings(
-        swap_code_for_token_set = function(client, code, code_verifier) {
-          called <<- TRUE
-          list(access_token = "t", expires_in = 3600)
-        },
-        .package = "shinyOAuth",
+      withr::with_options(
+        list(shinyOAuth.callback_max_query_bytes = query_bytes + 1),
         {
-          values$.process_query(query)
-          session$flushReact()
+          testthat::with_mocked_bindings(
+            swap_code_for_token_set = function(client, code, code_verifier) {
+              called <<- TRUE
+              list(access_token = "t", expires_in = 3600)
+            },
+            .package = "shinyOAuth",
+            {
+              values$.process_query(query)
+              session$flushReact()
+            }
+          )
         }
       )
       testthat::expect_true(called)
@@ -741,7 +745,17 @@ testthat::test_that("callback code/state clears query even when token exchange f
         }
       )
 
-      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_identical(
+        values$error,
+        "token_exchange_error",
+        info = paste0(
+          "error=",
+          values$error,
+          "; ",
+          "desc=",
+          values$error_description %||% "(none)"
+        )
+      )
       testthat::expect_true(
         any(seen == "shinyOAuth:clearQueryAndFixTitle"),
         info = "Expected clearQueryAndFixTitle on token-exchange error"
