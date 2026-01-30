@@ -33,9 +33,9 @@ instead, the returned object exposes helpers for triggering login
 manually (use: \verb{$request_login()})}
 
 \item{async}{If TRUE, performs token exchange and refresh in the background
-using the promises package (future_promise), and updates values when the
-promise resolves. Requires the \link[promises:promises-package]{promises::promises} package and a suitable
-backend to be configured with \code{\link[future:plan]{future::plan()}}.
+using the \link[mirai:mirai]{mirai::mirai} package, and updates values when the
+promise resolves. Requires the \link[promises:promises-package]{promises::promises} and \link[mirai:mirai]{mirai::mirai} packages, and
+mirai daemons to be configured with \code{\link[mirai:daemons]{mirai::daemons()}}.
 If FALSE (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop; it is thus strongly recommended to set
 \code{async = TRUE} in production apps)}
@@ -216,9 +216,10 @@ thread. Transient errors are retried by the package's internal
 In Shiny, \code{Sys.sleep()} blocks the event loop for the entire worker
 process, potentially freezing UI updates for all sessions on that worker
 during slow provider responses or retry backoff. To keep the UI
-responsive: set \code{async = TRUE} so network calls run in a background future
-via the promises package (configure a multisession/multicore backend), or
-reduce/block retries (see \code{vignette("usage", package = "shinyOAuth")}).
+responsive: set \code{async = TRUE} so network calls run in a background
+process via the \link[mirai:mirai]{mirai::mirai} package (configure daemons with
+\code{mirai::daemons(n)}), or reduce/block retries (see
+\code{vignette("usage", package = "shinyOAuth")}).
 \item Browser requirements: the module relies on the browser's Web Crypto API to
 generate a secure, per-session browser token used for state double-submit
 protection. Specifically, the login flow requires

@@ -1,20 +1,14 @@
 testthat::test_that("async login flow resolves token and sets flags", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  # Use in-process futures so mocks apply within future_promise
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    try(future::plan(future::sequential), silent = TRUE)
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
-  }
+  # Use mirai synchronous mode so mocks apply within mirai calls
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -69,20 +63,14 @@ testthat::test_that("async login flow resolves token and sets flags", {
 testthat::test_that("async login failure surfaces error and keeps authenticated FALSE", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  # Ensure in-process future so the mock applies
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    try(future::plan(future::sequential), silent = TRUE)
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
-  }
+  # Use mirai synchronous mode so mocks apply
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -132,7 +120,7 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
 testthat::test_that("pending callback resumes after cookie arrives (async)", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   # Do not skip cookie handling; we want to exercise pending_callback path
@@ -145,15 +133,10 @@ testthat::test_that("pending callback resumes after cookie arrives (async)", {
   enc <- parse_query_param(url_pre, "state")
   testthat::expect_true(is.character(enc) && nzchar(enc))
 
-  # Ensure in-process futures
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    try(future::plan(future::sequential), silent = TRUE)
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
-  }
+  # Reset any existing mirai state first, then set sync mode
+  tryCatch(mirai::daemons(0), error = function(...) NULL)
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   shiny::testServer(
     app = oauth_module_server,
@@ -195,4 +178,29 @@ testthat::test_that("pending callback resumes after cookie arrives (async)", {
       testthat::expect_true(isTRUE(values$authenticated))
     }
   )
+})
+
+testthat::test_that("async_dispatch returns promise when future is fallback", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("future")
+
+  # Ensure mirai is NOT configured
+  if (rlang::is_installed("mirai")) {
+    tryCatch(mirai::daemons(0), error = function(...) NULL)
+  }
+
+  # Use future sequential plan
+  future::plan(future::sequential)
+  withr::defer(future::plan(future::sequential))
+
+  # Test that async_dispatch returns a promise when falling back to future
+  p <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      x + y
+    }),
+    args = list(x = 5, y = 10)
+  )
+
+  testthat::expect_s3_class(p, "promise")
 })

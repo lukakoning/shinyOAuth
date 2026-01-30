@@ -116,7 +116,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
 testthat::test_that("introspect_token async returns a resolved promise", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -140,17 +140,13 @@ testthat::test_that("introspect_token async returns a resolved promise", {
     .package = "shinyOAuth"
   )
 
-  # Force sequential plan to keep mocked bindings in-process
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    try(future::plan(future::sequential), silent = TRUE)
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
-  }
+  # Use mirai synchronous mode to keep mocked bindings in-process
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   p <- introspect_token(cli, t, which = "access", async = TRUE)
+  # mirai objects implement as.promise() so convert explicitly
+  p <- promises::as.promise(p)
   testthat::expect_s3_class(p, "promise")
   val <- NULL
   p$then(function(x) {

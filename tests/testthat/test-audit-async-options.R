@@ -1,25 +1,26 @@
 testthat::test_that("audit hook is called from async worker when options are propagated", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  # Use multisession to test true cross-process option propagation.
-  # Note: on systems where multisession isn't available, this will
+  # Use mirai daemons to test true cross-process option propagation.
+  # Note: on systems where daemons aren't available, this will
 
-  # fall back to sequential (which still validates the code path).
-  old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-  tryCatch(
-    future::plan(future::multisession, workers = 2),
-    error = function(...) {
-      try(future::plan(future::sequential), silent = TRUE)
-    }
+  # fall back to sync mode (which still validates the code path).
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
   )
-  withr::defer({
-    if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-  })
+  if (!ok) {
+    mirai::daemons(sync = TRUE)
+  }
+  withr::defer(mirai::daemons(0))
 
   # Capture audit events via the audit hook. This hook is set in the main
 
@@ -196,18 +197,15 @@ testthat::test_that("is_async_worker correctly detects worker context", {
   testthat::expect_true(is.na(shinyOAuth:::is_async_worker(NULL)))
 })
 
-testthat::test_that("all options are propagated to async workers via future_promise", {
+testthat::test_that("all options are propagated to async workers via mirai", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
-  # Use sequential plan so the test runs in-process (mocks apply)
-  old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-  try(future::plan(future::sequential), silent = TRUE)
-  withr::defer({
-    if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-  })
+  # Use mirai sync mode so the test runs in-process (mocks apply)
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   # Set a variety of options: shinyOAuth options, custom options, and functions
   custom_fn_called <- FALSE
@@ -242,7 +240,7 @@ testthat::test_that("all options are propagated to async workers via future_prom
   testthat::expect_equal(captured_opts[["my.app.list"]], list(a = 1, b = 2))
   testthat::expect_true(is.function(captured_opts[["my.app.callback"]]))
 
-  # Simulate what happens in a future_promise: options are restored in worker
+  # Simulate what happens in a mirai: options are restored in worker
   # Clear the options first to simulate a fresh worker environment
   withr::local_options(list(
     shinyOAuth.timeout = NULL,
@@ -276,18 +274,15 @@ testthat::test_that("all options are propagated to async workers via future_prom
   testthat::expect_true(custom_fn_called)
 })
 
-testthat::test_that("options propagation works with actual future_promise", {
+testthat::test_that("options propagation works with actual mirai", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
-  # Use sequential so we can verify behavior without true parallelism
-  old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-  try(future::plan(future::sequential), silent = TRUE)
-  withr::defer({
-    if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-  })
+  # Use sync mode so we can verify behavior without true parallelism
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   # Set custom options
   withr::local_options(list(
@@ -296,25 +291,35 @@ testthat::test_that("options propagation works with actual future_promise", {
     test.async.fn = function() "function_result"
   ))
 
-  # Capture options before spawning the future
+  # Capture options before spawning the mirai
   captured_opts <- shinyOAuth:::capture_async_options()
   main_pid <- Sys.getpid()
 
-  # Create a future_promise that checks options inside the worker
-  promise_result <- NULL
-  p <- promises::future_promise({
-    shinyOAuth:::with_async_options(captured_opts, {
-      list(
-        value = getOption("test.async.value"),
-        number = getOption("test.async.number"),
-        fn_result = getOption("test.async.fn")(),
-        worker_pid = Sys.getpid(),
-        main_pid_from_opts = captured_opts[[".shinyOAuth.main_process_id"]]
-      )
-    })
-  })
+  # Capture the function for use in mirai
+  .with_async_options <- shinyOAuth:::with_async_options
 
-  # Wait for promise to resolve
+  # Create a mirai that checks options inside the worker
+  promise_result <- NULL
+  m <- mirai::mirai(
+    {
+      .with_async_options(captured_opts, {
+        list(
+          value = getOption("test.async.value"),
+          number = getOption("test.async.number"),
+          fn_result = getOption("test.async.fn")(),
+          worker_pid = Sys.getpid(),
+          main_pid_from_opts = captured_opts[[".shinyOAuth.main_process_id"]]
+        )
+      })
+    },
+    .args = list(
+      .with_async_options = .with_async_options,
+      captured_opts = captured_opts
+    )
+  )
+
+  # Wait for mirai to resolve
+  p <- promises::as.promise(m)
   promises::then(p, function(result) {
     promise_result <<- result
   })

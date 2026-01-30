@@ -21,9 +21,10 @@
 #'   In Shiny, `Sys.sleep()` blocks the event loop for the entire worker
 #'   process, potentially freezing UI updates for all sessions on that worker
 #'   during slow provider responses or retry backoff. To keep the UI
-#'   responsive: set `async = TRUE` so network calls run in a background future
-#'   via the promises package (configure a multisession/multicore backend), or
-#'   reduce/block retries (see `vignette("usage", package = "shinyOAuth")`).
+#'   responsive: set `async = TRUE` so network calls run in a background
+#'   process via the [mirai] package (configure daemons with
+#'   `mirai::daemons(n)`), or reduce/block retries (see
+#'   `vignette("usage", package = "shinyOAuth")`).
 #'
 #' - Browser requirements: the module relies on the browser's Web Crypto API to
 #'   generate a secure, per-session browser token used for state double-submit
@@ -55,9 +56,9 @@
 #'   manually (use: `$request_login()`)
 #'
 #' @param async If TRUE, performs token exchange and refresh in the background
-#'   using the promises package (future_promise), and updates values when the
-#'   promise resolves. Requires the [promises] package and a suitable
-#'   backend to be configured with [future::plan()].
+#'   using the [mirai] package, and updates values when the
+#'   promise resolves. Requires the [promises] and [mirai] packages, and
+#'   mirai daemons to be configured with [mirai::daemons()].
 #'   If FALSE (default), token exchange and refresh are performed synchronously
 #'   (which may block the Shiny event loop; it is thus strongly recommended to set
 #'   `async = TRUE` in production apps)
@@ -325,35 +326,65 @@ oauth_module_server <- function(
         c(
           "[{.pkg shinyOAuth}] - {.strong Consider using `async = TRUE` for responsive UIs}",
           "!" = "{.code oauth_module_server(async = FALSE)} may block the Shiny event loop during network calls, potentially freezing the UI",
-          "i" = "Consider setting `async = TRUE` and configuring a {.pkg future} backend (e.g., {.code future::plan(future::multisession)})"
+          "i" = "Consider setting `async = TRUE` and configuring {.pkg mirai} daemons (e.g., {.code mirai::daemons(2)})"
         ),
         .frequency = "once",
         .frequency_id = "oauth_module_server_no_async"
       )
     }
   } else {
-    # Ensure dependencies are available
-    rlang::check_installed(
-      c("promises", "future"),
-      reason = "to use `async = TRUE` in `oauth_module_server()`"
-    )
+    # Ensure at least one async backend is available
+    # Prefer mirai, but also support future for backwards compatibility
+    backend <- async_backend_available()
 
-    # Verify a future plan with workers is set; otherwise warn
-    n_workers <- tryCatch(future::nbrOfWorkers(), error = function(...) {
-      NA_integer_
-    })
-    if (!is.finite(n_workers) || is.na(n_workers) || n_workers < 1) {
-      rlang::warn(c(
-        "[{.pkg shinyOAuth}] - {.strong No future workers available for async operations}",
-        "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} workers are available ({.code future::nbrOfWorkers()} < 1); calls will run synchronously",
-        "i" = "Set a plan with at least one worker, e.g., {.code future::plan(multisession, workers = 2)}"
-      ))
-    } else if (n_workers == 1 && !.is_test()) {
-      rlang::warn(c(
-        "[{.pkg shinyOAuth}] - {.strong Consider using multiple future workers for concurrency}",
-        "!" = "{.code oauth_module_server(async = TRUE)} but with a single future worker ({.code future::nbrOfWorkers()} == 1)",
-        "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more workers"
-      ))
+    if (is.null(backend)) {
+      # No backend available - check what's missing to provide helpful message
+      if (rlang::is_installed("mirai")) {
+        rlang::warn(c(
+          "[{.pkg shinyOAuth}] - {.strong No async backend configured}",
+          "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg mirai} daemons are connected",
+          "i" = "Set up daemons: {.code mirai::daemons(2)} at the top of your app",
+          "i" = "Or configure a future plan: {.code future::plan(future::multisession)}"
+        ))
+      } else if (
+        rlang::is_installed("future") && rlang::is_installed("promises")
+      ) {
+        rlang::warn(c(
+          "[{.pkg shinyOAuth}] - {.strong No async backend configured}",
+          "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} plan is set",
+          "i" = "Set up a future plan: {.code future::plan(future::multisession)}",
+          "i" = "Or use mirai (preferred): {.code mirai::daemons(2)}"
+        ))
+      } else {
+        rlang::check_installed(
+          "mirai",
+          reason = "to use `async = TRUE` in `oauth_module_server()`. Alternatively, install `promises` and `future`."
+        )
+      }
+    } else if (backend == "mirai") {
+      # mirai is available - check if we have enough daemons
+      n_connections <- tryCatch(
+        mirai::status()$connections,
+        error = function(...) 0L
+      )
+      if (n_connections == 1 && !.is_test()) {
+        rlang::warn(c(
+          "[{.pkg shinyOAuth}] - {.strong Consider using multiple mirai daemons for concurrency}",
+          "!" = "{.code oauth_module_server(async = TRUE)} but with a single mirai daemon",
+          "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more daemons"
+        ))
+      }
+    } else if (backend == "future" && !.is_test()) {
+      # future is available - inform user that mirai is preferred
+      rlang::inform(
+        c(
+          "[{.pkg shinyOAuth}] - Using {.pkg future} async backend",
+          "i" = "Consider migrating to {.pkg mirai} for lower overhead and non-blocking dispatch",
+          "i" = "See {.url https://github.com/shikokuchuo/mirai} for migration guide"
+        ),
+        .frequency = "once",
+        .frequency_id = "oauth_module_server_future_backend"
+      )
     }
   }
 
@@ -1308,7 +1339,7 @@ oauth_module_server <- function(
       tryCatch(
         {
           res <- if (isTRUE(async)) {
-            # Use future_promise to move work off the main thread. To avoid
+            # Use mirai to move work off the main thread. To avoid
             # cross-process cache visibility issues with client@state_store,
             # pre-decrypt the payload and prefetch+remove the state_store entry on the
             # main thread, and pass these to handle_callback.
@@ -1366,27 +1397,43 @@ oauth_module_server <- function(
             # Capture internal functions to avoid ::: in async worker
             .with_async_options <- with_async_options
             .with_async_session_context <- with_async_session_context
+            .handle_callback <- handle_callback
 
-            promises::future_promise({
-              # Restore shinyOAuth.* options in the async worker
-              .with_async_options(captured_async_options, {
-                # Set async context so errors include session info with is_async = TRUE
-                .with_async_session_context(
-                  captured_shiny_session,
-                  {
-                    handle_callback(
-                      oauth_client = client_for_worker,
-                      code = code,
-                      payload = state,
-                      browser_token = captured_browser_token,
-                      decrypted_payload = pre_payload,
-                      state_store_values = pre_state,
-                      shiny_session = captured_shiny_session
-                    )
-                  }
-                )
-              })
-            })
+            async_dispatch(
+              expr = quote({
+                # Restore shinyOAuth.* options in the async worker
+                .with_async_options(captured_async_options, {
+                  # Set async context so errors include session info with is_async = TRUE
+                  .with_async_session_context(
+                    captured_shiny_session,
+                    {
+                      .handle_callback(
+                        oauth_client = client_for_worker,
+                        code = code,
+                        payload = state,
+                        browser_token = captured_browser_token,
+                        decrypted_payload = pre_payload,
+                        state_store_values = pre_state,
+                        shiny_session = captured_shiny_session
+                      )
+                    }
+                  )
+                })
+              }),
+              args = list(
+                .with_async_options = .with_async_options,
+                .with_async_session_context = .with_async_session_context,
+                .handle_callback = .handle_callback,
+                captured_async_options = captured_async_options,
+                captured_shiny_session = captured_shiny_session,
+                client_for_worker = client_for_worker,
+                code = code,
+                state = state,
+                captured_browser_token = captured_browser_token,
+                pre_payload = pre_payload,
+                pre_state = pre_state
+              )
+            )
           } else {
             handle_callback(
               client,

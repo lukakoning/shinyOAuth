@@ -1,18 +1,14 @@
 testthat::test_that("audit events from async worker include shiny session token", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  # Use in-process futures so mocks apply within future_promise
-  old_plan <- NULL
-  old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-  try(future::plan(future::sequential), silent = TRUE)
-  withr::defer({
-    if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-  })
+  # Use mirai synchronous mode so mocks apply within mirai calls
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
 
   # Capture audit events via the audit hook
   audit_events <- list()

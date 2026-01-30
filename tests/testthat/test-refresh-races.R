@@ -1,31 +1,25 @@
 testthat::test_that("proactive async refresh may trigger multiple attempts but settles to a valid token", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE
   ))
 
-  # Configure a background plan; fall back to sequential if multisession fails
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    ok <- tryCatch(
-      {
-        future::plan(future::multisession, workers = 2)
-        TRUE
-      },
-      error = function(...) FALSE
-    )
-    if (!ok) {
-      try(future::plan(future::sequential), silent = TRUE)
-    }
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
+  # Configure mirai daemons for async; fall back to sync mode if needed
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  if (!ok) {
+    mirai::daemons(sync = TRUE)
   }
+  withr::defer(mirai::daemons(0))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -64,16 +58,21 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
           shiny_session = NULL
         ) {
           calls <<- calls + 1L
+          call_num <- calls
+          tok <- token
           # Simulate a slow provider so scheduler may trigger another attempt
-          promises::future_promise({
-            Sys.sleep(0.4)
-            OAuthToken(
-              access_token = paste0("new-", calls),
-              refresh_token = token@refresh_token,
-              id_token = token@id_token,
-              expires_at = as.numeric(Sys.time()) + 3600
-            )
-          })
+          mirai::mirai(
+            {
+              Sys.sleep(0.4)
+              shinyOAuth::OAuthToken(
+                access_token = paste0("new-", call_num),
+                refresh_token = tok@refresh_token,
+                id_token = tok@id_token,
+                expires_at = as.numeric(Sys.time()) + 3600
+              )
+            },
+            .args = list(call_num = call_num, tok = tok)
+          )
         },
         .package = "shinyOAuth",
         {
@@ -109,31 +108,25 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
   # This prevents unnecessary redirects under slow IdP/network conditions.
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE
   ))
 
-  # Configure a background plan; fall back to sequential if multisession fails
-  old_plan <- NULL
-  if (requireNamespace("future", quietly = TRUE)) {
-    old_plan <- tryCatch(future::plan(), error = function(...) NULL)
-    ok <- tryCatch(
-      {
-        future::plan(future::multisession, workers = 2)
-        TRUE
-      },
-      error = function(...) FALSE
-    )
-    if (!ok) {
-      try(future::plan(future::sequential), silent = TRUE)
-    }
-    withr::defer({
-      if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-    })
+  # Configure mirai daemons for async; fall back to sync mode if needed
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  if (!ok) {
+    mirai::daemons(sync = TRUE)
   }
+  withr::defer(mirai::daemons(0))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -175,16 +168,21 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
           shiny_session = NULL
         ) {
           calls <<- calls + 1L
+          call_num <- calls
+          tok <- token
           # Simulate a slow provider (longer than token expiry)
-          promises::future_promise({
-            Sys.sleep(2.5) # token expires during this sleep
-            OAuthToken(
-              access_token = paste0("refreshed-", calls),
-              refresh_token = token@refresh_token,
-              id_token = token@id_token,
-              expires_at = as.numeric(Sys.time()) + 3600
-            )
-          })
+          mirai::mirai(
+            {
+              Sys.sleep(2.5) # token expires during this sleep
+              shinyOAuth::OAuthToken(
+                access_token = paste0("refreshed-", call_num),
+                refresh_token = tok@refresh_token,
+                id_token = tok@id_token,
+                expires_at = as.numeric(Sys.time()) + 3600
+              )
+            },
+            .args = list(call_num = call_num, tok = tok)
+          )
         },
         .package = "shinyOAuth",
         {

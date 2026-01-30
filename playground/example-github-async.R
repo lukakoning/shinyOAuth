@@ -4,8 +4,10 @@ options(shinyOAuth.print_errors = TRUE)
 options(shinyOAuth.print_traceback = TRUE)
 
 library(shiny)
+library(mirai)
 
-future::plan(future::multisession(workers = 2))
+# Set up mirai daemons for async operations
+mirai::daemons(2)
 
 # Configure provider and client (GitHub)
 provider <- oauth_provider_github()
