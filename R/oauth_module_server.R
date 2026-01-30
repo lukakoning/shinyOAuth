@@ -1394,20 +1394,17 @@ oauth_module_server <- function(
             # Build a client clone for the worker; reuse existing state_store (already consumed)
             client_for_worker <- client
 
-            # Capture internal functions to avoid ::: in async worker
-            .with_async_options <- with_async_options
-            .with_async_session_context <- with_async_session_context
-            .handle_callback <- handle_callback
-
+            # Use namespace-qualified calls to avoid passing function closures to mirai
+            # (functions carry their enclosing environments, causing serialization overhead)
             async_dispatch(
               expr = quote({
                 # Restore shinyOAuth.* options in the async worker
-                .with_async_options(captured_async_options, {
+                shinyOAuth:::with_async_options(captured_async_options, {
                   # Set async context so errors include session info with is_async = TRUE
-                  .with_async_session_context(
+                  shinyOAuth:::with_async_session_context(
                     captured_shiny_session,
                     {
-                      .handle_callback(
+                      shinyOAuth::handle_callback(
                         oauth_client = client_for_worker,
                         code = code,
                         payload = state,
@@ -1421,9 +1418,6 @@ oauth_module_server <- function(
                 })
               }),
               args = list(
-                .with_async_options = .with_async_options,
-                .with_async_session_context = .with_async_session_context,
-                .handle_callback = .handle_callback,
                 captured_async_options = captured_async_options,
                 captured_shiny_session = captured_shiny_session,
                 client_for_worker = client_for_worker,

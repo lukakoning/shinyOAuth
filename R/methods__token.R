@@ -86,18 +86,15 @@ revoke_token <- function(
     # available in the worker process.
     captured_async_options <- capture_async_options()
 
-    # Capture internal functions to avoid ::: in async worker
-    .with_async_options <- with_async_options
-    .with_async_session_context <- with_async_session_context
-    .revoke_token <- revoke_token
-
+    # Use namespace-qualified calls to avoid passing function closures to mirai
+    # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
         # Restore shinyOAuth.* options in the async worker
-        .with_async_options(captured_async_options, {
+        shinyOAuth:::with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          .with_async_session_context(captured_shiny_session, {
-            .revoke_token(
+          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+            shinyOAuth::revoke_token(
               oauth_client = oauth_client,
               oauth_token = oauth_token,
               which = which,
@@ -108,9 +105,6 @@ revoke_token <- function(
         })
       }),
       args = list(
-        .with_async_options = .with_async_options,
-        .with_async_session_context = .with_async_session_context,
-        .revoke_token = .revoke_token,
         captured_async_options = captured_async_options,
         captured_shiny_session = captured_shiny_session,
         oauth_client = oauth_client,
@@ -419,18 +413,15 @@ introspect_token <- function(
     # available in the worker process.
     captured_async_options <- capture_async_options()
 
-    # Capture internal functions to avoid ::: in async worker
-    .with_async_options <- with_async_options
-    .with_async_session_context <- with_async_session_context
-    .introspect_token <- introspect_token
-
+    # Use namespace-qualified calls to avoid passing function closures to mirai
+    # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
         # Restore shinyOAuth.* options in the async worker
-        .with_async_options(captured_async_options, {
+        shinyOAuth:::with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          .with_async_session_context(captured_shiny_session, {
-            .introspect_token(
+          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+            shinyOAuth::introspect_token(
               oauth_client = oauth_client,
               oauth_token = oauth_token,
               which = which,
@@ -441,9 +432,6 @@ introspect_token <- function(
         })
       }),
       args = list(
-        .with_async_options = .with_async_options,
-        .with_async_session_context = .with_async_session_context,
-        .introspect_token = .introspect_token,
         captured_async_options = captured_async_options,
         captured_shiny_session = captured_shiny_session,
         oauth_client = oauth_client,
@@ -711,18 +699,15 @@ refresh_token <- function(
     # available in the worker process.
     captured_async_options <- capture_async_options()
 
-    # Capture internal functions to avoid ::: in async worker
-    .with_async_options <- with_async_options
-    .with_async_session_context <- with_async_session_context
-    .refresh_token <- refresh_token
-
+    # Use namespace-qualified calls to avoid passing function closures to mirai
+    # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
         # Restore shinyOAuth.* options in the async worker
-        .with_async_options(captured_async_options, {
+        shinyOAuth:::with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          .with_async_session_context(captured_shiny_session, {
-            .refresh_token(
+          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+            shinyOAuth::refresh_token(
               oauth_client = oauth_client,
               token = token,
               async = FALSE,
@@ -733,9 +718,6 @@ refresh_token <- function(
         })
       }),
       args = list(
-        .with_async_options = .with_async_options,
-        .with_async_session_context = .with_async_session_context,
-        .refresh_token = .refresh_token,
         captured_async_options = captured_async_options,
         captured_shiny_session = captured_shiny_session,
         oauth_client = oauth_client,

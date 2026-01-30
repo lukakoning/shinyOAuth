@@ -2,6 +2,9 @@
 
 * Prevent 'mirai' warning spam about 'stats' maybe not being available in workers.
 
+* Reduce serialization overhead towards async workers by using certain functions
+from the package namespace directly.
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
