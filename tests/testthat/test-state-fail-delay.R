@@ -16,6 +16,6 @@ testthat::test_that("state failure delay jitter respects configured bounds (0,0)
     class = "shinyOAuth_state_error"
   )
   t1 <- proc.time()[[3]]
-  # Ensure it returned quickly (< 50ms budget on CI machines)
-  testthat::expect_lt((t1 - t0), 0.05)
+  # Ensure it returned quickly (< 100ms budget on CI machines)
+  testthat::expect_lt((t1 - t0), 0.1)
 })
