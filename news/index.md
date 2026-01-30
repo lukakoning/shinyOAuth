@@ -10,9 +10,9 @@
   is still supported, but ‘mirai’ takes precedence if both are
   configured.
 
-- Test suite: fixed inconsistency in some tests, and set certain tests
-  to be skipped on CRAN due to unreliability in that environment. Also
-  silenced some test output to avoid confusion.
+- Test suite: fixed inconsistent results of several tests; tests not
+  suitable for CRAN now skip on CRAN. Silenced test output messages to
+  avoid confusion.
 
 ## shinyOAuth 0.2.0
 
