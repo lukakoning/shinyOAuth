@@ -17,11 +17,11 @@ refresh_token(
 
 \item{token}{\link{OAuthToken} object containing the refresh token}
 
-\item{async}{Logical, default FALSE. If TRUE and the \code{promises} package is
+\item{async}{Logical, default FALSE. If TRUE and the \link[mirai:mirai]{mirai::mirai} package is
 available, the refresh is performed off the main R session using
-\code{promises::future_promise()} and this function returns a promise that
-resolves to an updated \code{OAuthToken}. If \code{promises} is not available, falls
-back to synchronous behavior}
+\code{mirai::mirai()} and this function returns a mirai (which implements
+\code{as.promise()}) that resolves to an updated \code{OAuthToken}. Requires mirai
+daemons to be configured with \code{\link[mirai:daemons]{mirai::daemons()}}.}
 
 \item{introspect}{Logical, default FALSE. After a successful refresh, if the
 provider exposes an introspection endpoint, perform a best-effort

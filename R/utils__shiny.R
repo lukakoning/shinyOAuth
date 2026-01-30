@@ -82,7 +82,7 @@ capture_shiny_session_context <- function() {
 }
 
 # Internal: set a fallback session context for the current execution scope.
-# This should be called at the start of async work (inside future_promise)
+# This should be called at the start of async work (inside a mirai)
 # so that errors thrown within the worker can still include session context.
 # Returns the previous context (for restoration) or NULL if none was set.
 set_async_session_context <- function(ctx) {
@@ -214,4 +214,94 @@ augment_with_shiny_context <- function(event) {
   }
 
   event
+}
+
+# Internal: dispatch an async task using the best available backend.
+# Prefers mirai if daemons are configured, falls back to future_promise.
+# Returns a promise in either case.
+#
+# @param expr A quoted expression to evaluate (use quote() or substitute())
+# @param args A named list of values to pass to the expression
+# @return A promise that resolves to the result of the expression
+async_dispatch <- function(expr, args) {
+  # Try mirai first (preferred backend)
+  # mirai is available if daemons are configured (sync or real).
+
+  # When no daemons: status()$daemons is 0 (numeric)
+  # When configured: status()$daemons is a URL string (character)
+  mirai_available <- rlang::is_installed("mirai") &&
+    tryCatch(
+      {
+        status <- mirai::status()
+        is.character(status$daemons)
+      },
+      error = function(...) FALSE
+    )
+
+  if (mirai_available) {
+    # Use mirai - inject the expression and args into the call
+    return(rlang::inject(mirai::mirai(!!expr, .args = args)))
+  }
+
+  # Fall back to future_promise if available
+  future_available <- rlang::is_installed("promises") &&
+    rlang::is_installed("future") &&
+    tryCatch(
+      {
+        # Check if a non-sequential plan is set
+        future::nbrOfWorkers() > 0
+      },
+      error = function(...) FALSE
+    )
+
+  if (future_available) {
+    # Build environment with captured args for future
+    env <- list2env(args, parent = globalenv())
+    return(promises::future_promise(expr = expr, envir = env))
+  }
+
+  # Neither backend is properly configured
+  rlang::abort(
+    c(
+      "No async backend available",
+      "i" = "Configure mirai daemons: `mirai::daemons(2)`",
+      "i" = "Or configure a future plan: `future::plan(future::multisession)`"
+    ),
+    class = "shinyOAuth_no_async_backend"
+  )
+}
+
+# Internal: check if any async backend is available
+# Returns "mirai", "future", or NULL
+async_backend_available <- function() {
+  # Check mirai first (preferred)
+  # When daemons configured: status()$daemons is a URL string
+  # When not configured: status()$daemons is 0 (numeric)
+  if (rlang::is_installed("mirai")) {
+    mirai_ok <- tryCatch(
+      {
+        status <- mirai::status()
+        is.character(status$daemons)
+      },
+      error = function(...) FALSE
+    )
+    if (mirai_ok) {
+      return("mirai")
+    }
+  }
+
+  # Check future
+  if (rlang::is_installed("promises") && rlang::is_installed("future")) {
+    future_ok <- tryCatch(
+      {
+        future::nbrOfWorkers() > 0
+      },
+      error = function(...) FALSE
+    )
+    if (future_ok) {
+      return("future")
+    }
+  }
+
+  NULL
 }

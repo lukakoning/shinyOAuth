@@ -75,11 +75,6 @@ revoke_token <- function(
   }
 
   if (isTRUE(async)) {
-    rlang::check_installed(
-      c("promises", "future"),
-      reason = "to use `async = TRUE` in `revoke_token()`"
-    )
-
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
@@ -91,22 +86,35 @@ revoke_token <- function(
     # Capture internal functions to avoid ::: in async worker
     .with_async_options <- with_async_options
     .with_async_session_context <- with_async_session_context
+    .revoke_token <- revoke_token
 
-    return(promises::future_promise({
-      # Restore shinyOAuth.* options in the async worker
-      .with_async_options(captured_async_options, {
-        # Set async context so errors include session info with is_async = TRUE
-        .with_async_session_context(captured_shiny_session, {
-          revoke_token(
-            oauth_client = oauth_client,
-            oauth_token = oauth_token,
-            which = which,
-            async = FALSE,
-            shiny_session = captured_shiny_session
-          )
+    return(async_dispatch(
+      expr = quote({
+        # Restore shinyOAuth.* options in the async worker
+        .with_async_options(captured_async_options, {
+          # Set async context so errors include session info with is_async = TRUE
+          .with_async_session_context(captured_shiny_session, {
+            .revoke_token(
+              oauth_client = oauth_client,
+              oauth_token = oauth_token,
+              which = which,
+              async = FALSE,
+              shiny_session = captured_shiny_session
+            )
+          })
         })
-      })
-    }))
+      }),
+      args = list(
+        .with_async_options = .with_async_options,
+        .with_async_session_context = .with_async_session_context,
+        .revoke_token = .revoke_token,
+        captured_async_options = captured_async_options,
+        captured_shiny_session = captured_shiny_session,
+        oauth_client = oauth_client,
+        oauth_token = oauth_token,
+        which = which
+      )
+    ))
   }
 
   tok_val <- if (which == "access") {
@@ -397,11 +405,6 @@ introspect_token <- function(
   }
 
   if (isTRUE(async)) {
-    rlang::check_installed(
-      c("promises", "future"),
-      reason = "to use `async = TRUE` in `introspect_token()`"
-    )
-
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
@@ -413,22 +416,35 @@ introspect_token <- function(
     # Capture internal functions to avoid ::: in async worker
     .with_async_options <- with_async_options
     .with_async_session_context <- with_async_session_context
+    .introspect_token <- introspect_token
 
-    return(promises::future_promise({
-      # Restore shinyOAuth.* options in the async worker
-      .with_async_options(captured_async_options, {
-        # Set async context so errors include session info with is_async = TRUE
-        .with_async_session_context(captured_shiny_session, {
-          introspect_token(
-            oauth_client = oauth_client,
-            oauth_token = oauth_token,
-            which = which,
-            async = FALSE,
-            shiny_session = captured_shiny_session
-          )
+    return(async_dispatch(
+      expr = quote({
+        # Restore shinyOAuth.* options in the async worker
+        .with_async_options(captured_async_options, {
+          # Set async context so errors include session info with is_async = TRUE
+          .with_async_session_context(captured_shiny_session, {
+            .introspect_token(
+              oauth_client = oauth_client,
+              oauth_token = oauth_token,
+              which = which,
+              async = FALSE,
+              shiny_session = captured_shiny_session
+            )
+          })
         })
-      })
-    }))
+      }),
+      args = list(
+        .with_async_options = .with_async_options,
+        .with_async_session_context = .with_async_session_context,
+        .introspect_token = .introspect_token,
+        captured_async_options = captured_async_options,
+        captured_shiny_session = captured_shiny_session,
+        oauth_client = oauth_client,
+        oauth_token = oauth_token,
+        which = which
+      )
+    ))
   }
 
   tok_val <- if (which == "access") {
@@ -629,11 +645,11 @@ introspect_token <- function(
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
-#' @param async Logical, default FALSE. If TRUE and the `promises` package is
+#' @param async Logical, default FALSE. If TRUE and the [mirai] package is
 #'   available, the refresh is performed off the main R session using
-#'   `promises::future_promise()` and this function returns a promise that
-#'   resolves to an updated `OAuthToken`. If `promises` is not available, falls
-#'   back to synchronous behavior
+#'   `mirai::mirai()` and this function returns a mirai (which implements
+#'   `as.promise()`) that resolves to an updated `OAuthToken`. Requires mirai
+#'   daemons to be configured with [mirai::daemons()].
 #' @param introspect Logical, default FALSE. After a successful refresh, if the
 #'   provider exposes an introspection endpoint, perform a best-effort
 #'   introspection of the new access token for audit/diagnostics. The result
@@ -679,13 +695,8 @@ refresh_token <- function(
     !is.na(introspect)
   )
 
-  # Optional async execution using promises if requested and available.
+  # Optional async execution using mirai if requested and available.
   if (isTRUE(async)) {
-    rlang::check_installed(
-      c("promises", "future"),
-      reason = "to use `async = TRUE` in `refresh_token()`"
-    )
-
     # Capture shiny_session for propagation into the async worker
     captured_shiny_session <- shiny_session
 
@@ -697,22 +708,35 @@ refresh_token <- function(
     # Capture internal functions to avoid ::: in async worker
     .with_async_options <- with_async_options
     .with_async_session_context <- with_async_session_context
+    .refresh_token <- refresh_token
 
-    return(promises::future_promise({
-      # Restore shinyOAuth.* options in the async worker
-      .with_async_options(captured_async_options, {
-        # Set async context so errors include session info with is_async = TRUE
-        .with_async_session_context(captured_shiny_session, {
-          refresh_token(
-            oauth_client = oauth_client,
-            token = token,
-            async = FALSE,
-            introspect = introspect,
-            shiny_session = captured_shiny_session
-          )
+    return(async_dispatch(
+      expr = quote({
+        # Restore shinyOAuth.* options in the async worker
+        .with_async_options(captured_async_options, {
+          # Set async context so errors include session info with is_async = TRUE
+          .with_async_session_context(captured_shiny_session, {
+            .refresh_token(
+              oauth_client = oauth_client,
+              token = token,
+              async = FALSE,
+              introspect = introspect,
+              shiny_session = captured_shiny_session
+            )
+          })
         })
-      })
-    }))
+      }),
+      args = list(
+        .with_async_options = .with_async_options,
+        .with_async_session_context = .with_async_session_context,
+        .refresh_token = .refresh_token,
+        captured_async_options = captured_async_options,
+        captured_shiny_session = captured_shiny_session,
+        oauth_client = oauth_client,
+        token = token,
+        introspect = introspect
+      )
+    ))
   }
   if (!is_valid_string(token@refresh_token)) {
     err_input("No refresh token available")

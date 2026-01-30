@@ -18,13 +18,9 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   )
   testthat::skip_if_not(ok, "Keycloak not reachable at localhost:8080")
 
-  # Optional deps to parse HTML forms and for async
-
+  # Optional deps to parse HTML forms
   testthat::skip_if_not_installed("xml2")
   testthat::skip_if_not_installed("rvest")
-  testthat::skip_if_not_installed("future")
-  testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("later")
 
   # Skip on CRAN
   testthat::skip_on_cran()
@@ -36,37 +32,15 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     shinyOAuth.disable_watchdog_warning = TRUE
   ))
 
-  # Set up future plan for async work
-  # Note: future::multisession requires the package to be installed (not just dev-loaded).
-  # When running via pkgload::load_all(), internal functions aren't available in workers.
-  # We try multisession first (for installed package scenarios), fall back to sequential.
-  old_plan <- tryCatch(future::plan(), error = function(...) NULL)
+  # Set up mirai daemons for async work (preferred backend)
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("later")
 
-  # Check if the package is installed (not just dev-loaded)
-  pkg_installed <- tryCatch(
-    {
-      # If we can find with_async_options in the installed namespace, multisession will work
-      ns <- asNamespace("shinyOAuth")
-      exists("with_async_options", envir = ns, mode = "function")
-    },
-    error = function(...) FALSE
-  )
-
-  if (pkg_installed) {
-    tryCatch(
-      future::plan(future::multisession, workers = 2),
-      error = function(...) {
-        try(future::plan(future::sequential), silent = TRUE)
-      }
-    )
-  } else {
-    # Dev-loaded package: use sequential (still tests async code paths, just in-process)
-    cat("\n[NOTE] Package is dev-loaded; using future::sequential for async\n")
-    try(future::plan(future::sequential), silent = TRUE)
-  }
-  withr::defer({
-    if (!is.null(old_plan)) try(future::plan(old_plan), silent = TRUE)
-  })
+  # Reset any existing mirai state and configure fresh daemons
+  tryCatch(mirai::daemons(0), error = function(...) NULL)
+  mirai::daemons(n = 2)
+  withr::defer(tryCatch(mirai::daemons(0), error = function(...) NULL))
 
   # Create a temporary file for audit logs
   audit_log_file <- tempfile(fileext = ".jsonl")
