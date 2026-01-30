@@ -51,8 +51,14 @@ revoke_token(
 
 - async:
 
-  Logical, default FALSE. If TRUE and promises is available, run in
-  background and return a promise resolving to the result list
+  Logical, default FALSE. If TRUE and the
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) package
+  is available, the operation is performed off the main R session using
+  [`mirai::mirai()`](https://mirai.r-lib.org/reference/mirai.html) and
+  this function returns a mirai (which implements `as.promise()`) that
+  resolves to the result list. Requires mirai daemons to be configured
+  with
+  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
 
 - shiny_session:
 

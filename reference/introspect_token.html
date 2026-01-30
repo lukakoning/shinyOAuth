@@ -111,8 +111,11 @@ overrides are honored).</p></li>
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
-<dd><p>Logical, default FALSE. If TRUE and promises is available, run
-in background and return a promise resolving to the result list</p></dd>
+<dd><p>Logical, default FALSE. If TRUE and the <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> package is
+available, the operation is performed off the main R session using
+<code><a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai()</a></code> and this function returns a mirai (which implements
+<code>as.promise()</code>) that resolves to the result list. Requires mirai
+daemons to be configured with <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>.</p></dd>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
