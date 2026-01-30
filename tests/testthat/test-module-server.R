@@ -496,6 +496,9 @@ testthat::test_that("provider error in query sets error and authenticated FALSE"
     ),
     session = sess,
     expr = {
+      # Flush any pending reactive events from module initialization
+      session$flushReact()
+
       values$.process_query("?error=access_denied&error_description=Nope")
       session$flushReact()
       testthat::expect_identical(values$error, "access_denied")
@@ -705,8 +708,27 @@ testthat::test_that("callback code/state clears query even when token exchange f
     ),
     session = sess,
     expr = {
+      # Flush any pending reactive events from module initialization
+      # (e.g., the url_search observer with MockShinySession's default ?mocksearch=1)
+      session$flushReact()
+
+      # Ensure browser token is properly initialized before building auth URL.
+      # If this fails, the option didn't propagate correctly to the module.
+      testthat::expect_true(
+        values$has_browser_token(),
+        info = "Browser token should be available in test mode"
+      )
+
       url <- values$build_auth_url()
+      testthat::expect_true(
+        is.character(url) && nchar(url) > 0 && !is.na(url),
+        info = "build_auth_url() should return a valid URL"
+      )
       enc <- parse_query_param(url, "state")
+      testthat::expect_true(
+        is.character(enc) && nchar(enc) > 0 && !is.na(enc),
+        info = "State parameter should be extractable from URL"
+      )
 
       testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
