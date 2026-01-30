@@ -1,3 +1,5 @@
+# shinyOAuth (development version)
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
