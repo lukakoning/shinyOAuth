@@ -98,11 +98,15 @@ test_that("log_condition prints when enabled but remains silent otherwise", {
   e <- tryCatch(shinyOAuth:::err_pkce("x"), error = identity)
   expect_invisible(shinyOAuth:::log_condition(e))
 
-  # When enabled, still should not error
+  # When enabled, still should not error (capture output to avoid noise in test log)
   local_with_options(
     list(shinyOAuth.print_errors = TRUE, shinyOAuth.print_traceback = FALSE),
     {
-      expect_invisible(shinyOAuth:::log_condition(e))
+      out <- capture.output(
+        expect_invisible(shinyOAuth:::log_condition(e)),
+        type = "output"
+      )
+      expect_true(length(out) > 0)
     }
   )
 })

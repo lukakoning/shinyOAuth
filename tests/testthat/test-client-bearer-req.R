@@ -11,7 +11,7 @@ test_that("client_bearer_req builds request metadata without network", {
   expect_equal(req$method, "POST")
   expect_equal(req$url, "https://example.com/base?a=1")
 
-  dry <- httr2::req_dry_run(req, redact_headers = FALSE)
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
   expect_equal(dry$headers$authorization, "Bearer tok")
   expect_equal(dry$headers$`x-test`, "1")
 })
@@ -101,8 +101,7 @@ test_that("custom Authorization header is ignored and warned", {
     fixed = TRUE
   )
 
-  # Use dry run to force header computation without network
-  dry <- httr2::req_dry_run(req, redact_headers = FALSE)
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
 
   expect_equal(dry$headers$authorization, "Bearer tok")
   expect_equal(dry$headers$`x-other`, "ok")

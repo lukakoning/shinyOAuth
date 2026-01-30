@@ -5,7 +5,7 @@ test_that("client_bearer_req accepts named character vector headers", {
     headers = c(Accept = "application/json", `X-Test` = "1")
   )
 
-  dry <- httr2::req_dry_run(req, redact_headers = FALSE)
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
   expect_equal(dry$headers$authorization, "Bearer tok")
   expect_equal(dry$headers$accept, "application/json")
   expect_equal(dry$headers$`x-test`, "1")
@@ -21,7 +21,7 @@ test_that("client_bearer_req ignores invalid headers input with warning", {
     regexp = "Ignoring 'headers'"
   )
 
-  dry <- httr2::req_dry_run(req, redact_headers = FALSE)
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
   expect_equal(dry$headers$authorization, "Bearer tok")
   # Accept remains at package/httr2 default since invalid input was ignored
   expect_equal(dry$headers$accept, "*/*")
