@@ -1247,36 +1247,43 @@ oauth_module_server <- function(
       return(invisible(NULL))
     }
 
-    # Function to handle OAuth error responses and consume state if present
+    # Function to handle OAuth error responses and require state validation
     .handle_error_response <- function(error, error_description, state) {
-      # Surface the error to the module's reactive state immediately.
-      # Even if we can't consume state yet, callers should see the provider error.
+      # Security: treat provider error callbacks as valid only when state is
+      # present and can be successfully validated/consumed.
+      state_ok <- tryCatch(
+        {
+          if (!is_valid_string(state)) {
+            err_invalid_state("Callback missing state payload")
+          }
+          # strict = TRUE makes validation failures propagate so we can reject
+          # the callback instead of surfacing an unbound provider error.
+          .consume_error_state(state, strict = TRUE)
+          TRUE
+        },
+        error = function(e) {
+          .set_error(
+            "invalid_state",
+            e,
+            phase = "error_response_state_validation"
+          )
+          FALSE
+        }
+      )
+
+      if (!isTRUE(state_ok)) {
+        return(invisible(NULL))
+      }
+
+      # State validated and consumed: now surface provider error.
       values$error <- error
       values$error_description <- error_description %||% NULL
-
-      # If state is present, we should consume it from the state store to:
-      #   1. Reduce stale entries in the cache
-      #   2. Align with "always validate state when returned" guidance
-      # If the browser token isn't available yet, defer the cleanup until it is.
-      if (!is.null(state) && is_valid_string(state)) {
-        if (!is_valid_string(values$browser_token)) {
-          # Defer until browser_token is available
-          values$pending_error <- list(
-            error = error,
-            error_description = error_description,
-            state = state
-          )
-          return(invisible(NULL))
-        }
-        # Attempt to validate and consume the state; failures are logged but
-        # do not override the original OAuth error from the provider.
-        .consume_error_state(state)
-      }
       invisible(NULL)
     }
 
-    # Helper to consume (validate/remove) state from an error response
-    .consume_error_state <- function(state) {
+    # Helper to consume (validate/remove) state from an error response.
+    # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
+    .consume_error_state <- function(state, strict = FALSE) {
       tryCatch(
         {
           # Decrypt and validate the state payload
@@ -1298,9 +1305,7 @@ oauth_module_server <- function(
           )
         },
         error = function(e) {
-          # State consumption failed; log but don't override original error.
-          # This can happen if the state was already consumed, expired, or
-          # was tampered with. Not a critical failure for error responses.
+          # State consumption failed; always emit audit.
           try(
             audit_event(
               "error_state_consumption_failed",
@@ -1315,6 +1320,9 @@ oauth_module_server <- function(
             ),
             silent = TRUE
           )
+          if (isTRUE(strict)) {
+            rlang::abort(message = conditionMessage(e), parent = e)
+          }
         }
       )
       invisible(NULL)

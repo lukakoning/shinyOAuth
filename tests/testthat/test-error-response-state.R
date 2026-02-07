@@ -55,7 +55,7 @@ testthat::test_that("error response with state consumes state from store", {
   )
 })
 
-testthat::test_that("error response without state still surfaces error", {
+testthat::test_that("unsolicited error response without state is rejected as invalid_state", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -68,20 +68,20 @@ testthat::test_that("error response without state still surfaces error", {
       auto_redirect = FALSE
     ),
     expr = {
-      # Simulate provider error without state parameter
+      # Simulate unsolicited provider error without state parameter
       values$.process_query(
         "?error=server_error&error_description=Something%20broke"
       )
       session$flushReact()
 
-      testthat::expect_identical(values$error, "server_error")
-      testthat::expect_match(values$error_description, "Something broke")
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(values$error_description %||% "", "state")
       testthat::expect_false(values$authenticated)
     }
   )
 })
 
-testthat::test_that("error response defers state consumption until browser_token available", {
+testthat::test_that("error response with state is validated even before browser_token is available", {
   # Do NOT skip browser token for this test
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
@@ -117,7 +117,7 @@ testthat::test_that("error response defers state consumption until browser_token
         client_id = cli@client_id,
         redirect_uri = cli@redirect_uri,
         scopes = cli@scopes,
-        provider = cli@provider@name,
+        provider = shinyOAuth:::provider_fingerprint(cli@provider),
         issued_at = as.numeric(Sys.time())
       )
       enc <- shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key)
@@ -126,21 +126,19 @@ testthat::test_that("error response defers state consumption until browser_token
       values$.process_query(paste0("?error=access_denied&state=", enc))
       session$flushReact()
 
-      # Should be deferred (pending_error set, but error IS surfaced)
-      testthat::expect_false(is.null(values$pending_error))
-      testthat::expect_identical(values$pending_error$error, "access_denied")
+      # Error is surfaced and state is consumed immediately.
+      testthat::expect_null(values$pending_error)
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_false(values$authenticated)
 
-      # State should still be in store (not yet consumed)
-      before <- cli@state_store$get(key, missing = NULL)
-      testthat::expect_false(is.null(before))
+      # State should already be consumed from store.
+      after <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_null(after)
     }
   )
 })
 
-testthat::test_that("pending_error is processed when browser_token becomes available", {
-  # Test that observer handles pending_error correctly
+testthat::test_that("error response without state is rejected after login initiation", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -159,36 +157,23 @@ testthat::test_that("pending_error is processed when browser_token becomes avail
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
       key <- shinyOAuth:::state_cache_key(payload$state)
 
-      # Manually set pending_error as if browser_token wasn't available
-      values$pending_error <- list(
-        error = "test_error",
-        error_description = "test description",
-        state = enc
-      )
-
-      # In real flow the error is already surfaced before pending cleanup
-      values$error <- "test_error"
-      values$error_description <- "test description"
-
-      # Trigger the observer by changing browser_token (simulate it arriving)
-      values$browser_token <- valid_browser_token()
+      # Error callback missing state should be rejected as invalid_state,
+      # even though a valid login state exists in the store.
+      values$.process_query("?error=access_denied")
       session$flushReact()
 
-      # pending_error should be cleared
-      testthat::expect_null(values$pending_error)
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(values$error_description %||% "", "state")
+      testthat::expect_false(values$authenticated)
 
-      # Error should remain surfaced
-      testthat::expect_identical(values$error, "test_error")
-      testthat::expect_identical(values$error_description, "test description")
-
-      # State should have been consumed
-      after <- cli@state_store$get(key, missing = NULL)
-      testthat::expect_null(after)
+      # Existing valid state must remain untouched because callback was invalid.
+      still_present <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_false(is.null(still_present))
     }
   )
 })
 
-testthat::test_that("state consumption failure does not override original error", {
+testthat::test_that("state consumption failure rejects callback as invalid_state", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -221,8 +206,8 @@ testthat::test_that("state consumption failure does not override original error"
       values$.process_query(paste0("?error=consent_required&state=", enc))
       session$flushReact()
 
-      # Original error should still be surfaced
-      testthat::expect_identical(values$error, "consent_required")
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(values$error_description %||% "", "state")
       testthat::expect_false(values$authenticated)
     }
   )
@@ -235,7 +220,7 @@ testthat::test_that("state consumption failure does not override original error"
   )
 })
 
-testthat::test_that("error response with invalid state still surfaces original error", {
+testthat::test_that("error response with invalid state is rejected as invalid_state", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -259,8 +244,8 @@ testthat::test_that("error response with invalid state still surfaces original e
       values$.process_query("?error=invalid_request&state=garbage_state_value")
       session$flushReact()
 
-      # Original error should still be surfaced
-      testthat::expect_identical(values$error, "invalid_request")
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(values$error_description %||% "", "state")
       testthat::expect_false(values$authenticated)
     }
   )

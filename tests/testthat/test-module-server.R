@@ -474,7 +474,7 @@ testthat::test_that("indefinite_session keeps authenticated TRUE even when expir
   )
 })
 
-testthat::test_that("provider error in query sets error and authenticated FALSE", {
+testthat::test_that("provider error with valid state sets provider error and authenticated FALSE", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -499,7 +499,12 @@ testthat::test_that("provider error in query sets error and authenticated FALSE"
       # Flush any pending reactive events from module initialization
       session$flushReact()
 
-      values$.process_query("?error=access_denied&error_description=Nope")
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+      values$.process_query(paste0(
+        "?error=access_denied&error_description=Nope&state=",
+        enc
+      ))
       session$flushReact()
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_match(values$error_description, "Nope")
