@@ -3,6 +3,7 @@
 ## shinyOAuth (development version)
 
 - Mirai async backend improvements:
+
   - Detect active daemons via
     [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
     instead of
@@ -16,10 +17,16 @@
     in workers.
   - Reduce serialization overhead towards async workers by using certain
     functions from the package namespace directly.
+
 - OAuth callback error responses (`?error=...`) now require a valid
   `state` parameter. Missing/invalid/consumed state is then treated
   properly as an `invalid_state` error instead of surfacing the error
   from `?error=...` (which could be set by an attacker).
+
+- Stricter URL validation: `OAuthClient` now rejects redirect URIs
+  containing fragments (RFC 6749 §3.1.2), and
+  [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  rejects issuer identifiers containing query or fragment components.
 
 ## shinyOAuth 0.3.0
 
