@@ -16,6 +16,11 @@
 - Reduce serialization overhead towards async workers by using certain
   functions from the package namespace directly.
 
+- OAuth callback error responses (`?error=...`) now require a valid
+  `state` parameter. Missing/invalid/consumed state is then treated
+  properly as an `invalid_state` error instead of surfacing the error
+  from `?error=...` (which could be set by an attacker).
+
 ## shinyOAuth 0.3.0
 
 CRAN release: 2026-01-30
