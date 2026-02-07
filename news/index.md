@@ -2,6 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- Use [`mirai::info()`](https://mirai.r-lib.org/reference/info.html)
+  instead of
+  [`mirai::status()`](https://mirai.r-lib.org/reference/status.html) to
+  check if ‘mirai’ is functional (per recommendation from ‘mirai’
+  developers, as
+  [`mirai::status()`](https://mirai.r-lib.org/reference/status.html) is
+  subject to change)
+
 - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
   in workers.
 
@@ -9,6 +17,8 @@
   functions from the package namespace directly.
 
 ## shinyOAuth 0.3.0
+
+CRAN release: 2026-01-30
 
 - Async backend: the default async backend is now ‘mirai’ (\>= 2.0.0)
   for simpler and more efficient asynchronous execution. Use

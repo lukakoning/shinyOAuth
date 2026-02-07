@@ -41,11 +41,12 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available in workers.</p></li>
+<ul><li><p>Use <code><a href="https://mirai.r-lib.org/reference/info.html" class="external-link">mirai::info()</a></code> instead of <code><a href="https://mirai.r-lib.org/reference/status.html" class="external-link">mirai::status()</a></code> to check if ‘mirai’ is functional (per recommendation from ‘mirai’ developers, as <code><a href="https://mirai.r-lib.org/reference/status.html" class="external-link">mirai::status()</a></code> is subject to change)</p></li>
+<li><p>Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available in workers.</p></li>
 <li><p>Reduce serialization overhead towards async workers by using certain functions from the package namespace directly.</p></li>
 </ul></div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.0" id="shinyoauth-030">shinyOAuth 0.3.0<a class="anchor" aria-label="anchor" href="#shinyoauth-030"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="shinyoauth-030">shinyOAuth 0.3.0<a class="anchor" aria-label="anchor" href="#shinyoauth-030"></a></h2><p class="text-muted">CRAN release: 2026-01-30</p>
 <ul><li><p>Async backend: the default async backend is now ‘mirai’ (&gt;= 2.0.0) for simpler and more efficient asynchronous execution. Use <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code> to configure async workers. A ‘future’ backend configured with <code><a href="https://future.futureverse.org/reference/plan.html" class="external-link">future::plan()</a></code> is still supported, but ‘mirai’ takes precedence if both are configured.</p></li>
 <li><p>Test suite: fixed inconsistent results of several tests; tests not suitable for CRAN now skip on CRAN. Silenced test output messages to avoid confusion.</p></li>
 </ul></div>
