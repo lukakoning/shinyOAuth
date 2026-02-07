@@ -117,17 +117,11 @@ When successful, the package also applies two safety rails:
 - If the provider was configured with a non-empty `allowed_token_types`, the token response must include `token_type`
   and its value must be one of the allowed types (case-insensitive, e.g., `Bearer`)
 
-### 9. Fetch userinfo (optional)
-
-If userinfo is requested via `oauth_provider(userinfo_required = TRUE)`
-(for which you should have a `userinfo_url` configured), the module calls the userinfo
-endpoint with the access token and stores returned claims. If this request fails,
-the flow aborts with an error.
-
-### 10. Validate ID token (OIDC only)
+### 9. Validate ID token (OIDC only)
 
 When using `oauth_provider(id_token_validation = TRUE)`, the following verifications
-are performed:
+are performed **before** any userinfo fetch to ensure cryptographic validation occurs
+prior to making external calls:
 
 - Signature: verified against provider JWKS (with optional pinning) for standard asymmetric algorithms
   (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA). HMAC algorithms (HS256/384/512) are only allowed with explicit opt-in
@@ -138,6 +132,14 @@ are performed:
   tokens issued in the future are rejected
 - Header `typ` (when present): must indicate a JWT (`JWT`, case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID tokens
 - Nonce: must match the previously stored value (if configured)
+
+### 10. Fetch userinfo (optional)
+
+If userinfo is requested via `oauth_provider(userinfo_required = TRUE)`
+(for which you should have a `userinfo_url` configured), the module calls the userinfo
+endpoint with the access token and stores returned claims. This happens **after**
+ID token validation to ensure cryptographic checks pass before making external calls.
+If this request fails, the flow aborts with an error.
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it is checked 
 that `sub` in userinfo equals `sub` in the ID token
 
