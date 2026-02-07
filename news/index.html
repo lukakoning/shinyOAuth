@@ -41,10 +41,14 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Use <code><a href="https://mirai.r-lib.org/reference/info.html" class="external-link">mirai::info()</a></code> instead of <code><a href="https://mirai.r-lib.org/reference/status.html" class="external-link">mirai::status()</a></code> to check if ‘mirai’ is functional (per recommendation from ‘mirai’ developers, as <code><a href="https://mirai.r-lib.org/reference/status.html" class="external-link">mirai::status()</a></code> is subject to change)</p></li>
-<li><p>Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available in workers.</p></li>
-<li><p>Reduce serialization overhead towards async workers by using certain functions from the package namespace directly.</p></li>
-<li><p>OAuth callback error responses (<code>?error=...</code>) now require a valid <code>state</code> parameter. Missing/invalid/consumed state is then treated properly as an <code>invalid_state</code> error instead of surfacing the error from <code>?error=...</code> (which could be set by an attacker).</p></li>
+<ul><li>Mirai async backend improvements:
+<ul><li>Detect active daemons via <code><a href="https://mirai.r-lib.org/reference/daemons_set.html" class="external-link">mirai::daemons_set()</a></code> instead of <code><a href="https://mirai.r-lib.org/reference/info.html" class="external-link">mirai::info()</a></code>/<code><a href="https://mirai.r-lib.org/reference/status.html" class="external-link">mirai::status()</a></code> (requires mirai &gt;= 2.3.0).</li>
+<li>Per-task timeout via <code>options(shinyOAuth.async_timeout)</code> (milliseconds); timed-out mirai tasks are automatically cancelled by the dispatcher.</li>
+<li>Async audit events now include a <code>mirai_error_type</code> field.</li>
+<li>Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available in workers.</li>
+<li>Reduce serialization overhead towards async workers by using certain functions from the package namespace directly.</li>
+</ul></li>
+<li>OAuth callback error responses (<code>?error=...</code>) now require a valid <code>state</code> parameter. Missing/invalid/consumed state is then treated properly as an <code>invalid_state</code> error instead of surfacing the error from <code>?error=...</code> (which could be set by an attacker).</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="shinyoauth-030">shinyOAuth 0.3.0<a class="anchor" aria-label="anchor" href="#shinyoauth-030"></a></h2><p class="text-muted">CRAN release: 2026-01-30</p>

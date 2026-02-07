@@ -145,6 +145,31 @@ PID of the main R process that spawned the async worker. This allows you
 to correlate events from workers back to the originating main
 process.</li>
 <li>
+<code>mirai_error_type</code>: (async failure events only)
+classifies mirai transport-level failures separately from
+application-level errors. Present on <code>login_failed</code>,
+<code>session_cleared</code>, and
+<code>refresh_failed_but_kept_session</code> events:
+<ul>
+<li>
+<code>"mirai_error"</code> — code threw an R error inside the
+worker</li>
+<li>
+<code>"mirai_timeout"</code> — the task exceeded its timeout and was
+cancelled by dispatcher</li>
+<li>
+<code>"mirai_connection_reset"</code> — the daemon process crashed
+or was terminated</li>
+<li>
+<code>"mirai_interrupt"</code> — the task was interrupted/cancelled
+via <code>stop_mirai()</code>
+</li>
+<li>
+<code>NA</code> — not a mirai-specific error (e.g., sync path or
+future backend)</li>
+</ul>
+</li>
+<li>
 <code>shiny_session$http</code>: a compact HTTP summary with fields:
 <ul>
 <li>
@@ -200,6 +225,24 @@ can disable redaction:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>This means that the <code>shiny_session$http</code> field will be
 <code>NULL</code> in all audit events.</p>
+</div>
+<div class="section level3">
+<h3 id="audit-events-from-async-workers-mirai-daemons">Audit events from async workers (mirai daemons)<a class="anchor" aria-label="anchor" href="#audit-events-from-async-workers-mirai-daemons"></a>
+</h3>
+<p>When <code>async = TRUE</code> is configured in
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, and when you have set daemon workers
+<code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>, token exchange, refresh, and revocation
+run in background mirai daemon processes. The package automatically
+propagates your <code>shinyOAuth.audit_hook</code> and
+<code>shinyOAuth.trace_hook</code> options to these workers, so audit
+events fire also in the async worker processes and your hooks apply
+there.</p>
+<p>Note that your audit hook function (and any objects referenced in its
+closure) must be serializable. If your hook writes to a database
+connection, file handle, or other non-serializable resource, it will
+fail silently in the worker process. Use hooks that create connections
+on demand (e.g., open a database connection inside the hook body) rather
+than capturing an existing connection in the closure.</p>
 </div>
 <div class="section level3">
 <h3 id="digest-fields-and-keying">Digest fields and keying<a class="anchor" aria-label="anchor" href="#digest-fields-and-keying"></a>
@@ -461,7 +504,7 @@ Shiny module</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>phase</code>
 (<code>sync_token_exchange</code>|<code>async_token_exchange</code>),
-<code>error_class</code>
+<code>error_class</code>, <code>mirai_error_type</code>
 </li>
 </ul>
 </div>
@@ -485,7 +528,8 @@ Shiny module</li>
 <ul>
 <li>When: the module clears the token reactively</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code>
+<code>client_id_digest</code>, <code>reason</code>,
+<code>mirai_error_type</code>
 </li>
 <li>Reasons include: <code>refresh_failed_async</code>,
 <code>refresh_failed_sync</code>, <code>reauth_window</code>,
@@ -534,7 +578,8 @@ to clear the session (i.e., <code>indefinite_session = TRUE</code> in
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>reason</code>
 (<code>refresh_failed_async</code>|<code>refresh_failed_sync</code>),
-<code>kept_token</code> (TRUE), <code>error_class</code>
+<code>kept_token</code> (TRUE), <code>error_class</code>,
+<code>mirai_error_type</code>
 </li>
 </ul>
 </div>

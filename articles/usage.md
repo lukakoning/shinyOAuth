@@ -457,6 +457,14 @@ options:
   allows overriding the specified token exchange headers
   (case-insensitive). Default blocked: `Authorization`, `Cookie`
 
+### Async timeout (mirai)
+
+- `options(shinyOAuth.async_timeout = 10000)` – per-task timeout in
+  milliseconds for mirai async tasks. When using mirai with dispatcher
+  (the default), timed-out tasks are automatically cancelled and resolve
+  as a mirai error. Default is `NULL` (no timeout). Ignored when falling
+  back to the ‘future’ backend
+
 ### HTTP settings (timeout, retries, user agent)
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)

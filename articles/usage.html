@@ -549,6 +549,18 @@ blocked: <code>grant_type</code>, <code>code</code>,
 </ul>
 </div>
 <div class="section level3">
+<h3 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
+</h3>
+<ul>
+<li>
+<code>options(shinyOAuth.async_timeout = 10000)</code> – per-task
+timeout in milliseconds for mirai async tasks. When using mirai with
+dispatcher (the default), timed-out tasks are automatically cancelled
+and resolve as a mirai error. Default is <code>NULL</code> (no timeout).
+Ignored when falling back to the ‘future’ backend</li>
+</ul>
+</div>
+<div class="section level3">
 <h3 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
 </h3>
 <ul>

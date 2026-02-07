@@ -65,6 +65,19 @@ be directly serializable with
 - `shiny_session$main_process_id`: (async events only) the PID of the
   main R process that spawned the async worker. This allows you to
   correlate events from workers back to the originating main process.
+- `mirai_error_type`: (async failure events only) classifies mirai
+  transport-level failures separately from application-level errors.
+  Present on `login_failed`, `session_cleared`, and
+  `refresh_failed_but_kept_session` events:
+  - `"mirai_error"` — code threw an R error inside the worker
+  - `"mirai_timeout"` — the task exceeded its timeout and was cancelled
+    by dispatcher
+  - `"mirai_connection_reset"` — the daemon process crashed or was
+    terminated
+  - `"mirai_interrupt"` — the task was interrupted/cancelled via
+    `stop_mirai()`
+  - `NA` — not a mirai-specific error (e.g., sync path or future
+    backend)
 - `shiny_session$http`: a compact HTTP summary with fields:
   - `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
   - `headers`: a list of request headers derived from `HTTP_*`
@@ -109,6 +122,25 @@ options(shinyOAuth.audit_include_http = FALSE)
 
 This means that the `shiny_session$http` field will be `NULL` in all
 audit events.
+
+### Audit events from async workers (mirai daemons)
+
+When `async = TRUE` is configured in
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+and when you have set daemon workers
+[`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html),
+token exchange, refresh, and revocation run in background mirai daemon
+processes. The package automatically propagates your
+`shinyOAuth.audit_hook` and `shinyOAuth.trace_hook` options to these
+workers, so audit events fire also in the async worker processes and
+your hooks apply there.
+
+Note that your audit hook function (and any objects referenced in its
+closure) must be serializable. If your hook writes to a database
+connection, file handle, or other non-serializable resource, it will
+fail silently in the worker process. Use hooks that create connections
+on demand (e.g., open a database connection inside the hook body) rather
+than capturing an existing connection in the closure.
 
 ### Digest fields and keying
 
@@ -278,7 +310,8 @@ For state store events the digest reflects the plaintext state string.
 - When: surface-level login failure during callback handling in the
   Shiny module
 - Context: `provider`, `issuer`, `client_id_digest`, `phase`
-  (`sync_token_exchange`\|`async_token_exchange`), `error_class`
+  (`sync_token_exchange`\|`async_token_exchange`), `error_class`,
+  `mirai_error_type`
 
 ### Logout and session clears
 
@@ -291,7 +324,8 @@ For state store events the digest reflects the plaintext state string.
 #### Event: `audit_session_cleared`
 
 - When: the module clears the token reactively
-- Context: `provider`, `issuer`, `client_id_digest`, `reason`
+- Context: `provider`, `issuer`, `client_id_digest`, `reason`,
+  `mirai_error_type`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`,
   `reauth_window`, `token_expired`
 
@@ -316,7 +350,7 @@ For state store events the digest reflects the plaintext state string.
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md))
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`
   (`refresh_failed_async`\|`refresh_failed_sync`), `kept_token` (TRUE),
-  `error_class`
+  `error_class`, `mirai_error_type`
 
 ### Browser cookie/WebCrypto error
 
