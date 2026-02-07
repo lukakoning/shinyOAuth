@@ -229,19 +229,12 @@ setting)</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="fetch-userinfo-optional">9. Fetch userinfo (optional)<a class="anchor" aria-label="anchor" href="#fetch-userinfo-optional"></a>
-</h3>
-<p>If userinfo is requested via
-<code>oauth_provider(userinfo_required = TRUE)</code> (for which you
-should have a <code>userinfo_url</code> configured), the module calls
-the userinfo endpoint with the access token and stores returned claims.
-If this request fails, the flow aborts with an error.</p>
-</div>
-<div class="section level3">
-<h3 id="validate-id-token-oidc-only">10. Validate ID token (OIDC only)<a class="anchor" aria-label="anchor" href="#validate-id-token-oidc-only"></a>
+<h3 id="validate-id-token-oidc-only">9. Validate ID token (OIDC only)<a class="anchor" aria-label="anchor" href="#validate-id-token-oidc-only"></a>
 </h3>
 <p>When using <code>oauth_provider(id_token_validation = TRUE)</code>,
-the following verifications are performed:</p>
+the following verifications are performed <strong>before</strong> any
+userinfo fetch to ensure cryptographic validation occurs prior to making
+external calls:</p>
 <ul>
 <li>Signature: verified against provider JWKS (with optional pinning)
 for standard asymmetric algorithms (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA).
@@ -258,11 +251,21 @@ in the future are rejected</li>
 (<code>JWT</code>, case-insensitive). Other values (e.g.,
 <code>at+jwt</code>) are rejected for ID tokens</li>
 <li>Nonce: must match the previously stored value (if configured)</li>
-<li>Subject match: if
+</ul>
+</div>
+<div class="section level3">
+<h3 id="fetch-userinfo-optional">10. Fetch userinfo (optional)<a class="anchor" aria-label="anchor" href="#fetch-userinfo-optional"></a>
+</h3>
+<p>If userinfo is requested via
+<code>oauth_provider(userinfo_required = TRUE)</code> (for which you
+should have a <code>userinfo_url</code> configured), the module calls
+the userinfo endpoint with the access token and stores returned claims.
+This happens <strong>after</strong> ID token validation to ensure
+cryptographic checks pass before making external calls. If this request
+fails, the flow aborts with an error. - Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
 checked that <code>sub</code> in userinfo equals <code>sub</code> in the
-ID token</li>
-</ul>
+ID token</p>
 </div>
 <div class="section level3">
 <h3 id="token-introspection-optional">11. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
