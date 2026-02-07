@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Use `mirai::info()` instead of `mirai::status()` to check if 'mirai' is functional (per recommendation from 'mirai' developers, as `mirai::status()` is
+subject to change)
+
 * Prevent 'mirai' warning spam about 'stats' maybe not being available in workers.
 
 * Reduce serialization overhead towards async workers by using certain functions

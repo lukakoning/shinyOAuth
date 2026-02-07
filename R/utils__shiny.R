@@ -237,8 +237,8 @@ async_dispatch <- function(expr, args) {
   mirai_available <- rlang::is_installed("mirai") &&
     tryCatch(
       {
-        status <- mirai::status()
-        is.character(status$daemons)
+        info <- mirai::info()
+        !is.null(info)
       },
       error = function(...) FALSE
     )
@@ -290,8 +290,8 @@ async_backend_available <- function() {
   if (rlang::is_installed("mirai")) {
     mirai_ok <- tryCatch(
       {
-        status <- mirai::status()
-        is.character(status$daemons)
+        info <- mirai::info()
+        !is.null(info)
       },
       error = function(...) FALSE
     )
