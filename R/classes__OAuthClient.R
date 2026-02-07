@@ -218,6 +218,13 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    # RFC 6749 Section 3.1.2: redirect URI MUST NOT include a fragment
+    if (nzchar(parsed$fragment %||% "")) {
+      return(
+        "OAuthClient: redirect_uri must not contain a URI fragment (RFC 6749 Section 3.1.2)"
+      )
+    }
+
     if (!is_ok_host(self@redirect_uri)) {
       return(paste0(
         "OAuthClient: redirect URI not accepted as a host ",

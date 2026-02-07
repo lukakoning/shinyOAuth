@@ -1,13 +1,24 @@
 # shinyOAuth (development version)
 
 * Mirai async backend improvements:
-  - Detect active daemons via `mirai::daemons_set()` instead of `mirai::info()`/`mirai::status()` (requires mirai >= 2.3.0).
-  - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); timed-out mirai tasks are automatically cancelled by the dispatcher.
+  - Detect active daemons via `mirai::daemons_set()` instead of 
+  `mirai::info()`/`mirai::status()` (requires mirai >= 2.3.0).
+  - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
+  timed-out mirai tasks are automatically cancelled by the dispatcher.
   - Async audit events now include a `mirai_error_type` field.
-  - Prevent 'mirai' warning spam about 'stats' maybe not being available in workers.
-  - Reduce serialization overhead towards async workers by using certain functions from the package namespace directly.
+  - Prevent 'mirai' warning spam about 'stats' maybe not being available in 
+  workers.
+  - Reduce serialization overhead towards async workers by using certain 
+  functions from the package namespace directly.
 
-* OAuth callback error responses (`?error=...`) now require a valid `state` parameter. Missing/invalid/consumed state is then treated properly as an `invalid_state` error instead of surfacing the error from `?error=...` (which could be set by an attacker).
+* OAuth callback error responses (`?error=...`) now require a valid `state`
+parameter. Missing/invalid/consumed state is then treated properly as an 
+`invalid_state` error instead of surfacing the error from `?error=...` 
+(which could be set by an attacker).
+
+* Stricter URL validation: `OAuthClient` now rejects redirect URIs containing 
+fragments (RFC 6749 §3.1.2), and `oauth_provider_oidc_discover()` rejects issuer
+identifiers containing query or fragment components.
 
 # shinyOAuth 0.3.0
 

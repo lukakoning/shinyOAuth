@@ -212,6 +212,16 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
+  # OIDC issuer identifiers must not contain query or fragment components
+  if (length(parsed$query) > 0L || nzchar(parsed$fragment %||% "")) {
+    err_input(
+      c(
+        "x" = "issuer must not contain query or fragment components",
+        "i" = paste0("Got issuer: ", as.character(issuer))
+      )
+    )
+  }
+
   if (!is_ok_host(issuer)) {
     err_input(
       c(
