@@ -227,25 +227,28 @@ augment_with_shiny_context <- function(event) {
 #
 # @param expr A quoted expression to evaluate (use quote() or substitute())
 # @param args A named list of values to pass to the expression
+# @param .timeout Optional integer timeout in milliseconds for the mirai task.
+#   When using mirai with dispatcher (the default), timed-out tasks are
+#   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
+#   when NULL (default = no timeout).
 # @return A promise that resolves to the result of the expression
-async_dispatch <- function(expr, args) {
+async_dispatch <- function(expr, args, .timeout = NULL) {
+  .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   # Try mirai first (preferred backend)
-  # mirai is available if daemons are configured (sync or real).
-
-  # When no daemons: status()$daemons is 0 (numeric)
-  # When configured: status()$daemons is a URL string (character)
+  # mirai::daemons_set() is the canonical lightweight check for whether
+  # daemons have been configured (returns TRUE/FALSE).
   mirai_available <- rlang::is_installed("mirai") &&
     tryCatch(
-      {
-        info <- mirai::info()
-        !is.null(info)
-      },
+      mirai::daemons_set(),
       error = function(...) FALSE
     )
 
   if (mirai_available) {
-    # Use mirai - inject the expression and args into the call
-    return(rlang::inject(mirai::mirai(!!expr, .args = args)))
+    # Use mirai - inject the expression and args into the call.
+    # .timeout enables per-task cancellation when using dispatcher.
+    return(rlang::inject(
+      mirai::mirai(!!expr, .args = args, .timeout = .timeout)
+    ))
   }
 
   # Fall back to future_promise if available
@@ -285,14 +288,10 @@ async_dispatch <- function(expr, args) {
 # Returns "mirai", "future", or NULL
 async_backend_available <- function() {
   # Check mirai first (preferred)
-  # When daemons configured: status()$daemons is a URL string
-  # When not configured: status()$daemons is 0 (numeric)
+  # mirai::daemons_set() is the canonical check (returns TRUE/FALSE)
   if (rlang::is_installed("mirai")) {
     mirai_ok <- tryCatch(
-      {
-        info <- mirai::info()
-        !is.null(info)
-      },
+      mirai::daemons_set(),
       error = function(...) FALSE
     )
     if (mirai_ok) {
@@ -313,5 +312,40 @@ async_backend_available <- function() {
     }
   }
 
+  NULL
+}
+
+# Internal: classify a mirai error for better diagnostics.
+# mirai distinguishes between execution errors (code threw), connection resets
+# (daemon crashed, errorValue 19), timeouts (errorValue 5), and cancellations
+# (errorValue 20). This helper returns a short classification string for audit
+# events and log messages. Returns NULL when mirai is not installed or when
+# the value is not an error.
+#
+# @param x The error value or data from a mirai (e.g. m$data or e in catch)
+# @return One of "mirai_error" (code error), "mirai_timeout" (timed out),
+#   "mirai_connection_reset" (daemon crash), "mirai_interrupt" (interrupted/cancelled),
+#   "mirai_error_value" (other transport error), or NULL (not a mirai error).
+classify_mirai_error <- function(x) {
+  if (!rlang::is_installed("mirai")) {
+    return(NULL)
+  }
+  if (tryCatch(mirai::is_mirai_error(x), error = function(...) FALSE)) {
+    return("mirai_error")
+  }
+  if (tryCatch(mirai::is_mirai_interrupt(x), error = function(...) FALSE)) {
+    return("mirai_interrupt")
+  }
+  if (tryCatch(mirai::is_error_value(x), error = function(...) FALSE)) {
+    # Distinguish timeout (5) and connection reset (19) from other values
+    ev <- tryCatch(as.integer(x), error = function(...) NA_integer_)
+    if (identical(ev, 5L)) {
+      return("mirai_timeout")
+    }
+    if (identical(ev, 19L)) {
+      return("mirai_connection_reset")
+    }
+    return("mirai_error_value")
+  }
   NULL
 }

@@ -1478,7 +1478,9 @@ oauth_module_server <- function(
                       issuer = client@provider@issuer %||% NA_character_,
                       client_id_digest = string_digest(client@client_id),
                       phase = "async_token_exchange",
-                      error_class = paste(class(e), collapse = ", ")
+                      error_class = paste(class(e), collapse = ", "),
+                      mirai_error_type = classify_mirai_error(e) %||%
+                        NA_character_
                     ),
                     shiny_session = captured_shiny_session
                   ),
@@ -1650,9 +1652,13 @@ oauth_module_server <- function(
                         }) |>
                         promises::catch(function(e) {
                           values$refresh_in_progress <- FALSE
+                          mirai_err_type <- classify_mirai_error(e)
                           try(log_condition(
                             e,
-                            context = list(phase = "async_token_refresh")
+                            context = list(
+                              phase = "async_token_refresh",
+                              mirai_error_type = mirai_err_type
+                            )
                           ))
 
                           # On failure, either keep token (indefinite_session)
@@ -1685,7 +1691,12 @@ oauth_module_server <- function(
                                   ),
                                   reason = "refresh_failed_async",
                                   kept_token = TRUE,
-                                  error_class = paste(class(e), collapse = ", ")
+                                  error_class = paste(
+                                    class(e),
+                                    collapse = ", "
+                                  ),
+                                  mirai_error_type = mirai_err_type %||%
+                                    NA_character_
                                 ),
                                 shiny_session = captured_shiny_session_refresh
                               ),
@@ -1704,7 +1715,12 @@ oauth_module_server <- function(
                                     client@client_id
                                   ),
                                   reason = "refresh_failed_async",
-                                  error_class = paste(class(e), collapse = ", ")
+                                  error_class = paste(
+                                    class(e),
+                                    collapse = ", "
+                                  ),
+                                  mirai_error_type = mirai_err_type %||%
+                                    NA_character_
                                 ),
                                 shiny_session = captured_shiny_session_refresh
                               ),

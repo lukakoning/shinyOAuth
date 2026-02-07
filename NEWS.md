@@ -1,12 +1,11 @@
 # shinyOAuth (development version)
 
-* Use `mirai::info()` instead of `mirai::status()` to check if 'mirai' is functional (per recommendation from 'mirai' developers, as `mirai::status()` is
-subject to change)
-
-* Prevent 'mirai' warning spam about 'stats' maybe not being available in workers.
-
-* Reduce serialization overhead towards async workers by using certain functions
-from the package namespace directly.
+* Mirai async backend improvements:
+  - Detect active daemons via `mirai::daemons_set()` instead of `mirai::info()`/`mirai::status()` (requires mirai >= 2.3.0).
+  - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); timed-out mirai tasks are automatically cancelled by the dispatcher.
+  - Async audit events now include a `mirai_error_type` field.
+  - Prevent 'mirai' warning spam about 'stats' maybe not being available in workers.
+  - Reduce serialization overhead towards async workers by using certain functions from the package namespace directly.
 
 * OAuth callback error responses (`?error=...`) now require a valid `state` parameter. Missing/invalid/consumed state is then treated properly as an `invalid_state` error instead of surfacing the error from `?error=...` (which could be set by an attacker).
 

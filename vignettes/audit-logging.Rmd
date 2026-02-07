@@ -56,6 +56,12 @@ The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 - `shiny_session$is_async`: a logical indicating whether the event was emitted from the main R process (`FALSE`) or from an async worker (`TRUE`). This helps distinguish logs produced by background tasks (e.g., async token exchange or refresh) from those in the main reactive flow.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
+- `mirai_error_type`: (async failure events only) classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
+  - `"mirai_error"` — code threw an R error inside the worker
+  - `"mirai_timeout"` — the task exceeded its timeout and was cancelled by dispatcher
+  - `"mirai_connection_reset"` — the daemon process crashed or was terminated
+  - `"mirai_interrupt"` — the task was interrupted/cancelled via `stop_mirai()`
+  - `NA` — not a mirai-specific error (e.g., sync path or future backend)
 - `shiny_session$http`: a compact HTTP summary with fields:
 	- `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
 	- `headers`: a list of request headers derived from `HTTP_*` environment variables, with lowercase names (e.g., `user_agent`).
@@ -89,6 +95,22 @@ options(shinyOAuth.audit_include_http = FALSE)
 ```
 
 This means that the `shiny_session$http` field will be `NULL` in all audit events.
+
+### Audit events from async workers (mirai daemons)
+
+When `async = TRUE` is configured in `oauth_module_server()`, and when you
+have set daemon workers `mirai::daemons()`, token exchange,
+refresh, and revocation run in background mirai daemon processes. The package
+automatically propagates your `shinyOAuth.audit_hook` and `shinyOAuth.trace_hook`
+options to these workers, so audit events fire also in the async worker processes and
+your hooks apply there.
+
+Note that your audit hook function (and any objects referenced in
+its closure) must be serializable. If your hook writes to a database connection,
+file handle, or other non-serializable resource, it will fail silently in the
+worker process. Use hooks that create connections on demand (e.g., open a
+database connection inside the hook body) rather than capturing an existing
+connection in the closure.
 
 ### Digest fields and keying
 
@@ -220,7 +242,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_login_failed`
 
 - When: surface-level login failure during callback handling in the Shiny module
-- Context: `provider`, `issuer`, `client_id_digest`, `phase` (`sync_token_exchange`|`async_token_exchange`), `error_class`
+- Context: `provider`, `issuer`, `client_id_digest`, `phase` (`sync_token_exchange`|`async_token_exchange`), `error_class`, `mirai_error_type`
 
 ### Logout and session clears
 
@@ -232,7 +254,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_session_cleared`
 
 - When: the module clears the token reactively
-- Context: `provider`, `issuer`, `client_id_digest`, `reason`
+- Context: `provider`, `issuer`, `client_id_digest`, `reason`, `mirai_error_type`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`, `reauth_window`, `token_expired`
 
 ### Token revocation
@@ -250,7 +272,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_refresh_failed_but_kept_session`
 
 - When: a token refresh attempt fails but the module is configured not to clear the session (i.e., `indefinite_session = TRUE` in `oauth_module_server()`)
-- Context: `provider`, `issuer`, `client_id_digest`, `reason` (`refresh_failed_async`|`refresh_failed_sync`), `kept_token` (TRUE), `error_class`
+- Context: `provider`, `issuer`, `client_id_digest`, `reason` (`refresh_failed_async`|`refresh_failed_sync`), `kept_token` (TRUE), `error_class`, `mirai_error_type`
 
 ### Browser cookie/WebCrypto error
 
