@@ -42,7 +42,7 @@ cache visibility issues.}
 calling from async workers that lack access to the reactive domain.}
 }
 \value{
-An \link{OAuthToken}` object containing the access token, refresh token,
+An \link{OAuthToken} object containing the access token, refresh token,
 expiration time, user information (if requested), and ID token (if applicable).
 If any step of the process fails (e.g., state verification, token exchange,
 token validation), an error is thrown indicating the failure reason.

@@ -39,7 +39,7 @@ Build the image:
 docker build -t shinyoauth-demo:latest -f integration/gcp/Dockerfile .
 ```
 
-Run the image (create gcp/integration/.env based on gcp/integration/.env.example):
+Run the image (create integration/gcp/.env based on integration/gcp/.env.example):
 
 ```bash
 # Run from the repo root

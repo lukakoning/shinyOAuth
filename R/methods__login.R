@@ -357,7 +357,7 @@ build_auth_url <- function(
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #'
-#' @return An [OAuthToken]` object containing the access token, refresh token,
+#' @return An [OAuthToken] object containing the access token, refresh token,
 #' expiration time, user information (if requested), and ID token (if applicable).
 #' If any step of the process fails (e.g., state verification, token exchange,
 #' token validation), an error is thrown indicating the failure reason.
