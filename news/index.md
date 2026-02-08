@@ -28,6 +28,11 @@
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   rejects issuer identifiers containing query or fragment components.
 
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
+  also apply OAuth callback query cleanup in early return paths of
+  internal function `.process_query()`, ensuring more consistent
+  cleanup.
+
 ## shinyOAuth 0.3.0
 
 CRAN release: 2026-01-30
