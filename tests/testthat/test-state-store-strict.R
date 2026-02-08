@@ -84,6 +84,41 @@ test_that("state_store_get_remove errors when remove fails and audits removal fa
   expect_true(any(grepl("^audit_state_store_removal_failed$", types)))
 })
 
+test_that("state_store_get_remove treats explicit FALSE from remove as failure", {
+  prov <- shinyOAuth::oauth_provider_github()
+  client <- shinyOAuth::oauth_client(
+    prov,
+    client_id = "id",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    state_store = cachem::cache_mem(max_age = 60),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  st <- "remove-false-state"
+  key <- shinyOAuth:::state_cache_key(st)
+  client@state_store$set(
+    key,
+    list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "n")
+  )
+
+  store <- client@state_store
+  client@state_store <- shinyOAuth::custom_cache(
+    get = function(key, missing = NULL) store$get(key, missing = missing),
+    set = function(key, value) store$set(key, value),
+    remove = function(key) FALSE,
+    info = function() list(max_age = 60)
+  )
+
+  expect_error(
+    shinyOAuth:::state_store_get_remove(client, st),
+    class = "shinyOAuth_state_error"
+  )
+})
+
 test_that("state_store_get_remove errors on malformed stored value and audits lookup failure", {
   # Capture audit events
   events <- list()

@@ -22,18 +22,18 @@ an atomic "get-and-delete" (e.g., SQL DELETE .. RETURNING), you may supply
 a function which does nothing here but returns \code{TRUE}. (The login flow will always attempt to call
 \verb{$remove()} after \verb{$get()} as a best-effort cleanup.)
 
-Recommended contract for interoperability and strong replay protection:
+Recommended contract for interoperability and replay-safe state stores:
 \itemize{
-\item Return \code{TRUE} when a key was actually deleted or if it already did not exist
-\item Return \code{FALSE} when they key could not be deleted or when it is unknown if
-they key was deleted
+\item Return \code{TRUE} only when deletion is confirmed (including idempotent
+"already absent" semantics your backend explicitly treats as success)
+\item Return \code{FALSE} when deletion is not confirmed; this is treated as a
+hard failure (no post-check fallback)
+\item Return \code{NULL} only for legacy/unknown contracts; 'shinyOAuth' will run
+an immediate post-check (\verb{$get(key, missing = NA)}) and only treat removal
+as successful when the key is confirmed absent
 }
 
-When the return value is not \code{TRUE}, 'shinyOAuth' will attempt to retrieve
-the value from the state store to check if it may still be present; if that
-fails (i.e., key is not present), it will treat the removal as succesful.
-If it does find the key, it will produce an error indicating that removal
-did not succeed.}
+Any other non-\code{TRUE}/non-\code{NULL} return is treated as failure.}
 
 \item{info}{Function() -> list(max_age = seconds, ...). Optional
 

@@ -24,6 +24,10 @@ rejects issuer identifiers containing query or fragment components.
 return paths of internal function `.process_query()`, ensuring more consistent
 cleanup.
 
+* `custom_cache()`: clarified custom state-store remove contract documentation:
+explicit `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
+a post-check fallback to confirm key absence.
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
