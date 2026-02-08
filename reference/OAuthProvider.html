@@ -83,6 +83,7 @@ presence of an issuer and available endpoints.</p>
 <span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  id_token_at_hash_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  extra_auth_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -211,6 +212,15 @@ the client's scope to include "openid").</p>
 <p>Note: At the S7 class level, this defaults to FALSE. Helper constructors like
 <code><a href="oauth_provider.html">oauth_provider()</a></code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> turn this on when an issuer
 is provided or when OIDC is used.</p></dd>
+
+
+<dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>
+<dd><p>Whether to require the <code>at_hash</code> (Access Token hash)
+claim in the ID token. When <code>TRUE</code>, login fails if the ID token does not
+contain an <code>at_hash</code> claim or if the claim does not match the access token.
+When <code>FALSE</code> (default), <code>at_hash</code> is validated only when present.
+Requires <code>id_token_validation = TRUE</code>. See OIDC Core section 3.1.3.8 and
+section 3.2.2.9.</p></dd>
 
 
 <dt id="arg-extra-auth-params">extra_auth_params<a class="anchor" aria-label="anchor" href="#arg-extra-auth-params"></a></dt>

@@ -80,7 +80,8 @@ some settings based on the provided parameters.</p>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"PS256"</span>, <span class="st">"PS384"</span>, <span class="st">"PS512"</span>, <span class="st">"ES256"</span>,</span>
 <span>    <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
-<span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span></span>
+<span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span>,</span>
+<span>  id_token_at_hash_required <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -302,6 +303,15 @@ fails fast rather than misusing the token. Set <code>allowed_token_types = chara
 <dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code>/<code>nbf</code> checks
 and state payload <code>issued_at</code> future check. Default 30. Can be globally
 overridden via option <code>shinyOAuth.leeway</code></p></dd>
+
+
+<dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>
+<dd><p>Whether to require the <code>at_hash</code> (Access Token hash)
+claim in the ID token. When <code>TRUE</code>, login fails if the ID token does not
+contain an <code>at_hash</code> claim or if the claim does not match the access token.
+When <code>FALSE</code> (default), <code>at_hash</code> is validated only when present.
+Requires <code>id_token_validation = TRUE</code>. See OIDC Core section 3.1.3.8 and
+section 3.2.2.9.</p></dd>
 
 </dl></div>
     <div class="section level2">

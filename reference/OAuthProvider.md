@@ -33,6 +33,7 @@ OAuthProvider(
   userinfo_id_token_match = FALSE,
   id_token_required = FALSE,
   id_token_validation = FALSE,
+  id_token_at_hash_required = FALSE,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(0),
@@ -180,6 +181,15 @@ OAuthProvider(
   and
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   turn this on when an issuer is provided or when OIDC is used.
+
+- id_token_at_hash_required:
+
+  Whether to require the `at_hash` (Access Token hash) claim in the ID
+  token. When `TRUE`, login fails if the ID token does not contain an
+  `at_hash` claim or if the claim does not match the access token. When
+  `FALSE` (default), `at_hash` is validated only when present. Requires
+  `id_token_validation = TRUE`. See OIDC Core section 3.1.3.8 and
+  section 3.2.2.9.
 
 - extra_auth_params:
 

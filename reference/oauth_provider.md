@@ -36,7 +36,8 @@ oauth_provider(
   allowed_algs = c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256",
     "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
-  leeway = getOption("shinyOAuth.leeway", 30)
+  leeway = getOption("shinyOAuth.leeway", 30),
+  id_token_at_hash_required = FALSE
 )
 ```
 
@@ -289,6 +290,15 @@ oauth_provider(
   Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
   checks and state payload `issued_at` future check. Default 30. Can be
   globally overridden via option `shinyOAuth.leeway`
+
+- id_token_at_hash_required:
+
+  Whether to require the `at_hash` (Access Token hash) claim in the ID
+  token. When `TRUE`, login fails if the ID token does not contain an
+  `at_hash` claim or if the claim does not match the access token. When
+  `FALSE` (default), `at_hash` is validated only when present. Requires
+  `id_token_validation = TRUE`. See OIDC Core section 3.1.3.8 and
+  section 3.2.2.9.
 
 ## Value
 

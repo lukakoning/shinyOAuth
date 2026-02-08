@@ -33,6 +33,14 @@
 - Stricter state payload parsing: callback `state` now rejects embedded
   NUL bytes before JSON decoding.
 
+- `validate_id_token()` now validates the `at_hash` (Access Token hash)
+  claim when present in the ID token (per OIDC Core section 3.1.3.8 and
+  3.2.2.9). If the claim exists, the access token binding is verified; a
+  mismatch raises a `shinyOAuth_id_token_error`. New
+  `id_token_at_hash_required` property on `OAuthProvider` (default
+  `FALSE`) forces login to fail when the ID token does not contain an
+  `at_hash` claim.
+
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
   also apply OAuth callback query cleanup in early return paths of
   internal function `.process_query()`, ensuring more consistent
