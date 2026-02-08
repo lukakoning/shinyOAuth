@@ -30,6 +30,9 @@
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   and manual construction of providers.
 
+- Stricter state payload parsing: callback `state` now rejects embedded
+  NUL bytes before JSON decoding.
+
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
   also apply OAuth callback query cleanup in early return paths of
   internal function `.process_query()`, ensuring more consistent
