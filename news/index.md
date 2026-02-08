@@ -15,8 +15,16 @@
   - Async audit events now include a `mirai_error_type` field.
   - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
     in workers.
-  - Reduce serialization overhead towards async workers by using certain
-    functions from the package namespace directly.
+    - Async callback flow no longer serializes the full client object
+      (including potentially non-serializable custom `state_store` /
+      JWKS cache backends) into the worker context. The `state_store`
+      (already consumed on the main thread) is replaced with a
+      lightweight serializable dummy before dispatch. If the client
+      still fails serialization, the flow falls back to synchronous
+      execution with an explicit warning instead of an opaque runtime
+      error.
+  - Further reduced serialization overhead towards async workers by
+    using certain functions from the package namespace directly.
 
 - OAuth callback error responses (`?error=...`) now require a valid
   `state` parameter. Missing/invalid/consumed state is then treated
