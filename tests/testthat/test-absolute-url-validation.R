@@ -56,28 +56,44 @@ testthat::test_that("OAuthClient rejects redirect_uri with fragment", {
   )
 })
 
+testthat::test_that("OAuthProvider rejects issuer with query component", {
+  testthat::expect_error(
+    oauth_provider(
+      name = "t",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      issuer = "https://idp.example.com?x=1"
+    ),
+    "issuer must not contain query or fragment"
+  )
+})
+
+testthat::test_that("OAuthProvider rejects issuer with fragment component", {
+  testthat::expect_error(
+    oauth_provider(
+      name = "t",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      issuer = "https://idp.example.com#frag"
+    ),
+    "issuer must not contain query or fragment"
+  )
+})
+
+testthat::test_that("OAuthProvider accepts issuer without query/fragment", {
+  prov <- oauth_provider(
+    name = "t",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://idp.example.com/realms/test"
+  )
+  testthat::expect_equal(prov@issuer, "https://idp.example.com/realms/test")
+})
+
 testthat::test_that("OIDC discovery issuer must be absolute", {
   f <- shinyOAuth:::.discover_assert_valid_issuer
   testthat::expect_error(
     f("localhost:8100"),
-    class = "shinyOAuth_input_error"
-  )
-})
-
-testthat::test_that("OIDC discovery issuer rejects query component", {
-  f <- shinyOAuth:::.discover_assert_valid_issuer
-  testthat::expect_error(
-    f("https://idp.example.com?x=1"),
-    "must not contain query or fragment",
-    class = "shinyOAuth_input_error"
-  )
-})
-
-testthat::test_that("OIDC discovery issuer rejects fragment component", {
-  f <- shinyOAuth:::.discover_assert_valid_issuer
-  testthat::expect_error(
-    f("https://idp.example.com#x"),
-    "must not contain query or fragment",
     class = "shinyOAuth_input_error"
   )
 })

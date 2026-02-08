@@ -310,6 +310,20 @@ OAuthProvider <- S7::new_class(
       } # early exit on first violation
     }
 
+    # OIDC issuer identifiers must not contain query or fragment components
+    if (is_valid_string(self@issuer)) {
+      parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)
+      if (
+        !inherits(parsed_issuer, "try-error") &&
+          (length(parsed_issuer$query) > 0L ||
+            nzchar(parsed_issuer$fragment %||% ""))
+      ) {
+        return(
+          "OAuthProvider: issuer must not contain query or fragment components"
+        )
+      }
+    }
+
     # Validate extra_token_headers: must be named character vector of length n
     # with all non-empty names and scalar (length-1) character values.
     if (length(self@extra_token_headers) > 0) {

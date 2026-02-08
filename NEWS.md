@@ -17,8 +17,9 @@ parameter. Missing/invalid/consumed state is then treated properly as an
 (which could be set by an attacker).
 
 * Stricter URL validation: `OAuthClient` now rejects redirect URIs containing 
-fragments (per RFC 6749 - section 3.1.2); `oauth_provider_oidc_discover()`
-rejects issuer identifiers containing query or fragment components.
+fragments (per RFC 6749, section 3.1.2); `OAuthProvider` now rejects issuer 
+identifiers containing query or fragment components, covering both 
+`oauth_provider_oidc_discover()` and manual construction of providers.
 
 * `oauth_module_server()`: also apply OAuth callback query cleanup in early 
 return paths of internal function `.process_query()`, ensuring more consistent
