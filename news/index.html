@@ -52,6 +52,7 @@
 <li><p>OAuth callback error responses (<code>?error=...</code>) now require a valid <code>state</code> parameter. Missing/invalid/consumed state is then treated properly as an <code>invalid_state</code> error instead of surfacing the error from <code>?error=...</code> (which could be set by an attacker).</p></li>
 <li><p>Stricter URL validation: <code>OAuthClient</code> now rejects redirect URIs containing fragments (per RFC 6749 - section 3.1.2); <code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> rejects issuer identifiers containing query or fragment components.</p></li>
 <li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>: also apply OAuth callback query cleanup in early return paths of internal function <code>.process_query()</code>, ensuring more consistent cleanup.</p></li>
+<li><p><code><a href="../reference/custom_cache.html">custom_cache()</a></code>: clarified custom state-store remove contract documentation: explicit <code>remove(key) = FALSE</code> is treated as a hard failure, while <code>NULL</code> uses a post-check fallback to confirm key absence.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="shinyoauth-030">shinyOAuth 0.3.0<a class="anchor" aria-label="anchor" href="#shinyoauth-030"></a></h2><p class="text-muted">CRAN release: 2026-01-30</p>

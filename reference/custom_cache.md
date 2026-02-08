@@ -59,20 +59,21 @@ custom_cache(get, set, remove, info = NULL)
   (The login flow will always attempt to call `$remove()` after `$get()`
   as a best-effort cleanup.)
 
-  Recommended contract for interoperability and strong replay
-  protection:
+  Recommended contract for interoperability and replay-safe state
+  stores:
 
-  - Return `TRUE` when a key was actually deleted or if it already did
-    not exist
+  - Return `TRUE` only when deletion is confirmed (including idempotent
+    "already absent" semantics your backend explicitly treats as
+    success)
 
-  - Return `FALSE` when they key could not be deleted or when it is
-    unknown if they key was deleted
+  - Return `FALSE` when deletion is not confirmed; this is treated as a
+    hard failure (no post-check fallback)
 
-  When the return value is not `TRUE`, 'shinyOAuth' will attempt to
-  retrieve the value from the state store to check if it may still be
-  present; if that fails (i.e., key is not present), it will treat the
-  removal as succesful. If it does find the key, it will produce an
-  error indicating that removal did not succeed.
+  - Return `NULL` only for legacy/unknown contracts; 'shinyOAuth' will
+    run an immediate post-check (`$get(key, missing = NA)`) and only
+    treat removal as successful when the key is confirmed absent
+
+  Any other non-`TRUE`/non-`NULL` return is treated as failure.
 
 - info:
 

@@ -33,6 +33,11 @@
   internal function `.process_query()`, ensuring more consistent
   cleanup.
 
+- [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md):
+  clarified custom state-store remove contract documentation: explicit
+  `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
+  a post-check fallback to confirm key absence.
+
 ## shinyOAuth 0.3.0
 
 CRAN release: 2026-01-30

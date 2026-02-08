@@ -113,14 +113,14 @@ Should store the value under the given key</p></dd>
 an atomic "get-and-delete" (e.g., SQL DELETE .. RETURNING), you may supply
 a function which does nothing here but returns <code>TRUE</code>. (The login flow will always attempt to call
 <code>$remove()</code> after <code>$get()</code> as a best-effort cleanup.)</p>
-<p>Recommended contract for interoperability and strong replay protection:</p><ul><li><p>Return <code>TRUE</code> when a key was actually deleted or if it already did not exist</p></li>
-<li><p>Return <code>FALSE</code> when they key could not be deleted or when it is unknown if
-they key was deleted</p></li>
-</ul><p>When the return value is not <code>TRUE</code>, 'shinyOAuth' will attempt to retrieve
-the value from the state store to check if it may still be present; if that
-fails (i.e., key is not present), it will treat the removal as succesful.
-If it does find the key, it will produce an error indicating that removal
-did not succeed.</p></dd>
+<p>Recommended contract for interoperability and replay-safe state stores:</p><ul><li><p>Return <code>TRUE</code> only when deletion is confirmed (including idempotent
+"already absent" semantics your backend explicitly treats as success)</p></li>
+<li><p>Return <code>FALSE</code> when deletion is not confirmed; this is treated as a
+hard failure (no post-check fallback)</p></li>
+<li><p>Return <code>NULL</code> only for legacy/unknown contracts; 'shinyOAuth' will run
+an immediate post-check (<code>$get(key, missing = NA)</code>) and only treat removal
+as successful when the key is confirmed absent</p></li>
+</ul><p>Any other non-<code>TRUE</code>/non-<code>NULL</code> return is treated as failure.</p></dd>
 
 
 <dt id="arg-info">info<a class="anchor" aria-label="anchor" href="#arg-info"></a></dt>
