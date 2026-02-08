@@ -8,10 +8,10 @@
     [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
     instead of
     [`mirai::info()`](https://mirai.r-lib.org/reference/info.html)/[`mirai::status()`](https://mirai.r-lib.org/reference/status.html)
-    (requires mirai \>= 2.3.0).
+    (requires ‘mirai’ \>= 2.3.0).
   - Per-task timeout via `options(shinyOAuth.async_timeout)`
-    (milliseconds); timed-out mirai tasks are automatically cancelled by
-    the dispatcher.
+    (milliseconds); timed-out ‘mirai’ tasks are automatically cancelled
+    by the dispatcher.
   - Async audit events now include a `mirai_error_type` field.
   - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
     in workers.
