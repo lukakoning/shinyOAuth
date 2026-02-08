@@ -1431,7 +1431,7 @@ oauth_module_server <- function(
                   shinyOAuth:::with_async_session_context(
                     captured_shiny_session,
                     {
-                      shinyOAuth::handle_callback(
+                      shinyOAuth:::handle_callback_internal(
                         oauth_client = client_for_worker,
                         code = code,
                         payload = state,

@@ -343,16 +343,6 @@ build_auth_url <- function(
 #' (this should be the same value that was generated and sent in `prepare_call()`).
 #' @param browser_token Browser token present in the user's session (this is managed
 #' by `oauth_module_server()` and should match the one used in `prepare_call()`).
-#' @param decrypted_payload Optional pre-decrypted and validated payload list
-#'   (as returned by `state_decrypt_gcm()` followed by internal validation).
-#'   Supplying this allows callers to validate and bind the state on the main
-#'   thread before dispatching to a background worker for async flows.
-#' @param state_store_values Optional pre-fetched state store entry (a list with
-#'   `browser_token`, `pkce_code_verifier`, and `nonce`). When supplied, the
-#'   function will skip reading/removing from `oauth_client@state_store` and use
-#'   the provided values instead. This supports async flows that prefetch and
-#'   remove the single-use state entry on the main thread to avoid cross-process
-#'   cache visibility issues.
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -366,6 +356,27 @@ build_auth_url <- function(
 #'
 #' @export
 handle_callback <- function(
+  oauth_client,
+  code,
+  payload,
+  browser_token,
+  shiny_session = NULL
+) {
+  handle_callback_internal(
+    oauth_client = oauth_client,
+    code = code,
+    payload = payload,
+    browser_token = browser_token,
+    decrypted_payload = NULL,
+    state_store_values = NULL,
+    shiny_session = shiny_session
+  )
+}
+
+# Internal helper that supports pre-validated bypass parameters for async flows.
+# NOT exported: only called by oauth_module_server() when dispatching to async
+# workers where state-store and payload validation must occur on the main thread.
+handle_callback_internal <- function(
   oauth_client,
   code,
   payload,

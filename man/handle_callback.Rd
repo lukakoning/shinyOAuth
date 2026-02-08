@@ -9,8 +9,6 @@ handle_callback(
   code,
   payload,
   browser_token,
-  decrypted_payload = NULL,
-  state_store_values = NULL,
   shiny_session = NULL
 )
 }
@@ -24,18 +22,6 @@ handle_callback(
 
 \item{browser_token}{Browser token present in the user's session (this is managed
 by \code{oauth_module_server()} and should match the one used in \code{prepare_call()}).}
-
-\item{decrypted_payload}{Optional pre-decrypted and validated payload list
-(as returned by \code{state_decrypt_gcm()} followed by internal validation).
-Supplying this allows callers to validate and bind the state on the main
-thread before dispatching to a background worker for async flows.}
-
-\item{state_store_values}{Optional pre-fetched state store entry (a list with
-\code{browser_token}, \code{pkce_code_verifier}, and \code{nonce}). When supplied, the
-function will skip reading/removing from \code{oauth_client@state_store} and use
-the provided values instead. This supports async flows that prefetch and
-remove the single-use state entry on the main thread to avoid cross-process
-cache visibility issues.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when

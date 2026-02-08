@@ -29,6 +29,12 @@ cleanup.
 explicit `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
 a post-check fallback to confirm key absence.
 
+* `handle_callback()`: no longer accepts `decrypted_payload` and
+`state_store_values` bypass parameters. These parameters were only intended for
+internal use by `oauth_module_server()`'s async path. As they can be misused by
+direct/custom callers to bypass important security checks, they have been
+moved to an internal-only helper function (`handle_callback_internal()`).
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
