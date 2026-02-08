@@ -21,6 +21,9 @@ fragments (per RFC 6749, section 3.1.2); `OAuthProvider` now rejects issuer
 identifiers containing query or fragment components, covering both 
 `oauth_provider_oidc_discover()` and manual construction of providers.
 
+* Stricter state payload parsing: callback `state` now rejects embedded NUL
+bytes before JSON decoding.
+
 * `oauth_module_server()`: also apply OAuth callback query cleanup in early 
 return paths of internal function `.process_query()`, ensuring more consistent
 cleanup.

@@ -274,6 +274,15 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt", where = "wrapper_raw")
     )
   }
+  # JSON text cannot contain embedded NUL bytes. Without this guard,
+  # rawToChar() may truncate at NUL and accidentally accept appended garbage.
+  if (any(decoded == as.raw(0))) {
+    audit_fail("token_payload_embedded_nul")
+    state_fail(
+      "state token payload is not valid JSON",
+      context = list(phase = "decrypt")
+    )
+  }
   payload_json <- try(rawToChar(decoded), silent = TRUE)
   if (inherits(payload_json, "try-error")) {
     audit_fail("token_payload_utf8_invalid")
@@ -409,6 +418,18 @@ state_decrypt_gcm <- function(
       c(
         "x" = "GCM authentication failed",
         "!" = "This often indicates the state key/secret does not match the one used to encrypt the state (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret)."
+      ),
+      context = list(phase = "decrypt")
+    )
+  }
+  # Decrypted wrapper payload is JSON text; reject embedded NULs to avoid
+  # truncation-acceptance edge cases.
+  if (any(res == as.raw(0))) {
+    audit_fail("decrypted_payload_embedded_nul")
+    state_fail(
+      c(
+        "x" = "state token decrypted payload is not valid JSON",
+        "!" = "This can happen if the state key/secret is wrong (e.g., OAuthClient created inside a Shiny session so the key changes on redirect/new session, different Shiny worker, or rotated secret); the decrypted bytes won't decode as JSON."
       ),
       context = list(phase = "decrypt")
     )

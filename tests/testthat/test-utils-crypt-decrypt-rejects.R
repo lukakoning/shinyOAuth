@@ -41,6 +41,13 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   tok <- build_valid_token()
   wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
 
+  # Appending base64url garbage must fail (no truncation acceptance)
+  expect_error(
+    shinyOAuth:::state_decrypt_gcm(paste0(tok, "AAAAAAAAAA"), key = key),
+    "state token payload is not valid JSON",
+    class = "shinyOAuth_state_error"
+  )
+
   # Version mismatch
   w <- wrapper
   w$v <- 2L
@@ -271,4 +278,24 @@ test_that("state_decrypt_gcm includes state-key mismatch hints", {
   )
   expect_match(m2, "state key/secret", fixed = TRUE)
   expect_match(m2, "OAuthClient created inside a Shiny session", fixed = TRUE)
+
+  # 3) Force embedded-NUL decrypted payload branch
+  testthat::local_mocked_bindings(
+    aes_gcm_decrypt = function(...) {
+      c(charToRaw("{\"state\":\"ok\"}"), as.raw(0))
+    },
+    .package = "openssl"
+  )
+  e3 <- tryCatch(
+    shinyOAuth:::state_decrypt_gcm(tok, key = key),
+    error = function(e) e
+  )
+  expect_s3_class(e3, "shinyOAuth_state_error")
+  m3 <- conditionMessage(e3)
+  expect_match(
+    m3,
+    "state token decrypted payload is not valid JSON",
+    fixed = TRUE
+  )
+  expect_match(m3, "state key/secret", fixed = TRUE)
 })
