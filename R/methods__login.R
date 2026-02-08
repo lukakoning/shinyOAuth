@@ -288,8 +288,12 @@ build_auth_url <- function(
     params$nonce <- nonce
   }
 
-  if (length(oauth_client@scopes) > 0) {
-    params$scope <- paste(oauth_client@scopes, collapse = " ")
+  effective_scopes <- ensure_openid_scope(
+    oauth_client@scopes,
+    oauth_client@provider
+  )
+  if (length(effective_scopes) > 0) {
+    params$scope <- paste(effective_scopes, collapse = " ")
   }
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params

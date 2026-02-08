@@ -92,3 +92,42 @@ as_scope_tokens <- function(scopes) {
   tokens <- tokens[nzchar(tokens)]
   tokens
 }
+
+#' Ensure openid scope for OIDC providers
+#'
+#' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the
+#' `openid` scope value. When the provider has an `issuer` set (indicating
+#' OIDC), this helper checks for the `openid` scope and auto-prepends it with
+#' a one-time warning if missing.
+#'
+#' @param scopes Character vector of scope tokens.
+#' @param provider An [OAuthProvider] object.
+#'
+#' @return Character vector of scope tokens, possibly with `"openid"` prepended.
+#'
+#' @keywords internal
+#' @noRd
+ensure_openid_scope <- function(scopes, provider) {
+  # Only applies to OIDC providers (those with an issuer)
+  if (!is_valid_string(provider@issuer)) {
+    return(scopes)
+  }
+
+  # Already present — nothing to do
+  if ("openid" %in% scopes) {
+    return(scopes)
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Missing `openid` scope for OIDC provider}",
+      "!" = "Provider {.val {provider@name}} has an issuer set, indicating OIDC, but {.val openid} was not in the requested scopes.",
+      "i" = "Auto-prepending {.val openid} to scopes per OIDC Core \u00a73.1.2.1.",
+      "i" = "Add {.val openid} to your {.code oauth_client(scopes = ...)} to silence this warning."
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_missing_openid_scope"
+  )
+
+  c("openid", scopes)
+}

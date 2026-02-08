@@ -45,6 +45,10 @@ internal use by `oauth_module_server()`'s async path. As they can be misused by
 direct/custom callers to bypass important security checks, they have been
 moved to an internal-only helper function (`handle_callback_internal()`).
 
+* OIDC `openid` scope enforcement: when a provider has an `issuer` set
+(indicating OIDC) and `openid` is missing from the client's scopes,
+`build_auth_url()` now auto-prepends it and emits a one-time warning.
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
