@@ -51,8 +51,6 @@
 <span>  <span class="va">code</span>,</span>
 <span>  <span class="va">payload</span>,</span>
 <span>  <span class="va">browser_token</span>,</span>
-<span>  decrypted_payload <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  state_store_values <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -77,22 +75,6 @@
 <dt id="arg-browser-token">browser_token<a class="anchor" aria-label="anchor" href="#arg-browser-token"></a></dt>
 <dd><p>Browser token present in the user's session (this is managed
 by <code><a href="oauth_module_server.html">oauth_module_server()</a></code> and should match the one used in <code><a href="prepare_call.html">prepare_call()</a></code>).</p></dd>
-
-
-<dt id="arg-decrypted-payload">decrypted_payload<a class="anchor" aria-label="anchor" href="#arg-decrypted-payload"></a></dt>
-<dd><p>Optional pre-decrypted and validated payload list
-(as returned by <code>state_decrypt_gcm()</code> followed by internal validation).
-Supplying this allows callers to validate and bind the state on the main
-thread before dispatching to a background worker for async flows.</p></dd>
-
-
-<dt id="arg-state-store-values">state_store_values<a class="anchor" aria-label="anchor" href="#arg-state-store-values"></a></dt>
-<dd><p>Optional pre-fetched state store entry (a list with
-<code>browser_token</code>, <code>pkce_code_verifier</code>, and <code>nonce</code>). When supplied, the
-function will skip reading/removing from <code>oauth_client@state_store</code> and use
-the provided values instead. This supports async flows that prefetch and
-remove the single-use state entry on the main thread to avoid cross-process
-cache visibility issues.</p></dd>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>

@@ -11,8 +11,6 @@ handle_callback(
   code,
   payload,
   browser_token,
-  decrypted_payload = NULL,
-  state_store_values = NULL,
   shiny_session = NULL
 )
 ```
@@ -43,22 +41,6 @@ handle_callback(
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   and should match the one used in
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)).
-
-- decrypted_payload:
-
-  Optional pre-decrypted and validated payload list (as returned by
-  `state_decrypt_gcm()` followed by internal validation). Supplying this
-  allows callers to validate and bind the state on the main thread
-  before dispatching to a background worker for async flows.
-
-- state_store_values:
-
-  Optional pre-fetched state store entry (a list with `browser_token`,
-  `pkce_code_verifier`, and `nonce`). When supplied, the function will
-  skip reading/removing from `oauth_client@state_store` and use the
-  provided values instead. This supports async flows that prefetch and
-  remove the single-use state entry on the main thread to avoid
-  cross-process cache visibility issues.
 
 - shiny_session:
 

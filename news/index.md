@@ -40,6 +40,14 @@
   `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
   a post-check fallback to confirm key absence.
 
+- [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md):
+  no longer accepts `decrypted_payload` and `state_store_values` bypass
+  parameters. These parameters were only intended for internal use by
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)’s
+  async path. As they can be misused by direct/custom callers to bypass
+  important security checks, they have been moved to an internal-only
+  helper function (`handle_callback_internal()`).
+
 ## shinyOAuth 0.3.0
 
 CRAN release: 2026-01-30
