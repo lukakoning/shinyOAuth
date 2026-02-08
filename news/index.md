@@ -2,7 +2,7 @@
 
 ## shinyOAuth (development version)
 
-- Mirai async backend improvements:
+- ‘mirai’ async backend improvements:
 
   - Detect active daemons via
     [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
@@ -24,7 +24,7 @@
   from `?error=...` (which could be set by an attacker).
 
 - Stricter URL validation: `OAuthClient` now rejects redirect URIs
-  containing fragments (RFC 6749 §3.1.2), and
+  containing fragments (per RFC 6749 - section 3.1.2);
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   rejects issuer identifiers containing query or fragment components.
 
