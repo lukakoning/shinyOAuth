@@ -315,6 +315,40 @@ async_backend_available <- function() {
   NULL
 }
 
+# Internal: prepare a serialization-safe copy of an OAuthClient for async workers.
+#
+# The state_store (and optionally the JWKS cache) may contain non-serializable
+# objects (e.g., closures over database connections, external pointers). Since
+# the state was already consumed on the main thread before async dispatch, the
+# worker never accesses the state_store, so we replace it with a lightweight
+# cachem::cache_mem() that is guaranteed serializable.
+#
+# After replacement, the entire client is tested with serialize(). If it still
+# fails (e.g., due to other non-serializable components), NULL is returned so
+# callers can fall back to synchronous execution.
+#
+# @param client An OAuthClient object.
+# @return A serialization-safe OAuthClient copy, or NULL if serialization
+#   fails despite cleanup.
+prepare_client_for_worker <- function(client) {
+  tryCatch(
+    {
+      # S7 value semantics: assignment copies the object
+      worker_client <- client
+      # Replace state_store with a lightweight serializable dummy.
+      # The state was already consumed on the main thread, so this cache
+      # will never be accessed in the worker.
+      worker_client@state_store <- cachem::cache_mem(max_age = 1)
+      # Verify the cleaned-up client can actually be serialized
+      serialize(worker_client, connection = NULL)
+      worker_client
+    },
+    error = function(e) {
+      NULL
+    }
+  )
+}
+
 # Internal: classify a mirai error for better diagnostics.
 # mirai distinguishes between execution errors (code threw), connection resets
 # (daemon crashed, errorValue 19), timeouts (errorValue 5), and cancellations

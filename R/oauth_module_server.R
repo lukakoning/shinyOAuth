@@ -1365,6 +1365,7 @@ oauth_module_server <- function(
 
       tryCatch(
         {
+          async_fallback <- FALSE
           res <- if (isTRUE(async)) {
             # Use mirai to move work off the main thread. To avoid
             # cross-process cache visibility issues with client@state_store,
@@ -1418,43 +1419,73 @@ oauth_module_server <- function(
               shiny::isolate(values$browser_token),
               error = function(...) values$browser_token
             )
-            # Build a client clone for the worker; reuse existing state_store (already consumed)
-            client_for_worker <- client
+            # Build a serialization-safe client for the worker.
+            # The state_store is already consumed on the main thread, so
+            # prepare_client_for_worker() replaces it with a lightweight
+            # serializable dummy and verifies overall serializability.
+            client_for_worker <- prepare_client_for_worker(client)
+            async_fallback <- is.null(client_for_worker)
 
-            # Use namespace-qualified calls to avoid passing function closures to mirai
-            # (functions carry their enclosing environments, causing serialization overhead)
-            async_dispatch(
-              expr = quote({
-                # Restore shinyOAuth.* options in the async worker
-                shinyOAuth:::with_async_options(captured_async_options, {
-                  # Set async context so errors include session info with is_async = TRUE
-                  shinyOAuth:::with_async_session_context(
-                    captured_shiny_session,
-                    {
-                      shinyOAuth:::handle_callback_internal(
-                        oauth_client = client_for_worker,
-                        code = code,
-                        payload = state,
-                        browser_token = captured_browser_token,
-                        decrypted_payload = pre_payload,
-                        state_store_values = pre_state,
-                        shiny_session = captured_shiny_session
-                      )
-                    }
-                  )
-                })
-              }),
-              args = list(
-                captured_async_options = captured_async_options,
-                captured_shiny_session = captured_shiny_session,
-                client_for_worker = client_for_worker,
-                code = code,
-                state = state,
-                captured_browser_token = captured_browser_token,
-                pre_payload = pre_payload,
-                pre_state = pre_state
+            if (async_fallback) {
+              rlang::warn(
+                c(
+                  "Async callback dispatch failed: client object contains non-serializable components",
+                  "i" = "Falling back to synchronous callback execution",
+                  "i" = "Custom state_store or JWKS cache backends must be serializable for async mode",
+                  "i" = "Consider using cachem::cache_mem() or cachem::cache_disk() for async compatibility"
+                ),
+                class = "shinyOAuth_async_serialization_fallback",
+                .frequency = "once",
+                .frequency_id = "shinyOAuth-async-serialization-fallback"
               )
-            )
+              # Fall back to synchronous execution using pre-computed values
+              # (state_store was already consumed above, so we must use
+              # handle_callback_internal with the pre-fetched data)
+              handle_callback_internal(
+                oauth_client = client,
+                code = code,
+                payload = state,
+                browser_token = captured_browser_token,
+                decrypted_payload = pre_payload,
+                state_store_values = pre_state,
+                shiny_session = captured_shiny_session
+              )
+            } else {
+              # Use namespace-qualified calls to avoid passing function closures to mirai
+              # (functions carry their enclosing environments, causing serialization overhead)
+              async_dispatch(
+                expr = quote({
+                  # Restore shinyOAuth.* options in the async worker
+                  shinyOAuth:::with_async_options(captured_async_options, {
+                    # Set async context so errors include session info with is_async = TRUE
+                    shinyOAuth:::with_async_session_context(
+                      captured_shiny_session,
+                      {
+                        shinyOAuth:::handle_callback_internal(
+                          oauth_client = client_for_worker,
+                          code = code,
+                          payload = state,
+                          browser_token = captured_browser_token,
+                          decrypted_payload = pre_payload,
+                          state_store_values = pre_state,
+                          shiny_session = captured_shiny_session
+                        )
+                      }
+                    )
+                  })
+                }),
+                args = list(
+                  captured_async_options = captured_async_options,
+                  captured_shiny_session = captured_shiny_session,
+                  client_for_worker = client_for_worker,
+                  code = code,
+                  state = state,
+                  captured_browser_token = captured_browser_token,
+                  pre_payload = pre_payload,
+                  pre_state = pre_state
+                )
+              )
+            }
           } else {
             handle_callback(
               client,
@@ -1465,7 +1496,7 @@ oauth_module_server <- function(
           }
 
           # Handle async/sync
-          if (isTRUE(async)) {
+          if (isTRUE(async) && !isTRUE(async_fallback)) {
             # Mark that we exercised the async pathway (testing aid)
             values$last_login_async_used <- TRUE
 
