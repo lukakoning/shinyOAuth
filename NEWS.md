@@ -1,10 +1,10 @@
 # shinyOAuth (development version)
 
-* Mirai async backend improvements:
+* 'mirai' async backend improvements:
   - Detect active daemons via `mirai::daemons_set()` instead of 
-  `mirai::info()`/`mirai::status()` (requires mirai >= 2.3.0).
+  `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
   - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
-  timed-out mirai tasks are automatically cancelled by the dispatcher.
+  timed-out 'mirai' tasks are automatically cancelled by the dispatcher.
   - Async audit events now include a `mirai_error_type` field.
   - Prevent 'mirai' warning spam about 'stats' maybe not being available in 
   workers.
@@ -17,11 +17,12 @@ parameter. Missing/invalid/consumed state is then treated properly as an
 (which could be set by an attacker).
 
 * Stricter URL validation: `OAuthClient` now rejects redirect URIs containing 
-fragments (RFC 6749 §3.1.2), and `oauth_provider_oidc_discover()` rejects issuer
-identifiers containing query or fragment components.
+fragments (per RFC 6749 - section 3.1.2); `oauth_provider_oidc_discover()`
+rejects issuer identifiers containing query or fragment components.
 
-* `oauth_module_server()`: also apply OAuth callback query cleanup in early return
-paths of internal function `.process_query()`, ensuring more consistent cleanup.
+* `oauth_module_server()`: also apply OAuth callback query cleanup in early 
+return paths of internal function `.process_query()`, ensuring more consistent
+cleanup.
 
 # shinyOAuth 0.3.0
 
