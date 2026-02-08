@@ -32,7 +32,8 @@ oauth_provider(
   allowed_algs = c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256",
     "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
-  leeway = getOption("shinyOAuth.leeway", 30)
+  leeway = getOption("shinyOAuth.leeway", 30),
+  id_token_at_hash_required = FALSE
 )
 }
 \arguments{
@@ -206,6 +207,13 @@ fails fast rather than misusing the token. Set \code{allowed_token_types = chara
 \item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
 and state payload \code{issued_at} future check. Default 30. Can be globally
 overridden via option \code{shinyOAuth.leeway}}
+
+\item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
+claim in the ID token. When \code{TRUE}, login fails if the ID token does not
+contain an \code{at_hash} claim or if the claim does not match the access token.
+When \code{FALSE} (default), \code{at_hash} is validated only when present.
+Requires \code{id_token_validation = TRUE}. See OIDC Core section 3.1.3.8 and
+section 3.2.2.9.}
 }
 \value{
 \link{OAuthProvider} object

@@ -59,7 +59,8 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
       client,
       id_token,
       expected_nonce = NULL,
-      expected_sub = NULL
+      expected_sub = NULL,
+      expected_access_token = NULL
     ) {
       call_order <<- c(call_order, "validate_id_token")
       invisible(list(sub = "user123", iss = "https://test.example.com"))
@@ -149,7 +150,8 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
         client,
         id_token,
         expected_nonce = NULL,
-        expected_sub = NULL
+        expected_sub = NULL,
+        expected_access_token = NULL
       ) {
         shinyOAuth:::err_id_token("Simulated ID token validation failure")
       },
@@ -245,7 +247,8 @@ test_that("verify_token_set: initial login does not call userinfo match (no user
       client,
       id_token,
       expected_nonce = NULL,
-      expected_sub = NULL
+      expected_sub = NULL,
+      expected_access_token = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -334,7 +337,8 @@ test_that("verify_token_set: refresh with both userinfo and id_token calls match
       client,
       id_token,
       expected_nonce = NULL,
-      expected_sub = NULL
+      expected_sub = NULL,
+      expected_access_token = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -422,7 +426,8 @@ test_that("verify_token_set: refresh without userinfo skips match", {
       client,
       id_token,
       expected_nonce = NULL,
-      expected_sub = NULL
+      expected_sub = NULL,
+      expected_access_token = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -581,7 +586,8 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
       client,
       id_token,
       expected_nonce = NULL,
-      expected_sub = NULL
+      expected_sub = NULL,
+      expected_access_token = NULL
     ) {
       invisible(list(sub = "user123", iss = "https://test.example.com"))
     },
@@ -676,7 +682,8 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
         client,
         id_token,
         expected_nonce = NULL,
-        expected_sub = NULL
+        expected_sub = NULL,
+        expected_access_token = NULL
       ) {
         # ID token says sub = "user123"
         invisible(list(sub = "user123", iss = "https://test.example.com"))

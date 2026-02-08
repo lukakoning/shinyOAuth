@@ -48,7 +48,11 @@ parse_jwt_header <- function(jwt) {
 #'
 #' @param expected_sub If provided, the `sub` claim MUST match this value.
 #'   Used during refresh to ensure the new ID token is for the same user
-#'   (OIDC Core Section 12.2 requirement).
+#'   (OIDC Core section 12.2 requirement).
+#' @param expected_access_token If provided and the ID token contains an
+#'   `at_hash` claim, the claim is validated against this access token per
+#'   OIDC Core section 3.1.3.8. When the claim is present but no access token is
+#'   supplied, validation fails.
 #'
 #' @keywords internal
 #' @noRd
@@ -56,7 +60,8 @@ validate_id_token <- function(
   client,
   id_token,
   expected_nonce = NULL,
-  expected_sub = NULL
+  expected_sub = NULL,
+  expected_access_token = NULL
 ) {
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(id_token))
@@ -386,7 +391,68 @@ validate_id_token <- function(
   } else if (length(aud) > 1) {
     err_id_token("Multiple audiences but azp claim missing")
   }
+
+  # at_hash (Access Token hash) validation per OIDC Core §3.1.3.8 / §3.2.2.9:
+  # When the ID token contains an at_hash claim, verify the access token
+  # binding. This is a defense-in-depth measure against token substitution.
+  # When id_token_at_hash_required is TRUE, the claim MUST be present.
+  at_hash_required <- isTRUE(prov@id_token_at_hash_required)
+  if (at_hash_required && is.null(payload$at_hash)) {
+    err_id_token(
+      "ID token missing required at_hash claim (id_token_at_hash_required = TRUE)"
+    )
+  }
+  if (!is.null(payload$at_hash)) {
+    if (!is_valid_string(expected_access_token)) {
+      err_id_token(
+        "ID token contains at_hash claim but no access token was provided for validation"
+      )
+    }
+    computed <- compute_at_hash(expected_access_token, alg)
+    if (!constant_time_compare(computed, payload$at_hash)) {
+      err_id_token(
+        "at_hash claim does not match the access token (OIDC Core 3.1.3.8)"
+      )
+    }
+  }
+
   invisible(payload)
+}
+
+#' Compute at_hash value per OIDC Core section 3.1.3.8
+#'
+#' Takes the left-most half of the hash of the access token ASCII octets
+#' using the hash algorithm from the JWT alg header, then base64url-encodes it.
+#'
+#' @param access_token The access token string.
+#' @param alg The JWT algorithm (e.g., "RS256", "ES384", "PS512").
+#' @return A base64url-encoded string representing the at_hash.
+#' @keywords internal
+#' @noRd
+compute_at_hash <- function(access_token, alg) {
+  stopifnot(is_valid_string(access_token), is_valid_string(alg))
+  # Map JWT alg to hash function per RFC 7518:
+  # *256 -> SHA-256, *384 -> SHA-384, *512 -> SHA-512
+  # EdDSA is not covered by at_hash spec but use SHA-512 (Ed25519 companion)
+  hash_fn <- if (grepl("256", alg, fixed = TRUE)) {
+    openssl::sha256
+  } else if (grepl("384", alg, fixed = TRUE)) {
+    openssl::sha384
+  } else if (grepl("512", alg, fixed = TRUE)) {
+    openssl::sha512
+  } else if (toupper(alg) == "EDDSA") {
+    openssl::sha512
+  } else {
+    err_id_token(paste0(
+      "Cannot determine hash algorithm for at_hash from alg: ",
+      alg
+    ))
+  }
+  full_hash <- hash_fn(charToRaw(access_token))
+  # Take the left-most half of the hash octets
+  hash_bytes <- as.raw(full_hash)
+  left_half <- hash_bytes[seq_len(length(hash_bytes) %/% 2L)]
+  base64url_encode(left_half)
 }
 
 #' Build and sign OAuth client assertion (RFC 7523)

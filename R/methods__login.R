@@ -1409,7 +1409,8 @@ verify_token_set <- function(
       client,
       id_token,
       expected_nonce = nonce,
-      expected_sub = expected_sub
+      expected_sub = expected_sub,
+      expected_access_token = token_set[["access_token"]]
     )
   }
 

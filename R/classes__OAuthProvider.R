@@ -90,6 +90,13 @@
 #' [oauth_provider()] and [oauth_provider_oidc()] turn this on when an issuer
 #' is provided or when OIDC is used.
 #'
+#' @param id_token_at_hash_required Whether to require the `at_hash` (Access Token hash)
+#' claim in the ID token. When `TRUE`, login fails if the ID token does not
+#' contain an `at_hash` claim or if the claim does not match the access token.
+#' When `FALSE` (default), `at_hash` is validated only when present.
+#' Requires `id_token_validation = TRUE`. See OIDC Core section 3.1.3.8 and
+#' section 3.2.2.9.
+#'
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange
 #' @param extra_token_headers Extra headers for token exchange requests (named character vector)
@@ -206,6 +213,10 @@ OAuthProvider <- S7::new_class(
     ),
     id_token_required = S7::new_property(S7::class_logical, default = FALSE),
     id_token_validation = S7::new_property(S7::class_logical, default = FALSE),
+    id_token_at_hash_required = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     extra_auth_params = S7::class_list,
     extra_token_params = S7::class_list,
     extra_token_headers = S7::new_property(
@@ -642,6 +653,15 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    # Fail fast: id_token_at_hash_required requires id_token_validation
+    if (isTRUE(self@id_token_at_hash_required)) {
+      if (!isTRUE(self@id_token_validation)) {
+        return(
+          "OAuthProvider: id_token_at_hash_required = TRUE requires id_token_validation = TRUE"
+        )
+      }
+    }
+
     # Fail fast: userinfo_required implies a configured/valid userinfo_url
     if (isTRUE(self@userinfo_required)) {
       if (!is_valid_string(self@userinfo_url)) {
@@ -780,7 +800,8 @@ oauth_provider <- function(
     "EdDSA"
   ),
   allowed_token_types = c("Bearer"),
-  leeway = getOption("shinyOAuth.leeway", 30)
+  leeway = getOption("shinyOAuth.leeway", 30),
+  id_token_at_hash_required = FALSE
 ) {
   # Use shared internal helper to normalize only the path component
   auth_url <- normalize_url(auth_url)
@@ -920,6 +941,7 @@ oauth_provider <- function(
     jwks_host_allow_only = jwks_host_allow_only,
     allowed_algs = allowed_algs,
     allowed_token_types = allowed_token_types,
-    leeway = leeway
+    leeway = leeway,
+    id_token_at_hash_required = id_token_at_hash_required
   )
 }

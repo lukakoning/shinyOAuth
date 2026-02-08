@@ -20,6 +20,7 @@ OAuthProvider(
   userinfo_id_token_match = FALSE,
   id_token_required = FALSE,
   id_token_validation = FALSE,
+  id_token_at_hash_required = FALSE,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(0),
@@ -120,6 +121,13 @@ the client's scope to include "openid").
 Note: At the S7 class level, this defaults to FALSE. Helper constructors like
 \code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} turn this on when an issuer
 is provided or when OIDC is used.}
+
+\item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
+claim in the ID token. When \code{TRUE}, login fails if the ID token does not
+contain an \code{at_hash} claim or if the claim does not match the access token.
+When \code{FALSE} (default), \code{at_hash} is validated only when present.
+Requires \code{id_token_validation = TRUE}. See OIDC Core section 3.1.3.8 and
+section 3.2.2.9.}
 
 \item{extra_auth_params}{Extra parameters for authorization URL}
 
