@@ -70,7 +70,7 @@ handle_callback(
 ## Value
 
 An
-[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)\`
+[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
 object containing the access token, refresh token, expiration time, user
 information (if requested), and ID token (if applicable). If any step of
 the process fails (e.g., state verification, token exchange, token
