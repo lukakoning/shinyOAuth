@@ -14,3 +14,4 @@ coverage.html
 coverage.xml
 docs
 /revdep
+/integration/keycloak/_problems

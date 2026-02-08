@@ -141,6 +141,17 @@
       "credentials": [
         {"type": "password", "userLabel": "password", "value": "alice", "temporary": false}
       ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Attacker",
+      "email": "bob@example.com",
+      "credentials": [
+        {"type": "password", "userLabel": "password", "value": "bob", "temporary": false}
+      ]
     }
   ]
 }
