@@ -59,6 +59,10 @@
   important security checks, they have been moved to an internal-only
   helper function (`handle_callback_internal()`).
 
+- OIDC `openid` scope enforcement: when a provider has an `issuer` set
+  (indicating OIDC) and `openid` is missing from the client’s scopes,
+  `build_auth_url()` now auto-prepends it and emits a one-time warning.
+
 ## shinyOAuth 0.3.0
 
 CRAN release: 2026-01-30
