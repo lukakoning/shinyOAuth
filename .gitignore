@@ -15,3 +15,9 @@ coverage.xml
 docs
 /revdep
 /integration/keycloak/_problems
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+!*.env.example
