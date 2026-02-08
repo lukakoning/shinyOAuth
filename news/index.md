@@ -24,9 +24,11 @@
   from `?error=...` (which could be set by an attacker).
 
 - Stricter URL validation: `OAuthClient` now rejects redirect URIs
-  containing fragments (per RFC 6749 - section 3.1.2);
+  containing fragments (per RFC 6749, section 3.1.2); `OAuthProvider`
+  now rejects issuer identifiers containing query or fragment
+  components, covering both
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  rejects issuer identifiers containing query or fragment components.
+  and manual construction of providers.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
   also apply OAuth callback query cleanup in early return paths of
