@@ -81,7 +81,9 @@ test_that("handle_callback enforces state-store consume on every call (replay bl
         payload = enc,
         browser_token = tok
       )
-      expect_true(is.character(t1@access_token) && nzchar(t1@access_token))
+      expect_true(
+        is.character(t1@access_token) && nzchar(t1@access_token)
+      )
     }
   )
 
