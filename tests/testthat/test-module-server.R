@@ -769,6 +769,52 @@ testthat::test_that("callback code/state clears query even when token exchange f
   )
 })
 
+testthat::test_that("callback params are cleared when token already exists", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  seen <- character(0)
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    seen <<- c(seen, type)
+    orig(type, message)
+  }
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    session = sess,
+    expr = {
+      # Drain startup events and isolate this test's message capture.
+      session$flushReact()
+      seen <<- character(0)
+
+      t <- OAuthToken(
+        access_token = "existing",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+
+      values$.process_query("?code=abc&state=s1&foo=1")
+      session$flushReact()
+
+      testthat::expect_true(
+        any(seen == "shinyOAuth:clearQueryAndFixTitle"),
+        info = "Expected clearQueryAndFixTitle when callback params appear with existing token"
+      )
+      testthat::expect_identical(values$token@access_token, "existing")
+    }
+  )
+})
+
 testthat::test_that("strip_oauth_query removes only OAuth params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

@@ -617,6 +617,36 @@ oauth_module_server <- function(
       )
     }
 
+    # Known OAuth/OIDC callback params to drop/recognize.
+    .oauth_callback_query_keys <- c(
+      "code",
+      "state",
+      "session_state",
+      "id_token",
+      "access_token",
+      "token_type",
+      "expires_in",
+      "error",
+      "error_description",
+      "error_uri",
+      "iss"
+    )
+
+    .query_has_oauth_callback_keys <- function(query_string) {
+      raw <- sub("^\\?", "", query_string %||% "")
+      if (!nzchar(raw)) {
+        return(FALSE)
+      }
+      parsed <- tryCatch(
+        shiny::parseQueryString(paste0("?", raw)),
+        error = function(...) list()
+      )
+      if (!length(parsed)) {
+        return(FALSE)
+      }
+      any(names(parsed) %in% .oauth_callback_query_keys)
+    }
+
     # Helper: build a filtered query string that removes only OAuth parameters
     # from a raw query string that may start with '?' (returns string starting
     # with '?' or empty string when no params remain). Exposed to tests below.
@@ -634,21 +664,7 @@ oauth_module_server <- function(
       if (!length(parsed)) {
         return("")
       }
-      # Known OAuth/OIDC callback params to drop
-      drop_keys <- c(
-        "code",
-        "state",
-        "session_state",
-        "id_token",
-        "access_token",
-        "token_type",
-        "expires_in",
-        "error",
-        "error_description",
-        "error_uri",
-        "iss"
-      )
-      keep <- parsed[setdiff(names(parsed), drop_keys)]
+      keep <- parsed[setdiff(names(parsed), .oauth_callback_query_keys)]
       if (!length(keep)) {
         return("")
       }
@@ -1116,6 +1132,9 @@ oauth_module_server <- function(
     # Function to process query string
     .process_query <- function(query_string) {
       if (!is.null(values$token)) {
+        if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
+          .clear_query_and_fix_title()
+        }
         return(invisible(NULL))
       }
 

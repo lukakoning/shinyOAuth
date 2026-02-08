@@ -20,6 +20,9 @@ parameter. Missing/invalid/consumed state is then treated properly as an
 fragments (RFC 6749 §3.1.2), and `oauth_provider_oidc_discover()` rejects issuer
 identifiers containing query or fragment components.
 
+* `oauth_module_server()`: also apply OAuth callback query cleanup in early return
+paths of internal function `.process_query()`, ensuring more consistent cleanup.
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
