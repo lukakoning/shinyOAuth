@@ -49,8 +49,17 @@ if (
         "Has error? ",
         if (!is.null(err)) "YES" else "NO",
         "\n\n",
-        "Token (str):\n",
-        paste(capture.output(str(tok)), collapse = "\n")
+        "Token present: ",
+        !is.null(tok),
+        "\n",
+        "Has refresh token: ",
+        !is.null(tok) && isTRUE(nzchar(tok@refresh_token %||% "")),
+        "\n",
+        "Has ID token: ",
+        !is.null(tok) && !is.na(tok@id_token),
+        "\n",
+        "Expires at: ",
+        if (!is.null(tok)) tok@expires_at else "N/A"
       )
     })
 
