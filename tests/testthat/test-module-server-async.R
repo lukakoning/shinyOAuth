@@ -69,28 +69,84 @@ testthat::test_that("async login flow resolves token and sets flags", {
 testthat::test_that("async login failure surfaces error and keeps authenticated FALSE", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
-  testthat::skip_if_not_installed("future")
   testthat::skip_if_not_installed("later")
-  # Skip: mocking doesn't work reliably with future::sequential because future
-  # captures the environment before mocks are applied. Error handling is tested
-  # in synchronous module tests.
-  testthat::skip(
-    "Mocking async error paths is unreliable with future::sequential"
-  )
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_if_not_installed("mirai")
 
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  # Disable mirai so async_dispatch uses future (mocks work with sequential)
-  if (rlang::is_installed("mirai")) {
-    tryCatch(mirai::daemons(0), error = function(...) NULL)
-  }
+  # Start a real mirai daemon so the test exercises true async behaviour:
+  # handle_callback runs in a separate worker process and the promise
+  # catch-handler propagates the error back on the main thread.
+  mirai::daemons(1)
+  withr::defer(mirai::daemons(0))
 
-  # Use future::sequential so mocks apply (future runs in-process)
-  old_plan <- future::plan()
-  future::plan(future::sequential)
-  withr::defer(future::plan(old_plan))
+  # The daemon is a separate R process that must be able to load shinyOAuth.
+  # When only loaded via devtools::load_all() the package is unavailable to
+  # subprocess workers, so skip in that case.
+  pkg_check <- mirai::mirai(requireNamespace("shinyOAuth", quietly = TRUE))
+  mirai::call_mirai(pkg_check)
+  testthat::skip_if_not(
+    isTRUE(pkg_check$data),
+    "shinyOAuth must be installed (not just load_all'd) for mirai daemon tests"
+  )
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  # Stand up a webfakes server whose /token endpoint always returns HTTP 400.
+  # The mirai worker process hits this real endpoint, so no mocking is needed
+  # and we fully exercise the async error path end-to-end.
+  app <- webfakes::new_app()
+  app$post("/token", function(req, res) {
+    res$set_status(400L)
+    res$set_type("application/json")
+    res$send_json(list(error = "invalid_grant", error_description = "bad code"))
+  })
+  # Also serve /auth so the provider URL validates (never actually called)
+  app$get("/auth", function(req, res) {
+    res$set_status(200L)
+    res$send("")
+  })
+  srv <- webfakes::local_app_process(app)
+
+  # Build provider + client pointing at the webfakes token endpoint
+  prov <- oauth_provider(
+    name = "webfakes-error",
+    auth_url = srv$url("/auth"),
+    token_url = srv$url("/token"),
+    userinfo_url = NA_character_,
+    introspection_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    extra_auth_params = list(),
+    extra_token_params = list(),
+    extra_token_headers = character(),
+    token_auth_style = "body",
+    jwks_cache = cachem::cache_mem(max_age = 60),
+    jwks_pins = character(),
+    jwks_pin_mode = "any",
+    allowed_algs = c("RS256", "ES256"),
+    allowed_token_types = character(),
+    leeway = 60
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_payload_max_age = 300,
+    state_entropy = 64,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
 
   shiny::testServer(
     app = oauth_module_server,
@@ -106,27 +162,22 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
       url <- values$build_auth_url()
       enc <- parse_query_param(url, "state")
 
-      # Force token exchange to fail inside handle_callback
-      testthat::with_mocked_bindings(
-        swap_code_for_token_set = function(client, code, code_verifier) {
-          stop("exchange_failed")
-        },
-        .package = "shinyOAuth",
-        {
-          values$.process_query(paste0("?code=bad&state=", enc))
-          deadline <- Sys.time() + 3
-          while (is.null(values$error) && Sys.time() < deadline) {
-            later::run_now(0.05)
-            session$flushReact()
-            Sys.sleep(0.01)
-          }
-        }
-      )
+      # Trigger the callback — the mirai worker will hit the webfakes /token
+      # endpoint in a separate process, receive HTTP 400, and the promise
+      # catch-handler should propagate the error back to values$error.
+      values$.process_query(paste0("?code=bad&state=", enc))
+      # Allow more time for real cross-process async resolution
+      deadline <- Sys.time() + 10
+      while (is.null(values$error) && Sys.time() < deadline) {
+        later::run_now(0.05)
+        session$flushReact()
+        Sys.sleep(0.01)
+      }
 
       testthat::expect_identical(values$error, "token_exchange_error")
       testthat::expect_match(
         values$error_description %||% "",
-        "exchange|token|error",
+        "exchange|token|error|failed|400",
         ignore.case = TRUE
       )
       testthat::expect_false(isTRUE(values$authenticated))
