@@ -146,7 +146,7 @@ test_that("callback without iss parameter retains current behavior", {
   )
 })
 
-test_that("callback iss with trailing slash matches provider without trailing slash", {
+test_that("callback iss with trailing slash rejected under strict equality", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_iss_test_client()
 
@@ -163,7 +163,7 @@ test_that("callback iss with trailing slash matches provider without trailing sl
       url <- values$build_auth_url()
       enc <- parse_query_param(url, "state")
 
-      token <- testthat::with_mocked_bindings(
+      testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
           list(access_token = "t", token_type = "Bearer", expires_in = 3600)
         },
@@ -176,12 +176,11 @@ test_that("callback iss with trailing slash matches provider without trailing sl
             utils::URLencode("https://issuer.example.com/", reserved = TRUE)
           ))
           session$flushReact()
-          values$token
+          # Strict issuer matching: trailing slash difference is rejected (RFC 9207)
+          testthat::expect_null(values$token)
+          testthat::expect_false(isTRUE(values$authenticated))
         }
       )
-
-      testthat::expect_false(is.null(token))
-      testthat::expect_true(isTRUE(values$authenticated))
     }
   )
 })

@@ -1431,12 +1431,10 @@ verify_token_set <- function(
         )
       }
       # OIDC Core 12.2: iss MUST be the same as in the original ID token.
+      # Strict string equality — no trailing-slash normalization.
       if (
         is_valid_string(original_iss) &&
-          !identical(
-            rtrim_slash(new_payload$iss %||% ""),
-            rtrim_slash(original_iss)
-          )
+          !identical(new_payload$iss %||% "", original_iss)
       ) {
         err_id_token(
           "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
@@ -1501,10 +1499,7 @@ verify_token_set <- function(
       if (!is.null(new_payload_for_iss_aud)) {
         if (
           is_valid_string(original_iss) &&
-            !identical(
-              rtrim_slash(new_payload_for_iss_aud$iss %||% ""),
-              rtrim_slash(original_iss)
-            )
+            !identical(new_payload_for_iss_aud$iss %||% "", original_iss)
         ) {
           err_id_token(
             "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"

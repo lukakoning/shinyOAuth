@@ -405,13 +405,13 @@ test_that("refresh accepts matching iss/aud (non-validated path)", {
   expect_identical(t2@access_token, "new_at")
 })
 
-# --- Trailing-slash tolerance -----------------------------------------------
+# --- Strict issuer equality (no trailing-slash tolerance) --------------------
 
-test_that("refresh iss comparison tolerates trailing slash difference", {
+test_that("refresh iss comparison rejects trailing slash difference", {
   withr::local_options(shinyOAuth.skip_id_sig = TRUE)
   cli <- make_refresh_client(id_token_validation = TRUE)
 
-  # Original has trailing slash, new does not (or vice versa)
+  # Original has trailing slash, new does not — strict equality rejects this.
   original <- make_fake_jwt(list(
     iss = "https://issuer.example.com/",
     sub = "user-1",
@@ -451,9 +451,12 @@ test_that("refresh iss comparison tolerates trailing slash difference", {
     id_token = original
   )
 
-  # Should succeed despite trailing slash difference
-  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
-  expect_true(S7::S7_inherits(t2, OAuthToken))
+  # Strict issuer equality: trailing slash difference must be rejected
+  expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    regexp = "iss.*does not match",
+    class = "shinyOAuth_id_token_error"
+  )
 })
 
 # --- verify_token_set directly (unit-level) ----------------------------------

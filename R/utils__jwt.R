@@ -341,15 +341,13 @@ validate_id_token <- function(
   }
 
   # Claims checks
-  # Normalize issuer comparison by trimming a single trailing slash on both
-  # sides to be robust to providers that vary only by a terminal '/'.
-  # We still require an exact, case-sensitive match after normalization.
+  # OIDC Core §3.1.3.7 step 2: iss MUST exactly match the Issuer Identifier.
+  # No normalization (e.g. trailing-slash trimming) is applied so that
+  # configuration or mix-up problems surface immediately.
   if (!is_valid_string(payload$iss)) {
     err_id_token("Issuer mismatch/invalid")
   }
-  iss_expected <- rtrim_slash(issuer)
-  iss_actual <- rtrim_slash(payload$iss)
-  if (!identical(iss_actual, iss_expected)) {
+  if (!identical(payload$iss, issuer)) {
     err_id_token("Issuer mismatch/invalid")
   }
   aud <- payload$aud

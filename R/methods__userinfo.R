@@ -331,8 +331,8 @@ validate_signed_userinfo_claims <- function(
       "x" = "Signed UserInfo JWT missing required 'iss' claim (OIDC Core 5.3.2)"
     ))
   }
-  # Normalize trailing slash for comparison consistency (same as validate_id_token)
-  if (!identical(rtrim_slash(iss), rtrim_slash(expected_issuer))) {
+  # Strict string equality — no trailing-slash normalization (OIDC Core §3.1.3.7).
+  if (!identical(iss, expected_issuer)) {
     err_userinfo(c(
       "x" = "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
       "i" = paste0("Expected: ", expected_issuer),

@@ -1264,7 +1264,7 @@ oauth_module_server <- function(
         expected_issuer <- client@provider@issuer
         if (
           is_valid_string(expected_issuer) &&
-            !identical(rtrim_slash(qs$iss), rtrim_slash(expected_issuer))
+            !identical(qs$iss, expected_issuer)
         ) {
           .clear_query_and_fix_title()
           .set_error(
