@@ -60,7 +60,8 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       call_order <<- c(call_order, "validate_id_token")
       invisible(list(sub = "user123", iss = "https://test.example.com"))
@@ -151,7 +152,8 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
         id_token,
         expected_nonce = NULL,
         expected_sub = NULL,
-        expected_access_token = NULL
+        expected_access_token = NULL,
+        max_age = NULL
       ) {
         shinyOAuth:::err_id_token("Simulated ID token validation failure")
       },
@@ -248,7 +250,8 @@ test_that("verify_token_set: initial login does not call userinfo match (no user
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -338,7 +341,8 @@ test_that("verify_token_set: refresh with both userinfo and id_token calls match
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -427,7 +431,8 @@ test_that("verify_token_set: refresh without userinfo skips match", {
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       invisible(list(sub = "user123"))
     },
@@ -587,7 +592,8 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       invisible(list(sub = "user123", iss = "https://test.example.com"))
     },
@@ -683,7 +689,8 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
         id_token,
         expected_nonce = NULL,
         expected_sub = NULL,
-        expected_access_token = NULL
+        expected_access_token = NULL,
+        max_age = NULL
       ) {
         # ID token says sub = "user123"
         invisible(list(sub = "user123", iss = "https://test.example.com"))

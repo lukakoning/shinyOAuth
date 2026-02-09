@@ -53,6 +53,9 @@ parse_jwt_header <- function(jwt) {
 #'   `at_hash` claim, the claim is validated against this access token per
 #'   OIDC Core section 3.1.3.8. When the claim is present but no access token is
 #'   supplied, validation fails.
+#' @param max_age If provided (numeric, seconds), validates that the ID token
+#'   contains an `auth_time` claim and that the elapsed time since authentication
+#'   does not exceed `max_age + leeway` (OIDC Core section 3.1.2.1 / section 2).
 #'
 #' @keywords internal
 #' @noRd
@@ -61,7 +64,8 @@ validate_id_token <- function(
   id_token,
   expected_nonce = NULL,
   expected_sub = NULL,
-  expected_access_token = NULL
+  expected_access_token = NULL,
+  max_age = NULL
 ) {
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(id_token))
@@ -428,6 +432,49 @@ validate_id_token <- function(
     }
   } else if (length(aud) > 1) {
     err_id_token("Multiple audiences but azp claim missing")
+  }
+
+  # auth_time validation per OIDC Core §3.1.2.1 / §2:
+  # When max_age was requested, auth_time MUST be present. Validate
+  # that now - auth_time <= max_age + leeway.
+  if (!is.null(max_age)) {
+    max_age_val <- suppressWarnings(as.numeric(max_age))
+    if (
+      !is.numeric(max_age_val) ||
+        length(max_age_val) != 1L ||
+        !is.finite(max_age_val) ||
+        max_age_val < 0
+    ) {
+      err_id_token("max_age must be a non-negative finite number")
+    }
+    if (is.null(payload$auth_time)) {
+      err_id_token(
+        "ID token missing auth_time claim (required when max_age is requested, OIDC Core 3.1.2.1)"
+      )
+    }
+    if (!is_single_finite_number(payload$auth_time)) {
+      err_id_token("auth_time claim must be a single finite number")
+    }
+    auth_time_val <- as.numeric(payload$auth_time)
+    elapsed <- now - auth_time_val
+    if (elapsed > (max_age_val + lwe)) {
+      err_id_token(c(
+        "x" = "Authentication too old (auth_time exceeded max_age)",
+        "i" = paste0(
+          "auth_time=",
+          auth_time_val,
+          ", now=",
+          now,
+          ", elapsed=",
+          elapsed,
+          "s, max_age=",
+          max_age_val,
+          "s, leeway=",
+          lwe,
+          "s"
+        )
+      ))
+    }
   }
 
   # at_hash (Access Token hash) validation per OIDC Core §3.1.3.8 / §3.2.2.9:

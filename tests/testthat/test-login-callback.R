@@ -143,7 +143,8 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
       id_token,
       expected_nonce = NULL,
       expected_sub = NULL,
-      expected_access_token = NULL
+      expected_access_token = NULL,
+      max_age = NULL
     ) {
       # Pretend success if expected_nonce non-empty
       if (isTRUE(client@provider@use_nonce)) {

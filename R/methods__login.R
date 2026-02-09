@@ -1462,12 +1462,29 @@ verify_token_set <- function(
   if (isTRUE(should_validate_id_token)) {
     # Verifies signature & claims of ID token
     # Will error if invalid
+    # OIDC Core §3.1.2.1: when max_age was requested in extra_auth_params,
+    # pass it to validate_id_token() so auth_time is enforced.
+    requested_max_age <- NULL
+    if (!isTRUE(is_refresh)) {
+      ma <- client@provider@extra_auth_params[["max_age"]]
+      if (!is.null(ma)) {
+        requested_max_age <- suppressWarnings(as.numeric(ma))
+        if (
+          is.na(requested_max_age) ||
+            !is.finite(requested_max_age) ||
+            requested_max_age < 0
+        ) {
+          requested_max_age <- NULL
+        }
+      }
+    }
     validate_id_token(
       client,
       id_token,
       expected_nonce = nonce,
       expected_sub = expected_sub,
-      expected_access_token = token_set[["access_token"]]
+      expected_access_token = token_set[["access_token"]],
+      max_age = requested_max_age
     )
 
     # OIDC Core 12.2: during refresh, verify iss and aud match the original
