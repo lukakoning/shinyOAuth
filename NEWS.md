@@ -1,5 +1,6 @@
 # shinyOAuth (development version)
 
+
 * 'mirai' async backend improvements:
 - Detect active daemons via `mirai::daemons_set()` instead of 
 `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
@@ -46,7 +47,13 @@ identifiers containing query or fragment components, covering both
 bytes before JSON decoding.
 
 * `oauth_module_server()`: 
-- OAuth callback query cleanup is also applied in early 
+- Now surfaces `error_uri` from provider error
+callbacks (RFC 6749, section 4.1.2.1). The new `$error_uri` reactive field contains
+the URI to a human-readable error page when the provider includes one;
+`NULL` otherwise. The `error_uri` callback parameter is also validated
+against a configurable size limit
+(e.g., `options(shinyOAuth.callback_max_error_uri_bytes = 2048)`).
+- OAuth callback query cleanup is now also applied in early 
 return paths of internal function `.process_query()`, ensuring more consistent
 cleanup.
 - OAuth callback error responses (`?error=...`) now 

@@ -518,6 +518,112 @@ testthat::test_that("provider error with valid state sets provider error and aut
   )
 })
 
+testthat::test_that("error_uri from provider error callback is surfaced", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # Provider returns error + error_description + error_uri
+      values$.process_query(paste0(
+        "?error=access_denied",
+        "&error_description=Nope",
+        "&error_uri=https%3A%2F%2Fprovider.example%2Fhelp%2Faccess_denied",
+        "&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
+      testthat::expect_match(values$error_description, "Nope")
+      testthat::expect_identical(
+        values$error_uri,
+        "https://provider.example/help/access_denied"
+      )
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("error_uri is NULL when provider omits it", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # Provider returns error without error_uri
+      values$.process_query(paste0(
+        "?error=server_error&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "server_error")
+      testthat::expect_null(values$error_uri)
+    }
+  )
+})
+
+testthat::test_that("oversized error_uri in callback is rejected", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$.process_query(
+        paste0(
+          "?error=access_denied&error_uri=",
+          strrep("x", 3000),
+          "&state=",
+          enc
+        )
+      )
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "error_uri"
+      )
+    }
+  )
+})
+
 testthat::test_that("oversized callback query params are rejected", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -608,7 +714,7 @@ testthat::test_that("oversized raw callback query string is rejected", {
         "?code=ok&state=",
         enc,
         "&pad=",
-        strrep("x", 20000)
+        strrep("x", 25000)
       )
 
       called <- FALSE

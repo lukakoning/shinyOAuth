@@ -130,7 +130,7 @@
 #'   the `Secure` attribute
 #'
 #' @return A reactiveValues object with `token`, `error`, `error_description`,
-#'   and `authenticated`, plus additional fields used by the module.
+#'   `error_uri`, and `authenticated`, plus additional fields used by the module.
 #'
 #'   The returned reactiveValues contains the following fields:
 #'
@@ -151,11 +151,14 @@
 #'    \item `error_description`: human-readable error detail when available.
 #'    Be extra careful with exposing this directly to users, as it may
 #'    contain even more sensitive information which could aid an attacker.
+#'    \item `error_uri`: URI identifying a human-readable web page with
+#'    information about the error (per RFC 6749 section 4.1.2.1). NULL when
+#'    the provider does not include one.
 #'    \item `browser_token`: internal opaque browser cookie value; used for state
 #'    double-submit protection; NULL if not yet set
 #'    \item `pending_callback`: internal list(code, state); used to defer token
 #'    exchange until `browser_token` is available; NULL otherwise.
-#'    \item `pending_error`: internal list(error, error_description, state); used to
+#'    \item `pending_error`: internal list(error, error_description, error_uri, state); used to
 #'    defer error-response state consumption until `browser_token` is available;
 #'    NULL otherwise.
 #'    \item `pending_login`: internal logical; TRUE when a login was requested but must
@@ -406,6 +409,7 @@ oauth_module_server <- function(
       token = NULL,
       error = NULL,
       error_description = NULL,
+      error_uri = NULL,
       authenticated = FALSE,
       token_stale = FALSE,
       browser_token = browser_token_initial,
@@ -424,6 +428,7 @@ oauth_module_server <- function(
       token = values$token,
       error = values$error,
       error_description = values$error_description,
+      error_uri = values$error_uri,
       authenticated = values$authenticated,
       browser_token = values$browser_token,
       pending_callback = values$pending_callback,
@@ -560,6 +565,8 @@ oauth_module_server <- function(
       values$error <- code
       values$error_description <- description %||%
         if (!is.null(e)) .compose_error(e, phase) else NULL
+      # Internal errors never carry error_uri; clear any stale provider value.
+      values$error_uri <- NULL
     }
 
     # Client-side actions (CSP-friendly via custom messages) ------------------
@@ -1112,6 +1119,7 @@ oauth_module_server <- function(
       values$token <- NULL
       values$error <- "logged_out"
       values$error_description <- NULL
+      values$error_uri <- NULL
       values$token_stale <- FALSE
       .clear_browser_token()
       # Proactively re-issue a fresh browser token so that a subsequent
@@ -1159,6 +1167,10 @@ oauth_module_server <- function(
         "shinyOAuth.callback_max_error_description_bytes",
         4096
       )
+      max_error_uri_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_error_uri_bytes",
+        2048
+      )
       # Derived overall cap: sum of individual caps plus overhead for names,
       # separators, URL encoding, and unexpected extra params.
       max_query_overhead_bytes <- 2048
@@ -1167,6 +1179,7 @@ oauth_module_server <- function(
         max_state_bytes +
         max_error_bytes +
         max_error_desc_bytes +
+        max_error_uri_bytes +
         max_query_overhead_bytes
       max_query_bytes <- get_option_positive_number(
         "shinyOAuth.callback_max_query_bytes",
@@ -1202,6 +1215,12 @@ oauth_module_server <- function(
             "error_description",
             qs$error_description,
             max_bytes = max_error_desc_bytes,
+            allow_empty = TRUE
+          )
+          validate_untrusted_query_param(
+            "error_uri",
+            qs$error_uri,
+            max_bytes = max_error_uri_bytes,
             allow_empty = TRUE
           )
           TRUE
@@ -1277,6 +1296,7 @@ oauth_module_server <- function(
         .handle_error_response(
           error = qs$error,
           error_description = qs$error_description,
+          error_uri = qs$error_uri,
           state = qs$state
         )
         return(invisible(NULL))
@@ -1304,7 +1324,12 @@ oauth_module_server <- function(
     }
 
     # Function to handle OAuth error responses and require state validation
-    .handle_error_response <- function(error, error_description, state) {
+    .handle_error_response <- function(
+      error,
+      error_description,
+      error_uri,
+      state
+    ) {
       # Security: treat provider error callbacks as valid only when state is
       # present and can be successfully validated/consumed.
       state_ok <- tryCatch(
@@ -1334,6 +1359,7 @@ oauth_module_server <- function(
       # State validated and consumed: now surface provider error.
       values$error <- error
       values$error_description <- error_description %||% NULL
+      values$error_uri <- error_uri %||% NULL
       invisible(NULL)
     }
 
@@ -1542,6 +1568,7 @@ oauth_module_server <- function(
                 values$token <- tok
                 values$error <- NULL
                 values$error_description <- NULL
+                values$error_uri <- NULL
                 values$auth_started_at <- as.numeric(Sys.time())
                 values$token_stale <- FALSE
                 .clear_browser_token()
@@ -1581,6 +1608,7 @@ oauth_module_server <- function(
             values$token <- res
             values$error <- NULL
             values$error_description <- NULL
+            values$error_uri <- NULL
             values$auth_started_at <- as.numeric(Sys.time())
             values$token_stale <- FALSE
             .clear_browser_token()
@@ -1731,6 +1759,7 @@ oauth_module_server <- function(
                           values$token <- res_resolved
                           values$error <- NULL
                           values$error_description <- NULL
+                          values$error_uri <- NULL
                           # Reset rolling session start on successful refresh
                           values$auth_started_at <- as.numeric(Sys.time())
                           values$token_stale <- FALSE
@@ -1832,6 +1861,7 @@ oauth_module_server <- function(
                       values$token <- new_tok
                       values$error <- NULL
                       values$error_description <- NULL
+                      values$error_uri <- NULL
                       # Reset rolling session start on successful refresh
                       values$auth_started_at <- as.numeric(Sys.time())
                       values$token_stale <- FALSE
