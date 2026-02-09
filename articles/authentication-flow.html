@@ -397,8 +397,12 @@ module exposes the failure via its reactive state (for example,
 <code>token_refresh_error</code>). By default it also clears the current
 session token; if
 <code>oauth_module_server(indefinite_session = TRUE)</code>, the token
-is kept but marked stale. In all cases, the <code>$authenticated</code>
-flag becomes <code>FALSE</code> while the error is present.</p>
+is kept but marked stale. In the default mode, the
+<code>$authenticated</code> flag becomes <code>FALSE</code> while the
+error is present. However, when <code>indefinite_session = TRUE</code>,
+the <code>$authenticated</code> flag remains <code>TRUE</code> even if
+errors are present, allowing long-lived sessions despite transient
+refresh failures.</p>
 </div>
 </div>
 <div class="section level3">

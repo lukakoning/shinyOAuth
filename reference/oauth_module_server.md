@@ -164,7 +164,9 @@ The returned reactiveValues contains the following fields:
 
 - `authenticated`: logical TRUE when there is no error and a token is
   present and valid (matching the verifications enabled in the client
-  provider); FALSE otherwise.
+  provider); FALSE otherwise. Exception: when
+  `indefinite_session = TRUE`, errors do not affect this flag so
+  `authenticated` remains TRUE even if refresh or other operations fail.
 
 - `token`:
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
