@@ -873,7 +873,7 @@ refresh_token <- function(
   ) {
     as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
   } else {
-    Inf
+    resolve_missing_expires_in(phase = "refresh_token")
   }
 
   token@access_token <- token_set$access_token

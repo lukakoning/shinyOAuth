@@ -1,6 +1,5 @@
 # shinyOAuth (development version)
 
-
 * 'mirai' async backend improvements:
 - Detect active daemons via `mirai::daemons_set()` instead of 
 `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
@@ -84,6 +83,12 @@ a post-check fallback to confirm key absence.
 internal use by `oauth_module_server()`'s async path. As they can be misused by
 direct/custom callers to bypass important security checks, they have been
 moved to an internal-only helper function (`handle_callback_internal()`).
+
+* When a token response omits `expires_in`, a warning is now emitted once per 
+phase (`exchange_code` / `refresh_token`) so operators know that proactive token
+refresh will not trigger. Users can now also set a finite default lifetime for
+such tokens via `options(shinyOAuth.default_expires_in = <seconds>)` (instead
+of the default of `Inf`).
 
 * OIDC `openid` scope enforcement: when a provider has an `issuer` set
 (indicating OIDC) and `openid` is missing from the client's scopes,

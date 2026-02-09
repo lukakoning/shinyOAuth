@@ -712,7 +712,7 @@ handle_callback_internal <- function(
     ) {
       as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
     } else {
-      Inf
+      resolve_missing_expires_in(phase = "exchange_code")
     },
     id_token = token_set$id_token %||% NA_character_
   )

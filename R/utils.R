@@ -277,6 +277,81 @@ client_state_store_max_age <- function(client, default = 300) {
   max_age
 }
 
+#' Internal: resolve expires_at when expires_in is absent from the token response
+#'
+#' RFC 6749 §5.1 says `expires_in` is RECOMMENDED. When it is absent we check
+#' `options(shinyOAuth.default_expires_in)` for a configurable fallback (seconds).
+#' If neither is available, falls back to `Inf`, meaning proactive refresh will
+#' never trigger. A once-per-phase warning is emitted either way so operators
+#' know the value was not server-provided.
+#'
+#' @return Numeric scalar: computed `expires_at` (epoch seconds or `Inf`).
+#' @keywords internal
+#' @noRd
+resolve_missing_expires_in <- function(phase = NULL) {
+  phase_msg <- if (is_valid_string(phase)) {
+    paste0(" (phase: ", phase, ")")
+  } else {
+    ""
+  }
+
+  # Check configurable fallback
+  default_ei <- getOption("shinyOAuth.default_expires_in", NULL)
+  if (!is.null(default_ei)) {
+    default_ei <- suppressWarnings(as.numeric(default_ei))
+    if (
+      length(default_ei) == 1L &&
+        is.finite(default_ei) &&
+        default_ei > 0
+    ) {
+      rlang::warn(
+        c(
+          format_header("Token response missing expires_in"),
+          "!" = paste0(
+            "The token response did not include an expires_in value",
+            phase_msg
+          ),
+          "i" = paste0(
+            "Using options(shinyOAuth.default_expires_in = ",
+            default_ei,
+            ") as fallback"
+          ),
+          "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
+        ),
+        class = "shinyOAuth_missing_expires_in",
+        .frequency = "once",
+        .frequency_id = paste0(
+          "expires_in_missing",
+          if (is_valid_string(phase)) paste0("-", phase) else ""
+        )
+      )
+      return(as.numeric(Sys.time()) + default_ei)
+    }
+  }
+
+  rlang::warn(
+    c(
+      format_header("Token response missing expires_in"),
+      "!" = paste0(
+        "The token response did not include an expires_in value",
+        phase_msg,
+        "; assuming infinite token lifetime"
+      ),
+      "i" = "Proactive token refresh will not trigger without a known expiry",
+      "i" = "Set options(shinyOAuth.default_expires_in = <seconds>) to supply a fallback",
+      "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
+    ),
+    class = "shinyOAuth_missing_expires_in",
+    .frequency = "once",
+    .frequency_id = paste0(
+      "expires_in_missing",
+      if (is_valid_string(phase)) paste0("-", phase) else ""
+    )
+  )
+
+  Inf
+}
+
 #' Internal: warn when expires_in is non-positive
 #'
 #' `expires_in <= 0` is technically valid (meaning "expires now"), but is often
