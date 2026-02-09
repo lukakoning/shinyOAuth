@@ -100,7 +100,7 @@
   `iss` is absent, current behavior is retained (no enforcement).
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  now supports JWT-encoded UserInfo responses per OIDC Core, section
+  now supports JWT-encoded userinfo responses per OIDC Core, section
   5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
   body is decoded as a JWT. Signature verification is performed against
   the provider JWKS when available; signed responses are validated for
@@ -132,7 +132,7 @@
   `OAuthClient` and
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   now accept a `claims` argument to request specific claims from the
-  UserInfo Endpoint and/or in the ID Token. Pass a list structure
+  userinfo Endpoint and/or in the ID token. Pass a list structure
   (automatically JSON-encoded) or a pre-encoded JSON string.
 
 - OIDC `openid` scope enforcement: when a provider has an `issuer` set
