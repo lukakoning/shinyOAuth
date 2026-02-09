@@ -200,10 +200,6 @@ The returned reactiveValues contains the following fields:
 - `pending_callback`: internal list(code, state); used to defer token
   exchange until `browser_token` is available; NULL otherwise.
 
-- `pending_error`: internal list(error, error_description, error_uri,
-  state); used to defer error-response state consumption until
-  `browser_token` is available; NULL otherwise.
-
 - `pending_login`: internal logical; TRUE when a login was requested but
   must wait for `browser_token` to be set, FALSE otherwise.
 
