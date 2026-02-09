@@ -56,6 +56,9 @@
   `shinyOAuth_id_token_error` instead of letting a confusing
   alg/typ/parse failure propagate.
 
+- Now validates the `auth_time` claim when `max_age` is present in
+  `extra_auth_params` (OIDC Core section 3.1.2.1).
+
 - Stricter URL validation: `OAuthClient` now rejects redirect URIs
   containing fragments (per RFC 6749, section 3.1.2); `OAuthProvider`
   now rejects issuer identifiers containing query or fragment
