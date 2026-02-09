@@ -1356,6 +1356,8 @@ verify_token_set <- function(
   # a refresh returns an ID token, even if signature/claim validation is
   # disabled (id_token_validation = FALSE).
   expected_sub <- NULL
+  original_iss <- NULL
+  original_aud <- NULL
   should_validate_id_token <- isTRUE(id_token_present) &&
     (isTRUE(client@provider@id_token_validation) ||
       isTRUE(client@provider@use_nonce) ||
@@ -1379,6 +1381,13 @@ verify_token_set <- function(
     }
     expected_sub <- original_payload$sub
 
+    # OIDC Core 12.2: extract original iss and aud for cross-comparison.
+    # The new ID token's iss and aud MUST match the original's actual values,
+    # not just the provider config. This guards against multi-tenant issuers
+    # that rotate issuer URIs or aud arrays that include extra audiences.
+    original_iss <- original_payload$iss
+    original_aud <- original_payload$aud
+
     if (!isTRUE(should_validate_id_token)) {
       # Even when full ID token validation is disabled (id_token_validation = FALSE),
       # we still must enforce OIDC 12.2 subject continuity on refresh when the
@@ -1401,6 +1410,30 @@ verify_token_set <- function(
           "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
         )
       }
+      # OIDC Core 12.2: iss MUST be the same as in the original ID token.
+      if (
+        is_valid_string(original_iss) &&
+          !identical(
+            rtrim_slash(new_payload$iss %||% ""),
+            rtrim_slash(original_iss)
+          )
+      ) {
+        err_id_token(
+          "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+        )
+      }
+      # OIDC Core 12.2: aud MUST be the same as in the original ID token.
+      if (
+        !is.null(original_aud) &&
+          !identical(
+            sort(as.character(new_payload$aud %||% character())),
+            sort(as.character(original_aud))
+          )
+      ) {
+        err_id_token(
+          "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+        )
+      }
     }
   }
 
@@ -1416,6 +1449,43 @@ verify_token_set <- function(
       expected_sub = expected_sub,
       expected_access_token = token_set[["access_token"]]
     )
+
+    # OIDC Core 12.2: during refresh, verify iss and aud match the original
+    # ID token's actual values (not just the provider config). validate_id_token()
+    # already checks iss == provider@issuer and client_id %in% aud, but 12.2
+    # additionally requires exact match against the original token's claims.
+    # Parse the new token payload directly (rather than depending on the return
+    # value of validate_id_token) so the check is robust regardless of mocking.
+    if (isTRUE(is_refresh) && !is.null(original_iss)) {
+      new_payload_for_iss_aud <- tryCatch(
+        parse_jwt_payload(id_token),
+        error = function(e) NULL
+      )
+      if (!is.null(new_payload_for_iss_aud)) {
+        if (
+          is_valid_string(original_iss) &&
+            !identical(
+              rtrim_slash(new_payload_for_iss_aud$iss %||% ""),
+              rtrim_slash(original_iss)
+            )
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+          )
+        }
+        if (
+          !is.null(original_aud) &&
+            !identical(
+              sort(as.character(new_payload_for_iss_aud$aud %||% character())),
+              sort(as.character(original_aud))
+            )
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+          )
+        }
+      }
+    }
   }
 
   # Validate match between userinfo & ID token ---------------------------------

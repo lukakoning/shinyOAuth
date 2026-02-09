@@ -1,34 +1,38 @@
 # shinyOAuth (development version)
 
 * 'mirai' async backend improvements:
-  - Detect active daemons via `mirai::daemons_set()` instead of 
-  `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
-  - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
-  timed-out 'mirai' tasks are automatically cancelled by the dispatcher.
-  - Async audit events now include a `mirai_error_type` field.
-  - Prevent 'mirai' warning spam about 'stats' maybe not being available in 
-  workers.
-    - Async callback flow no longer serializes the full client object (including
-  potentially non-serializable custom `state_store` / JWKS cache backends)
-  into the worker context. The `state_store` (already consumed on the main
-  thread) is replaced with a lightweight serializable dummy before dispatch.
-  If the client still fails serialization, the flow falls back to synchronous
-  execution with an explicit warning instead of an opaque runtime error.
-  - Further reduced serialization overhead towards async workers by using 
-  certain functions from the package namespace directly.
+- Detect active daemons via `mirai::daemons_set()` instead of 
+`mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
+- Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
+timed-out 'mirai' tasks are automatically cancelled by the dispatcher.
+- Async audit events now include a `mirai_error_type` field.
+- Prevent 'mirai' warning spam about 'stats' maybe not being available in 
+workers.
+- Async callback flow no longer serializes the full client object (including
+potentially non-serializable custom `state_store` / JWKS cache backends)
+into the worker context. The `state_store` (already consumed on the main
+thread) is replaced with a lightweight serializable dummy before dispatch.
+If the client still fails serialization, the flow falls back to synchronous
+execution with an explicit warning instead of an opaque runtime error.
+- Further reduced serialization overhead towards async workers by using 
+certain functions from the package namespace directly.
 
 * ID token validation (`validate_id_token()`):
-  - Now enforces RFC 7515 section 4.1.11 critical header
-  parameter (`crit`) processing rules. Tokens containing unsupported critical 
-  extensions are rejected with a `shinyOAuth_id_token_error`. The current
-  implementation supports no critical extensions, so any `crit` presence triggers
-  rejection.
-  - Now validates the `at_hash` (Access Token hash) claim
-  when present in the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the
-  claim exists, the access token binding is verified; a mismatch raises a 
-  `shinyOAuth_id_token_error`. New `id_token_at_hash_required` property on 
-  `OAuthProvider` (default `FALSE`) forces login to fail when the ID token does 
-  not contain an `at_hash` claim.
+- Now enforces RFC 7515 section 4.1.11 critical header
+parameter (`crit`) processing rules. Tokens containing unsupported critical 
+extensions are rejected with a `shinyOAuth_id_token_error`. The current
+implementation supports no critical extensions, so any `crit` presence triggers
+rejection.
+- Now validates the `at_hash` (Access Token hash) claim
+when present in the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the
+claim exists, the access token binding is verified; a mismatch raises a 
+`shinyOAuth_id_token_error`. New `id_token_at_hash_required` property on 
+`OAuthProvider` (default `FALSE`) forces login to fail when the ID token does 
+not contain an `at_hash` claim.
+- For refreshed ID tokens, per OIDC Core section 12.2, now validates `iss` and 
+`aud` claims against the original ID token's values (not just the provider
+configuration) to cover edge cases with multi-tenant providers or rotating
+issuer URIs. Enforced in both validated and non-validated code paths.
 
 * OAuth callback error responses (`?error=...`) now require a valid `state`
 parameter. Missing/invalid/consumed state is then treated properly as an 
@@ -46,6 +50,14 @@ bytes before JSON decoding.
 * `oauth_module_server()`: also apply OAuth callback query cleanup in early 
 return paths of internal function `.process_query()`, ensuring more consistent
 cleanup.
+
+`oauth_module_server()`: when the OAuth callback includes an `iss` query 
+parameter, `oauth_module_server()` now validates it against the provider's 
+configured/discovered issuer during callback processing (complementing the
+existing ID token `iss` claim validation that occurs post-exchange) (per RFC 
+9207). A mismatch produces an `issuer_mismatch` error and audit event, defending
+against authorization-server mix-up attacks in multi-provider scenarios. 
+When `iss` is absent, current behavior is retained (no enforcement).
 
 * `custom_cache()`: clarified custom state-store remove contract documentation:
 explicit `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses

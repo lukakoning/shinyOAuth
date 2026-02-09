@@ -1232,6 +1232,41 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      # RFC 9207: Authorization Server Issuer Identification.
+      # When the callback includes an `iss` parameter, validate it against
+      # the provider's configured/discovered issuer. This prevents
+      # authorization-server mix-up attacks in multi-provider/misrouting
+      # scenarios. If iss is absent we retain current behavior (no enforcement)
+      # unless a future strict-mode option is added.
+      if (is_valid_string(qs$iss)) {
+        expected_issuer <- client@provider@issuer
+        if (
+          is_valid_string(expected_issuer) &&
+            !identical(rtrim_slash(qs$iss), rtrim_slash(expected_issuer))
+        ) {
+          .clear_query_and_fix_title()
+          .set_error(
+            "issuer_mismatch",
+            simpleError(paste0(
+              "Callback iss parameter does not match expected issuer (RFC 9207)"
+            )),
+            phase = "callback_iss_validation"
+          )
+          try(
+            audit_event(
+              "callback_iss_mismatch",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                expected_issuer = expected_issuer,
+                client_id_digest = string_digest(client@client_id)
+              )
+            ),
+            silent = TRUE
+          )
+          return(invisible(NULL))
+        }
+      }
+
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.
