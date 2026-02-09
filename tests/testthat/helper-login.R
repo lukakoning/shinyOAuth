@@ -31,6 +31,32 @@ parse_query_param <- function(url, name, decode = FALSE) {
 
 valid_browser_token <- function() paste(rep("ab", 64), collapse = "")
 
+# Centralized polling helper for async test assertions.
+# Polls `condition_fn` until it returns TRUE, flushing the Shiny reactive loop
+# and `later` callbacks each iteration.
+# Timeout (seconds) defaults to env var SHINYOAUTH_TEST_POLL_TIMEOUT, then 5s.
+# Poll interval defaults to env var SHINYOAUTH_TEST_POLL_INTERVAL, then 0.05s.
+poll_for_async <- function(
+  condition_fn,
+  session = NULL,
+  timeout = NULL,
+  interval = NULL
+) {
+  timeout <- timeout %||%
+    as.numeric(Sys.getenv("SHINYOAUTH_TEST_POLL_TIMEOUT", unset = "5"))
+  interval <- interval %||%
+    as.numeric(Sys.getenv("SHINYOAUTH_TEST_POLL_INTERVAL", unset = "0.05"))
+
+  deadline <- Sys.time() + timeout
+  while (!isTRUE(condition_fn()) && Sys.time() < deadline) {
+    later::run_now(interval)
+    if (!is.null(session)) {
+      session$flushReact()
+    }
+    Sys.sleep(interval / 5)
+  }
+}
+
 make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
   # Provide issuer when nonce is requested to satisfy fail-fast validation
   issuer <- if (isTRUE(use_nonce)) {

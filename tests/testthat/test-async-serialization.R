@@ -212,12 +212,7 @@ testthat::test_that("async login with serializable client still uses async path"
         .package = "shinyOAuth",
         {
           values$.process_query(paste0("?code=ok&state=", enc))
-          deadline <- Sys.time() + 3
-          while (is.null(values$token) && Sys.time() < deadline) {
-            later::run_now(0.05)
-            session$flushReact()
-            Sys.sleep(0.01)
-          }
+          poll_for_async(function() !is.null(values$token), session)
           values$token
         }
       )

@@ -44,12 +44,7 @@ testthat::test_that("async login flow resolves token and sets flags", {
         {
           values$.process_query(paste0("?code=ok&state=", enc))
           # Allow promise handlers to run
-          deadline <- Sys.time() + 3
-          while (is.null(values$token) && Sys.time() < deadline) {
-            later::run_now(0.05)
-            session$flushReact()
-            Sys.sleep(0.01)
-          }
+          poll_for_async(function() !is.null(values$token), session)
           values$token
         }
       )
@@ -167,12 +162,7 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
       # catch-handler should propagate the error back to values$error.
       values$.process_query(paste0("?code=bad&state=", enc))
       # Allow more time for real cross-process async resolution
-      deadline <- Sys.time() + 10
-      while (is.null(values$error) && Sys.time() < deadline) {
-        later::run_now(0.05)
-        session$flushReact()
-        Sys.sleep(0.01)
-      }
+      poll_for_async(function() !is.null(values$error), session, timeout = 15)
 
       testthat::expect_identical(values$error, "token_exchange_error")
       testthat::expect_match(
@@ -237,12 +227,7 @@ testthat::test_that("pending callback resumes after cookie arrives (async)", {
         {
           session$setInputs(shinyOAuth_sid = btok)
           # Process async resolution
-          deadline <- Sys.time() + 3
-          while (is.null(values$token) && Sys.time() < deadline) {
-            later::run_now(0.05)
-            session$flushReact()
-            Sys.sleep(0.01)
-          }
+          poll_for_async(function() !is.null(values$token), session)
           values$token
         }
       )
@@ -308,11 +293,7 @@ testthat::test_that("async_dispatch returns mirai object when mirai is configure
     })
 
   # Wait for resolution
-  deadline <- Sys.time() + 3
-  while (is.null(result) && Sys.time() < deadline) {
-    later::run_now(0.05)
-    Sys.sleep(0.01)
-  }
+  poll_for_async(function() !is.null(result))
 
   testthat::expect_equal(result, 15)
 })
