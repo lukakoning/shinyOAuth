@@ -117,7 +117,7 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   expect_equal(result$name, "Signed User")
 })
 
-test_that("get_userinfo falls back to unverified JWT when JWKS verification fails", {
+test_that("get_userinfo errors when JWKS has no compatible keys for signed JWT", {
   # Generate two different RSA keys — sign with one, serve JWKS with other
   sign_key <- openssl::rsa_keygen(2048)
   wrong_key <- openssl::rsa_keygen(2048)
@@ -148,13 +148,43 @@ test_that("get_userinfo falls back to unverified JWT when JWKS verification fail
     .package = "shinyOAuth"
   )
 
-  # Should succeed (unverified fallback) but emit a warning
-  expect_warning(
-    result <- get_userinfo(cli, token = "access-token"),
-    regexp = "signature could not be verified"
+  # Must fail closed: no unverified fallback for signed JWTs
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "no compatible keys"
   )
-  expect_equal(result$sub, "user-fallback")
-  expect_equal(result$name, "Fallback User")
+})
+
+test_that("get_userinfo errors when JWKS fetch fails for signed JWT", {
+  sign_key <- openssl::rsa_keygen(2048)
+
+  claims <- list(sub = "user-fetch-fail", name = "Fetch Fail User")
+  jwt_body <- make_signed_jwt(claims, sign_key, kid = "test-kid-3")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) stop("network error"),
+    .package = "shinyOAuth"
+  )
+
+  # Must fail closed: JWKS fetch failure must not allow unverified fallback
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "JWKS fetch failed"
+  )
 })
 
 test_that("get_userinfo errors when signed JWT has wrong issuer", {

@@ -190,9 +190,9 @@ get_userinfo <- function(
 #' rejected with a clear error since JWE decryption is not supported.
 #'
 #' Signature verification is attempted when the provider has JWKS available
-#' (i.e., a valid issuer and jwks_cache). If no compatible keys exist in the
-#' JWKS, falls back to unverified payload extraction with a warning. If
-#' candidate keys exist but all fail verification, an error is raised.
+#' (i.e., a valid issuer and jwks_cache). Verification is fail-closed for
+#' signed JWTs: if the JWKS cannot be fetched, no compatible keys exist, or
+#' all candidate keys fail verification, an error is raised.
 #'
 #' @param resp An httr2 response object with a JWT body.
 #' @param oauth_client An OAuthClient object (used for JWKS-based verification).
@@ -256,56 +256,58 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
         ),
         silent = TRUE
       )
-      if (!inherits(jwks, "try-error")) {
-        keys <- select_candidate_jwks(
-          jwks,
-          header_alg = alg,
-          kid = kid,
-          pins = prov@jwks_pins %||% character()
-        )
-        if (length(keys) > 0L) {
-          for (jk in keys) {
-            pub <- try(jwk_to_pubkey(jk), silent = TRUE)
-            if (inherits(pub, "try-error")) {
-              next
-            }
-            decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
-            if (!inherits(decoded, "try-error")) {
-              sig_verified <- TRUE
-              claims <- as.list(decoded)
-              # §5.3.2 MUST: signed userinfo MUST contain iss matching the
-              # OP's Issuer Identifier and aud matching/including the RP's
-              # Client ID.
-              validate_signed_userinfo_claims(
-                claims,
-                expected_issuer = prov@issuer,
-                expected_client_id = oauth_client@client_id
-              )
-              return(claims)
-            }
-          }
-          # Candidate keys existed but none verified the signature —
-          # this indicates tampering or serious misconfiguration.
-          err_userinfo(c(
-            "x" = "UserInfo JWT signature is invalid",
-            "i" = "Signature could not be verified against any candidate JWKS key"
-          ))
-        }
-        # No compatible candidate keys in JWKS; warn and fall through to
-        # unverified extraction (key rotation gap, missing kid, etc.).
-        rlang::warn(
-          c(
-            "!" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
-            "i" = "Claims will be extracted without signature verification"
-          ),
-          .frequency = "regularly",
-          .frequency_id = "shinyOAuth_userinfo_jwt_sig"
-        )
+      if (inherits(jwks, "try-error")) {
+        # JWKS fetch failed for a signed JWT — fail closed.
+        err_userinfo(c(
+          "x" = "UserInfo JWT signature could not be verified: JWKS fetch failed",
+          "i" = "The provider JWKS endpoint could not be reached or returned an error",
+          "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
+        ))
       }
+      keys <- select_candidate_jwks(
+        jwks,
+        header_alg = alg,
+        kid = kid,
+        pins = prov@jwks_pins %||% character()
+      )
+      if (length(keys) > 0L) {
+        for (jk in keys) {
+          pub <- try(jwk_to_pubkey(jk), silent = TRUE)
+          if (inherits(pub, "try-error")) {
+            next
+          }
+          decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
+          if (!inherits(decoded, "try-error")) {
+            sig_verified <- TRUE
+            claims <- as.list(decoded)
+            # §5.3.2 MUST: signed userinfo MUST contain iss matching the
+            # OP's Issuer Identifier and aud matching/including the RP's
+            # Client ID.
+            validate_signed_userinfo_claims(
+              claims,
+              expected_issuer = prov@issuer,
+              expected_client_id = oauth_client@client_id
+            )
+            return(claims)
+          }
+        }
+        # Candidate keys existed but none verified the signature —
+        # this indicates tampering or serious misconfiguration.
+        err_userinfo(c(
+          "x" = "UserInfo JWT signature is invalid",
+          "i" = "Signature could not be verified against any candidate JWKS key"
+        ))
+      }
+      # No compatible candidate keys in JWKS — fail closed.
+      err_userinfo(c(
+        "x" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
+        "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
+      ))
     }
   }
 
-  # Unverified fallback: extract payload claims directly
+  # Unverified path: only reached for unsigned JWTs (alg=none or
+  # non-asymmetric) or when provider has no issuer configured.
   payload <- parse_jwt_payload(jwt_str)
   as.list(payload)
 }
