@@ -127,7 +127,6 @@ testthat::test_that("error response with state is validated even before browser_
       session$flushReact()
 
       # Error is surfaced and state is consumed immediately.
-      testthat::expect_null(values$pending_error)
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_false(values$authenticated)
 

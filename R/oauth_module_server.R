@@ -161,9 +161,6 @@
 #'    double-submit protection; NULL if not yet set
 #'    \item `pending_callback`: internal list(code, state); used to defer token
 #'    exchange until `browser_token` is available; NULL otherwise.
-#'    \item `pending_error`: internal list(error, error_description, error_uri, state); used to
-#'    defer error-response state consumption until `browser_token` is available;
-#'    NULL otherwise.
 #'    \item `pending_login`: internal logical; TRUE when a login was requested but must
 #'    wait for `browser_token` to be set, FALSE otherwise.
 #'    \item `auto_redirected`: internal logical; TRUE once the module has initiated an
@@ -417,7 +414,6 @@ oauth_module_server <- function(
       token_stale = FALSE,
       browser_token = browser_token_initial,
       pending_callback = NULL,
-      pending_error = NULL,
       pending_login = FALSE,
       auto_redirected = FALSE,
       reauth_triggered = FALSE,
@@ -435,7 +431,6 @@ oauth_module_server <- function(
       authenticated = values$authenticated,
       browser_token = values$browser_token,
       pending_callback = values$pending_callback,
-      pending_error = values$pending_error,
       pending_login = values$pending_login,
       auto_redirected = values$auto_redirected,
       reauth_triggered = values$reauth_triggered,
@@ -1654,22 +1649,6 @@ oauth_module_server <- function(
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
           .handle_callback(pc$code, pc$state)
-        }
-      },
-      ignoreInit = FALSE
-    )
-
-    # Resume deferred error-response state consumption once browser_token is available
-    shiny::observeEvent(
-      values$browser_token,
-      {
-        pe <- shiny::isolate(values$pending_error)
-        if (!is.null(pe) && .has_browser_token()) {
-          values$pending_error <- NULL
-          # Attempt to consume the state (best-effort, failures logged)
-          if (!is.null(pe$state) && is_valid_string(pe$state)) {
-            .consume_error_state(pe$state)
-          }
         }
       },
       ignoreInit = FALSE
