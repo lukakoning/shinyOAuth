@@ -1,4 +1,5 @@
 # shinyOAuth (development version)
+
 * 'mirai' async backend improvements:
 - Detect active daemons via `mirai::daemons_set()` instead of 
 `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
@@ -72,7 +73,7 @@ and audit event, defending against authorization-server mix-up attacks in
 multi-provider scenarios. When `iss` is absent, current behavior is retained 
 (no enforcement).
 
-* `get_userinfo()` now supports JWT-encoded UserInfo responses per OIDC Core,
+* `get_userinfo()` now supports JWT-encoded userinfo responses per OIDC Core,
 section 5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
 body is decoded as a JWT. Signature verification is performed against the
 provider JWKS when available; signed responses are validated for the required 
@@ -97,7 +98,7 @@ of the default of `Inf`).
 
 * OIDC `claims` parameter support (OIDC Core, section 5.5): `OAuthClient` and 
 `oauth_client()` now accept a `claims` argument to request specific claims 
-from the UserInfo Endpoint and/or in the ID Token. Pass a list structure 
+from the userinfo Endpoint and/or in the ID token. Pass a list structure 
 (automatically JSON-encoded) or a pre-encoded JSON string.
 
 * OIDC `openid` scope enforcement: when a provider has an `issuer` set
