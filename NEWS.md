@@ -17,6 +17,19 @@
   - Further reduced serialization overhead towards async workers by using 
   certain functions from the package namespace directly.
 
+* ID token validation (`validate_id_token()`):
+  - Now enforces RFC 7515 section 4.1.11 critical header
+  parameter (`crit`) processing rules. Tokens containing unsupported critical 
+  extensions are rejected with a `shinyOAuth_id_token_error`. The current
+  implementation supports no critical extensions, so any `crit` presence triggers
+  rejection.
+  - Now validates the `at_hash` (Access Token hash) claim
+  when present in the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the
+  claim exists, the access token binding is verified; a mismatch raises a 
+  `shinyOAuth_id_token_error`. New `id_token_at_hash_required` property on 
+  `OAuthProvider` (default `FALSE`) forces login to fail when the ID token does 
+  not contain an `at_hash` claim.
+
 * OAuth callback error responses (`?error=...`) now require a valid `state`
 parameter. Missing/invalid/consumed state is then treated properly as an 
 `invalid_state` error instead of surfacing the error from `?error=...` 
@@ -29,13 +42,6 @@ identifiers containing query or fragment components, covering both
 
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
-
-* `validate_id_token()` now validates the `at_hash` (Access Token hash) claim
-when present in the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the
-claim exists, the access token binding is verified; a mismatch raises a 
-`shinyOAuth_id_token_error`. New `id_token_at_hash_required` property on 
-`OAuthProvider` (default `FALSE`) forces login to fail when the ID token does 
-not contain an `at_hash` claim.
 
 * `oauth_module_server()`: also apply OAuth callback query cleanup in early 
 return paths of internal function `.process_query()`, ensuring more consistent

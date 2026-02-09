@@ -118,6 +118,30 @@ validate_id_token <- function(
       ))
     }
   }
+  # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
+  # do not support.
+  # Allowlist of crit values this implementation understands (empty today).
+  supported_crit <- character()
+  crit <- header$crit
+  if (!is.null(crit)) {
+    if (
+      !is.character(crit) ||
+        length(crit) == 0L ||
+        anyNA(crit) ||
+        !all(nzchar(crit))
+    ) {
+      err_id_token(
+        "JWT crit header must be a non-empty character vector of extension names"
+      )
+    }
+    unsupported <- setdiff(crit, supported_crit)
+    if (length(unsupported) > 0L) {
+      err_id_token(paste0(
+        "JWT contains unsupported critical header parameter(s): ",
+        paste(unsupported, collapse = ", ")
+      ))
+    }
+  }
   alg <- toupper(header$alg %||% err_id_token("JWT header missing alg"))
   kid <- header$kid %||% NULL
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
