@@ -67,8 +67,23 @@ get_userinfo <- function(
     }
   }
 
+  # Detect Content-Type to handle JWT-encoded userinfo (OIDC Core §5.3.2)
+  resp_ct <- try(httr2::resp_content_type(resp), silent = TRUE)
+  if (inherits(resp_ct, "try-error")) {
+    resp_ct <- NA_character_
+  }
+  is_jwt_response <- is_valid_string(resp_ct) &&
+    grepl("^application/jwt", resp_ct, ignore.case = TRUE)
+
   # Parse from response
-  ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+  if (is_jwt_response) {
+    ui <- try(
+      decode_userinfo_jwt(resp, oauth_client),
+      silent = TRUE
+    )
+  } else {
+    ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+  }
   if (inherits(ui, "try-error")) {
     # Extract non-sensitive context to aid debugging without leaking tokens
     url <- try(httr2::resp_url(resp), silent = TRUE)
@@ -115,9 +130,14 @@ get_userinfo <- function(
       silent = TRUE
     )
 
+    parse_type <- if (is_jwt_response) "jwt" else "json"
     err_userinfo(
       c(
-        "x" = "Failed to parse userinfo response as JSON",
+        "x" = if (is_jwt_response) {
+          "Failed to parse userinfo response as JWT"
+        } else {
+          "Failed to parse userinfo response as JSON"
+        },
         "!" = conditionMessage(attr(ui, "condition")),
         "i" = if (is_valid_string(ct)) paste0("Content-Type: ", ct) else NULL,
         "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
@@ -125,7 +145,7 @@ get_userinfo <- function(
       ),
       context = list(
         phase = "userinfo",
-        parse = "json",
+        parse = parse_type,
         http_status = status,
         url = url,
         content_type = ct,
@@ -154,6 +174,189 @@ get_userinfo <- function(
   )
 
   return(ui)
+}
+
+#' Internal: decode JWT-encoded userinfo response (OIDC Core §5.3.2)
+#'
+#' When the UserInfo endpoint returns Content-Type: application/jwt, the
+#' response body is a signed (and optionally encrypted) JWT whose payload
+#' contains the claims.
+#'
+#' Per §5.3.2, if the JWT is signed, the claims MUST include `iss` (matching
+#' the OP's Issuer Identifier) and `aud` (matching or including the RP's
+#' Client ID). These are validated after successful signature verification.
+#'
+#' Encrypted JWTs (JWE, 5-part compact serialization) are detected and
+#' rejected with a clear error since JWE decryption is not supported.
+#'
+#' Signature verification is attempted when the provider has JWKS available
+#' (i.e., a valid issuer and jwks_cache). If no compatible keys exist in the
+#' JWKS, falls back to unverified payload extraction with a warning. If
+#' candidate keys exist but all fail verification, an error is raised.
+#'
+#' @param resp An httr2 response object with a JWT body.
+#' @param oauth_client An OAuthClient object (used for JWKS-based verification).
+#' @return A named list of userinfo claims.
+#' @keywords internal
+#' @noRd
+decode_userinfo_jwt <- function(resp, oauth_client) {
+  jwt_str <- httr2::resp_body_string(resp)
+
+  if (!is_valid_string(jwt_str)) {
+    err_userinfo("UserInfo JWT response body is empty")
+  }
+
+  # Trim whitespace that some servers may include
+  jwt_str <- trimws(jwt_str)
+
+  # Detect JWE (encrypted JWT): 5 dot-separated parts per RFC 7516 §3.
+  # We do not support JWE decryption; surface a clear error.
+  n_parts <- length(strsplit(jwt_str, ".", fixed = TRUE)[[1]])
+  if (n_parts == 5L) {
+    err_userinfo(c(
+      "x" = "UserInfo response is an encrypted JWT (JWE)",
+      "i" = "JWE decryption is not supported; configure the provider to return signed-only or plain JSON userinfo"
+    ))
+  }
+
+  prov <- oauth_client@provider
+  sig_verified <- FALSE
+
+  # Attempt signature verification when JWKS infrastructure is available
+  header <- try(parse_jwt_header(jwt_str), silent = TRUE)
+  if (
+    !inherits(header, "try-error") &&
+      is_valid_string(prov@issuer) &&
+      !is.na(prov@issuer)
+  ) {
+    alg <- toupper(header$alg %||% "")
+    kid <- header$kid %||% NULL
+
+    asymmetric_algs <- c(
+      "RS256",
+      "RS384",
+      "RS512",
+      "PS256",
+      "PS384",
+      "PS512",
+      "ES256",
+      "ES384",
+      "ES512",
+      "EDDSA"
+    )
+
+    if (alg %in% asymmetric_algs) {
+      jwks <- try(
+        fetch_jwks(
+          prov@issuer,
+          prov@jwks_cache,
+          pins = prov@jwks_pins %||% character(),
+          pin_mode = prov@jwks_pin_mode %||% "any",
+          provider = prov
+        ),
+        silent = TRUE
+      )
+      if (!inherits(jwks, "try-error")) {
+        keys <- select_candidate_jwks(
+          jwks,
+          header_alg = alg,
+          kid = kid,
+          pins = prov@jwks_pins %||% character()
+        )
+        if (length(keys) > 0L) {
+          for (jk in keys) {
+            pub <- try(jwk_to_pubkey(jk), silent = TRUE)
+            if (inherits(pub, "try-error")) {
+              next
+            }
+            decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
+            if (!inherits(decoded, "try-error")) {
+              sig_verified <- TRUE
+              claims <- as.list(decoded)
+              # §5.3.2 MUST: signed userinfo MUST contain iss matching the
+              # OP's Issuer Identifier and aud matching/including the RP's
+              # Client ID.
+              validate_signed_userinfo_claims(
+                claims,
+                expected_issuer = prov@issuer,
+                expected_client_id = oauth_client@client_id
+              )
+              return(claims)
+            }
+          }
+          # Candidate keys existed but none verified the signature —
+          # this indicates tampering or serious misconfiguration.
+          err_userinfo(c(
+            "x" = "UserInfo JWT signature is invalid",
+            "i" = "Signature could not be verified against any candidate JWKS key"
+          ))
+        }
+        # No compatible candidate keys in JWKS; warn and fall through to
+        # unverified extraction (key rotation gap, missing kid, etc.).
+        rlang::warn(
+          c(
+            "!" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
+            "i" = "Claims will be extracted without signature verification"
+          ),
+          .frequency = "regularly",
+          .frequency_id = "shinyOAuth_userinfo_jwt_sig"
+        )
+      }
+    }
+  }
+
+  # Unverified fallback: extract payload claims directly
+  payload <- parse_jwt_payload(jwt_str)
+  as.list(payload)
+}
+
+#' Internal: validate iss/aud claims in a signed UserInfo JWT (§5.3.2)
+#'
+#' @param claims Named list of JWT claims.
+#' @param expected_issuer The OP's Issuer Identifier URL.
+#' @param expected_client_id The RP's Client ID.
+#' @keywords internal
+#' @noRd
+validate_signed_userinfo_claims <- function(
+  claims,
+  expected_issuer,
+  expected_client_id
+) {
+  # iss MUST be present and match the OP's Issuer Identifier
+  iss <- claims$iss
+  if (!is_valid_string(iss)) {
+    err_userinfo(c(
+      "x" = "Signed UserInfo JWT missing required 'iss' claim (OIDC Core 5.3.2)"
+    ))
+  }
+  # Normalize trailing slash for comparison consistency (same as validate_id_token)
+  if (!identical(rtrim_slash(iss), rtrim_slash(expected_issuer))) {
+    err_userinfo(c(
+      "x" = "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
+      "i" = paste0("Expected: ", expected_issuer),
+      "i" = paste0("Got: ", iss)
+    ))
+  }
+
+  # aud MUST be or include the RP's Client ID
+  aud <- claims$aud
+  if (
+    is.null(aud) ||
+      (is.character(aud) && (length(aud) == 0L || all(!nzchar(aud))))
+  ) {
+    err_userinfo(c(
+      "x" = "Signed UserInfo JWT missing required 'aud' claim (OIDC Core 5.3.2)"
+    ))
+  }
+  if (!is.character(aud) || !(expected_client_id %in% aud)) {
+    err_userinfo(c(
+      "x" = "Signed UserInfo JWT 'aud' claim does not include client_id (OIDC Core 5.3.2)",
+      "i" = paste0("Expected client_id: ", expected_client_id),
+      "i" = paste0("Got aud: ", paste(aud, collapse = ", "))
+    ))
+  }
+
+  invisible(TRUE)
 }
 
 verify_userinfo_id_token_subject_match <- function(

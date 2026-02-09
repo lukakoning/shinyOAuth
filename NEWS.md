@@ -34,11 +34,6 @@ not contain an `at_hash` claim.
 configuration) to cover edge cases with multi-tenant providers or rotating
 issuer URIs. Enforced in both validated and non-validated code paths.
 
-* OAuth callback error responses (`?error=...`) now require a valid `state`
-parameter. Missing/invalid/consumed state is then treated properly as an 
-`invalid_state` error instead of surfacing the error from `?error=...` 
-(which could be set by an attacker).
-
 * Stricter URL validation: `OAuthClient` now rejects redirect URIs containing 
 fragments (per RFC 6749, section 3.1.2); `OAuthProvider` now rejects issuer 
 identifiers containing query or fragment components, covering both 
@@ -47,17 +42,28 @@ identifiers containing query or fragment components, covering both
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
 
-* `oauth_module_server()`: also apply OAuth callback query cleanup in early 
+* `oauth_module_server()`: 
+- OAuth callback query cleanup is also applied in early 
 return paths of internal function `.process_query()`, ensuring more consistent
 cleanup.
+- OAuth callback error responses (`?error=...`) now 
+require a valid `state` parameter. Missing/invalid/consumed state is then
+treated properly as an `invalid_state` error instead of surfacing the error from
+`?error=...` (which could be set by an attacker).
+- OAuth callback including an `iss` query parameter now validate this against 
+the provider's configured/discovered issuer during callback processing 
+(complementing the existing ID token `iss` claim validation that occurs 
+post-exchange) (per RFC 9207). A mismatch produces an `issuer_mismatch` error 
+and audit event, defending against authorization-server mix-up attacks in
+multi-provider scenarios. When `iss` is absent, current behavior is retained 
+(no enforcement).
 
-`oauth_module_server()`: when the OAuth callback includes an `iss` query 
-parameter, `oauth_module_server()` now validates it against the provider's 
-configured/discovered issuer during callback processing (complementing the
-existing ID token `iss` claim validation that occurs post-exchange) (per RFC 
-9207). A mismatch produces an `issuer_mismatch` error and audit event, defending
-against authorization-server mix-up attacks in multi-provider scenarios. 
-When `iss` is absent, current behavior is retained (no enforcement).
+* `get_userinfo()` now supports JWT-encoded UserInfo responses per OIDC Core,
+section 5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
+body is decoded as a JWT. Signature verification is performed against the
+provider JWKS when available; signed responses are validated for the required 
+`iss` and `aud` claims. Encrypted JWTs (JWE) are detected and rejected with a
+clear error. Plain JSON responses continue to work as before.
 
 * `custom_cache()`: clarified custom state-store remove contract documentation:
 explicit `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
