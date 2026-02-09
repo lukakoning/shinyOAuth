@@ -4,47 +4,52 @@
 
 - ‘mirai’ async backend improvements:
 
-  - Detect active daemons via
-    [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
-    instead of
-    [`mirai::info()`](https://mirai.r-lib.org/reference/info.html)/[`mirai::status()`](https://mirai.r-lib.org/reference/status.html)
-    (requires ‘mirai’ \>= 2.3.0).
-  - Per-task timeout via `options(shinyOAuth.async_timeout)`
-    (milliseconds); timed-out ‘mirai’ tasks are automatically cancelled
-    by the dispatcher.
-  - Async audit events now include a `mirai_error_type` field.
-  - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
-    in workers.
-    - Async callback flow no longer serializes the full client object
-      (including potentially non-serializable custom `state_store` /
-      JWKS cache backends) into the worker context. The `state_store`
-      (already consumed on the main thread) is replaced with a
-      lightweight serializable dummy before dispatch. If the client
-      still fails serialization, the flow falls back to synchronous
-      execution with an explicit warning instead of an opaque runtime
-      error.
-  - Further reduced serialization overhead towards async workers by
-    using certain functions from the package namespace directly.
+- Detect active daemons via
+  [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
+  instead of
+  [`mirai::info()`](https://mirai.r-lib.org/reference/info.html)/[`mirai::status()`](https://mirai.r-lib.org/reference/status.html)
+  (requires ‘mirai’ \>= 2.3.0).
+
+- Per-task timeout via `options(shinyOAuth.async_timeout)`
+  (milliseconds); timed-out ‘mirai’ tasks are automatically cancelled by
+  the dispatcher.
+
+- Async audit events now include a `mirai_error_type` field.
+
+- Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
+  in workers.
+
+- Async callback flow no longer serializes the full client object
+  (including potentially non-serializable custom `state_store` / JWKS
+  cache backends) into the worker context. The `state_store` (already
+  consumed on the main thread) is replaced with a lightweight
+  serializable dummy before dispatch. If the client still fails
+  serialization, the flow falls back to synchronous execution with an
+  explicit warning instead of an opaque runtime error.
+
+- Further reduced serialization overhead towards async workers by using
+  certain functions from the package namespace directly.
 
 - ID token validation (`validate_id_token()`):
 
-  - Now enforces RFC 7515 section 4.1.11 critical header parameter
-    (`crit`) processing rules. Tokens containing unsupported critical
-    extensions are rejected with a `shinyOAuth_id_token_error`. The
-    current implementation supports no critical extensions, so any
-    `crit` presence triggers rejection.
-  - Now validates the `at_hash` (Access Token hash) claim when present
-    in the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the
-    claim exists, the access token binding is verified; a mismatch
-    raises a `shinyOAuth_id_token_error`. New
-    `id_token_at_hash_required` property on `OAuthProvider` (default
-    `FALSE`) forces login to fail when the ID token does not contain an
-    `at_hash` claim.
+- Now enforces RFC 7515 section 4.1.11 critical header parameter
+  (`crit`) processing rules. Tokens containing unsupported critical
+  extensions are rejected with a `shinyOAuth_id_token_error`. The
+  current implementation supports no critical extensions, so any `crit`
+  presence triggers rejection.
 
-- OAuth callback error responses (`?error=...`) now require a valid
-  `state` parameter. Missing/invalid/consumed state is then treated
-  properly as an `invalid_state` error instead of surfacing the error
-  from `?error=...` (which could be set by an attacker).
+- Now validates the `at_hash` (Access Token hash) claim when present in
+  the ID token (per OIDC Core section 3.1.3.8 and 3.2.2.9). If the claim
+  exists, the access token binding is verified; a mismatch raises a
+  `shinyOAuth_id_token_error`. New `id_token_at_hash_required` property
+  on `OAuthProvider` (default `FALSE`) forces login to fail when the ID
+  token does not contain an `at_hash` claim.
+
+- For refreshed ID tokens, per OIDC Core section 12.2, now validates
+  `iss` and `aud` claims against the original ID token’s values (not
+  just the provider configuration) to cover edge cases with multi-tenant
+  providers or rotating issuer URIs. Enforced in both validated and
+  non-validated code paths.
 
 - Stricter URL validation: `OAuthClient` now rejects redirect URIs
   containing fragments (per RFC 6749, section 3.1.2); `OAuthProvider`
@@ -57,9 +62,32 @@
   NUL bytes before JSON decoding.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
-  also apply OAuth callback query cleanup in early return paths of
+
+- OAuth callback query cleanup is also applied in early return paths of
   internal function `.process_query()`, ensuring more consistent
   cleanup.
+
+- OAuth callback error responses (`?error=...`) now require a valid
+  `state` parameter. Missing/invalid/consumed state is then treated
+  properly as an `invalid_state` error instead of surfacing the error
+  from `?error=...` (which could be set by an attacker).
+
+- OAuth callback including an `iss` query parameter now validate this
+  against the provider’s configured/discovered issuer during callback
+  processing (complementing the existing ID token `iss` claim validation
+  that occurs post-exchange) (per RFC 9207). A mismatch produces an
+  `issuer_mismatch` error and audit event, defending against
+  authorization-server mix-up attacks in multi-provider scenarios. When
+  `iss` is absent, current behavior is retained (no enforcement).
+
+- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  now supports JWT-encoded UserInfo responses per OIDC Core, section
+  5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
+  body is decoded as a JWT. Signature verification is performed against
+  the provider JWKS when available; signed responses are validated for
+  the required `iss` and `aud` claims. Encrypted JWTs (JWE) are detected
+  and rejected with a clear error. Plain JSON responses continue to work
+  as before.
 
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md):
   clarified custom state-store remove contract documentation: explicit
