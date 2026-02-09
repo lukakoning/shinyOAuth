@@ -121,6 +121,13 @@
   `options(shinyOAuth.default_expires_in = <seconds>)` (instead of the
   default of `Inf`).
 
+- OIDC `claims` parameter support (OIDC Core, section 5.5):
+  `OAuthClient` and
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  now accept a `claims` argument to request specific claims from the
+  UserInfo Endpoint and/or in the ID Token. Pass a list structure
+  (automatically JSON-encoded) or a pre-encoded JSON string.
+
 - OIDC `openid` scope enforcement: when a provider has an `issuer` set
   (indicating OIDC) and `openid` is missing from the client’s scopes,
   `build_auth_url()` now auto-prepends it and emits a one-time warning.

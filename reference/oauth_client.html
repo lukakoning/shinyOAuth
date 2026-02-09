@@ -52,6 +52,7 @@
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
 <span>  <span class="va">redirect_uri</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
 <span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
@@ -98,6 +99,30 @@ enabled, a non-empty <code>client_secret</code> is required for signature valida
 
 <dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
 <dd><p>Vector of scopes to request</p></dd>
+
+
+<dt id="arg-claims">claims<a class="anchor" aria-label="anchor" href="#arg-claims"></a></dt>
+<dd><p>OIDC claims request parameter (OIDC Core §5.5). Allows
+requesting specific claims from the UserInfo Endpoint and/or in the ID
+Token. Can be:</p><ul><li><p><code>NULL</code> (default): no claims parameter is sent</p></li>
+<li><p>A list: automatically JSON-encoded (via <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code> with
+<code>auto_unbox = TRUE</code>) and URL-encoded into the authorization request.
+The list should have top-level members <code>userinfo</code> and/or <code>id_token</code>,
+each containing named lists of claims.
+Use <code>NULL</code> to request a claim without parameters (per spec).
+Example: <code>list(userinfo = list(email = NULL, given_name = list(essential = TRUE)), id_token = list(auth_time = list(essential = TRUE)))</code></p>
+<p>Note on single-element arrays: because <code>auto_unbox = TRUE</code> is used,
+single-element R vectors are serialized as JSON scalars, not arrays.
+The OIDC spec defines <code>values</code> as an array. To force array encoding
+for a single-element vector, wrap it in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, e.g.,
+<code>acr = list(values = I("urn:mace:incommon:iap:silver"))</code> produces
+<code>{"values":["urn:mace:incommon:iap:silver"]}</code>. Multi-element vectors
+are always encoded as arrays.</p></li>
+<li><p>A character string: pre-encoded JSON string (for advanced use). Must
+be valid JSON. Use this when you need full control over JSON encoding.
+Note: The <code>claims</code> parameter is OPTIONAL per OIDC Core §5.5. Not all
+providers support it; consult your provider's documentation.</p></li>
+</ul></dd>
 
 
 <dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
