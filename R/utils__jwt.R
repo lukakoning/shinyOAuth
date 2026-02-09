@@ -66,6 +66,20 @@ validate_id_token <- function(
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(id_token))
 
+  # Detect JWE (encrypted JWT): 5 dot-separated parts per RFC 7516 §3.
+  # OIDC Core §3.1.3.7 step 1: "If the ID Token is encrypted, decrypt it..."
+  # We do not support JWE decryption; surface a clear error rather than
+
+  # letting a confusing alg/typ/parse failure propagate.
+  n_parts <- length(strsplit(id_token, ".", fixed = TRUE)[[1]])
+  if (n_parts == 5L) {
+    err_id_token(c(
+      "x" = "ID token is an encrypted JWT (JWE)",
+      "i" = "Encrypted ID tokens (JWE) are not supported by shinyOAuth",
+      "i" = "Configure the provider to return signed-only (JWS) ID tokens"
+    ))
+  }
+
   prov <- client@provider
   issuer <- prov@issuer
   allowed_algs <- toupper(

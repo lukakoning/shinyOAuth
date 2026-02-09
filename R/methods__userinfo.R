@@ -342,7 +342,7 @@ validate_signed_userinfo_claims <- function(
   aud <- claims$aud
   if (
     is.null(aud) ||
-      (is.character(aud) && (length(aud) == 0L || all(!nzchar(aud))))
+      (is.character(aud) && (length(aud) == 0L || !any(nzchar(aud))))
   ) {
     err_userinfo(c(
       "x" = "Signed UserInfo JWT missing required 'aud' claim (OIDC Core 5.3.2)"
