@@ -45,11 +45,16 @@
   on `OAuthProvider` (default `FALSE`) forces login to fail when the ID
   token does not contain an `at_hash` claim.
 
-- For refreshed ID tokens, per OIDC Core section 12.2, now validates
+- Now validates, for refreshed ID tokens, per OIDC Core section 12.2,
   `iss` and `aud` claims against the original ID token’s values (not
   just the provider configuration) to cover edge cases with multi-tenant
   providers or rotating issuer URIs. Enforced in both validated and
   non-validated code paths.
+
+- Now detects encrypted ID tokens (JWE compact serialization, 5
+  dot-separated segments) early and raises a clear
+  `shinyOAuth_id_token_error` instead of letting a confusing
+  alg/typ/parse failure propagate.
 
 - Stricter URL validation: `OAuthClient` now rejects redirect URIs
   containing fragments (per RFC 6749, section 3.1.2); `OAuthProvider`
