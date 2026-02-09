@@ -221,8 +221,10 @@ With respect to OIDC ID token handling:
 
 If refresh fails inside `oauth_module_server()`, the module exposes the failure via its reactive state
 (for example, `token_refresh_error`). By default it also clears the current session token; if
-`oauth_module_server(indefinite_session = TRUE)`, the token is kept but marked stale. In all cases, the
-`$authenticated` flag becomes `FALSE` while the error is present.
+`oauth_module_server(indefinite_session = TRUE)`, the token is kept but marked stale. In the default
+mode, the `$authenticated` flag becomes `FALSE` while the error is present. However, when
+`indefinite_session = TRUE`, the `$authenticated` flag remains `TRUE` even if errors are present,
+allowing long-lived sessions despite transient refresh failures.
 
 ### 15. Logout and token revocation
 

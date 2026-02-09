@@ -119,7 +119,9 @@ The returned reactiveValues contains the following fields:
 \itemize{
 \item \code{authenticated}: logical TRUE when there is no error and a token is
 present and valid (matching the verifications enabled in the client provider);
-FALSE otherwise.
+FALSE otherwise. Exception: when \code{indefinite_session = TRUE}, errors do not
+affect this flag so \code{authenticated} remains TRUE even if refresh or other
+operations fail.
 \item \code{token}: \link{OAuthToken} object, or NULL if not yet authenticated.
 This contains the access token, refresh token (if any), ID token (if
 any), and userinfo (if fetched). See \link{OAuthToken} for details.
