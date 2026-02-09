@@ -295,6 +295,25 @@ build_auth_url <- function(
   if (length(effective_scopes) > 0) {
     params$scope <- paste(effective_scopes, collapse = " ")
   }
+
+  # OIDC claims parameter (OIDC Core §5.5): JSON-encode if a list,
+  # otherwise use as-is
+  if (!is.null(oauth_client@claims)) {
+    if (is.list(oauth_client@claims)) {
+      # JSON-encode the list with auto_unbox to avoid wrapping single values
+      # in arrays, and null = "null" to preserve explicit null values which
+      # OIDC uses to request claims without additional parameters
+      params$claims <- jsonlite::toJSON(
+        oauth_client@claims,
+        auto_unbox = TRUE,
+        null = "null"
+      )
+    } else {
+      # Assume pre-encoded JSON string
+      params$claims <- oauth_client@claims
+    }
+  }
+
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params
 
@@ -310,7 +329,8 @@ build_auth_url <- function(
       "scope",
       "nonce",
       "code_challenge",
-      "code_challenge_method"
+      "code_challenge_method",
+      "claims" # Managed via oauth_client(..., claims = ...)
     )
     unblocked <- getOption("shinyOAuth.unblock_auth_params", character())
     blocked_params <- setdiff(default_blocked_params, unblocked)

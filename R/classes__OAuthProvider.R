@@ -409,7 +409,8 @@ OAuthProvider <- S7::new_class(
       "scope",
       "code_challenge",
       "code_challenge_method",
-      "nonce"
+      "nonce",
+      "claims" # Managed via oauth_client(..., claims = ...)
     )
     unblocked_auth <- getOption("shinyOAuth.unblock_auth_params", character())
     reserved_auth_keys <- setdiff(default_reserved_auth_keys, unblocked_auth)

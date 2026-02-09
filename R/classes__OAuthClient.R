@@ -69,6 +69,29 @@
 #'    validates the OAuth `state` parameter (and OIDC `nonce` when applicable)
 #'    during the authorization code flow
 #'
+#' @param claims OIDC claims request parameter (OIDC Core §5.5). Allows
+#'   requesting specific claims from the UserInfo Endpoint and/or in the ID
+#'   Token. Can be:
+#'   - `NULL` (default): no claims parameter is sent
+#'   - A list: automatically JSON-encoded (via [jsonlite::toJSON()] with
+#'     `auto_unbox = TRUE`) and URL-encoded into the authorization request.
+#'     The list should have top-level members `userinfo` and/or `id_token`,
+#'     each containing named lists of claims.
+#'     Use `NULL` to request a claim without parameters (per spec).
+#'     Example: `list(userinfo = list(email = NULL, given_name = list(essential = TRUE)), id_token = list(auth_time = list(essential = TRUE)))`
+#'
+#'     Note on single-element arrays: because `auto_unbox = TRUE` is used,
+#'     single-element R vectors are serialized as JSON scalars, not arrays.
+#'     The OIDC spec defines `values` as an array. To force array encoding
+#'     for a single-element vector, wrap it in [I()], e.g.,
+#'     `acr = list(values = I("urn:mace:incommon:iap:silver"))` produces
+#'     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
+#'     are always encoded as arrays.
+#'   - A character string: pre-encoded JSON string (for advanced use). Must
+#'     be valid JSON. Use this when you need full control over JSON encoding.
+#'   Note: The `claims` parameter is OPTIONAL per OIDC Core §5.5. Not all
+#'   providers support it; consult your provider's documentation.
+#'
 #' @param state_payload_max_age Positive number of seconds. Maximum allowed age
 #'   for the decrypted state payload's `issued_at` timestamp during callback
 #'   validation.
@@ -172,6 +195,15 @@ OAuthClient <- S7::new_class(
     ),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
+    # Optional OIDC claims request parameter (OIDC Core §5.5):
+    # can be NULL (no claims), a list (auto JSON-encoded), or a character
+    # string (pre-encoded JSON). When a list, it is JSON-encoded using
+    # jsonlite::toJSON(auto_unbox = TRUE, null = "null") during auth URL
+    # construction.
+    claims = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
     state_store = S7::new_property(
       S7::class_any,
       default = quote(cachem::cache_mem(max_age = 300))
@@ -487,6 +519,31 @@ OAuthClient <- S7::new_class(
       return(paste0("OAuthClient: scopes validation error: ", scopes_valid))
     }
 
+    # Validate claims
+    if (!is.null(self@claims)) {
+      # Must be either a list or a single non-empty character string
+      if (is.list(self@claims)) {
+        # Lists are valid; they will be JSON-encoded later
+      } else if (is.character(self@claims)) {
+        if (length(self@claims) != 1L || !nzchar(self@claims)) {
+          return(
+            "OAuthClient: claims must be a single non-empty character string when provided as character"
+          )
+        }
+        # Try to validate it's valid JSON
+        json_valid <- try(jsonlite::validate(self@claims), silent = TRUE)
+        if (inherits(json_valid, "try-error") || !isTRUE(json_valid)) {
+          return(
+            "OAuthClient: claims provided as character must be valid JSON"
+          )
+        }
+      } else {
+        return(
+          "OAuthClient: claims must be NULL, a list, or a character string"
+        )
+      }
+    }
+
     # Validate scope_validation
     if (
       !is_valid_string(self@scope_validation) ||
@@ -610,6 +667,7 @@ oauth_client <- function(
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
   scopes = character(0),
+  claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -647,6 +705,7 @@ oauth_client <- function(
     client_secret = client_secret,
     redirect_uri = redirect_uri,
     scopes = scopes,
+    claims = claims,
     state_store = state_store,
     state_payload_max_age = state_payload_max_age,
     state_entropy = state_entropy,

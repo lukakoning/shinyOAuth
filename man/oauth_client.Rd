@@ -10,6 +10,7 @@ oauth_client(
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
   scopes = character(0),
+  claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -48,6 +49,31 @@ enabled, a non-empty \code{client_secret} is required for signature validation.}
 \item{redirect_uri}{Redirect URI registered with provider}
 
 \item{scopes}{Vector of scopes to request}
+
+\item{claims}{OIDC claims request parameter (OIDC Core §5.5). Allows
+requesting specific claims from the UserInfo Endpoint and/or in the ID
+Token. Can be:
+\itemize{
+\item \code{NULL} (default): no claims parameter is sent
+\item A list: automatically JSON-encoded (via \code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}} with
+\code{auto_unbox = TRUE}) and URL-encoded into the authorization request.
+The list should have top-level members \code{userinfo} and/or \code{id_token},
+each containing named lists of claims.
+Use \code{NULL} to request a claim without parameters (per spec).
+Example: \code{list(userinfo = list(email = NULL, given_name = list(essential = TRUE)), id_token = list(auth_time = list(essential = TRUE)))}
+
+Note on single-element arrays: because \code{auto_unbox = TRUE} is used,
+single-element R vectors are serialized as JSON scalars, not arrays.
+The OIDC spec defines \code{values} as an array. To force array encoding
+for a single-element vector, wrap it in \code{\link[=I]{I()}}, e.g.,
+\code{acr = list(values = I("urn:mace:incommon:iap:silver"))} produces
+\verb{\{"values":["urn:mace:incommon:iap:silver"]\}}. Multi-element vectors
+are always encoded as arrays.
+\item A character string: pre-encoded JSON string (for advanced use). Must
+be valid JSON. Use this when you need full control over JSON encoding.
+Note: The \code{claims} parameter is OPTIONAL per OIDC Core §5.5. Not all
+providers support it; consult your provider's documentation.
+}}
 
 \item{state_store}{State storage backend. Defaults to \code{cachem::cache_mem(max_age = 300)}.
 Alternative backends could include \code{cachem::cache_disk()} or a custom

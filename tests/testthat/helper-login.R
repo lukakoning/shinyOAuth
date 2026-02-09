@@ -72,6 +72,7 @@ make_test_client <- function(
   state_max_age = 600,
   state_payload_max_age = 300,
   scopes = character(0),
+  claims = NULL,
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
@@ -82,6 +83,7 @@ make_test_client <- function(
     client_secret = "", # public client
     redirect_uri = "http://localhost:8100",
     scopes = scopes,
+    claims = claims,
     state_store = cachem::cache_mem(max_age = state_max_age),
     state_payload_max_age = state_payload_max_age,
     state_entropy = 64,
