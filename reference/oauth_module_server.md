@@ -157,8 +157,9 @@ oauth_module_server(
 
 ## Value
 
-A reactiveValues object with `token`, `error`, `error_description`, and
-`authenticated`, plus additional fields used by the module.
+A reactiveValues object with `token`, `error`, `error_description`,
+`error_uri`, and `authenticated`, plus additional fields used by the
+module.
 
 The returned reactiveValues contains the following fields:
 
@@ -187,15 +188,19 @@ The returned reactiveValues contains the following fields:
   extra careful with exposing this directly to users, as it may contain
   even more sensitive information which could aid an attacker.
 
+- `error_uri`: URI identifying a human-readable web page with
+  information about the error (per RFC 6749 section 4.1.2.1). NULL when
+  the provider does not include one.
+
 - `browser_token`: internal opaque browser cookie value; used for state
   double-submit protection; NULL if not yet set
 
 - `pending_callback`: internal list(code, state); used to defer token
   exchange until `browser_token` is available; NULL otherwise.
 
-- `pending_error`: internal list(error, error_description, state); used
-  to defer error-response state consumption until `browser_token` is
-  available; NULL otherwise.
+- `pending_error`: internal list(error, error_description, error_uri,
+  state); used to defer error-response state consumption until
+  `browser_token` is available; NULL otherwise.
 
 - `pending_login`: internal logical; TRUE when a login was requested but
   must wait for `browser_token` to be set, FALSE otherwise.

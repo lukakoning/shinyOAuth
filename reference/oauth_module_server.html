@@ -210,7 +210,7 @@ the <code>Secure</code> attribute</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A reactiveValues object with <code>token</code>, <code>error</code>, <code>error_description</code>,
-and <code>authenticated</code>, plus additional fields used by the module.</p>
+<code>error_uri</code>, and <code>authenticated</code>, plus additional fields used by the module.</p>
 <p>The returned reactiveValues contains the following fields:</p>
 <ul><li><p><code>authenticated</code>: logical TRUE when there is no error and a token is
 present and valid (matching the verifications enabled in the client provider);
@@ -228,11 +228,14 @@ contain sensitive information which could aid an attacker.</p></li>
 <li><p><code>error_description</code>: human-readable error detail when available.
 Be extra careful with exposing this directly to users, as it may
 contain even more sensitive information which could aid an attacker.</p></li>
+<li><p><code>error_uri</code>: URI identifying a human-readable web page with
+information about the error (per RFC 6749 section 4.1.2.1). NULL when
+the provider does not include one.</p></li>
 <li><p><code>browser_token</code>: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set</p></li>
 <li><p><code>pending_callback</code>: internal list(code, state); used to defer token
 exchange until <code>browser_token</code> is available; NULL otherwise.</p></li>
-<li><p><code>pending_error</code>: internal list(error, error_description, state); used to
+<li><p><code>pending_error</code>: internal list(error, error_description, error_uri, state); used to
 defer error-response state consumption until <code>browser_token</code> is available;
 NULL otherwise.</p></li>
 <li><p><code>pending_login</code>: internal logical; TRUE when a login was requested but must

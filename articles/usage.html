@@ -561,6 +561,18 @@ Ignored when falling back to the ‘future’ backend</li>
 </ul>
 </div>
 <div class="section level3">
+<h3 id="token-lifetime-fallback">Token lifetime fallback<a class="anchor" aria-label="anchor" href="#token-lifetime-fallback"></a>
+</h3>
+<ul>
+<li>
+<code>options(shinyOAuth.default_expires_in = 3600)</code> –
+fallback token lifetime (in seconds) when the provider omits
+<code>expires_in</code> from the token response. Without this option the
+lifetime defaults to <code>Inf</code> and proactive refresh will never
+trigger. A warning is emitted in either case</li>
+</ul>
+</div>
+<div class="section level3">
 <h3 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
 </h3>
 <ul>

@@ -114,6 +114,13 @@
   important security checks, they have been moved to an internal-only
   helper function (`handle_callback_internal()`).
 
+- When a token response omits `expires_in`, a warning is now emitted
+  once per phase (`exchange_code` / `refresh_token`) so operators know
+  that proactive token refresh will not trigger. Users can now also set
+  a finite default lifetime for such tokens via
+  `options(shinyOAuth.default_expires_in = <seconds>)` (instead of the
+  default of `Inf`).
+
 - OIDC `openid` scope enforcement: when a provider has an `issuer` set
   (indicating OIDC) and `openid` is missing from the client’s scopes,
   `build_auth_url()` now auto-prepends it and emits a one-time warning.

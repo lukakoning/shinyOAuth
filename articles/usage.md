@@ -465,6 +465,14 @@ options:
   as a mirai error. Default is `NULL` (no timeout). Ignored when falling
   back to the ‘future’ backend
 
+### Token lifetime fallback
+
+- `options(shinyOAuth.default_expires_in = 3600)` – fallback token
+  lifetime (in seconds) when the provider omits `expires_in` from the
+  token response. Without this option the lifetime defaults to `Inf` and
+  proactive refresh will never trigger. A warning is emitted in either
+  case
+
 ### HTTP settings (timeout, retries, user agent)
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)
