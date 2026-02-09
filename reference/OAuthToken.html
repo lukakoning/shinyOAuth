@@ -81,6 +81,15 @@ token expires. <code>Inf</code> for non-expiring tokens</p></dd>
 userinfo endpoint (if fetched)</p></dd>
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The <code>id_token_claims</code> property is a read-only computed property that returns
+the decoded JWT payload of the ID token as a named list. This surfaces all
+standard and optional OIDC claims (e.g., <code>sub</code>, <code>iss</code>, <code>aud</code>, <code>acr</code>, <code>amr</code>,
+<code>auth_time</code>, <code>nonce</code>, <code>at_hash</code>, etc.) without requiring manual JWT
+decoding. Returns an empty list when no ID token is present or if the token
+cannot be decoded.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

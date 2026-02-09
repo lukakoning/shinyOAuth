@@ -38,6 +38,15 @@ OAuthToken(
   List containing user information fetched from the provider's userinfo
   endpoint (if fetched)
 
+## Details
+
+The `id_token_claims` property is a read-only computed property that
+returns the decoded JWT payload of the ID token as a named list. This
+surfaces all standard and optional OIDC claims (e.g., `sub`, `iss`,
+`aud`, `acr`, `amr`, `auth_time`, `nonce`, `at_hash`, etc.) without
+requiring manual JWT decoding. Returns an empty list when no ID token is
+present or if the token cannot be decoded.
+
 ## Examples
 
 ``` r

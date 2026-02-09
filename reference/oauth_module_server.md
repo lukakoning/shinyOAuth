@@ -172,13 +172,15 @@ The returned reactiveValues contains the following fields:
 - `token`:
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   object, or NULL if not yet authenticated. This contains the access
-  token, refresh token (if any), ID token (if any), and userinfo (if
-  fetched). See
+  token, refresh token (if any), ID token (if any), userinfo (if
+  fetched), and the decoded ID token claims via `token@id_token_claims`
+  (a read-only named list exposing all JWT payload claims such as `sub`,
+  `acr`, `amr`, `auth_time`, etc.). See
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   for details. Note that since
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  is a S7 object, you access its fields with `@`, e.g.,
-  `token@userinfo`.
+  is a S7 object, you access its fields with `@`, e.g., `token@userinfo`
+  or `token@id_token_claims$acr`.
 
 - `error`: error code string when the OAuth flow fails. Be careful with
   exposing this directly to users, as it may contain sensitive
