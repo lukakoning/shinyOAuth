@@ -11,6 +11,14 @@
 #' @param userinfo List containing user information fetched from the provider's
 #'  userinfo endpoint (if fetched)
 #'
+#' @details
+#' The `id_token_claims` property is a read-only computed property that returns
+#' the decoded JWT payload of the ID token as a named list. This surfaces all
+#' standard and optional OIDC claims (e.g., `sub`, `iss`, `aud`, `acr`, `amr`,
+#' `auth_time`, `nonce`, `at_hash`, etc.) without requiring manual JWT
+#' decoding. Returns an empty list when no ID token is present or if the token
+#' cannot be decoded.
+#'
 #' @example inst/examples/token_methods.R
 #' @export
 OAuthToken <- S7::new_class(
@@ -28,6 +36,22 @@ OAuthToken <- S7::new_class(
 
     expires_at = S7::new_property(S7::class_numeric, default = Inf),
 
-    userinfo = S7::class_list
+    userinfo = S7::class_list,
+
+    id_token_claims = S7::new_property(
+      class = S7::class_list,
+      getter = function(self) {
+        raw <- S7::prop(self, "id_token")
+        if (
+          !is.character(raw) || length(raw) != 1L || is.na(raw) || !nzchar(raw)
+        ) {
+          return(list())
+        }
+        tryCatch(
+          parse_jwt_payload(raw),
+          error = function(e) list()
+        )
+      }
+    )
   )
 )

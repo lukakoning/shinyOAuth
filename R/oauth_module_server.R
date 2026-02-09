@@ -142,9 +142,12 @@
 #'    operations fail.
 #'    \item `token`: [OAuthToken] object, or NULL if not yet authenticated.
 #'    This contains the access token, refresh token (if any), ID token (if
-#'    any), and userinfo (if fetched). See [OAuthToken] for details.
+#'    any), userinfo (if fetched), and the decoded ID token claims via
+#'    `token@id_token_claims` (a read-only named list exposing all JWT
+#'    payload claims such as `sub`, `acr`, `amr`, `auth_time`, etc.).
+#'    See [OAuthToken] for details.
 #'    Note that since [OAuthToken] is a S7 object, you access its fields
-#'    with `@`, e.g., `token@userinfo`.
+#'    with `@`, e.g., `token@userinfo` or `token@id_token_claims$acr`.
 #'    \item `error`: error code string when the OAuth flow fails.
 #'    Be careful with exposing this directly to users, as it may
 #'    contain sensitive information which could aid an attacker.

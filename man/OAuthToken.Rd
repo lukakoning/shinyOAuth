@@ -28,6 +28,14 @@ userinfo endpoint (if fetched)}
 \description{
 S7 class representing OAuth tokens and (optionally) user information.
 }
+\details{
+The \code{id_token_claims} property is a read-only computed property that returns
+the decoded JWT payload of the ID token as a named list. This surfaces all
+standard and optional OIDC claims (e.g., \code{sub}, \code{iss}, \code{aud}, \code{acr}, \code{amr},
+\code{auth_time}, \code{nonce}, \code{at_hash}, etc.) without requiring manual JWT
+decoding. Returns an empty list when no ID token is present or if the token
+cannot be decoded.
+}
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
 # are typically not called by users of this package directly, but are called

@@ -124,9 +124,12 @@ affect this flag so \code{authenticated} remains TRUE even if refresh or other
 operations fail.
 \item \code{token}: \link{OAuthToken} object, or NULL if not yet authenticated.
 This contains the access token, refresh token (if any), ID token (if
-any), and userinfo (if fetched). See \link{OAuthToken} for details.
+any), userinfo (if fetched), and the decoded ID token claims via
+\code{token@id_token_claims} (a read-only named list exposing all JWT
+payload claims such as \code{sub}, \code{acr}, \code{amr}, \code{auth_time}, etc.).
+See \link{OAuthToken} for details.
 Note that since \link{OAuthToken} is a S7 object, you access its fields
-with \code{@}, e.g., \code{token@userinfo}.
+with \code{@}, e.g., \code{token@userinfo} or \code{token@id_token_claims$acr}.
 \item \code{error}: error code string when the OAuth flow fails.
 Be careful with exposing this directly to users, as it may
 contain sensitive information which could aid an attacker.

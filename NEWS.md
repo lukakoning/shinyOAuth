@@ -1,5 +1,4 @@
 # shinyOAuth (development version)
-
 * 'mirai' async backend improvements:
 - Detect active daemons via `mirai::daemons_set()` instead of 
 `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
@@ -46,6 +45,10 @@ identifiers containing query or fragment components, covering both
 
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
+
+* `OAuthToken` gains a read-only `id_token_claims` property that exposes the
+decoded ID token JWT payload as a named list, surfacing all OIDC claims
+(e.g., `acr`, `amr`, `auth_time`) without manual decoding.
 
 * `oauth_module_server()`: 
 - Now surfaces `error_uri` from provider error
