@@ -69,6 +69,10 @@
 - Stricter state payload parsing: callback `state` now rejects embedded
   NUL bytes before JSON decoding.
 
+- `OAuthToken` gains a read-only `id_token_claims` property that exposes
+  the decoded ID token JWT payload as a named list, surfacing all OIDC
+  claims (e.g., `acr`, `amr`, `auth_time`) without manual decoding.
+
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
 
 - Now surfaces `error_uri` from provider error callbacks (RFC 6749,
