@@ -2,8 +2,6 @@
 
 ## shinyOAuth (development version)
 
-- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-
 - ‘mirai’ async backend improvements:
 
 - Detect active daemons via
