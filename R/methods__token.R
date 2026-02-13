@@ -187,6 +187,11 @@ revoke_token <- function(
 
   req <- add_req_defaults(req)
   req <- req_no_redirect(req)
+  # Apply any extra token headers (mirrors exchange/refresh paths)
+  extra_headers <- as.list(oauth_client@provider@extra_token_headers)
+  if (length(extra_headers)) {
+    req <- do.call(httr2::req_headers, c(list(req), extra_headers))
+  }
   req <- do.call(httr2::req_body_form, c(list(req), params))
   req <- httr2::req_error(req, is_error = function(resp) FALSE)
   resp <- req_with_retry(req)
@@ -500,6 +505,11 @@ introspect_token <- function(
   }
   req <- add_req_defaults(req)
   req <- req_no_redirect(req)
+  # Apply any extra token headers (mirrors exchange/refresh paths)
+  extra_headers <- as.list(oauth_client@provider@extra_token_headers)
+  if (length(extra_headers)) {
+    req <- do.call(httr2::req_headers, c(list(req), extra_headers))
+  }
   req <- do.call(httr2::req_body_form, c(list(req), params))
   req <- httr2::req_error(req, is_error = function(resp) FALSE)
   # Perform request with retry for transient failures

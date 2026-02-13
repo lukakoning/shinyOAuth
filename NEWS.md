@@ -55,6 +55,11 @@ identifiers containing query or fragment components, covering both
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
 
+* `OAuthClient`: `extra_token_headers` are now consistently applied to revoke
+and introspect requests, matching the existing behavior for token exchange and 
+refresh. Previously, provider integrations requiring custom headers across all
+token endpoints could partially fail on revocation/introspection.
+
 * `OAuthToken` gains a read-only `id_token_claims` property that exposes the
 decoded ID token JWT payload as a named list, surfacing all OIDC claims
 (e.g., `acr`, `amr`, `auth_time`) without manual decoding.
