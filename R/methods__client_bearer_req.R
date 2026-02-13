@@ -59,6 +59,19 @@ client_bearer_req <- function(
       err_input("url must be a non-empty string")
     }
 
+    # Require an explicit scheme (https:// or http://) before delegating to
+    # is_ok_host(). is_ok_host() intentionally normalises schemeless inputs
+    # for convenience in other contexts, but client_bearer_req() documents
+    # that `url` must be an absolute URL. Accepting schemeless strings here
+    # would silently weaken that contract.
+    if (!grepl("^[Hh][Tt][Tt][Pp][Ss]?://", url)) {
+      err_input(c(
+        "url must be an absolute URL with an explicit scheme (https:// or http://)",
+        "i" = "Received a schemeless or non-HTTP(S) URL.",
+        "i" = "Provide the full URL including the scheme, e.g. 'https://api.example.com/resource'."
+      ))
+    }
+
     if (!is_ok_host(url)) {
       err_input(c(
         "url is not allowed by host/scheme policy",

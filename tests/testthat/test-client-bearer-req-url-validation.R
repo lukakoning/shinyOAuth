@@ -17,6 +17,29 @@ test_that("client_bearer_req rejects relative URLs", {
   )
 })
 
+# --- Schemeless URLs ---------------------------------------------------------
+
+test_that("client_bearer_req rejects schemeless URLs", {
+  # Schemeless hostname (would pass is_ok_host via normalization, but
+  # client_bearer_req requires an explicit scheme)
+  expect_error(
+    client_bearer_req(token = "tok", url = "api.example.com/resource"),
+    class = "shinyOAuth_input_error"
+  )
+
+  # Schemeless localhost (would pass is_ok_host via http:// normalization)
+  expect_error(
+    client_bearer_req(token = "tok", url = "localhost:8080/api"),
+    class = "shinyOAuth_input_error"
+  )
+
+  # Non-HTTP scheme
+  expect_error(
+    client_bearer_req(token = "tok", url = "ftp://files.example.com/data"),
+    class = "shinyOAuth_input_error"
+  )
+})
+
 # --- Insecure HTTP hosts ----------------------------------------------------
 
 test_that("client_bearer_req rejects plain HTTP to non-loopback hosts", {
