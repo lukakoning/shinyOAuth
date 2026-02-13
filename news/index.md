@@ -59,9 +59,9 @@
 - Now validates the `auth_time` claim when `max_age` is present in
   `extra_auth_params` (OIDC Core section 3.1.2.1).
 
-- JWKS cache key now includes host-policy fields
-  (`jwks_host_issuer_match`, `jwks_host_allow_only`). Previously, two
-  provider configs for the same issuer with different host policies
+- Stricter JWKS cache handling: JWKS cache key now includes host-policy
+  fields (`jwks_host_issuer_match`, `jwks_host_allow_only`). Previously,
+  two provider configs for the same issuer with different host policies
   shared the same cache entry, allowing a relaxed-policy provider to
   populate the cache and a strict-policy provider to skip host
   validation on cache hit. Cache entries now also store the JWKS source
@@ -158,6 +158,12 @@
 - OIDC `openid` scope enforcement: when a provider has an `issuer` set
   (indicating OIDC) and `openid` is missing from the client’s scopes,
   `build_auth_url()` now auto-prepends it and emits a one-time warning.
+
+- Scope validation now aligns with the RFC 6749, section 3.3
+  `scope-token` grammar (`NQSCHAR = %x21 / %x23-5B / %x5D-7E`). The
+  previous regex rejected valid ASCII characters such as `!`, `#`, `$`,
+  `=`, `@`, `~`, and others. All printable ASCII except space,
+  double-quote, and backslash is now accepted.
 
 ## shinyOAuth 0.3.0
 
