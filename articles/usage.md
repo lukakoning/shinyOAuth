@@ -627,6 +627,13 @@ your app to production:
   and monitor these logs
 - Consider enabling automatic revocation on session end
   (`revoke_on_session_end = TRUE`)
+- If your provider can return UserInfo as a signed JWT
+  (`Content-Type: application/jwt`), set
+  `userinfo_signed_jwt_required = TRUE` in your `OAuthProvider` to
+  prevent downgrade to plain JSON. Without this flag, shinyOAuth
+  verifies any JWT it receives, but a misconfigured provider or
+  man-in-the-middle could return unsigned JSON claims instead, bypassing
+  signature verification.
 - Use a provider which enforces strong authentication (e.g.,
   multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading

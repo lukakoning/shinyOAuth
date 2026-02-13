@@ -765,6 +765,13 @@ expose tokens in UI or logs</li>
 monitor these logs</li>
 <li>Consider enabling automatic revocation on session end
 (<code>revoke_on_session_end = TRUE</code>)</li>
+<li>If your provider can return UserInfo as a signed JWT
+(<code>Content-Type: application/jwt</code>), set
+<code>userinfo_signed_jwt_required = TRUE</code> in your
+<code>OAuthProvider</code> to prevent downgrade to plain JSON. Without
+this flag, shinyOAuth verifies any JWT it receives, but a misconfigured
+provider or man-in-the-middle could return unsigned JSON claims instead,
+bypassing signature verification.</li>
 <li>Use a provider which enforces strong authentication (e.g.,
 multi-factor authentication)</li>
 <li>Set Content Security Policy (CSP) headers to restrict resource
