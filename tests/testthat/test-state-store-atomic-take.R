@@ -220,6 +220,10 @@ test_that("custom_cache() without take has $take == NULL", {
 # -- Tests for fallback (no $take) path -------------------------------------
 
 test_that("fallback warns once for non-cachem store without $take()", {
+  # Reset the once-per-session verbosity gate so the warning fires even if an
+  # earlier test (in any file order) already triggered it.
+  rlang::reset_warning_verbosity("shinyOAuth_no_atomic_take")
+
   store <- list(
     get = function(key, missing = NULL) missing,
     set = function(key, value) invisible(NULL),
