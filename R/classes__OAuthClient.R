@@ -471,20 +471,18 @@ OAuthClient <- S7::new_class(
 
     # Robustness: verify method signatures/compatibility.
     # - $get must accept a named `missing` argument (or `...`).
-    #   Probe-call it with a sentinel key to detect unsupported signatures
-    #   early (avoids failing later during the login flow).
-    get_ok <- try(
-      self@state_store$get(
-        key = "__signature_probe__",
-        missing = NULL
-      ),
-      silent = TRUE
-    )
-    if (inherits(get_ok, "try-error")) {
-      return(paste0(
-        "OAuthClient: state_store$get must accept argument 'missing' (expected signature get(key, missing = NULL)); got error: ",
-        as.character(get_ok)
-      ))
+    #   Validated via formals inspection (no probe-call) to avoid triggering
+    #   side-effects in stateful backends or test wrappers.
+    get_formals <- try(formals(self@state_store$get), silent = TRUE)
+    get_args <- if (!inherits(get_formals, "try-error")) {
+      names(get_formals)
+    } else {
+      character()
+    }
+    if (!("..." %in% get_args || "missing" %in% get_args)) {
+      return(
+        "OAuthClient: state_store$get must accept argument 'missing' (expected signature get(key, missing = NULL))"
+      )
     }
 
     # - $set must accept (key, value) either explicitly or via "..."
@@ -511,6 +509,26 @@ OAuthClient <- S7::new_class(
     # remove() is called positionally; require at least one parameter (any name) or allow ...
     if (!("..." %in% rm_args || length(rm_args) >= 1L)) {
       return("OAuthClient: state_store$remove must accept (key)")
+    }
+
+    # Optional $take for atomic state consumption (preferred for shared stores)
+    # Validated via formals inspection (no probe-call) to avoid triggering
+    # side-effects in stateful backends or test wrappers.
+    if (
+      !is.null(self@state_store$take) &&
+        is.function(self@state_store$take)
+    ) {
+      take_formals <- try(formals(self@state_store$take), silent = TRUE)
+      take_args <- if (!inherits(take_formals, "try-error")) {
+        names(take_formals)
+      } else {
+        character()
+      }
+      if (!("..." %in% take_args || "missing" %in% take_args)) {
+        return(
+          "OAuthClient: state_store$take must accept argument 'missing' (expected signature take(key, missing = NULL))"
+        )
+      }
     }
 
     # Validate scopes

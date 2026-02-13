@@ -24,4 +24,13 @@ or if the retrieved value is missing/malformed.
 Retrieves the state-bound values from the client's \code{state_store} and removes
 the entry to enforce single-use semantics.
 }
+\details{
+When the store exposes an atomic \verb{$take(key, missing)} method (see
+\code{\link[=custom_cache]{custom_cache()}}), it is used preferentially to guarantee single-use even
+under concurrent access in shared/distributed backends.
+When \verb{$take()} is not available, the function falls back to
+\verb{$get()} + \verb{$remove()} with a post-removal absence check.
+This fallback is safe for per-process caches (e.g., \code{\link[cachem:cache_mem]{cachem::cache_mem()}})
+but cannot guarantee single-use under concurrent access in shared stores.
+}
 \keyword{internal}
