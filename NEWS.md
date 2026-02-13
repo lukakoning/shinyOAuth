@@ -123,6 +123,11 @@ from the userinfo Endpoint and/or in the ID token. Pass a list structure
 (indicating OIDC) and `openid` is missing from the client's scopes,
 `build_auth_url()` now auto-prepends it and emits a one-time warning.
 
+* Scope validation now aligns with the RFC 6749, section 3.3 `scope-token` 
+grammar (`NQSCHAR = %x21 / %x23-5B / %x5D-7E`). The previous regex rejected 
+valid ASCII characters such as `!`, `#`, `$`, `=`, `@`, `~`, and others. All
+printable ASCII except space, double-quote, and backslash is now accepted.
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for

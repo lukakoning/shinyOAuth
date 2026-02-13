@@ -119,10 +119,94 @@ test_that("validate_scopes accepts common tokens and rejects bad ones", {
   expect_error(v(c("ok", NA_character_)), class = "shinyOAuth_input_error")
   # Empty string -> input error
   expect_error(v(c("ok", "")), class = "shinyOAuth_input_error")
-  # Invalid characters -> input error
+  # Space-delimited string is accepted (split into tokens)
   expect_invisible(v("sp ace"))
-  expect_error(v("sp,ace"), class = "shinyOAuth_input_error")
+  # RFC 6749 NQSCHAR allows commas, parens, braces, etc.
+  expect_invisible(v("sp,ace"))
+  # Double-quote and backslash are forbidden by RFC 6749 section 3.3
   expect_error(v("quote\""), class = "shinyOAuth_input_error")
+  expect_error(v("back\\slash"), class = "shinyOAuth_input_error")
+  # Broad RFC-valid scope tokens
+  expect_invisible(v(c(
+    "https://graph.microsoft.com/.default",
+    "urn:scope:read",
+    "user!admin",
+    "scope#tag",
+    "a]b[c",
+    "key=value",
+    "~tilde",
+    "paren(ok)"
+  )))
+})
+
+test_that("validate_scopes is fully compliant with RFC 6749 section 3.3", {
+  v <- shinyOAuth:::validate_scopes
+
+  # ── RFC 6749 §3.3 NQSCHAR boundary characters ──
+  # scope-token = 1*( %x21 / %x23-5B / %x5D-7E )
+  # Allowed: ! (0x21), # through [ (0x23-0x5B), ] through ~ (0x5D-0x7E)
+  # Forbidden: SP (0x20), " (0x22), \ (0x5C)
+
+  # Boundary: first allowed char is ! (0x21)
+  expect_invisible(v("!"))
+  # Boundary: " (0x22) is the only gap between 0x21 and 0x23
+
+  expect_error(v(rawToChar(as.raw(0x22))), class = "shinyOAuth_input_error")
+  # Boundary: # (0x23) starts the second range
+  expect_invisible(v("#"))
+  # Boundary: [ (0x5B) ends the second range
+  expect_invisible(v("["))
+  # Boundary: \ (0x5C) is the only gap between 0x5B and 0x5D
+  expect_error(v(rawToChar(as.raw(0x5C))), class = "shinyOAuth_input_error")
+  # Boundary: ] (0x5D) starts the third range
+  expect_invisible(v("]"))
+  # Boundary: ~ (0x7E) is the last allowed char
+  expect_invisible(v("~"))
+
+  # ── Every allowed printable ASCII character (92 of 94) ──
+  # Build a string containing every NQSCHAR character
+  nqschar_codes <- c(0x21L, 0x23:0x5BL, 0x5D:0x7EL)
+  for (code in nqschar_codes) {
+    ch <- rawToChar(as.raw(code))
+    expect_invisible(
+      v(ch),
+      label = sprintf("char 0x%02X ('%s') should be accepted", code, ch)
+    )
+  }
+
+  # ── All three explicitly forbidden printable chars ──
+  # SP (0x20) — used as scope-list delimiter
+  # When passed as a single space, it splits into zero tokens -> "empty" error
+  expect_error(v(" "), class = "shinyOAuth_input_error")
+  # " (0x22)
+  expect_error(v(rawToChar(as.raw(0x22))), class = "shinyOAuth_input_error")
+  # \ (0x5C)
+  expect_error(v(rawToChar(as.raw(0x5C))), class = "shinyOAuth_input_error")
+
+  # ── Control characters and DEL must be rejected ──
+  expect_error(v("\t"), class = "shinyOAuth_input_error")
+  expect_error(v("\n"), class = "shinyOAuth_input_error")
+  expect_error(v(rawToChar(as.raw(0x7F))), class = "shinyOAuth_input_error")
+
+  # ── Non-ASCII must be rejected ──
+  expect_error(v("\u00e9"), class = "shinyOAuth_input_error") # é
+  expect_error(v("\u00f1"), class = "shinyOAuth_input_error") # ñ
+
+  # ── Real-world provider scopes with extended chars ──
+  expect_invisible(v(c(
+    "https://www.googleapis.com/auth/drive.readonly",
+    "api://my-app/.default",
+    "urn:example:scope",
+    "user_impersonation",
+    "repo:status",
+    "read:packages",
+    "chat:write",
+    "openid",
+    "profile",
+    "email",
+    "*",
+    "~/.config"
+  )))
 })
 
 test_that("compact_list drops NULLs and length-1 NAs only", {
