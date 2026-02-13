@@ -90,6 +90,8 @@ bytes before JSON decoding.
   and introspect requests, matching the existing behavior for token exchange and 
   refresh. Previously, provider integrations requiring custom headers across all
   token endpoints could partially fail on revocation/introspection.
+  - Fixed incorrect warning about client being created in Shiny when this was
+  not the case.
 
 * `OAuthToken`:
   - Gains a read-only `id_token_claims` property that exposes the

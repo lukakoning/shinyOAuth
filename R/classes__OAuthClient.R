@@ -268,8 +268,6 @@ OAuthClient <- S7::new_class(
     )
   ),
   validator = function(self) {
-    warn_about_oauth_client_created_in_shiny(state_key_missing = NA)
-
     if (!S7::S7_inherits(self@provider, OAuthProvider)) {
       return("OAuthClient: provider must be an OAuthProvider object")
     }
