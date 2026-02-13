@@ -86,6 +86,13 @@
   of internal function `.process_query()`, ensuring more consistent
   cleanup.
 
+- OAuth callback query size caps are now enforced even when the user is
+  already authenticated. Previously, the “token already present” branch
+  in `.process_query()` called `.query_has_oauth_callback_keys()` (which
+  parses the query string) before any size validation, bypassing the
+  intended DoS guardrails. The `validate_untrusted_query_string()` check
+  now runs unconditionally at the top of `.process_query()`.
+
 - OAuth callback error responses (`?error=...`) now require a valid
   `state` parameter. Missing/invalid/consumed state is then treated
   properly as an `invalid_state` error instead of surfacing the error
