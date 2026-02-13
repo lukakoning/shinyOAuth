@@ -85,7 +85,7 @@ or
 [`bslib::page()`](https://rstudio.github.io/bslib/reference/page.html)).
 
 Note also that you must access the app in a regular browser. This is
-because the necesarry redirects that the browser must perform can
+because the necessary redirects that the browser must perform can
 usually not be handled inside embedded viewers of IDEs like RStudio or
 Positron.
 
