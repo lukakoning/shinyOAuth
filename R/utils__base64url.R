@@ -42,7 +42,13 @@ base64url_encode <- function(raw_bytes) {
 #' @keywords internal
 #' @noRd
 base64url_decode <- function(x) {
-  rawToChar(b64url_decode(x))
+  raw_bytes <- b64url_decode(x)
+  # Guard against embedded NUL bytes which would cause rawToChar() to silently
+  # truncate the output. Mirrors the NUL hardening in utils__crypt.R.
+  if (any(raw_bytes == as.raw(0))) {
+    err_parse("base64url payload contains embedded NUL byte")
+  }
+  rawToChar(raw_bytes)
 }
 
 #' @keywords internal

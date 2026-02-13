@@ -214,3 +214,69 @@ test_that("callback iss rejected for error response too (RFC 9207)", {
     }
   )
 })
+
+test_that("callback with empty iss parameter is rejected as invalid query", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_iss_test_client()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # Empty iss (e.g., ?iss=) should be rejected by validate_untrusted_query_param
+      # as non-empty is required, rather than silently skipping RFC 9207 check
+      values$.process_query(paste0("?code=ok&state=", enc, "&iss="))
+      session$flushReact()
+
+      testthat::expect_null(values$token)
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_identical(values$error, "invalid_callback_query")
+    }
+  )
+})
+
+test_that("callback with oversized iss parameter is rejected", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.callback_max_iss_bytes = 64
+  ))
+  cli <- make_iss_test_client()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      # iss exceeding byte cap should be rejected
+      long_iss <- paste0("https://issuer.example.com/", strrep("x", 100))
+      values$.process_query(paste0(
+        "?code=ok&state=",
+        enc,
+        "&iss=",
+        utils::URLencode(long_iss, reserved = TRUE)
+      ))
+      session$flushReact()
+
+      testthat::expect_null(values$token)
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_identical(values$error, "invalid_callback_query")
+    }
+  )
+})

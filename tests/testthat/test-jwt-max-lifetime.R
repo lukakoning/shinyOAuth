@@ -253,3 +253,60 @@ test_that("validate_id_token lifetime error message includes diagnostics", {
     }
   )
 })
+
+test_that("validate_id_token rejects negative max_id_token_lifetime", {
+  client <- mk_client()
+
+  now <- floor(as.numeric(Sys.time()))
+  # Perfectly normal token — should not be rejected
+  claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = "user1",
+    iat = now - 10,
+    exp = now + 3600
+  )
+  jwt <- build_jwt(list(alg = "none"), claims)
+
+  withr::with_options(
+    list(
+      shinyOAuth.skip_id_sig = TRUE,
+      shinyOAuth.max_id_token_lifetime = -1
+    ),
+    {
+      expect_error(
+        shinyOAuth:::validate_id_token(client, jwt),
+        class = "shinyOAuth_config_error",
+        regexp = "positive"
+      )
+    }
+  )
+})
+
+test_that("validate_id_token rejects zero max_id_token_lifetime", {
+  client <- mk_client()
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = "user1",
+    iat = now - 10,
+    exp = now + 3600
+  )
+  jwt <- build_jwt(list(alg = "none"), claims)
+
+  withr::with_options(
+    list(
+      shinyOAuth.skip_id_sig = TRUE,
+      shinyOAuth.max_id_token_lifetime = 0
+    ),
+    {
+      expect_error(
+        shinyOAuth:::validate_id_token(client, jwt),
+        class = "shinyOAuth_config_error",
+        regexp = "positive"
+      )
+    }
+  )
+})

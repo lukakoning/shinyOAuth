@@ -195,3 +195,58 @@ test_that("missing iat is rejected per OIDC Core", {
     )
   })
 })
+
+test_that("parse_jwt_payload rejects non-3-part inputs", {
+  # 2-part string (missing signature segment)
+  two_part <- paste(enc_b64url('{"alg":"none"}'), enc_b64url("{}"), sep = ".")
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(two_part),
+    class = "shinyOAuth_parse_error",
+    regexp = "3 dot-separated parts"
+  )
+
+  # 4-part string (too many segments)
+  four_part <- paste(
+    enc_b64url('{"alg":"none"}'),
+    enc_b64url("{}"),
+    "",
+    "extra",
+    sep = "."
+  )
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(four_part),
+    class = "shinyOAuth_parse_error",
+    regexp = "3 dot-separated parts"
+  )
+
+  # 1-part string
+  expect_error(
+    shinyOAuth:::parse_jwt_payload("single-segment"),
+    class = "shinyOAuth_parse_error",
+    regexp = "3 dot-separated parts"
+  )
+})
+
+test_that("parse_jwt_header rejects non-3-part inputs", {
+  # 2-part string (missing signature segment)
+  two_part <- paste(enc_b64url('{"alg":"none"}'), enc_b64url("{}"), sep = ".")
+  expect_error(
+    shinyOAuth:::parse_jwt_header(two_part),
+    class = "shinyOAuth_parse_error",
+    regexp = "3 dot-separated parts"
+  )
+
+  # 4-part string (too many segments)
+  four_part <- paste(
+    enc_b64url('{"alg":"none"}'),
+    enc_b64url("{}"),
+    "",
+    "extra",
+    sep = "."
+  )
+  expect_error(
+    shinyOAuth:::parse_jwt_header(four_part),
+    class = "shinyOAuth_parse_error",
+    regexp = "3 dot-separated parts"
+  )
+})

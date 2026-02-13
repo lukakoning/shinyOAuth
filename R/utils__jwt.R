@@ -3,10 +3,13 @@
 #' @keywords internal
 #' @noRd
 parse_jwt_payload <- function(jwt) {
-  parts <- strsplit(jwt, "\\.")[[1]]
-  if (length(parts) < 2) {
-    err_parse("Invalid JWT format")
+  # Count dots to enforce exactly 3 JWS segments (RFC 7515).
+  # strsplit drops trailing empty strings, so we count separators instead.
+  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
+  if (n_dots != 2L) {
+    err_parse("Invalid JWT format: expected 3 dot-separated parts")
   }
+  parts <- strsplit(jwt, "\\.")[[1]]
   payload_raw <- base64url_decode(parts[2])
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
@@ -25,10 +28,13 @@ parse_jwt_payload <- function(jwt) {
 #' @keywords internal
 #' @noRd
 parse_jwt_header <- function(jwt) {
-  parts <- strsplit(jwt, "\\.")[[1]]
-  if (length(parts) < 2) {
-    err_parse("Invalid JWT format")
+  # Count dots to enforce exactly 3 JWS segments (RFC 7515).
+  # strsplit drops trailing empty strings, so we count separators instead.
+  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
+  if (n_dots != 2L) {
+    err_parse("Invalid JWT format: expected 3 dot-separated parts")
   }
+  parts <- strsplit(jwt, "\\.")[[1]]
   header_raw <- base64url_decode(parts[1])
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
@@ -416,24 +422,31 @@ validate_id_token <- function(
   if (
     is.numeric(max_lifetime) &&
       length(max_lifetime) == 1L &&
-      is.finite(max_lifetime) &&
-      (exp_val - iat_val) > max_lifetime
+      is.finite(max_lifetime)
   ) {
-    err_id_token(c(
-      "x" = "ID token lifetime exceeds max_id_token_lifetime",
-      "i" = paste0(
-        "exp=",
-        exp_val,
-        ", iat=",
-        iat_val,
-        ", lifetime=",
-        exp_val - iat_val,
-        "s",
-        ", max_id_token_lifetime=",
-        max_lifetime,
-        "s"
-      )
-    ))
+    if (max_lifetime <= 0) {
+      err_config(c(
+        "x" = "shinyOAuth.max_id_token_lifetime must be a positive number",
+        "i" = paste0("Got: ", max_lifetime)
+      ))
+    }
+    if ((exp_val - iat_val) > max_lifetime) {
+      err_id_token(c(
+        "x" = "ID token lifetime exceeds max_id_token_lifetime",
+        "i" = paste0(
+          "exp=",
+          exp_val,
+          ", iat=",
+          iat_val,
+          ", lifetime=",
+          exp_val - iat_val,
+          "s",
+          ", max_id_token_lifetime=",
+          max_lifetime,
+          "s"
+        )
+      ))
+    }
   }
   if (!is.null(payload$nbf)) {
     if (!is_single_finite_number(payload$nbf)) {

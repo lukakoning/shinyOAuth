@@ -71,3 +71,20 @@ test_that("invalid input yields empty decode without error", {
   expect_true(is.raw(r2))
   expect_length(r2, 0)
 })
+
+test_that("base64url_decode rejects embedded NUL bytes", {
+  # Encode a raw vector containing a NUL byte
+  raw_with_nul <- as.raw(c(0x68, 0x65, 0x00, 0x6c, 0x6c, 0x6f)) # "he\0llo"
+  encoded <- shinyOAuth:::b64url_encode(raw_with_nul)
+
+  # Raw decode should still work (no NUL guard there)
+  expect_identical(shinyOAuth:::base64url_decode_raw(encoded), raw_with_nul)
+
+  # Text decode must reject embedded NUL
+
+  expect_error(
+    shinyOAuth:::base64url_decode(encoded),
+    class = "shinyOAuth_parse_error",
+    regexp = "embedded NUL"
+  )
+})

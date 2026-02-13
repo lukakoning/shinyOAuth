@@ -1214,6 +1214,10 @@ oauth_module_server <- function(
         "shinyOAuth.callback_max_error_uri_bytes",
         2048
       )
+      max_iss_bytes <- get_option_positive_number(
+        "shinyOAuth.callback_max_iss_bytes",
+        2048
+      )
       # Derived overall cap: sum of individual caps plus overhead for names,
       # separators, URL encoding, and unexpected extra params.
       max_query_overhead_bytes <- 2048
@@ -1223,6 +1227,7 @@ oauth_module_server <- function(
         max_error_bytes +
         max_error_desc_bytes +
         max_error_uri_bytes +
+        max_iss_bytes +
         max_query_overhead_bytes
       max_query_bytes <- get_option_positive_number(
         "shinyOAuth.callback_max_query_bytes",
@@ -1305,6 +1310,11 @@ oauth_module_server <- function(
             max_bytes = max_error_uri_bytes,
             allow_empty = TRUE
           )
+          validate_untrusted_query_param(
+            "iss",
+            qs$iss,
+            max_bytes = max_iss_bytes
+          )
           TRUE
         },
         error = function(e) {
@@ -1339,7 +1349,10 @@ oauth_module_server <- function(
       # authorization-server mix-up attacks in multi-provider/misrouting
       # scenarios. If iss is absent we retain current behavior (no enforcement)
       # unless a future strict-mode option is added.
-      if (is_valid_string(qs$iss)) {
+      # Note: validate_untrusted_query_param() above already ensures that if
+      # qs$iss is non-NULL it is a valid non-empty scalar string, so we use
+      # !is.null() here to fail closed on any present iss key.
+      if (!is.null(qs$iss)) {
         expected_issuer <- client@provider@issuer
         if (
           is_valid_string(expected_issuer) &&
