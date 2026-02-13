@@ -164,26 +164,45 @@ oauth_provider_oidc_discover <- function(
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
 
+  # 10b) Auto-detect signed userinfo support from discovery
+  #      If the caller already specified userinfo_signed_jwt_required via ...,
+  #      respect that override.
+  dots <- list(...)
+  if (is.null(dots[["userinfo_signed_jwt_required"]])) {
+    ui_signing_algs <- .discover_negotiate_userinfo_signing_algs(
+      allowed_algs,
+      disc
+    )
+    if (length(ui_signing_algs) > 0L) {
+      dots[["userinfo_signed_jwt_required"]] <- TRUE
+    }
+  }
+
   # 11) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
 
   # 12) Construct provider
-  oauth_provider(
-    name = name,
-    auth_url = endpoints$auth_url,
-    token_url = endpoints$token_url,
-    userinfo_url = endpoints$userinfo_url,
-    introspection_url = endpoints$introspection_url,
-    revocation_url = endpoints$revocation_url,
-    issuer = iss,
-    use_nonce = use_nonce,
-    id_token_validation = id_token_validation,
-    use_pkce = use_pkce,
-    token_auth_style = token_auth_style,
-    allowed_algs = allowed_algs,
-    allowed_token_types = allowed_token_types,
-    jwks_host_issuer_match = jwks_host_issuer_match,
-    ...
+  do.call(
+    oauth_provider,
+    c(
+      list(
+        name = name,
+        auth_url = endpoints$auth_url,
+        token_url = endpoints$token_url,
+        userinfo_url = endpoints$userinfo_url,
+        introspection_url = endpoints$introspection_url,
+        revocation_url = endpoints$revocation_url,
+        issuer = iss,
+        use_nonce = use_nonce,
+        id_token_validation = id_token_validation,
+        use_pkce = use_pkce,
+        token_auth_style = token_auth_style,
+        allowed_algs = allowed_algs,
+        allowed_token_types = allowed_token_types,
+        jwks_host_issuer_match = jwks_host_issuer_match
+      ),
+      dots
+    )
   )
 }
 
@@ -560,6 +579,31 @@ oauth_provider_oidc_discover <- function(
   }
 
   overlap
+}
+
+#' Internal: intersect allowed algs with discovery userinfo signing algs
+#'
+#' Returns the intersection of `allowed_algs` with
+#' `userinfo_signing_alg_values_supported` from the discovery document.
+#' An empty result means the provider either does not advertise signed
+#' userinfo or there is no algorithm overlap.
+#'
+#' @keywords internal
+#' @noRd
+.discover_negotiate_userinfo_signing_algs <- function(allowed_algs, disc) {
+  disc_algs <- disc[["userinfo_signing_alg_values_supported"]] %||% character(0)
+
+  if (length(disc_algs) == 0L) {
+    return(character(0))
+  }
+
+  aa <- toupper(as.character(allowed_algs %||% character(0)))
+  da <- toupper(as.character(disc_algs))
+
+  # Filter out "none" from discovery — we explicitly never allow alg=none
+  da <- setdiff(da, "NONE")
+
+  intersect(aa, da)
 }
 
 #' Internal: derive default name from issuer

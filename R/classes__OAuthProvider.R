@@ -62,6 +62,25 @@
 #' `TRUE` only if both `userinfo_required` and `id_token_validation` are `TRUE`;
 #' otherwise it defaults to `FALSE`.
 #'
+#' @param userinfo_signed_jwt_required Whether to require that the userinfo
+#' endpoint returns a signed JWT (`Content-Type: application/jwt`) whose
+#' signature can be verified against the provider's JWKS. When `TRUE`:
+#' \itemize{
+#'   \item If the userinfo response is not `application/jwt`, authentication fails.
+#'   \item If the JWT uses `alg=none` or an algorithm not in `allowed_algs`,
+#'     authentication fails.
+#'   \item If signature verification fails (JWKS fetch error, no compatible keys,
+#'     or invalid signature), authentication fails.
+#' }
+#' This prevents an attacker or misconfigured provider from bypassing signature
+#' verification by returning unsigned claims as plain JSON or `alg=none` JWTs.
+#' Requires `userinfo_required = TRUE` and a valid `issuer` (for JWKS).
+#' Defaults to `FALSE`.
+#'
+#' `oauth_provider_oidc_discover()` will automatically enable this when the
+#' OIDC discovery document advertises `userinfo_signing_alg_values_supported`
+#' with algorithms that overlap the caller's `allowed_algs`.
+#'
 #' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.#'
 #' Should take a single argument (the userinfo list) and return the user ID
 #' as a string.
@@ -208,6 +227,10 @@ OAuthProvider <- S7::new_class(
       default = quote(function(userinfo) userinfo$sub)
     ),
     userinfo_id_token_match = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    userinfo_signed_jwt_required = S7::new_property(
       S7::class_logical,
       default = FALSE
     ),
@@ -677,6 +700,20 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    # Fail fast: signed JWT userinfo requires userinfo + issuer
+    if (isTRUE(self@userinfo_signed_jwt_required)) {
+      if (!isTRUE(self@userinfo_required)) {
+        return(
+          "OAuthProvider: userinfo_signed_jwt_required = TRUE requires userinfo_required = TRUE"
+        )
+      }
+      if (!is_valid_string(self@issuer)) {
+        return(
+          "OAuthProvider: userinfo_signed_jwt_required = TRUE requires a non-empty issuer (for JWKS verification)"
+        )
+      }
+    }
+
     # Fail fast: subject matching requires userinfo + id token validation
     if (isTRUE(self@userinfo_id_token_match)) {
       if (!isTRUE(self@userinfo_required)) {
@@ -776,6 +813,7 @@ oauth_provider <- function(
   pkce_method = "S256",
   userinfo_required = NULL,
   userinfo_id_token_match = NULL,
+  userinfo_signed_jwt_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo$sub,
   id_token_required = NULL,
   id_token_validation = NULL,
@@ -930,6 +968,7 @@ oauth_provider <- function(
     id_token_required = id_token_required,
     id_token_validation = id_token_validation,
     userinfo_id_token_match = userinfo_id_token_match,
+    userinfo_signed_jwt_required = isTRUE(userinfo_signed_jwt_required),
     userinfo_id_selector = userinfo_id_selector,
     extra_auth_params = extra_auth_params,
     extra_token_params = extra_token_params,

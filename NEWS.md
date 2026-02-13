@@ -76,9 +76,13 @@ multi-provider scenarios. When `iss` is absent, current behavior is retained
 * `get_userinfo()` now supports JWT-encoded userinfo responses per OIDC Core,
 section 5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
 body is decoded as a JWT. Signature verification is performed against the
-provider JWKS when available; signed responses are validated for the required 
-`iss` and `aud` claims. Encrypted JWTs (JWE) are detected and rejected with a
-clear error. Plain JSON responses continue to work as before.
+provider JWKS using the provider's `allowed_algs`. New 
+`userinfo_signed_jwt_required` property on `OAuthProvider` (default `FALSE`) 
+mandates that the userinfo endpoint returns a signed JWT (`application/jwt`) with 
+a verifiable signature. `oauth_provider_oidc_discover()` auto-enables this
+flag when the discovery document advertises
+`userinfo_signing_alg_values_supported` with algorithms overlapping the 
+caller's `allowed_algs`.
 
 * `custom_cache()`: clarified custom state-store remove contract documentation:
 explicit `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses

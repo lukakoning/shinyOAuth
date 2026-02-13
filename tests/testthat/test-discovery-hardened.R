@@ -160,3 +160,101 @@ testthat::test_that("PKCE advisory does not block provider when S256 not adverti
     oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
   )
 })
+
+testthat::test_that("discovery auto-enables userinfo_signed_jwt_required when OP advertises signing algs", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          userinfo_endpoint = "https://127.0.0.1/userinfo",
+          userinfo_signing_alg_values_supported = list("RS256", "ES256")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(issuer = issuer)
+  testthat::expect_true(prov@userinfo_signed_jwt_required)
+})
+
+testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required when no overlap", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          userinfo_endpoint = "https://127.0.0.1/userinfo",
+          userinfo_signing_alg_values_supported = list("none")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(issuer = issuer)
+  testthat::expect_false(prov@userinfo_signed_jwt_required)
+})
+
+testthat::test_that("discovery does NOT auto-enable when field absent", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          userinfo_endpoint = "https://127.0.0.1/userinfo"
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(issuer = issuer)
+  testthat::expect_false(prov@userinfo_signed_jwt_required)
+})
+
+testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = FALSE override", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          userinfo_endpoint = "https://127.0.0.1/userinfo",
+          userinfo_signing_alg_values_supported = list("RS256")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = issuer,
+    userinfo_signed_jwt_required = FALSE
+  )
+  testthat::expect_false(prov@userinfo_signed_jwt_required)
+})

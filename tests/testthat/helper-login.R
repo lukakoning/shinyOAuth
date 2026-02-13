@@ -57,9 +57,13 @@ poll_for_async <- function(
   }
 }
 
-make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
+make_test_provider <- function(
+  use_pkce = TRUE,
+  use_nonce = FALSE,
+  userinfo_signed_jwt_required = FALSE
+) {
   # Provide issuer when nonce is requested to satisfy fail-fast validation
-  issuer <- if (isTRUE(use_nonce)) {
+  issuer <- if (isTRUE(use_nonce) || isTRUE(userinfo_signed_jwt_required)) {
     "https://issuer.example.com"
   } else {
     NA_character_
@@ -68,13 +72,22 @@ make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
     name = "example",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
-    userinfo_url = NA_character_,
+    userinfo_url = if (isTRUE(userinfo_signed_jwt_required)) {
+      "https://example.com/userinfo"
+    } else {
+      NA_character_
+    },
     introspection_url = NA_character_,
     issuer = issuer,
     use_nonce = use_nonce,
     use_pkce = use_pkce,
     pkce_method = "S256",
-    userinfo_required = FALSE,
+    userinfo_required = if (isTRUE(userinfo_signed_jwt_required)) {
+      TRUE
+    } else {
+      FALSE
+    },
+    userinfo_signed_jwt_required = userinfo_signed_jwt_required,
     id_token_required = FALSE,
     id_token_validation = FALSE,
     userinfo_id_token_match = FALSE,
@@ -95,6 +108,7 @@ make_test_provider <- function(use_pkce = TRUE, use_nonce = FALSE) {
 make_test_client <- function(
   use_pkce = TRUE,
   use_nonce = FALSE,
+  userinfo_signed_jwt_required = FALSE,
   state_max_age = 600,
   state_payload_max_age = 300,
   scopes = character(0),
@@ -102,7 +116,11 @@ make_test_client <- function(
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
-  prov <- make_test_provider(use_pkce = use_pkce, use_nonce = use_nonce)
+  prov <- make_test_provider(
+    use_pkce = use_pkce,
+    use_nonce = use_nonce,
+    userinfo_signed_jwt_required = userinfo_signed_jwt_required
+  )
   oauth_client(
     provider = prov,
     client_id = "abc",
