@@ -921,6 +921,51 @@ testthat::test_that("callback params are cleared when token already exists", {
   )
 })
 
+testthat::test_that("query size cap enforced even when token already exists", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      # Seed an existing token so we enter the "already authenticated" branch.
+      t <- OAuthToken(
+        access_token = "existing",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+
+      # Build an oversized query that contains OAuth callback keys.
+      # The default derived cap is ~20480 bytes; use 30 000 to exceed it.
+      big_query <- paste0(
+        "?code=abc&state=s1&pad=",
+        strrep("x", 30000)
+      )
+
+      values$.process_query(big_query)
+      session$flushReact()
+
+      # The oversized query should be rejected before parsing.
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "query string"
+      )
+      # Token must remain untouched.
+      testthat::expect_identical(values$token@access_token, "existing")
+    }
+  )
+})
+
 testthat::test_that("strip_oauth_query removes only OAuth params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

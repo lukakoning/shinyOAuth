@@ -1139,16 +1139,11 @@ oauth_module_server <- function(
 
     # Function to process query string
     .process_query <- function(query_string) {
-      if (!is.null(values$token)) {
-        if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
-          .clear_query_and_fix_title()
-        }
-        return(invisible(NULL))
-      }
-
       # Defensive: cap untrusted callback query sizes to reduce DoS surface.
       # Apply a pre-parse guard on the raw query string so that
-      # shiny::parseQueryString() doesn't have to process arbitrarily long input.
+      # shiny::parseQueryString() doesn't have to process arbitrarily long
+      # input.  This MUST run before any code path that parses the query,
+      # including the "already authenticated" early-return branch.
       max_code_bytes <- get_option_positive_number(
         "shinyOAuth.callback_max_code_bytes",
         4096
@@ -1184,14 +1179,53 @@ oauth_module_server <- function(
         derived_query_bytes
       )
 
-      qs <- NULL
-      ok <- tryCatch(
+      # Validate raw query size before any parsing (including the
+      # already-authenticated branch that calls .query_has_oauth_callback_keys).
+      query_size_ok <- tryCatch(
         {
           validate_untrusted_query_string(
             query_string %||% "",
             max_bytes = max_query_bytes
           )
+          TRUE
+        },
+        error = function(e) {
+          .clear_query_and_fix_title()
+          .set_error(
+            "invalid_callback_query",
+            e,
+            phase = "callback_query_validation"
+          )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                error_class = paste(class(e), collapse = ", ")
+              )
+            ),
+            silent = TRUE
+          )
+          FALSE
+        }
+      )
 
+      if (!isTRUE(query_size_ok)) {
+        return(invisible(NULL))
+      }
+
+      if (!is.null(values$token)) {
+        if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
+          .clear_query_and_fix_title()
+        }
+        return(invisible(NULL))
+      }
+
+      qs <- NULL
+      ok <- tryCatch(
+        {
           qs <- shiny::parseQueryString(query_string %||% "")
 
           validate_untrusted_query_param(
