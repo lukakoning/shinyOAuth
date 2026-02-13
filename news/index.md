@@ -167,6 +167,14 @@
   (indicating OIDC) and `openid` is missing from the client’s scopes,
   `build_auth_url()` now auto-prepends it and emits a one-time warning.
 
+- OIDC discovery
+  ([`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md))
+  now prefers confidential auth methods (`client_secret_basic`,
+  `client_secret_post`) over `none` when both are advertised in
+  `token_endpoint_auth_methods_supported`. Previously, mixed metadata
+  (e.g. `none` + `client_secret_basic`) with PKCE enabled would silently
+  select the public-client posture (`"body"` without credentials).
+
 - Scope validation now aligns with the RFC 6749, section 3.3
   `scope-token` grammar (`NQSCHAR = %x21 / %x23-5B / %x5D-7E`). The
   previous regex rejected valid ASCII characters such as `!`, `#`, `$`,
