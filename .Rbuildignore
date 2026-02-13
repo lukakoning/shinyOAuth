@@ -25,3 +25,4 @@ codex/*
 ^\.github$
 integration/*
 .dockerignore
+^jarl\.toml$
