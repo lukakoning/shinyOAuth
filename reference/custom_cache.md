@@ -32,7 +32,7 @@ to that value.
 ## Usage
 
 ``` r
-custom_cache(get, set, remove, info = NULL)
+custom_cache(get, set, remove, take = NULL, info = NULL)
 ```
 
 ## Arguments
@@ -51,29 +51,38 @@ custom_cache(get, set, remove, info = NULL)
 
 - remove:
 
-  A function(key) -\> logical or sentinel. Required.
+  A function(key) -\> any. Required.
 
-  For state stores, this enforces single-use eviction. If your backend
-  performs an atomic "get-and-delete" (e.g., SQL DELETE .. RETURNING),
-  you may supply a function which does nothing here but returns `TRUE`.
-  (The login flow will always attempt to call `$remove()` after `$get()`
-  as a best-effort cleanup.)
+  Deletes the entry for `key`. When `$take()` is provided, `$remove()`
+  serves only as a best-effort cleanup and its return value is ignored.
+  When `$take()` is not provided, 'shinyOAuth' falls back to `$get()` +
+  `$remove()` followed by a post-removal absence check via
+  `$get(key, missing = NA)`. In this fallback path the return value of
+  `$remove()` is not relied upon; the post-check is authoritative.
 
-  Recommended contract for interoperability and replay-safe state
-  stores:
+- take:
 
-  - Return `TRUE` only when deletion is confirmed (including idempotent
-    "already absent" semantics your backend explicitly treats as
-    success)
+  A function(key, missing = NULL) -\> value. Optional.
 
-  - Return `FALSE` when deletion is not confirmed; this is treated as a
-    hard failure (no post-check fallback)
+  An atomic get-and-delete operation. When provided, 'shinyOAuth' uses
+  `$take()` instead of separate `$get()` + `$remove()` calls to enforce
+  single-use state consumption. This prevents TOCTOU (time-of-check /
+  time-of-use) replay attacks in multi-worker deployments with shared
+  state stores.
 
-  - Return `NULL` only for legacy/unknown contracts; 'shinyOAuth' will
-    run an immediate post-check (`$get(key, missing = NA)`) and only
-    treat removal as successful when the key is confirmed absent
+  Should return the stored value and atomically remove the entry, or
+  return the `missing` argument (default `NULL`) if the key is not
+  present.
 
-  Any other non-`TRUE`/non-`NULL` return is treated as failure.
+  If your backend supports atomic get-and-delete natively (e.g., Redis
+  `GETDEL`, SQL `DELETE ... RETURNING`), wire it through this parameter
+  for replay-safe state stores.
+
+  When `take` is not provided and the state store is not a per-process
+  cache (like
+  [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)),
+  'shinyOAuth' falls back to non-atomic `$get()` + `$remove()` with a
+  one-time warning about potential replay vulnerability.
 
 - info:
 
@@ -105,9 +114,20 @@ my_cache <- custom_cache(
   remove = function(key) {
     if (exists(key, envir = mem, inherits = FALSE)) {
       rm(list = key, envir = mem)
-      return(TRUE) # signal successful deletion
     }
-    return(TRUE) # key did not exist
+    invisible(NULL)
+  },
+
+  # Atomic get-and-delete: preferred for state stores in multi-worker
+  # deployments to prevent TOCTOU replay attacks. For per-process caches
+  # (like cachem::cache_mem()) this is optional; for shared backends (Redis,
+  # database) it should map to the backend's atomic primitive (e.g., GETDEL).
+  take = function(key, missing = NULL) {
+    val <- base::get0(key, envir = mem, ifnotfound = missing, inherits = FALSE)
+    if (exists(key, envir = mem, inherits = FALSE)) {
+      rm(list = key, envir = mem)
+    }
+    val
   },
 
   info = function() list(max_age = 600)

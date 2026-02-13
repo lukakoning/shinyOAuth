@@ -88,7 +88,7 @@ Redis, Memcached).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">custom_cache</span><span class="op">(</span><span class="va">get</span>, <span class="va">set</span>, <span class="va">remove</span>, info <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">custom_cache</span><span class="op">(</span><span class="va">get</span>, <span class="va">set</span>, <span class="va">remove</span>, take <span class="op">=</span> <span class="cn">NULL</span>, info <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -108,19 +108,31 @@ Should store the value under the given key</p></dd>
 
 
 <dt id="arg-remove">remove<a class="anchor" aria-label="anchor" href="#arg-remove"></a></dt>
-<dd><p>A function(key) -&gt; logical or sentinel. Required.</p>
-<p>For state stores, this enforces single-use eviction. If your backend performs
-an atomic "get-and-delete" (e.g., SQL DELETE .. RETURNING), you may supply
-a function which does nothing here but returns <code>TRUE</code>. (The login flow will always attempt to call
-<code>$remove()</code> after <code>$get()</code> as a best-effort cleanup.)</p>
-<p>Recommended contract for interoperability and replay-safe state stores:</p><ul><li><p>Return <code>TRUE</code> only when deletion is confirmed (including idempotent
-"already absent" semantics your backend explicitly treats as success)</p></li>
-<li><p>Return <code>FALSE</code> when deletion is not confirmed; this is treated as a
-hard failure (no post-check fallback)</p></li>
-<li><p>Return <code>NULL</code> only for legacy/unknown contracts; 'shinyOAuth' will run
-an immediate post-check (<code>$get(key, missing = NA)</code>) and only treat removal
-as successful when the key is confirmed absent</p></li>
-</ul><p>Any other non-<code>TRUE</code>/non-<code>NULL</code> return is treated as failure.</p></dd>
+<dd><p>A function(key) -&gt; any. Required.</p>
+<p>Deletes the entry for <code>key</code>. When <code>$take()</code> is provided, <code>$remove()</code> serves
+only as a best-effort cleanup and its return value is ignored. When
+<code>$take()</code> is not provided, 'shinyOAuth' falls back to
+<code>$get()</code> + <code>$remove()</code> followed by a post-removal absence check via
+<code>$get(key, missing = NA)</code>. In this fallback path the return value of
+<code>$remove()</code> is not relied upon; the post-check is authoritative.</p></dd>
+
+
+<dt id="arg-take">take<a class="anchor" aria-label="anchor" href="#arg-take"></a></dt>
+<dd><p>A function(key, missing = NULL) -&gt; value. Optional.</p>
+<p>An atomic get-and-delete operation. When provided, 'shinyOAuth' uses
+<code>$take()</code> instead of separate <code>$get()</code> + <code>$remove()</code> calls to enforce
+single-use state consumption. This prevents TOCTOU (time-of-check /
+time-of-use) replay attacks in multi-worker deployments with shared state
+stores.</p>
+<p>Should return the stored value and atomically remove the entry, or
+return the <code>missing</code> argument (default <code>NULL</code>) if the key is not present.</p>
+<p>If your backend supports atomic get-and-delete natively
+(e.g., Redis <code>GETDEL</code>, SQL <code>DELETE ... RETURNING</code>), wire it through this
+parameter for replay-safe state stores.</p>
+<p>When <code>take</code> is not provided and the state store is not a per-process cache
+(like <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>), 'shinyOAuth' falls back to non-atomic
+<code>$get()</code> + <code>$remove()</code> with a one-time warning about potential replay
+vulnerability.</p></dd>
 
 
 <dt id="arg-info">info<a class="anchor" aria-label="anchor" href="#arg-info"></a></dt>
@@ -151,9 +163,20 @@ align browser cookie max age in <code><a href="oauth_module_server.html">oauth_m
 <span class="r-in"><span>  remove <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">key</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="va">key</span>, envir <span class="op">=</span> <span class="va">mem</span>, inherits <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm</a></span><span class="op">(</span>list <span class="op">=</span> <span class="va">key</span>, envir <span class="op">=</span> <span class="va">mem</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span> <span class="co"># signal successful deletion</span></span></span>
 <span class="r-in"><span>    <span class="op">}</span></span></span>
-<span class="r-in"><span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span> <span class="co"># key did not exist</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="co"># Atomic get-and-delete: preferred for state stores in multi-worker</span></span></span>
+<span class="r-in"><span>  <span class="co"># deployments to prevent TOCTOU replay attacks. For per-process caches</span></span></span>
+<span class="r-in"><span>  <span class="co"># (like cachem::cache_mem()) this is optional; for shared backends (Redis,</span></span></span>
+<span class="r-in"><span>  <span class="co"># database) it should map to the backend's atomic primitive (e.g., GETDEL).</span></span></span>
+<span class="r-in"><span>  take <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">key</span>, <span class="va">missing</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="va">val</span> <span class="op">&lt;-</span> <span class="fu">base</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">get0</a></span><span class="op">(</span><span class="va">key</span>, envir <span class="op">=</span> <span class="va">mem</span>, ifnotfound <span class="op">=</span> <span class="va">missing</span>, inherits <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/exists.html" class="external-link">exists</a></span><span class="op">(</span><span class="va">key</span>, envir <span class="op">=</span> <span class="va">mem</span>, inherits <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm</a></span><span class="op">(</span>list <span class="op">=</span> <span class="va">key</span>, envir <span class="op">=</span> <span class="va">mem</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span></span></span>
+<span class="r-in"><span>    <span class="va">val</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span>,</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  info <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">600</span><span class="op">)</span></span></span>

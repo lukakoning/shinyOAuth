@@ -51,6 +51,22 @@
   - Now validates the `auth_time` claim when `max_age` is present in
     `extra_auth_params` (OIDC Core section 3.1.2.1).
 
+- Stricter state store usage:
+
+  - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+    gains an optional `take` parameter for atomic get-and-delete.
+  - [`state_store_get_remove()`](https://lukakoning.github.io/shinyOAuth/reference/state_store_get_remove.md)
+    prefers `$take()` when available; falls back to `$get()` +
+    `$remove()` with a mandatory post-removal absence check (instead of
+    trusting `$remove()` return values).
+  - Non-‘cachem’ stores without `$take()` now emit a one-time warning
+    about potential replay vulnerability in shared deployments.
+  - `OAuthClient` validator now validates `$take()` signature when
+    present.
+  - The `$remove()` return value is no longer relied upon in the
+    fallback path; the post-removal `$get()` absence check is
+    authoritative.
+
 - Stricter JWKS cache handling: JWKS cache key now includes host-policy
   fields (`jwks_host_issuer_match`, `jwks_host_allow_only`). Previously,
   two provider configs for the same issuer with different host policies
@@ -119,11 +135,6 @@
   `userinfo_signed_jwt_required` property on `OAuthProvider` (default
   `FALSE`) mandates that the userinfo endpoint returns a signed JWT
   (`application/jwt`) with a verifiable signature.
-
-- [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md):
-  clarified custom state-store remove contract documentation: explicit
-  `remove(key) = FALSE` is treated as a hard failure, while `NULL` uses
-  a post-check fallback to confirm key absence.
 
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md):
   no longer accepts `decrypted_payload` and `state_store_values` bypass

@@ -76,6 +76,16 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 Throws an error via <code>err_invalid_state()</code> if retrieval or removal fails,
 or if the retrieved value is missing/malformed.</p>
     </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>When the store exposes an atomic <code>$take(key, missing)</code> method (see
+<code><a href="custom_cache.html">custom_cache()</a></code>), it is used preferentially to guarantee single-use even
+under concurrent access in shared/distributed backends.
+When <code>$take()</code> is not available, the function falls back to
+<code>$get()</code> + <code>$remove()</code> with a post-removal absence check.
+This fallback is safe for per-process caches (e.g., <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>)
+but cannot guarantee single-use under concurrent access in shared stores.</p>
+    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
