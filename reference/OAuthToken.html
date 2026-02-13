@@ -51,7 +51,8 @@
 <span>  refresh_token <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  id_token <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  expires_at <span class="op">=</span> <span class="cn">Inf</span>,</span>
-<span>  userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -80,6 +81,12 @@ token expires. <code>Inf</code> for non-expiring tokens</p></dd>
 <dd><p>List containing user information fetched from the provider's
 userinfo endpoint (if fetched)</p></dd>
 
+
+<dt id="arg-id-token-validated">id_token_validated<a class="anchor" aria-label="anchor" href="#arg-id-token-validated"></a></dt>
+<dd><p>Logical flag indicating whether the ID token was
+cryptographically validated (signature verified and standard claims checked)
+during the OAuth flow. Defaults to <code>FALSE</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -89,6 +96,10 @@ standard and optional OIDC claims (e.g., <code>sub</code>, <code>iss</code>, <co
 <code>auth_time</code>, <code>nonce</code>, <code>at_hash</code>, etc.) without requiring manual JWT
 decoding. Returns an empty list when no ID token is present or if the token
 cannot be decoded.</p>
+<p>Note: <code>id_token_claims</code> always decodes the JWT payload regardless
+of whether the ID token's signature was verified.
+Check the <code>id_token_validated</code> property to determine whether the claims
+were cryptographically validated.</p>
     </div>
 
     <div class="section level2">

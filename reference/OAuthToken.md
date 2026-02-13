@@ -10,7 +10,8 @@ OAuthToken(
   refresh_token = NA_character_,
   id_token = NA_character_,
   expires_at = Inf,
-  userinfo = list()
+  userinfo = list(),
+  id_token_validated = FALSE
 )
 ```
 
@@ -38,6 +39,12 @@ OAuthToken(
   List containing user information fetched from the provider's userinfo
   endpoint (if fetched)
 
+- id_token_validated:
+
+  Logical flag indicating whether the ID token was cryptographically
+  validated (signature verified and standard claims checked) during the
+  OAuth flow. Defaults to `FALSE`.
+
 ## Details
 
 The `id_token_claims` property is a read-only computed property that
@@ -46,6 +53,11 @@ surfaces all standard and optional OIDC claims (e.g., `sub`, `iss`,
 `aud`, `acr`, `amr`, `auth_time`, `nonce`, `at_hash`, etc.) without
 requiring manual JWT decoding. Returns an empty list when no ID token is
 present or if the token cannot be decoded.
+
+Note: `id_token_claims` always decodes the JWT payload regardless of
+whether the ID token's signature was verified. Check the
+`id_token_validated` property to determine whether the claims were
+cryptographically validated.
 
 ## Examples
 

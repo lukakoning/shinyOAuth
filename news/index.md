@@ -97,9 +97,13 @@
   requiring custom headers across all token endpoints could partially
   fail on revocation/introspection.
 
-- `OAuthToken` gains a read-only `id_token_claims` property that exposes
-  the decoded ID token JWT payload as a named list, surfacing all OIDC
-  claims (e.g., `acr`, `amr`, `auth_time`) without manual decoding.
+- `OAuthToken`:
+
+  - Gains a read-only `id_token_claims` property that exposes the
+    decoded ID token JWT payload as a named list, surfacing all OIDC
+    claims (e.g., `acr`, `amr`, `auth_time`) without manual decoding.
+  - Gains an `id_token_validated` property (logical) indicating whether
+    the ID token was cryptographically verified during the OAuth flow.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md):
 

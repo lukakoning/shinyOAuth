@@ -74,7 +74,11 @@
 <li><p>Stricter state payload parsing: callback <code>state</code> now rejects embedded NUL bytes before JSON decoding.</p></li>
 <li><p><code>OAuthProvider</code>: <code>leeway</code> validator now rejects non-finite values (<code>Inf</code>, <code>-Inf</code>, <code>NaN</code>). Previously these passed validation but were silently coerced to 0 at runtime, effectively disabling clock-skew tolerance.</p></li>
 <li><p><code>OAuthClient</code>: <code>extra_token_headers</code> are now consistently applied to revoke and introspect requests, matching the existing behavior for token exchange and refresh. Previously, provider integrations requiring custom headers across all token endpoints could partially fail on revocation/introspection.</p></li>
-<li><p><code>OAuthToken</code> gains a read-only <code>id_token_claims</code> property that exposes the decoded ID token JWT payload as a named list, surfacing all OIDC claims (e.g., <code>acr</code>, <code>amr</code>, <code>auth_time</code>) without manual decoding.</p></li>
+<li>
+<p><code>OAuthToken</code>:</p>
+<ul><li>Gains a read-only <code>id_token_claims</code> property that exposes the decoded ID token JWT payload as a named list, surfacing all OIDC claims (e.g., <code>acr</code>, <code>amr</code>, <code>auth_time</code>) without manual decoding.</li>
+<li>Gains an <code>id_token_validated</code> property (logical) indicating whether the ID token was cryptographically verified during the OAuth flow.</li>
+</ul></li>
 <li>
 <p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>:</p>
 <ul><li>Now surfaces <code>error_uri</code> from provider error callbacks (RFC 6749, section 4.1.2.1). The new <code>$error_uri</code> reactive field contains the URI to a human-readable error page when the provider includes one; <code>NULL</code> otherwise. The <code>error_uri</code> callback parameter is also validated against a configurable size limit (e.g., <code>options(shinyOAuth.callback_max_error_uri_bytes = 2048)</code>).</li>
