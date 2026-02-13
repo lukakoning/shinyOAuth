@@ -122,6 +122,19 @@ bytes before JSON decoding.
   multi-provider scenarios. When `iss` is absent, current behavior is retained 
   (no enforcement).
 
+* `handle_callback()`: no longer accepts `decrypted_payload` and
+`state_store_values` bypass parameters. These parameters were only intended for
+internal use by `oauth_module_server()`'s async path. As they can be misused by
+direct/custom callers to bypass important security checks, they have been
+moved to an internal-only helper function (`handle_callback_internal()`).
+
+* `handle_callback()`/`refresh_token()`: when a token response omits 
+`expires_in`, a warning is now emitted once per phase (`exchange_code` / 
+`refresh_token`) so operators know that proactive token refresh will not
+trigger. Users can now also set a finite default lifetime for such tokens via
+`options(shinyOAuth.default_expires_in = <seconds>)` (instead of the default of 
+`Inf`).
+
 * `get_userinfo()` now supports JWT-encoded userinfo responses per OIDC Core,
 section 5.3.2. When the endpoint returns `Content-Type: application/jwt`, the 
 body is decoded as a JWT. Verification is fail-closed: signature verification is
@@ -133,31 +146,19 @@ JWTs. New `userinfo_signed_jwt_required` property on `OAuthProvider`
 (default `FALSE`) mandates that the userinfo endpoint returns
 `application/jwt` content-type which is then subject to the above verification.
 
-* `handle_callback()`: no longer accepts `decrypted_payload` and
-`state_store_values` bypass parameters. These parameters were only intended for
-internal use by `oauth_module_server()`'s async path. As they can be misused by
-direct/custom callers to bypass important security checks, they have been
-moved to an internal-only helper function (`handle_callback_internal()`).
-
 * `client_bearer_req()` now validates the target URL against `is_ok_host()`
 before attaching the Bearer token. Relative URLs, plain HTTP to non-loopback
 hosts, and hosts outside `options(shinyOAuth.allowed_hosts)` are rejected by
 default. A new `check_url` argument (default `TRUE`) allows opting out of
 the check when the URL has already been validated.
 
-* `err_http()` now extracts RFC 6749 §5.2 structured error fields (`error`,
-`error_description`, `error_uri`) from JSON error response bodies. These
-fields are surfaced in the error message bullets, attached to the condition
-object (as `oauth_error`, `oauth_error_description`, `oauth_error_uri`), and
-included in trace/audit events. This improves debugging of token endpoint
-failures (e.g. `invalid_grant`, `invalid_client`) without changing existing
-control flow.
-
-* When a token response omits `expires_in`, a warning is now emitted once per 
-phase (`exchange_code` / `refresh_token`) so operators know that proactive token
-refresh will not trigger. Users can now also set a finite default lifetime for
-such tokens via `options(shinyOAuth.default_expires_in = <seconds>)` (instead
-of the default of `Inf`).
+* `err_http()` now extracts RFC 6749 section 5.2 structured error fields 
+(`error`, `error_description`, `error_uri`) from JSON error response bodies. 
+These fields are surfaced in the error message bullets, attached to the 
+condition object (as `oauth_error`, `oauth_error_description`, 
+`oauth_error_uri`), and included in trace/audit events. This improves debugging
+of token endpoint failures (e.g. `invalid_grant`, `invalid_client`) without
+changing existing control flow.
 
 * OIDC `claims` parameter support (OIDC Core, section 5.5): `OAuthClient` and 
 `oauth_client()` now accept a `claims` argument to request specific claims 
