@@ -130,11 +130,16 @@
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now supports JWT-encoded userinfo responses per OIDC Core, section
   5.3.2. When the endpoint returns `Content-Type: application/jwt`, the
-  body is decoded as a JWT. Signature verification is performed against
-  the provider JWKS using the provider’s `allowed_algs`. New
-  `userinfo_signed_jwt_required` property on `OAuthProvider` (default
-  `FALSE`) mandates that the userinfo endpoint returns a signed JWT
-  (`application/jwt`) with a verifiable signature.
+  body is decoded as a JWT. Verification is fail-closed: signature
+  verification is always performed against the provider JWKS using the
+  provider’s `allowed_algs`, `alg=none` is always rejected, and
+  unparseable headers, non-asymmetric algorithms, or missing issuer/JWKS
+  infrastructure all raise errors.
+  `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` permits
+  unsigned JWTs. New `userinfo_signed_jwt_required` property on
+  `OAuthProvider` (default `FALSE`) mandates that the userinfo endpoint
+  returns `application/jwt` content-type which is then subject to the
+  above verification.
 
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md):
   no longer accepts `decrypted_payload` and `state_store_values` bypass
