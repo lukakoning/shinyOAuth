@@ -38,6 +38,11 @@
   letting a confusing alg/typ/parse failure propagate.
   - Now validates the `auth_time` claim when `max_age` is
   present in `extra_auth_params` (OIDC Core section 3.1.2.1).
+  - Now enforces a maximum ID token lifetime (`exp - iat`) per OIDC Core
+  section 3.1.3.7; tokens with unreasonably long lifetimes are rejected with a
+  `shinyOAuth_id_token_error`. Configure via
+  `options(shinyOAuth.max_id_token_lifetime = <seconds>)` (default of `86400`
+  which is 24 hours). Set to `Inf` to disable the check.
   
 * Stricter state store usage:
   - `custom_cache()` gains an optional `take` parameter for atomic get-and-delete.

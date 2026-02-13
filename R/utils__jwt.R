@@ -410,6 +410,31 @@ validate_id_token <- function(
   if (iat_val > (now + lwe)) {
     err_id_token("ID token issued in the future")
   }
+  # OIDC Core §3.1.3.7 rule 9: reject tokens with unreasonably long lifetimes.
+  # A misconfigured or malicious provider could issue an ID token valid for years.
+  max_lifetime <- getOption("shinyOAuth.max_id_token_lifetime", 86400)
+  if (
+    is.numeric(max_lifetime) &&
+      length(max_lifetime) == 1L &&
+      is.finite(max_lifetime) &&
+      (exp_val - iat_val) > max_lifetime
+  ) {
+    err_id_token(c(
+      "x" = "ID token lifetime exceeds max_id_token_lifetime",
+      "i" = paste0(
+        "exp=",
+        exp_val,
+        ", iat=",
+        iat_val,
+        ", lifetime=",
+        exp_val - iat_val,
+        "s",
+        ", max_id_token_lifetime=",
+        max_lifetime,
+        "s"
+      )
+    ))
+  }
   if (!is.null(payload$nbf)) {
     if (!is_single_finite_number(payload$nbf)) {
       err_id_token("nbf claim must be a single finite number when present")
