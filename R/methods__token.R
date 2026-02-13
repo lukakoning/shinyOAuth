@@ -88,10 +88,11 @@ revoke_token <- function(
     # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
+        .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
-        shinyOAuth:::with_async_options(captured_async_options, {
+        .ns$with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+          .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::revoke_token(
               oauth_client = oauth_client,
               oauth_token = oauth_token,
@@ -418,10 +419,11 @@ introspect_token <- function(
     # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
+        .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
-        shinyOAuth:::with_async_options(captured_async_options, {
+        .ns$with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+          .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::introspect_token(
               oauth_client = oauth_client,
               oauth_token = oauth_token,
@@ -709,10 +711,11 @@ refresh_token <- function(
     # (functions carry their enclosing environments, causing serialization overhead)
     return(async_dispatch(
       expr = quote({
+        .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
-        shinyOAuth:::with_async_options(captured_async_options, {
+        .ns$with_async_options(captured_async_options, {
           # Set async context so errors include session info with is_async = TRUE
-          shinyOAuth:::with_async_session_context(captured_shiny_session, {
+          .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::refresh_token(
               oauth_client = oauth_client,
               token = token,
