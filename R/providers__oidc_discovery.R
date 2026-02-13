@@ -164,19 +164,13 @@ oauth_provider_oidc_discover <- function(
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
 
-  # 10b) Auto-detect signed userinfo support from discovery
-  #      If the caller already specified userinfo_signed_jwt_required via ...,
-  #      respect that override.
+  # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
+  #      Note: userinfo_signing_alg_values_supported in discovery indicates
+  #      provider *capability*, not that every client receives signed JWTs.
+  #      Whether the userinfo response is application/jwt depends on per-client
+  #      configuration at the provider. Therefore we do NOT auto-enable
+  #      userinfo_signed_jwt_required from discovery; callers must opt in.
   dots <- list(...)
-  if (is.null(dots[["userinfo_signed_jwt_required"]])) {
-    ui_signing_algs <- .discover_negotiate_userinfo_signing_algs(
-      allowed_algs,
-      disc
-    )
-    if (length(ui_signing_algs) > 0L) {
-      dots[["userinfo_signed_jwt_required"]] <- TRUE
-    }
-  }
 
   # 11) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
@@ -581,30 +575,6 @@ oauth_provider_oidc_discover <- function(
   overlap
 }
 
-#' Internal: intersect allowed algs with discovery userinfo signing algs
-#'
-#' Returns the intersection of `allowed_algs` with
-#' `userinfo_signing_alg_values_supported` from the discovery document.
-#' An empty result means the provider either does not advertise signed
-#' userinfo or there is no algorithm overlap.
-#'
-#' @keywords internal
-#' @noRd
-.discover_negotiate_userinfo_signing_algs <- function(allowed_algs, disc) {
-  disc_algs <- disc[["userinfo_signing_alg_values_supported"]] %||% character(0)
-
-  if (length(disc_algs) == 0L) {
-    return(character(0))
-  }
-
-  aa <- toupper(as.character(allowed_algs %||% character(0)))
-  da <- toupper(as.character(disc_algs))
-
-  # Filter out "none" from discovery — we explicitly never allow alg=none
-  da <- setdiff(da, "NONE")
-
-  intersect(aa, da)
-}
 
 #' Internal: derive default name from issuer
 #'

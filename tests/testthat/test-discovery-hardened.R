@@ -161,7 +161,7 @@ testthat::test_that("PKCE advisory does not block provider when S256 not adverti
   )
 })
 
-testthat::test_that("discovery auto-enables userinfo_signed_jwt_required when OP advertises signing algs", {
+testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required from signing algs (capability != requirement)", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
@@ -181,8 +181,10 @@ testthat::test_that("discovery auto-enables userinfo_signed_jwt_required when OP
   srv <- webfakes::local_app_process(app)
   issuer <- srv$url()
 
+  # userinfo_signing_alg_values_supported advertises provider *capability*,
+  # not that every client receives signed JWTs. Discovery must not auto-enable.
   prov <- oauth_provider_oidc_discover(issuer = issuer)
-  testthat::expect_true(prov@userinfo_signed_jwt_required)
+  testthat::expect_false(prov@userinfo_signed_jwt_required)
 })
 
 testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required when no overlap", {
@@ -232,7 +234,7 @@ testthat::test_that("discovery does NOT auto-enable when field absent", {
   testthat::expect_false(prov@userinfo_signed_jwt_required)
 })
 
-testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = FALSE override", {
+testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = TRUE override", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
@@ -254,7 +256,7 @@ testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = 
 
   prov <- oauth_provider_oidc_discover(
     issuer = issuer,
-    userinfo_signed_jwt_required = FALSE
+    userinfo_signed_jwt_required = TRUE
   )
-  testthat::expect_false(prov@userinfo_signed_jwt_required)
+  testthat::expect_true(prov@userinfo_signed_jwt_required)
 })
