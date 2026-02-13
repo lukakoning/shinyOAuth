@@ -66,6 +66,8 @@ an error is thrown to prevent accidental use in production environments.</p>
 <li><p><code>shinyOAuth.print_errors</code>: Enables printing of error messages</p></li>
 <li><p><code>shinyOAuth.print_traceback</code>: Enables printing of tracebacks (opt-in only; default FALSE)</p></li>
 <li><p><code>shinyOAuth.expose_error_body</code>: Exposes HTTP response bodies</p></li>
+<li><p><code>shinyOAuth.allow_unsigned_userinfo_jwt</code>: Accepts unsigned (<code>alg=none</code>) UserInfo JWTs</p></li>
+<li><p><code>shinyOAuth.allow_redirect</code>: Disables anti-redirect protections for sensitive HTTP flows</p></li>
 </ul><p>Note: Tracebacks are only treated as a "softened" behavior when the
 <code>shinyOAuth.print_traceback</code> option is explicitly set to <code>TRUE</code>.
 The default is <code>FALSE</code>, even in interactive or test sessions.</p>
