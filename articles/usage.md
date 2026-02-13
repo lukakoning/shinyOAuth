@@ -585,8 +585,9 @@ non‑sticky load balancer), you must ensure that:
 
 - All workers share the same state store (e.g.,
   [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-  pointing at a shared directory, or a custom cachem backend; the
-  default
+  pointing at a shared directory, or a custom backend via
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md);
+  the default
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
   is per‑process only and is then not shared)
 - All workers share the same state key (e.g., read from environment

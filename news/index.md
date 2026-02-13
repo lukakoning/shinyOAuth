@@ -64,8 +64,9 @@
     prefers `$take()` when available; falls back to `$get()` +
     `$remove()` with a mandatory post-removal absence check (instead of
     trusting `$remove()` return values).
-  - Non-‘cachem’ stores without `$take()` now emit a one-time warning
-    about potential replay vulnerability in shared deployments.
+  - Non-[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
+    stores without `$take()` now emit a one-time warning about potential
+    replay vulnerability in shared deployments.
   - `OAuthClient` validator now validates `$take()` signature when
     present.
   - The `$remove()` return value is no longer relied upon in the
