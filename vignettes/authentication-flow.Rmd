@@ -130,7 +130,8 @@ prior to making external calls:
   `iat` is required and must be a single finite numeric; 
   time-based claims (`exp` is required, `nbf` optional) are evaluated with a small configurable leeway; 
   tokens issued in the future are rejected
-- Header `typ` (when present): must indicate a JWT (`JWT`, case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID tokens
+- Header `typ` (when present): must indicate a JWT (`JWT`, case-insensitive). Other values (e.g., `at+jwt`) are
+  rejected for ID tokens
 - Nonce: must match the previously stored value (if configured)
 - Essential claims (OIDC Core §5.5): if the client requested specific claims via the `claims` parameter
   with `essential = TRUE`, and `claims_validation` is `"warn"` or `"strict"`, the decoded ID token
@@ -151,8 +152,9 @@ If userinfo is requested via `oauth_provider(userinfo_required = TRUE)`
 endpoint with the access token and stores returned claims. This happens **after**
 ID token validation to ensure cryptographic checks pass before making external calls.
 If this request fails, the flow aborts with an error.
+
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it is checked 
-that `sub` in userinfo equals `sub` in the ID token
+  that `sub` in userinfo equals `sub` in the ID token
 - Essential claims (OIDC Core §5.5): if the client requested specific userinfo claims via
   the `claims` parameter with `essential = TRUE`, and `claims_validation` is `"warn"` or
   `"strict"`, the userinfo response is checked for those claims. Missing essential claims
