@@ -1,7 +1,80 @@
 # Tests for mirai-related utilities:
+# - mirai_daemons_active() / mirai_connection_count()
 # - classify_mirai_error()
 # - async_dispatch() .timeout / shinyOAuth.async_timeout option
 # - async_backend_available() with daemons_set()
+
+# --- mirai_daemons_active / mirai_connection_count -------------------------
+
+testthat::test_that("mirai_daemons_active returns TRUE when daemons are set", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+
+  testthat::expect_true(shinyOAuth:::mirai_daemons_active())
+})
+
+testthat::test_that("mirai_daemons_active returns FALSE when no daemons", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  tryCatch(mirai::daemons(0), error = function(...) NULL)
+
+  testthat::expect_false(shinyOAuth:::mirai_daemons_active())
+})
+
+testthat::test_that("mirai_daemons_active falls back when daemons_set() unavailable", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  # Simulate older mirai without daemons_set() by mocking it to error,
+  # and mock info() to return non-NULL (indicating active daemons)
+  testthat::local_mocked_bindings(
+    daemons_set = function(...) stop("not available"),
+    info = function(...) list(connections = 2L),
+    .package = "mirai"
+  )
+  # Should still return TRUE via the info() fallback
+  testthat::expect_true(shinyOAuth:::mirai_daemons_active())
+})
+
+testthat::test_that("mirai_daemons_active fallback returns FALSE when no daemons and no daemons_set()", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  testthat::local_mocked_bindings(
+    daemons_set = function(...) stop("not available"),
+    info = function(...) NULL,
+    .package = "mirai"
+  )
+  testthat::expect_false(shinyOAuth:::mirai_daemons_active())
+})
+
+testthat::test_that("mirai_connection_count returns count when daemons active", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  testthat::local_mocked_bindings(
+    info = function(...) list(connections = 3L),
+    .package = "mirai"
+  )
+
+  count <- shinyOAuth:::mirai_connection_count()
+  testthat::expect_equal(count, 3L)
+})
+
+testthat::test_that("mirai_connection_count returns 0L on error", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  testthat::local_mocked_bindings(
+    info = function(...) stop("boom"),
+    .package = "mirai"
+  )
+  testthat::expect_equal(shinyOAuth:::mirai_connection_count(), 0L)
+})
 
 # --- classify_mirai_error --------------------------------------------------
 

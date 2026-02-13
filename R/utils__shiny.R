@@ -222,6 +222,40 @@ augment_with_shiny_context <- function(event) {
 }
 
 # Internal: dispatch an async task using the best available backend.
+# Internal: check whether mirai daemons are currently active.
+#
+# Uses `mirai::daemons_set()` (available since mirai >= 2.3.0) as the canonical
+# lightweight check. Falls back to `mirai::info()` for older mirai versions
+# that lack `daemons_set()` — `info()` returns NULL when no daemons are set.
+#
+# @return TRUE if mirai daemons are active, FALSE otherwise.
+mirai_daemons_active <- function() {
+  tryCatch(
+    mirai::daemons_set(),
+    error = function(...) {
+      # Fallback for mirai < 2.3.0: daemons_set() doesn't exist.
+      # info() returns NULL when no daemons are configured.
+      tryCatch(
+        !is.null(mirai::info()),
+        error = function(...) FALSE
+      )
+    }
+  )
+}
+
+# Internal: get the number of mirai daemon connections.
+#
+# Uses `mirai::info()$connections` (the author-recommended stable interface
+# instead of `mirai::status()`).
+#
+# @return Integer count of connections, or 0L on error.
+mirai_connection_count <- function() {
+  tryCatch(
+    as.integer(mirai::info()$connections),
+    error = function(...) 0L
+  )
+}
+
 # Prefers mirai if daemons are configured, falls back to future_promise.
 # Returns a promise in either case.
 #
@@ -235,13 +269,7 @@ augment_with_shiny_context <- function(event) {
 async_dispatch <- function(expr, args, .timeout = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   # Try mirai first (preferred backend)
-  # mirai::daemons_set() is the canonical lightweight check for whether
-  # daemons have been configured (returns TRUE/FALSE).
-  mirai_available <- rlang::is_installed("mirai") &&
-    tryCatch(
-      mirai::daemons_set(),
-      error = function(...) FALSE
-    )
+  mirai_available <- rlang::is_installed("mirai") && mirai_daemons_active()
 
   if (mirai_available) {
     # Use mirai - inject the expression and args into the call.
@@ -288,15 +316,8 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
 # Returns "mirai", "future", or NULL
 async_backend_available <- function() {
   # Check mirai first (preferred)
-  # mirai::daemons_set() is the canonical check (returns TRUE/FALSE)
-  if (rlang::is_installed("mirai")) {
-    mirai_ok <- tryCatch(
-      mirai::daemons_set(),
-      error = function(...) FALSE
-    )
-    if (mirai_ok) {
-      return("mirai")
-    }
+  if (rlang::is_installed("mirai") && mirai_daemons_active()) {
+    return("mirai")
   }
 
   # Check future

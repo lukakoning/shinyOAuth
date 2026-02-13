@@ -418,10 +418,7 @@ oauth_module_server <- function(
       }
     } else if (backend == "mirai") {
       # mirai is available - check if we have enough daemons
-      n_connections <- tryCatch(
-        mirai::status()$connections,
-        error = function(...) 0L
-      )
+      n_connections <- mirai_connection_count()
       if (n_connections == 1 && !.is_test()) {
         rlang::warn(c(
           "[{.pkg shinyOAuth}] - {.strong Consider using multiple mirai daemons for concurrency}",

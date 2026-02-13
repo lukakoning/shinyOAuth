@@ -2,7 +2,8 @@
 
 * 'mirai' async backend improvements:
   - Detect active daemons via `mirai::daemons_set()` instead of 
-  `mirai::info()`/`mirai::status()` (requires 'mirai' >= 2.3.0).
+  `mirai::status()`. Falls back to `mirai::info()` on older 'mirai' versions
+  that lack `daemons_set()` (< 2.3.0).
   - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
   timed-out 'mirai' tasks are automatically cancelled by the dispatcher.
   - Async audit events now include a `mirai_error_type` field.
