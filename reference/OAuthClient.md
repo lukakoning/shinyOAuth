@@ -28,6 +28,7 @@ OAuthClient(
   state_key = random_urlsafe(n = 128),
   scope_validation = "strict",
   claims_validation = "none",
+  required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
 )
@@ -243,6 +244,24 @@ OAuthClient(
 
   - `"strict"`: Throws an error if any requested essential claims are
     missing from the response.
+
+- required_acr_values:
+
+  Optional character vector of acceptable Authentication Context Class
+  Reference values (OIDC Core §2, §3.1.2.1). When non-empty, the ID
+  token returned by the provider must contain an `acr` claim whose value
+  is one of the specified entries; otherwise the login fails with a
+  `shinyOAuth_id_token_error`.
+
+  Additionally, when non-empty, the authorization request automatically
+  includes an `acr_values` query parameter (space-separated) as a
+  voluntary hint to the provider (OIDC Core §3.1.2.1). Note that the
+  provider is not required to honour this hint; the client-side
+  validation is the authoritative enforcement.
+
+  Requires an OIDC-capable provider with `id_token_validation = TRUE`
+  and an `issuer` configured. Default is `character(0)` (no
+  enforcement).
 
 - introspect:
 

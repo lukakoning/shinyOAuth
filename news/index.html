@@ -76,6 +76,7 @@
 <li>
 <p><code>OAuthClient</code>:</p>
 <ul><li>Gains a <code>claims_validation</code> property; when the client sends a structured <code>claims</code> request parameter with <code>essential = TRUE</code> entries, this setting controls whether the returned ID token and/or userinfo response are checked for those essential claims (similar to <code>scope_validation</code>).</li>
+<li>Gains a <code>required_acr_values</code> property; enables client-side enforcement of the OIDC <code>acr</code> (Authentication Context Class Reference) claim.</li>
 <li>
 <code>extra_token_headers</code> are now consistently applied to revoke and introspect requests, matching the existing behavior for token exchange and refresh. Previously, provider integrations requiring custom headers across all token endpoints could partially fail on revocation/introspection.</li>
 </ul></li>

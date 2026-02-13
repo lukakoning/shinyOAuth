@@ -98,6 +98,9 @@
     entries, this setting controls whether the returned ID token and/or
     userinfo response are checked for those essential claims (similar to
     `scope_validation`).
+  - Gains a `required_acr_values` property; enables client-side
+    enforcement of the OIDC `acr` (Authentication Context Class
+    Reference) claim.
   - `extra_token_headers` are now consistently applied to revoke and
     introspect requests, matching the existing behavior for token
     exchange and refresh. Previously, provider integrations requiring

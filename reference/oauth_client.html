@@ -63,6 +63,7 @@
 <span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strict"</span>, <span class="st">"warn"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  claims_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"warn"</span>, <span class="st">"strict"</span><span class="op">)</span>,</span>
+<span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -241,6 +242,21 @@ claims are missing.</p></li>
 <li><p><code>"strict"</code>: Throws an error if any requested essential claims are
 missing from the response.</p></li>
 </ul></dd>
+
+
+<dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
+<dd><p>Optional character vector of acceptable
+Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
+When non-empty, the ID token returned by the provider must contain an
+<code>acr</code> claim whose value is one of the specified entries; otherwise the
+login fails with a <code>shinyOAuth_id_token_error</code>.</p>
+<p>Additionally, when non-empty, the authorization request automatically
+includes an <code>acr_values</code> query parameter (space-separated) as a voluntary
+hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
+not required to honour this hint; the client-side validation is the
+authoritative enforcement.</p>
+<p>Requires an OIDC-capable provider with <code>id_token_validation = TRUE</code> and
+an <code>issuer</code> configured.  Default is <code>character(0)</code> (no enforcement).</p></dd>
 
 
 <dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>

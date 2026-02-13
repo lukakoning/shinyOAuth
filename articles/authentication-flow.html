@@ -259,6 +259,14 @@ payload is checked for the presence of those essential claims. Missing
 essential claims trigger a warning or error depending on the mode. This
 is skipped when <code>claims_validation = "none"</code> (the
 default)</li>
+<li>ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
+with <code>required_acr_values</code>, the ID token’s <code>acr</code>
+claim must be present and match one of the specified values. This
+ensures the provider performed the expected authentication context
+(e.g., MFA). If the <code>acr</code> claim is missing or not in the
+allowlist, login fails with a <code>shinyOAuth_id_token_error</code>.
+The authorization request also includes an <code>acr_values</code>
+parameter as a voluntary hint to the provider</li>
 </ul>
 </div>
 <div class="section level3">
