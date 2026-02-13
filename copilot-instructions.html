@@ -45,7 +45,23 @@
 <h2 id="project-snapshot">Project Snapshot<a class="anchor" aria-label="anchor" href="#project-snapshot"></a></h2>
 <ul><li>shinyOAuth is an S7-based OAuth/OIDC toolkit for Shiny; top-level flow lives in R/oauth_module_server.R with supporting UI glue in R/use_shinyOAuth.R.</li>
 <li>Core domain objects are S7 classes in R/classes__OAuthProvider.R, R/classes__OAuthClient.R, R/classes__OAuthToken.R; prefer helper constructors (<code>oauth_provider_*()</code>, <code><a href="reference/oauth_client.html">oauth_client()</a></code>) over manual <code>new_class</code> calls.</li>
-<li>S7 is a modern OOP system in R; follow existing patterns for generics, methods, and validation when extending or adding classes. See <a href="https://rconsortium.github.io/S7/" class="external-link uri">https://rconsortium.github.io/S7/</a> for documentation.</li>
+<li>S7 is a modern OOP system in R; follow existing patterns for generics, methods, and validation when extending or adding classes. Access properties with <code>@</code> (e.g., <code>client@state_key</code>), define with <code><a href="https://rconsortium.github.io/S7/reference/new_property.html" class="external-link">S7::new_property()</a></code>, and add class-level checks with <code>validator</code> arguments. See <a href="https://rconsortium.github.io/S7/" class="external-link uri">https://rconsortium.github.io/S7/</a> for documentation.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="file-organization--naming">File Organization &amp; Naming<a class="anchor" aria-label="anchor" href="#file-organization--naming"></a></h2>
+<ul><li>
+<strong>Classes</strong>: <code>R/classes__*.R</code> - S7 class definitions with <code><a href="https://rconsortium.github.io/S7/reference/new_class.html" class="external-link">S7::new_class()</a></code>, validators, and properties</li>
+<li>
+<strong>Methods</strong>: <code>R/methods__*.R</code> - S7 generic implementations (login, token, userinfo, client_bearer_req)</li>
+<li>
+<strong>Utilities</strong>: <code>R/utils__*.R</code> - Topic-organized helpers (http, jwt, jwks, crypt, state, url, scopes, shiny, random, base64url)</li>
+<li>
+<strong>Providers</strong>: <code>R/providers.R</code> and <code>R/providers__oidc_discovery.R</code> - Built-in provider configs and OIDC discovery</li>
+<li>
+<strong>Development</strong>: <code>playground/*.R</code> - Full working examples for manual provider testing (not shipped with package)</li>
+<li>
+<strong>Examples</strong>: <code>inst/examples/*.R</code> - Minimal code snippets illustrating specific features (shipped with package)</li>
+<li>Common R idioms: use <code>%||%</code> for null coalescing, <code>compact_list()</code> to drop NULL/NA from lists, <code>is_valid_string()</code> for non-empty string checks</li>
 </ul></div>
 <div class="section level2">
 <h2 id="core-code-paths">Core Code Paths<a class="anchor" aria-label="anchor" href="#core-code-paths"></a></h2>
@@ -91,16 +107,22 @@
 <h2 id="testing-workflow">Testing Workflow<a class="anchor" aria-label="anchor" href="#testing-workflow"></a></h2>
 <ul><li>Run tests: <code>Rscript -e "testthat::test_local()"</code> from the repo root.</li>
 <li>Tests extensively mock network calls with <code><a href="https://testthat.r-lib.org/reference/local_mocked_bindings.html" class="external-link">testthat::with_mocked_bindings()</a></code> and spin up webfakes servers for HTTP integration tests; keep new HTTP helpers injectable and return httr2 responses so mocks remain simple.</li>
-<li>Use the existing test helpers in tests/testthat/helper-login.R: <code>make_test_client()</code>, <code>make_test_provider()</code>, <code>valid_browser_token()</code> instead of reimplementing fixtures.</li>
-<li>Async module tests reset <code>future::plan(future::sequential)</code> and poll <code><a href="https://later.r-lib.org/reference/run_now.html" class="external-link">later::run_now()</a></code>; ensure state-store logic exposes <code>get</code>/<code>set</code>/<code>remove</code>/<code>missing</code> signatures so duck-typing checks in OAuthClient/OAuthProvider validators pass.</li>
-<li>Integration tests (Docker-based Keycloak, GCP) live in integration/; these are separate from unit tests and run via CI workflows.</li>
+<li>Use the existing test helpers in tests/testthat/helper-login.R: <code>make_test_client()</code>, <code>make_test_provider()</code>, <code>valid_browser_token()</code>, <code>parse_query_param()</code> instead of reimplementing fixtures.</li>
+<li>Async module tests reset <code>future::plan(future::sequential)</code> and use <code>poll_for_async()</code> helper to flush <code><a href="https://later.r-lib.org/reference/run_now.html" class="external-link">later::run_now()</a></code> and <code>session$flushReact()</code> until conditions are met; timeout/interval configurable via <code>SHINYOAUTH_TEST_POLL_TIMEOUT</code> and <code>SHINYOAUTH_TEST_POLL_INTERVAL</code> env vars.</li>
+<li>Set <code>NOT_CRAN=true</code> environment variable to enable security/timing/webfakes tests that are skipped on CRAN (this is set automatically in CI workflows).</li>
+<li>Ensure state-store logic exposes <code>get</code>/<code>set</code>/<code>remove</code>/<code>missing</code> signatures so duck-typing checks in OAuthClient/OAuthProvider validators pass; use <code><a href="reference/custom_cache.html">custom_cache()</a></code> wrapper for non-cachem backends.</li>
+<li>Integration tests (Docker-based Keycloak, GCP) live in integration/; these are separate from unit tests and run via CI workflows (.github/workflows/integration-tests.yml).</li>
 </ul></div>
 <div class="section level2">
 <h2 id="documentation--examples">Documentation &amp; Examples<a class="anchor" aria-label="anchor" href="#documentation--examples"></a></h2>
 <ul><li>Roxygen comments in R/ generate man/ via <code>Rscript -e "devtools::document()"</code>; never hand-edit .Rd files.</li>
-<li>Example Shiny integrations live in inst/examples/ and long-form guidance in vignettes/*.Rmd; update these alongside API changes so pkgdown docs stay accurate.</li>
+<li>Example Shiny integrations live in inst/examples/ (shipped with package) and playground/ (development only, not shipped); long-form guidance in vignettes/*.Rmd.</li>
+<li>Vignettes: <code>usage.Rmd</code> (comprehensive guide), <code>authentication-flow.Rmd</code> (security deep-dive), <code>audit-logging.Rmd</code> (logging/auditing), <code>example-spotify.Rmd</code> (provider example).</li>
+<li>Update examples and vignettes alongside API changes so pkgdown docs stay accurate</li>
 <li>
 <code>.onLoad()</code> already registers S7 methods (R/zzz.R); when adding generics ensure <code><a href="https://rconsortium.github.io/S7/reference/methods_register.html" class="external-link">S7::methods_register()</a></code> is triggered and namespace imports remain consistent.</li>
+<li>Linting: run <code>jarl check .</code> to check for errors; use <code>jarl check . --fix --allow-dirty</code> to check &amp; fix</li>
+<li>Formatting: run <code>air format .</code> to format all files</li>
 </ul></div>
 <div class="section level2">
 <h2 id="backwards-compatibility">Backwards Compatibility<a class="anchor" aria-label="anchor" href="#backwards-compatibility"></a></h2>

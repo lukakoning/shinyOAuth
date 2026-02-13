@@ -11,8 +11,30 @@
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md))
   over manual `new_class` calls.
 - S7 is a modern OOP system in R; follow existing patterns for generics,
-  methods, and validation when extending or adding classes. See
+  methods, and validation when extending or adding classes. Access
+  properties with `@` (e.g., `client@state_key`), define with
+  [`S7::new_property()`](https://rconsortium.github.io/S7/reference/new_property.html),
+  and add class-level checks with `validator` arguments. See
   <https://rconsortium.github.io/S7/> for documentation.
+
+## File Organization & Naming
+
+- **Classes**: `R/classes__*.R` - S7 class definitions with
+  [`S7::new_class()`](https://rconsortium.github.io/S7/reference/new_class.html),
+  validators, and properties
+- **Methods**: `R/methods__*.R` - S7 generic implementations (login,
+  token, userinfo, client_bearer_req)
+- **Utilities**: `R/utils__*.R` - Topic-organized helpers (http, jwt,
+  jwks, crypt, state, url, scopes, shiny, random, base64url)
+- **Providers**: `R/providers.R` and `R/providers__oidc_discovery.R` -
+  Built-in provider configs and OIDC discovery
+- **Development**: `playground/*.R` - Full working examples for manual
+  provider testing (not shipped with package)
+- **Examples**: `inst/examples/*.R` - Minimal code snippets illustrating
+  specific features (shipped with package)
+- Common R idioms: use `%||%` for null coalescing, `compact_list()` to
+  drop NULL/NA from lists, `is_valid_string()` for non-empty string
+  checks
 
 ## Core Code Paths
 
@@ -121,27 +143,45 @@
   and spin up webfakes servers for HTTP integration tests; keep new HTTP
   helpers injectable and return httr2 responses so mocks remain simple.
 - Use the existing test helpers in tests/testthat/helper-login.R:
-  `make_test_client()`, `make_test_provider()`, `valid_browser_token()`
-  instead of reimplementing fixtures.
-- Async module tests reset `future::plan(future::sequential)` and poll
-  [`later::run_now()`](https://later.r-lib.org/reference/run_now.html);
-  ensure state-store logic exposes `get`/`set`/`remove`/`missing`
+  `make_test_client()`, `make_test_provider()`, `valid_browser_token()`,
+  `parse_query_param()` instead of reimplementing fixtures.
+- Async module tests reset `future::plan(future::sequential)` and use
+  `poll_for_async()` helper to flush
+  [`later::run_now()`](https://later.r-lib.org/reference/run_now.html)
+  and `session$flushReact()` until conditions are met; timeout/interval
+  configurable via `SHINYOAUTH_TEST_POLL_TIMEOUT` and
+  `SHINYOAUTH_TEST_POLL_INTERVAL` env vars.
+- Set `NOT_CRAN=true` environment variable to enable
+  security/timing/webfakes tests that are skipped on CRAN (this is set
+  automatically in CI workflows).
+- Ensure state-store logic exposes `get`/`set`/`remove`/`missing`
   signatures so duck-typing checks in OAuthClient/OAuthProvider
-  validators pass.
+  validators pass; use
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  wrapper for non-cachem backends.
 - Integration tests (Docker-based Keycloak, GCP) live in integration/;
-  these are separate from unit tests and run via CI workflows.
+  these are separate from unit tests and run via CI workflows
+  (.github/workflows/integration-tests.yml).
 
 ## Documentation & Examples
 
 - Roxygen comments in R/ generate man/ via
   `Rscript -e "devtools::document()"`; never hand-edit .Rd files.
-- Example Shiny integrations live in inst/examples/ and long-form
-  guidance in vignettes/\*.Rmd; update these alongside API changes so
-  pkgdown docs stay accurate.
+- Example Shiny integrations live in inst/examples/ (shipped with
+  package) and playground/ (development only, not shipped); long-form
+  guidance in vignettes/\*.Rmd.
+- Vignettes: `usage.Rmd` (comprehensive guide),
+  `authentication-flow.Rmd` (security deep-dive), `audit-logging.Rmd`
+  (logging/auditing), `example-spotify.Rmd` (provider example).
+- Update examples and vignettes alongside API changes so pkgdown docs
+  stay accurate
 - `.onLoad()` already registers S7 methods (R/zzz.R); when adding
   generics ensure
   [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/methods_register.html)
   is triggered and namespace imports remain consistent.
+- Linting: run `jarl check .` to check for errors; use
+  `jarl check . --fix --allow-dirty` to check & fix
+- Formatting: run `air format .` to format all files
 
 ## Backwards Compatibility
 
