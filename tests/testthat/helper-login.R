@@ -114,6 +114,7 @@ make_test_client <- function(
   scopes = NULL,
   claims = NULL,
   claims_validation = "none",
+  required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
@@ -135,6 +136,7 @@ make_test_client <- function(
     scopes = scopes,
     claims = claims,
     claims_validation = claims_validation,
+    required_acr_values = required_acr_values,
     state_store = cachem::cache_mem(max_age = state_max_age),
     state_payload_max_age = state_payload_max_age,
     state_entropy = 64,

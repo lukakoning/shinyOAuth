@@ -157,6 +157,21 @@
 #'   - `"strict"`: Throws an error if any requested essential claims are
 #'     missing from the response.
 #'
+#' @param required_acr_values Optional character vector of acceptable
+#'   Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
+#'   When non-empty, the ID token returned by the provider must contain an
+#'   `acr` claim whose value is one of the specified entries; otherwise the
+#'   login fails with a `shinyOAuth_id_token_error`.
+#'
+#'   Additionally, when non-empty, the authorization request automatically
+#'   includes an `acr_values` query parameter (space-separated) as a voluntary
+#'   hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
+#'   not required to honour this hint; the client-side validation is the
+#'   authoritative enforcement.
+#'
+#'   Requires an OIDC-capable provider with `id_token_validation = TRUE` and
+#'   an `issuer` configured.  Default is `character(0)` (no enforcement).
+#'
 #' @param introspect If TRUE, the login flow will call the provider's token
 #'   introspection endpoint (RFC 7662) to validate the access token. The login
 #'   is not considered complete unless introspection succeeds and returns
@@ -235,6 +250,13 @@ OAuthClient <- S7::new_class(
     claims_validation = S7::new_property(
       S7::class_character,
       default = "none"
+    ),
+
+    # OIDC acr enforcement (OIDC Core §2, §3.1.2.1): when non-empty, the ID
+    # token's acr claim must match one of these values.
+    required_acr_values = S7::new_property(
+      S7::class_character,
+      default = character(0)
     ),
 
     # Token introspection settings (RFC 7662): control whether login validates
@@ -600,6 +622,31 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    # Validate required_acr_values
+    racr <- self@required_acr_values
+    if (!is.character(racr)) {
+      return("OAuthClient: required_acr_values must be a character vector")
+    }
+    if (anyNA(racr)) {
+      return("OAuthClient: required_acr_values must not contain NA")
+    }
+    if (!all(nzchar(racr))) {
+      return("OAuthClient: required_acr_values must not contain empty strings")
+    }
+    if (length(racr) > 0) {
+      # acr enforcement requires an OIDC-capable provider (issuer + id_token_validation)
+      if (!is_valid_string(self@provider@issuer)) {
+        return(
+          "OAuthClient: required_acr_values requires the provider to have an issuer configured"
+        )
+      }
+      if (!isTRUE(self@provider@id_token_validation)) {
+        return(
+          "OAuthClient: required_acr_values requires id_token_validation = TRUE on the provider"
+        )
+      }
+    }
+
     # Validate introspect
     if (
       !is.logical(self@introspect) ||
@@ -724,6 +771,7 @@ oauth_client <- function(
   client_assertion_audience = NULL,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
+  required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
@@ -764,6 +812,7 @@ oauth_client <- function(
     client_assertion_audience = client_assertion_audience %||% NA_character_,
     scope_validation = scope_validation,
     claims_validation = claims_validation,
+    required_acr_values = required_acr_values,
     introspect = introspect,
     introspect_elements = introspect_elements
   )

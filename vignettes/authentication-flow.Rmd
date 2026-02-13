@@ -136,6 +136,13 @@ prior to making external calls:
   with `essential = TRUE`, and `claims_validation` is `"warn"` or `"strict"`, the decoded ID token
   payload is checked for the presence of those essential claims. Missing essential claims trigger
   a warning or error depending on the mode. This is skipped when `claims_validation = "none"` (the default)
+- ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created with
+  `required_acr_values`, the ID token's `acr` claim must be present and match
+  one of the specified values. This ensures the provider performed the expected
+  authentication context (e.g., MFA). If the `acr` claim is missing or not in
+  the allowlist, login fails with a `shinyOAuth_id_token_error`. The
+  authorization request also includes an `acr_values` parameter as a voluntary
+  hint to the provider
 
 ### 10. Fetch userinfo (optional)
 

@@ -21,6 +21,7 @@ oauth_client(
   client_assertion_audience = NULL,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
+  required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
 )
@@ -182,6 +183,21 @@ claims are missing.
 \item \code{"strict"}: Throws an error if any requested essential claims are
 missing from the response.
 }}
+
+\item{required_acr_values}{Optional character vector of acceptable
+Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
+When non-empty, the ID token returned by the provider must contain an
+\code{acr} claim whose value is one of the specified entries; otherwise the
+login fails with a \code{shinyOAuth_id_token_error}.
+
+Additionally, when non-empty, the authorization request automatically
+includes an \code{acr_values} query parameter (space-separated) as a voluntary
+hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
+not required to honour this hint; the client-side validation is the
+authoritative enforcement.
+
+Requires an OIDC-capable provider with \code{id_token_validation = TRUE} and
+an \code{issuer} configured.  Default is \code{character(0)} (no enforcement).}
 
 \item{introspect}{If TRUE, the login flow will call the provider's token
 introspection endpoint (RFC 7662) to validate the access token. The login

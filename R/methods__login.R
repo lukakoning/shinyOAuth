@@ -314,6 +314,14 @@ build_auth_url <- function(
     }
   }
 
+  # OIDC acr_values hint (OIDC Core §3.1.2.1): when the client specifies
+  # required_acr_values, automatically include a space-separated acr_values
+  # parameter in the authorization request as a voluntary hint to the provider.
+  racr <- oauth_client@required_acr_values %||% character(0)
+  if (length(racr) > 0) {
+    params$acr_values <- paste(racr, collapse = " ")
+  }
+
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params
 
@@ -332,6 +340,10 @@ build_auth_url <- function(
       "code_challenge_method",
       "claims" # Managed via oauth_client(..., claims = ...)
     )
+    # Also block acr_values when auto-generated from required_acr_values
+    if (length(racr) > 0) {
+      default_blocked_params <- c(default_blocked_params, "acr_values")
+    }
     unblocked <- getOption("shinyOAuth.unblock_auth_params", character())
     blocked_params <- setdiff(default_blocked_params, unblocked)
 
@@ -1545,6 +1557,47 @@ verify_token_set <- function(
     )
     if (!is.null(id_payload)) {
       validate_essential_claims(client, id_payload, "id_token")
+    }
+  }
+
+  # Validate acr claim against required_acr_values (OIDC Core §2, §3.1.2.1) ----
+
+  # When the client specifies required_acr_values, verify the ID token's acr
+  # claim is present and matches one of the allowlisted values.  This runs on
+  # both initial login and refresh (when a new ID token is returned).
+  racr <- client@required_acr_values %||% character(0)
+  if (length(racr) > 0 && isTRUE(id_token_present)) {
+    acr_payload <- tryCatch(
+      parse_jwt_payload(token_set[["id_token"]]),
+      error = function(e) NULL
+    )
+    if (is.null(acr_payload)) {
+      err_id_token(
+        "Cannot parse ID token to verify acr claim"
+      )
+    }
+    acr_value <- acr_payload$acr
+    if (is.null(acr_value) || !is_valid_string(acr_value)) {
+      err_id_token(c(
+        "x" = "ID token missing required acr claim (OIDC Core \u00a72)",
+        "i" = paste0(
+          "Required one of: ",
+          paste(racr, collapse = ", ")
+        )
+      ))
+    }
+    if (!acr_value %in% racr) {
+      err_id_token(c(
+        "x" = paste0(
+          "ID token acr claim '",
+          acr_value,
+          "' is not in the required_acr_values allowlist"
+        ),
+        "i" = paste0(
+          "Allowed: ",
+          paste(racr, collapse = ", ")
+        )
+      ))
     }
   }
 
