@@ -284,3 +284,56 @@ test_that("OAuthProvider rejects reserved headers in extra_token_headers", {
     extra_token_headers = c(Accept = "application/json")
   ))
 })
+
+test_that("OAuthProvider rejects mixed-case reserved keys in extra_auth_params", {
+  # Uppercase, mixed-case, and whitespace-padded variants must all be blocked
+  adversarial <- c(
+    "STATE",
+    "State",
+    "REDIRECT_URI",
+    "Redirect_Uri",
+    " state ",
+    "NONCE"
+  )
+
+  for (key in adversarial) {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_auth_params = setNames(list("bad"), key)
+      ),
+      regexp = "extra_auth_params must not contain reserved keys",
+      info = paste("should reject mixed-case reserved auth param:", sQuote(key))
+    )
+  }
+})
+
+test_that("OAuthProvider rejects mixed-case reserved keys in extra_token_params", {
+  adversarial <- c(
+    "GRANT_TYPE",
+    "Grant_Type",
+    "CODE",
+    "CLIENT_SECRET",
+    "Client_Secret",
+    " code_verifier ",
+    "CLIENT_ASSERTION"
+  )
+
+  for (key in adversarial) {
+    expect_error(
+      OAuthProvider(
+        name = "test",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        extra_token_params = setNames(list("bad"), key)
+      ),
+      regexp = "extra_token_params must not contain reserved keys",
+      info = paste(
+        "should reject mixed-case reserved token param:",
+        sQuote(key)
+      )
+    )
+  }
+})

@@ -71,9 +71,12 @@ identifiers containing query or fragment components, covering both
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
 
-* `OAuthProvider`: `leeway` validator now rejects non-finite values (`Inf`, 
-`-Inf`, `NaN`). Previously these passed validation but were silently coerced to 
-0 at runtime, effectively disabling clock-skew tolerance.
+* `OAuthProvider`: 
+  - `leeway` validator now rejects non-finite values (`Inf`, 
+  `-Inf`, `NaN`). Previously these passed validation but were silently coerced 
+  to 0 at runtime, effectively disabling clock-skew tolerance.
+  - Reserved OAuth parameter blocking in `extra_auth_params` and 
+  `extra_token_params` is now case-insensitive and trims whitespace. 
 
 * `OAuthClient`: 
   - Gains a `claims_validation` property; when the client sends a structured 

@@ -344,10 +344,13 @@ build_auth_url <- function(
     if (length(racr) > 0) {
       default_blocked_params <- c(default_blocked_params, "acr_values")
     }
-    unblocked <- getOption("shinyOAuth.unblock_auth_params", character())
+    unblocked <- tolower(trimws(getOption(
+      "shinyOAuth.unblock_auth_params",
+      character()
+    )))
     blocked_params <- setdiff(default_blocked_params, unblocked)
 
-    conflicts <- intersect(names(extra), blocked_params)
+    conflicts <- intersect(tolower(trimws(names(extra))), blocked_params)
     if (length(conflicts) > 0) {
       err_config(c(
         paste0(
