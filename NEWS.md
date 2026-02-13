@@ -120,6 +120,12 @@ internal use by `oauth_module_server()`'s async path. As they can be misused by
 direct/custom callers to bypass important security checks, they have been
 moved to an internal-only helper function (`handle_callback_internal()`).
 
+* `client_bearer_req()` now validates the target URL against `is_ok_host()`
+before attaching the Bearer token. Relative URLs, plain HTTP to non-loopback
+hosts, and hosts outside `options(shinyOAuth.allowed_hosts)` are rejected by
+default. A new `check_url` argument (default `TRUE`) allows opting out of
+the check when the URL has already been validated.
+
 * When a token response omits `expires_in`, a warning is now emitted once per 
 phase (`exchange_code` / `refresh_token`) so operators know that proactive token
 refresh will not trigger. Users can now also set a finite default lifetime for

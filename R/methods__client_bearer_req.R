@@ -21,6 +21,12 @@
 #'   are disabled to prevent leaking the Bearer token to unexpected hosts.
 #'   Set to `TRUE` only if you trust all possible redirect targets and
 #'   understand the security implications.
+#' @param check_url Logical. If `TRUE` (the default), validates `url` against
+#'   [is_ok_host()] before attaching the Bearer token. This rejects relative
+#'   URLs, plain HTTP to non-loopback hosts, and – when
+#'   `options(shinyOAuth.allowed_hosts)` is set – hosts outside the allowlist.
+#'   Set to `FALSE` only if you have already validated the URL and understand
+#'   the security implications.
 #'
 #' @return An httr2 request object, ready to be further customized or
 #'   performed with [httr2::req_perform()].
@@ -34,7 +40,8 @@ client_bearer_req <- function(
   method = "GET",
   headers = NULL,
   query = NULL,
-  follow_redirect = FALSE
+  follow_redirect = FALSE,
+  check_url = TRUE
 ) {
   # Resolve token to string ----------------------------------------------------
   access_token <- token
@@ -44,6 +51,22 @@ client_bearer_req <- function(
 
   if (!is_valid_string(access_token)) {
     err_input("access_token must be a non-empty string")
+  }
+
+  # Validate URL ----------------------------------------------------------------
+  if (isTRUE(check_url)) {
+    if (!is_valid_string(url)) {
+      err_input("url must be a non-empty string")
+    }
+
+    if (!is_ok_host(url)) {
+      err_input(c(
+        "url is not allowed by host/scheme policy",
+        "i" = "The URL must be absolute, use HTTPS (or target an allowed non-HTTPS host),",
+        "i" = "and pass the `is_ok_host()` check. See `?is_ok_host` for details.",
+        "i" = "Set `check_url = FALSE` to bypass this validation (not recommended)."
+      ))
+    }
   }
 
   # Build base request ---------------------------------------------------------

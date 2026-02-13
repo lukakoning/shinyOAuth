@@ -10,7 +10,8 @@ client_bearer_req(
   method = "GET",
   headers = NULL,
   query = NULL,
-  follow_redirect = FALSE
+  follow_redirect = FALSE,
+  check_url = TRUE
 )
 }
 \arguments{
@@ -32,6 +33,13 @@ overridden.}
 are disabled to prevent leaking the Bearer token to unexpected hosts.
 Set to \code{TRUE} only if you trust all possible redirect targets and
 understand the security implications.}
+
+\item{check_url}{Logical. If \code{TRUE} (the default), validates \code{url} against
+\code{\link[=is_ok_host]{is_ok_host()}} before attaching the Bearer token. This rejects relative
+URLs, plain HTTP to non-loopback hosts, and – when
+\code{options(shinyOAuth.allowed_hosts)} is set – hosts outside the allowlist.
+Set to \code{FALSE} only if you have already validated the URL and understand
+the security implications.}
 }
 \value{
 An httr2 request object, ready to be further customized or
