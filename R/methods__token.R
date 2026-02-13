@@ -44,11 +44,9 @@ revoke_token <- function(
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
-  stopifnot(
-    is.logical(async),
-    length(async) == 1,
-    !is.na(async)
-  )
+  if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
+    err_input("{.arg async} must be a single non-NA logical.")
+  }
 
   which <- match.arg(which)
 
@@ -338,11 +336,9 @@ introspect_token <- function(
   # Type checks
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
-  stopifnot(
-    is.logical(async),
-    length(async) == 1,
-    !is.na(async)
-  )
+  if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
+    err_input("{.arg async} must be a single non-NA logical.")
+  }
 
   which <- match.arg(which)
 
@@ -690,14 +686,14 @@ refresh_token <- function(
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
-  stopifnot(
-    is.logical(async),
-    length(async) == 1,
-    !is.na(async),
-    is.logical(introspect),
-    length(introspect) == 1,
-    !is.na(introspect)
-  )
+  if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
+    err_input("{.arg async} must be a single non-NA logical.")
+  }
+  if (
+    !(is.logical(introspect) && length(introspect) == 1 && !is.na(introspect))
+  ) {
+    err_input("{.arg introspect} must be a single non-NA logical.")
+  }
 
   # Optional async execution using mirai if requested and available.
   if (isTRUE(async)) {

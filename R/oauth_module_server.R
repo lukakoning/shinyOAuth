@@ -243,54 +243,104 @@ oauth_module_server <- function(
 
   S7::check_is_S7(client, class = OAuthClient)
 
-  stopifnot(
-    is_valid_string(id),
-    is.logical(refresh_proactively) &
-      length(refresh_proactively) == 1 &
-      !is.na(refresh_proactively),
-    is.numeric(refresh_lead_seconds) &
-      length(refresh_lead_seconds) == 1 &
-      !is.na(refresh_lead_seconds) &
-      refresh_lead_seconds >= 0,
-    is.numeric(refresh_check_interval) &
-      length(refresh_check_interval) == 1 &
-      !is.na(refresh_check_interval) &
-      refresh_check_interval >= 100,
-    is.logical(async) & length(async) == 1 & !is.na(async),
-    is.logical(tab_title_cleaning) &
-      length(tab_title_cleaning) == 1 &
-      !is.na(tab_title_cleaning),
-    is.null(tab_title_replacement) || is_valid_string(tab_title_replacement),
-    is.logical(auto_redirect) &
-      length(auto_redirect) == 1 &
-      !is.na(auto_redirect),
-    is.null(reauth_after_seconds) ||
-      (is.numeric(reauth_after_seconds) &
-        length(reauth_after_seconds) == 1 &
-        !is.na(reauth_after_seconds) &
-        reauth_after_seconds > 0),
-    is.logical(indefinite_session) &
-      length(indefinite_session) == 1 &
-      !is.na(indefinite_session),
-    is.null(browser_cookie_path) || is_valid_string(browser_cookie_path),
-    is.logical(revoke_on_session_end) &
-      length(revoke_on_session_end) == 1 &
-      !is.na(revoke_on_session_end)
-  )
+  if (!is_valid_string(id)) {
+    err_input("{.arg id} must be a single non-empty string.")
+  }
+  if (
+    !(is.logical(refresh_proactively) &&
+      length(refresh_proactively) == 1 &&
+      !is.na(refresh_proactively))
+  ) {
+    err_input("{.arg refresh_proactively} must be a single non-NA logical.")
+  }
+  if (
+    !(is.numeric(refresh_lead_seconds) &&
+      length(refresh_lead_seconds) == 1 &&
+      !is.na(refresh_lead_seconds) &&
+      refresh_lead_seconds >= 0)
+  ) {
+    err_input(
+      "{.arg refresh_lead_seconds} must be a single non-negative number."
+    )
+  }
+  if (
+    !(is.numeric(refresh_check_interval) &&
+      length(refresh_check_interval) == 1 &&
+      !is.na(refresh_check_interval) &&
+      refresh_check_interval >= 100)
+  ) {
+    err_input(
+      "{.arg refresh_check_interval} must be a single number >= 100."
+    )
+  }
+  if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
+    err_input("{.arg async} must be a single non-NA logical.")
+  }
+  if (
+    !(is.logical(tab_title_cleaning) &&
+      length(tab_title_cleaning) == 1 &&
+      !is.na(tab_title_cleaning))
+  ) {
+    err_input("{.arg tab_title_cleaning} must be a single non-NA logical.")
+  }
+  if (
+    !(is.null(tab_title_replacement) ||
+      is_valid_string(tab_title_replacement))
+  ) {
+    err_input(
+      "{.arg tab_title_replacement} must be NULL or a non-empty string."
+    )
+  }
+  if (
+    !(is.logical(auto_redirect) &&
+      length(auto_redirect) == 1 &&
+      !is.na(auto_redirect))
+  ) {
+    err_input("{.arg auto_redirect} must be a single non-NA logical.")
+  }
+  if (
+    !(is.null(reauth_after_seconds) ||
+      (is.numeric(reauth_after_seconds) &&
+        length(reauth_after_seconds) == 1 &&
+        !is.na(reauth_after_seconds) &&
+        reauth_after_seconds > 0))
+  ) {
+    err_input(
+      "{.arg reauth_after_seconds} must be NULL or a single positive number."
+    )
+  }
+  if (
+    !(is.logical(indefinite_session) &&
+      length(indefinite_session) == 1 &&
+      !is.na(indefinite_session))
+  ) {
+    err_input("{.arg indefinite_session} must be a single non-NA logical.")
+  }
+  if (
+    !(is.null(browser_cookie_path) ||
+      is_valid_string(browser_cookie_path))
+  ) {
+    err_input("{.arg browser_cookie_path} must be NULL or a non-empty string.")
+  }
+  if (
+    !(is.logical(revoke_on_session_end) &&
+      length(revoke_on_session_end) == 1 &&
+      !is.na(revoke_on_session_end))
+  ) {
+    err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
+  }
 
   # Fail fast: revoke_on_session_end requires a revocation URL
 
   if (isTRUE(revoke_on_session_end)) {
     revocation_url <- client@provider@revocation_url %||% NA_character_
     if (!is_valid_string(revocation_url)) {
-      stop(
-        "`revoke_on_session_end = TRUE` requires the provider to have a ",
-        "`revocation_url` configured. The provider '",
-        client@provider@name %||% "(unnamed)",
-        "' does not expose a revocation endpoint. Either set ",
-        "`revoke_on_session_end = FALSE` or configure the provider with a ",
-        "valid `revocation_url`.",
-        call. = FALSE
+      err_config(
+        c(
+          "{.arg revoke_on_session_end} = {.val TRUE} requires\n            the provider to have a {.arg revocation_url} configured.",
+          "x" = "Provider {.val {client@provider@name %||% '(unnamed)'}}\n            does not expose a revocation endpoint.",
+          "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\n            configure the provider with a valid {.arg revocation_url}."
+        )
       )
     }
   }

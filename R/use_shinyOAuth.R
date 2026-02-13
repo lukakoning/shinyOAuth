@@ -32,9 +32,13 @@
 use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
   .set_flag(".called_js_dependency", TRUE)
 
-  stopifnot(
-    isTRUE(inject_referrer_meta) || identical(inject_referrer_meta, FALSE)
-  )
+  if (
+    !(isTRUE(inject_referrer_meta) || identical(inject_referrer_meta, FALSE))
+  ) {
+    err_input(
+      "{.arg inject_referrer_meta} must be {.val TRUE} or {.val FALSE}."
+    )
+  }
 
   # Resolve a safe version string for the dependency. In dev contexts
   # (e.g., load_all), packageVersion() may not always be available; fall back
