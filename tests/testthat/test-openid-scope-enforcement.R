@@ -156,3 +156,66 @@ test_that("ensure_openid_scope is case-sensitive (OpenID != openid)", {
   )
   expect_equal(result, c("openid", "OpenID", "profile"))
 })
+
+# ---- Tests for space-delimited scope strings (GH bug: duplicate openid) ----
+
+test_that("ensure_openid_scope detects openid inside a space-delimited string", {
+  prov <- make_oidc_provider()
+  # Single string "openid profile" — openid is present but embedded in one element
+
+  result <- shinyOAuth:::ensure_openid_scope("openid profile", prov)
+  tokens <- result
+  expect_equal(sum(tokens == "openid"), 1L)
+  expect_true("profile" %in% tokens)
+})
+
+test_that("ensure_openid_scope does not duplicate openid from space-delimited input", {
+  prov <- make_oidc_provider()
+  # Simulates what happens when OAuthClient() is called directly with
+  # scopes = "openid profile email" (a single space-delimited string)
+  result <- shinyOAuth:::ensure_openid_scope("openid profile email", prov)
+  expect_equal(sum(result == "openid"), 1L)
+  expect_setequal(result, c("openid", "profile", "email"))
+})
+
+test_that("ensure_openid_scope prepends openid for space-delimited string missing it", {
+  reset_openid_warn()
+  prov <- make_oidc_provider()
+  expect_warning(
+    result <- shinyOAuth:::ensure_openid_scope("profile email", prov),
+    "openid"
+  )
+  expect_equal(result[1], "openid")
+  expect_equal(sum(result == "openid"), 1L)
+  expect_true("profile" %in% result)
+  expect_true("email" %in% result)
+})
+
+test_that("build_auth_url does not duplicate openid with space-delimited scopes", {
+  # Use the low-level OAuthClient() directly to bypass oauth_client()'s
+  # as_scope_tokens() normalization — this is the path that triggered the bug.
+  prov <- make_oidc_provider()
+  cli <- OAuthClient(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid profile",
+    state_store = cachem::cache_mem(max_age = 600),
+    state_payload_max_age = 300,
+    state_entropy = 64,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    scope_validation = "warn",
+    introspect = FALSE
+  )
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  scope_val <- parse_query_param(url, "scope", decode = TRUE)
+  scope_tokens <- strsplit(scope_val, " ")[[1]]
+  # openid must appear exactly once — no duplication
+  expect_equal(sum(scope_tokens == "openid"), 1L)
+  expect_true("profile" %in% scope_tokens)
+})

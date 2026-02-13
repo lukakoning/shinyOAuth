@@ -113,6 +113,10 @@ ensure_openid_scope <- function(scopes, provider) {
     return(scopes)
   }
 
+  # Normalize to individual tokens so that a single space-delimited string
+  # like "openid profile" is correctly recognised by the %in% check below.
+  scopes <- as_scope_tokens(scopes)
+
   # Already present — nothing to do
   if ("openid" %in% scopes) {
     return(scopes)
