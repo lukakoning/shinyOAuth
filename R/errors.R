@@ -122,13 +122,33 @@ err_http <- function(msg, resp = NULL, context = list()) {
     }
   }
   # Compute non-sensitive body digest for debugging if available
+  # and extract RFC 6749 §5.2 structured error fields when present
   body_digest <- NULL
+  oauth_error <- NULL
+  oauth_error_description <- NULL
+  oauth_error_uri <- NULL
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
     bs <- try(httr2::resp_body_string(resp), silent = TRUE)
     if (!inherits(bs, "try-error")) {
       dig <- try(openssl::sha256(charToRaw(bs)), silent = TRUE)
       if (!inherits(dig, "try-error")) {
         body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
+      }
+      # RFC 6749 §5.2: try to extract structured error fields from JSON body
+      parsed <- try(
+        jsonlite::fromJSON(bs, simplifyVector = TRUE),
+        silent = TRUE
+      )
+      if (!inherits(parsed, "try-error") && is.list(parsed)) {
+        if (is_valid_string(parsed[["error"]])) {
+          oauth_error <- parsed[["error"]]
+        }
+        if (is_valid_string(parsed[["error_description"]])) {
+          oauth_error_description <- parsed[["error_description"]]
+        }
+        if (is_valid_string(parsed[["error_uri"]])) {
+          oauth_error_uri <- parsed[["error_uri"]]
+        }
       }
     }
   }
@@ -140,7 +160,10 @@ err_http <- function(msg, resp = NULL, context = list()) {
       message = msg,
       status = status,
       url = url,
-      body_digest = body_digest
+      body_digest = body_digest,
+      oauth_error = oauth_error,
+      oauth_error_description = oauth_error_description,
+      oauth_error_uri = oauth_error_uri
     ),
     context
   )
@@ -154,6 +177,21 @@ err_http <- function(msg, resp = NULL, context = list()) {
     } else {
       stats::setNames(paste0("Status ", status, "."), "x")
     }
+  } else {
+    character()
+  }
+  # RFC 6749 §5.2: surface structured error fields from token endpoint
+  oauth_error_msg <- if (!is.null(oauth_error)) {
+    reason <- oauth_error
+    if (!is.null(oauth_error_description)) {
+      reason <- paste0(reason, ": ", oauth_error_description)
+    }
+    stats::setNames(paste0("OAuth error: ", reason), "x")
+  } else {
+    character()
+  }
+  oauth_error_uri_msg <- if (!is.null(oauth_error_uri)) {
+    stats::setNames(paste0("Error URI: ", oauth_error_uri), "i")
   } else {
     character()
   }
@@ -172,6 +210,8 @@ err_http <- function(msg, resp = NULL, context = list()) {
     format_header("HTTP request failed"),
     bullets,
     status_msg,
+    oauth_error_msg,
+    oauth_error_uri_msg,
     url_msg,
     trace_msg,
     body_msg
@@ -184,6 +224,9 @@ err_http <- function(msg, resp = NULL, context = list()) {
     status = status,
     url = url,
     body_digest = body_digest,
+    oauth_error = oauth_error,
+    oauth_error_description = oauth_error_description,
+    oauth_error_uri = oauth_error_uri,
     context = context
   )
 }
