@@ -31,6 +31,7 @@ OAuthProvider(
   userinfo_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo$sub,
   userinfo_id_token_match = FALSE,
+  userinfo_signed_jwt_required = FALSE,
   id_token_required = FALSE,
   id_token_validation = FALSE,
   id_token_at_hash_required = FALSE,
@@ -152,6 +153,31 @@ OAuthProvider(
   when not explicitly supplied, this is inferred as `TRUE` only if both
   `userinfo_required` and `id_token_validation` are `TRUE`; otherwise it
   defaults to `FALSE`.
+
+- userinfo_signed_jwt_required:
+
+  Whether to require that the userinfo endpoint returns a signed JWT
+  (`Content-Type: application/jwt`) whose signature can be verified
+  against the provider's JWKS. When `TRUE`:
+
+  - If the userinfo response is not `application/jwt`, authentication
+    fails.
+
+  - If the JWT uses `alg=none` or an algorithm not in `allowed_algs`,
+    authentication fails.
+
+  - If signature verification fails (JWKS fetch error, no compatible
+    keys, or invalid signature), authentication fails.
+
+  This prevents an attacker or misconfigured provider from bypassing
+  signature verification by returning unsigned claims as plain JSON or
+  `alg=none` JWTs. Requires `userinfo_required = TRUE` and a valid
+  `issuer` (for JWKS). Defaults to `FALSE`.
+
+  [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  will automatically enable this when the OIDC discovery document
+  advertises `userinfo_signing_alg_values_supported` with algorithms
+  that overlap the caller's `allowed_algs`.
 
 - id_token_required:
 

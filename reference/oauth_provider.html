@@ -65,6 +65,7 @@ some settings based on the provided parameters.</p>
 <span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span>,</span>
 <span>  userinfo_required <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  userinfo_signed_jwt_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  userinfo_id_selector <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">userinfo</span><span class="op">)</span> <span class="va">userinfo</span><span class="op">$</span><span class="va">sub</span>,</span>
 <span>  id_token_required <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -166,6 +167,23 @@ the integrity of the user information by confirming that both sources agree on t
 <p>For <code>oauth_provider()</code>, when not explicitly supplied, this is inferred as
 <code>TRUE</code> only if both <code>userinfo_required</code> and <code>id_token_validation</code> are <code>TRUE</code>;
 otherwise it defaults to <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-userinfo-signed-jwt-required">userinfo_signed_jwt_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-signed-jwt-required"></a></dt>
+<dd><p>Whether to require that the userinfo
+endpoint returns a signed JWT (<code>Content-Type: application/jwt</code>) whose
+signature can be verified against the provider's JWKS. When <code>TRUE</code>:</p><ul><li><p>If the userinfo response is not <code>application/jwt</code>, authentication fails.</p></li>
+<li><p>If the JWT uses <code>alg=none</code> or an algorithm not in <code>allowed_algs</code>,
+authentication fails.</p></li>
+<li><p>If signature verification fails (JWKS fetch error, no compatible keys,
+or invalid signature), authentication fails.</p></li>
+</ul><p>This prevents an attacker or misconfigured provider from bypassing signature
+verification by returning unsigned claims as plain JSON or <code>alg=none</code> JWTs.
+Requires <code>userinfo_required = TRUE</code> and a valid <code>issuer</code> (for JWKS).
+Defaults to <code>FALSE</code>.</p>
+<p><code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> will automatically enable this when the
+OIDC discovery document advertises <code>userinfo_signing_alg_values_supported</code>
+with algorithms that overlap the caller's <code>allowed_algs</code>.</p></dd>
 
 
 <dt id="arg-userinfo-id-selector">userinfo_id_selector<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector"></a></dt>
