@@ -871,6 +871,9 @@ refresh_token <- function(
         id_token = token_set[["id_token"]]
       )
     }
+
+    # Validate essential claims in userinfo (OIDC Core §5.5)
+    validate_essential_claims(oauth_client, ui, "userinfo")
   }
 
   # Align expiry handling with login path: expires_in==0 means "expires now".

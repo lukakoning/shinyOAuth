@@ -717,6 +717,9 @@ handle_callback_internal <- function(
         id_token = token_set[["id_token"]]
       )
     }
+
+    # Validate essential claims in userinfo (OIDC Core §5.5)
+    validate_essential_claims(oauth_client, userinfo, "userinfo")
   }
 
   # Return ---------------------------------------------------------------------
@@ -1530,6 +1533,21 @@ verify_token_set <- function(
     }
   }
 
+  # Validate essential claims in ID token (OIDC Core §5.5) ---------------------
+
+  # When claims_validation is enabled and the client requested essential claims
+  # for id_token, verify they are present in the decoded ID token payload.
+  # This applies to both initial login and refresh (if a new ID token is returned).
+  if (isTRUE(id_token_present)) {
+    id_payload <- tryCatch(
+      parse_jwt_payload(token_set[["id_token"]]),
+      error = function(e) NULL
+    )
+    if (!is.null(id_payload)) {
+      validate_essential_claims(client, id_payload, "id_token")
+    }
+  }
+
   # Validate match between userinfo & ID token ---------------------------------
 
   # During initial login (is_refresh = FALSE): this check is now performed by
@@ -1600,4 +1618,110 @@ verify_token_type_allowlist <- function(client, token_set) {
   }
 
   invisible(TRUE)
+}
+
+# Claims validation (OIDC Core §5.5) ------------------------------------------
+
+# Extract essential claim names from a claims specification for a given target
+# (either "id_token" or "userinfo"). Returns a character vector of claim names
+# that have essential = TRUE, or character(0) if none.
+extract_essential_claims <- function(claims_spec, target) {
+  if (is.null(claims_spec)) {
+    return(character(0))
+  }
+
+  # If claims_spec is a JSON string, parse it
+  if (is.character(claims_spec)) {
+    parsed <- tryCatch(
+      jsonlite::fromJSON(claims_spec, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(parsed)) {
+      return(character(0))
+    }
+    claims_spec <- parsed
+  }
+
+  if (!is.list(claims_spec)) {
+    return(character(0))
+  }
+
+  target_claims <- claims_spec[[target]]
+  if (!is.list(target_claims) || length(target_claims) == 0) {
+    return(character(0))
+  }
+
+  essential_names <- character(0)
+  for (nm in names(target_claims)) {
+    entry <- target_claims[[nm]]
+    # A claim is essential if it has a list value with essential = TRUE.
+    # NULL entries (claim requested without parameters) are not essential.
+    if (is.list(entry) && isTRUE(entry$essential)) {
+      essential_names <- c(essential_names, nm)
+    }
+  }
+
+  essential_names
+}
+
+# Validate that essential claims are present in the response.
+# @param client OAuthClient
+# @param claims_present Named list (decoded ID token payload or userinfo response)
+# @param target "id_token" or "userinfo"
+validate_essential_claims <- function(client, claims_present, target) {
+  mode <- client@claims_validation %||% "none"
+  if (identical(mode, "none")) {
+    return(invisible(NULL))
+  }
+
+  essential <- extract_essential_claims(client@claims, target)
+  if (length(essential) == 0) {
+    return(invisible(NULL))
+  }
+
+  # claims_present must be a named list
+  if (!is.list(claims_present) || length(claims_present) == 0) {
+    # No claims at all - all essential claims are missing
+    missing_claims <- essential
+  } else {
+    present_names <- names(claims_present)
+    missing_claims <- setdiff(essential, present_names)
+  }
+
+  if (length(missing_claims) == 0) {
+    return(invisible(NULL))
+  }
+
+  target_label <- if (identical(target, "id_token")) "ID token" else "userinfo"
+  msg <- paste0(
+    "Essential claims missing from ",
+    target_label,
+    " response (OIDC Core \u00a75.5): ",
+    paste(missing_claims, collapse = ", ")
+  )
+
+  if (identical(mode, "strict")) {
+    if (identical(target, "id_token")) {
+      err_id_token(c(
+        "x" = msg,
+        "i" = "Set claims_validation = 'warn' or 'none' to allow missing essential claims"
+      ))
+    } else {
+      err_userinfo(c(
+        "x" = msg,
+        "i" = "Set claims_validation = 'warn' or 'none' to allow missing essential claims"
+      ))
+    }
+  } else if (identical(mode, "warn")) {
+    rlang::warn(
+      c(
+        "!" = msg,
+        "i" = "Set claims_validation = 'none' to suppress this warning"
+      ),
+      .frequency = "once",
+      .frequency_id = paste0("claims-validation-missing-", target)
+    )
+  }
+
+  invisible(NULL)
 }

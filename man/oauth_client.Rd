@@ -20,6 +20,7 @@ oauth_client(
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
   scope_validation = c("strict", "warn", "none"),
+  claims_validation = c("none", "warn", "strict"),
   introspect = FALSE,
   introspect_elements = character(0)
 )
@@ -165,6 +166,21 @@ from the granted scopes.
 \item \code{"warn"}: Emits a warning but continues authentication if scopes are
 missing.
 \item \code{"none"}: Skips scope validation entirely.
+}}
+
+\item{claims_validation}{Controls validation of essential claims requested
+via the \code{claims} parameter (OIDC Core §5.5). When \code{claims} includes
+entries with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, this setting
+determines what happens if those essential claims are missing from the
+returned ID token or userinfo response.
+\itemize{
+\item \code{"none"} (default): Skips claims validation entirely. This is the
+default because providers are expected to fulfil essential claims
+requests or return an error.
+\item \code{"warn"}: Emits a warning but continues authentication if essential
+claims are missing.
+\item \code{"strict"}: Throws an error if any requested essential claims are
+missing from the response.
 }}
 
 \item{introspect}{If TRUE, the login flow will call the provider's token

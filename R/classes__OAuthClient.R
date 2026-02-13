@@ -143,6 +143,20 @@
 #'     missing.
 #'   - `"none"`: Skips scope validation entirely.
 #'
+#' @param claims_validation Controls validation of essential claims requested
+#'   via the `claims` parameter (OIDC Core §5.5). When `claims` includes
+#'   entries with `essential = TRUE` for `id_token` or `userinfo`, this setting
+#'   determines what happens if those essential claims are missing from the
+#'   returned ID token or userinfo response.
+#'
+#'   - `"none"` (default): Skips claims validation entirely. This is the
+#'     default because providers are expected to fulfil essential claims
+#'     requests or return an error.
+#'   - `"warn"`: Emits a warning but continues authentication if essential
+#'     claims are missing.
+#'   - `"strict"`: Throws an error if any requested essential claims are
+#'     missing from the response.
+#'
 #' @param introspect If TRUE, the login flow will call the provider's token
 #'   introspection endpoint (RFC 7662) to validate the access token. The login
 #'   is not considered complete unless introspection succeeds and returns
@@ -217,6 +231,10 @@ OAuthClient <- S7::new_class(
     scope_validation = S7::new_property(
       S7::class_character,
       default = "strict"
+    ),
+    claims_validation = S7::new_property(
+      S7::class_character,
+      default = "none"
     ),
 
     # Token introspection settings (RFC 7662): control whether login validates
@@ -572,6 +590,16 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    # Validate claims_validation
+    if (
+      !is_valid_string(self@claims_validation) ||
+        !self@claims_validation %in% c("strict", "warn", "none")
+    ) {
+      return(
+        "OAuthClient: claims_validation must be one of 'strict', 'warn', or 'none'"
+      )
+    }
+
     # Validate introspect
     if (
       !is.logical(self@introspect) ||
@@ -695,6 +723,7 @@ oauth_client <- function(
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
   scope_validation = c("strict", "warn", "none"),
+  claims_validation = c("none", "warn", "strict"),
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
@@ -703,6 +732,7 @@ oauth_client <- function(
   )
 
   scope_validation <- match.arg(scope_validation)
+  claims_validation <- match.arg(claims_validation)
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees
@@ -733,6 +763,7 @@ oauth_client <- function(
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
     scope_validation = scope_validation,
+    claims_validation = claims_validation,
     introspect = introspect,
     introspect_elements = introspect_elements
   )
