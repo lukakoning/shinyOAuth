@@ -484,12 +484,12 @@ An important mitigation is to sanitize user inputs before rendering them in the 
 
 When you run multiple Shiny R processes (e.g., multiple workers, Shiny Server Pro, RStudio Connect, Docker/Kubernetes replicas, or any non‑sticky load balancer), you must ensure that:
 
-- All workers share the same state store (e.g., `cachem::cache_disk()` pointing at a shared directory, or a custom cachem backend; 
+- All workers share the same state store (e.g., `cachem::cache_disk()` pointing at a shared directory, or a custom backend via `custom_cache()`;
 the default `cachem::cache_mem()` is per‑process only and is then not shared)
 - All workers share the same state key (e.g., read from environment variable; by default, a random key is generated per client instance
 which is then not shared)
 
-This is because during the authorization code + PKCE flow, 'shinyOAuth' creates an encrypted “state envelope” which is stored in a cache (the state_store) and echoed back via the `state` query parameter. The envelope is sealed with AES‑GCM using your state_key. If the callback lands on a different worker than the one that initiated login, that worker must be able to both read the cached entry and decrypt the envelope using the same key. If workers have different keys, decryption will fail and the login flow will abort with a state error.
+This is because during the authorization code + PKCE flow, 'shinyOAuth' creates an encrypted "state envelope" which is stored in a cache (the state_store) and echoed back via the `state` query parameter. The envelope is sealed with AES‑GCM using your state_key. If the callback lands on a different worker than the one that initiated login, that worker must be able to both read the cached entry and decrypt the envelope using the same key. If workers have different keys, decryption will fail and the login flow will abort with a state error.
 
 When providing a custom state key, please ensure it has high entropy (minimum 32 characters or 32 raw bytes; recommended 64–128 characters) to prevent offline guessing attacks against the encrypted state. Do not use short or human‑memorable passphrases.
 

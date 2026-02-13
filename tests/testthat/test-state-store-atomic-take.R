@@ -252,12 +252,31 @@ test_that("fallback does NOT warn for cachem stores", {
   state <- "NO-WARN-CACHEM"
   key <- shinyOAuth:::state_cache_key(state)
 
-  # No warning for cachem (per-process safe)
+  # No warning for cachem::cache_mem() (per-process safe)
   expect_no_warning(
     expect_error(
       shinyOAuth:::state_store_get_remove(cli, state),
       class = "shinyOAuth_state_error"
     )
+  )
+})
+
+
+test_that("fallback DOES warn for cachem::cache_disk() (shared store)", {
+  rlang::reset_warning_verbosity("shinyOAuth_no_atomic_take")
+
+  tmp <- withr::local_tempdir()
+  cli <- make_client_with_store(cachem::cache_disk(dir = tmp, max_age = 60))
+
+  state <- "WARN-CACHE-DISK"
+  key <- shinyOAuth:::state_cache_key(state)
+
+  expect_warning(
+    expect_error(
+      shinyOAuth:::state_store_get_remove(cli, state),
+      class = "shinyOAuth_state_error"
+    ),
+    class = "shinyOAuth_no_atomic_take_warning"
   )
 })
 

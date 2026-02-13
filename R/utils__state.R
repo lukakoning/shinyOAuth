@@ -134,9 +134,11 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
   if (has_take) {
     ssv <- state_store_consume_atomic(store, key, client, state, shiny_session)
   } else {
-    # For non-cachem stores (likely shared/distributed), warn once that the
-    # non-atomic fallback cannot guarantee single-use under concurrency.
-    if (!inherits(store, "cachem")) {
+    # Warn whenever $take() is absent unless the backend is known to be
+    # process-local.  cachem::cache_mem() is the only built-in backend that
+    # is inherently per-process; cachem::cache_disk() and any other shared or
+    # custom stores should surface the replay-risk warning.
+    if (!inherits(store, "cache_mem")) {
       warn_no_atomic_take()
     }
     ssv <- state_store_consume_fallback(
