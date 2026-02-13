@@ -287,6 +287,30 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     ))
   }
 
+  # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
+  # do not support (mirrors the same check in validate_id_token()).
+  supported_crit <- character()
+  crit <- header$crit
+  if (!is.null(crit)) {
+    if (
+      !is.character(crit) ||
+        length(crit) == 0L ||
+        anyNA(crit) ||
+        !all(nzchar(crit))
+    ) {
+      err_userinfo(
+        "JWT crit header must be a non-empty character vector of extension names"
+      )
+    }
+    unsupported <- setdiff(crit, supported_crit)
+    if (length(unsupported) > 0L) {
+      err_userinfo(paste0(
+        "JWT contains unsupported critical header parameter(s): ",
+        paste(unsupported, collapse = ", ")
+      ))
+    }
+  }
+
   alg <- toupper(header$alg %||% "")
   kid <- header$kid %||% NULL
 
@@ -413,6 +437,49 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     kid = kid,
     pins = prov@jwks_pins %||% character()
   )
+
+  # One-shot JWKS refresh-on-kid-miss: if kid is present but no candidate keys
+  # match, force-refresh JWKS once then re-select (mirrors validate_id_token()).
+  if (length(keys) == 0L && !is.null(kid)) {
+    if (
+      isTRUE(jwks_force_refresh_allowed(
+        prov@issuer,
+        prov@jwks_cache,
+        pins = prov@jwks_pins %||% character(),
+        pin_mode = prov@jwks_pin_mode %||% "any",
+        min_interval = 30,
+        jwks_host_issuer_match = isTRUE(try(
+          prov@jwks_host_issuer_match,
+          silent = TRUE
+        )),
+        jwks_host_allow_only = {
+          ao <- try(prov@jwks_host_allow_only, silent = TRUE)
+          if (inherits(ao, "try-error")) NA_character_ else ao
+        }
+      ))
+    ) {
+      jwks <- try(
+        fetch_jwks(
+          prov@issuer,
+          prov@jwks_cache,
+          force_refresh = TRUE,
+          pins = prov@jwks_pins %||% character(),
+          pin_mode = prov@jwks_pin_mode %||% "any",
+          provider = prov
+        ),
+        silent = TRUE
+      )
+      if (!inherits(jwks, "try-error")) {
+        keys <- select_candidate_jwks(
+          jwks,
+          header_alg = alg,
+          kid = kid,
+          pins = prov@jwks_pins %||% character()
+        )
+      }
+    }
+  }
+
   if (length(keys) > 0L) {
     for (jk in keys) {
       pub <- try(jwk_to_pubkey(jk), silent = TRUE)
