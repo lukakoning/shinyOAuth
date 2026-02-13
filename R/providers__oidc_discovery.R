@@ -464,19 +464,22 @@ oauth_provider_oidc_discover <- function(
   methods <- disc[["token_endpoint_auth_methods_supported"]] %||% character(0)
   methods <- tolower(as.character(methods))
 
-  # Public clients: if discovery advertises 'none' and PKCE is enabled, prefer
-  # secretless token requests regardless of other advertised methods. We model
-  # this as 'body' style without credentials (code_verifier only).
-  if ("none" %in% methods && isTRUE(use_pkce)) {
-    return("body")
-  }
+  # Conservative default: prefer confidential auth methods first so that
 
-  # Conservative default: prefer client_secret_basic, then client_secret_post.
+  # mixed metadata (e.g. 'none' + 'client_secret_basic') does not silently
+  # drift a confidential client to public-client-like behaviour.
   if ("client_secret_basic" %in% methods) {
     return("header")
   }
 
   if ("client_secret_post" %in% methods) {
+    return("body")
+  }
+
+  # Public clients: if discovery only advertises 'none' (no confidential
+  # methods matched above) and PKCE is enabled, use secretless token requests.
+  # We model this as 'body' style without credentials (code_verifier only).
+  if ("none" %in% methods && isTRUE(use_pkce)) {
     return("body")
   }
 
