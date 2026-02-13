@@ -182,7 +182,7 @@
   `check_url` argument (default `TRUE`) allows opting out of the check
   when the URL has already been validated.
 
-- `err_http()` now extracts RFC 6749 §5.2 structured error fields
+- `err_http()` now extracts RFC 6749 section 5.2 structured error fields
   (`error`, `error_description`, `error_uri`) from JSON error response
   bodies. These fields are surfaced in the error message bullets,
   attached to the condition object (as `oauth_error`,
