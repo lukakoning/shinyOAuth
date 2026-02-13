@@ -182,14 +182,15 @@ If userinfo is requested via `oauth_provider(userinfo_required = TRUE)`
 calls the userinfo endpoint with the access token and stores returned
 claims. This happens **after** ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
-fails, the flow aborts with an error. - Subject match: if
-`oauth_provider(userinfo_id_token_match = TRUE)`, it is checked that
-`sub` in userinfo equals `sub` in the ID token - Essential claims (OIDC
-Core §5.5): if the client requested specific userinfo claims via the
-`claims` parameter with `essential = TRUE`, and `claims_validation` is
-`"warn"` or `"strict"`, the userinfo response is checked for those
-claims. Missing essential claims trigger a warning or error depending on
-the mode
+fails, the flow aborts with an error.
+
+- Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
+  is checked that `sub` in userinfo equals `sub` in the ID token
+- Essential claims (OIDC Core §5.5): if the client requested specific
+  userinfo claims via the `claims` parameter with `essential = TRUE`,
+  and `claims_validation` is `"warn"` or `"strict"`, the userinfo
+  response is checked for those claims. Missing essential claims trigger
+  a warning or error depending on the mode
 
 ### 11. Token introspection (optional)
 

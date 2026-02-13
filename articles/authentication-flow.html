@@ -278,15 +278,19 @@ should have a <code>userinfo_url</code> configured), the module calls
 the userinfo endpoint with the access token and stores returned claims.
 This happens <strong>after</strong> ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
-fails, the flow aborts with an error. - Subject match: if
+fails, the flow aborts with an error.</p>
+<ul>
+<li>Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
 checked that <code>sub</code> in userinfo equals <code>sub</code> in the
-ID token - Essential claims (OIDC Core §5.5): if the client requested
-specific userinfo claims via the <code>claims</code> parameter with
+ID token</li>
+<li>Essential claims (OIDC Core §5.5): if the client requested specific
+userinfo claims via the <code>claims</code> parameter with
 <code>essential = TRUE</code>, and <code>claims_validation</code> is
 <code>"warn"</code> or <code>"strict"</code>, the userinfo response is
 checked for those claims. Missing essential claims trigger a warning or
-error depending on the mode</p>
+error depending on the mode</li>
+</ul>
 </div>
 <div class="section level3">
 <h3 id="token-introspection-optional">11. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
