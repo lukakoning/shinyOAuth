@@ -210,7 +210,15 @@ validate_id_token <- function(
               jwks_cache,
               pins = pins,
               pin_mode = pin_mode,
-              min_interval = 30
+              min_interval = 30,
+              jwks_host_issuer_match = isTRUE(try(
+                prov@jwks_host_issuer_match,
+                silent = TRUE
+              )),
+              jwks_host_allow_only = {
+                ao <- try(prov@jwks_host_allow_only, silent = TRUE)
+                if (inherits(ao, "try-error")) NA_character_ else ao
+              }
             ))
           ) {
             did_force_refresh <- TRUE

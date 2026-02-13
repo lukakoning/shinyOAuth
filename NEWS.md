@@ -39,6 +39,14 @@ letting a confusing alg/typ/parse failure propagate.
 - Now validates the `auth_time` claim when `max_age` is
 present in `extra_auth_params` (OIDC Core section 3.1.2.1).
 
+* JWKS cache key now includes host-policy fields
+(`jwks_host_issuer_match`, `jwks_host_allow_only`). Previously, two provider
+configs for the same issuer with different host policies shared the same cache
+entry, allowing a relaxed-policy provider to populate the cache and a
+strict-policy provider to skip host validation on cache hit. Cache entries now
+also store the JWKS source host and re-validate it against the current
+provider policy on read (defense-in-depth).
+
 * Stricter URL validation: `OAuthClient` now rejects redirect URIs containing 
 fragments (per RFC 6749, section 3.1.2); `OAuthProvider` now rejects issuer 
 identifiers containing query or fragment components, covering both 

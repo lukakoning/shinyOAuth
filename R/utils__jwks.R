@@ -6,10 +6,12 @@
 #' Caching details:
 #' - Cache entries are keyed by a stable hex sha256 of the issuer URL, combined
 #'   with a hex sha256 of the current pinning configuration (sorted pins and
-#'   `pin_mode`). This prevents reusing a JWKS cached under a different pinning
-#'   policy.
+#'   `pin_mode`) and host-policy fields (`jwks_host_issuer_match`,
+#'   `jwks_host_allow_only`). This prevents reusing a JWKS cached under a
+#'   different pinning or host policy.
 #' - For additional safety, cached entries are re-validated against the current
-#'   `pins`/`pin_mode` before being returned. If validation fails, the cache
+#'   `pins`/`pin_mode` before being returned. The JWKS source host is also
+#'   re-checked against current host-policy. If validation fails, the cache
 #'   entry is evicted and a fresh JWKS is fetched.
 #'
 #' @param issuer Issuer base URL (must include scheme)
@@ -44,8 +46,24 @@ fetch_jwks <- function(
   }
   pin_mode <- match.arg(pin_mode)
   now <- as.numeric(Sys.time())
-  # Compute a cache key that incorporates issuer + current pinning configuration
-  cache_key <- jwks_cache_key(issuer, pins = pins, pin_mode = pin_mode)
+
+  # Extract host-policy from provider (if available)
+  host_match <- FALSE
+  allow_only <- NA_character_
+  if (!is.null(provider)) {
+    host_match <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
+    ao <- try(provider@jwks_host_allow_only, silent = TRUE)
+    if (!inherits(ao, "try-error")) allow_only <- ao
+  }
+
+  # Compute a cache key that incorporates issuer + pinning + host-policy
+  cache_key <- jwks_cache_key(
+    issuer,
+    pins = pins,
+    pin_mode = pin_mode,
+    jwks_host_issuer_match = host_match,
+    jwks_host_allow_only = allow_only
+  )
 
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
@@ -58,14 +76,38 @@ fetch_jwks <- function(
       validate_jwks(entry$jwks, pins = pins, pin_mode = pin_mode),
       silent = TRUE
     )
-    if (!inherits(ok, "try-error")) {
-      return(entry$jwks)
-    } else {
+    if (inherits(ok, "try-error")) {
       # Evict incompatible/invalid cached entry and continue to refetch
       if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
         jwks_cache$remove(cache_key)
+      }
+    } else {
+      # Defense-in-depth: re-validate cached JWKS source host against current
+      # host-policy. The source host is stored on cache write; if missing
+      # (legacy entry), skip this check — the key itself already segregates.
+      jwks_host <- entry$jwks_uri_host
+      if (
+        !is.null(jwks_host) &&
+          is.character(jwks_host) &&
+          nzchar(jwks_host)
+      ) {
+        host_ok <- try(
+          validate_jwks_host_matches_issuer(
+            issuer,
+            paste0("https://", jwks_host, "/jwks"),
+            provider = provider
+          ),
+          silent = TRUE
+        )
+        if (inherits(host_ok, "try-error")) {
+          if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
+            jwks_cache$remove(cache_key)
+          }
+        } else {
+          return(entry$jwks)
+        }
       } else {
-        # Fallback: overwrite below after refetch
+        return(entry$jwks)
       }
     }
   }
@@ -97,6 +139,15 @@ fetch_jwks <- function(
     ))
   }
   validate_jwks_host_matches_issuer(issuer, jwks_uri, provider = provider)
+  # Capture the JWKS host so we can store it in the cache entry for
+  # defense-in-depth re-validation on cache reads.
+  fetched_jwks_host <- try(
+    parse_url_host(jwks_uri, "jwks_uri"),
+    silent = TRUE
+  )
+  if (inherits(fetched_jwks_host, "try-error")) {
+    fetched_jwks_host <- NULL
+  }
 
   jresp <- httr2::request(jwks_uri) |>
     add_req_defaults() |>
@@ -114,7 +165,11 @@ fetch_jwks <- function(
   jwks <- httr2::resp_body_json(jresp, simplifyVector = TRUE)
   # Validate structure and (optionally) pin before caching
   validate_jwks(jwks, pins = pins, pin_mode = pin_mode)
-  new_entry <- list(jwks = jwks, fetched_at = now)
+  new_entry <- list(
+    jwks = jwks,
+    fetched_at = now,
+    jwks_uri_host = fetched_jwks_host
+  )
   jwks_cache$set(cache_key, new_entry)
   jwks
 }
@@ -128,7 +183,7 @@ fetch_jwks <- function(
 #' - The rate-limit state is stored in the existing `jwks_cache` backend so it
 #'   can be shared when users provide a shared cache (e.g., Redis) and so tests
 #'   naturally isolate by using fresh caches.
-#' - The key is derived from `jwks_cache_key()` (issuer + pinning policy).
+#' - The key is derived from `jwks_cache_key()` (issuer + pinning + host policy).
 #'
 #' @keywords internal
 #' @noRd
@@ -138,7 +193,9 @@ jwks_force_refresh_allowed <- function(
   pins = NULL,
   pin_mode = c("any", "all"),
   min_interval = 30,
-  now = as.numeric(Sys.time())
+  now = as.numeric(Sys.time()),
+  jwks_host_issuer_match = FALSE,
+  jwks_host_allow_only = NA_character_
 ) {
   pin_mode <- match.arg(pin_mode)
   stopifnot(
@@ -149,7 +206,13 @@ jwks_force_refresh_allowed <- function(
   )
 
   # Derive a stable, cache-safe key for the throttle entry
-  base_key <- jwks_cache_key(issuer, pins = pins, pin_mode = pin_mode)
+  base_key <- jwks_cache_key(
+    issuer,
+    pins = pins,
+    pin_mode = pin_mode,
+    jwks_host_issuer_match = jwks_host_issuer_match,
+    jwks_host_allow_only = jwks_host_allow_only
+  )
   throttle_key <- paste0(base_key, "xfr")
 
   last <- jwks_cache$get(throttle_key, missing = NULL)
@@ -304,24 +367,50 @@ select_candidate_jwks <- function(
 #' Internal: Compute cache key for JWKS entries
 #'
 #' Uses hex SHA-256 of issuer URL concatenated with hex SHA-256 of the
-#' pinning configuration (sorted unique pins + pin_mode). The resulting key is
-#' lowercase alphanumeric only, suitable for cachem backends that restrict key
-#' characters.
+#' pinning configuration (sorted unique pins + pin_mode) and host-policy
+#' fields (`jwks_host_issuer_match`, `jwks_host_allow_only`). Including
+#' host-policy prevents cross-policy cache reuse where a relaxed provider
+#' populates the cache and a stricter provider skips host validation on hit.
 #'
 #' @keywords internal
 #' @noRd
-jwks_cache_key <- function(issuer, pins = NULL, pin_mode = c("any", "all")) {
+jwks_cache_key <- function(
+  issuer,
+  pins = NULL,
+  pin_mode = c("any", "all"),
+  jwks_host_issuer_match = FALSE,
+  jwks_host_allow_only = NA_character_
+) {
   pin_mode <- match.arg(pin_mode)
   # Normalize pins: NULL and length-0 both treated as empty
   pins_norm <- character(0)
   if (!is.null(pins) && length(pins) > 0) {
     pins_norm <- sort(unique(as.character(pins)))
   }
+  # Normalize host-policy fields
+  host_match <- isTRUE(jwks_host_issuer_match)
+  allow_only <- ""
+  if (
+    is.character(jwks_host_allow_only) &&
+      length(jwks_host_allow_only) == 1L &&
+      !is.na(jwks_host_allow_only) &&
+      nzchar(jwks_host_allow_only)
+  ) {
+    allow_only <- tolower(trimws(jwks_host_allow_only))
+  }
   # issuer hash
   ih_raw <- openssl::sha256(charToRaw(as.character(issuer)))
   ih <- paste0(sprintf("%02x", as.integer(ih_raw)), collapse = "")
-  # config hash: "<mode>|<pin1>,<pin2>,..."
-  cfg_str <- paste0(pin_mode, "|", paste(pins_norm, collapse = ","))
+  # config hash: "<mode>|<pin1>,<pin2>,...|<host_match>|<allow_only>"
+  cfg_str <- paste0(
+    pin_mode,
+    "|",
+    paste(pins_norm, collapse = ","),
+    "|",
+    as.character(host_match),
+    "|",
+    allow_only
+  )
   ch_raw <- openssl::sha256(charToRaw(cfg_str))
   ch <- paste0(sprintf("%02x", as.integer(ch_raw)), collapse = "")
   # Use an alphanumeric delimiter to satisfy cache key constraints while keeping clarity
