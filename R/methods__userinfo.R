@@ -231,8 +231,8 @@ get_userinfo <- function(
 #' Verification is always enforced when a JWT response is received,
 #' regardless of `userinfo_signed_jwt_required`. That flag only controls
 #' whether the response *must* be `application/jwt` (vs. JSON).
-#' `alg=none` is always rejected unless the testing-only escape hatch
-#' `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` is set.
+#' `alg=none` is always rejected unless the testing-only softener
+#' `allow_unsigned_userinfo_jwt()` permits it (requires test or interactive mode).
 #' Unparseable headers, missing issuer/JWKS infrastructure, and algorithms
 #' not in `allowed_algs` all raise errors with audit events.
 #'
@@ -292,9 +292,9 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
 
   # Always reject alg=none — unsigned JWTs cannot be trusted for userinfo.
 
-  # Testing-only escape hatch: options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)
+  # Testing-only escape hatch, gated via allow_unsigned_userinfo_jwt() softener
   if (alg == "" || alg == "NONE") {
-    if (isTRUE(getOption("shinyOAuth.allow_unsigned_userinfo_jwt", FALSE))) {
+    if (allow_unsigned_userinfo_jwt()) {
       payload <- parse_jwt_payload(jwt_str)
       return(as.list(payload))
     }
@@ -314,8 +314,7 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     )
     err_userinfo(c(
       "x" = "UserInfo JWT uses alg=none which is not allowed (OIDC Core 5.3.2)",
-      "i" = "The provider must sign userinfo JWTs with an asymmetric algorithm",
-      "i" = "If this is a testing environment, set options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)"
+      "i" = "The provider must sign userinfo JWTs with an asymmetric algorithm"
     ))
   }
 

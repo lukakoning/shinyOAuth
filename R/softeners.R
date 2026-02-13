@@ -17,6 +17,8 @@
 #'  \item `shinyOAuth.print_errors`: Enables printing of error messages
 #'  \item `shinyOAuth.print_traceback`: Enables printing of tracebacks (opt-in only; default FALSE)
 #'  \item `shinyOAuth.expose_error_body`: Exposes HTTP response bodies
+#'  \item `shinyOAuth.allow_unsigned_userinfo_jwt`: Accepts unsigned (`alg=none`) UserInfo JWTs
+#'  \item `shinyOAuth.allow_redirect`: Disables anti-redirect protections for sensitive HTTP flows
 #'  }
 #'
 #' Note: Tracebacks are only treated as a "softened" behavior when the
@@ -34,7 +36,9 @@ error_on_softened <- function() {
       allow_skip_signature(),
       allow_print_errors(),
       allow_print_traceback(),
-      allow_expose_error_body()
+      allow_expose_error_body(),
+      allow_unsigned_userinfo_jwt(),
+      allow_redirect()
     )
   ) {
     rlang::abort(
@@ -141,6 +145,60 @@ allow_expose_error_body <- function() {
     return(TRUE)
   }
   FALSE
+}
+
+# Allow HTTP redirects on sensitive OAuth flows (testing only)
+allow_redirect <- function() {
+  if (!isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
+    return(FALSE)
+  }
+
+  if (.is_test_or_interactive()) {
+    if (!.is_test()) {
+      rlang::warn(
+        c(
+          "HTTP redirect following is enabled for sensitive OAuth flows",
+          "x" = "`options(shinyOAuth.allow_redirect = TRUE)` is active",
+          "!" = "This disables anti-redirect protections and is intended only for local testing"
+        )
+      )
+    }
+    return(TRUE)
+  }
+
+  # In production (non-test, non-interactive), refuse to honor the option
+  err_config(c(
+    "x" = "`options(shinyOAuth.allow_redirect = TRUE)` is set outside a test or interactive session",
+    "!" = "Allowing redirects in production can leak tokens, secrets, and credentials to redirect targets",
+    "i" = "Remove this option or use `with_mocked_bindings()` in tests instead"
+  ))
+}
+
+# Allow accepting unsigned (alg=none) UserInfo JWTs (testing only)
+allow_unsigned_userinfo_jwt <- function() {
+  if (!isTRUE(getOption("shinyOAuth.allow_unsigned_userinfo_jwt", FALSE))) {
+    return(FALSE)
+  }
+
+  if (.is_test_or_interactive()) {
+    if (!.is_test()) {
+      rlang::warn(
+        c(
+          "Unsigned UserInfo JWT acceptance is enabled",
+          "x" = "`options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` is active",
+          "!" = "This bypasses JWT signature verification and is intended only for local testing"
+        )
+      )
+    }
+    return(TRUE)
+  }
+
+  # In production (non-test, non-interactive), refuse to honor the option
+  err_config(c(
+    "x" = "`options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` is set outside a test or interactive session",
+    "!" = "Accepting unsigned UserInfo JWTs in production would allow identity forgery",
+    "i" = "Remove this option or use `with_mocked_bindings()` in tests instead"
+  ))
 }
 
 .is_test <- function() {

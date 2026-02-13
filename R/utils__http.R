@@ -16,7 +16,8 @@
 #' clear error rather than silently leaking secrets.
 #'
 #' Behavior can be overridden via `options(shinyOAuth.allow_redirect = TRUE)`,
-#' but this is strongly discouraged in production as it undermines security.
+#' but this is gated to test/interactive mode by `allow_redirect()` and will
+#' raise a config error in production.
 #'
 #' @keywords internal
 #' @noRd
@@ -24,8 +25,8 @@ req_no_redirect <- function(req) {
   if (!inherits(req, "httr2_request")) {
     return(req)
   }
-  # Allow redirects only if explicitly enabled (default: FALSE for security)
-  if (isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
+  # Allow redirects only if explicitly enabled AND in test/interactive mode
+  if (allow_redirect()) {
     return(req)
   }
   httr2::req_options(req, followlocation = FALSE)
@@ -39,7 +40,7 @@ req_no_redirect <- function(req) {
 #' attack, or proxy behavior). We should fail rather than parse an empty/wrong
 #' response body.
 #'
-#' Skipped when `options(shinyOAuth.allow_redirect = TRUE)` is set.
+#' Skipped when `allow_redirect()` returns TRUE (test/interactive mode only).
 #'
 #' @param resp httr2 response object
 #' @param context Character string describing the operation for error messages
@@ -49,8 +50,8 @@ req_no_redirect <- function(req) {
 #' @keywords internal
 #' @noRd
 reject_redirect_response <- function(resp, context = "request") {
-  # Skip rejection if redirects are explicitly allowed
-  if (isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
+  # Skip rejection if redirects are explicitly allowed (gated to test/interactive)
+  if (allow_redirect()) {
     return(TRUE)
   }
   if (!inherits(resp, "httr2_response")) {

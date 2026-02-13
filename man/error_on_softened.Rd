@@ -22,6 +22,8 @@ It checks for the following options:
 \item \code{shinyOAuth.print_errors}: Enables printing of error messages
 \item \code{shinyOAuth.print_traceback}: Enables printing of tracebacks (opt-in only; default FALSE)
 \item \code{shinyOAuth.expose_error_body}: Exposes HTTP response bodies
+\item \code{shinyOAuth.allow_unsigned_userinfo_jwt}: Accepts unsigned (\code{alg=none}) UserInfo JWTs
+\item \code{shinyOAuth.allow_redirect}: Disables anti-redirect protections for sensitive HTTP flows
 }
 
 Note: Tracebacks are only treated as a "softened" behavior when the
