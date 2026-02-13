@@ -151,8 +151,14 @@ processing.</p>
 authorization endpoint with the following parameters:
 <code>response_type=code</code>, <code>client_id</code>,
 <code>redirect_uri</code>, <code>state=&lt;sealed state&gt;</code>, PKCE
-parameters, <code>nonce</code> (OIDC), <code>scope</code>, plus any
+parameters, <code>nonce</code> (OIDC), <code>scope</code>,
+<code>claims</code> (OIDC, when configured via
+<code>oauth_client(claims = ...)</code>), <code>acr_values</code> (OIDC,
+when <code>required_acr_values</code> is set on the client), plus any
 configured extra parameters.</p>
+<p>Note: when the provider has an <code>issuer</code> set (indicating
+OIDC) and <code>openid</code> is missing from the client’s scopes, it is
+automatically prepended with a one-time warning.</p>
 </div>
 <div class="section level3">
 <h3 id="user-authenticates-and-authorizes">5. User authenticates and authorizes<a class="anchor" aria-label="anchor" href="#user-authenticates-and-authorizes"></a>
@@ -176,6 +182,18 @@ log in and authorize the app to access the requested scopes.</p>
 callback. This consists of the following steps:</p>
 <ul>
 <li>Wait for the browser token input if not yet visible</li>
+<li>Enforce callback query size caps (DoS protection)</li>
+<li>If the callback includes an <code>iss</code> query parameter,
+validate it against the provider’s configured/discovered issuer to
+defend against authorization-server mix-up attacks (per RFC 9207). A
+mismatch produces an <code>issuer_mismatch</code> error and audit
+event</li>
+<li>If the callback is an error response (<code>?error=...</code>),
+require a valid <code>state</code> parameter; missing/invalid/consumed
+state is treated as <code>invalid_state</code> rather than surfacing the
+attacker-controlled <code>?error</code> value. The
+<code>error_uri</code> from the provider (RFC 6749 section 4.1.2.1) is
+also surfaced as a reactive field when included</li>
 <li>Decrypt and verify the sealed state, ensuring integrity,
 authenticity, and freshness (using the <code>issued_at</code>
 window)</li>
@@ -250,7 +268,27 @@ in the future are rejected</li>
 <li>Header <code>typ</code> (when present): must indicate a JWT
 (<code>JWT</code>, case-insensitive). Other values (e.g.,
 <code>at+jwt</code>) are rejected for ID tokens</li>
+<li>Maximum ID token lifetime: <code>exp - iat</code> is checked against
+<code>options(shinyOAuth.max_id_token_lifetime)</code> (default 24
+hours); tokens with unreasonably long lifetimes are rejected</li>
+<li>Authorized party (<code>azp</code>): if <code>aud</code> has
+multiple entries, <code>azp</code> MUST be present and equal to
+<code>client_id</code>. If <code>azp</code> is present in any case, it
+MUST equal <code>client_id</code>
+</li>
 <li>Nonce: must match the previously stored value (if configured)</li>
+<li>
+<code>auth_time</code> validation (OIDC Core §3.1.2.1): when
+<code>max_age</code> is present in <code>extra_auth_params</code>, the
+ID token’s <code>auth_time</code> claim must be present and satisfy
+<code>now - auth_time &lt;= max_age + leeway</code>
+</li>
+<li>
+<code>at_hash</code> (Access Token hash, OIDC Core §3.1.3.8): when
+the ID token contains an <code>at_hash</code> claim, the access token
+binding is verified. When <code>id_token_at_hash_required = TRUE</code>
+on the provider, the ID token must contain this claim or login
+fails</li>
 <li>Essential claims (OIDC Core §5.5): if the client requested specific
 claims via the <code>claims</code> parameter with
 <code>essential = TRUE</code>, and <code>claims_validation</code> is
@@ -279,6 +317,13 @@ the userinfo endpoint with the access token and stores returned claims.
 This happens <strong>after</strong> ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
 fails, the flow aborts with an error.</p>
+<p>The userinfo endpoint may return either a standard JSON response or a
+JWT-encoded response (per OIDC Core, section 5.3.2). When the endpoint
+returns <code>Content-Type: application/jwt</code>, the body is decoded
+as a JWT with signature verification against the provider JWKS. When
+<code>userinfo_signed_jwt_required = TRUE</code> on the provider, the
+endpoint must return <code>application/jwt</code> or the flow is
+aborted.</p>
 <ul>
 <li>Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
@@ -338,6 +383,13 @@ contains:</p>
 <code>Inf</code> for non-expiring tokens)</li>
 <li>
 <code>id_token</code> (optional string)</li>
+<li>
+<code>id_token_validated</code> (logical, indicating whether the ID
+token was cryptographically verified)</li>
+<li>
+<code>id_token_claims</code> (read-only named list exposing the
+decoded JWT payload, e.g., <code>sub</code>, <code>acr</code>,
+<code>amr</code>, <code>auth_time</code>)</li>
 <li>
 <code>userinfo</code> (optional list)</li>
 </ul>
@@ -414,6 +466,11 @@ subject claim match with no baseline)</li>
 enforces the <code>sub</code> match by parsing the JWT payload (ensuring
 that the <code>sub</code> claim still matches but without full
 validation)</li>
+<li>In both validation paths, <code>iss</code> and <code>aud</code>
+claims in the refreshed ID token are compared against the original ID
+token’s values (not just the provider configuration) per OIDC Core
+Section 12.2, to cover edge cases with multi-tenant providers or
+rotating issuer URIs</li>
 </ul>
 </li>
 </ul>

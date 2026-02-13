@@ -80,8 +80,14 @@ processing.
 The browser of the app user will be redirected to the provider’s
 authorization endpoint with the following parameters:
 `response_type=code`, `client_id`, `redirect_uri`,
-`state=<sealed state>`, PKCE parameters, `nonce` (OIDC), `scope`, plus
-any configured extra parameters.
+`state=<sealed state>`, PKCE parameters, `nonce` (OIDC), `scope`,
+`claims` (OIDC, when configured via `oauth_client(claims = ...)`),
+`acr_values` (OIDC, when `required_acr_values` is set on the client),
+plus any configured extra parameters.
+
+Note: when the provider has an `issuer` set (indicating OIDC) and
+`openid` is missing from the client’s scopes, it is automatically
+prepended with a one-time warning.
 
 ### 5. User authenticates and authorizes
 
@@ -100,6 +106,16 @@ Once the user is redirected back to the app, the module processes the
 callback. This consists of the following steps:
 
 - Wait for the browser token input if not yet visible
+- Enforce callback query size caps (DoS protection)
+- If the callback includes an `iss` query parameter, validate it against
+  the provider’s configured/discovered issuer to defend against
+  authorization-server mix-up attacks (per RFC 9207). A mismatch
+  produces an `issuer_mismatch` error and audit event
+- If the callback is an error response (`?error=...`), require a valid
+  `state` parameter; missing/invalid/consumed state is treated as
+  `invalid_state` rather than surfacing the attacker-controlled `?error`
+  value. The `error_uri` from the provider (RFC 6749 section 4.1.2.1) is
+  also surfaced as a reactive field when included
 - Decrypt and verify the sealed state, ensuring integrity, authenticity,
   and freshness (using the `issued_at` window)
 - Check that embedded context matches expected client/provider (defends
@@ -160,7 +176,20 @@ cryptographic validation occurs prior to making external calls:
 - Header `typ` (when present): must indicate a JWT (`JWT`,
   case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID
   tokens
+- Maximum ID token lifetime: `exp - iat` is checked against
+  `options(shinyOAuth.max_id_token_lifetime)` (default 24 hours); tokens
+  with unreasonably long lifetimes are rejected
+- Authorized party (`azp`): if `aud` has multiple entries, `azp` MUST be
+  present and equal to `client_id`. If `azp` is present in any case, it
+  MUST equal `client_id`
 - Nonce: must match the previously stored value (if configured)
+- `auth_time` validation (OIDC Core §3.1.2.1): when `max_age` is present
+  in `extra_auth_params`, the ID token’s `auth_time` claim must be
+  present and satisfy `now - auth_time <= max_age + leeway`
+- `at_hash` (Access Token hash, OIDC Core §3.1.3.8): when the ID token
+  contains an `at_hash` claim, the access token binding is verified.
+  When `id_token_at_hash_required = TRUE` on the provider, the ID token
+  must contain this claim or login fails
 - Essential claims (OIDC Core §5.5): if the client requested specific
   claims via the `claims` parameter with `essential = TRUE`, and
   `claims_validation` is `"warn"` or `"strict"`, the decoded ID token
@@ -183,6 +212,13 @@ calls the userinfo endpoint with the access token and stores returned
 claims. This happens **after** ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
 fails, the flow aborts with an error.
+
+The userinfo endpoint may return either a standard JSON response or a
+JWT-encoded response (per OIDC Core, section 5.3.2). When the endpoint
+returns `Content-Type: application/jwt`, the body is decoded as a JWT
+with signature verification against the provider JWKS. When
+`userinfo_signed_jwt_required = TRUE` on the provider, the endpoint must
+return `application/jwt` or the flow is aborted.
 
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token
@@ -228,6 +264,10 @@ token object. This is an S7 `OAuthToken` object which contains:
 - `expires_at` (numeric timestamp, seconds since epoch; `Inf` for
   non-expiring tokens)
 - `id_token` (optional string)
+- `id_token_validated` (logical, indicating whether the ID token was
+  cryptographically verified)
+- `id_token_claims` (read-only named list exposing the decoded JWT
+  payload, e.g., `sub`, `acr`, `amr`, `auth_time`)
 - `userinfo` (optional list)
 
 The `$authenticated` value as returned by
@@ -293,6 +333,10 @@ With respect to OIDC ID token handling:
   - If `id_token_validation = FALSE`, shinyOAuth still enforces the
     `sub` match by parsing the JWT payload (ensuring that the `sub`
     claim still matches but without full validation)
+  - In both validation paths, `iss` and `aud` claims in the refreshed ID
+    token are compared against the original ID token’s values (not just
+    the provider configuration) per OIDC Core Section 12.2, to cover
+    edge cases with multi-tenant providers or rotating issuer URIs
 
 If refresh fails inside
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
