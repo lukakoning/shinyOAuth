@@ -224,13 +224,17 @@ get_userinfo <- function(
 #' rejected with a clear error since JWE decryption is not supported.
 #'
 #' Signature verification uses the provider's `allowed_algs` (filtered to
-#' asymmetric algorithms) and fail-closes for signed JWTs: if the JWKS
+#' asymmetric algorithms) and fail-closes unconditionally: if the JWKS
 #' cannot be fetched, no compatible keys exist, or all candidate keys fail
 #' verification, an error is raised.
 #'
-#' When `provider@userinfo_signed_jwt_required` is TRUE, all unverified
-#' paths are blocked: `alg=none`, algorithms not in `allowed_algs`, missing
-#' issuer, and unparseable headers all raise errors with audit events.
+#' Verification is always enforced when a JWT response is received,
+#' regardless of `userinfo_signed_jwt_required`. That flag only controls
+#' whether the response *must* be `application/jwt` (vs. JSON).
+#' `alg=none` is always rejected unless the testing-only escape hatch
+#' `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` is set.
+#' Unparseable headers, missing issuer/JWKS infrastructure, and algorithms
+#' not in `allowed_algs` all raise errors with audit events.
 #'
 #' @param resp An httr2 response object with a JWT body.
 #' @param oauth_client An OAuthClient object (used for JWKS-based verification).
@@ -258,14 +262,12 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   }
 
   prov <- oauth_client@provider
-  sig_verified <- FALSE
-  require_signed <- isTRUE(prov@userinfo_signed_jwt_required)
 
-  # Attempt signature verification when JWKS infrastructure is available
+  # Parse JWT header — always required for application/jwt responses.
+  # If the header cannot be parsed, the JWT cannot be verified or trusted.
   header <- try(parse_jwt_header(jwt_str), silent = TRUE)
 
-  # When signed JWT is required, header must be parseable
-  if (require_signed && inherits(header, "try-error")) {
+  if (inherits(header, "try-error")) {
     try(
       audit_event(
         "userinfo",
@@ -280,13 +282,93 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
       silent = TRUE
     )
     err_userinfo(c(
-      "x" = "UserInfo JWT header could not be parsed but signed JWT verification is required",
-      "i" = "Ensure the provider returns a well-formed signed JWT from the userinfo endpoint"
+      "x" = "UserInfo JWT header could not be parsed",
+      "i" = "A well-formed JWT header is required for verification (OIDC Core 5.3.2)"
     ))
   }
 
-  # When signed JWT is required, issuer must be configured (for JWKS)
-  if (require_signed && (!is_valid_string(prov@issuer) || is.na(prov@issuer))) {
+  alg <- toupper(header$alg %||% "")
+  kid <- header$kid %||% NULL
+
+  # Always reject alg=none — unsigned JWTs cannot be trusted for userinfo.
+
+  # Testing-only escape hatch: options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)
+  if (alg == "" || alg == "NONE") {
+    if (isTRUE(getOption("shinyOAuth.allow_unsigned_userinfo_jwt", FALSE))) {
+      payload <- parse_jwt_payload(jwt_str)
+      return(as.list(payload))
+    }
+    try(
+      audit_event(
+        "userinfo",
+        context = list(
+          provider = prov@name %||% NA_character_,
+          issuer = prov@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          sub_digest = NA_character_,
+          status = "userinfo_jwt_unsigned",
+          jwt_alg = alg
+        )
+      ),
+      silent = TRUE
+    )
+    err_userinfo(c(
+      "x" = "UserInfo JWT uses alg=none which is not allowed (OIDC Core 5.3.2)",
+      "i" = "The provider must sign userinfo JWTs with an asymmetric algorithm",
+      "i" = "If this is a testing environment, set options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)"
+    ))
+  }
+
+  # Use provider's allowed_algs for algorithm enforcement (filtering to
+  # asymmetric only, since HMAC is not supported for userinfo JWTs)
+  asymmetric_algs <- intersect(
+    toupper(prov@allowed_algs),
+    c(
+      "RS256",
+      "RS384",
+      "RS512",
+      "PS256",
+      "PS384",
+      "PS512",
+      "ES256",
+      "ES384",
+      "ES512",
+      "EDDSA"
+    )
+  )
+
+  # Always enforce algorithm is in allowed asymmetric algs
+  if (!(alg %in% asymmetric_algs)) {
+    try(
+      audit_event(
+        "userinfo",
+        context = list(
+          provider = prov@name %||% NA_character_,
+          issuer = prov@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          sub_digest = NA_character_,
+          status = "userinfo_jwt_alg_rejected",
+          jwt_alg = alg
+        )
+      ),
+      silent = TRUE
+    )
+    err_userinfo(c(
+      "x" = paste0(
+        "UserInfo JWT algorithm '",
+        alg,
+        "' is not in provider's allowed asymmetric algorithms"
+      ),
+      "i" = paste0(
+        "Allowed algorithms: ",
+        paste(asymmetric_algs, collapse = ", ")
+      ),
+      "i" = "Adjust the provider's allowed_algs if this algorithm should be permitted"
+    ))
+  }
+
+  # Issuer must be configured for JWKS-based verification
+  if (!is_valid_string(prov@issuer) || is.na(prov@issuer)) {
     try(
       audit_event(
         "userinfo",
@@ -301,152 +383,69 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
       silent = TRUE
     )
     err_userinfo(c(
-      "x" = "Provider issuer is not configured but userinfo_signed_jwt_required = TRUE",
-      "i" = "A valid issuer URL is required for JWKS-based signature verification",
+      "x" = "Provider issuer is not configured but is required for UserInfo JWT verification",
+      "i" = "A valid issuer URL is required for JWKS-based signature verification (OIDC Core 5.3.2)",
       "i" = "Set the provider's issuer (or use OIDC discovery) to enable JWKS verification"
     ))
   }
 
-  if (
-    !inherits(header, "try-error") &&
-      is_valid_string(prov@issuer) &&
-      !is.na(prov@issuer)
-  ) {
-    alg <- toupper(header$alg %||% "")
-    kid <- header$kid %||% NULL
-
-    # Use provider's allowed_algs for algorithm enforcement (filtering to
-    # asymmetric only, since HMAC is not supported for userinfo JWTs)
-    asymmetric_algs <- intersect(
-      toupper(prov@allowed_algs),
-      c(
-        "RS256",
-        "RS384",
-        "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
-        "ES256",
-        "ES384",
-        "ES512",
-        "EDDSA"
-      )
-    )
-
-    # When signed JWT is required, enforce algorithm is in allowed_algs
-    if (require_signed && !(alg %in% asymmetric_algs)) {
-      status_val <- if (alg == "" || alg == "NONE") {
-        "userinfo_jwt_unsigned"
-      } else {
-        "userinfo_jwt_alg_rejected"
-      }
-      try(
-        audit_event(
-          "userinfo",
-          context = list(
-            provider = prov@name %||% NA_character_,
-            issuer = prov@issuer %||% NA_character_,
-            client_id_digest = string_digest(oauth_client@client_id),
-            sub_digest = NA_character_,
-            status = status_val,
-            jwt_alg = alg
-          )
-        ),
-        silent = TRUE
-      )
-      if (alg == "" || alg == "NONE") {
-        err_userinfo(c(
-          "x" = "UserInfo JWT uses alg=none but signed JWT verification is required",
-          "i" = "The provider must sign userinfo JWTs with an asymmetric algorithm",
-          "i" = paste0(
-            "Allowed algorithms: ",
-            paste(asymmetric_algs, collapse = ", ")
-          )
-        ))
-      } else {
-        err_userinfo(c(
-          "x" = paste0(
-            "UserInfo JWT algorithm '",
-            alg,
-            "' is not in provider's allowed_algs"
-          ),
-          "i" = paste0(
-            "Allowed algorithms: ",
-            paste(asymmetric_algs, collapse = ", ")
-          ),
-          "i" = "Adjust the provider's allowed_algs if this algorithm should be permitted"
-        ))
-      }
-    }
-
-    if (alg %in% asymmetric_algs) {
-      jwks <- try(
-        fetch_jwks(
-          prov@issuer,
-          prov@jwks_cache,
-          pins = prov@jwks_pins %||% character(),
-          pin_mode = prov@jwks_pin_mode %||% "any",
-          provider = prov
-        ),
-        silent = TRUE
-      )
-      if (inherits(jwks, "try-error")) {
-        # JWKS fetch failed for a signed JWT — fail closed.
-        err_userinfo(c(
-          "x" = "UserInfo JWT signature could not be verified: JWKS fetch failed",
-          "i" = "The provider JWKS endpoint could not be reached or returned an error",
-          "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
-        ))
-      }
-      keys <- select_candidate_jwks(
-        jwks,
-        header_alg = alg,
-        kid = kid,
-        pins = prov@jwks_pins %||% character()
-      )
-      if (length(keys) > 0L) {
-        for (jk in keys) {
-          pub <- try(jwk_to_pubkey(jk), silent = TRUE)
-          if (inherits(pub, "try-error")) {
-            next
-          }
-          decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
-          if (!inherits(decoded, "try-error")) {
-            sig_verified <- TRUE
-            claims <- as.list(decoded)
-            # §5.3.2 MUST: signed userinfo MUST contain iss matching the
-            # OP's Issuer Identifier and aud matching/including the RP's
-            # Client ID.
-            validate_signed_userinfo_claims(
-              claims,
-              expected_issuer = prov@issuer,
-              expected_client_id = oauth_client@client_id
-            )
-            return(claims)
-          }
-        }
-        # Candidate keys existed but none verified the signature —
-        # this indicates tampering or serious misconfiguration.
-        err_userinfo(c(
-          "x" = "UserInfo JWT signature is invalid",
-          "i" = "Signature could not be verified against any candidate JWKS key"
-        ))
-      }
-      # No compatible candidate keys in JWKS — fail closed.
-      err_userinfo(c(
-        "x" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
-        "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
-      ))
-    }
+  # Verify signature against JWKS
+  jwks <- try(
+    fetch_jwks(
+      prov@issuer,
+      prov@jwks_cache,
+      pins = prov@jwks_pins %||% character(),
+      pin_mode = prov@jwks_pin_mode %||% "any",
+      provider = prov
+    ),
+    silent = TRUE
+  )
+  if (inherits(jwks, "try-error")) {
+    # JWKS fetch failed — fail closed.
+    err_userinfo(c(
+      "x" = "UserInfo JWT signature could not be verified: JWKS fetch failed",
+      "i" = "The provider JWKS endpoint could not be reached or returned an error",
+      "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
+    ))
   }
-
-  # Unverified path: only reached for unsigned JWTs (alg=none or
-  # non-asymmetric) or when provider has no issuer configured.
-  # When userinfo_signed_jwt_required is TRUE, this path is blocked above
-  # (header parse failure, missing issuer, and alg-not-in-allowed all
-  # abort before reaching here).
-  payload <- parse_jwt_payload(jwt_str)
-  as.list(payload)
+  keys <- select_candidate_jwks(
+    jwks,
+    header_alg = alg,
+    kid = kid,
+    pins = prov@jwks_pins %||% character()
+  )
+  if (length(keys) > 0L) {
+    for (jk in keys) {
+      pub <- try(jwk_to_pubkey(jk), silent = TRUE)
+      if (inherits(pub, "try-error")) {
+        next
+      }
+      decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
+      if (!inherits(decoded, "try-error")) {
+        claims <- as.list(decoded)
+        # §5.3.2 MUST: signed userinfo MUST contain iss matching the
+        # OP's Issuer Identifier and aud matching/including the RP's
+        # Client ID.
+        validate_signed_userinfo_claims(
+          claims,
+          expected_issuer = prov@issuer,
+          expected_client_id = oauth_client@client_id
+        )
+        return(claims)
+      }
+    }
+    # Candidate keys existed but none verified the signature —
+    # this indicates tampering or serious misconfiguration.
+    err_userinfo(c(
+      "x" = "UserInfo JWT signature is invalid",
+      "i" = "Signature could not be verified against any candidate JWKS key"
+    ))
+  }
+  # No compatible candidate keys in JWKS — fail closed.
+  err_userinfo(c(
+    "x" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
+    "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
+  ))
 }
 
 #' Internal: validate iss/aud claims in a signed UserInfo JWT (§5.3.2)

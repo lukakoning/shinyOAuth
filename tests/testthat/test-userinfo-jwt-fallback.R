@@ -1,7 +1,7 @@
-# Tests for fail-open / fail-closed JWT UserInfo fallback paths
-# when userinfo_signed_jwt_required = FALSE (default)
-# These complement the existing test-userinfo-jwt.R tests which focus on
-# the `userinfo_signed_jwt_required = TRUE` paths.
+# Tests for fail-closed JWT UserInfo verification paths
+# These verify that decode_userinfo_jwt always rejects unverified JWTs
+# regardless of userinfo_signed_jwt_required (which only controls whether
+# the response content-type must be application/jwt).
 
 # Helper: build a minimal unsigned JWT (header.payload.signature)
 make_unsigned_jwt <- function(payload_list, alg = "none") {
@@ -15,23 +15,17 @@ make_unsigned_jwt <- function(payload_list, alg = "none") {
   )
 }
 
-# ── Malformed JWT header fallback (require_signed = FALSE) ──────────────────
+# ── Malformed JWT header (always rejected) ──────────────────────────────────
 
-test_that("decode_userinfo_jwt falls through to unverified path for malformed header (default)", {
-  # When userinfo_signed_jwt_required is FALSE (default) and the JWT header
-
-  # cannot be parsed, the code falls through to the unverified
-  # parse_jwt_payload path. This test documents the known fail-open behavior.
+test_that("decode_userinfo_jwt rejects malformed header (fail-closed)", {
+  # When the JWT header cannot be parsed, the JWT cannot be verified.
+  # This must always be rejected regardless of userinfo_signed_jwt_required.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
 
-  # Build a JWT with a corrupt header but valid base64url payload.
-  # parse_jwt_header will fail, but parse_jwt_payload can still succeed
-  # because it only cares about part 2.
   claims <- list(sub = "user-badheader", name = "Bad Header")
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
-  # Corrupt header: not valid JSON once decoded
   bad_header <- shinyOAuth:::b64url_encode(charToRaw("NOT{JSON"))
   good_payload <- shinyOAuth:::b64url_encode(charToRaw(as.character(payload)))
   jwt_body <- paste0(bad_header, ".", good_payload, ".")
@@ -48,10 +42,12 @@ test_that("decode_userinfo_jwt falls through to unverified path for malformed he
     .package = "shinyOAuth"
   )
 
-  # Falls through to unverified path — documents the fail-open behavior
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-badheader")
-  expect_equal(result$name, "Bad Header")
+  # Fail-closed: malformed header is always rejected
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "header could not be parsed"
+  )
 })
 
 test_that("decode_userinfo_jwt errors for malformed header when require_signed = TRUE", {
@@ -87,11 +83,10 @@ test_that("decode_userinfo_jwt errors for malformed header when require_signed =
   )
 })
 
-# ── Unsupported algorithm fallback (require_signed = FALSE) ─────────────────
+# ── Unsupported algorithm (always rejected) ─────────────────────────────────
 
-test_that("unsupported alg falls through to unverified path when require_signed = FALSE", {
-  # HS256 is not in asymmetric_algs, so it skips JWKS verification.
-  # Without require_signed, the JWT falls through to the unverified path.
+test_that("unsupported alg (HS256) is rejected even when require_signed = FALSE", {
+  # HS256 is not an asymmetric algorithm; always rejected.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -111,22 +106,20 @@ test_that("unsupported alg falls through to unverified path when require_signed 
     .package = "shinyOAuth"
   )
 
-  # Falls through to unverified path — documents the known gap
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-hs256")
-  expect_equal(result$name, "HS256 User")
+  # Fail-closed: non-asymmetric algorithms are always rejected
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "not in provider.*allowed"
+  )
 })
 
-test_that("unsupported alg (PS384 not in allowed_algs) falls through when not required", {
+test_that("unsupported alg (PS384 not in allowed_algs) is rejected", {
   # PS384 IS an asymmetric alg but NOT in this provider's allowed_algs
-  # (RS256, ES256). The code checks alg %in% asymmetric_algs which uses the
-  # intersection of provider allowed_algs + known asymmetric set. PS384 is in
-  # the known asymmetric set but may or may not be in provider's allowed_algs.
+  # (RS256, ES256). Always rejected.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
-  # make_test_provider sets allowed_algs = c("RS256", "ES256")
-  # PS384 is asymmetric but not in allowed_algs
 
   claims <- list(sub = "user-ps384", name = "PS384 User")
   jwt_body <- make_unsigned_jwt(claims, alg = "PS384")
@@ -140,24 +133,21 @@ test_that("unsupported alg (PS384 not in allowed_algs) falls through when not re
         body = charToRaw(jwt_body)
       )
     },
-    # fetch_jwks should NOT be called because PS384 is not in allowed_algs
-    # intersection, but just in case:
-    fetch_jwks = function(...) stop("should not be called"),
     .package = "shinyOAuth"
   )
 
-  # Falls through to unverified path because PS384 is NOT in the intersection
-  # of provider allowed_algs and known asymmetric algs.
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-ps384")
+  # Fail-closed: algorithm not in allowed_algs is rejected
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "not in provider.*allowed"
+  )
 })
 
-# ── alg=none with issuer set but require_signed = FALSE ─────────────────────
+# ── alg=none (always rejected) ──────────────────────────────────────────────
 
-test_that("alg=none bypasses JWKS even when issuer is set (require_signed = FALSE)", {
-  # This is the KNOWN vulnerability that userinfo_signed_jwt_required exists
-  # to prevent. With issuer set but require_signed = FALSE, alg=none falls
-  # through to the unverified path because "" (alg) is not in asymmetric_algs.
+test_that("alg=none is always rejected even when issuer is set and require_signed = FALSE", {
+  # Previously this was a known fail-open vulnerability. Now fail-closed.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -174,19 +164,20 @@ test_that("alg=none bypasses JWKS even when issuer is set (require_signed = FALS
         body = charToRaw(jwt_body)
       )
     },
-    # Must NOT call fetch_jwks for alg=none
-    fetch_jwks = function(...) stop("should not be called"),
     .package = "shinyOAuth"
   )
 
-  # Documents the fail-open behavior for alg=none without the flag.
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "attacker")
+  # Fail-closed: alg=none is always rejected
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
 })
 
 # ── Empty/missing alg field in JWT header ───────────────────────────────────
 
-test_that("JWT with missing alg field falls through when require_signed = FALSE", {
+test_that("JWT with missing alg field is rejected even when require_signed = FALSE", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -214,10 +205,12 @@ test_that("JWT with missing alg field falls through when require_signed = FALSE"
     .package = "shinyOAuth"
   )
 
-  # Falls through because alg is NULL -> toupper("") -> "" which is not
-  # in asymmetric_algs
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-no-alg")
+  # Fail-closed: missing alg is treated as alg=none and rejected
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
 })
 
 test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
@@ -252,15 +245,15 @@ test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
   expect_error(
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
-    regexp = "alg=none|unsigned"
+    regexp = "alg=none|unsigned|not allowed"
   )
 })
 
-# ── No issuer configured (JWKS bypass) ──────────────────────────────────────
+# ── No issuer configured (always rejected) ──────────────────────────────────
 
-test_that("RS256 JWT falls through to unverified when provider has no issuer", {
-  # If issuer is NA, the JWKS verification block is skipped entirely,
-  # even for asymmetric algorithms.
+test_that("RS256 JWT is rejected when provider has no issuer (fail-closed)", {
+  # If issuer is NA, JWKS-based verification is impossible.
+  # Must be rejected rather than falling through to unverified.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   # issuer is NA by default from make_test_provider(use_nonce = FALSE)
@@ -290,12 +283,13 @@ test_that("RS256 JWT falls through to unverified when provider has no issuer", {
         body = charToRaw(jwt_body)
       )
     },
-    # Must NOT call fetch_jwks when issuer is NA
-    fetch_jwks = function(...) stop("should not be called"),
     .package = "shinyOAuth"
   )
 
-  # Falls through because issuer is NA -> skips JWKS block entirely
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-no-issuer-rs256")
+  # Fail-closed: no issuer means no JWKS verification possible
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "issuer.*not configured"
+  )
 })

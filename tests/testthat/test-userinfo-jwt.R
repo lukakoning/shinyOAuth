@@ -22,7 +22,7 @@ make_signed_jwt <- function(payload_list, key, kid = NULL) {
   jose::jwt_encode_sig(clm, key = key, header = header)
 }
 
-test_that("get_userinfo decodes JWT response with application/jwt content-type", {
+test_that("get_userinfo rejects unsigned JWT response (alg=none) by default", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
 
@@ -45,10 +45,12 @@ test_that("get_userinfo decodes JWT response with application/jwt content-type",
     .package = "shinyOAuth"
   )
 
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-123")
-  expect_equal(result$name, "Test User")
-  expect_equal(result$email, "test@example.com")
+  # alg=none is always rejected — verification is fail-closed
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
 })
 
 test_that("get_userinfo still works with application/json content-type", {
@@ -427,12 +429,25 @@ test_that("get_userinfo emits audit event on JWT parse failure", {
   expect_true(any(statuses == "parse_error"))
 })
 
-test_that("get_userinfo handles application/jwt with charset parameter", {
+test_that("get_userinfo handles application/jwt with charset parameter (signed)", {
+  key <- openssl::rsa_keygen(2048)
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-charset"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
 
-  claims <- list(sub = "user-charset", name = "Charset User")
-  jwt_body <- make_unsigned_jwt(claims)
+  claims <- list(
+    sub = "user-charset",
+    name = "Charset User",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-charset")
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
@@ -443,6 +458,7 @@ test_that("get_userinfo handles application/jwt with charset parameter", {
         body = charToRaw(jwt_body)
       )
     },
+    fetch_jwks = function(...) jwks,
     .package = "shinyOAuth"
   )
 
@@ -451,12 +467,13 @@ test_that("get_userinfo handles application/jwt with charset parameter", {
   expect_equal(result$name, "Charset User")
 })
 
-test_that("decode_userinfo_jwt works without issuer (no JWKS verification)", {
+test_that("decode_userinfo_jwt rejects JWT without issuer configured", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   # issuer is NA by default in make_test_provider (when use_nonce = FALSE)
 
+  # Even a signed JWT (RS256 header) must be rejected when issuer is missing
   claims <- list(sub = "user-no-issuer", name = "No Issuer User")
-  jwt_body <- make_unsigned_jwt(claims)
+  jwt_body <- make_unsigned_jwt(claims, alg = "RS256")
 
   resp <- httr2::response(
     url = "https://example.com/userinfo",
@@ -465,9 +482,11 @@ test_that("decode_userinfo_jwt works without issuer (no JWKS verification)", {
     body = charToRaw(jwt_body)
   )
 
-  result <- shinyOAuth:::decode_userinfo_jwt(resp, cli)
-  expect_equal(result$sub, "user-no-issuer")
-  expect_equal(result$name, "No Issuer User")
+  expect_error(
+    shinyOAuth:::decode_userinfo_jwt(resp, cli),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "issuer.*not configured"
+  )
 })
 
 # ── userinfo_signed_jwt_required tests ──────────────────────────────────────
@@ -550,7 +569,7 @@ test_that("signed JWT required: alg=none JWT fails with clear error + audit", {
   expect_error(
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
-    regexp = "alg=none.*signed JWT verification is required"
+    regexp = "alg=none.*not allowed"
   )
 
   types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
@@ -597,7 +616,7 @@ test_that("signed JWT required: alg not in allowed_algs fails + audit", {
   expect_error(
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
-    regexp = "not in provider.*allowed_algs"
+    regexp = "not in provider.*allowed"
   )
 
   types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
@@ -685,7 +704,7 @@ test_that("signed JWT required: JWKS fetch failure still blocks", {
   )
 })
 
-test_that("signed JWT NOT required: unsigned JWT still works (backward compat)", {
+test_that("unsigned JWT is now rejected even without required flag (fail-closed)", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
 
@@ -704,9 +723,12 @@ test_that("signed JWT NOT required: unsigned JWT still works (backward compat)",
     .package = "shinyOAuth"
   )
 
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-compat")
-  expect_equal(result$name, "Compat User")
+  # alg=none is always rejected — no longer falls through to unverified path
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
 })
 
 test_that("signed JWT NOT required: JSON response still works (backward compat)", {
@@ -1052,11 +1074,10 @@ test_that("signed JWT required: wrong aud claim is rejected even with valid sign
   )
 })
 
-test_that("alg=none bypass: even WITHOUT required flag, provider with issuer still rejects", {
-  # This tests the original vulnerability: attacker sends alg=none but the
-  # provider has JWKS infrastructure. Without userinfo_signed_jwt_required,
-  # the code falls through to the unverified path — this is the known gap
-  # that the flag addresses. Verify the behavior is at least documented/known.
+test_that("alg=none is always rejected even WITHOUT required flag (fix for fail-open gap)", {
+  # Previously, without userinfo_signed_jwt_required, alg=none fell through to
+  # the unverified path — attacker-controlled claims were accepted. Now
+  # verification is always fail-closed.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -1076,11 +1097,12 @@ test_that("alg=none bypass: even WITHOUT required flag, provider with issuer sti
     .package = "shinyOAuth"
   )
 
-  # Without the required flag, alg=none falls through to unverified path.
-  # This is the known gap — document it with a passing test.
-  result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "attacker-none")
-  # ^ This is WHY userinfo_signed_jwt_required exists: to prevent this.
+  # alg=none is now always rejected — the fail-open gap is closed
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
 })
 
 test_that("content-type downgrade: attacker sends JSON when signed JWT is required", {
@@ -1157,5 +1179,100 @@ test_that("content-type downgrade: no content-type header when signed JWT is req
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
     regexp = "not application/jwt.*signed JWT is required"
+  )
+})
+
+# ── Fail-closed verification tests ──────────────────────────────────────────
+
+test_that("alg=none with unsafe opt-in allows unverified JWT (testing only)", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+
+  claims <- list(sub = "test-unsafe", name = "Unsafe Opt-in User")
+  jwt_body <- make_unsigned_jwt(claims, alg = "none")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  # Without the opt-in, rejected
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "alg=none.*not allowed"
+  )
+
+  # With the opt-in, accepted (testing-only escape hatch)
+  old_opt <- getOption("shinyOAuth.allow_unsigned_userinfo_jwt")
+  options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)
+  on.exit(options(shinyOAuth.allow_unsigned_userinfo_jwt = old_opt), add = TRUE)
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_equal(result$sub, "test-unsafe")
+  expect_equal(result$name, "Unsafe Opt-in User")
+})
+
+test_that("application/jwt with missing issuer must fail by default", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  # issuer is NA (no JWKS infrastructure)
+
+  key <- openssl::rsa_keygen(2048)
+  claims <- list(sub = "user-no-issuer", name = "No Issuer")
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-no-iss")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  # Signed JWT but no issuer configured — fail-closed
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "issuer.*not configured"
+  )
+})
+
+test_that("application/jwt with HS256 algorithm must fail (non-asymmetric)", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  claims <- list(sub = "user-hs256", name = "HS256 User")
+  jwt_body <- make_unsigned_jwt(claims, alg = "HS256")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "not in provider.*allowed"
   )
 })
