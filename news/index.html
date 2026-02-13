@@ -85,6 +85,7 @@
 <li>Gains a <code>required_acr_values</code> property; enables client-side enforcement of the OIDC <code>acr</code> (Authentication Context Class Reference) claim.</li>
 <li>
 <code>extra_token_headers</code> are now consistently applied to revoke and introspect requests, matching the existing behavior for token exchange and refresh. Previously, provider integrations requiring custom headers across all token endpoints could partially fail on revocation/introspection.</li>
+<li>Fixed incorrect warning about client being created in Shiny when this was not the case.</li>
 </ul></li>
 <li>
 <p><code>OAuthToken</code>:</p>

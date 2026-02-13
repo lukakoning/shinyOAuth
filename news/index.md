@@ -117,6 +117,8 @@
     exchange and refresh. Previously, provider integrations requiring
     custom headers across all token endpoints could partially fail on
     revocation/introspection.
+  - Fixed incorrect warning about client being created in Shiny when
+    this was not the case.
 
 - `OAuthToken`:
 
