@@ -300,7 +300,7 @@ oauth_module_server <- function(
       c(
         "[{.pkg shinyOAuth}] - {.strong Open your Shiny app in a regular browser}",
         "!" = "{.code oauth_module_server()} was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
-        "i" = "Viewers in RStudio/Positron/etc. cannot perform necesarry redirects for OAuth 2.0 flows"
+        "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows"
       ),
       .frequency = "once",
       .frequency_id = "oauth_module_server_remind_browser"

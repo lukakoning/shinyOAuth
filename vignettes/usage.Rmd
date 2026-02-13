@@ -83,7 +83,7 @@ You may place it near the top-level of your UI (e.g., inside `fluidPage()`, `tag
 or `bslib::page()`).
 
 Note also that you must access the app in a regular browser.
-This is because the necesarry redirects that the browser must perform can usually
+This is because the necessary redirects that the browser must perform can usually
 not be handled inside embedded viewers of IDEs like RStudio or Positron.
 
 ## Manual login button variant
