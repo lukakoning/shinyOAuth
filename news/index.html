@@ -73,7 +73,12 @@
 <li><p>Stricter JWKS cache handling: JWKS cache key now includes host-policy fields (<code>jwks_host_issuer_match</code>, <code>jwks_host_allow_only</code>). Previously, two provider configs for the same issuer with different host policies shared the same cache entry, allowing a relaxed-policy provider to populate the cache and a strict-policy provider to skip host validation on cache hit. Cache entries now also store the JWKS source host and re-validate it against the current provider policy on read (defense-in-depth).</p></li>
 <li><p>Stricter URL validation: <code>OAuthClient</code> now rejects redirect URIs containing fragments (per RFC 6749, section 3.1.2); <code>OAuthProvider</code> now rejects issuer identifiers containing query or fragment components, covering both <code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> and manual construction of providers.</p></li>
 <li><p>Stricter state payload parsing: callback <code>state</code> now rejects embedded NUL bytes before JSON decoding.</p></li>
-<li><p><code>OAuthProvider</code>: <code>leeway</code> validator now rejects non-finite values (<code>Inf</code>, <code>-Inf</code>, <code>NaN</code>). Previously these passed validation but were silently coerced to 0 at runtime, effectively disabling clock-skew tolerance.</p></li>
+<li>
+<p><code>OAuthProvider</code>:</p>
+<ul><li>
+<code>leeway</code> validator now rejects non-finite values (<code>Inf</code>, <code>-Inf</code>, <code>NaN</code>). Previously these passed validation but were silently coerced to 0 at runtime, effectively disabling clock-skew tolerance.</li>
+<li>Reserved OAuth parameter blocking in <code>extra_auth_params</code> and <code>extra_token_params</code> is now case-insensitive and trims whitespace.</li>
+</ul></li>
 <li>
 <p><code>OAuthClient</code>:</p>
 <ul><li>Gains a <code>claims_validation</code> property; when the client sends a structured <code>claims</code> request parameter with <code>essential = TRUE</code> entries, this setting controls whether the returned ID token and/or userinfo response are checked for those essential claims (similar to <code>scope_validation</code>).</li>
