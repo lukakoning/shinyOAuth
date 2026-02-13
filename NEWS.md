@@ -66,6 +66,10 @@ identifiers containing query or fragment components, covering both
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
 
+* `OAuthProvider`: `leeway` validator now rejects non-finite values (`Inf`, 
+`-Inf`, `NaN`). Previously these passed validation but were silently coerced to 
+0 at runtime, effectively disabling clock-skew tolerance.
+
 * `OAuthClient`: `extra_token_headers` are now consistently applied to revoke
 and introspect requests, matching the existing behavior for token exchange and 
 refresh. Previously, provider integrations requiring custom headers across all

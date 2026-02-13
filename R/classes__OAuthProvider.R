@@ -747,11 +747,11 @@ OAuthProvider <- S7::new_class(
     if (
       !is.numeric(self@leeway) ||
         length(self@leeway) != 1 ||
-        is.na(self@leeway) ||
+        !is.finite(self@leeway) ||
         self@leeway < 0
     ) {
       return(
-        "OAuthProvider: leeway must be a single non-negative numeric value"
+        "OAuthProvider: leeway must be a single finite non-negative numeric value"
       )
     }
 
