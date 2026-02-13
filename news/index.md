@@ -7,8 +7,10 @@
   - Detect active daemons via
     [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
     instead of
-    [`mirai::info()`](https://mirai.r-lib.org/reference/info.html)/[`mirai::status()`](https://mirai.r-lib.org/reference/status.html)
-    (requires ‘mirai’ \>= 2.3.0).
+    [`mirai::status()`](https://mirai.r-lib.org/reference/status.html).
+    Falls back to
+    [`mirai::info()`](https://mirai.r-lib.org/reference/info.html) on
+    older ‘mirai’ versions that lack `daemons_set()` (\< 2.3.0).
   - Per-task timeout via `options(shinyOAuth.async_timeout)`
     (milliseconds); timed-out ‘mirai’ tasks are automatically cancelled
     by the dispatcher.
