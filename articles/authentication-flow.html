@@ -251,6 +251,14 @@ in the future are rejected</li>
 (<code>JWT</code>, case-insensitive). Other values (e.g.,
 <code>at+jwt</code>) are rejected for ID tokens</li>
 <li>Nonce: must match the previously stored value (if configured)</li>
+<li>Essential claims (OIDC Core §5.5): if the client requested specific
+claims via the <code>claims</code> parameter with
+<code>essential = TRUE</code>, and <code>claims_validation</code> is
+<code>"warn"</code> or <code>"strict"</code>, the decoded ID token
+payload is checked for the presence of those essential claims. Missing
+essential claims trigger a warning or error depending on the mode. This
+is skipped when <code>claims_validation = "none"</code> (the
+default)</li>
 </ul>
 </div>
 <div class="section level3">
@@ -265,7 +273,12 @@ cryptographic checks pass before making external calls. If this request
 fails, the flow aborts with an error. - Subject match: if
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
 checked that <code>sub</code> in userinfo equals <code>sub</code> in the
-ID token</p>
+ID token - Essential claims (OIDC Core §5.5): if the client requested
+specific userinfo claims via the <code>claims</code> parameter with
+<code>essential = TRUE</code>, and <code>claims_validation</code> is
+<code>"warn"</code> or <code>"strict"</code>, the userinfo response is
+checked for those claims. Missing essential claims trigger a warning or
+error depending on the mode</p>
 </div>
 <div class="section level3">
 <h3 id="token-introspection-optional">11. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>

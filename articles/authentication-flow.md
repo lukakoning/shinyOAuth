@@ -161,6 +161,12 @@ cryptographic validation occurs prior to making external calls:
   case-insensitive). Other values (e.g., `at+jwt`) are rejected for ID
   tokens
 - Nonce: must match the previously stored value (if configured)
+- Essential claims (OIDC Core §5.5): if the client requested specific
+  claims via the `claims` parameter with `essential = TRUE`, and
+  `claims_validation` is `"warn"` or `"strict"`, the decoded ID token
+  payload is checked for the presence of those essential claims. Missing
+  essential claims trigger a warning or error depending on the mode.
+  This is skipped when `claims_validation = "none"` (the default)
 
 ### 10. Fetch userinfo (optional)
 
@@ -171,7 +177,12 @@ claims. This happens **after** ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
 fails, the flow aborts with an error. - Subject match: if
 `oauth_provider(userinfo_id_token_match = TRUE)`, it is checked that
-`sub` in userinfo equals `sub` in the ID token
+`sub` in userinfo equals `sub` in the ID token - Essential claims (OIDC
+Core §5.5): if the client requested specific userinfo claims via the
+`claims` parameter with `essential = TRUE`, and `claims_validation` is
+`"warn"` or `"strict"`, the userinfo response is checked for those
+claims. Missing essential claims trigger a warning or error depending on
+the mode
 
 ### 11. Token introspection (optional)
 

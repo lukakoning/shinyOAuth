@@ -27,6 +27,7 @@ OAuthClient(
   state_entropy = 64,
   state_key = random_urlsafe(n = 128),
   scope_validation = "strict",
+  claims_validation = "none",
   introspect = FALSE,
   introspect_elements = character(0)
 )
@@ -224,6 +225,24 @@ OAuthClient(
     missing.
 
   - `"none"`: Skips scope validation entirely.
+
+- claims_validation:
+
+  Controls validation of essential claims requested via the `claims`
+  parameter (OIDC Core §5.5). When `claims` includes entries with
+  `essential = TRUE` for `id_token` or `userinfo`, this setting
+  determines what happens if those essential claims are missing from the
+  returned ID token or userinfo response.
+
+  - `"none"` (default): Skips claims validation entirely. This is the
+    default because providers are expected to fulfil essential claims
+    requests or return an error.
+
+  - `"warn"`: Emits a warning but continues authentication if essential
+    claims are missing.
+
+  - `"strict"`: Throws an error if any requested essential claims are
+    missing from the response.
 
 - introspect:
 

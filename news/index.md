@@ -91,11 +91,18 @@
   silently coerced to 0 at runtime, effectively disabling clock-skew
   tolerance.
 
-- `OAuthClient`: `extra_token_headers` are now consistently applied to
-  revoke and introspect requests, matching the existing behavior for
-  token exchange and refresh. Previously, provider integrations
-  requiring custom headers across all token endpoints could partially
-  fail on revocation/introspection.
+- `OAuthClient`:
+
+  - Gains a `claims_validation` property; when the client sends a
+    structured `claims` request parameter with `essential = TRUE`
+    entries, this setting controls whether the returned ID token and/or
+    userinfo response are checked for those essential claims (similar to
+    `scope_validation`).
+  - `extra_token_headers` are now consistently applied to revoke and
+    introspect requests, matching the existing behavior for token
+    exchange and refresh. Previously, provider integrations requiring
+    custom headers across all token endpoints could partially fail on
+    revocation/introspection.
 
 - `OAuthToken`:
 
