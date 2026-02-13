@@ -167,6 +167,15 @@
   `check_url` argument (default `TRUE`) allows opting out of the check
   when the URL has already been validated.
 
+- `err_http()` now extracts RFC 6749 §5.2 structured error fields
+  (`error`, `error_description`, `error_uri`) from JSON error response
+  bodies. These fields are surfaced in the error message bullets,
+  attached to the condition object (as `oauth_error`,
+  `oauth_error_description`, `oauth_error_uri`), and included in
+  trace/audit events. This improves debugging of token endpoint failures
+  (e.g. `invalid_grant`, `invalid_client`) without changing existing
+  control flow.
+
 - When a token response omits `expires_in`, a warning is now emitted
   once per phase (`exchange_code` / `refresh_token`) so operators know
   that proactive token refresh will not trigger. Users can now also set
