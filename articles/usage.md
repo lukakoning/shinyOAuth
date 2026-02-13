@@ -448,7 +448,7 @@ options:
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows
   overriding the specified authorization URL parameters. Default
   blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
-  `scope`, `code_challenge`, `code_challenge_method`, `nonce`
+  `scope`, `code_challenge`, `code_challenge_method`, `nonce`, `claims`
 - `options(shinyOAuth.unblock_token_params = c(...))` – allows
   overriding the specified token exchange parameters. Default blocked:
   `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
