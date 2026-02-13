@@ -411,6 +411,10 @@ for details about audit and trace hooks.
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway
   (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload
   `issued_at` future check
+- `options(shinyOAuth.max_id_token_lifetime = 86400)` – maximum allowed
+  ID token lifetime in seconds (`exp - iat`). Tokens whose lifetime
+  exceeds this cap are rejected (OIDC Core §3.1.3.7 rule 9). Default
+  `86400` (24 hours). Set to `Inf` to disable the check
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1"))` -
   allows hosts to use `http://` scheme instead of `https://`
 - `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts
