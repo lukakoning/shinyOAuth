@@ -734,7 +734,8 @@ handle_callback_internal <- function(
     } else {
       resolve_missing_expires_in(phase = "exchange_code")
     },
-    id_token = token_set$id_token %||% NA_character_
+    id_token = token_set$id_token %||% NA_character_,
+    id_token_validated = isTRUE(token_set[[".id_token_validated"]])
   )
   # Set userinfo separately for compatibility with some S7 dispatchers
   token@userinfo <- token_set$userinfo %||% list()
@@ -1383,6 +1384,11 @@ verify_token_set <- function(
       isTRUE(client@provider@use_nonce) ||
       isTRUE(is_valid_string(nonce)))
 
+  # Track whether the ID token was actually validated for downstream consumers.
+  # This flag starts FALSE and is set to TRUE only when validate_id_token()
+  # succeeds (i.e. signature + claims are cryptographically verified).
+  id_token_validated <- FALSE
+
   id_token <- token_set[["id_token"]]
   if (isTRUE(is_refresh) && isTRUE(id_token_present)) {
     original_payload <- tryCatch(
@@ -1485,6 +1491,10 @@ verify_token_set <- function(
       max_age = requested_max_age
     )
 
+    # If we reach this point, validate_id_token() succeeded —
+    # the ID token's signature and claims were cryptographically verified.
+    id_token_validated <- TRUE
+
     # OIDC Core 12.2: during refresh, verify iss and aud match the original
     # ID token's actual values (not just the provider config). validate_id_token()
     # already checks iss == provider@issuer and client_id %in% aud, but 12.2
@@ -1546,6 +1556,9 @@ verify_token_set <- function(
       )
     }
   }
+
+  # Attach the validation flag so callers can propagate it to OAuthToken.
+  token_set[[".id_token_validated"]] <- id_token_validated
 
   return(token_set)
 }

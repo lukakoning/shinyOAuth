@@ -900,6 +900,8 @@ refresh_token <- function(
   # from login - this is the common case per OIDC spec.
   if (is_valid_string(token_set$id_token)) {
     token@id_token <- token_set$id_token
+    # Propagate whether the new ID token was cryptographically validated.
+    token@id_token_validated <- isTRUE(token_set[[".id_token_validated"]])
   }
 
   # Userinfo: update if fetched during refresh (userinfo_required = TRUE)

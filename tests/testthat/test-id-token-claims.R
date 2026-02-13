@@ -109,3 +109,65 @@ test_that("id_token_claims updates when id_token changes", {
   tok@id_token <- jwt2
   expect_identical(tok@id_token_claims$sub, "user-B")
 })
+
+# --- id_token_validated tests ------------------------------------------------
+
+test_that("id_token_validated defaults to FALSE", {
+  tok <- OAuthToken(access_token = "at")
+  expect_false(tok@id_token_validated)
+})
+
+test_that("id_token_validated can be set to TRUE at construction", {
+  tok <- OAuthToken(access_token = "at", id_token_validated = TRUE)
+  expect_true(tok@id_token_validated)
+})
+
+test_that("id_token_validated can be toggled after construction", {
+  tok <- OAuthToken(access_token = "at")
+  expect_false(tok@id_token_validated)
+  tok@id_token_validated <- TRUE
+  expect_true(tok@id_token_validated)
+})
+
+test_that("id_token_validated is FALSE when no id_token present", {
+  tok <- OAuthToken(
+    access_token = "at",
+    id_token = NA_character_,
+    id_token_validated = FALSE
+  )
+  expect_false(tok@id_token_validated)
+  expect_identical(tok@id_token_claims, list())
+})
+
+test_that("id_token_validated is independent of id_token_claims", {
+  # id_token_claims decodes regardless of validation status
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- jose::jwt_claim(
+    iss = "https://issuer.example.com",
+    sub = "user123",
+    aud = "client-id",
+    iat = now,
+    exp = now + 3600
+  )
+  key <- openssl::rsa_keygen(2048)
+  jwt <- jose::jwt_encode_sig(claims, key = key)
+
+  # Unvalidated: claims still decode
+  tok_unvalidated <- OAuthToken(
+    access_token = "at",
+    id_token = jwt,
+    id_token_validated = FALSE
+  )
+  expect_false(tok_unvalidated@id_token_validated)
+  expect_identical(tok_unvalidated@id_token_claims$sub, "user123")
+
+  # Validated: claims also decode
+  tok_validated <- OAuthToken(
+    access_token = "at",
+    id_token = jwt,
+    id_token_validated = TRUE
+  )
+  expect_true(tok_validated@id_token_validated)
+  expect_identical(tok_validated@id_token_claims$sub, "user123")
+})

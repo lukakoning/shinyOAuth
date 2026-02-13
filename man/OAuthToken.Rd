@@ -9,7 +9,8 @@ OAuthToken(
   refresh_token = NA_character_,
   id_token = NA_character_,
   expires_at = Inf,
-  userinfo = list()
+  userinfo = list(),
+  id_token_validated = FALSE
 )
 }
 \arguments{
@@ -24,6 +25,10 @@ token expires. \code{Inf} for non-expiring tokens}
 
 \item{userinfo}{List containing user information fetched from the provider's
 userinfo endpoint (if fetched)}
+
+\item{id_token_validated}{Logical flag indicating whether the ID token was
+cryptographically validated (signature verified and standard claims checked)
+during the OAuth flow. Defaults to \code{FALSE}.}
 }
 \description{
 S7 class representing OAuth tokens and (optionally) user information.
@@ -35,6 +40,11 @@ standard and optional OIDC claims (e.g., \code{sub}, \code{iss}, \code{aud}, \co
 \code{auth_time}, \code{nonce}, \code{at_hash}, etc.) without requiring manual JWT
 decoding. Returns an empty list when no ID token is present or if the token
 cannot be decoded.
+
+Note: \code{id_token_claims} always decodes the JWT payload regardless
+of whether the ID token's signature was verified.
+Check the \code{id_token_validated} property to determine whether the claims
+were cryptographically validated.
 }
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
