@@ -19,7 +19,8 @@ client_bearer_req(
   method = "GET",
   headers = NULL,
   query = NULL,
-  follow_redirect = FALSE
+  follow_redirect = FALSE,
+  check_url = TRUE
 )
 ```
 
@@ -56,6 +57,16 @@ client_bearer_req(
   prevent leaking the Bearer token to unexpected hosts. Set to `TRUE`
   only if you trust all possible redirect targets and understand the
   security implications.
+
+- check_url:
+
+  Logical. If `TRUE` (the default), validates `url` against
+  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
+  before attaching the Bearer token. This rejects relative URLs, plain
+  HTTP to non-loopback hosts, and – when
+  `options(shinyOAuth.allowed_hosts)` is set – hosts outside the
+  allowlist. Set to `FALSE` only if you have already validated the URL
+  and understand the security implications.
 
 ## Value
 

@@ -64,7 +64,8 @@ HTTP defaults (timeout and User-Agent).</p>
 <span>  method <span class="op">=</span> <span class="st">"GET"</span>,</span>
 <span>  headers <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  query <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  follow_redirect <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  follow_redirect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  check_url <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,6 +102,15 @@ overridden.</p></dd>
 are disabled to prevent leaking the Bearer token to unexpected hosts.
 Set to <code>TRUE</code> only if you trust all possible redirect targets and
 understand the security implications.</p></dd>
+
+
+<dt id="arg-check-url">check_url<a class="anchor" aria-label="anchor" href="#arg-check-url"></a></dt>
+<dd><p>Logical. If <code>TRUE</code> (the default), validates <code>url</code> against
+<code><a href="is_ok_host.html">is_ok_host()</a></code> before attaching the Bearer token. This rejects relative
+URLs, plain HTTP to non-loopback hosts, and – when
+<code>options(shinyOAuth.allowed_hosts)</code> is set – hosts outside the allowlist.
+Set to <code>FALSE</code> only if you have already validated the URL and understand
+the security implications.</p></dd>
 
 </dl></div>
     <div class="section level2">
