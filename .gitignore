@@ -21,3 +21,6 @@ docs
 .env.*
 !.env.example
 !*.env.example
+/shinyOAuth.Rcheck
+..Rcheck/00check.log
+shinyOAuth_0.3.0.9000.tar.gz
