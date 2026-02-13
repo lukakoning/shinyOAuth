@@ -400,18 +400,7 @@ oauth_provider_oidc_discover <- function(
     return(invisible(TRUE))
   }
 
-  jwks_host <- .discover_normalize_host(
-    httr2::url_parse(jwks_uri)[["hostname"]] %||% ""
-  )
-  if (!nzchar(jwks_host)) {
-    err_config(
-      c(
-        "x" = "Discovery jwks_host must be an absolute URL",
-        "i" = paste0("Got invalid jwks_uri: ", as.character(jwks_uri))
-      ),
-      context = list(jwks_uri = jwks_uri)
-    )
-  }
+  jwks_host <- parse_url_host(jwks_uri, "jwks_uri")
 
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
   jwks_ok <- if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
