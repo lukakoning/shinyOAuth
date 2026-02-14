@@ -389,7 +389,7 @@ OAuthProvider <- S7::new_class(
         return(sprintf(
           paste0(
             "OAuthProvider: extra_token_headers must not contain reserved headers: %s. ",
-            "To unblock, set options(shinyOAuth.unblock_token_headers = c(...))"
+            "To unblock, set `options(shinyOAuth.unblock_token_headers = c(...))`"
           ),
           paste(sQuote(bad_headers), collapse = ", ")
         ))

@@ -312,9 +312,9 @@ resolve_missing_expires_in <- function(phase = NULL) {
             phase_msg
           ),
           "i" = paste0(
-            "Using options(shinyOAuth.default_expires_in = ",
+            "Using `options(shinyOAuth.default_expires_in = ",
             default_ei,
-            ") as fallback"
+            ")` as fallback"
           ),
           "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
         ),
@@ -338,7 +338,7 @@ resolve_missing_expires_in <- function(phase = NULL) {
         "; assuming infinite token lifetime"
       ),
       "i" = "Proactive token refresh will not trigger without a known expiry",
-      "i" = "Set options(shinyOAuth.default_expires_in = <seconds>) to supply a fallback",
+      "i" = "Set `options(shinyOAuth.default_expires_in = <seconds>)` to supply a fallback",
       "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
     ),
     class = "shinyOAuth_missing_expires_in",
@@ -460,7 +460,7 @@ string_digest <- function(x, key = get_audit_digest_key()) {
 }
 
 # Per-process key for audit digests. Auto-generated on first access.
-# Set options(shinyOAuth.audit_digest_key = FALSE) to disable keying.
+# Set `options(shinyOAuth.audit_digest_key = FALSE)` to disable keying.
 # Set to a fixed raw/character value to correlate digests across processes.
 audit_digest_key_env <- new.env(parent = emptyenv())
 

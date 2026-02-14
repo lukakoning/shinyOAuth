@@ -359,7 +359,7 @@ build_auth_url <- function(
         ),
         "i" = "These parameters are managed internally to ensure OAuth security.",
         "i" = "Set scopes via oauth_client(..., scopes = ...) and redirect_uri via oauth_client(..., redirect_uri = ...).",
-        "i" = "To unblock, set options(shinyOAuth.unblock_auth_params = c(...))"
+        "i" = "To unblock, set `options(shinyOAuth.unblock_auth_params = c(...))`"
       ))
     }
     params <- c(params, extra)
