@@ -111,6 +111,11 @@
 <li><p>OIDC <code>openid</code> scope enforcement: when a provider has an <code>issuer</code> set (indicating OIDC) and <code>openid</code> is missing from the client’s scopes, <code>build_auth_url()</code> now auto-prepends it and emits a one-time warning.</p></li>
 <li><p>OIDC discovery (<code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>) now prefers confidential auth methods (<code>client_secret_basic</code>, <code>client_secret_post</code>) over <code>none</code> when both are advertised in <code>token_endpoint_auth_methods_supported</code>. Previously, mixed metadata (e.g. <code>none</code> + <code>client_secret_basic</code>) with PKCE enabled would silently select the public-client posture (<code>"body"</code> without credentials).</p></li>
 <li><p>Scope validation now aligns with the RFC 6749, section 3.3 <code>scope-token</code> grammar (<code>NQSCHAR = %x21 / %x23-5B / %x5D-7E</code>). The previous regex rejected valid ASCII characters such as <code>!</code>, <code>#</code>, <code>$</code>, <code>=</code>, <code>@</code>, <code>~</code>, and others. All printable ASCII except space, double-quote, and backslash is now accepted.</p></li>
+<li>
+<p>Audit events:</p>
+<ul><li>
+<code>audit_token_refresh</code>: replaced non-informative <code>had_refresh_token</code> field (always <code>TRUE</code> post-mutation) with <code>refresh_token_rotated</code> (indicates whether the provider returned a new refresh token).</li>
+</ul></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="shinyoauth-030">shinyOAuth 0.3.0<a class="anchor" aria-label="anchor" href="#shinyoauth-030"></a></h2><p class="text-muted">CRAN release: 2026-01-30</p>

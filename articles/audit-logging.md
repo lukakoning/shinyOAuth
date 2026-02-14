@@ -381,7 +381,7 @@ For state store events the digest reflects the plaintext state string.
   [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
   successfully refreshes the access token
 - Context: `provider`, `issuer`, `client_id_digest`,
-  `had_refresh_token`, `new_expires_at`
+  `refresh_token_rotated`, `new_expires_at`
 
 ### Userinfo fetch
 
