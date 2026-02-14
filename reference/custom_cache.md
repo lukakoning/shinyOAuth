@@ -7,12 +7,9 @@ cachem-compatible methods: `$get(key, missing)`, `$set(key, value)`,
 Use this helper when you want to plug a custom state store or JWKS cache
 into 'shinyOAuth', when
 [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
-or
-[`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-are not suitable. This may be useful specifically when you deploy a
-Shiny app to a multi-process environment with non-sticky workers. In
-such cases, you may want to use a shared external cache (e.g., database,
-Redis, Memcached).
+is not suitable (e.g., multi-process deployments with non-sticky
+workers). In such cases, you may want to use a shared external cache
+(e.g., database, Redis, Memcached).
 
 The resulting object can be used in both places where 'shinyOAuth'
 accepts a cache-like object:
@@ -81,8 +78,9 @@ custom_cache(get, set, remove, take = NULL, info = NULL)
   When `take` is not provided and the state store is not a per-process
   cache (like
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)),
-  'shinyOAuth' falls back to non-atomic `$get()` + `$remove()` with a
-  one-time warning about potential replay vulnerability.
+  'shinyOAuth' will **error** at state consumption time because
+  non-atomic `$get()` + `$remove()` cannot guarantee single-use under
+  concurrent access in shared stores.
 
 - info:
 

@@ -74,8 +74,11 @@
     `$remove()` with a mandatory post-removal absence check (instead of
     trusting `$remove()` return values).
   - Non-[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
-    stores without `$take()` now emit a one-time warning about potential
-    replay vulnerability in shared deployments.
+    stores without `$take()` now error by default to prevent TOCTOU
+    replay attacks in shared/multi-worker deployments. To bypass this
+    error, operators must explicitly acknowledge the risk by setting
+    `options(shinyOAuth.allow_non_atomic_state_store = TRUE)`, which
+    downgrades the error to a warning.
   - `OAuthClient` validator now validates `$take()` signature when
     present.
   - The `$remove()` return value is no longer relied upon in the

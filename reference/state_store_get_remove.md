@@ -42,5 +42,8 @@ access in shared/distributed backends. When `$take()` is not available,
 the function falls back to `$get()` + `$remove()` with a post-removal
 absence check. This fallback is safe for per-process caches (e.g.,
 [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html))
-but cannot guarantee single-use under concurrent access in shared
-stores.
+but **errors** for any other store (e.g.,
+[`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
+or custom backends) because non-atomic get+remove cannot guarantee
+single-use under concurrent access. Shared stores **must** implement
+`$take()` to be used as a state store.

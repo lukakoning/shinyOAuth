@@ -517,6 +517,20 @@ options:
   catches chunked responses. Increase if a provider legitimately returns
   larger payloads
 
+### State store
+
+- `options(shinyOAuth.allow_non_atomic_state_store = TRUE)` – allow
+  non-atomic `$get()` + `$remove()` fallback for shared state stores
+  (e.g.,
+  [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html))
+  that do not implement `$take()`. By default, shinyOAuth errors when a
+  non-[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
+  store lacks `$take()`, because the non-atomic fallback cannot
+  guarantee single-use state consumption under concurrent access (TOCTOU
+  replay window). Setting this option to `TRUE` downgrades the error to
+  a one-time warning and allows the fallback to proceed. Not recommended
+  for production without additional replay protection.
+
 ### Development/debugging
 
 - `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie
@@ -598,13 +612,19 @@ When you run multiple Shiny R processes (e.g., multiple workers, Shiny
 Server Pro, RStudio Connect, Docker/Kubernetes replicas, or any
 non‑sticky load balancer), you must ensure that:
 
-- All workers share the same state store (e.g.,
+- All workers share the same state store with atomic single-use
+  semantics. Use
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  with an atomic `$take()` method backed by a shared store (e.g., Redis
+  `GETDEL`, SQL `DELETE ... RETURNING`). Plain
   [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-  pointing at a shared directory, or a custom backend via
-  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md);
+  is not safe as a shared state store because its `$get()` + `$remove()`
+  are not atomic and may allow replay attacks under concurrent access;
   the default
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
-  is per‑process only and is then not shared)
+  is per‑process only and is not shared. See
+  [`?custom_cache`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  for details on implementing `$take()`.
 - All workers share the same state key (e.g., read from environment
   variable; by default, a random key is generated per client instance
   which is then not shared)

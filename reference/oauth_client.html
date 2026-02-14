@@ -129,15 +129,17 @@ providers support it; consult your provider's documentation.</p></li>
 
 <dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
 <dd><p>State storage backend. Defaults to <code>cachem::cache_mem(max_age = 300)</code>.
-Alternative backends could include <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> or a custom
-implementation (which you can create with <code><a href="custom_cache.html">custom_cache()</a></code>. The backend
+Alternative backends should use <code><a href="custom_cache.html">custom_cache()</a></code> with an atomic <code>$take()</code>
+method for replay-safe single-use state consumption. The backend
 must implement cachem-like methods <code>$get(key, missing)</code>, <code>$set(key, value)</code>,
 and <code>$remove(key)</code>; <code>$info()</code> is optional.</p>
 <p>Trade-offs: <code>cache_mem</code> is in-memory and thus scoped to a single R process
-(good default for a single Shiny process). <code>cache_disk</code> persists to disk
-and can be shared across multiple R processes (useful for multi-process
-deployments or when Shiny workers aren't sticky). A <code><a href="custom_cache.html">custom_cache()</a></code>
-backend could use a database or external store (e.g., Redis, Memcached).
+(good default for a single Shiny process). For multi-process deployments,
+use <code><a href="custom_cache.html">custom_cache()</a></code> with an atomic <code>$take()</code> backed by a shared store
+(e.g., Redis <code>GETDEL</code>, SQL <code>DELETE ... RETURNING</code>). Plain
+<code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is <strong>not safe</strong> as a shared state store because its
+<code>$get()</code> + <code>$remove()</code> operations are not atomic; use it only if wrapped
+in a <code><a href="custom_cache.html">custom_cache()</a></code> that provides <code>$take()</code>.
 See also <code><a href="../articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p>
 <p>The client automatically generates, persists (in <code>state_store</code>), and
 validates the OAuth <code>state</code> parameter (and OIDC <code>nonce</code> when applicable)

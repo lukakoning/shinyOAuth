@@ -66,7 +66,7 @@
 <code><a href="../reference/custom_cache.html">custom_cache()</a></code> gains an optional <code>take</code> parameter for atomic get-and-delete.</li>
 <li>
 <code><a href="../reference/state_store_get_remove.html">state_store_get_remove()</a></code> prefers <code>$take()</code> when available; falls back to <code>$get()</code> + <code>$remove()</code> with a mandatory post-removal absence check (instead of trusting <code>$remove()</code> return values).</li>
-<li>Non-<code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> stores without <code>$take()</code> now emit a one-time warning about potential replay vulnerability in shared deployments.</li>
+<li>Non-<code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> stores without <code>$take()</code> now error by default to prevent TOCTOU replay attacks in shared/multi-worker deployments. To bypass this error, operators must explicitly acknowledge the risk by setting <code>options(shinyOAuth.allow_non_atomic_state_store = TRUE)</code>, which downgrades the error to a warning.</li>
 <li>
 <code>OAuthClient</code> validator now validates <code>$take()</code> signature when present.</li>
 <li>The <code>$remove()</code> return value is no longer relied upon in the fallback path; the post-removal <code>$get()</code> absence check is authoritative.</li>
