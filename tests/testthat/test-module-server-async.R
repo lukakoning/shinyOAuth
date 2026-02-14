@@ -289,7 +289,7 @@ testthat::test_that("async_dispatch returns mirai object when mirai is configure
   result <- NULL
   p <- m |>
     promises::then(function(x) {
-      result <<- shinyOAuth:::replay_async_warnings(x)
+      result <<- shinyOAuth:::replay_async_conditions(x)
     })
 
   # Wait for resolution
@@ -298,17 +298,25 @@ testthat::test_that("async_dispatch returns mirai object when mirai is configure
   testthat::expect_equal(result, 15)
 })
 
-testthat::test_that("async_dispatch captures worker warnings and replay_async_warnings re-emits them", {
+testthat::test_that("async_dispatch captures worker conditions and replay_async_conditions re-emits them", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
-  mirai::daemons(sync = TRUE)
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
   withr::defer(mirai::daemons(0))
 
   m <- shinyOAuth:::async_dispatch(
     expr = quote({
+      message("worker message 1")
       warning("worker warning 1", call. = FALSE)
       warning("worker warning 2", call. = FALSE)
       42
@@ -321,20 +329,24 @@ testthat::test_that("async_dispatch captures worker warnings and replay_async_wa
     promises::then(function(x) {
       resolved <<- x
     })
-  poll_for_async(function() !is.null(resolved))
+  poll_for_async(function() !is.null(resolved), timeout = 10)
 
   # The raw resolved value is a wrapper list, not the bare value
   testthat::expect_true(is.list(resolved))
   testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
   testthat::expect_equal(resolved$value, 42)
   testthat::expect_length(resolved$warnings, 2)
+  testthat::expect_length(resolved$messages, 1)
 
-  # replay_async_warnings should re-emit the warnings and return the value
+  # replay_async_conditions should re-emit messages and warnings and return value
   testthat::expect_warning(
     testthat::expect_warning(
-      {
-        val <- shinyOAuth:::replay_async_warnings(resolved)
-      },
+      testthat::expect_message(
+        {
+          val <- shinyOAuth:::replay_async_conditions(resolved)
+        },
+        "worker message 1"
+      ),
       "worker warning 1"
     ),
     "worker warning 2"
@@ -342,10 +354,10 @@ testthat::test_that("async_dispatch captures worker warnings and replay_async_wa
   testthat::expect_equal(val, 42)
 })
 
-testthat::test_that("replay_async_warnings passes through non-wrapped values", {
-  result <- shinyOAuth:::replay_async_warnings(123)
+testthat::test_that("replay_async_conditions passes through non-wrapped values", {
+  result <- shinyOAuth:::replay_async_conditions(123)
   testthat::expect_equal(result, 123)
 
-  result2 <- shinyOAuth:::replay_async_warnings(list(a = 1))
+  result2 <- shinyOAuth:::replay_async_conditions(list(a = 1))
   testthat::expect_equal(result2, list(a = 1))
 })

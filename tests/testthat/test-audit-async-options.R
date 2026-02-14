@@ -316,3 +316,417 @@ testthat::test_that("options propagation works with actual mirai", {
   testthat::expect_equal(promise_result$number, 42)
   testthat::expect_equal(promise_result$main_pid_from_opts, main_pid)
 })
+
+testthat::test_that("emit_trace_event surfaces trace_hook errors as warnings", {
+  withr::local_options(list(
+    shinyOAuth.trace_hook = function(event) stop("trace hook boom"),
+    shinyOAuth.audit_hook = NULL
+  ))
+
+  testthat::expect_warning(
+    shinyOAuth:::emit_trace_event(list(type = "test")),
+    "trace_hook error: trace hook boom"
+  )
+})
+
+testthat::test_that("emit_trace_event surfaces audit_hook errors as warnings", {
+  withr::local_options(list(
+    shinyOAuth.trace_hook = NULL,
+    shinyOAuth.audit_hook = function(event) stop("audit hook boom")
+  ))
+
+  testthat::expect_warning(
+    shinyOAuth:::emit_trace_event(list(type = "test")),
+    "audit_hook error: audit hook boom"
+  )
+})
+
+testthat::test_that("hook errors in async workers propagate to main process", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  # Set an audit hook that always errors
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(event) stop("broken hook"),
+    shinyOAuth.trace_hook = NULL
+  ))
+
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      .ns <- asNamespace("shinyOAuth")
+      .ns$with_async_options(captured_opts, {
+        .ns$audit_event("test_hook_error", context = list(a = 1))
+      })
+      "done"
+    }),
+    args = list(captured_opts = shinyOAuth:::capture_async_options())
+  )
+
+  resolved <- NULL
+  p <- m |>
+    promises::then(function(x) {
+      resolved <<- x
+    })
+  poll_for_async(function() !is.null(resolved))
+
+  # The hook error should have been captured as a warning
+  testthat::expect_length(resolved$warnings, 1)
+  testthat::expect_match(
+    conditionMessage(resolved$warnings[[1]]),
+    "audit_hook error: broken hook"
+  )
+
+  # replay_async_conditions should re-emit the warning on the main thread
+  testthat::expect_warning(
+    val <- shinyOAuth:::replay_async_conditions(resolved),
+    "audit_hook error: broken hook"
+  )
+  testthat::expect_equal(val, "done")
+})
+
+# --- True async (real daemon) tests ------------------------------------------
+# These tests use mirai::daemons(2) to verify behaviour across real separate
+# worker processes, NOT sync mode. They are skipped on CRAN and when daemons
+# cannot be launched.
+
+testthat::test_that("true-async: conditions captured in daemon worker are replayed on main", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      message("daemon msg alpha")
+      warning("daemon warn beta", call. = FALSE)
+      message("daemon msg gamma")
+      warning("daemon warn delta", call. = FALSE)
+      list(pid = Sys.getpid(), val = 99)
+    }),
+    args = list()
+  )
+
+  resolved <- NULL
+  promises::then(promises::as.promise(m), function(x) {
+    resolved <<- x
+  })
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+
+  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
+  testthat::expect_equal(resolved$value$val, 99)
+  # Worker ran in a different process
+  testthat::expect_false(resolved$value$pid == Sys.getpid())
+  testthat::expect_length(resolved$warnings, 2)
+  testthat::expect_length(resolved$messages, 2)
+  testthat::expect_match(
+    conditionMessage(resolved$warnings[[1]]),
+    "daemon warn beta"
+  )
+  testthat::expect_match(
+    conditionMessage(resolved$warnings[[2]]),
+    "daemon warn delta"
+  )
+  testthat::expect_match(
+    conditionMessage(resolved$messages[[1]]),
+    "daemon msg alpha"
+  )
+  testthat::expect_match(
+    conditionMessage(resolved$messages[[2]]),
+    "daemon msg gamma"
+  )
+
+  # Replay re-emits all 4 conditions
+  testthat::expect_warning(
+    testthat::expect_warning(
+      testthat::expect_message(
+        testthat::expect_message(
+          {
+            val <- shinyOAuth:::replay_async_conditions(resolved)
+          },
+          "daemon msg alpha"
+        ),
+        "daemon msg gamma"
+      ),
+      "daemon warn beta"
+    ),
+    "daemon warn delta"
+  )
+  testthat::expect_equal(val$val, 99)
+})
+
+testthat::test_that("true-async: hook errors surface as warnings from daemon worker", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  # Set hooks that error - these get serialized and sent to the daemon
+  withr::local_options(list(
+    shinyOAuth.trace_hook = function(event) stop("trace kaboom"),
+    shinyOAuth.audit_hook = function(event) stop("audit kaboom")
+  ))
+
+  captured_opts <- shinyOAuth:::capture_async_options()
+
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      .ns <- asNamespace("shinyOAuth")
+      .ns$with_async_options(captured_opts, {
+        .ns$emit_trace_event(list(type = "test_from_daemon"))
+      })
+      "hook_test_done"
+    }),
+    args = list(captured_opts = captured_opts)
+  )
+
+  resolved <- NULL
+  promises::then(promises::as.promise(m), function(x) {
+    resolved <<- x
+  })
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+
+  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
+  testthat::expect_equal(resolved$value, "hook_test_done")
+  # Both hook errors should have been captured as warnings
+  testthat::expect_true(length(resolved$warnings) >= 2)
+  msgs <- vapply(resolved$warnings, conditionMessage, character(1))
+  testthat::expect_true(any(grepl("trace_hook error: trace kaboom", msgs)))
+  testthat::expect_true(any(grepl("audit_hook error: audit kaboom", msgs)))
+
+  # Replay surfaces them on main thread
+  w_captured <- list()
+  val <- withCallingHandlers(
+    shinyOAuth:::replay_async_conditions(resolved),
+    warning = function(w) {
+      w_captured[[length(w_captured) + 1L]] <<- w
+      tryInvokeRestart("muffleWarning")
+    }
+  )
+  testthat::expect_equal(val, "hook_test_done")
+  w_msgs <- vapply(w_captured, conditionMessage, character(1))
+  testthat::expect_true(any(grepl("trace kaboom", w_msgs)))
+  testthat::expect_true(any(grepl("audit kaboom", w_msgs)))
+})
+
+testthat::test_that("true-async: hook warnings and messages are captured from daemon worker", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  # Hooks that emit warnings and messages (but do NOT error)
+  withr::local_options(list(
+    shinyOAuth.trace_hook = function(event) {
+      warning("trace hook user warning", call. = FALSE)
+      message("trace hook user message")
+    },
+    shinyOAuth.audit_hook = function(event) {
+      warning("audit hook user warning", call. = FALSE)
+      message("audit hook user message")
+    }
+  ))
+
+  captured_opts <- shinyOAuth:::capture_async_options()
+
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      .ns <- asNamespace("shinyOAuth")
+      .ns$with_async_options(captured_opts, {
+        .ns$emit_trace_event(list(type = "hook_condition_test"))
+      })
+      "hook_conditions_done"
+    }),
+    args = list(captured_opts = captured_opts)
+  )
+
+  resolved <- NULL
+  promises::then(promises::as.promise(m), function(x) {
+    resolved <<- x
+  })
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+
+  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
+  testthat::expect_equal(resolved$value, "hook_conditions_done")
+
+  # Both hooks emit 1 warning each -> at least 2 warnings
+  testthat::expect_true(length(resolved$warnings) >= 2)
+  w_msgs <- vapply(resolved$warnings, conditionMessage, character(1))
+  testthat::expect_true(any(grepl("trace hook user warning", w_msgs)))
+  testthat::expect_true(any(grepl("audit hook user warning", w_msgs)))
+
+  # Both hooks emit 1 message each -> at least 2 messages
+  testthat::expect_true(length(resolved$messages) >= 2)
+  m_msgs <- vapply(resolved$messages, conditionMessage, character(1))
+  testthat::expect_true(any(grepl("trace hook user message", m_msgs)))
+  testthat::expect_true(any(grepl("audit hook user message", m_msgs)))
+
+  # Replay surfaces all conditions on the main thread
+  replayed_w <- list()
+  replayed_m <- list()
+  val <- withCallingHandlers(
+    shinyOAuth:::replay_async_conditions(resolved),
+    warning = function(w) {
+      replayed_w[[length(replayed_w) + 1L]] <<- w
+      tryInvokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      replayed_m[[length(replayed_m) + 1L]] <<- m
+      tryInvokeRestart("muffleMessage")
+    }
+  )
+  testthat::expect_equal(val, "hook_conditions_done")
+  rw_msgs <- vapply(replayed_w, conditionMessage, character(1))
+  rm_msgs <- vapply(replayed_m, conditionMessage, character(1))
+  testthat::expect_true(any(grepl("trace hook user warning", rw_msgs)))
+  testthat::expect_true(any(grepl("audit hook user warning", rw_msgs)))
+  testthat::expect_true(any(grepl("trace hook user message", rm_msgs)))
+  testthat::expect_true(any(grepl("audit hook user message", rm_msgs)))
+})
+
+testthat::test_that("shinyOAuth.replay_async_conditions = FALSE suppresses replay", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  m <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      message("should be suppressed")
+      warning("also suppressed", call. = FALSE)
+      "suppressed_result"
+    }),
+    args = list()
+  )
+
+  resolved <- NULL
+  promises::then(promises::as.promise(m), function(x) {
+    resolved <<- x
+  })
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+
+  # Conditions were captured
+  testthat::expect_length(resolved$warnings, 1)
+  testthat::expect_length(resolved$messages, 1)
+
+  # With the option FALSE, replay should NOT emit them
+  withr::local_options(list(shinyOAuth.replay_async_conditions = FALSE))
+
+  # Capture any conditions that might leak
+  leaked_warnings <- list()
+  leaked_messages <- list()
+  withCallingHandlers(
+    {
+      val <- shinyOAuth:::replay_async_conditions(resolved)
+    },
+    warning = function(w) {
+      leaked_warnings[[length(leaked_warnings) + 1L]] <<- w
+      tryInvokeRestart("muffleWarning")
+    },
+    message = function(m) {
+      leaked_messages[[length(leaked_messages) + 1L]] <<- m
+      tryInvokeRestart("muffleMessage")
+    }
+  )
+
+  testthat::expect_equal(val, "suppressed_result")
+  testthat::expect_length(leaked_warnings, 0)
+  testthat::expect_length(leaked_messages, 0)
+})
+
+testthat::test_that("shinyOAuth.replay_async_conditions defaults to TRUE", {
+  # Ensure the option is unset
+  withr::local_options(list(shinyOAuth.replay_async_conditions = NULL))
+
+  wrapped <- list(
+    .shinyOAuth_async_wrapped = TRUE,
+    value = "default_test",
+    warnings = list(simpleWarning("w1", call = NULL)),
+    messages = list(simpleMessage("m1\n", call = NULL))
+  )
+
+  # Without the option set, conditions should be replayed (default = TRUE)
+  testthat::expect_warning(
+    testthat::expect_message(
+      {
+        val <- shinyOAuth:::replay_async_conditions(wrapped)
+      },
+      "m1"
+    ),
+    "w1"
+  )
+  testthat::expect_equal(val, "default_test")
+})
+
+testthat::test_that("shinyOAuth.replay_async_conditions = TRUE explicitly enables replay", {
+  withr::local_options(list(shinyOAuth.replay_async_conditions = TRUE))
+
+  wrapped <- list(
+    .shinyOAuth_async_wrapped = TRUE,
+    value = "explicit_true",
+    warnings = list(simpleWarning("explicit_w", call = NULL)),
+    messages = list(simpleMessage("explicit_m\n", call = NULL))
+  )
+
+  testthat::expect_warning(
+    testthat::expect_message(
+      {
+        val <- shinyOAuth:::replay_async_conditions(wrapped)
+      },
+      "explicit_m"
+    ),
+    "explicit_w"
+  )
+  testthat::expect_equal(val, "explicit_true")
+})

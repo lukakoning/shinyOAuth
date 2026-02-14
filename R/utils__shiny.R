@@ -259,10 +259,10 @@ mirai_connection_count <- function() {
 # Prefers mirai if daemons are configured, falls back to future_promise.
 # Returns a promise in either case.
 #
-# Warnings emitted by the worker expression are captured and bundled with the
-# result in a wrapper list (`$.shinyOAuth_async_wrapped`). Callers should pass
-# the resolved value through `replay_async_warnings()` to re-emit the warnings
-# in the main process and unwrap the actual result.
+# Warnings and messages emitted by the worker expression are captured and
+# bundled with the result in a wrapper list (`$.shinyOAuth_async_wrapped`).
+# Callers should pass the resolved value through `replay_async_conditions()`
+# to re-emit the conditions in the main process and unwrap the actual result.
 #
 # @param expr A quoted expression to evaluate (use quote() or substitute())
 # @param args A named list of values to pass to the expression
@@ -270,26 +270,33 @@ mirai_connection_count <- function() {
 #   When using mirai with dispatcher (the default), timed-out tasks are
 #   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
 #   when NULL (default = no timeout).
-# @return A promise that resolves to a wrapped result (use `replay_async_warnings()`)
+# @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
 async_dispatch <- function(expr, args, .timeout = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
 
-  # Wrap the expression to capture warnings emitted in the worker process.
-  # Warnings are collected into a list and bundled alongside the result so
-  # callers can replay them on the main thread via replay_async_warnings().
+  # Wrap the expression to capture warnings and messages emitted in the worker
+  # process. Conditions are collected into lists and bundled alongside the
+  # result so callers can replay them on the main thread via
+  # replay_async_conditions().
   wrapped_expr <- bquote({
     .async_warnings <- list()
+    .async_messages <- list()
     .async_value <- withCallingHandlers(
       .(expr),
       warning = function(w) {
         .async_warnings[[length(.async_warnings) + 1L]] <<- w
         tryInvokeRestart("muffleWarning")
+      },
+      message = function(m) {
+        .async_messages[[length(.async_messages) + 1L]] <<- m
+        tryInvokeRestart("muffleMessage")
       }
     )
     list(
       .shinyOAuth_async_wrapped = TRUE,
       value = .async_value,
-      warnings = .async_warnings
+      warnings = .async_warnings,
+      messages = .async_messages
     )
   })
 
@@ -337,23 +344,35 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
   )
 }
 
-# Internal: replay warnings captured by async_dispatch() and return the
-# unwrapped result value.
+# Internal: replay conditions (warnings and messages) captured by
+# async_dispatch() and return the unwrapped result value.
 #
 # When `result` is the wrapped list produced by async_dispatch()'s
-# withCallingHandlers wrapper, this function re-emits each captured warning
+# withCallingHandlers wrapper, this function re-emits each captured condition
 # in the main process and returns the actual value. If `result` is not wrapped
 # (e.g., from a non-async path), it is returned as-is.
 #
+# Messages are replayed first, then warnings, mirroring typical execution
+# order where informational output precedes diagnostic signals.
+#
+# Controlled by `options(shinyOAuth.replay_async_conditions)`:
+# - TRUE (default): re-emit captured conditions in the main process.
+# - FALSE: silently discard captured conditions (result is still unwrapped).
+#
 # @param result The resolved value from an async_dispatch() promise.
 # @return The unwrapped result value.
-replay_async_warnings <- function(result) {
+replay_async_conditions <- function(result) {
   if (
     is.list(result) &&
       isTRUE(result$.shinyOAuth_async_wrapped)
   ) {
-    for (w in result$warnings) {
-      warning(w)
+    if (!isFALSE(getOption("shinyOAuth.replay_async_conditions", TRUE))) {
+      for (m in result$messages) {
+        message(m)
+      }
+      for (w in result$warnings) {
+        warning(w)
+      }
     }
     return(result$value)
   }

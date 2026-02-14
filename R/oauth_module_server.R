@@ -1658,7 +1658,7 @@ oauth_module_server <- function(
 
             res |>
               promises::then(function(raw) {
-                tok <- replay_async_warnings(raw)
+                tok <- replay_async_conditions(raw)
                 values$token <- tok
                 values$error <- NULL
                 values$error_description <- NULL
@@ -1833,7 +1833,7 @@ oauth_module_server <- function(
                     if (isTRUE(async)) {
                       res |>
                         promises::then(function(raw) {
-                          res_resolved <- replay_async_warnings(raw)
+                          res_resolved <- replay_async_conditions(raw)
                           values$refresh_in_progress <- FALSE
                           values$token <- res_resolved
                           values$error <- NULL

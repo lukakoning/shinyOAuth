@@ -346,12 +346,30 @@ emit_trace_event <- function(event) {
     event
   })
   if (is.function(hook)) {
-    # Best-effort, never fail the error path
-    try(hook(event), silent = TRUE)
+    # Surface hook errors as warnings so they are visible in the main process
+    # (async_dispatch captures warnings and replays them on the main thread).
+    tryCatch(
+      hook(event),
+      error = function(e) {
+        warning(
+          "[shinyOAuth] trace_hook error: ",
+          conditionMessage(e),
+          call. = FALSE
+        )
+      }
+    )
   }
   if (is.function(audit_hook)) {
-    # Allow separate audit hook consumers
-    try(audit_hook(event), silent = TRUE)
+    tryCatch(
+      audit_hook(event),
+      error = function(e) {
+        warning(
+          "[shinyOAuth] audit_hook error: ",
+          conditionMessage(e),
+          call. = FALSE
+        )
+      }
+    )
   }
   invisible(NULL)
 }

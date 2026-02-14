@@ -150,7 +150,7 @@ testthat::test_that("introspect_token async returns a resolved promise", {
   testthat::expect_s3_class(p, "promise")
   val <- NULL
   p$then(function(x) {
-    val <<- shinyOAuth:::replay_async_warnings(x)
+    val <<- shinyOAuth:::replay_async_conditions(x)
   })
   deadline <- Sys.time() + 5
   while (is.null(val) && Sys.time() < deadline) {
