@@ -754,6 +754,10 @@ refresh_token <- function(
     err_input("No refresh token available")
   }
 
+  # Snapshot the pre-refresh refresh token so the audit event can report
+  # whether the provider rotated it (returned a new one) or preserved it.
+  pre_refresh_token <- token@refresh_token
+
   params <- list(
     grant_type = "refresh_token",
     refresh_token = token@refresh_token
@@ -946,8 +950,8 @@ refresh_token <- function(
       provider = oauth_client@provider@name %||% NA_character_,
       issuer = oauth_client@provider@issuer %||% NA_character_,
       client_id_digest = string_digest(oauth_client@client_id),
-      had_refresh_token = !is.na(token@refresh_token) &&
-        nzchar(token@refresh_token),
+      refresh_token_rotated = is_valid_string(token_set$refresh_token) &&
+        !identical(token_set$refresh_token, pre_refresh_token),
       new_expires_at = token@expires_at
     ),
     shiny_session = shiny_session

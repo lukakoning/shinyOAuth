@@ -294,7 +294,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_token_refresh`
 
 - When: `refresh_token()` successfully refreshes the access token
-- Context: `provider`, `issuer`, `client_id_digest`, `had_refresh_token`, `new_expires_at`
+- Context: `provider`, `issuer`, `client_id_digest`, `refresh_token_rotated`, `new_expires_at`
 
 ### Userinfo fetch
 

@@ -201,6 +201,11 @@ grammar (`NQSCHAR = %x21 / %x23-5B / %x5D-7E`). The previous regex rejected
 valid ASCII characters such as `!`, `#`, `$`, `=`, `@`, `~`, and others. All
 printable ASCII except space, double-quote, and backslash is now accepted.
 
+* Audit events:
+  - `audit_token_refresh`: replaced non-informative `had_refresh_token` field 
+  (always `TRUE` post-mutation) with `refresh_token_rotated` (indicates whether 
+  the provider returned a new refresh token).
+
 # shinyOAuth 0.3.0
 
 * Async backend: the default async backend is now 'mirai' (>= 2.0.0) for
