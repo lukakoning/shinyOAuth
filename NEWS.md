@@ -20,9 +20,9 @@
   - Warnings and messages emitted in async workers (e.g., missing `expires_in`
   from token response) are now captured and re-emitted on the main process so
   they appear in the R console. This includes conditions from user-supplied
-  `trace_hook` / `audit_hook` functions: warnings, messages, and errors (surfaced
-  as warnings) all propagate back to the main thread.
-  Replay can be disabled via `options(shinyOAuth.replay_async_conditions = FALSE)`.
+  `trace_hook` / `audit_hook` functions: warnings, messages, and errors 
+  (surfaced as warnings) all propagate back to the main thread. Replay can be
+  disabled via `options(shinyOAuth.replay_async_conditions = FALSE)`.
 
 * ID token validation (`validate_id_token()`):
   - Now enforces RFC 7515 section 4.1.11 critical header
