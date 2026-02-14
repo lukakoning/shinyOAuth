@@ -122,6 +122,10 @@
     to 0 at runtime, effectively disabling clock-skew tolerance.
   - Reserved OAuth parameter blocking in `extra_auth_params` and
     `extra_token_params` is now case-insensitive and trims whitespace.
+  - Vector inputs for `pkce_method` and URL parameters (`auth_url`,
+    `token_url`, `userinfo_url`, `introspection_url`, `revocation_url`)
+    now produce clear scalar-input errors instead of cryptic coercion
+    failures.
 
 - `OAuthClient` (S7 class):
 
@@ -140,6 +144,12 @@
     revocation/introspection.
   - Fixed incorrect warning about client being created in Shiny when
     this was not the case.
+  - Malformed `client_assertion_alg` and `client_assertion_audience`
+    values (e.g., `character(0)`, multi-element vectors) now produce
+    clear validation errors instead of crashing with base R
+    subscript-out-of-bounds errors. Empty string `""` for
+    `client_assertion_audience` is now explicitly rejected instead of
+    being silently treated as “not provided”.
 
 - `OAuthToken` (S7 class):
 
@@ -252,6 +262,11 @@
   previous regex rejected valid ASCII characters such as `!`, `#`, `$`,
   `=`, `@`, `~`, and others. All printable ASCII except space,
   double-quote, and backslash is now accepted.
+
+- JWT helpers (`build_client_assertion()`,
+  `resolve_client_assertion_audience()`) now have defense-in-depth
+  scalar guards so malformed property values cannot cause subscript
+  errors at runtime.
 
 - Audit events:
 
