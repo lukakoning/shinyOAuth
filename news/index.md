@@ -115,7 +115,7 @@
   exceeds the limit; a post-download guard catches chunked responses.
   Default 1 MiB, configurable via `options(shinyOAuth.max_body_bytes)`.
 
-- `OAuthProvider`:
+- `OAuthProvider` (S7 class):
 
   - `leeway` validator now rejects non-finite values (`Inf`, `-Inf`,
     `NaN`). Previously these passed validation but were silently coerced
@@ -123,7 +123,7 @@
   - Reserved OAuth parameter blocking in `extra_auth_params` and
     `extra_token_params` is now case-insensitive and trims whitespace.
 
-- `OAuthClient`:
+- `OAuthClient` (S7 class):
 
   - Gains a `claims_validation` property; when the client sends a
     structured `claims` request parameter with `essential = TRUE`
@@ -141,7 +141,7 @@
   - Fixed incorrect warning about client being created in Shiny when
     this was not the case.
 
-- `OAuthToken`:
+- `OAuthToken` (S7 class):
 
   - Gains a read-only `id_token_claims` property that exposes the
     decoded ID token JWT payload as a named list, surfacing all OIDC
