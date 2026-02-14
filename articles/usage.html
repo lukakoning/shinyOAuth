@@ -626,6 +626,13 @@ JWKS) refuse to follow redirects and reject 3xx responses. This prevents
 authorization codes, tokens, and PKCE verifiers from leaking to redirect
 targets. Only set to <code>TRUE</code> if your provider legitimately
 requires redirect-following</li>
+<li>
+<code>options(shinyOAuth.max_body_bytes = 1048576)</code> – maximum
+response body size (bytes, default 1 MiB) accepted from OAuth endpoints
+(token, introspection, userinfo, discovery, JWKS). Curl aborts the
+transfer early when <code>Content-Length</code> exceeds this limit; a
+post-download guard catches chunked responses. Increase if a provider
+legitimately returns larger payloads</li>
 </ul>
 </div>
 <div class="section level3">
