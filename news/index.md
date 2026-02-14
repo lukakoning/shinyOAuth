@@ -26,6 +26,9 @@
     explicit warning instead of an opaque runtime error.
   - Further reduced serialization overhead towards async workers by
     using certain functions from the package namespace directly.
+  - Warnings emitted in async workers (e.g., missing `expires_in` from
+    token response) are now captured and re-emitted on the main process
+    so they appear in the R console.
 
 - ID token validation (`validate_id_token()`):
 
