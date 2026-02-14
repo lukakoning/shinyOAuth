@@ -2,7 +2,7 @@
 
 ## shinyOAuth (development version)
 
-- ‘mirai’ async backend improvements:
+- ‘mirai’ & async backend improvements:
 
   - Detect active daemons via
     [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
