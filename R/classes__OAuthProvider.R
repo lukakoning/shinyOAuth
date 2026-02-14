@@ -848,6 +848,27 @@ oauth_provider <- function(
   leeway = getOption("shinyOAuth.leeway", 30),
   id_token_at_hash_required = FALSE
 ) {
+  # Validate scalar URL inputs before normalization to prevent cryptic
+  # coercion errors from normalize_url() when callers pass vectors.
+  for (url_arg in list(
+    list("auth_url", auth_url),
+    list("token_url", token_url),
+    list("userinfo_url", userinfo_url),
+    list("introspection_url", introspection_url),
+    list("revocation_url", revocation_url)
+  )) {
+    u_val <- url_arg[[2]]
+    if (!is.null(u_val) && (!is.character(u_val) || length(u_val) != 1L)) {
+      stop(
+        "OAuthProvider: ",
+        url_arg[[1]],
+        " must be a scalar character string (length 1), not length ",
+        length(u_val),
+        call. = FALSE
+      )
+    }
+  }
+
   # Use shared internal helper to normalize only the path component
   auth_url <- normalize_url(auth_url)
   token_url <- normalize_url(token_url)
@@ -860,6 +881,16 @@ oauth_provider <- function(
   }
 
   # Normalize pkce_method (be tolerant of NULL/NA and case)
+  if (
+    !is.null(pkce_method) &&
+      (!is.character(pkce_method) || length(pkce_method) != 1L)
+  ) {
+    stop(
+      "OAuthProvider: pkce_method must be a scalar character string (length 1), not length ",
+      length(pkce_method),
+      call. = FALSE
+    )
+  }
   if (is.null(pkce_method) || is.na(pkce_method)) {
     pkce_method <- "S256"
   }

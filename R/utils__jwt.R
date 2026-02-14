@@ -607,7 +607,12 @@ build_client_assertion <- function(client, aud) {
 
   style <- client@provider@token_auth_style %||% "header"
   alg_cfg <- client@client_assertion_alg %||% NA_character_
-  alg_chr <- as.character(alg_cfg[[1]])
+  # Defense-in-depth: ensure scalar before indexing (validator should already
+  # enforce this, but runtime callers may bypass validation).
+  if (!is.character(alg_cfg) || length(alg_cfg) != 1L) {
+    alg_cfg <- NA_character_ # nolint
+  }
+  alg_chr <- as.character(alg_cfg)
   alg <- toupper(ifelse(is.na(alg_chr), "", alg_chr))
   # Resolve default algorithm with key-aware logic for private_key_jwt.
   # Previous behavior always fell back to RS256 which breaks EC/OKP keys.
@@ -731,7 +736,11 @@ resolve_client_assertion_audience <- function(client, req) {
   S7::check_is_S7(client, class = OAuthClient)
 
   override <- client@client_assertion_audience %||% NA_character_
-  override_chr <- as.character(override[[1]])
+  # Defense-in-depth: ensure scalar before indexing.
+  if (!is.character(override) || length(override) != 1L) {
+    override <- NA_character_ # nolint
+  }
+  override_chr <- as.character(override)
   if (!is.na(override_chr) && nzchar(override_chr)) {
     return(override_chr)
   }

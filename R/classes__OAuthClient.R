@@ -406,9 +406,13 @@ OAuthClient <- S7::new_class(
     # with the configured token authentication style so we fail fast with a
     # clear input error rather than later inside JWT signing.
     if (!is.null(self@client_assertion_alg)) {
-      alg_chr <- as.character((self@client_assertion_alg %||% NA_character_)[[
-        1
-      ]])
+      caa_raw <- self@client_assertion_alg
+      if (!is.character(caa_raw) || length(caa_raw) != 1L) {
+        return(
+          "OAuthClient: client_assertion_alg must be a scalar character string (or NULL to omit)"
+        )
+      }
+      alg_chr <- caa_raw
       if (!is.na(alg_chr) && nzchar(alg_chr)) {
         alg <- toupper(alg_chr)
         allowed_hmac <- c("HS256", "HS384", "HS512")
@@ -454,10 +458,14 @@ OAuthClient <- S7::new_class(
 
     # Validate client_assertion_audience when provided
     caa <- self@client_assertion_audience %||% NA_character_
-    caa_chr <- as.character(caa[[1]])
-    if (!is.na(caa_chr) && nzchar(caa_chr) && !is_valid_string(caa_chr)) {
+    if (!is.character(caa) || length(caa) != 1L) {
       return(
-        "OAuthClient: client_assertion_audience must be a non-empty string when provided"
+        "OAuthClient: client_assertion_audience must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(caa) && !nzchar(caa)) {
+      return(
+        "OAuthClient: client_assertion_audience must be non-empty when provided (use NULL or NA to omit)"
       )
     }
 
