@@ -4,19 +4,13 @@
 
 - ‘mirai’ & async backend improvements:
 
-  - Detect active daemons via
-    [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
-    instead of
-    [`mirai::status()`](https://mirai.r-lib.org/reference/status.html).
-    Falls back to
-    [`mirai::info()`](https://mirai.r-lib.org/reference/info.html) on
-    older ‘mirai’ versions that lack `daemons_set()` (\< 2.3.0).
-  - Per-task timeout via `options(shinyOAuth.async_timeout)`
-    (milliseconds); timed-out ‘mirai’ tasks are automatically cancelled
-    by the dispatcher.
-  - Async audit events now include a `mirai_error_type` field.
-  - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
-    in workers.
+  - Warnings and messages emitted in async workers (e.g., missing
+    `expires_in` from token response) are now captured and re-emitted on
+    the main process so they appear in the R console. This includes
+    conditions from user-supplied `trace_hook` / `audit_hook` functions:
+    warnings, messages, and errors (surfaced as warnings) all propagate
+    back to the main thread. Replay can be disabled via
+    `options(shinyOAuth.replay_async_conditions = FALSE)`.
   - Async callback flow no longer serializes the full client object
     (including potentially non-serializable custom `state_store` / JWKS
     cache backends) into the worker context. The `state_store` (already
@@ -26,13 +20,24 @@
     explicit warning instead of an opaque runtime error.
   - Further reduced serialization overhead towards async workers by
     using certain functions from the package namespace directly.
-  - Warnings and messages emitted in async workers (e.g., missing
-    `expires_in` from token response) are now captured and re-emitted on
-    the main process so they appear in the R console. This includes
-    conditions from user-supplied `trace_hook` / `audit_hook` functions:
-    warnings, messages, and errors (surfaced as warnings) all propagate
-    back to the main thread. Replay can be disabled via
-    `options(shinyOAuth.replay_async_conditions = FALSE)`.
+  - Detect active daemons via
+    [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
+    instead of
+    [`mirai::status()`](https://mirai.r-lib.org/reference/status.html).
+    Falls back to
+    [`mirai::info()`](https://mirai.r-lib.org/reference/info.html) on
+    older ‘mirai’ versions that lack
+    [`mirai::daemons_set()`](https://mirai.r-lib.org/reference/daemons_set.html)
+    (\< 2.3.0).
+  - Configurable per-task timeout via
+    `options(shinyOAuth.async_timeout)` (milliseconds); timed-out
+    ‘mirai’ tasks are automatically cancelled by the dispatcher. Default
+    is `NULL` (no timeout).
+  - Async audit events now include a `mirai_error_type` field. This
+    classifies mirai transport-level failures separately from
+    application-level errors.
+  - Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available
+    in workers.
 
 - ID token validation (`validate_id_token()`):
 
