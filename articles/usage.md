@@ -415,7 +415,7 @@ for details about audit and trace hooks.
   ID token lifetime in seconds (`exp - iat`). Tokens whose lifetime
   exceeds this cap are rejected (OIDC Core §3.1.3.7 rule 9). Default
   `86400` (24 hours). Set to `Inf` to disable the check
-- `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1"))` -
+- `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` -
   allows hosts to use `http://` scheme instead of `https://`
 - `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts
   accepted hosts to this whitelist
@@ -537,6 +537,8 @@ options:
   binding
 - `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature
   verification
+- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept
+  unsigned (`alg=none`) UserInfo JWTs
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
   exchange
 
@@ -575,6 +577,8 @@ CPU or memory usage during decoding and decryption.
   maximum byte length of the `error_description` query parameter
 - `options(shinyOAuth.callback_max_error_uri_bytes = 2048)` – maximum
   byte length of the `error_uri` query parameter
+- `options(shinyOAuth.callback_max_iss_bytes = 2048)` – maximum byte
+  length of the `iss` query parameter (RFC 9207 issuer identification)
 - `options(shinyOAuth.callback_max_query_bytes = <derived>)` – maximum
   total byte length of the raw callback query string (pre-parse guard)
 - `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum

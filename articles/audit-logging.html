@@ -315,6 +315,21 @@ large)</li>
 </div>
 </div>
 <div class="section level3">
+<h3 id="callback-issuer-mismatch">Callback issuer mismatch<a class="anchor" aria-label="anchor" href="#callback-issuer-mismatch"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_callback_iss_mismatch">Event: <code>audit_callback_iss_mismatch</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_mismatch"></a>
+</h4>
+<ul>
+<li>When: the callback includes an <code>iss</code> query parameter (per
+RFC 9207) that does not match the provider’s expected issuer</li>
+<li>Context: <code>provider</code>, <code>expected_issuer</code>,
+<code>client_id_digest</code>
+</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
 <h3 id="callback-received">Callback received<a class="anchor" aria-label="anchor" href="#callback-received"></a>
 </h3>
 <div class="section level4">
@@ -386,8 +401,11 @@ error)</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>state_digest</code>,
 <code>error_class</code>, <code>phase</code>
-(<code>state_store_lookup</code>)</li>
-<li>Notes: The flow aborts with an invalid state error.</li>
+(<code>state_store_lookup</code> or
+<code>state_store_atomic_take</code>)</li>
+<li>Notes: The flow aborts with an invalid state error. The
+<code>state_store_atomic_take</code> phase applies when using a store
+with an atomic <code>$take()</code> method.</li>
 </ul>
 </div>
 <div class="section level4">
@@ -529,10 +547,15 @@ Shiny module</li>
 <li>When: the module clears the token reactively</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>reason</code>,
-<code>mirai_error_type</code>
+<code>error_class</code>, <code>mirai_error_type</code>
 </li>
 <li>Reasons include: <code>refresh_failed_async</code>,
 <code>refresh_failed_sync</code>, <code>reauth_window</code>,
+<code>token_expired</code>
+</li>
+<li>Note: <code>error_class</code> is present on refresh failure reasons
+(<code>refresh_failed_async</code>, <code>refresh_failed_sync</code>)
+but absent for <code>reauth_window</code> and
 <code>token_expired</code>
 </li>
 </ul>
@@ -643,10 +666,43 @@ token</li>
 <h4 id="event-audit_userinfo">Event: <code>audit_userinfo</code><a class="anchor" aria-label="anchor" href="#event-audit_userinfo"></a>
 </h4>
 <ul>
-<li>When: <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> successfully retrieves user
-information</li>
+<li>When: <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> is called to retrieve user
+information (emitted on success and various failure modes)</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>sub_digest</code>
+<code>client_id_digest</code>, <code>sub_digest</code>,
+<code>status</code>
+</li>
+<li>
+<code>status</code> values:
+<ul>
+<li>
+<code>"ok"</code> – userinfo successfully parsed</li>
+<li>
+<code>"parse_error"</code> – response could not be parsed as JSON or
+JWT. Additional fields: <code>http_status</code>, <code>url</code>,
+<code>content_type</code>, <code>body_digest</code>
+</li>
+<li>
+<code>"userinfo_not_jwt"</code> – signed JWT required but response
+was not <code>application/jwt</code>. Additional fields:
+<code>content_type</code>
+</li>
+<li>
+<code>"userinfo_jwt_header_parse_failed"</code> – JWT header could
+not be parsed</li>
+<li>
+<code>"userinfo_jwt_unsigned"</code> – JWT uses
+<code>alg=none</code>. Additional fields: <code>jwt_alg</code>
+</li>
+<li>
+<code>"userinfo_jwt_alg_rejected"</code> – JWT algorithm not in
+provider’s allowed asymmetric algorithms. Additional fields:
+<code>jwt_alg</code>
+</li>
+<li>
+<code>"userinfo_jwt_no_issuer"</code> – provider issuer not
+configured for JWKS verification</li>
+</ul>
 </li>
 </ul>
 </div>

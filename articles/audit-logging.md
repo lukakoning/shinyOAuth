@@ -197,6 +197,14 @@ identifiers (like email addresses) can be dictionary-attacked.
 - When: the callback query parameters fail validation (e.g., too large)
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
 
+### Callback issuer mismatch
+
+#### Event: `audit_callback_iss_mismatch`
+
+- When: the callback includes an `iss` query parameter (per RFC 9207)
+  that does not match the provider’s expected issuer
+- Context: `provider`, `expected_issuer`, `client_id_digest`
+
 ### Callback received
 
 #### Event: `audit_callback_received`
@@ -244,8 +252,11 @@ separate events by
 - When: retrieving the single-use state entry from the configured
   `state_store` fails (missing, malformed, or underlying cache error)
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`,
-  `error_class`, `phase` (`state_store_lookup`)
-- Notes: The flow aborts with an invalid state error.
+  `error_class`, `phase` (`state_store_lookup` or
+  `state_store_atomic_take`)
+- Notes: The flow aborts with an invalid state error. The
+  `state_store_atomic_take` phase applies when using a store with an
+  atomic `$take()` method.
 
 #### Event: `audit_state_store_removal_failed`
 
@@ -325,9 +336,12 @@ For state store events the digest reflects the plaintext state string.
 
 - When: the module clears the token reactively
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`,
-  `mirai_error_type`
+  `error_class`, `mirai_error_type`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`,
   `reauth_window`, `token_expired`
+- Note: `error_class` is present on refresh failure reasons
+  (`refresh_failed_async`, `refresh_failed_sync`) but absent for
+  `reauth_window` and `token_expired`
 
 ### Token revocation
 
@@ -389,8 +403,25 @@ For state store events the digest reflects the plaintext state string.
 
 - When:
   [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  successfully retrieves user information
-- Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`
+  is called to retrieve user information (emitted on success and various
+  failure modes)
+- Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`,
+  `status`
+- `status` values:
+  - `"ok"` – userinfo successfully parsed
+  - `"parse_error"` – response could not be parsed as JSON or JWT.
+    Additional fields: `http_status`, `url`, `content_type`,
+    `body_digest`
+  - `"userinfo_not_jwt"` – signed JWT required but response was not
+    `application/jwt`. Additional fields: `content_type`
+  - `"userinfo_jwt_header_parse_failed"` – JWT header could not be
+    parsed
+  - `"userinfo_jwt_unsigned"` – JWT uses `alg=none`. Additional fields:
+    `jwt_alg`
+  - `"userinfo_jwt_alg_rejected"` – JWT algorithm not in provider’s
+    allowed asymmetric algorithms. Additional fields: `jwt_alg`
+  - `"userinfo_jwt_no_issuer"` – provider issuer not configured for JWKS
+    verification
 
 ### State parsing failures
 
