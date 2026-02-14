@@ -1,14 +1,12 @@
 # shinyOAuth (development version)
 
 * 'mirai' & async backend improvements:
-  - Detect active daemons via `mirai::daemons_set()` instead of 
-  `mirai::status()`. Falls back to `mirai::info()` on older 'mirai' versions
-  that lack `daemons_set()` (< 2.3.0).
-  - Per-task timeout via `options(shinyOAuth.async_timeout)` (milliseconds); 
-  timed-out 'mirai' tasks are automatically cancelled by the dispatcher.
-  - Async audit events now include a `mirai_error_type` field.
-  - Prevent 'mirai' warning spam about 'stats' maybe not being available in 
-  workers.
+  - Warnings and messages emitted in async workers (e.g., missing `expires_in`
+  from token response) are now captured and re-emitted on the main process so
+  they appear in the R console. This includes conditions from user-supplied
+  `trace_hook` / `audit_hook` functions: warnings, messages, and errors 
+  (surfaced as warnings) all propagate back to the main thread. Replay can be
+  disabled via `options(shinyOAuth.replay_async_conditions = FALSE)`.
   - Async callback flow no longer serializes the full client object (including
   potentially non-serializable custom `state_store` / JWKS cache backends)
   into the worker context. The `state_store` (already consumed on the main
@@ -17,12 +15,16 @@
   execution with an explicit warning instead of an opaque runtime error.
   - Further reduced serialization overhead towards async workers by using 
   certain functions from the package namespace directly.
-  - Warnings and messages emitted in async workers (e.g., missing `expires_in`
-  from token response) are now captured and re-emitted on the main process so
-  they appear in the R console. This includes conditions from user-supplied
-  `trace_hook` / `audit_hook` functions: warnings, messages, and errors 
-  (surfaced as warnings) all propagate back to the main thread. Replay can be
-  disabled via `options(shinyOAuth.replay_async_conditions = FALSE)`.
+  - Detect active daemons via `mirai::daemons_set()` instead of 
+  `mirai::status()`. Falls back to `mirai::info()` on older 'mirai' versions
+  that lack `mirai::daemons_set()` (< 2.3.0).
+  - Configurable per-task timeout via `options(shinyOAuth.async_timeout)` 
+  (milliseconds); timed-out 'mirai' tasks are automatically cancelled by the
+  dispatcher. Default is `NULL` (no timeout).
+  - Async audit events now include a `mirai_error_type` field. This classifies 
+  mirai transport-level failures separately from application-level errors.
+  - Prevent 'mirai' warning spam about 'stats' maybe not being available in 
+  workers.
 
 * ID token validation (`validate_id_token()`):
   - Now enforces RFC 7515 section 4.1.11 critical header
@@ -87,14 +89,14 @@ Curl aborts the transfer early when `Content-Length` exceeds the limit; a
 post-download guard catches chunked responses. Default 1 MiB, configurable via
 `options(shinyOAuth.max_body_bytes)`.
 
-* `OAuthProvider`: 
+* `OAuthProvider` (S7 class):
   - `leeway` validator now rejects non-finite values (`Inf`, 
   `-Inf`, `NaN`). Previously these passed validation but were silently coerced 
   to 0 at runtime, effectively disabling clock-skew tolerance.
   - Reserved OAuth parameter blocking in `extra_auth_params` and 
   `extra_token_params` is now case-insensitive and trims whitespace. 
 
-* `OAuthClient`: 
+* `OAuthClient` (S7 class):
   - Gains a `claims_validation` property; when the client sends a structured 
   `claims` request parameter with `essential = TRUE` entries, this setting
   controls whether the returned ID token and/or userinfo response are checked 
@@ -108,7 +110,7 @@ post-download guard catches chunked responses. Default 1 MiB, configurable via
   - Fixed incorrect warning about client being created in Shiny when this was
   not the case.
 
-* `OAuthToken`:
+* `OAuthToken` (S7 class):
   - Gains a read-only `id_token_claims` property that exposes the
   decoded ID token JWT payload as a named list, surfacing all OIDC claims
   (e.g., `acr`, `amr`, `auth_time`) without manual decoding.
