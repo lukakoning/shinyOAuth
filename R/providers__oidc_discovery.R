@@ -296,6 +296,7 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_parse_json <- function(resp) {
+  check_resp_body_size(resp, context = "oidc_discovery")
   ct <- tolower(httr2::resp_header(resp, "content-type") %||% "")
 
   if (!grepl("^application/json", ct)) {

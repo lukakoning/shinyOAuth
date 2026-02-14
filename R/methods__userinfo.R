@@ -109,6 +109,9 @@ get_userinfo <- function(
     ))
   }
 
+  # Guard against oversized responses before parsing
+  check_resp_body_size(resp, context = "userinfo")
+
   # Parse from response
   if (is_jwt_response) {
     ui <- try(

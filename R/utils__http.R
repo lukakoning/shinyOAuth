@@ -133,9 +133,80 @@ add_req_defaults <- function(req) {
       as.character(utils::packageVersion("httr2"))
     )
   }
+  # Max response body size (bytes). Curl aborts the transfer when the server
+  # advertises Content-Length exceeding this value, preventing large allocations
+  # from malicious or compromised endpoints. Default 1 MiB. Chunked responses
+  # without Content-Length are caught post-download by check_resp_body_size().
+  max_bytes <- resolve_max_body_bytes()
+
   req |>
     httr2::req_timeout(t) |>
-    httr2::req_user_agent(ua)
+    httr2::req_user_agent(ua) |>
+    httr2::req_options(maxfilesize = max_bytes)
+}
+
+#' Internal: resolve max body bytes from option
+#'
+#' @return Integer, validated max body bytes (default 1 MiB).
+#' @keywords internal
+#' @noRd
+resolve_max_body_bytes <- function() {
+  max_bytes <- suppressWarnings(
+    as.numeric(getOption("shinyOAuth.max_body_bytes", 1048576L))
+  )
+  if (!is.finite(max_bytes) || is.na(max_bytes) || max_bytes < 1024) {
+    max_bytes <- 1048576L
+  }
+  as.integer(max_bytes)
+}
+
+#' Internal: check response body size before parsing
+#'
+#' Defense-in-depth guard that prevents expensive parsing (JSON, JWT) of
+#' oversized response bodies. Works for both Content-Length and chunked
+#' transfer encoding because it checks the actual downloaded body length.
+#'
+#' @param resp httr2 response object.
+#' @param context Character label for error messages (e.g., "token", "userinfo").
+#' @param max_bytes Maximum allowed body size in bytes; defaults to
+#'   `getOption("shinyOAuth.max_body_bytes", 1048576L)`.
+#'
+#' @return Invisibly TRUE when body is within limits; raises
+#'   `shinyOAuth_parse_error` otherwise.
+#'
+#' @keywords internal
+#' @noRd
+check_resp_body_size <- function(
+  resp,
+  context = "response",
+  max_bytes = resolve_max_body_bytes()
+) {
+  if (!inherits(resp, "httr2_response")) {
+    return(invisible(TRUE))
+  }
+  body_len <- length(resp$body)
+  if (body_len > max_bytes) {
+    err_parse(
+      c(
+        "x" = paste0(
+          "Response body too large during ",
+          context,
+          " (",
+          body_len,
+          " bytes; limit ",
+          max_bytes,
+          ")"
+        ),
+        "i" = "Adjust via `options(shinyOAuth.max_body_bytes = <bytes>)` if the provider legitimately returns large payloads"
+      ),
+      context = list(
+        phase = context,
+        body_bytes = body_len,
+        max_bytes = max_bytes
+      )
+    )
+  }
+  invisible(TRUE)
 }
 
 #' Internal: Perform an httr2 request with retries
@@ -317,6 +388,7 @@ req_with_retry <- function(req) {
 #' @keywords internal
 #' @noRd
 parse_token_response <- function(resp) {
+  check_resp_body_size(resp, context = "token")
   ct <- tolower(httr2::resp_header(resp, "content-type") %||% "")
   body <- httr2::resp_body_string(resp)
 

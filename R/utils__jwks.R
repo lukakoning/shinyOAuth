@@ -126,6 +126,7 @@ fetch_jwks <- function(
       context = list(issuer = issuer)
     )
   }
+  check_resp_body_size(resp, context = "jwks_discovery")
   disc <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   jwks_uri <- disc$jwks_uri %||%
     {
@@ -162,6 +163,7 @@ fetch_jwks <- function(
       context = list(jwks_uri = jwks_uri)
     )
   }
+  check_resp_body_size(jresp, context = "jwks_fetch")
   jwks <- httr2::resp_body_json(jresp, simplifyVector = TRUE)
   # Validate structure and (optionally) pin before caching
   validate_jwks(jwks, pins = pins, pin_mode = pin_mode)

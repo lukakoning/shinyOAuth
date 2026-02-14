@@ -366,3 +366,99 @@ test_that("req_with_retry succeeds on retry after transient 500", {
   ))$attempts
   expect_equal(attempts, 2)
 })
+
+# ---- check_resp_body_size tests ----
+
+test_that("check_resp_body_size passes for responses within limit", {
+  small_body <- charToRaw('{"access_token":"abc"}')
+  resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = small_body
+  )
+  expect_invisible(shinyOAuth:::check_resp_body_size(resp, context = "token"))
+})
+
+test_that("check_resp_body_size rejects oversized response bodies", {
+  big_body <- charToRaw(paste(rep("x", 2000), collapse = ""))
+  resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = big_body
+  )
+  expect_error(
+    shinyOAuth:::check_resp_body_size(
+      resp,
+      context = "token",
+      max_bytes = 1024
+    ),
+    class = "shinyOAuth_parse_error"
+  )
+  expect_error(
+    shinyOAuth:::check_resp_body_size(
+      resp,
+      context = "token",
+      max_bytes = 1024
+    ),
+    regexp = "too large"
+  )
+})
+
+test_that("check_resp_body_size respects shinyOAuth.max_body_bytes option", {
+  big_body <- charToRaw(paste(rep("x", 5000), collapse = ""))
+  resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = big_body
+  )
+  withr::local_options(list(shinyOAuth.max_body_bytes = 2048))
+  expect_error(
+    shinyOAuth:::check_resp_body_size(resp, context = "token"),
+    class = "shinyOAuth_parse_error"
+  )
+  withr::local_options(list(shinyOAuth.max_body_bytes = 10000))
+  expect_invisible(shinyOAuth:::check_resp_body_size(resp, context = "token"))
+})
+
+test_that("check_resp_body_size skips non-httr2 objects", {
+  expect_invisible(shinyOAuth:::check_resp_body_size("not a response"))
+  expect_invisible(shinyOAuth:::check_resp_body_size(NULL))
+})
+
+test_that("parse_token_response rejects oversized bodies", {
+  big_json <- paste0('{"token":"', paste(rep("x", 3000), collapse = ""), '"}')
+  resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = charToRaw(big_json)
+  )
+  withr::local_options(list(shinyOAuth.max_body_bytes = 1024))
+  expect_error(
+    shinyOAuth:::parse_token_response(resp),
+    class = "shinyOAuth_parse_error"
+  )
+})
+
+test_that("resolve_max_body_bytes falls back to 1 MiB for invalid values", {
+  withr::local_options(list(shinyOAuth.max_body_bytes = -1))
+  expect_equal(shinyOAuth:::resolve_max_body_bytes(), 1048576L)
+  withr::local_options(list(shinyOAuth.max_body_bytes = "abc"))
+  expect_equal(shinyOAuth:::resolve_max_body_bytes(), 1048576L)
+  withr::local_options(list(shinyOAuth.max_body_bytes = 500))
+  # Values below 1024 are treated as invalid
+  expect_equal(shinyOAuth:::resolve_max_body_bytes(), 1048576L)
+})
+
+test_that("add_req_defaults sets maxfilesize curl option", {
+  req <- httr2::request("https://example.com")
+  req2 <- shinyOAuth:::add_req_defaults(req)
+  expect_equal(req2$options$maxfilesize, 1048576L)
+
+  withr::local_options(list(shinyOAuth.max_body_bytes = 2048))
+  req3 <- shinyOAuth:::add_req_defaults(req)
+  expect_equal(req3$options$maxfilesize, 2048L)
+})

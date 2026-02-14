@@ -78,6 +78,12 @@ identifiers containing query or fragment components, covering both
 * Stricter state payload parsing: callback `state` now rejects embedded NUL
 bytes before JSON decoding.
 
+* Stricter response size validation: enforce max response body size on all 
+outbound HTTP endpoints (token, introspection, userinfo, OIDC discovery, JWKS).
+Curl aborts the transfer early when `Content-Length` exceeds the limit; a 
+post-download guard catches chunked responses. Default 1 MiB, configurable via
+`options(shinyOAuth.max_body_bytes)`.
+
 * `OAuthProvider`: 
   - `leeway` validator now rejects non-finite values (`Inf`, 
   `-Inf`, `NaN`). Previously these passed validation but were silently coerced 

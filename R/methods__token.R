@@ -547,6 +547,21 @@ introspect_token <- function(
   raw <- NULL
   active <- NA
   status <- "ok"
+  # Guard against oversized introspection responses before parsing
+  size_ok <- try(
+    check_resp_body_size(resp, context = "introspection"),
+    silent = TRUE
+  )
+  if (inherits(size_ok, "try-error")) {
+    result <- list(
+      supported = TRUE,
+      active = NA,
+      raw = NULL,
+      status = "body_too_large"
+    )
+    .audit_introspection(result)
+    return(result)
+  }
   # Try parse JSON; RFC 7662 requires JSON body with at least { active: boolean }
   body_txt <- httr2::resp_body_string(resp)
   parsed <- try(
