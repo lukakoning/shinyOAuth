@@ -53,16 +53,18 @@
 #' @param scopes Vector of scopes to request
 #'
 #' @param state_store State storage backend. Defaults to `cachem::cache_mem(max_age = 300)`.
-#'    Alternative backends could include `cachem::cache_disk()` or a custom
-#'    implementation (which you can create with [custom_cache()]. The backend
+#'    Alternative backends should use [custom_cache()] with an atomic `$take()`
+#'    method for replay-safe single-use state consumption. The backend
 #'    must implement cachem-like methods `$get(key, missing)`, `$set(key, value)`,
 #'    and `$remove(key)`; `$info()` is optional.
 #'
 #'    Trade-offs: `cache_mem` is in-memory and thus scoped to a single R process
-#'    (good default for a single Shiny process). `cache_disk` persists to disk
-#'    and can be shared across multiple R processes (useful for multi-process
-#'    deployments or when Shiny workers aren't sticky). A [custom_cache()]
-#'    backend could use a database or external store (e.g., Redis, Memcached).
+#'    (good default for a single Shiny process). For multi-process deployments,
+#'    use [custom_cache()] with an atomic `$take()` backed by a shared store
+#'    (e.g., Redis `GETDEL`, SQL `DELETE ... RETURNING`). Plain
+#'    `cachem::cache_disk()` is **not safe** as a shared state store because its
+#'    `$get()` + `$remove()` operations are not atomic; use it only if wrapped
+#'    in a [custom_cache()] that provides `$take()`.
 #'    See also `vignette("usage", package = "shinyOAuth")`.
 #'
 #'    The client automatically generates, persists (in `state_store`), and

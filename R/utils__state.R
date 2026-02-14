@@ -91,7 +91,10 @@ state_payload_decrypt_validate <- function(
 #' When `$take()` is not available, the function falls back to
 #' `$get()` + `$remove()` with a post-removal absence check.
 #' This fallback is safe for per-process caches (e.g., [cachem::cache_mem()])
-#' but cannot guarantee single-use under concurrent access in shared stores.
+#' but **errors** for any other store (e.g., [cachem::cache_disk()] or custom
+#' backends) because non-atomic get+remove cannot guarantee single-use under
+#' concurrent access. Shared stores **must** implement `$take()` to be used
+#' as a state store.
 #'
 #' @param client [OAuthClient] instance
 #' @param state Plain (decrypted) state string used as the logical key
@@ -134,12 +137,23 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
   if (has_take) {
     ssv <- state_store_consume_atomic(store, key, client, state, shiny_session)
   } else {
-    # Warn whenever $take() is absent unless the backend is known to be
-    # process-local.  cachem::cache_mem() is the only built-in backend that
-    # is inherently per-process; cachem::cache_disk() and any other shared or
-    # custom stores should surface the replay-risk warning.
+    # Fail closed: the non-atomic get()+remove() fallback is only safe for
+    # per-process caches.  cachem::cache_mem() is the only built-in backend
+    # that is inherently per-process; cachem::cache_disk() and any other
+    # shared or custom stores MUST provide an atomic $take() method to
+    # guarantee single-use state consumption under concurrent access.
+    #
+    # Users can opt in to the non-atomic fallback for shared stores by setting
+    # options(shinyOAuth.allow_non_atomic_state_store = TRUE). This is
+    # discouraged because it re-opens the TOCTOU replay window, but may be
+    # acceptable when the deployment has sticky sessions or other external
+    # safeguards.
     if (!inherits(store, "cache_mem")) {
-      warn_no_atomic_take()
+      if (isTRUE(getOption("shinyOAuth.allow_non_atomic_state_store"))) {
+        warn_non_atomic_state_store()
+      } else {
+        err_no_atomic_take()
+      }
     }
     ssv <- state_store_consume_fallback(
       store,
@@ -349,25 +363,53 @@ validate_state_store_value <- function(ssv) {
 }
 
 
-# -- Warning for stores without atomic $take() ------------------------------
+# -- Error for stores without atomic $take() --------------------------------
 
 #' @noRd
-warn_no_atomic_take <- function() {
-  rlang::warn(
+err_no_atomic_take <- function() {
+  err_config(
     c(
-      "State store lacks atomic `$take(key, missing)` method",
+      "Shared state store requires atomic `$take(key, missing)` method",
       "i" = paste0(
-        "Single-use state enforcement uses a non-atomic get+remove fallback. ",
-        "This is safe for per-process caches but may allow replay attacks ",
+        "Non-atomic get()+remove() cannot guarantee single-use state ",
+        "consumption under concurrent access, which may allow replay attacks ",
         "in multi-worker deployments with shared stores."
       ),
       "i" = paste0(
         "Provide an atomic `$take()` via `custom_cache(take = ...)` ",
-        "for replay-safe state stores."
+        "(e.g., Redis GETDEL, SQL DELETE ... RETURNING) or use ",
+        "`cachem::cache_mem()` for single-process deployments."
+      ),
+      "i" = paste0(
+        "If you accept the replay risk (e.g., sticky sessions), set ",
+        "`options(shinyOAuth.allow_non_atomic_state_store = TRUE)` to ",
+        "allow the non-atomic fallback."
+      )
+    )
+  )
+}
+
+
+# -- Warning when non-atomic fallback is explicitly opted into ---------------
+
+#' @noRd
+warn_non_atomic_state_store <- function() {
+  rlang::warn(
+    c(
+      "Using non-atomic get()+remove() state store fallback",
+      "i" = paste0(
+        "Single-use state enforcement uses a non-atomic get+remove fallback. ",
+        "This cannot guarantee single-use under concurrent access and may ",
+        "allow replay attacks in multi-worker deployments with shared stores."
+      ),
+      "i" = paste0(
+        "Opted in via `options(shinyOAuth.allow_non_atomic_state_store = TRUE)`. ",
+        "Provide an atomic `$take()` via `custom_cache(take = ...)` for ",
+        "replay-safe state stores."
       )
     ),
-    class = "shinyOAuth_no_atomic_take_warning",
+    class = "shinyOAuth_non_atomic_state_store_warning",
     .frequency = "once",
-    .frequency_id = "shinyOAuth_no_atomic_take"
+    .frequency_id = "shinyOAuth_non_atomic_state_store"
   )
 }

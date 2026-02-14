@@ -78,16 +78,18 @@ providers support it; consult your provider's documentation.
 }}
 
 \item{state_store}{State storage backend. Defaults to \code{cachem::cache_mem(max_age = 300)}.
-Alternative backends could include \code{cachem::cache_disk()} or a custom
-implementation (which you can create with \code{\link[=custom_cache]{custom_cache()}}. The backend
+Alternative backends should use \code{\link[=custom_cache]{custom_cache()}} with an atomic \verb{$take()}
+method for replay-safe single-use state consumption. The backend
 must implement cachem-like methods \verb{$get(key, missing)}, \verb{$set(key, value)},
 and \verb{$remove(key)}; \verb{$info()} is optional.
 
 Trade-offs: \code{cache_mem} is in-memory and thus scoped to a single R process
-(good default for a single Shiny process). \code{cache_disk} persists to disk
-and can be shared across multiple R processes (useful for multi-process
-deployments or when Shiny workers aren't sticky). A \code{\link[=custom_cache]{custom_cache()}}
-backend could use a database or external store (e.g., Redis, Memcached).
+(good default for a single Shiny process). For multi-process deployments,
+use \code{\link[=custom_cache]{custom_cache()}} with an atomic \verb{$take()} backed by a shared store
+(e.g., Redis \code{GETDEL}, SQL \verb{DELETE ... RETURNING}). Plain
+\code{cachem::cache_disk()} is \strong{not safe} as a shared state store because its
+\verb{$get()} + \verb{$remove()} operations are not atomic; use it only if wrapped
+in a \code{\link[=custom_cache]{custom_cache()}} that provides \verb{$take()}.
 See also \code{vignette("usage", package = "shinyOAuth")}.
 
 The client automatically generates, persists (in \code{state_store}), and

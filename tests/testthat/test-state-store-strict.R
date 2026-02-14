@@ -31,7 +31,7 @@ test_that("state_store_get_remove errors on missing entry and audits lookup fail
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
-test_that("state_store_get_remove errors when remove fails and audits removal failure", {
+test_that("state_store_get_remove errors when atomic take fails and audits failure", {
   # Capture audit events
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
@@ -39,16 +39,13 @@ test_that("state_store_get_remove errors when remove fails and audits removal fa
   })
   on.exit(options(old), add = TRUE)
 
-  # Backend that throws on remove
+  # Backend that throws on take
   mem <- cachem::cache_mem(max_age = 60)
-  removing <- FALSE
-  bad_remove <- function(key) {
-    stop("remove_failed")
-  }
   store <- shinyOAuth::custom_cache(
     get = function(key, missing = NULL) mem$get(key, missing = missing),
     set = function(key, value) mem$set(key, value),
-    remove = bad_remove,
+    remove = function(key) mem$remove(key),
+    take = function(key, missing = NULL) stop("take_failed"),
     info = function() list(max_age = 60)
   )
 
@@ -73,18 +70,18 @@ test_that("state_store_get_remove errors when remove fails and audits removal fa
     list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "n")
   )
 
-  # Expect error due to remove failure
+  # Expect error due to take failure
   expect_error(
     shinyOAuth:::state_store_get_remove(client, st),
     class = "shinyOAuth_state_error"
   )
 
-  # Assert an audit_state_store_removal_failed event was emitted
+  # Assert an audit_state_store_lookup_failed event was emitted
   types <- vapply(events, function(e) as.character(e$type), character(1))
-  expect_true(any(grepl("^audit_state_store_removal_failed$", types)))
+  expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
-test_that("state_store_get_remove treats explicit FALSE from remove as failure", {
+test_that("state_store_get_remove errors when atomic take returns NULL", {
   prov <- shinyOAuth::oauth_provider_github()
   client <- shinyOAuth::oauth_client(
     prov,
@@ -98,7 +95,7 @@ test_that("state_store_get_remove treats explicit FALSE from remove as failure",
     )
   )
 
-  st <- "remove-false-state"
+  st <- "take-null-state"
   key <- shinyOAuth:::state_cache_key(st)
   client@state_store$set(
     key,
@@ -106,10 +103,12 @@ test_that("state_store_get_remove treats explicit FALSE from remove as failure",
   )
 
   store <- client@state_store
+  # custom_cache with take that always returns NULL (simulates missing entry)
   client@state_store <- shinyOAuth::custom_cache(
     get = function(key, missing = NULL) store$get(key, missing = missing),
     set = function(key, value) store$set(key, value),
-    remove = function(key) FALSE,
+    remove = function(key) store$remove(key),
+    take = function(key, missing = NULL) missing,
     info = function() list(max_age = 60)
   )
 

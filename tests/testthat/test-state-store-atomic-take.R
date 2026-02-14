@@ -219,11 +219,7 @@ test_that("custom_cache() without take has $take == NULL", {
 
 # -- Tests for fallback (no $take) path -------------------------------------
 
-test_that("fallback warns once for non-cachem store without $take()", {
-  # Reset the once-per-session verbosity gate so the warning fires even if an
-  # earlier test (in any file order) already triggered it.
-  rlang::reset_warning_verbosity("shinyOAuth_no_atomic_take")
-
+test_that("fallback errors for non-cachem store without $take()", {
   store <- list(
     get = function(key, missing = NULL) missing,
     set = function(key, value) invisible(NULL),
@@ -232,16 +228,15 @@ test_that("fallback warns once for non-cachem store without $take()", {
   )
   cli <- make_client_with_store(store)
 
-  state <- "WARN-NO-TAKE"
+  state <- "ERR-NO-TAKE"
   key <- shinyOAuth:::state_cache_key(state)
+  ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
+  store$set(key, ssv)
 
-  # Expect the warning about missing $take
-  expect_warning(
-    expect_error(
-      shinyOAuth:::state_store_get_remove(cli, state),
-      class = "shinyOAuth_state_error"
-    ),
-    class = "shinyOAuth_no_atomic_take_warning"
+  # Non-cache_mem store without $take() must error (fail closed)
+  expect_error(
+    shinyOAuth:::state_store_get_remove(cli, state),
+    class = "shinyOAuth_config_error"
   )
 })
 
@@ -262,21 +257,20 @@ test_that("fallback does NOT warn for cachem stores", {
 })
 
 
-test_that("fallback DOES warn for cachem::cache_disk() (shared store)", {
-  rlang::reset_warning_verbosity("shinyOAuth_no_atomic_take")
-
+test_that("fallback errors for cachem::cache_disk() (shared store)", {
   tmp <- withr::local_tempdir()
-  cli <- make_client_with_store(cachem::cache_disk(dir = tmp, max_age = 60))
+  disk_store <- cachem::cache_disk(dir = tmp, max_age = 60)
+  cli <- make_client_with_store(disk_store)
 
-  state <- "WARN-CACHE-DISK"
+  state <- "ERR-CACHE-DISK"
   key <- shinyOAuth:::state_cache_key(state)
+  ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
+  disk_store$set(key, ssv)
 
-  expect_warning(
-    expect_error(
-      shinyOAuth:::state_store_get_remove(cli, state),
-      class = "shinyOAuth_state_error"
-    ),
-    class = "shinyOAuth_no_atomic_take_warning"
+  # cache_disk() without $take() must error (fail closed)
+  expect_error(
+    shinyOAuth:::state_store_get_remove(cli, state),
+    class = "shinyOAuth_config_error"
   )
 })
 
@@ -302,18 +296,14 @@ test_that("fallback post-check catches no-op remove (exact TOCTOU vector)", {
 
   cli <- make_client_with_store(noop_store)
 
-  # Even though get() finds the value and remove() returns TRUE, the
-  # post-check $get() sees the key is STILL present → fail closed.
-  # Note: the no-atomic-take warning may or may not fire depending on test
-  # order (.frequency = "once"), so suppress it to focus on the error assertion.
-  suppressWarnings(
-    expect_error(
-      shinyOAuth:::state_store_get_remove(cli, state),
-      class = "shinyOAuth_state_error"
-    )
+  # Non-cache_mem store without $take() now errors before reaching the
+  # fallback path, so we never even get to the no-op remove scenario.
+  expect_error(
+    shinyOAuth:::state_store_get_remove(cli, state),
+    class = "shinyOAuth_config_error"
   )
 
-  # Key is still in backing (remove was a no-op)
+  # Key is still in backing (nothing was consumed)
   expect_true(!is.null(backing$get(key, missing = NULL)))
 })
 

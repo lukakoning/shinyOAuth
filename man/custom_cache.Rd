@@ -40,9 +40,9 @@ If your backend supports atomic get-and-delete natively
 parameter for replay-safe state stores.
 
 When \code{take} is not provided and the state store is not a per-process cache
-(like \code{\link[cachem:cache_mem]{cachem::cache_mem()}}), 'shinyOAuth' falls back to non-atomic
-\verb{$get()} + \verb{$remove()} with a one-time warning about potential replay
-vulnerability.}
+(like \code{\link[cachem:cache_mem]{cachem::cache_mem()}}), 'shinyOAuth' will \strong{error} at state
+consumption time because non-atomic \verb{$get()} + \verb{$remove()} cannot
+guarantee single-use under concurrent access in shared stores.}
 
 \item{info}{Function() -> list(max_age = seconds, ...). Optional
 
@@ -57,9 +57,8 @@ Builds a minimal cachem-like cache backend object that exposes cachem-compatible
 \verb{$get(key, missing)}, \verb{$set(key, value)}, \verb{$remove(key)}, and \verb{$info()}.
 
 Use this helper when you want to plug a custom state store or JWKS cache
-into 'shinyOAuth', when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} or \code{\link[cachem:cache_disk]{cachem::cache_disk()}}
-are not suitable. This may be useful specifically when you deploy
-a Shiny app to a multi-process environment with non-sticky workers.
+into 'shinyOAuth', when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} is not suitable (e.g.,
+multi-process deployments with non-sticky workers).
 In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).
 

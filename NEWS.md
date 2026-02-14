@@ -56,8 +56,11 @@
   - `state_store_get_remove()` prefers `$take()` when available; falls back to
     `$get()` + `$remove()` with a mandatory post-removal absence check (instead
     of trusting `$remove()` return values).
-  - Non-`cachem::cache_mem()` stores without `$take()` now emit a one-time 
-    warning about potential replay vulnerability in shared deployments.
+  - Non-`cachem::cache_mem()` stores without `$take()` now error by default
+    to prevent TOCTOU replay attacks in shared/multi-worker deployments. 
+    To bypass this error, operators must explicitly acknowledge the risk by 
+    setting `options(shinyOAuth.allow_non_atomic_state_store = TRUE)`, which
+    downgrades the error to a warning.
   - `OAuthClient` validator now validates `$take()` signature when present.
   - The `$remove()` return value is no longer relied upon in the fallback path;
     the post-removal `$get()` absence check is authoritative.

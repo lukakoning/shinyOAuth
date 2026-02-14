@@ -5,9 +5,8 @@
 #' `$get(key, missing)`, `$set(key, value)`, `$remove(key)`, and `$info()`.
 #'
 #' Use this helper when you want to plug a custom state store or JWKS cache
-#' into 'shinyOAuth', when [cachem::cache_mem()] or [cachem::cache_disk()]
-#' are not suitable. This may be useful specifically when you deploy
-#' a Shiny app to a multi-process environment with non-sticky workers.
+#' into 'shinyOAuth', when [cachem::cache_mem()] is not suitable (e.g.,
+#' multi-process deployments with non-sticky workers).
 #' In such cases, you may want to use a shared external cache (e.g., database,
 #' Redis, Memcached).
 #'
@@ -52,9 +51,9 @@
 #'   parameter for replay-safe state stores.
 #'
 #'   When `take` is not provided and the state store is not a per-process cache
-#'   (like [cachem::cache_mem()]), 'shinyOAuth' falls back to non-atomic
-#'   `$get()` + `$remove()` with a one-time warning about potential replay
-#'   vulnerability.
+#'   (like [cachem::cache_mem()]), 'shinyOAuth' will **error** at state
+#'   consumption time because non-atomic `$get()` + `$remove()` cannot
+#'   guarantee single-use under concurrent access in shared stores.
 #'
 #' @param info Function() -> list(max_age = seconds, ...). Optional
 #'

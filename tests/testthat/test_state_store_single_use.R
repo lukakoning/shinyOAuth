@@ -34,7 +34,7 @@ test_that("state_store_get_remove enforces single-use with cachem (sequential)",
 })
 
 
-test_that("state_store_get_remove catches broken remove via post-check", {
+test_that("state_store_get_remove catches non-cache_mem store without $take", {
   skip_on_cran()
   prov <- oauth_provider(
     name = "test",
@@ -55,27 +55,18 @@ test_that("state_store_get_remove catches broken remove via post-check", {
   ssv <- list(browser_token = "bt2", pkce_code_verifier = "cv2", nonce = "n2")
   backing$set(key, ssv)
 
-  # Wrapper cache where remove() is a no-op but returns TRUE (simulates the
-
-  # exact vulnerability: cachem-style always-TRUE return without actual deletion,
-  # or a broken custom backend). The post-removal absence check must catch this.
+  # Wrapper cache without $take() — non-cache_mem shared store must error
   wrapper <- list(
     get = function(key, missing = NULL) backing$get(key, missing = missing),
     set = function(key, value) backing$set(key, value),
-    remove = function(key) TRUE, # no-op, pretends success
+    remove = function(key) TRUE,
     info = function() list(max_age = 300)
   )
   cli@state_store <- wrapper
 
-  # With the OLD code (trusted rm_ret=TRUE), this would have SUCCEEDED — the
-  # vulnerability. With the NEW code, the post-removal absence check sees the
-  # key is STILL present → removal is treated as failed → state error.
-  # Note: the no-atomic-take warning may or may not fire depending on test
-  # order (.frequency = "once"), so suppress it to focus on the error assertion.
-  suppressWarnings(
-    expect_error(
-      shinyOAuth:::state_store_get_remove(cli, state),
-      class = "shinyOAuth_state_error"
-    )
+  # Non-cache_mem store without $take() now errors immediately (fail closed)
+  expect_error(
+    shinyOAuth:::state_store_get_remove(cli, state),
+    class = "shinyOAuth_config_error"
   )
 })

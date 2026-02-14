@@ -31,6 +31,9 @@ under concurrent access in shared/distributed backends.
 When \verb{$take()} is not available, the function falls back to
 \verb{$get()} + \verb{$remove()} with a post-removal absence check.
 This fallback is safe for per-process caches (e.g., \code{\link[cachem:cache_mem]{cachem::cache_mem()}})
-but cannot guarantee single-use under concurrent access in shared stores.
+but \strong{errors} for any other store (e.g., \code{\link[cachem:cache_disk]{cachem::cache_disk()}} or custom
+backends) because non-atomic get+remove cannot guarantee single-use under
+concurrent access. Shared stores \strong{must} implement \verb{$take()} to be used
+as a state store.
 }
 \keyword{internal}
