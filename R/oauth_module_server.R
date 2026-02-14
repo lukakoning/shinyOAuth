@@ -1657,7 +1657,8 @@ oauth_module_server <- function(
             values$last_login_async_used <- TRUE
 
             res |>
-              promises::then(function(tok) {
+              promises::then(function(raw) {
+                tok <- replay_async_warnings(raw)
                 values$token <- tok
                 values$error <- NULL
                 values$error_description <- NULL
@@ -1831,7 +1832,8 @@ oauth_module_server <- function(
                     # Handle async path (wait for promise to resolve; then set values)
                     if (isTRUE(async)) {
                       res |>
-                        promises::then(function(res_resolved) {
+                        promises::then(function(raw) {
+                          res_resolved <- replay_async_warnings(raw)
                           values$refresh_in_progress <- FALSE
                           values$token <- res_resolved
                           values$error <- NULL

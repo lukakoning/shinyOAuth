@@ -1,6 +1,6 @@
 # shinyOAuth (development version)
 
-* 'mirai' async backend improvements:
+* 'mirai' & async backend improvements:
   - Detect active daemons via `mirai::daemons_set()` instead of 
   `mirai::status()`. Falls back to `mirai::info()` on older 'mirai' versions
   that lack `daemons_set()` (< 2.3.0).
@@ -17,6 +17,9 @@
   execution with an explicit warning instead of an opaque runtime error.
   - Further reduced serialization overhead towards async workers by using 
   certain functions from the package namespace directly.
+  - Warnings emitted in async workers (e.g., missing `expires_in` from token 
+  response) are now captured and re-emitted on the main process so they appear 
+  in the R console.
 
 * ID token validation (`validate_id_token()`):
   - Now enforces RFC 7515 section 4.1.11 critical header

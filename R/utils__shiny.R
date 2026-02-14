@@ -259,15 +259,40 @@ mirai_connection_count <- function() {
 # Prefers mirai if daemons are configured, falls back to future_promise.
 # Returns a promise in either case.
 #
+# Warnings emitted by the worker expression are captured and bundled with the
+# result in a wrapper list (`$.shinyOAuth_async_wrapped`). Callers should pass
+# the resolved value through `replay_async_warnings()` to re-emit the warnings
+# in the main process and unwrap the actual result.
+#
 # @param expr A quoted expression to evaluate (use quote() or substitute())
 # @param args A named list of values to pass to the expression
 # @param .timeout Optional integer timeout in milliseconds for the mirai task.
 #   When using mirai with dispatcher (the default), timed-out tasks are
 #   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
 #   when NULL (default = no timeout).
-# @return A promise that resolves to the result of the expression
+# @return A promise that resolves to a wrapped result (use `replay_async_warnings()`)
 async_dispatch <- function(expr, args, .timeout = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
+
+  # Wrap the expression to capture warnings emitted in the worker process.
+  # Warnings are collected into a list and bundled alongside the result so
+  # callers can replay them on the main thread via replay_async_warnings().
+  wrapped_expr <- bquote({
+    .async_warnings <- list()
+    .async_value <- withCallingHandlers(
+      .(expr),
+      warning = function(w) {
+        .async_warnings[[length(.async_warnings) + 1L]] <<- w
+        tryInvokeRestart("muffleWarning")
+      }
+    )
+    list(
+      .shinyOAuth_async_wrapped = TRUE,
+      value = .async_value,
+      warnings = .async_warnings
+    )
+  })
+
   # Try mirai first (preferred backend)
   mirai_available <- rlang::is_installed("mirai") && mirai_daemons_active()
 
@@ -275,7 +300,7 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
     # Use mirai - inject the expression and args into the call.
     # .timeout enables per-task cancellation when using dispatcher.
     return(rlang::inject(
-      mirai::mirai(!!expr, .args = args, .timeout = .timeout)
+      mirai::mirai(!!wrapped_expr, .args = args, .timeout = .timeout)
     ))
   }
 
@@ -293,9 +318,9 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
   if (future_available) {
     # Build environment with captured args for future
     env <- list2env(args, parent = globalenv())
-    # expr is already a quoted expression, so disable substitution
+    # wrapped_expr is already a quoted expression, so disable substitution
     return(promises::future_promise(
-      expr = expr,
+      expr = wrapped_expr,
       envir = env,
       substitute = FALSE
     ))
@@ -310,6 +335,29 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
     ),
     class = "shinyOAuth_no_async_backend"
   )
+}
+
+# Internal: replay warnings captured by async_dispatch() and return the
+# unwrapped result value.
+#
+# When `result` is the wrapped list produced by async_dispatch()'s
+# withCallingHandlers wrapper, this function re-emits each captured warning
+# in the main process and returns the actual value. If `result` is not wrapped
+# (e.g., from a non-async path), it is returned as-is.
+#
+# @param result The resolved value from an async_dispatch() promise.
+# @return The unwrapped result value.
+replay_async_warnings <- function(result) {
+  if (
+    is.list(result) &&
+      isTRUE(result$.shinyOAuth_async_wrapped)
+  ) {
+    for (w in result$warnings) {
+      warning(w)
+    }
+    return(result$value)
+  }
+  result
 }
 
 # Internal: check if any async backend is available
