@@ -28,8 +28,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # Keep the test stable in CI/headless environments
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
-    shinyOAuth.timeout = 10,
-    shinyOAuth.disable_watchdog_warning = TRUE
+    shinyOAuth.timeout = 10
   ))
 
   # Set up mirai daemons for async work (preferred backend)

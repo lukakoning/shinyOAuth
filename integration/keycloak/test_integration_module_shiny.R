@@ -21,8 +21,7 @@ testthat::test_that("Shiny module integration: full code flow against Keycloak",
   # Keep the test stable in CI/headless environments
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
-    shinyOAuth.timeout = 10,
-    shinyOAuth.disable_watchdog_warning = TRUE
+    shinyOAuth.timeout = 10
   ))
 
   # Provider and client (public PKCE)

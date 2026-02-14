@@ -159,8 +159,7 @@ for (case in cases) {
 
       withr::local_options(list(
         shinyOAuth.skip_browser_token = TRUE,
-        shinyOAuth.timeout = 10,
-        shinyOAuth.disable_watchdog_warning = TRUE
+        shinyOAuth.timeout = 10
       ))
 
       prov <- make_provider(case$style)

@@ -183,8 +183,7 @@ testthat::test_that("Keycloak PKCE happy path (public client)", {
   testthat::skip_if_not_installed("rvest")
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
-    shinyOAuth.timeout = 10,
-    shinyOAuth.disable_watchdog_warning = TRUE
+    shinyOAuth.timeout = 10
   ))
   prov <- make_provider()
   client <- make_public_client(prov)
@@ -225,8 +224,7 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
   testthat::skip_if_not_installed("rvest")
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
-    shinyOAuth.timeout = 10,
-    shinyOAuth.disable_watchdog_warning = TRUE
+    shinyOAuth.timeout = 10
   ))
   prov <- make_provider()
   client <- make_public_client(prov)
@@ -284,8 +282,7 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
   testthat::skip_if_not_installed("rvest")
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
-    shinyOAuth.timeout = 10,
-    shinyOAuth.disable_watchdog_warning = TRUE
+    shinyOAuth.timeout = 10
   ))
   prov <- make_provider()
   client <- make_public_client(prov)

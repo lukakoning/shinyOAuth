@@ -36,8 +36,7 @@ local_test_options <- function(.local_envir = parent.frame()) {
   withr::local_options(
     list(
       shinyOAuth.skip_browser_token = TRUE,
-      shinyOAuth.timeout = 10,
-      shinyOAuth.disable_watchdog_warning = TRUE
+      shinyOAuth.timeout = 10
     ),
     .local_envir = .local_envir
   )
