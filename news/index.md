@@ -1,6 +1,6 @@
 # Changelog
 
-## shinyOAuth (development version)
+## shinyOAuth 0.4.0
 
 - ‘mirai’ & async backend improvements:
 
