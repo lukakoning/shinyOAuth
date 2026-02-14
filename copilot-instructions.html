@@ -130,6 +130,11 @@
 <li>If you think backwards compatibility code is needed, discuss first.</li>
 </ul></div>
 <div class="section level2">
+<h2 id="async-development-caveat">Async Development Caveat<a class="anchor" aria-label="anchor" href="#async-development-caveat"></a></h2>
+<ul><li>
+<strong>mirai daemon workers load the installed package</strong>, not the <code>devtools::load_all()</code> version. When developing or testing code that runs inside daemon workers (e.g., <code>emit_trace_event</code>, <code>with_async_options</code>, condition capture), you must run <code>devtools::install(quick = TRUE, upgrade = "never")</code> first so daemons pick up the latest source. Tests using <code>mirai::daemons(sync = TRUE)</code> run in-process and do use the loaded version, but true-async tests (<code>mirai::daemons(2)</code>) always use the installed package.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="global-options">Global Options<a class="anchor" aria-label="anchor" href="#global-options"></a></h2>
 <ul><li>Do not add new global options unless specifically requested. All options must be documented in the ‘usage’ vignette.</li>
 </ul></div>

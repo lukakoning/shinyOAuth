@@ -49,7 +49,7 @@
 <li>Prevent ‘mirai’ warning spam about ‘stats’ maybe not being available in workers.</li>
 <li>Async callback flow no longer serializes the full client object (including potentially non-serializable custom <code>state_store</code> / JWKS cache backends) into the worker context. The <code>state_store</code> (already consumed on the main thread) is replaced with a lightweight serializable dummy before dispatch. If the client still fails serialization, the flow falls back to synchronous execution with an explicit warning instead of an opaque runtime error.</li>
 <li>Further reduced serialization overhead towards async workers by using certain functions from the package namespace directly.</li>
-<li>Warnings emitted in async workers (e.g., missing <code>expires_in</code> from token response) are now captured and re-emitted on the main process so they appear in the R console.</li>
+<li>Warnings and messages emitted in async workers (e.g., missing <code>expires_in</code> from token response) are now captured and re-emitted on the main process so they appear in the R console. This includes conditions from user-supplied <code>trace_hook</code> / <code>audit_hook</code> functions: warnings, messages, and errors (surfaced as warnings) all propagate back to the main thread. Replay can be disabled via <code>options(shinyOAuth.replay_async_conditions = FALSE)</code>.</li>
 </ul></li>
 <li>
 <p>ID token validation (<code>validate_id_token()</code>):</p>

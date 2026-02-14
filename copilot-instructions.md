@@ -190,6 +190,17 @@
   leftover compatibility shims.
 - If you think backwards compatibility code is needed, discuss first.
 
+## Async Development Caveat
+
+- **mirai daemon workers load the installed package**, not the
+  `devtools::load_all()` version. When developing or testing code that
+  runs inside daemon workers (e.g., `emit_trace_event`,
+  `with_async_options`, condition capture), you must run
+  `devtools::install(quick = TRUE, upgrade = "never")` first so daemons
+  pick up the latest source. Tests using `mirai::daemons(sync = TRUE)`
+  run in-process and do use the loaded version, but true-async tests
+  (`mirai::daemons(2)`) always use the installed package.
+
 ## Global Options
 
 - Do not add new global options unless specifically requested. All

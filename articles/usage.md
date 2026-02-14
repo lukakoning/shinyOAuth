@@ -469,6 +469,15 @@ options:
   as a mirai error. Default is `NULL` (no timeout). Ignored when falling
   back to the ‘future’ backend
 
+### Async condition replay
+
+- `options(shinyOAuth.replay_async_conditions = FALSE)` – when `FALSE`,
+  warnings and messages captured from async workers are silently
+  discarded instead of being re-emitted on the main R process. Default
+  is `TRUE` (replay all captured conditions). Useful if worker
+  diagnostics are too noisy or handled separately via `trace_hook` /
+  `audit_hook`
+
 ### Token lifetime fallback
 
 - `options(shinyOAuth.default_expires_in = 3600)` – fallback token

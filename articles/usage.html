@@ -567,6 +567,20 @@ Ignored when falling back to the ‘future’ backend</li>
 </ul>
 </div>
 <div class="section level3">
+<h3 id="async-condition-replay">Async condition replay<a class="anchor" aria-label="anchor" href="#async-condition-replay"></a>
+</h3>
+<ul>
+<li>
+<code>options(shinyOAuth.replay_async_conditions = FALSE)</code> –
+when <code>FALSE</code>, warnings and messages captured from async
+workers are silently discarded instead of being re-emitted on the main R
+process. Default is <code>TRUE</code> (replay all captured conditions).
+Useful if worker diagnostics are too noisy or handled separately via
+<code>trace_hook</code> / <code>audit_hook</code>
+</li>
+</ul>
+</div>
+<div class="section level3">
 <h3 id="token-lifetime-fallback">Token lifetime fallback<a class="anchor" aria-label="anchor" href="#token-lifetime-fallback"></a>
 </h3>
 <ul>
