@@ -1,4 +1,4 @@
-# shinyOAuth (development version)
+# shinyOAuth 0.4.0
 
 * 'mirai' & async backend improvements:
   - Warnings and messages emitted in async workers (e.g., missing `expires_in`
