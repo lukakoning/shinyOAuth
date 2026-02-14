@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/lukakoning/shinyOAuth/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/lukakoning/shinyOAuth/blob/v0.4.0/DESCRIPTION)
 
 Koning L (2026). *shinyOAuth: Provider-Agnostic OAuth Authentication for
 'shiny' Applications*. R package version 0.4.0,
