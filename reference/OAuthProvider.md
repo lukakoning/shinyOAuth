@@ -174,10 +174,14 @@ OAuthProvider(
   `alg=none` JWTs. Requires `userinfo_required = TRUE` and a valid
   `issuer` (for JWKS). Defaults to `FALSE`.
 
+  Note:
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  will automatically enable this when the OIDC discovery document
-  advertises `userinfo_signing_alg_values_supported` with algorithms
-  that overlap the caller's `allowed_algs`.
+  does not auto-enable this flag. Discovery's
+  `userinfo_signing_alg_values_supported` indicates provider capability,
+  not that every client receives signed JWTs (this depends on per-client
+  configuration at the provider). Pass
+  `userinfo_signed_jwt_required = TRUE` explicitly if you need this
+  protection.
 
 - id_token_required:
 

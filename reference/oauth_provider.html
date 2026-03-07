@@ -181,9 +181,11 @@ or invalid signature), authentication fails.</p></li>
 verification by returning unsigned claims as plain JSON or <code>alg=none</code> JWTs.
 Requires <code>userinfo_required = TRUE</code> and a valid <code>issuer</code> (for JWKS).
 Defaults to <code>FALSE</code>.</p>
-<p><code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> will automatically enable this when the
-OIDC discovery document advertises <code>userinfo_signing_alg_values_supported</code>
-with algorithms that overlap the caller's <code>allowed_algs</code>.</p></dd>
+<p>Note: <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> does not auto-enable this flag.
+Discovery's <code>userinfo_signing_alg_values_supported</code> indicates provider
+capability, not that every client receives signed JWTs (this depends on
+per-client configuration at the provider). Pass <code>userinfo_signed_jwt_required = TRUE</code>
+explicitly if you need this protection.</p></dd>
 
 
 <dt id="arg-userinfo-id-selector">userinfo_id_selector<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector"></a></dt>
