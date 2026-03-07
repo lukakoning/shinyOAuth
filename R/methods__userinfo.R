@@ -191,6 +191,21 @@ get_userinfo <- function(
     )
   }
 
+  # OIDC Core §5.3: "The sub Claim MUST always be returned in the UserInfo
+  # Response." Enforce for OIDC providers (issuer configured); leave generic
+  # non-OIDC profile endpoints alone.
+  if (
+    is_valid_string(oauth_client@provider@issuer) &&
+      !is.na(oauth_client@provider@issuer)
+  ) {
+    if (!is_valid_string(ui$sub)) {
+      err_userinfo(c(
+        "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
+        "i" = "OIDC providers MUST always return a 'sub' claim in the UserInfo response"
+      ))
+    }
+  }
+
   # Emit audit event for userinfo fetch (redacted)
   subject <- try(oauth_client@provider@userinfo_id_selector(ui), silent = TRUE)
   if (inherits(subject, "try-error")) {
@@ -529,6 +544,14 @@ validate_signed_userinfo_claims <- function(
   expected_issuer,
   expected_client_id
 ) {
+  # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
+  sub <- claims$sub
+  if (!is_valid_string(sub)) {
+    err_userinfo(c(
+      "x" = "Signed UserInfo JWT missing required 'sub' claim (OIDC Core 5.3)"
+    ))
+  }
+
   # iss MUST be present and match the OP's Issuer Identifier
   iss <- claims$iss
   if (!is_valid_string(iss)) {

@@ -4,16 +4,23 @@
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
 
-* `audit_token_exchange` and `audit_token_refresh` events now include an
-`expires_in_synthesized` boolean field. It is `TRUE` when the provider's
-token response did not contain a usable `expires_in` value and the package
-fell back to `resolve_missing_expires_in()`.
+* `get_userinfo()` now always requires a non-empty `sub` claim in userinfo
+responses from OIDC providers (those with an `issuer` configured), per OIDC Core 
+section 5.3. Previously, a non-compliant response without `sub` could be 
+accepted if `userinfo_id_token_match` was not enabled. The signed-JWT path
+(`validate_signed_userinfo_claims()`) also now checks `sub` alongside the
+existing `iss`/`aud` validation.
 
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
 refresh tokens may be rotated on each use; retrying after the server has
 already committed the first request would replay an invalidated credential,
 causing `invalid_grant` errors or triggering refresh-token replay detection.
+
+* `audit_token_exchange` and `audit_token_refresh` events now include an
+`expires_in_synthesized` boolean field. It is `TRUE` when the provider's
+token response did not contain a usable `expires_in` value and the package
+fell back to `resolve_missing_expires_in()`.
 
 # shinyOAuth 0.4.0
 
