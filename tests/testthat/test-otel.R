@@ -63,6 +63,72 @@ test_that("otel_restore_context returns NULL when tracing is disabled", {
   )
 })
 
+test_that("async workers default to traces-only otel signals", {
+  withr::local_options(list(.shinyOAuth.async_worker = TRUE))
+  local_mocked_bindings(
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) TRUE,
+    is_measuring_enabled = function(...) TRUE,
+    .package = "otel"
+  )
+
+  expect_true(shinyOAuth:::is_otel_tracing())
+  expect_false(shinyOAuth:::is_otel_logging())
+  expect_false(shinyOAuth:::is_otel_measuring())
+})
+
+test_that("async worker otel signal suppression can be overridden", {
+  withr::local_options(list(
+    .shinyOAuth.async_worker = TRUE,
+    shinyOAuth.otel_async_tracing = FALSE,
+    shinyOAuth.otel_async_logging = TRUE,
+    shinyOAuth.otel_async_metrics = TRUE
+  ))
+  local_mocked_bindings(
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) TRUE,
+    is_measuring_enabled = function(...) TRUE,
+    .package = "otel"
+  )
+
+  expect_false(shinyOAuth:::is_otel_tracing())
+  expect_true(shinyOAuth:::is_otel_logging())
+  expect_true(shinyOAuth:::is_otel_measuring())
+})
+
+test_that("otel_attributes avoids eager otel calls when signal is disabled", {
+  with_mocked_bindings(
+    is_otel_tracing = function() FALSE,
+    .package = "shinyOAuth",
+    {
+      local_mocked_bindings(
+        as_attributes = function(...) {
+          stop("otel::as_attributes should not be called")
+        },
+        .package = "otel"
+      )
+
+      expect_null(shinyOAuth:::otel_attributes(list(a = 1), signal = "trace"))
+    }
+  )
+})
+
+test_that("with_async_options marks true cross-process workers", {
+  with_mocked_bindings(
+    Sys.getpid = function() 200L,
+    .package = "base",
+    {
+      flag <- shinyOAuth:::with_async_options(
+        list(.shinyOAuth.main_process_id = 100L),
+        getOption(".shinyOAuth.async_worker", FALSE)
+      )
+      expect_true(flag)
+    }
+  )
+
+  expect_false(isTRUE(getOption(".shinyOAuth.async_worker", FALSE)))
+})
+
 # ---------------------------------------------------------------------------
 # otel_start_async_child: no-op when tracing is off
 # ---------------------------------------------------------------------------

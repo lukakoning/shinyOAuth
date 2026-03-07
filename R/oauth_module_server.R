@@ -1713,9 +1713,9 @@ oauth_module_server <- function(
                     .ns$otel_start_async_child(
                       "worker:handle_callback",
                       .otel_hdrs,
-                      attributes = otel::as_attributes(.ns$compact_list(list(
+                      attributes = .ns$otel_attributes(list(
                         shinyoauth.async = TRUE
-                      )))
+                      ), signal = "trace")
                     )
                     # Set async context so errors include session info with is_async = TRUE
                     .ns$with_async_session_context(

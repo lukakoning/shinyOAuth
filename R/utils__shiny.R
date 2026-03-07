@@ -149,9 +149,11 @@ with_async_options <- function(captured_opts, code) {
   opts_to_set <- captured_opts[
     !startsWith(names(captured_opts), ".")
   ]
-  if (length(opts_to_set) == 0) {
-    return(force(code))
-  }
+  # Mark true cross-process workers so otel can keep traces while suppressing
+  # worker-side logs/metrics by default.
+  opts_to_set[[".shinyOAuth.async_worker"]] <- isTRUE(
+    is_async_worker(captured_opts)
+  )
   # Temporarily set options and restore on exit
   old_opts <- do.call(options, opts_to_set)
   on.exit(do.call(options, old_opts), add = TRUE)

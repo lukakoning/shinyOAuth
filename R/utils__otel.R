@@ -11,6 +11,32 @@ otel_tracer_name <- "r.package.shinyOAuth"
 # Guard helpers
 # ---------------------------------------------------------------------------
 
+# Internal: decide whether a given otel signal is allowed in the current scope.
+# Async workers default to traces-only because otelsdk log/metric exporters are
+# synchronous and can stall short-lived worker processes during auth flows.
+otel_async_signal_enabled <- function(signal = c("trace", "log", "metric")) {
+  signal <- match.arg(signal)
+
+  if (!isTRUE(getOption(".shinyOAuth.async_worker", FALSE))) {
+    return(TRUE)
+  }
+
+  opt_name <- switch(
+    signal,
+    trace = "shinyOAuth.otel_async_tracing",
+    log = "shinyOAuth.otel_async_logging",
+    metric = "shinyOAuth.otel_async_metrics"
+  )
+  default <- switch(
+    signal,
+    trace = TRUE,
+    log = FALSE,
+    metric = FALSE
+  )
+
+  isTRUE(getOption(opt_name, default))
+}
+
 #' Check whether OpenTelemetry tracing is active
 #'
 #' Returns TRUE only when the otel package is installed AND an exporter is
@@ -20,21 +46,56 @@ otel_tracer_name <- "r.package.shinyOAuth"
 #' @keywords internal
 #' @noRd
 is_otel_tracing <- function() {
-  requireNamespace("otel", quietly = TRUE) && otel::is_tracing_enabled()
+  otel_async_signal_enabled("trace") &&
+    requireNamespace("otel", quietly = TRUE) &&
+    otel::is_tracing_enabled()
 }
 
 #' Check whether OpenTelemetry logging is active
 #' @keywords internal
 #' @noRd
 is_otel_logging <- function() {
-  requireNamespace("otel", quietly = TRUE) && otel::is_logging_enabled()
+  otel_async_signal_enabled("log") &&
+    requireNamespace("otel", quietly = TRUE) &&
+    otel::is_logging_enabled()
 }
 
 #' Check whether OpenTelemetry metrics collection is active
 #' @keywords internal
 #' @noRd
 is_otel_measuring <- function() {
-  requireNamespace("otel", quietly = TRUE) && otel::is_measuring_enabled()
+  otel_async_signal_enabled("metric") &&
+    requireNamespace("otel", quietly = TRUE) &&
+    otel::is_measuring_enabled()
+}
+
+#' Build otel attributes only when the corresponding signal is enabled
+#'
+#' Avoids forcing `otel::as_attributes()` in async worker code paths when that
+#' signal is intentionally suppressed.
+#'
+#' @param x Named list of attributes.
+#' @param signal Which signal gate to respect: "trace", "log", or "metric".
+#' @return An otel attributes object, or NULL.
+#' @keywords internal
+#' @noRd
+otel_attributes <- function(x, signal = c("trace", "log", "metric")) {
+  signal <- match.arg(signal)
+
+  enabled <- switch(
+    signal,
+    trace = is_otel_tracing(),
+    log = is_otel_logging(),
+    metric = is_otel_measuring()
+  )
+  if (!enabled) {
+    return(NULL)
+  }
+
+  tryCatch(
+    otel::as_attributes(compact_list(x)),
+    error = function(...) NULL
+  )
 }
 
 # ---------------------------------------------------------------------------
