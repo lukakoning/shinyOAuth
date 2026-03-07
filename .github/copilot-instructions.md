@@ -39,6 +39,14 @@
 - All error paths should raise via `err_abort` wrappers (`err_token()`, `err_invalid_state()`, `err_userinfo()`, etc.) so trace ids and structured context propagate to Shiny logs and audit hooks.
 - Options like `shinyOAuth.print_errors` and `shinyOAuth.print_traceback` let operators tune verbosity; respect these flags instead of printing directly.
 
+## OpenTelemetry
+- All otel instrumentation lives in R/utils__otel.R; guard helpers (`is_otel_tracing()`, `is_otel_logging()`, `is_otel_measuring()`) check `requireNamespace("otel")` and the corresponding `otel::is_*_enabled()` — never call otel functions without guarding first.
+- Span attributes that may be NULL/NA must always be wrapped in `compact_list()` before passing to `otel::as_attributes()` — bare `list()` will error if any value is `NA`.
+- Async workers run inside `quote({...})` blocks where only namespace-qualified calls resolve; always use `.ns$otel_start_async_child()` and `.ns$<helper>` patterns, never bare function names.
+- Context propagation across async boundaries uses `otel_capture_context()` (main thread) → serialised headers → `otel_restore_context()` (worker); these rely on `otel::pack_http_context()` and `otel::extract_http_context()`.
+- When adding new spans, events, or metrics: always update the span catalog, span hierarchy, and/or metrics table in `vignettes/opentelemetry.Rmd` so the documentation stays in sync.
+- Sensitive identifiers (session token, client ID) must be hashed with `string_digest()` before setting as span attributes — never expose raw values in telemetry.
+
 ## Error Handling
 - Throw failures with the typed helpers in R/errors.R (`err_abort()` plus `err_token()`/`err_invalid_state()`/`err_http()`, etc.); they wrap `rlang::abort` with package-specific classes and inject trace ids, so avoid base `stop()`.
 - For recoverable notices use `rlang::warn()`/`inform()` with cli-style bullet vectors and frequency guards (see `warn_about_missing_js_dependency()` and `client_state_store_max_age()`) instead of `message()`/`warning()`; surface structured context via `context = list()`.
@@ -57,7 +65,7 @@
 ## Documentation & Examples
 - Roxygen comments in R/ generate man/ via `Rscript -e "devtools::document()"`; never hand-edit .Rd files.
 - Example Shiny integrations live in inst/examples/ (shipped with package) and playground/ (development only, not shipped); long-form guidance in vignettes/*.Rmd.
-- Vignettes: `usage.Rmd` (comprehensive guide), `authentication-flow.Rmd` (security deep-dive), `audit-logging.Rmd` (logging/auditing), `example-spotify.Rmd` (provider example).
+- Vignettes: `usage.Rmd` (comprehensive guide), `authentication-flow.Rmd` (security deep-dive), `audit-logging.Rmd` (logging/auditing), `opentelemetry.Rmd` (otel instrumentation), `example-spotify.Rmd` (provider example).
 - Update examples and vignettes alongside API changes so pkgdown docs stay accurate
 - `.onLoad()` already registers S7 methods (R/zzz.R); when adding generics ensure `S7::methods_register()` is triggered and namespace imports remain consistent.
 - Linting: run `jarl check .` to check for errors; use `jarl check . --fix --allow-dirty` to check & fix

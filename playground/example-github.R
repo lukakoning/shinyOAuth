@@ -18,7 +18,7 @@ client <- oauth_client(
 
 # UI
 ui <- fluidPage(
-  # use_shinyOAuth(),
+  use_shinyOAuth(),
   h3("OAuth demo (GitHub)"),
   uiOutput("oauth_error"),
   tags$hr(),
