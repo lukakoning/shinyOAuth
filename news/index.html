@@ -43,6 +43,7 @@
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
 <ul><li><p><code>validate_id_token()</code> now properly rejects <code>auth_time</code> claims set in the future (beyond leeway). Previously, a future <code>auth_time</code> produced a negative elapsed value that always passed the <code>max_age</code> freshness check.</p></li>
 <li><p><code>audit_token_exchange</code> and <code>audit_token_refresh</code> events now include an <code>expires_in_synthesized</code> boolean field. It is <code>TRUE</code> when the provider’s token response did not contain a usable <code>expires_in</code> value and the package fell back to <code>resolve_missing_expires_in()</code>.</p></li>
+<li><p>Token exchange and refresh requests no longer retry on transport errors or transient HTTP statuses (408/429/5xx). Authorization codes are single-use and refresh tokens may be rotated on each use; retrying after the server has already committed the first request would replay an invalidated credential, causing <code>invalid_grant</code> errors or triggering refresh-token replay detection.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="shinyoauth-040">shinyOAuth 0.4.0<a class="anchor" aria-label="anchor" href="#shinyoauth-040"></a></h2><p class="text-muted">CRAN release: 2026-02-14</p>
