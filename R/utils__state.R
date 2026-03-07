@@ -25,11 +25,14 @@ state_payload_decrypt_validate <- function(
 
   # OpenTelemetry: span covering AES-GCM decryption + freshness/binding checks
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "state_payload_decrypt",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = client@provider@name
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "state_payload_decrypt",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = client@provider@name
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 

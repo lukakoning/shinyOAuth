@@ -128,13 +128,16 @@ revoke_token <- function(
   # OpenTelemetry: CLIENT span for the sync revocation path only.
   # The async path creates its own worker-side span above.
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "revoke_token",
-      options = list(kind = "client"),
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name,
-        shinyoauth.which = which
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "revoke_token",
+        options = list(kind = "client"),
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name,
+          shinyoauth.which = which
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -484,13 +487,16 @@ introspect_token <- function(
   # OpenTelemetry: CLIENT span for the sync introspection path only.
   # The async path creates its own worker-side span above.
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "introspect_token",
-      options = list(kind = "client"),
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name,
-        shinyoauth.which = which
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "introspect_token",
+        options = list(kind = "client"),
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name,
+          shinyoauth.which = which
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -817,12 +823,15 @@ refresh_token <- function(
 
   # OpenTelemetry: span for the sync refresh path
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "token_refresh",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name %||% NA_character_
-      ))),
-      options = list(kind = "client")
+    tryCatch(
+      otel::start_local_active_span(
+        "token_refresh",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name %||% NA_character_
+        ))),
+        options = list(kind = "client")
+      ),
+      error = function(...) NULL
     )
   }
   .otel_refresh_t0 <- if (is_otel_measuring()) {

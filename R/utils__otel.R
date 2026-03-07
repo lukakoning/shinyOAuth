@@ -111,11 +111,14 @@ otel_start_async_child <- function(
   # Forward activation_scope so the span is scoped to the CALLER's frame
   # (not this helper's frame). Without this the span would auto-end when
   # otel_start_async_child() returns instead of when the worker code completes.
-  spn <- otel::start_local_active_span(
-    name,
-    attributes = attributes,
-    options = opts,
-    activation_scope = .local_envir
+  spn <- tryCatch(
+    otel::start_local_active_span(
+      name,
+      attributes = attributes,
+      options = opts,
+      activation_scope = .local_envir
+    ),
+    error = function(...) NULL
   )
   invisible(spn)
 }
@@ -179,11 +182,16 @@ otel_count_login <- function(success, provider = NULL) {
   if (!is_otel_measuring()) {
     return(invisible(NULL))
   }
-  attrs <- otel::as_attributes(compact_list(list(
-    success = success,
-    provider = provider
-  )))
-  otel::counter_add("shinyoauth.login.total", attributes = attrs)
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(
+        success = success,
+        provider = provider
+      )))
+      otel::counter_add("shinyoauth.login.total", attributes = attrs)
+    },
+    error = function(...) NULL
+  )
   invisible(NULL)
 }
 
@@ -194,11 +202,16 @@ otel_count_refresh <- function(success, provider = NULL) {
   if (!is_otel_measuring()) {
     return(invisible(NULL))
   }
-  attrs <- otel::as_attributes(compact_list(list(
-    success = success,
-    provider = provider
-  )))
-  otel::counter_add("shinyoauth.token_refresh.total", attributes = attrs)
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(
+        success = success,
+        provider = provider
+      )))
+      otel::counter_add("shinyoauth.token_refresh.total", attributes = attrs)
+    },
+    error = function(...) NULL
+  )
   invisible(NULL)
 }
 
@@ -209,12 +222,16 @@ otel_record_exchange_duration <- function(seconds, provider = NULL) {
   if (!is_otel_measuring() || is.null(seconds)) {
     return(invisible(NULL))
   }
-
-  attrs <- otel::as_attributes(compact_list(list(provider = provider)))
-  otel::histogram_record(
-    "shinyoauth.token_exchange.duration_seconds",
-    seconds,
-    attributes = attrs
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      otel::histogram_record(
+        "shinyoauth.token_exchange.duration_seconds",
+        seconds,
+        attributes = attrs
+      )
+    },
+    error = function(...) NULL
   )
   invisible(NULL)
 }
@@ -226,11 +243,16 @@ otel_record_refresh_duration <- function(seconds, provider = NULL) {
   if (!is_otel_measuring() || is.null(seconds)) {
     return(invisible(NULL))
   }
-  attrs <- otel::as_attributes(compact_list(list(provider = provider)))
-  otel::histogram_record(
-    "shinyoauth.token_refresh.duration_seconds",
-    seconds,
-    attributes = attrs
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      otel::histogram_record(
+        "shinyoauth.token_refresh.duration_seconds",
+        seconds,
+        attributes = attrs
+      )
+    },
+    error = function(...) NULL
   )
   invisible(NULL)
 }
@@ -243,6 +265,9 @@ otel_active_sessions <- function(delta) {
   if (!is_otel_measuring()) {
     return(invisible(NULL))
   }
-  otel::up_down_counter_add("shinyoauth.active_sessions", delta)
+  tryCatch(
+    otel::up_down_counter_add("shinyoauth.active_sessions", delta),
+    error = function(...) NULL
+  )
   invisible(NULL)
 }

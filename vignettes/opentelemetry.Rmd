@@ -71,6 +71,23 @@ See the ['otel' getting started guide](https://otel.r-lib.org/articles/otel.html
 [OpenTelemetry environment variable documentation](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
 for the full list of configuration options.
 
+### Preventing export from blocking the app
+
+The `otelsdk` C++ exporter sends telemetry synchronously. If the collector is
+slow or unreachable, the export call can block R's single-threaded event loop
+and freeze your Shiny app. To limit the impact, set a short export timeout:
+
+```
+OTEL_EXPORTER_OTLP_TIMEOUT=2000
+```
+
+This caps each OTLP export to 2 seconds (default is 10 000 ms). Combined with
+the batch exporter's schedule delay, this keeps worst-case blocking manageable.
+
+shinyOAuth wraps every otel call in `tryCatch` so that SDK errors never 
+propagate to the application, but the timeout is the only way to limit how
+long a blocking export can stall the event loop.
+
 ### 3. Run your app
 
 Now when you run your Shiny app with `oauth_module_server()`, 

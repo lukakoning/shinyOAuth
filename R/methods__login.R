@@ -23,13 +23,16 @@ prepare_call <- function(
 ) {
   # OpenTelemetry: span covering state generation, encryption, and URL building
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "prepare_call",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
-        shinyoauth.pkce = isTRUE(oauth_client@provider@use_pkce),
-        shinyoauth.nonce = isTRUE(oauth_client@provider@use_nonce)
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "prepare_call",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
+          shinyoauth.pkce = isTRUE(oauth_client@provider@use_pkce),
+          shinyoauth.nonce = isTRUE(oauth_client@provider@use_nonce)
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -440,13 +443,16 @@ handle_callback_internal <- function(
   # In sync mode this is the primary span; in async mode it nests under
   # the worker's "worker:handle_callback" span.
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "handle_callback.process",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
-        shinyoauth.issuer = oauth_client@provider@issuer %||% NA_character_,
-        shinyoauth.client_id_digest = string_digest(oauth_client@client_id)
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "handle_callback.process",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
+          shinyoauth.issuer = oauth_client@provider@issuer %||% NA_character_,
+          shinyoauth.client_id_digest = string_digest(oauth_client@client_id)
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -1165,14 +1171,17 @@ swap_code_for_token_set <- function(
 
   # OpenTelemetry: CLIENT span for the token exchange HTTP call
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "token_exchange",
-      attributes = otel::as_attributes(compact_list(list(
-        http.request.method = "POST",
-        url.full = client@provider@token_url,
-        shinyoauth.provider = client@provider@name %||% NA_character_
-      ))),
-      options = list(kind = "client")
+    tryCatch(
+      otel::start_local_active_span(
+        "token_exchange",
+        attributes = otel::as_attributes(compact_list(list(
+          http.request.method = "POST",
+          url.full = client@provider@token_url,
+          shinyoauth.provider = client@provider@name %||% NA_character_
+        ))),
+        options = list(kind = "client")
+      ),
+      error = function(...) NULL
     )
   }
   .otel_t0 <- if (is_otel_measuring()) proc.time()[["elapsed"]] else NULL
@@ -1299,12 +1308,15 @@ verify_token_set <- function(
   # Helpers/types --------------------------------------------------------------
 
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "verify_token_set",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = client@provider@name,
-        shinyoauth.is_refresh = is_refresh
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "verify_token_set",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = client@provider@name,
+          shinyoauth.is_refresh = is_refresh
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 

@@ -79,12 +79,15 @@ validate_id_token <- function(
   # OpenTelemetry: span covering JWT signature + claims validation.
   # May involve JWKS fetch (HTTP) and multi-key verification attempts.
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "validate_id_token",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = client@provider@name,
-        shinyoauth.issuer = client@provider@issuer
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "validate_id_token",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = client@provider@name,
+          shinyoauth.issuer = client@provider@issuer
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -633,11 +636,14 @@ build_client_assertion <- function(client, aud) {
 
   # OpenTelemetry: span for JWT client assertion signing (RFC 7523)
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "client_assertion_build",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = client@provider@name
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "client_assertion_build",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = client@provider@name
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 

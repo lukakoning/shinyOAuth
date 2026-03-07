@@ -11,12 +11,15 @@ err_abort <- function(msg, class = "shinyOAuth_error", context = list()) {
   ))
   # Emit structured error log via otel when available
   if (is_otel_logging()) {
-    otel::log_error(
-      paste(msg, collapse = "; "),
-      attributes = otel::as_attributes(compact_list(list(
-        error.class = paste(class, collapse = ","),
-        trace_id = trace_id
-      )))
+    tryCatch(
+      otel::log_error(
+        paste(msg, collapse = "; "),
+        attributes = otel::as_attributes(compact_list(list(
+          error.class = paste(class, collapse = ","),
+          trace_id = trace_id
+        )))
+      ),
+      error = function(...) NULL
     )
   }
   primary <- short_desc_for_class(c(class, "shinyOAuth_error"))
@@ -181,14 +184,17 @@ err_http <- function(msg, resp = NULL, context = list()) {
 
   # Emit structured error log via otel when available
   if (is_otel_logging()) {
-    otel::log_error(
-      paste(msg, collapse = "; "),
-      attributes = otel::as_attributes(compact_list(list(
-        error.class = "shinyOAuth_http_error",
-        trace_id = trace_id,
-        http.response.status_code = status,
-        oauth.error = oauth_error
-      )))
+    tryCatch(
+      otel::log_error(
+        paste(msg, collapse = "; "),
+        attributes = otel::as_attributes(compact_list(list(
+          error.class = "shinyOAuth_http_error",
+          trace_id = trace_id,
+          http.response.status_code = status,
+          oauth.error = oauth_error
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -264,12 +270,15 @@ err_transport <- function(msg, context = list(), parent = NULL) {
   ))
   # Emit structured error log via otel when available
   if (is_otel_logging()) {
-    otel::log_error(
-      paste(msg, collapse = "; "),
-      attributes = otel::as_attributes(compact_list(list(
-        error.class = "shinyOAuth_transport_error",
-        trace_id = trace_id
-      )))
+    tryCatch(
+      otel::log_error(
+        paste(msg, collapse = "; "),
+        attributes = otel::as_attributes(compact_list(list(
+          error.class = "shinyOAuth_transport_error",
+          trace_id = trace_id
+        )))
+      ),
+      error = function(...) NULL
     )
   }
   bullets <- normalize_bullets(msg, default_type = "!")
@@ -373,12 +382,15 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
       function(x) is.atomic(x) && length(x) == 1L,
       context
     )
-    otel::log_info(
-      paste0("audit:", type),
-      attributes = otel::as_attributes(compact_list(c(
-        list(audit.type = type, trace_id = trace_id),
-        otel_ctx
-      )))
+    tryCatch(
+      otel::log_info(
+        paste0("audit:", type),
+        attributes = otel::as_attributes(compact_list(c(
+          list(audit.type = type, trace_id = trace_id),
+          otel_ctx
+        )))
+      ),
+      error = function(...) NULL
     )
   }
   emit_trace_event(event)

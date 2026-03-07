@@ -152,13 +152,16 @@ fetch_jwks <- function(
 
   # OpenTelemetry: CLIENT span for the JWKS HTTP fetch (cache miss path)
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "jwks_fetch",
-      options = list(kind = "client"),
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.issuer = issuer,
-        url.full = jwks_uri
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "jwks_fetch",
+        options = list(kind = "client"),
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.issuer = issuer,
+          url.full = jwks_uri
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 

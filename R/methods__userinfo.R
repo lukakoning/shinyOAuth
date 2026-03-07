@@ -20,13 +20,16 @@ get_userinfo <- function(
   # Type checks/helpers --------------------------------------------------------
 
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "get_userinfo",
-      options = list(kind = "client"),
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name,
-        shinyoauth.url = oauth_client@provider@userinfo_url
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "get_userinfo",
+        options = list(kind = "client"),
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name,
+          shinyoauth.url = oauth_client@provider@userinfo_url
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
@@ -274,12 +277,15 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   # OpenTelemetry: span for JWT-encoded userinfo signature verification.
   # May involve JWKS fetch (HTTP) and multi-key verification attempts.
   if (is_otel_tracing()) {
-    otel::start_local_active_span(
-      "userinfo_jwt_decode",
-      attributes = otel::as_attributes(compact_list(list(
-        shinyoauth.provider = oauth_client@provider@name,
-        shinyoauth.issuer = oauth_client@provider@issuer
-      )))
+    tryCatch(
+      otel::start_local_active_span(
+        "userinfo_jwt_decode",
+        attributes = otel::as_attributes(compact_list(list(
+          shinyoauth.provider = oauth_client@provider@name,
+          shinyoauth.issuer = oauth_client@provider@issuer
+        )))
+      ),
+      error = function(...) NULL
     )
   }
 
