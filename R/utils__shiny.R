@@ -131,6 +131,10 @@ capture_async_options <- function() {
   opts <- all_opts[shinyoauth_names]
   # Also capture the originating process ID for audit event context
   opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
+  # Capture otel span context for cross-process propagation.
+  # pack_http_context() serialises the active span into W3C headers
+  # that the worker can deserialise to create child spans.
+  opts[[".shinyOAuth.otel_headers"]] <- otel_capture_context()
   opts
 }
 
@@ -162,6 +166,15 @@ get_main_process_id <- function(captured_opts) {
   }
   pid <- captured_opts[[".shinyOAuth.main_process_id"]]
   if (is.null(pid)) NA_integer_ else as.integer(pid)
+}
+
+# Internal: extract otel span context headers from captured async options.
+# Returns the headers character vector, or NULL.
+get_otel_headers <- function(captured_opts) {
+  if (is.null(captured_opts)) {
+    return(NULL)
+  }
+  captured_opts[[".shinyOAuth.otel_headers"]]
 }
 
 # Internal: check if currently running in an async worker (different process).

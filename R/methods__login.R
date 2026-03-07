@@ -21,6 +21,18 @@ prepare_call <- function(
   oauth_client,
   browser_token
 ) {
+  # OpenTelemetry: span covering state generation, encryption, and URL building
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "prepare_call",
+      attributes = otel::as_attributes(list(
+        shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
+        shinyoauth.pkce = isTRUE(oauth_client@provider@use_pkce),
+        shinyoauth.nonce = isTRUE(oauth_client@provider@use_nonce)
+      ))
+    )
+  }
+
   # Verify input  --------------------------------------------------------------
 
   # Verify oauth_client
@@ -424,6 +436,20 @@ handle_callback_internal <- function(
   state_store_values = NULL,
   shiny_session = NULL
 ) {
+  # OpenTelemetry: span for the actual callback processing logic.
+  # In sync mode this is the primary span; in async mode it nests under
+  # the worker's "worker:handle_callback" span.
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "handle_callback.process",
+      attributes = otel::as_attributes(list(
+        shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
+        shinyoauth.issuer = oauth_client@provider@issuer %||% NA_character_,
+        shinyoauth.client_id_digest = string_digest(oauth_client@client_id)
+      ))
+    )
+  }
+
   # Type checks ----------------------------------------------------------------
 
   S7::check_is_S7(oauth_client, class = OAuthClient)
@@ -1137,6 +1163,20 @@ swap_code_for_token_set <- function(
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
+  # OpenTelemetry: CLIENT span for the token exchange HTTP call
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "token_exchange",
+      attributes = otel::as_attributes(list(
+        http.request.method = "POST",
+        url.full = client@provider@token_url,
+        shinyoauth.provider = client@provider@name %||% NA_character_
+      )),
+      options = list(kind = "client")
+    )
+  }
+  .otel_t0 <- if (is_otel_measuring()) proc.time()[["elapsed"]] else NULL
+
   params <- list(
     grant_type = "authorization_code",
     code = code,
@@ -1242,6 +1282,10 @@ swap_code_for_token_set <- function(
     }
   }
 
+  otel_record_exchange_duration(
+    if (!is.null(.otel_t0)) proc.time()[["elapsed"]] - .otel_t0,
+    client@provider@name
+  )
   return(token_set)
 }
 
@@ -1253,6 +1297,16 @@ verify_token_set <- function(
   original_id_token = NULL
 ) {
   # Helpers/types --------------------------------------------------------------
+
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "verify_token_set",
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = client@provider@name,
+        shinyoauth.is_refresh = is_refresh
+      )))
+    )
+  }
 
   S7::check_is_S7(client, class = OAuthClient)
 

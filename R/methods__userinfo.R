@@ -19,6 +19,17 @@ get_userinfo <- function(
 ) {
   # Type checks/helpers --------------------------------------------------------
 
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "get_userinfo",
+      options = list(kind = "client"),
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = oauth_client@provider@name,
+        shinyoauth.url = oauth_client@provider@userinfo_url
+      )))
+    )
+  }
+
   S7::check_is_S7(oauth_client, OAuthClient)
 
   if (S7::S7_inherits(token, class = OAuthToken)) {

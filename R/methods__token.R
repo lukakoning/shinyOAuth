@@ -91,6 +91,13 @@ revoke_token <- function(
         .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
         .ns$with_async_options(captured_async_options, {
+          # Restore otel parent context and start a child span
+          .otel_hdrs <- .ns$get_otel_headers(captured_async_options)
+          .ns$otel_start_async_child(
+            "worker:revoke_token",
+            .otel_hdrs,
+            kind = "client"
+          )
           # Set async context so errors include session info with is_async = TRUE
           .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::revoke_token(
@@ -111,6 +118,19 @@ revoke_token <- function(
         which = which
       )
     ))
+  }
+
+  # OpenTelemetry: CLIENT span for the sync revocation path only.
+  # The async path creates its own worker-side span above.
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "revoke_token",
+      options = list(kind = "client"),
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = oauth_client@provider@name,
+        shinyoauth.which = which
+      )))
+    )
   }
 
   tok_val <- if (which == "access") {
@@ -422,6 +442,13 @@ introspect_token <- function(
         .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
         .ns$with_async_options(captured_async_options, {
+          # Restore otel parent context and start a child span
+          .otel_hdrs <- .ns$get_otel_headers(captured_async_options)
+          .ns$otel_start_async_child(
+            "worker:introspect_token",
+            .otel_hdrs,
+            kind = "client"
+          )
           # Set async context so errors include session info with is_async = TRUE
           .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::introspect_token(
@@ -442,6 +469,19 @@ introspect_token <- function(
         which = which
       )
     ))
+  }
+
+  # OpenTelemetry: CLIENT span for the sync introspection path only.
+  # The async path creates its own worker-side span above.
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "introspect_token",
+      options = list(kind = "client"),
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = oauth_client@provider@name,
+        shinyoauth.which = which
+      )))
+    )
   }
 
   tok_val <- if (which == "access") {
@@ -720,6 +760,7 @@ refresh_token <- function(
     # Capture shinyOAuth.* options for propagation to the async worker.
     # This ensures audit hooks, HTTP settings, and other options are
     # available in the worker process.
+    # NOTE: also captures otel span context for cross-process propagation.
     captured_async_options <- capture_async_options()
 
     # Use namespace-qualified calls to avoid passing function closures to mirai
@@ -729,6 +770,12 @@ refresh_token <- function(
         .ns <- asNamespace("shinyOAuth")
         # Restore shinyOAuth.* options in the async worker
         .ns$with_async_options(captured_async_options, {
+          # Restore otel parent context and start a child span
+          .otel_hdrs <- .ns$get_otel_headers(captured_async_options)
+          .ns$otel_start_async_child(
+            "worker:token_refresh",
+            .otel_hdrs
+          )
           # Set async context so errors include session info with is_async = TRUE
           .ns$with_async_session_context(captured_shiny_session, {
             shinyOAuth::refresh_token(
@@ -752,6 +799,22 @@ refresh_token <- function(
   }
   if (!is_valid_string(token@refresh_token)) {
     err_input("No refresh token available")
+  }
+
+  # OpenTelemetry: span for the sync refresh path
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "token_refresh",
+      attributes = otel::as_attributes(list(
+        shinyoauth.provider = oauth_client@provider@name %||% NA_character_
+      )),
+      options = list(kind = "client")
+    )
+  }
+  .otel_refresh_t0 <- if (is_otel_measuring()) {
+    proc.time()[["elapsed"]]
+  } else {
+    NULL
   }
 
   # Snapshot the pre-refresh refresh token so the audit event can report
@@ -957,6 +1020,11 @@ refresh_token <- function(
         is.finite(token_set$expires_in))
     ),
     shiny_session = shiny_session
+  )
+
+  otel_record_refresh_duration(
+    if (!is.null(.otel_refresh_t0)) proc.time()[["elapsed"]] - .otel_refresh_t0,
+    oauth_client@provider@name
   )
 
   token

@@ -39,7 +39,8 @@ Suggests:
     later,
     sodium,
     shinytest2,
-    xml2
+    xml2,
+    otel
 Depends:
     R (>= 4.1.0)
 Config/testthat/edition: 3

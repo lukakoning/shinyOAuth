@@ -1,0 +1,170 @@
+---
+title: "OpenTelemetry instrumentation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{OpenTelemetry instrumentation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Overview
+
+'shinyOAuth' has built-in [OpenTelemetry](https://opentelemetry.io/) instrumentation
+via the ['otel'](https://otel.r-lib.org/) R package. When enabled, the package
+emits **traces** (spans), **metrics**, and **logs** that give you visibility into 
+the OAuth 2.0/OIDC flows of your Shiny app as performed by `oauth_module_server()`.
+
+The OpenTelemtry instrumentation is completely opt-in. When the 'otel' package is 
+not installed or no exporter is configured, all instrumentation calls are no-ops.
+
+This is complementary to the R-level audit hooks described in
+`vignette("audit-logging", package = "shinyOAuth")`. The audit hooks give you
+R-native events you can route to any sink; OpenTelemetry gives you
+vendor-neutral telemetry that easily integrates with various observability platforms.
+
+## Setup
+
+### 1. Install the 'otel' package
+
+```r
+install.packages("otel")
+```
+
+### 2. Configure an exporter
+
+OpenTelemetry is controlled via environment variables. At minimum you need to 
+point the SDK at a collector or backend. For example, to export traces, metrics, 
+and logs to a local [Jaeger](https://www.jaegertracing.io/) instance via OTLP:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+export OTEL_SERVICE_NAME=my-shiny-app
+export OTEL_TRACES_EXPORTER=otlp
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+```
+See the ['otel' getting started guide](https://otel.r-lib.org/articles/otel.html) and
+[OpenTelemetry environment variable documentation](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
+for the full list of configuration options.
+
+### 3. Run your app
+
+Now when you run your Shiny app with `oauth_module_server()`, 
+it will emit traces, metrics, and logs to your observability platform.
+
+## Traces (spans)
+
+The package creates spans at key points in the OAuth 2.0/OIDC lifecycle.
+The span hierarchy corresponds to the actual execution flow, including
+across async worker boundaries.
+
+### Span hierarchy
+
+A typical OAuth login involves **two separate Shiny sessions** — and therefore
+two independent traces. The first session redirects the browser to the provider;
+it ends when the browser navigates away. The second session starts when the
+browser returns with the authorization code and processes the callback:
+
+**Session 1 (pre-auth redirect):**
+
+```
+shiny_session (SERVER, root)                        [main thread]
+├── prepare_call (INTERNAL)                         [main thread]
+├── redirect_issued (event)                         [main thread]
+└── session_ended (event)                           [main thread]
+```
+
+The module detects no callback parameters and initiates the redirect.
+`prepare_call` covers state generation, PKCE/nonce creation, state-payload
+encryption, and authorization URL construction. The `redirect_issued` event
+marks the moment the browser is sent to the provider.
+
+**Session 2 (callback + authenticated session):**
+
+```
+shiny_session (SERVER, root)                        [main thread]
+├── handle_callback (INTERNAL, manual lifecycle)    [main thread]
+│   └── worker:handle_callback (INTERNAL)           [async worker]
+│       └── handle_callback.process (INTERNAL)      [async worker]
+│           ├── token_exchange (CLIENT)             [async worker]
+│           └── verify_token_set (INTERNAL)         [async worker]
+├── token_refresh (CLIENT)                          [later, if refresh occurs]
+└── session_ended (event)                           [main thread]
+```
+
+The browser lands with `?code=...&state=...`. The module validates state,
+exchanges the code for tokens, and the session becomes authenticated.
+Any proactive token refreshes also appear as children of this second session's
+root span.
+
+(In synchronous mode, `handle_callback` and its children all execute on the main
+thread without the `worker:` wrapper span.)
+
+### Span catalog
+
+| Span name | Kind | Where | Description |
+|---|---|---|---|
+| `shiny_session` | SERVER | main thread | Root span covering the entire Shiny session. Started on module init, ended in `onSessionEnded()`. |
+| `prepare_call` | INTERNAL | main thread | Builds the authorization URL: generates state/PKCE/nonce, encrypts state payload, writes to state store. Attributes: `shinyoauth.provider`, `shinyoauth.pkce`, `shinyoauth.nonce`. |
+| `handle_callback` | INTERNAL | main thread | Wraps the async dispatch of the OAuth callback (manual lifecycle). Ended in the promise `then()`/`catch()`. |
+| `worker:handle_callback` | INTERNAL | async worker | Child span inside the mirai/future worker, linked to the main-thread parent via W3C context propagation. |
+| `handle_callback.process` | INTERNAL | worker or main | The actual callback processing logic (state validation, token exchange, verification). |
+| `token_exchange` | CLIENT | worker or main | The HTTP POST to the token endpoint. Includes `http.request.method` and `url.full` attributes. |
+| `verify_token_set` | INTERNAL | worker or main | Token response validation (type check, scope reconciliation, ID token verification). |
+| `token_refresh` | CLIENT | worker or main | Token refresh HTTP call (sync path). |
+| `worker:token_refresh` | INTERNAL | async worker | Child span for async token refresh in a worker. |
+| `get_userinfo` | CLIENT | worker or main | Fetches user info from the provider's userinfo endpoint. |
+| `oidc_discovery` | CLIENT | main thread | OIDC discovery document fetch and parsing. |
+| `revoke_token` | CLIENT | worker or main | Token revocation HTTP call. |
+| `worker:revoke_token` | CLIENT | async worker | Child span for async token revocation. |
+| `introspect_token` | CLIENT | worker or main | Token introspection HTTP call. |
+| `worker:introspect_token` | CLIENT | async worker | Child span for async token introspection. |
+
+### Span attributes
+
+All spans include relevant context as attributes. The namespace is `shinyoauth.*`:
+
+- `shinyoauth.session_id` — hashed Shiny session token (correlates all spans from the same browser session)
+- `shinyoauth.provider` — provider name (e.g., `"github"`, `"google"`)
+- `shinyoauth.issuer` — OIDC issuer URL
+- `shinyoauth.client_id_digest` — hashed client ID (never the raw value)
+- `shinyoauth.module_id` — Shiny module namespace ID
+- `shinyoauth.async` — whether the operation ran in an async worker
+- `shinyoauth.which` — for revocation/introspection: `"access"` or `"refresh"`
+- `shinyoauth.is_refresh` — for token verification: whether this is a refresh flow
+- `shinyoauth.url` — target URL for userinfo requests
+
+Note: sensitive identifiers (session token, client ID) are always hashed with
+HMAC-SHA256 via `string_digest()` before being set as span attributes.
+This to avoid exposing raw sensitive values in telemetry while still allowing correlation and analysis based on those attributes.
+Digest keys are randomly generated if not set; you can set a stable one via `options(shinyOAuth.audit_digest_key = ...)`.
+
+## Metrics
+
+The package records the following metrics when a metrics exporter is configured:
+
+| Metric name | Type | Description |
+|---|---|---|
+| `shinyoauth.login.total` | Counter | Login attempts. Attributes: `success` (logical), `provider`. |
+| `shinyoauth.token_refresh.total` | Counter | Token refresh attempts. Attributes: `success` (logical), `provider`. |
+| `shinyoauth.token_exchange.duration_seconds` | Histogram | Duration of token exchange HTTP calls. Attributes: `provider`. |
+| `shinyoauth.token_refresh.duration_seconds` | Histogram | Duration of token refresh HTTP calls. Attributes: `provider`. |
+| `shinyoauth.active_sessions` | UpDownCounter | Number of currently active Shiny sessions (incremented on session start, decremented on session end). |
+
+These metrics are useful for dashboards and alerting; for example, monitoring 
+login success rates, detecting refresh failures, or tracking concurrent session counts.
+
+## Logs
+
+When a log exporter is configured, the package emits structured log records at 
+two levels:
+
+- `log_info` — for every audit event (e.g., `"audit:session_started"`,
+  `"audit:login_success"`, `"audit:token_revocation"`). These mirror the events
+  described in `vignette("audit-logging", package = "shinyOAuth")`, but routed
+  through the OpenTelemetry log pipeline instead of (or in addition to) the R-level 
+  audit hooks.
+
+- `log_error` — for every error raised by the package (token errors, HTTP 
+  failures, transport errors, state validation failures, etc.). Each log record 
+  includes the error class and the package's internal trace ID for correlation.

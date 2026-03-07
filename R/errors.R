@@ -9,6 +9,16 @@ err_abort <- function(msg, class = "shinyOAuth_error", context = list()) {
     list(type = "error", trace_id = trace_id, message = msg),
     context
   ))
+  # Emit structured error log via otel when available
+  if (is_otel_logging()) {
+    otel::log_error(
+      paste(msg, collapse = "; "),
+      attributes = otel::as_attributes(compact_list(list(
+        error.class = paste(class, collapse = ","),
+        trace_id = trace_id
+      )))
+    )
+  }
   primary <- short_desc_for_class(c(class, "shinyOAuth_error"))
   # Allow rlang-style bullets in `msg`: a character vector with optional names
   bullets <- normalize_bullets(msg, default_type = "!")
@@ -169,6 +179,19 @@ err_http <- function(msg, resp = NULL, context = list()) {
   )
   emit_trace_event(event)
 
+  # Emit structured error log via otel when available
+  if (is_otel_logging()) {
+    otel::log_error(
+      paste(msg, collapse = "; "),
+      attributes = otel::as_attributes(compact_list(list(
+        error.class = "shinyOAuth_http_error",
+        trace_id = trace_id,
+        http.status_code = status,
+        oauth.error = oauth_error
+      )))
+    )
+  }
+
   # Allow named bullets for msg and ensure subsequent lines are named bullets too
   bullets <- normalize_bullets(msg, default_type = "!")
   status_msg <- if (length(status) == 1 && !is.na(status)) {
@@ -239,6 +262,16 @@ err_transport <- function(msg, context = list(), parent = NULL) {
     list(type = "transport_error", trace_id = trace_id, message = msg),
     context
   ))
+  # Emit structured error log via otel when available
+  if (is_otel_logging()) {
+    otel::log_error(
+      paste(msg, collapse = "; "),
+      attributes = otel::as_attributes(compact_list(list(
+        error.class = "shinyOAuth_transport_error",
+        trace_id = trace_id
+      )))
+    )
+  }
   bullets <- normalize_bullets(msg, default_type = "!")
   message <- c(
     format_header("Transport failure"),
@@ -332,6 +365,16 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
   # Pre-inject shiny_session if provided (augment_with_shiny_context won't override)
   if (!is.null(shiny_session)) {
     event$shiny_session <- shiny_session
+  }
+  # Emit structured info log via otel when available
+  if (is_otel_logging()) {
+    otel::log_info(
+      paste0("audit:", type),
+      attributes = otel::as_attributes(compact_list(list(
+        audit.type = type,
+        trace_id = trace_id
+      )))
+    )
   }
   emit_trace_event(event)
   invisible(trace_id)

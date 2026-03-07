@@ -25,6 +25,9 @@ For a full step-by-step protocol breakdown, see the separate vignette:
 For a detailed explanation of audit logging key events during the flow, see:
 `vignette("audit-logging", package = "shinyOAuth")`.
 
+For OpenTelemetry instrumentation (traces, metrics, logs), see:
+`vignette("opentelemetry", package = "shinyOAuth")`.
+
 ## Minimal Shiny module example
 
 Below is a minimal example using a GitHub's OAuth 2.0 app (same as shown in the README). 
@@ -367,7 +370,8 @@ Below is a list of all available options.
 - `options(shinyOAuth.audit_digest_key = ...)` – key for HMAC-SHA256 audit digests
 
 See `vignette("audit-logging", package = "shinyOAuth")` for details about
-audit and trace hooks.
+audit and trace hooks. For observability via OpenTelemetry (traces,
+metrics, logs), see `vignette("opentelemetry", package = "shinyOAuth")`.
 
 ### Networking/security
 

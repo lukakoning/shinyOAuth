@@ -18,6 +18,11 @@ This vignette covers:
 - Which audit events are emitted & what fields are included in each event
 - Best practices
 
+This package is also compatible with OpenTelemetry (emitting traces,
+metrics, and logs, compatible with various observability platforms).
+See `vignette("opentelemetry", package = "shinyOAuth")` for guidance 
+on how to set this up. All audit events here are also emitted as OpenTelemetry logs.
+
 ## Receiving audit events
 
 There are two hook options you can set. Both receive the same event object (a named list).

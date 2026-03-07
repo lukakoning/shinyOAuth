@@ -139,10 +139,21 @@ add_req_defaults <- function(req) {
   # without Content-Length are caught post-download by check_resp_body_size().
   max_bytes <- resolve_max_body_bytes()
 
-  req |>
+  req <- req |>
     httr2::req_timeout(t) |>
     httr2::req_user_agent(ua) |>
     httr2::req_options(maxfilesize = max_bytes)
+
+  # Inject W3C trace context headers when otel tracing is active,
+  # so downstream services can correlate spans.
+  if (is_otel_tracing()) {
+    hdrs <- otel::pack_http_context()
+    for (nm in names(hdrs)) {
+      req <- httr2::req_headers(req, !!nm := hdrs[[nm]])
+    }
+  }
+
+  req
 }
 
 #' Internal: resolve max body bytes from option

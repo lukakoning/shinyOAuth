@@ -117,6 +117,16 @@ oauth_provider_oidc_discover <- function(
 ) {
   issuer_match <- match.arg(issuer_match)
 
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "oidc_discovery",
+      options = list(kind = "client"),
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.issuer = issuer
+      )))
+    )
+  }
+
   # 1) Validate issuer input
   .discover_assert_valid_issuer(issuer)
 

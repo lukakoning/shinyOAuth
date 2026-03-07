@@ -504,6 +504,25 @@ oauth_module_server <- function(
       silent = TRUE
     )
 
+    # OpenTelemetry: start a root span for this Shiny session.
+    # Uses start_span() (manual lifecycle) because the span must outlive any
+    # single reactive observer and is ended explicitly in onSessionEnded().
+    .otel_session_span <- NULL
+    if (is_otel_tracing()) {
+      .otel_session_span <- otel::start_span(
+        "shiny_session",
+        attributes = otel::as_attributes(list(
+          shinyoauth.provider = client@provider@name %||% NA_character_,
+          shinyoauth.issuer = client@provider@issuer %||% NA_character_,
+          shinyoauth.client_id_digest = string_digest(client@client_id),
+          shinyoauth.module_id = id,
+          shinyoauth.session_id = string_digest(session$token)
+        )),
+        options = list(kind = "server")
+      )
+    }
+    otel_active_sessions(1L)
+
     # Session-end hook ---------------------------------------------------------
 
     # Capture session context now while we still have it (it won't be
@@ -532,6 +551,18 @@ oauth_module_server <- function(
         ),
         silent = TRUE
       )
+
+      # OpenTelemetry: end the session span and decrement active sessions
+      if (!is.null(.otel_session_span)) {
+        .otel_session_span$add_event(
+          "session_ended",
+          attributes = otel::as_attributes(list(
+            was_authenticated = was_authenticated
+          ))
+        )
+        otel_end_span_ok(.otel_session_span)
+      }
+      otel_active_sessions(-1L)
     })
 
     # Session-end revocation: revoke tokens if configured
@@ -1098,6 +1129,15 @@ oauth_module_server <- function(
       if (is.na(url)) {
         return(invisible(FALSE))
       }
+      # OpenTelemetry: record the redirect as an event on the session span
+      if (!is.null(.otel_session_span)) {
+        .otel_session_span$add_event(
+          "redirect_issued",
+          attributes = otel::as_attributes(list(
+            shinyoauth.provider = client@provider@name %||% NA_character_
+          ))
+        )
+      }
       .client_redirect(url)
       invisible(TRUE)
     }
@@ -1534,6 +1574,29 @@ oauth_module_server <- function(
             # Capture shinyOAuth.* options for propagation to the async worker.
             # This ensures audit hooks, HTTP settings, and other options are
             # available in the worker process.
+            # NOTE: also captures otel span context (via otel_capture_context())
+            # so the worker can create child spans under the session root.
+
+            # Activate the session span so pack_http_context() inside
+            # capture_async_options() serialises it as the parent.
+            if (!is.null(.otel_session_span)) {
+              otel::local_active_span(.otel_session_span)
+            }
+            # Start a callback span on the main thread (manual lifecycle).
+            # Pre-dispatch work (state decrypt, store lookup) becomes children.
+            .otel_callback_span <- NULL
+            if (is_otel_tracing()) {
+              .otel_callback_span <- otel::start_span(
+                "handle_callback",
+                attributes = otel::as_attributes(list(
+                  shinyoauth.provider = client@provider@name %||%
+                    NA_character_,
+                  shinyoauth.async = TRUE
+                )),
+                options = list(kind = "internal")
+              )
+              otel::local_active_span(.otel_callback_span)
+            }
             captured_async_options <- capture_async_options()
 
             pre_payload <- tryCatch(
@@ -1613,6 +1676,15 @@ oauth_module_server <- function(
                   .ns <- asNamespace("shinyOAuth")
                   # Restore shinyOAuth.* options in the async worker
                   .ns$with_async_options(captured_async_options, {
+                    # Restore otel parent context and start a child span
+                    .otel_hdrs <- .ns$get_otel_headers(captured_async_options)
+                    .ns$otel_start_async_child(
+                      "worker:handle_callback",
+                      .otel_hdrs,
+                      attributes = otel::as_attributes(list(
+                        shinyoauth.async = TRUE
+                      ))
+                    )
                     # Set async context so errors include session info with is_async = TRUE
                     .ns$with_async_session_context(
                       captured_shiny_session,
@@ -1643,6 +1715,10 @@ oauth_module_server <- function(
               )
             }
           } else {
+            # Sync path: activate session span so child spans nest correctly
+            if (!is.null(.otel_session_span)) {
+              otel::local_active_span(.otel_session_span)
+            }
             handle_callback(
               client,
               code = code,
@@ -1671,12 +1747,24 @@ oauth_module_server <- function(
                 .set_browser_token()
                 # A successful login completes any prior reauth cycle
                 values$reauth_triggered <- FALSE
+                # OpenTelemetry: end the callback span with success
+                otel_end_span_ok(.otel_callback_span)
+                otel_count_login(
+                  TRUE,
+                  client@provider@name
+                )
               }) |>
               promises::catch(function(e) {
                 .set_error(
                   "token_exchange_error",
                   e,
                   phase = "async_token_exchange"
+                )
+                # OpenTelemetry: end the callback span with error
+                otel_end_span_error(.otel_callback_span, e)
+                otel_count_login(
+                  FALSE,
+                  client@provider@name
                 )
                 try(
                   audit_event(
@@ -1711,10 +1799,12 @@ oauth_module_server <- function(
             .set_browser_token()
             # Reset reauth guard on successful sync login
             values$reauth_triggered <- FALSE
+            otel_count_login(TRUE, client@provider@name)
           }
         },
         error = function(e) {
           .set_error("token_exchange_error", e, phase = "sync_token_exchange")
+          otel_count_login(FALSE, client@provider@name)
           try(
             audit_event(
               "login_failed",
@@ -1817,6 +1907,11 @@ oauth_module_server <- function(
                 # emitted from the async worker (which lacks reactive domain access)
                 captured_shiny_session_refresh <- capture_shiny_session_context()
 
+                # Activate session span for otel context propagation
+                if (!is.null(.otel_session_span)) {
+                  otel::local_active_span(.otel_session_span)
+                }
+
                 # Delegate to refresh_token with async and handle promise if returned
                 tryCatch(
                   {
@@ -1844,9 +1939,11 @@ oauth_module_server <- function(
                           values$token_stale <- FALSE
                           # Successful refresh should allow future reauth cycles
                           values$reauth_triggered <- FALSE
+                          otel_count_refresh(TRUE, client@provider@name)
                         }) |>
                         promises::catch(function(e) {
                           values$refresh_in_progress <- FALSE
+                          otel_count_refresh(FALSE, client@provider@name)
                           mirai_err_type <- classify_mirai_error(e)
                           try(log_condition(
                             e,
@@ -1946,11 +2043,13 @@ oauth_module_server <- function(
                       values$token_stale <- FALSE
                       # Successful sync refresh resets reauth guard as well
                       values$reauth_triggered <- FALSE
+                      otel_count_refresh(TRUE, client@provider@name)
                     }
                   },
                   error = function(e) {
                     # Always clear the in-progress flag on error
                     values$refresh_in_progress <- FALSE
+                    otel_count_refresh(FALSE, client@provider@name)
                     # Set error; clear token unless indefinite_session
                     if (!isTRUE(indefinite_session)) {
                       values$token <- NULL
