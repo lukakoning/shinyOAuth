@@ -623,7 +623,9 @@ handle_callback_internal <- function(
             )),
             received_refresh_token = isTRUE(is_valid_string(
               ts$refresh_token %||% NA_character_
-            ))
+            )),
+            expires_in_synthesized = !(is.numeric(ts$expires_in) &&
+              is.finite(ts$expires_in))
           ),
           shiny_session = shiny_session
         ),

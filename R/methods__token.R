@@ -952,7 +952,9 @@ refresh_token <- function(
       client_id_digest = string_digest(oauth_client@client_id),
       refresh_token_rotated = is_valid_string(token_set$refresh_token) &&
         !identical(token_set$refresh_token, pre_refresh_token),
-      new_expires_at = token@expires_at
+      new_expires_at = token@expires_at,
+      expires_in_synthesized = !(is.numeric(token_set$expires_in) &&
+        is.finite(token_set$expires_in))
     ),
     shiny_session = shiny_session
   )

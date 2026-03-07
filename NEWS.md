@@ -4,6 +4,11 @@
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
 
+* `audit_token_exchange` and `audit_token_refresh` events now include an
+`expires_in_synthesized` boolean field. It is `TRUE` when the provider's
+token response did not contain a usable `expires_in` value and the package
+fell back to `resolve_missing_expires_in()`.
+
 # shinyOAuth 0.4.0
 
 * 'mirai' & async backend improvements:
