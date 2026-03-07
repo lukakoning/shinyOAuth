@@ -119,9 +119,11 @@ verification by returning unsigned claims as plain JSON or \code{alg=none} JWTs.
 Requires \code{userinfo_required = TRUE} and a valid \code{issuer} (for JWKS).
 Defaults to \code{FALSE}.
 
-\code{oauth_provider_oidc_discover()} will automatically enable this when the
-OIDC discovery document advertises \code{userinfo_signing_alg_values_supported}
-with algorithms that overlap the caller's \code{allowed_algs}.}
+Note: \code{oauth_provider_oidc_discover()} does not auto-enable this flag.
+Discovery's \code{userinfo_signing_alg_values_supported} indicates provider
+capability, not that every client receives signed JWTs (this depends on
+per-client configuration at the provider). Pass \code{userinfo_signed_jwt_required = TRUE}
+explicitly if you need this protection.}
 
 \item{id_token_required}{Whether to require an ID token to be returned
 during token exchange. If no ID token is returned, the token exchange

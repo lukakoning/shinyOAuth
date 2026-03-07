@@ -77,9 +77,11 @@
 #' Requires `userinfo_required = TRUE` and a valid `issuer` (for JWKS).
 #' Defaults to `FALSE`.
 #'
-#' `oauth_provider_oidc_discover()` will automatically enable this when the
-#' OIDC discovery document advertises `userinfo_signing_alg_values_supported`
-#' with algorithms that overlap the caller's `allowed_algs`.
+#' Note: `oauth_provider_oidc_discover()` does not auto-enable this flag.
+#' Discovery's `userinfo_signing_alg_values_supported` indicates provider
+#' capability, not that every client receives signed JWTs (this depends on
+#' per-client configuration at the provider). Pass `userinfo_signed_jwt_required = TRUE`
+#' explicitly if you need this protection.
 #'
 #' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.#'
 #' Should take a single argument (the userinfo list) and return the user ID
