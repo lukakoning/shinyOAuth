@@ -24,10 +24,10 @@ vendor-neutral telemetry that easily integrates with various observability platf
 
 ## Setup
 
-### 1. Install the 'otel' package
+### 1. Install 'otel' and 'otelsdk'
 
 ```r
-install.packages("otel")
+install.packages(c("otel", "otelsdk"))
 ```
 
 ### 2. Configure an exporter

@@ -23,6 +23,16 @@ state_payload_decrypt_validate <- function(
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
+  # OpenTelemetry: span covering AES-GCM decryption + freshness/binding checks
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "state_payload_decrypt",
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = client@provider@name
+      )))
+    )
+  }
+
   # Centralized auditing for decrypt + validation to align sync/async flows
   tryCatch(
     {

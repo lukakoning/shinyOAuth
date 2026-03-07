@@ -271,6 +271,18 @@ get_userinfo <- function(
 #' @keywords internal
 #' @noRd
 decode_userinfo_jwt <- function(resp, oauth_client) {
+  # OpenTelemetry: span for JWT-encoded userinfo signature verification.
+  # May involve JWKS fetch (HTTP) and multi-key verification attempts.
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "userinfo_jwt_decode",
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = oauth_client@provider@name,
+        shinyoauth.issuer = oauth_client@provider@issuer
+      )))
+    )
+  }
+
   jwt_str <- httr2::resp_body_string(resp)
 
   if (!is_valid_string(jwt_str)) {

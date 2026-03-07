@@ -76,6 +76,18 @@ validate_id_token <- function(
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(id_token))
 
+  # OpenTelemetry: span covering JWT signature + claims validation.
+  # May involve JWKS fetch (HTTP) and multi-key verification attempts.
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "validate_id_token",
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = client@provider@name,
+        shinyoauth.issuer = client@provider@issuer
+      )))
+    )
+  }
+
   # Detect JWE (encrypted JWT): 5 dot-separated parts per RFC 7516 §3.
   # OIDC Core §3.1.3.7 step 1: "If the ID Token is encrypted, decrypt it..."
   # We do not support JWE decryption; surface a clear error rather than
@@ -618,6 +630,16 @@ compute_at_hash <- function(access_token, alg) {
 build_client_assertion <- function(client, aud) {
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(aud))
+
+  # OpenTelemetry: span for JWT client assertion signing (RFC 7523)
+  if (is_otel_tracing()) {
+    otel::start_local_active_span(
+      "client_assertion_build",
+      attributes = otel::as_attributes(compact_list(list(
+        shinyoauth.provider = client@provider@name
+      )))
+    )
+  }
 
   style <- client@provider@token_auth_style %||% "header"
   alg_cfg <- client@client_assertion_alg %||% NA_character_
