@@ -278,7 +278,11 @@ For state store events the digest reflects the plaintext state string.
 
 - When: authorization code successfully exchanged for tokens
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`,
-  `used_pkce`, `received_id_token`, `received_refresh_token`
+  `used_pkce`, `received_id_token`, `received_refresh_token`,
+  `expires_in_synthesized`
+- `expires_in_synthesized` (logical): `TRUE` when the token response did
+  not include a usable `expires_in` value and the package fell back to
+  `resolve_missing_expires_in()`
 
 #### Event: `audit_token_exchange_error`
 
@@ -395,7 +399,10 @@ For state store events the digest reflects the plaintext state string.
   [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
   successfully refreshes the access token
 - Context: `provider`, `issuer`, `client_id_digest`,
-  `refresh_token_rotated`, `new_expires_at`
+  `refresh_token_rotated`, `new_expires_at`, `expires_in_synthesized`
+- `expires_in_synthesized` (logical): `TRUE` when the refresh response
+  did not include a usable `expires_in` value and the package fell back
+  to `resolve_missing_expires_in()`
 
 ### Userinfo fetch
 

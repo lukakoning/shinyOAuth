@@ -440,7 +440,14 @@ reflects the plaintext state string.</p>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>code_digest</code>,
 <code>used_pkce</code>, <code>received_id_token</code>,
-<code>received_refresh_token</code>
+<code>received_refresh_token</code>,
+<code>expires_in_synthesized</code>
+</li>
+<li>
+<code>expires_in_synthesized</code> (logical): <code>TRUE</code>
+when the token response did not include a usable <code>expires_in</code>
+value and the package fell back to
+<code>resolve_missing_expires_in()</code>
 </li>
 </ul>
 </div>
@@ -654,7 +661,13 @@ value from the browser and requests regeneration</li>
 token</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>refresh_token_rotated</code>,
-<code>new_expires_at</code>
+<code>new_expires_at</code>, <code>expires_in_synthesized</code>
+</li>
+<li>
+<code>expires_in_synthesized</code> (logical): <code>TRUE</code>
+when the refresh response did not include a usable
+<code>expires_in</code> value and the package fell back to
+<code>resolve_missing_expires_in()</code>
 </li>
 </ul>
 </div>
