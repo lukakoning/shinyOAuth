@@ -41,9 +41,11 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-</div>
+<ul><li>
+<code>validate_id_token()</code> now properly rejects <code>auth_time</code> claims set in the future (beyond leeway). Previously, a future <code>auth_time</code> produced a negative elapsed value that always passed the <code>max_age</code> freshness check.</li>
+</ul></div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.4.0" id="shinyoauth-040">shinyOAuth 0.4.0<a class="anchor" aria-label="anchor" href="#shinyoauth-040"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.4.0" id="shinyoauth-040">shinyOAuth 0.4.0<a class="anchor" aria-label="anchor" href="#shinyoauth-040"></a></h2><p class="text-muted">CRAN release: 2026-02-14</p>
 <ul><li>
 <p>‘mirai’ &amp; async backend improvements:</p>
 <ul><li>Warnings and messages emitted in async workers (e.g., missing <code>expires_in</code> from token response) are now captured and re-emitted on the main process so they appear in the R console. This includes conditions from user-supplied <code>trace_hook</code> / <code>audit_hook</code> functions: warnings, messages, and errors (surfaced as warnings) all propagate back to the main thread. Replay can be disabled via <code>options(shinyOAuth.replay_async_conditions = FALSE)</code>.</li>

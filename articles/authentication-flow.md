@@ -185,7 +185,8 @@ cryptographic validation occurs prior to making external calls:
 - Nonce: must match the previously stored value (if configured)
 - `auth_time` validation (OIDC Core §3.1.2.1): when `max_age` is present
   in `extra_auth_params`, the ID token’s `auth_time` claim must be
-  present and satisfy `now - auth_time <= max_age + leeway`
+  present, must not be in the future beyond `leeway`, and must satisfy
+  `now - auth_time <= max_age + leeway`
 - `at_hash` (Access Token hash, OIDC Core §3.1.3.8): when the ID token
   contains an `at_hash` claim, the access token binding is verified.
   When `id_token_at_hash_required = TRUE` on the provider, the ID token

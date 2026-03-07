@@ -280,7 +280,8 @@ MUST equal <code>client_id</code>
 <li>
 <code>auth_time</code> validation (OIDC Core §3.1.2.1): when
 <code>max_age</code> is present in <code>extra_auth_params</code>, the
-ID token’s <code>auth_time</code> claim must be present and satisfy
+ID token’s <code>auth_time</code> claim must be present, must not be in
+the future beyond <code>leeway</code>, and must satisfy
 <code>now - auth_time &lt;= max_age + leeway</code>
 </li>
 <li>

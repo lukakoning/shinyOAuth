@@ -2,7 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- `validate_id_token()` now properly rejects `auth_time` claims set in
+  the future (beyond leeway). Previously, a future `auth_time` produced
+  a negative elapsed value that always passed the `max_age` freshness
+  check.
+
 ## shinyOAuth 0.4.0
+
+CRAN release: 2026-02-14
 
 - ‘mirai’ & async backend improvements:
 
