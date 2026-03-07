@@ -3,10 +3,16 @@ devtools::load_all()
 options(shinyOAuth.print_errors = TRUE)
 options(shinyOAuth.print_traceback = TRUE)
 
+options(shinyOAuth.audit_hook = function(event) {
+  cat(sprintf("[AUDIT] %s %s\n", event$type, event$trace_id))
+  str(event)
+})
+
 Sys.setenv(
-  OTEL_TRACES_EXPORTER = "otlp",
-  # OTEL_LOGS_EXPORTER = "otlp",
-  # OTEL_METRICS_EXPORTER = "otlp",
+  OTEL_TRACES_EXPORTER="http",
+  OTEL_LOGS_EXPORTER="http",
+  OTEL_LOG_LEVEL="debug",
+  OTEL_METRICS_EXPORTER="http",
   OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 )
 

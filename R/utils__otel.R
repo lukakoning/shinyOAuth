@@ -208,7 +208,10 @@ otel_count_refresh <- function(success, provider = NULL) {
         success = success,
         provider = provider
       )))
-      otel::counter_add("shinyoauth.token_refresh.total", attributes = attrs)
+      otel::counter_add(
+        "shinyoauth.token_refresh.total",
+        attributes = attrs
+      )
     },
     error = function(...) NULL
   )
@@ -224,7 +227,9 @@ otel_record_exchange_duration <- function(seconds, provider = NULL) {
   }
   tryCatch(
     {
-      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      attrs <- otel::as_attributes(compact_list(list(
+        provider = provider
+      )))
       otel::histogram_record(
         "shinyoauth.token_exchange.duration_seconds",
         seconds,
@@ -245,7 +250,9 @@ otel_record_refresh_duration <- function(seconds, provider = NULL) {
   }
   tryCatch(
     {
-      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      attrs <- otel::as_attributes(compact_list(list(
+        provider = provider
+      )))
       otel::histogram_record(
         "shinyoauth.token_refresh.duration_seconds",
         seconds,
@@ -270,7 +277,10 @@ otel_count_revocation <- function(success, provider = NULL) {
         success = success,
         provider = provider
       )))
-      otel::counter_add("shinyoauth.token_revocation.total", attributes = attrs)
+      otel::counter_add(
+        "shinyoauth.token_revocation.total",
+        attributes = attrs
+      )
     },
     error = function(...) NULL
   )
@@ -286,7 +296,9 @@ otel_record_userinfo_duration <- function(seconds, provider = NULL) {
   }
   tryCatch(
     {
-      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      attrs <- otel::as_attributes(compact_list(list(
+        provider = provider
+      )))
       otel::histogram_record(
         "shinyoauth.userinfo.duration_seconds",
         seconds,
