@@ -6,9 +6,12 @@
 2.0/OIDC flow. These may help detect anomalous activity (e.g., brute
 force, replay, or configuration errors).
 
-This vignette covers: - How to register audit hooks to export/store
-events - Which audit events are emitted & what fields are included in
-each event - Best practices
+This vignette covers:
+
+- How to register audit hooks to export/store events
+- Which audit events are emitted & what fields are included in each
+  event
+- Best practices
 
 ## Receiving audit events
 
