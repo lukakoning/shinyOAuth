@@ -257,6 +257,68 @@ otel_record_refresh_duration <- function(seconds, provider = NULL) {
   invisible(NULL)
 }
 
+#' Increment the token revocation counter
+#' @keywords internal
+#' @noRd
+otel_count_revocation <- function(success, provider = NULL) {
+  if (!is_otel_measuring()) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(
+        success = success,
+        provider = provider
+      )))
+      otel::counter_add("shinyoauth.token_revocation.total", attributes = attrs)
+    },
+    error = function(...) NULL
+  )
+  invisible(NULL)
+}
+
+#' Record userinfo fetch duration
+#' @keywords internal
+#' @noRd
+otel_record_userinfo_duration <- function(seconds, provider = NULL) {
+  if (!is_otel_measuring() || is.null(seconds)) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(provider = provider)))
+      otel::histogram_record(
+        "shinyoauth.userinfo.duration_seconds",
+        seconds,
+        attributes = attrs
+      )
+    },
+    error = function(...) NULL
+  )
+  invisible(NULL)
+}
+
+#' Record OIDC discovery duration
+#' @keywords internal
+#' @noRd
+otel_record_discovery_duration <- function(seconds, issuer = NULL) {
+  if (!is_otel_measuring() || is.null(seconds)) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    {
+      attrs <- otel::as_attributes(compact_list(list(issuer = issuer)))
+      otel::histogram_record(
+        "shinyoauth.oidc_discovery.duration_seconds",
+        seconds,
+        attributes = attrs
+      )
+    },
+    error = function(...) NULL
+  )
+  invisible(NULL)
+}
+
 #' Adjust the active-sessions gauge
 #' @param delta Integer: +1 on session start, -1 on session end.
 #' @keywords internal

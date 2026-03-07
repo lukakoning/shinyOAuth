@@ -131,14 +131,20 @@ shiny_session (SERVER, root)                        [main thread]
 │           ├── token_exchange (CLIENT)             [async worker]
 │           └── verify_token_set (INTERNAL)         [async worker]
 │               └── validate_id_token (INTERNAL)   [async worker]
+├── login_success (event)                           [main thread]
 ├── token_refresh (CLIENT)                          [later, if refresh occurs]
+├── logout (event)                                  [main thread, if logout()]
+├── session_cleared (event)                         [main thread, if token expires]
 └── session_ended (event)                           [main thread]
 ```
 
 The browser lands with `?code=...&state=...`. The module validates state,
 exchanges the code for tokens, and the session becomes authenticated.
-Any proactive token refreshes also appear as children of this second session's
-root span.
+The `login_success` event is recorded on the session span when authentication
+completes. Any proactive token refreshes also appear as children of this
+second session's root span. If the user calls `logout()`, a `logout` event is
+recorded. If the token expires or the reauth window is exceeded, a
+`session_cleared` event is recorded.
 
 (In synchronous mode, `handle_callback` and its children all execute on the main
 thread without the `worker:` wrapper span.)
@@ -199,8 +205,11 @@ The package records the following metrics when a metrics exporter is configured:
 |---|---|---|
 | `shinyoauth.login.total` | Counter | Login attempts. Attributes: `success` (logical), `provider`. |
 | `shinyoauth.token_refresh.total` | Counter | Token refresh attempts. Attributes: `success` (logical), `provider`. |
+| `shinyoauth.token_revocation.total` | Counter | Token revocation attempts. Attributes: `success` (logical), `provider`. |
 | `shinyoauth.token_exchange.duration_seconds` | Histogram | Duration of token exchange HTTP calls. Attributes: `provider`. |
 | `shinyoauth.token_refresh.duration_seconds` | Histogram | Duration of token refresh HTTP calls. Attributes: `provider`. |
+| `shinyoauth.userinfo.duration_seconds` | Histogram | Duration of userinfo endpoint HTTP calls. Attributes: `provider`. |
+| `shinyoauth.oidc_discovery.duration_seconds` | Histogram | Duration of OIDC discovery document fetch and parsing. Attributes: `issuer`. |
 | `shinyoauth.active_sessions` | UpDownCounter | Number of currently active Shiny sessions (incremented on session start, decremented on session end). |
 
 These metrics are useful for dashboards and alerting; for example, monitoring 

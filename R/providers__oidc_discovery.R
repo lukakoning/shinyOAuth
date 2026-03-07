@@ -129,6 +129,7 @@ oauth_provider_oidc_discover <- function(
       error = function(...) NULL
     )
   }
+  .otel_disc_t0 <- if (is_otel_measuring()) proc.time()[["elapsed"]] else NULL
 
   # 1) Validate issuer input
   .discover_assert_valid_issuer(issuer)
@@ -189,6 +190,10 @@ oauth_provider_oidc_discover <- function(
   name <- .discover_default_name(name, iss)
 
   # 12) Construct provider
+  otel_record_discovery_duration(
+    if (!is.null(.otel_disc_t0)) proc.time()[["elapsed"]] - .otel_disc_t0,
+    issuer
+  )
   do.call(
     oauth_provider,
     c(

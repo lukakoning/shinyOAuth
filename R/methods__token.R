@@ -96,7 +96,7 @@ revoke_token <- function(
           .ns$otel_start_async_child(
             "worker:revoke_token",
             .otel_hdrs,
-            attributes = otel::as_attributes(compact_list(list(
+            attributes = otel::as_attributes(.ns$compact_list(list(
               shinyoauth.provider = oauth_client@provider@name %||%
                 NA_character_,
               shinyoauth.which = which
@@ -247,6 +247,7 @@ revoke_token <- function(
       ),
       silent = TRUE
     )
+    otel_count_revocation(FALSE, oauth_client@provider@name)
     return(list(
       supported = TRUE,
       revoked = NA,
@@ -272,6 +273,7 @@ revoke_token <- function(
       ),
       silent = TRUE
     )
+    otel_count_revocation(FALSE, oauth_client@provider@name)
     return(list(
       supported = TRUE,
       revoked = NA,
@@ -295,6 +297,7 @@ revoke_token <- function(
     ),
     silent = TRUE
   )
+  otel_count_revocation(TRUE, oauth_client@provider@name)
 
   list(
     supported = TRUE,
@@ -455,7 +458,7 @@ introspect_token <- function(
           .ns$otel_start_async_child(
             "worker:introspect_token",
             .otel_hdrs,
-            attributes = otel::as_attributes(compact_list(list(
+            attributes = otel::as_attributes(.ns$compact_list(list(
               shinyoauth.provider = oauth_client@provider@name %||%
                 NA_character_,
               shinyoauth.which = which
@@ -791,7 +794,7 @@ refresh_token <- function(
           .ns$otel_start_async_child(
             "worker:token_refresh",
             .otel_hdrs,
-            attributes = otel::as_attributes(compact_list(list(
+            attributes = otel::as_attributes(.ns$compact_list(list(
               shinyoauth.provider = oauth_client@provider@name %||%
                 NA_character_
             )))

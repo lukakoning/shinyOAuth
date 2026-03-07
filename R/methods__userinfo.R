@@ -51,6 +51,8 @@ get_userinfo <- function(
 
   # Main logic -----------------------------------------------------------------
 
+  .otel_ui_t0 <- if (is_otel_measuring()) proc.time()[["elapsed"]] else NULL
+
   # Define request; disable redirects to prevent leaking Bearer token
   req <- httr2::request(oauth_client@provider@userinfo_url) |>
     httr2::req_auth_bearer_token(access_token) |>
@@ -237,6 +239,11 @@ get_userinfo <- function(
       )
     ),
     silent = TRUE
+  )
+
+  otel_record_userinfo_duration(
+    if (!is.null(.otel_ui_t0)) proc.time()[["elapsed"]] - .otel_ui_t0,
+    oauth_client@provider@name
   )
 
   return(ui)

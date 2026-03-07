@@ -1210,6 +1210,18 @@ oauth_module_server <- function(
           )
         )
       )
+      # OpenTelemetry: record the logout as an event on the session span
+      if (!is.null(.otel_session_span)) {
+        tryCatch(
+          .otel_session_span$add_event(
+            "logout",
+            attributes = otel::as_attributes(compact_list(list(
+              shinyoauth.reason = reason
+            )))
+          ),
+          error = function(...) NULL
+        )
+      }
       values$token <- NULL
       values$error <- "logged_out"
       values$error_description <- NULL
@@ -1701,7 +1713,7 @@ oauth_module_server <- function(
                     .ns$otel_start_async_child(
                       "worker:handle_callback",
                       .otel_hdrs,
-                      attributes = otel::as_attributes(compact_list(list(
+                      attributes = otel::as_attributes(.ns$compact_list(list(
                         shinyoauth.async = TRUE
                       )))
                     )
@@ -1776,6 +1788,20 @@ oauth_module_server <- function(
                   TRUE,
                   client@provider@name
                 )
+                # OpenTelemetry: record login success on the session span
+                if (!is.null(.otel_session_span)) {
+                  tryCatch(
+                    .otel_session_span$add_event(
+                      "login_success",
+                      attributes = otel::as_attributes(compact_list(list(
+                        shinyoauth.provider = client@provider@name %||%
+                          NA_character_,
+                        shinyoauth.async = TRUE
+                      )))
+                    ),
+                    error = function(...) NULL
+                  )
+                }
               }) |>
               promises::catch(function(e) {
                 .set_error(
@@ -1823,6 +1849,20 @@ oauth_module_server <- function(
             # Reset reauth guard on successful sync login
             values$reauth_triggered <- FALSE
             otel_count_login(TRUE, client@provider@name)
+            # OpenTelemetry: record login success on the session span
+            if (!is.null(.otel_session_span)) {
+              tryCatch(
+                .otel_session_span$add_event(
+                  "login_success",
+                  attributes = otel::as_attributes(compact_list(list(
+                    shinyoauth.provider = client@provider@name %||%
+                      NA_character_,
+                    shinyoauth.async = FALSE
+                  )))
+                ),
+                error = function(...) NULL
+              )
+            }
           }
         },
         error = function(e) {
@@ -2189,6 +2229,18 @@ oauth_module_server <- function(
                   ),
                   silent = TRUE
                 )
+                # OpenTelemetry: record session cleared event on the session span
+                if (!is.null(.otel_session_span)) {
+                  tryCatch(
+                    .otel_session_span$add_event(
+                      "session_cleared",
+                      attributes = otel::as_attributes(compact_list(list(
+                        shinyoauth.reason = "reauth_window"
+                      )))
+                    ),
+                    error = function(...) NULL
+                  )
+                }
                 if (
                   isTRUE(auto_redirect) &&
                     !isTRUE(values$reauth_triggered)
@@ -2244,6 +2296,18 @@ oauth_module_server <- function(
                 ),
                 silent = TRUE
               )
+              # OpenTelemetry: record session cleared event on the session span
+              if (!is.null(.otel_session_span)) {
+                tryCatch(
+                  .otel_session_span$add_event(
+                    "session_cleared",
+                    attributes = otel::as_attributes(compact_list(list(
+                      shinyoauth.reason = "token_expired"
+                    )))
+                  ),
+                  error = function(...) NULL
+                )
+              }
               if (
                 isTRUE(auto_redirect) &&
                   !isTRUE(values$reauth_triggered)
