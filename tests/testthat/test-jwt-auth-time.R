@@ -399,6 +399,85 @@ test_that("verify_token_set accepts token when auth_time is within max_age", {
 })
 
 
+# --- Future auth_time rejection (CVE-style regression) ---
+
+test_that("validate_id_token rejects auth_time far in the future", {
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+
+  # auth_time 1 hour in the future; max_age = 0 should reject
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = "https://issuer.example.com",
+      aud = "client-xyz",
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      auth_time = now + 3600
+    )
+  )
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_error(
+      shinyOAuth:::validate_id_token(client, jwt, max_age = 0),
+      regexp = "auth_time is in the future"
+    )
+  })
+})
+
+
+test_that("validate_id_token rejects auth_time slightly beyond leeway in the future", {
+  client <- mk_client() # leeway = 5
+  now <- floor(as.numeric(Sys.time()))
+
+  # auth_time 10s in the future, leeway is 5 => 10 > 5 => reject
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = "https://issuer.example.com",
+      aud = "client-xyz",
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      auth_time = now + 10
+    )
+  )
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_error(
+      shinyOAuth:::validate_id_token(client, jwt, max_age = 300),
+      regexp = "auth_time is in the future"
+    )
+  })
+})
+
+
+test_that("validate_id_token accepts auth_time within leeway in the future", {
+  client <- mk_client() # leeway = 5
+  now <- floor(as.numeric(Sys.time()))
+
+  # auth_time 3s in the future, leeway is 5 => 3 <= 5 => accept
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = "https://issuer.example.com",
+      aud = "client-xyz",
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      auth_time = now + 3
+    )
+  )
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_silent(
+      shinyOAuth:::validate_id_token(client, jwt, max_age = 300)
+    )
+  })
+})
+
+
 test_that("verify_token_set rejects ID token missing auth_time when max_age requested", {
   now <- floor(as.numeric(Sys.time()))
 

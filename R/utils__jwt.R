@@ -500,6 +500,20 @@ validate_id_token <- function(
       err_id_token("auth_time claim must be a single finite number")
     }
     auth_time_val <- as.numeric(payload$auth_time)
+    if (auth_time_val > (now + lwe)) {
+      err_id_token(c(
+        "x" = "auth_time is in the future",
+        "i" = paste0(
+          "auth_time=",
+          auth_time_val,
+          ", now=",
+          now,
+          ", leeway=",
+          lwe,
+          "s"
+        )
+      ))
+    }
     elapsed <- now - auth_time_val
     if (elapsed > (max_age_val + lwe)) {
       err_id_token(c(
