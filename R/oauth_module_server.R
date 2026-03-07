@@ -511,13 +511,13 @@ oauth_module_server <- function(
     if (is_otel_tracing()) {
       .otel_session_span <- otel::start_span(
         "shiny_session",
-        attributes = otel::as_attributes(list(
+        attributes = otel::as_attributes(compact_list(list(
           shinyoauth.provider = client@provider@name %||% NA_character_,
           shinyoauth.issuer = client@provider@issuer %||% NA_character_,
           shinyoauth.client_id_digest = string_digest(client@client_id),
           shinyoauth.module_id = id,
           shinyoauth.session_id = string_digest(session$token)
-        )),
+        ))),
         options = list(kind = "server")
       )
     }
@@ -556,9 +556,9 @@ oauth_module_server <- function(
       if (!is.null(.otel_session_span)) {
         .otel_session_span$add_event(
           "session_ended",
-          attributes = otel::as_attributes(list(
+          attributes = otel::as_attributes(compact_list(list(
             was_authenticated = was_authenticated
-          ))
+          )))
         )
         otel_end_span_ok(.otel_session_span)
       }
@@ -1133,9 +1133,9 @@ oauth_module_server <- function(
       if (!is.null(.otel_session_span)) {
         .otel_session_span$add_event(
           "redirect_issued",
-          attributes = otel::as_attributes(list(
+          attributes = otel::as_attributes(compact_list(list(
             shinyoauth.provider = client@provider@name %||% NA_character_
-          ))
+          )))
         )
       }
       .client_redirect(url)
@@ -1588,11 +1588,11 @@ oauth_module_server <- function(
             if (is_otel_tracing()) {
               .otel_callback_span <- otel::start_span(
                 "handle_callback",
-                attributes = otel::as_attributes(list(
+                attributes = otel::as_attributes(compact_list(list(
                   shinyoauth.provider = client@provider@name %||%
                     NA_character_,
                   shinyoauth.async = TRUE
-                )),
+                ))),
                 options = list(kind = "internal")
               )
               otel::local_active_span(.otel_callback_span)
@@ -1681,9 +1681,9 @@ oauth_module_server <- function(
                     .ns$otel_start_async_child(
                       "worker:handle_callback",
                       .otel_hdrs,
-                      attributes = otel::as_attributes(list(
+                      attributes = otel::as_attributes(compact_list(list(
                         shinyoauth.async = TRUE
-                      ))
+                      )))
                     )
                     # Set async context so errors include session info with is_async = TRUE
                     .ns$with_async_session_context(

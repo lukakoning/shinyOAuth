@@ -153,10 +153,10 @@ otel_end_span_error <- function(span, error) {
       } else {
         span$add_event(
           "exception",
-          attributes = otel::as_attributes(list(
+          attributes = otel::as_attributes(compact_list(list(
             exception.type = "character",
             exception.message = as.character(error)
-          ))
+          )))
         )
       }
       span$end(status_code = "error")

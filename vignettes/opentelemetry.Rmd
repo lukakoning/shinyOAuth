@@ -14,7 +14,7 @@ via the ['otel'](https://otel.r-lib.org/) R package. When enabled, the package
 emits **traces** (spans), **metrics**, and **logs** that give you visibility into 
 the OAuth 2.0/OIDC flows of your Shiny app as performed by `oauth_module_server()`.
 
-The OpenTelemtry instrumentation is completely opt-in. When the 'otel' package is 
+The OpenTelemetry instrumentation is completely opt-in. When the 'otel' package is 
 not installed or no exporter is configured, all instrumentation calls are no-ops.
 
 This is complementary to the R-level audit hooks described in
@@ -33,16 +33,40 @@ install.packages(c("otel", "otelsdk"))
 ### 2. Configure an exporter
 
 OpenTelemetry is controlled via environment variables. At minimum you need to 
-point the SDK at a collector or backend. For example, to export traces, metrics, 
-and logs to a local [Jaeger](https://www.jaegertracing.io/) instance via OTLP:
+point the SDK at a collector or backend.
+
+The easiest all-in-one option for local development is
+[grafana/otel-lgtm](https://github.com/grafana/docker-otel-lgtm) — a single
+Docker container bundling Grafana (UI), Tempo (traces), Loki (logs),
+and Mimir (metrics), all pre-wired to accept OTLP on port 4318:
+
+```bash
+docker run --rm --name lgtm \
+  -p 3000:3000 \
+  -p 4317:4317 \
+  -p 4318:4318 \
+  grafana/otel-lgtm
+```
+
+Then set the environment variables before starting your R session:
 
 ```
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_SERVICE_NAME=my-shiny-app
 OTEL_TRACES_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
 OTEL_LOGS_EXPORTER=otlp
 ```
+
+Open <http://localhost:3000> (admin / admin) to explore traces, logs,
+and metrics.
+
+> **Note:** [Jaeger](https://www.jaegertracing.io/) is another popular option
+> but only supports **traces** — it will reject log and metric exports with
+> HTTP 404. If you only need traces, Jaeger works fine; for all three signals
+> use `grafana/otel-lgtm` or a full
+> [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) setup.
+
 See the ['otel' getting started guide](https://otel.r-lib.org/articles/otel.html) and
 [OpenTelemetry environment variable documentation](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
 for the full list of configuration options.
@@ -86,8 +110,10 @@ shiny_session (SERVER, root)                        [main thread]
 ├── handle_callback (INTERNAL, manual lifecycle)    [main thread]
 │   └── worker:handle_callback (INTERNAL)           [async worker]
 │       └── handle_callback.process (INTERNAL)      [async worker]
+│           ├── state_payload_decrypt (INTERNAL)    [async worker]
 │           ├── token_exchange (CLIENT)             [async worker]
 │           └── verify_token_set (INTERNAL)         [async worker]
+│               └── validate_id_token (INTERNAL)   [async worker]
 ├── token_refresh (CLIENT)                          [later, if refresh occurs]
 └── session_ended (event)                           [main thread]
 ```
@@ -111,10 +137,19 @@ thread without the `worker:` wrapper span.)
 | `handle_callback.process` | INTERNAL | worker or main | The actual callback processing logic (state validation, token exchange, verification). |
 | `token_exchange` | CLIENT | worker or main | The HTTP POST to the token endpoint. Includes `http.request.method` and `url.full` attributes. |
 | `verify_token_set` | INTERNAL | worker or main | Token response validation (type check, scope reconciliation, ID token verification). |
+| `validate_id_token` | INTERNAL | worker or main | JWT signature verification and claims validation of the ID token. |
+| `state_payload_decrypt` | INTERNAL | worker or main | AES-GCM decryption and validation of the OAuth state payload. |
+| `userinfo_jwt_decode` | INTERNAL | worker or main | Decoding and verifying a JWT-encoded userinfo response. |
+| `client_assertion_build` | INTERNAL | worker or main | Building a `client_secret_jwt` or `private_key_jwt` client assertion. |
 | `token_refresh` | CLIENT | worker or main | Token refresh HTTP call (sync path). |
 | `worker:token_refresh` | INTERNAL | async worker | Child span for async token refresh in a worker. |
 | `get_userinfo` | CLIENT | worker or main | Fetches user info from the provider's userinfo endpoint. |
+| `userinfo_jwt_decode` | INTERNAL | worker or main | Decoding and verifying a JWT-encoded userinfo response. |
 | `oidc_discovery` | CLIENT | main thread | OIDC discovery document fetch and parsing. |
+| `jwks_fetch` | CLIENT | worker or main | JWKS key set fetch from the provider's JWKS URI (cache-miss path only). |
+| `validate_id_token` | INTERNAL | worker or main | JWT signature verification and claims validation of the ID token. |
+| `state_payload_decrypt` | INTERNAL | worker or main | AES-GCM decryption and validation of the OAuth state payload. |
+| `client_assertion_build` | INTERNAL | worker or main | Building a `client_secret_jwt` or `private_key_jwt` client assertion. |
 | `revoke_token` | CLIENT | worker or main | Token revocation HTTP call. |
 | `worker:revoke_token` | CLIENT | async worker | Child span for async token revocation. |
 | `introspect_token` | CLIENT | worker or main | Token introspection HTTP call. |

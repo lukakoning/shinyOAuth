@@ -25,11 +25,11 @@ prepare_call <- function(
   if (is_otel_tracing()) {
     otel::start_local_active_span(
       "prepare_call",
-      attributes = otel::as_attributes(list(
+      attributes = otel::as_attributes(compact_list(list(
         shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
         shinyoauth.pkce = isTRUE(oauth_client@provider@use_pkce),
         shinyoauth.nonce = isTRUE(oauth_client@provider@use_nonce)
-      ))
+      )))
     )
   }
 
@@ -442,11 +442,11 @@ handle_callback_internal <- function(
   if (is_otel_tracing()) {
     otel::start_local_active_span(
       "handle_callback.process",
-      attributes = otel::as_attributes(list(
+      attributes = otel::as_attributes(compact_list(list(
         shinyoauth.provider = oauth_client@provider@name %||% NA_character_,
         shinyoauth.issuer = oauth_client@provider@issuer %||% NA_character_,
         shinyoauth.client_id_digest = string_digest(oauth_client@client_id)
-      ))
+      )))
     )
   }
 
@@ -1167,11 +1167,11 @@ swap_code_for_token_set <- function(
   if (is_otel_tracing()) {
     otel::start_local_active_span(
       "token_exchange",
-      attributes = otel::as_attributes(list(
+      attributes = otel::as_attributes(compact_list(list(
         http.request.method = "POST",
         url.full = client@provider@token_url,
         shinyoauth.provider = client@provider@name %||% NA_character_
-      )),
+      ))),
       options = list(kind = "client")
     )
   }
