@@ -36,12 +36,12 @@ OpenTelemetry is controlled via environment variables. At minimum you need to
 point the SDK at a collector or backend. For example, to export traces, metrics, 
 and logs to a local [Jaeger](https://www.jaegertracing.io/) instance via OTLP:
 
-```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-export OTEL_SERVICE_NAME=my-shiny-app
-export OTEL_TRACES_EXPORTER=otlp
-export OTEL_METRICS_EXPORTER=otlp
-export OTEL_LOGS_EXPORTER=otlp
+```
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_SERVICE_NAME=my-shiny-app
+OTEL_TRACES_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=otlp
+OTEL_LOGS_EXPORTER=otlp
 ```
 See the ['otel' getting started guide](https://otel.r-lib.org/articles/otel.html) and
 [OpenTelemetry environment variable documentation](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)

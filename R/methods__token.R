@@ -96,6 +96,11 @@ revoke_token <- function(
           .ns$otel_start_async_child(
             "worker:revoke_token",
             .otel_hdrs,
+            attributes = otel::as_attributes(list(
+              shinyoauth.provider = oauth_client@provider@name %||%
+                NA_character_,
+              shinyoauth.which = which
+            )),
             kind = "client"
           )
           # Set async context so errors include session info with is_async = TRUE
@@ -447,6 +452,11 @@ introspect_token <- function(
           .ns$otel_start_async_child(
             "worker:introspect_token",
             .otel_hdrs,
+            attributes = otel::as_attributes(list(
+              shinyoauth.provider = oauth_client@provider@name %||%
+                NA_character_,
+              shinyoauth.which = which
+            )),
             kind = "client"
           )
           # Set async context so errors include session info with is_async = TRUE
@@ -774,7 +784,11 @@ refresh_token <- function(
           .otel_hdrs <- .ns$get_otel_headers(captured_async_options)
           .ns$otel_start_async_child(
             "worker:token_refresh",
-            .otel_hdrs
+            .otel_hdrs,
+            attributes = otel::as_attributes(list(
+              shinyoauth.provider = oauth_client@provider@name %||%
+                NA_character_
+            ))
           )
           # Set async context so errors include session info with is_async = TRUE
           .ns$with_async_session_context(captured_shiny_session, {

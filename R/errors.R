@@ -186,7 +186,7 @@ err_http <- function(msg, resp = NULL, context = list()) {
       attributes = otel::as_attributes(compact_list(list(
         error.class = "shinyOAuth_http_error",
         trace_id = trace_id,
-        http.status_code = status,
+        http.response.status_code = status,
         oauth.error = oauth_error
       )))
     )
@@ -368,11 +368,16 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
   }
   # Emit structured info log via otel when available
   if (is_otel_logging()) {
+    # Include scalar context fields as log attributes for observability
+    otel_ctx <- Filter(
+      function(x) is.atomic(x) && length(x) == 1L,
+      context
+    )
     otel::log_info(
       paste0("audit:", type),
-      attributes = otel::as_attributes(compact_list(list(
-        audit.type = type,
-        trace_id = trace_id
+      attributes = otel::as_attributes(compact_list(c(
+        list(audit.type = type, trace_id = trace_id),
+        otel_ctx
       )))
     )
   }

@@ -108,14 +108,14 @@ otel_start_async_child <- function(
   if (!is.null(parent_ctx)) {
     opts$parent <- parent_ctx
   }
-  # Forward .local_envir so the span is scoped to the CALLER's frame
+  # Forward activation_scope so the span is scoped to the CALLER's frame
   # (not this helper's frame). Without this the span would auto-end when
   # otel_start_async_child() returns instead of when the worker code completes.
   spn <- otel::start_local_active_span(
     name,
     attributes = attributes,
     options = opts,
-    .local_envir = .local_envir
+    activation_scope = .local_envir
   )
   invisible(spn)
 }
@@ -154,45 +154,12 @@ otel_end_span_error <- function(span, error) {
         span$add_event(
           "exception",
           attributes = otel::as_attributes(list(
+            exception.type = "character",
             exception.message = as.character(error)
           ))
         )
       }
       span$end(status_code = "error")
-    },
-    error = function(...) NULL
-  )
-  invisible(NULL)
-}
-
-#' Add common shinyOAuth session attributes to a span
-#'
-#' @param span An otel span object (or NULL — no-op).
-#' @param provider_name Provider name string.
-#' @param client_id_digest Hashed client ID.
-#' @param session_token Shiny session token (hashed).
-#' @keywords internal
-#' @noRd
-otel_set_session_attrs <- function(
-  span,
-  provider_name = NULL,
-  client_id_digest = NULL,
-  session_token = NULL
-) {
-  if (is.null(span)) {
-    return(invisible(NULL))
-  }
-  tryCatch(
-    {
-      if (!is.null(provider_name)) {
-        span$set_attribute("shinyoauth.provider", provider_name)
-      }
-      if (!is.null(client_id_digest)) {
-        span$set_attribute("shinyoauth.client_id_digest", client_id_digest)
-      }
-      if (!is.null(session_token)) {
-        span$set_attribute("shinyoauth.session_token", session_token)
-      }
     },
     error = function(...) NULL
   )
