@@ -167,7 +167,7 @@ testthat::test_that("every audit event fires and serializes to JSON", {
 
     # Stub HTTP to avoid network and drive both code paths deterministically
     testthat::local_mocked_bindings(
-      req_with_retry = function(req) {
+      req_with_retry = function(req, ...) {
         # Return success responses; body content depends on URL
         url <- req$url %||% ""
         if (grepl("/token", url, fixed = TRUE)) {

@@ -31,7 +31,7 @@ test_that("decode_userinfo_jwt rejects malformed header (fail-closed)", {
   jwt_body <- paste0(bad_header, ".", good_payload, ".")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -65,7 +65,7 @@ test_that("decode_userinfo_jwt errors for malformed header when require_signed =
   jwt_body <- paste0(bad_header, ".", good_payload, ".")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -95,7 +95,7 @@ test_that("unsupported alg (HS256) is rejected even when require_signed = FALSE"
   jwt_body <- make_unsigned_jwt(claims, alg = "HS256")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -125,7 +125,7 @@ test_that("unsupported alg (PS384 not in allowed_algs) is rejected", {
   jwt_body <- make_unsigned_jwt(claims, alg = "PS384")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -156,7 +156,7 @@ test_that("alg=none is always rejected even when issuer is set and require_signe
   jwt_body <- make_unsigned_jwt(claims, alg = "none")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -194,7 +194,7 @@ test_that("JWT with missing alg field is rejected even when require_signed = FAL
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -231,7 +231,7 @@ test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -275,7 +275,7 @@ test_that("RS256 JWT is rejected when provider has no issuer (fail-closed)", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

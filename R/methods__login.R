@@ -1188,8 +1188,8 @@ swap_code_for_token_set <- function(
   # Add form body without using !!! so it works with simple stubs
   req <- do.call(httr2::req_body_form, c(list(req), params))
 
-  # Perform request with retry for transient failures
-  resp <- req_with_retry(req)
+  # Token exchange consumes a single-use authorization code; do not retry.
+  resp <- req_with_retry(req, idempotent = FALSE)
   # Security: reject redirect responses to prevent credential leakage
   reject_redirect_response(resp, context = "token_exchange")
   if (httr2::resp_is_error(resp)) {

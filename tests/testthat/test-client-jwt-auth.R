@@ -29,7 +29,7 @@ test_that("client_secret_jwt composes client_assertion and omits secret in body"
   )
   # Return a simple JSON token response
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = cli@provider@token_url,
         status = 200,
@@ -91,7 +91,7 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = cli@provider@token_url,
         status = 200,
@@ -158,7 +158,7 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = cli@provider@token_url,
         status = 200,
@@ -198,7 +198,7 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = cli@provider@token_url,
         status = 200,
@@ -258,7 +258,7 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = prov@revocation_url,
         status = 200,
@@ -283,7 +283,7 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = prov@introspection_url,
         status = 200,

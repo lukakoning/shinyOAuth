@@ -11,7 +11,7 @@ testthat::test_that("get_userinfo errors consistently on malformed/non-JSON resp
   on.exit(options(shinyOAuth.audit_hook = old_hook), add = TRUE)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

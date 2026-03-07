@@ -43,7 +43,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
 
   # HTTP error -> revoked = NA, status = "http_<code>"
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 400,
@@ -60,7 +60,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
 
   # Success -> revoked = TRUE
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -92,7 +92,7 @@ testthat::test_that("revoke_token async returns a resolved promise", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

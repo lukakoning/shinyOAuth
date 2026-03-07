@@ -25,7 +25,7 @@ make_signed_jwt_h <- function(payload_list, key, kid = NULL) {
 
 # Helper: mock req_with_retry returning an application/jwt response
 mock_jwt_response <- function(jwt_body) {
-  function(req) {
+  function(req, ...) {
     httr2::response(
       url = as.character(req$url),
       status = 200,

@@ -8,4 +8,3 @@ test_that("S256 PKCE challenge matches RFC 7636 Appendix B test vector", {
 
   expect_equal(challenge, expected_challenge)
 })
-

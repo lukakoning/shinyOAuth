@@ -19,7 +19,7 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
 
   # Case A: rotation -> new refresh_token returned
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       # Verify body form has grant_type=refresh_token
       # We can't easily read it here; assume methods__token builds it correctly.
       httr2::response(
@@ -47,7 +47,7 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
 
   # Case B: no rotation -> provider omits refresh_token or empty -> keep old
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -75,7 +75,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   # First, mock both token response and userinfo + introspection
   calls <- list(token = 0L, userinfo = 0L, introspection = 0L)
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("/token", url, fixed = TRUE)) {
         calls$token <<- calls$token + 1L
@@ -135,7 +135,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
 
   calls <- list(token = 0L, userinfo = 0L)
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("/token", url, fixed = TRUE)) {
         calls$token <<- calls$token + 1L
@@ -181,7 +181,7 @@ testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -216,7 +216,7 @@ testthat::test_that("refresh_token rejects negative expires_in", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -271,7 +271,7 @@ testthat::test_that("refresh_token succeeds with id_token_validation=TRUE when r
 
   # Mock a refresh response that does NOT include an id_token
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -368,7 +368,7 @@ testthat::test_that("refresh_token rejects new id_token with mismatched sub (OID
 
   # Mock refresh response returning the mismatched ID token
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_id_token
@@ -467,7 +467,7 @@ testthat::test_that("refresh_token accepts new id_token with matching sub (OIDC 
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_id_token
@@ -545,7 +545,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_id_token
@@ -618,7 +618,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_id_token
@@ -692,7 +692,7 @@ testthat::test_that("refresh_token preserves original id_token when refresh omit
 
   # Refresh response WITHOUT id_token
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -769,7 +769,7 @@ testthat::test_that("refresh_token fails when original id_token is unparseable b
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_id_token
@@ -829,7 +829,7 @@ testthat::test_that("refresh with id_token_required=TRUE succeeds when response 
 
   # Response without id_token
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -927,7 +927,7 @@ testthat::test_that("refresh_token validates new id_token claims (issuer, aud, e
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         bad_issuer_token
@@ -1019,7 +1019,7 @@ testthat::test_that("refresh_token validates new id_token audience", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         bad_aud_token
@@ -1111,7 +1111,7 @@ testthat::test_that("refresh_token rejects expired new id_token", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         expired_token
@@ -1209,7 +1209,7 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
 
   # Mock userinfo to return DIFFERENT subject - should fail validation
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("userinfo", url, fixed = TRUE)) {
         # Userinfo returns different sub
@@ -1280,7 +1280,7 @@ testthat::test_that("refresh_token skips userinfo_id_token_match when id_token m
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
@@ -1387,7 +1387,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
 
   # Mock userinfo to return MATCHING subject with updated info
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
@@ -1484,7 +1484,7 @@ testthat::test_that("refresh_token updates userinfo even when id_token omitted",
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       url <- as.character(req$url)
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
@@ -1533,7 +1533,7 @@ testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 
   cli@scope_validation <- "strict"
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -1569,7 +1569,7 @@ testthat::test_that("refresh_token validates scope when provider returns it", {
   cli@scope_validation <- "strict"
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -1604,7 +1604,7 @@ testthat::test_that("refresh_token errors when provider returns reduced scope (s
   cli@scope_validation <- "strict"
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

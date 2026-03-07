@@ -15,7 +15,7 @@ testthat::test_that("extra_token_headers are sent on revoke requests", {
 
   captured_req <- NULL
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
         url = as.character(req$url),
@@ -55,7 +55,7 @@ testthat::test_that("extra_token_headers are sent on introspect requests", {
 
   captured_req <- NULL
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
         url = as.character(req$url),
@@ -92,7 +92,7 @@ testthat::test_that("revoke and introspect work without extra_token_headers", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

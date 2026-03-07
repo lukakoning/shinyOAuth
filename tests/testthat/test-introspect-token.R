@@ -44,7 +44,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
 
   # HTTP error -> active = NA, supported = TRUE, status = "http_<code>"
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 404,
@@ -72,7 +72,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   )
   i <- 0
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       i <<- i + 1
       body <- bodies[[i]]
       httr2::response(
@@ -129,7 +129,7 @@ testthat::test_that("introspect_token async returns a resolved promise", {
   )
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

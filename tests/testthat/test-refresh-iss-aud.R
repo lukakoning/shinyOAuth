@@ -69,7 +69,7 @@ test_that("refresh rejects new id_token with mismatched iss (validated path)", {
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -122,7 +122,7 @@ test_that("refresh rejects new id_token with mismatched iss (non-validated path)
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -177,7 +177,7 @@ test_that("refresh rejects new id_token with mismatched aud (validated path)", {
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -227,7 +227,7 @@ test_that("refresh rejects new id_token with mismatched aud (non-validated path)
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -279,7 +279,7 @@ test_that("refresh accepts new id_token with matching iss and aud (validated pat
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -331,7 +331,7 @@ test_that("refresh accepts matching iss/aud with multi-audience (validated path)
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -378,7 +378,7 @@ test_that("refresh accepts matching iss/aud (non-validated path)", {
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt
@@ -429,7 +429,7 @@ test_that("refresh iss comparison rejects trailing slash difference", {
   ))
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       body <- sprintf(
         '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
         new_jwt

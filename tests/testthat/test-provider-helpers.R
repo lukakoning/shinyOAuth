@@ -230,7 +230,7 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -262,7 +262,7 @@ test_that("oauth_provider_okta constructs correct issuer from domain + auth_serv
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -288,7 +288,7 @@ test_that("oauth_provider_auth0 constructs correct issuer from domain", {
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -311,7 +311,7 @@ test_that("oauth_provider_auth0 includes audience in extra_auth_params", {
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -338,7 +338,7 @@ test_that("oauth_provider_slack constructs correct issuer", {
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

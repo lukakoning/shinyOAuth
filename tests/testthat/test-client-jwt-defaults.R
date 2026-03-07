@@ -38,7 +38,7 @@ testthat::test_that("private_key_jwt picks EC-compatible default alg", {
     .package = "httr2"
   )
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = cli@provider@token_url,
         status = 200,

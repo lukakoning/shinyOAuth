@@ -74,7 +74,7 @@ testthat::test_that("login fails when introspection validation fails", {
         swap_code_for_token_set = function(client, code, code_verifier) {
           list(access_token = "t", expires_in = 3600)
         },
-        req_with_retry = function(req) {
+        req_with_retry = function(req, ...) {
           httr2::response(
             url = as.character(req$url),
             status = 200,

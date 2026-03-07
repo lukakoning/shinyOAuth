@@ -9,6 +9,12 @@ elapsed value that always passed the `max_age` freshness check.
 token response did not contain a usable `expires_in` value and the package
 fell back to `resolve_missing_expires_in()`.
 
+* Token exchange and refresh requests no longer retry on transport errors or
+transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
+refresh tokens may be rotated on each use; retrying after the server has
+already committed the first request would replay an invalidated credential,
+causing `invalid_grant` errors or triggering refresh-token replay detection.
+
 # shinyOAuth 0.4.0
 
 * 'mirai' & async backend improvements:

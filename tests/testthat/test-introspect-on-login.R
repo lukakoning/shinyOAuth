@@ -173,7 +173,7 @@ test_that("handle_callback with introspect=TRUE fails when token is inactive", {
       )
     },
     # Mock introspection to return inactive
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -213,7 +213,7 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
       )
     },
     # Mock introspection to return active
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -254,7 +254,7 @@ test_that("introspect_elements can require sub match (id_token)", {
         id_token = idt
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -286,7 +286,7 @@ test_that("introspect_elements can require sub match (id_token)", {
         id_token = idt
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -322,7 +322,7 @@ test_that("introspect_elements can require client_id match", {
     swap_code_for_token_set = function(client, code, code_verifier) {
       list(access_token = "at", expires_in = 3600, token_type = "Bearer")
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -349,7 +349,7 @@ test_that("introspect_elements can require client_id match", {
     swap_code_for_token_set = function(client, code, code_verifier) {
       list(access_token = "at", expires_in = 3600, token_type = "Bearer")
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -394,7 +394,7 @@ test_that("introspect_elements can require scopes", {
         scope = "openid profile"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -436,7 +436,7 @@ test_that("introspect_elements can require scopes", {
         scope = "openid profile"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -488,7 +488,7 @@ test_that("introspect_elements can require scopes", {
         scope = "openid profile"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -528,7 +528,7 @@ test_that("introspect_elements can require scopes", {
         scope = "openid profile"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -560,7 +560,7 @@ test_that("introspect_elements can require scopes", {
         scope = "openid profile"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -604,7 +604,7 @@ test_that("introspect_elements errors when required fields are missing", {
       )
     },
     # Missing sub in introspection
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -644,7 +644,7 @@ test_that("handle_callback with introspect=TRUE fails on introspection http erro
       )
     },
     # Mock introspection to return HTTP error
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 500,
@@ -691,7 +691,7 @@ test_that("introspect_token emits audit events during login", {
         token_type = "Bearer"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -742,7 +742,7 @@ test_that("introspect_token emits audit events even when login fails", {
         token_type = "Bearer"
       )
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

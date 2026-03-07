@@ -19,7 +19,7 @@ testthat::test_that("introspect_token uses JWT client assertion for client_secre
       got_aud <<- aud
       return("jwt-assertion")
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       # Return a minimal successful response body
       httr2::response(
         url = as.character(req$url),
@@ -61,7 +61,7 @@ testthat::test_that("introspect_token uses JWT client assertion for private_key_
       got_aud <<- aud
       return("jwt-assertion")
     },
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

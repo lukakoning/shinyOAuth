@@ -12,7 +12,7 @@ testthat::test_that("handle_callback warns when expires_in is absent (login)", {
 
   # Mock token exchange to return a response WITHOUT expires_in
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -48,7 +48,7 @@ testthat::test_that("handle_callback does NOT warn when expires_in is present (l
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -86,7 +86,7 @@ testthat::test_that("refresh_token warns when expires_in is absent (refresh)", {
   rlang::reset_warning_verbosity("expires_in_missing-refresh_token")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -122,7 +122,7 @@ testthat::test_that("refresh_token does NOT warn when expires_in is present (ref
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -258,7 +258,7 @@ testthat::test_that("handle_callback uses default_expires_in option (login)", {
   rlang::reset_warning_verbosity("expires_in_missing-exchange_code")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
@@ -297,7 +297,7 @@ testthat::test_that("refresh_token uses default_expires_in option (refresh)", {
   rlang::reset_warning_verbosity("expires_in_missing-refresh_token")
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(req) {
+    req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,

@@ -798,8 +798,8 @@ refresh_token <- function(
     req <- do.call(httr2::req_headers, c(list(req), extra_headers))
   }
   req <- do.call(httr2::req_body_form, c(list(req), params))
-  # Perform request with retry for transient failures
-  resp <- req_with_retry(req)
+  # Refresh may consume a rotatable refresh token; do not retry.
+  resp <- req_with_retry(req, idempotent = FALSE)
 
   # Security: reject redirect responses to prevent credential leakage
   reject_redirect_response(resp, context = "token_refresh")

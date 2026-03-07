@@ -221,6 +221,14 @@ check_resp_body_size <- function(
 #' `async = TRUE` in `oauth_module_server()` (which executes network calls in a
 #' background future), or reduce retries/timeouts using the options below.
 #'
+#' @param req An httr2 request object.
+#' @param idempotent Logical. When `FALSE`, the request is assumed to consume
+#'   single-use credentials (e.g., authorization codes, rotatable refresh
+#'   tokens) and will **not** be retried. This prevents the retry loop from
+#'   replaying a POST that the server already committed, which would cause
+#'   `invalid_grant` errors or trigger refresh-token replay detection.
+#'   Default `TRUE` (retries enabled).
+#'
 #' Config via options:
 #'  - shinyOAuth.retry_max_tries (default 3)
 #'  - shinyOAuth.retry_backoff_base (seconds, default 0.5)
@@ -229,7 +237,7 @@ check_resp_body_size <- function(
 #'
 #' @keywords internal
 #' @noRd
-req_with_retry <- function(req) {
+req_with_retry <- function(req, idempotent = TRUE) {
   # Fast-path: if not an httr2 request, just try to perform it
   if (!inherits(req, "httr2_request")) {
     return(httr2::req_perform(req))
@@ -241,6 +249,35 @@ req_with_retry <- function(req) {
   # error status). This lets us retry only on transient HTTP statuses while
   # immediately returning non-retryable error responses to the caller.
   req <- httr2::req_error(req, is_error = \(resp) FALSE)
+
+  # Non-idempotent requests (token exchange, refresh) must not be retried
+  # because the server may have already consumed the single-use credential.
+  # A retry would replay an invalidated code/token, causing invalid_grant
+  # or triggering refresh-token replay detection (full session revocation).
+  if (!isTRUE(idempotent)) {
+    resp <- try(httr2::req_perform(req), silent = TRUE)
+    if (inherits(resp, "try-error")) {
+      parent <- attr(resp, "condition")
+      if (is.null(parent)) {
+        parent <- simpleError(as.character(resp))
+      }
+      err_transport(
+        "Transport error performing HTTP request",
+        context = compact_list(list(
+          method = tryCatch(
+            toupper(as.character(req$method)),
+            error = function(...) NA_character_
+          ),
+          url = tryCatch(
+            as.character(req$url),
+            error = function(...) NA_character_
+          )
+        )),
+        parent = parent
+      )
+    }
+    return(resp)
+  }
 
   max_tries <- suppressWarnings(as.integer(getOption(
     "shinyOAuth.retry_max_tries",
