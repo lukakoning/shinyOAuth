@@ -13,7 +13,8 @@ Sys.setenv(
   OTEL_LOGS_EXPORTER="http",
   OTEL_LOG_LEVEL="debug",
   OTEL_METRICS_EXPORTER="http",
-  OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+  OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318",
+  OTEL_ENV = "dev"
 )
 
 library(shiny)
