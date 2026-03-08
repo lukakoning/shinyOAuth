@@ -7,7 +7,7 @@ Sys.setenv(
   OTEL_TRACES_EXPORTER="http",
   OTEL_LOGS_EXPORTER="http",
   OTEL_LOG_LEVEL="debug",
-  OTEL_METRICS_EXPORTER="http",
+  # OTEL_METRICS_EXPORTER="http",
   OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 )
 

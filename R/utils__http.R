@@ -147,8 +147,8 @@ add_req_defaults <- function(req) {
   # Inject W3C trace context headers when otel tracing is active,
   # so downstream services can correlate spans.
   if (is_otel_tracing()) {
-    hdrs <- otel::pack_http_context()
-    for (nm in names(hdrs)) {
+    hdrs <- otel_capture_context()
+    for (nm in names(hdrs %||% character())) {
       req <- httr2::req_headers(req, !!nm := hdrs[[nm]])
     }
   }

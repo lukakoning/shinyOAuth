@@ -118,15 +118,12 @@ oauth_provider_oidc_discover <- function(
   issuer_match <- match.arg(issuer_match)
 
   if (is_otel_tracing()) {
-    tryCatch(
-      otel::start_local_active_span(
-        "oidc_discovery",
-        options = list(kind = "client"),
-        attributes = otel::as_attributes(compact_list(list(
-          shinyoauth.issuer = issuer
-        )))
-      ),
-      error = function(...) NULL
+    otel_start_local_span(
+      "oidc_discovery",
+      kind = "client",
+      attributes = otel_attributes(list(
+        shinyoauth.issuer = issuer
+      ))
     )
   }
   .otel_disc_t0 <- if (is_otel_measuring()) proc.time()[["elapsed"]] else NULL

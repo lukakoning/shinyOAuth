@@ -53,10 +53,14 @@ Then set the environment variables before starting your R session:
 ```
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_SERVICE_NAME=my-shiny-app
-OTEL_TRACES_EXPORTER=otlp
-OTEL_METRICS_EXPORTER=otlp
-OTEL_LOGS_EXPORTER=otlp
+OTEL_TRACES_EXPORTER=http
+OTEL_METRICS_EXPORTER=http
+OTEL_LOGS_EXPORTER=http
 ```
+
+For current `otel` / `otelsdk` releases, `http` is the safest setting for
+OTLP-over-HTTP collectors such as `otel-tui`. Some setups also accept `otlp`,
+but `http` avoids exporter-selection ambiguity, especially for metrics.
 
 Open <http://localhost:3000> (admin / admin) to explore traces, logs,
 and metrics.
@@ -87,6 +91,31 @@ the batch exporter's schedule delay, this keeps worst-case blocking manageable.
 shinyOAuth wraps every otel call in `tryCatch` so that SDK errors never 
 propagate to the application, but the timeout is the only way to limit how
 long a blocking export can stall the event loop.
+
+In addition, when `oauth_module_server(async = TRUE)` dispatches work to a
+background worker, `shinyOAuth` defaults to **traces only** in that worker:
+OpenTelemetry logs and metrics are suppressed there to avoid synchronous
+log/metric exports stalling short-lived auth tasks. You can override this if
+you explicitly want worker-side logs/metrics:
+
+```r
+options(
+  shinyOAuth.otel_async_tracing = TRUE,  # default
+  shinyOAuth.otel_async_logging = TRUE,  # default: FALSE
+  shinyOAuth.otel_async_metrics = TRUE   # default: FALSE
+)
+```
+
+For debugging instrumentation itself, prefer development mode:
+
+```sh
+OTEL_ENV=dev
+```
+
+`otel`/`otelsdk` use this to fail early during development. `shinyOAuth` also
+honours `options(shinyOAuth.otel_debug = TRUE)` to print one-time configuration
+status and caught OTel call failures, and `options(shinyOAuth.otel_strict = TRUE)`
+to rethrow caught OTel errors from the package.
 
 ### 3. Run your app
 
@@ -215,6 +244,11 @@ The package records the following metrics when a metrics exporter is configured:
 These metrics are useful for dashboards and alerting; for example, monitoring 
 login success rates, detecting refresh failures, or tracking concurrent session counts.
 
+When login/refresh/revocation runs in an async worker, only the metrics emitted
+back on the main Shiny process are enabled by default. Worker-side metrics such
+as detailed duration histograms remain disabled unless
+`options(shinyOAuth.otel_async_metrics = TRUE)` is set.
+
 ## Logs
 
 When a log exporter is configured, the package emits structured log records at 
@@ -229,3 +263,8 @@ two levels:
 - `log_error` — for every error raised by the package (token errors, HTTP 
   failures, transport errors, state validation failures, etc.). Each log record 
   includes the error class and the package's internal trace ID for correlation.
+
+As with metrics, async workers suppress OTel logs by default to avoid
+synchronous exporter stalls. If you need audit/error logs emitted directly from
+worker-side callback/refresh code, enable them explicitly with
+`options(shinyOAuth.otel_async_logging = TRUE)`.

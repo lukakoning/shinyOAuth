@@ -96,6 +96,54 @@ test_that("async worker otel signal suppression can be overridden", {
   expect_true(shinyOAuth:::is_otel_measuring())
 })
 
+test_that("otel_safely emits debug messages and returns default", {
+  withr::local_options(list(shinyOAuth.otel_debug = TRUE))
+
+  expect_message(
+    result <- shinyOAuth:::otel_safely(
+      stop("boom"),
+      context = "test-op",
+      default = "fallback"
+    ),
+    "test-op failed"
+  )
+
+  expect_identical(result, "fallback")
+})
+
+test_that("otel_safely rethrows in strict mode", {
+  withr::local_options(list(shinyOAuth.otel_strict = TRUE))
+
+  expect_error(
+    shinyOAuth:::otel_safely(
+      stop("boom"),
+      context = "test-op",
+      default = NULL
+    ),
+    "boom"
+  )
+})
+
+test_that("debug mode reports when no otel signals are enabled", {
+  withr::local_options(list(shinyOAuth.otel_debug = TRUE))
+  ns <- getNamespace("shinyOAuth")
+  debug_env <- get(".otel_debug_env", envir = ns)
+  assign("config_reported", FALSE, envir = debug_env)
+  withr::defer(rm(list = "config_reported", envir = debug_env))
+
+  local_mocked_bindings(
+    is_tracing_enabled = function(...) FALSE,
+    is_logging_enabled = function(...) FALSE,
+    is_measuring_enabled = function(...) FALSE,
+    .package = "otel"
+  )
+
+  expect_message(
+    expect_false(shinyOAuth:::is_otel_tracing()),
+    "No telemetry signals are enabled"
+  )
+})
+
 test_that("otel_attributes avoids eager otel calls when signal is disabled", {
   with_mocked_bindings(
     is_otel_tracing = function() FALSE,

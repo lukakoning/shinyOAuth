@@ -509,19 +509,16 @@ oauth_module_server <- function(
     # single reactive observer and is ended explicitly in onSessionEnded().
     .otel_session_span <- NULL
     if (is_otel_tracing()) {
-      .otel_session_span <- tryCatch(
-        otel::start_span(
-          "shiny_session",
-          attributes = otel::as_attributes(compact_list(list(
-            shinyoauth.provider = client@provider@name %||% NA_character_,
-            shinyoauth.issuer = client@provider@issuer %||% NA_character_,
-            shinyoauth.client_id_digest = string_digest(client@client_id),
-            shinyoauth.module_id = id,
-            shinyoauth.session_id = string_digest(session$token)
-          ))),
-          options = list(kind = "server")
-        ),
-        error = function(...) NULL
+      .otel_session_span <- otel_start_span_safe(
+        "shiny_session",
+        attributes = otel_attributes(list(
+          shinyoauth.provider = client@provider@name %||% NA_character_,
+          shinyoauth.issuer = client@provider@issuer %||% NA_character_,
+          shinyoauth.client_id_digest = string_digest(client@client_id),
+          shinyoauth.module_id = id,
+          shinyoauth.session_id = string_digest(session$token)
+        )),
+        kind = "server"
       )
     }
     otel_active_sessions(1L)
@@ -557,14 +554,12 @@ oauth_module_server <- function(
 
       # OpenTelemetry: end the session span and decrement active sessions
       if (!is.null(.otel_session_span)) {
-        tryCatch(
-          .otel_session_span$add_event(
-            "session_ended",
-            attributes = otel::as_attributes(compact_list(list(
-              was_authenticated = was_authenticated
-            )))
-          ),
-          error = function(...) NULL
+        otel_span_add_event(
+          .otel_session_span,
+          "session_ended",
+          attributes = otel_attributes(list(
+            was_authenticated = was_authenticated
+          ))
         )
         otel_end_span_ok(.otel_session_span)
       }
@@ -1119,6 +1114,9 @@ oauth_module_server <- function(
       }
 
       # Build the auth URL (and set module errors on failure)
+      if (!is.null(.otel_session_span)) {
+        otel_activate_span(.otel_session_span)
+      }
       tryCatch(
         prepare_call(
           client,
@@ -1137,14 +1135,12 @@ oauth_module_server <- function(
       }
       # OpenTelemetry: record the redirect as an event on the session span
       if (!is.null(.otel_session_span)) {
-        tryCatch(
-          .otel_session_span$add_event(
-            "redirect_issued",
-            attributes = otel::as_attributes(compact_list(list(
-              shinyoauth.provider = client@provider@name %||% NA_character_
-            )))
-          ),
-          error = function(...) NULL
+        otel_span_add_event(
+          .otel_session_span,
+          "redirect_issued",
+          attributes = otel_attributes(list(
+            shinyoauth.provider = client@provider@name %||% NA_character_
+          ))
         )
       }
       .client_redirect(url)
@@ -1212,14 +1208,12 @@ oauth_module_server <- function(
       )
       # OpenTelemetry: record the logout as an event on the session span
       if (!is.null(.otel_session_span)) {
-        tryCatch(
-          .otel_session_span$add_event(
-            "logout",
-            attributes = otel::as_attributes(compact_list(list(
-              shinyoauth.reason = reason
-            )))
-          ),
-          error = function(...) NULL
+        otel_span_add_event(
+          .otel_session_span,
+          "logout",
+          attributes = otel_attributes(list(
+            shinyoauth.reason = reason
+          ))
         )
       }
       values$token <- NULL
@@ -1579,6 +1573,8 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      .otel_callback_span <- NULL
+
       tryCatch(
         {
           async_fallback <- FALSE
@@ -1601,32 +1597,22 @@ oauth_module_server <- function(
             # Activate the session span so pack_http_context() inside
             # capture_async_options() serialises it as the parent.
             if (!is.null(.otel_session_span)) {
-              tryCatch(
-                otel::local_active_span(.otel_session_span),
-                error = function(...) NULL
-              )
+              otel_activate_span(.otel_session_span)
             }
             # Start a callback span on the main thread (manual lifecycle).
             # Pre-dispatch work (state decrypt, store lookup) becomes children.
-            .otel_callback_span <- NULL
             if (is_otel_tracing()) {
-              .otel_callback_span <- tryCatch(
-                otel::start_span(
-                  "handle_callback",
-                  attributes = otel::as_attributes(compact_list(list(
-                    shinyoauth.provider = client@provider@name %||%
-                      NA_character_,
-                    shinyoauth.async = TRUE
-                  ))),
-                  options = list(kind = "internal")
-                ),
-                error = function(...) NULL
+              .otel_callback_span <- otel_start_span_safe(
+                "handle_callback",
+                attributes = otel_attributes(list(
+                  shinyoauth.provider = client@provider@name %||%
+                    NA_character_,
+                  shinyoauth.async = TRUE
+                )),
+                kind = "internal"
               )
               if (!is.null(.otel_callback_span)) {
-                tryCatch(
-                  otel::local_active_span(.otel_callback_span),
-                  error = function(...) NULL
-                )
+                otel_activate_span(.otel_callback_span)
               }
             }
             captured_async_options <- capture_async_options()
@@ -1749,10 +1735,7 @@ oauth_module_server <- function(
           } else {
             # Sync path: activate session span so child spans nest correctly
             if (!is.null(.otel_session_span)) {
-              tryCatch(
-                otel::local_active_span(.otel_session_span),
-                error = function(...) NULL
-              )
+              otel_activate_span(.otel_session_span)
             }
             handle_callback(
               client,
@@ -1790,16 +1773,14 @@ oauth_module_server <- function(
                 )
                 # OpenTelemetry: record login success on the session span
                 if (!is.null(.otel_session_span)) {
-                  tryCatch(
-                    .otel_session_span$add_event(
-                      "login_success",
-                      attributes = otel::as_attributes(compact_list(list(
-                        shinyoauth.provider = client@provider@name %||%
-                          NA_character_,
-                        shinyoauth.async = TRUE
-                      )))
-                    ),
-                    error = function(...) NULL
+                  otel_span_add_event(
+                    .otel_session_span,
+                    "login_success",
+                    attributes = otel_attributes(list(
+                      shinyoauth.provider = client@provider@name %||%
+                        NA_character_,
+                      shinyoauth.async = TRUE
+                    ))
                   )
                 }
               }) |>
@@ -1848,24 +1829,24 @@ oauth_module_server <- function(
             .set_browser_token()
             # Reset reauth guard on successful sync login
             values$reauth_triggered <- FALSE
+            otel_end_span_ok(.otel_callback_span)
             otel_count_login(TRUE, client@provider@name)
             # OpenTelemetry: record login success on the session span
             if (!is.null(.otel_session_span)) {
-              tryCatch(
-                .otel_session_span$add_event(
-                  "login_success",
-                  attributes = otel::as_attributes(compact_list(list(
-                    shinyoauth.provider = client@provider@name %||%
-                      NA_character_,
-                    shinyoauth.async = FALSE
-                  )))
-                ),
-                error = function(...) NULL
+              otel_span_add_event(
+                .otel_session_span,
+                "login_success",
+                attributes = otel_attributes(list(
+                  shinyoauth.provider = client@provider@name %||%
+                    NA_character_,
+                  shinyoauth.async = FALSE
+                ))
               )
             }
           }
         },
         error = function(e) {
+          otel_end_span_error(.otel_callback_span, e)
           .set_error("token_exchange_error", e, phase = "sync_token_exchange")
           otel_count_login(FALSE, client@provider@name)
           try(
@@ -1972,10 +1953,7 @@ oauth_module_server <- function(
 
                 # Activate session span for otel context propagation
                 if (!is.null(.otel_session_span)) {
-                  tryCatch(
-                    otel::local_active_span(.otel_session_span),
-                    error = function(...) NULL
-                  )
+                  otel_activate_span(.otel_session_span)
                 }
 
                 # Delegate to refresh_token with async and handle promise if returned
@@ -2231,14 +2209,12 @@ oauth_module_server <- function(
                 )
                 # OpenTelemetry: record session cleared event on the session span
                 if (!is.null(.otel_session_span)) {
-                  tryCatch(
-                    .otel_session_span$add_event(
-                      "session_cleared",
-                      attributes = otel::as_attributes(compact_list(list(
-                        shinyoauth.reason = "reauth_window"
-                      )))
-                    ),
-                    error = function(...) NULL
+                  otel_span_add_event(
+                    .otel_session_span,
+                    "session_cleared",
+                    attributes = otel_attributes(list(
+                      shinyoauth.reason = "reauth_window"
+                    ))
                   )
                 }
                 if (
@@ -2298,14 +2274,12 @@ oauth_module_server <- function(
               )
               # OpenTelemetry: record session cleared event on the session span
               if (!is.null(.otel_session_span)) {
-                tryCatch(
-                  .otel_session_span$add_event(
-                    "session_cleared",
-                    attributes = otel::as_attributes(compact_list(list(
-                      shinyoauth.reason = "token_expired"
-                    )))
-                  ),
-                  error = function(...) NULL
+                otel_span_add_event(
+                  .otel_session_span,
+                  "session_cleared",
+                  attributes = otel_attributes(list(
+                    shinyoauth.reason = "token_expired"
+                  ))
                 )
               }
               if (
