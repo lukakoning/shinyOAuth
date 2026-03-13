@@ -35,197 +35,224 @@ get_userinfo <- function(
     err_config("provider userinfo_url is not configured")
   }
 
-  # Main logic -----------------------------------------------------------------
+  with_otel_span(
+    "shinyOAuth.userinfo",
+    {
+      # Main logic ---------------------------------------------------------------
 
-  # Define request; disable redirects to prevent leaking Bearer token
-  req <- httr2::request(oauth_client@provider@userinfo_url) |>
-    httr2::req_auth_bearer_token(access_token) |>
-    add_req_defaults() |>
-    req_no_redirect()
+      # Define request; disable redirects to prevent leaking Bearer token
+      req <- httr2::request(oauth_client@provider@userinfo_url) |>
+        httr2::req_auth_bearer_token(access_token) |>
+        add_req_defaults() |>
+        req_no_redirect()
 
-  # Execute request
-  resp <- try(req_with_retry(req), silent = TRUE)
-
-  # Security: reject redirect responses to prevent leaking Bearer token
-  if (!inherits(resp, "try-error")) {
-    reject_redirect_response(resp, context = "userinfo")
-  }
-
-  # Check for errors
-  if (inherits(resp, "try-error") || httr2::resp_is_error(resp)) {
-    if (inherits(resp, "try-error")) {
-      err_userinfo(c(
-        "x" = "Failed to get user info",
-        "!" = conditionMessage(attr(resp, "condition"))
-      ))
-    } else {
-      err_http(
-        c("x" = "Failed to get user info"),
-        resp,
-        context = list(phase = "userinfo")
+      # Execute request
+      resp <- try(
+        with_otel_span(
+          "shinyOAuth.userinfo.http",
+          req_with_retry(req),
+          attributes = otel_http_attributes(
+            method = "GET",
+            url = oauth_client@provider@userinfo_url,
+            extra = list(oauth.phase = "userinfo")
+          ),
+          options = list(kind = "client")
+        ),
+        silent = TRUE
       )
-    }
-  }
 
-  # Detect Content-Type to handle JWT-encoded userinfo (OIDC Core §5.3.2)
-  resp_ct <- try(httr2::resp_content_type(resp), silent = TRUE)
-  if (inherits(resp_ct, "try-error")) {
-    resp_ct <- NA_character_
-  }
-  is_jwt_response <- is_valid_string(resp_ct) &&
-    grepl("^application/jwt", resp_ct, ignore.case = TRUE)
-
-  require_signed <- isTRUE(oauth_client@provider@userinfo_signed_jwt_required)
-
-  # Enforce signed JWT requirement: if the provider mandates application/jwt
-  # but the response is not application/jwt, fail immediately.
-  if (require_signed && !is_jwt_response) {
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = oauth_client@provider@name %||% NA_character_,
-          issuer = oauth_client@provider@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "userinfo_not_jwt",
-          content_type = if (is_valid_string(resp_ct)) {
-            resp_ct
-          } else {
-            NA_character_
-          }
-        )
-      ),
-      silent = TRUE
-    )
-    err_userinfo(c(
-      "x" = "UserInfo response is not application/jwt but signed JWT is required",
-      "i" = paste0(
-        "Content-Type: ",
-        if (is_valid_string(resp_ct)) resp_ct else "<not available>"
-      ),
-      "i" = "The provider's userinfo_signed_jwt_required = TRUE mandates a signed JWT response",
-      "i" = "Verify the provider is configured to return signed JWTs from its userinfo endpoint"
-    ))
-  }
-
-  # Guard against oversized responses before parsing
-  check_resp_body_size(resp, context = "userinfo")
-
-  # Parse from response
-  if (is_jwt_response) {
-    ui <- try(
-      decode_userinfo_jwt(resp, oauth_client),
-      silent = TRUE
-    )
-  } else {
-    ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
-  }
-  if (inherits(ui, "try-error")) {
-    # Extract non-sensitive context to aid debugging without leaking tokens
-    url <- try(httr2::resp_url(resp), silent = TRUE)
-    if (inherits(url, "try-error")) {
-      url <- NA_character_
-    }
-    status <- try(httr2::resp_status(resp), silent = TRUE)
-    if (inherits(status, "try-error")) {
-      status <- NA_integer_
-    }
-    headers <- try(httr2::resp_headers(resp), silent = TRUE)
-    ct <- NA_character_
-    if (!inherits(headers, "try-error") && is.list(headers)) {
-      ct <- headers[["content-type"]] %||% NA_character_
-    }
-    body_str <- try(httr2::resp_body_string(resp), silent = TRUE)
-    if (inherits(body_str, "try-error")) {
-      body_str <- NA_character_
-    }
-    body_digest <- NA_character_
-    if (is_valid_string(body_str)) {
-      dig <- try(openssl::sha256(charToRaw(body_str)), silent = TRUE)
-      if (!inherits(dig, "try-error")) {
-        body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
+      # Security: reject redirect responses to prevent leaking Bearer token
+      if (!inherits(resp, "try-error")) {
+        reject_redirect_response(resp, context = "userinfo")
+        otel_set_span_attributes(attributes = otel_http_attributes(resp = resp))
       }
-    }
 
-    # Emit audit event even on parse failures
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = oauth_client@provider@name %||% NA_character_,
-          issuer = oauth_client@provider@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "parse_error",
-          http_status = status,
-          url = url,
-          content_type = ct,
-          body_digest = body_digest
-        )
-      ),
-      silent = TRUE
-    )
-
-    parse_type <- if (is_jwt_response) "jwt" else "json"
-    err_userinfo(
-      c(
-        "x" = if (is_jwt_response) {
-          "Failed to parse userinfo response as JWT"
+      # Check for errors
+      if (inherits(resp, "try-error") || httr2::resp_is_error(resp)) {
+        if (inherits(resp, "try-error")) {
+          err_userinfo(c(
+            "x" = "Failed to get user info",
+            "!" = conditionMessage(attr(resp, "condition"))
+          ))
         } else {
-          "Failed to parse userinfo response as JSON"
-        },
-        "!" = conditionMessage(attr(ui, "condition")),
-        "i" = if (is_valid_string(ct)) paste0("Content-Type: ", ct) else NULL,
-        "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
-        "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
-      ),
-      context = list(
-        phase = "userinfo",
-        parse = parse_type,
-        http_status = status,
-        url = url,
-        content_type = ct,
-        body_digest = body_digest
-      )
-    )
-  }
+          err_http(
+            c("x" = "Failed to get user info"),
+            resp,
+            context = list(phase = "userinfo")
+          )
+        }
+      }
 
-  # OIDC Core §5.3: "The sub Claim MUST always be returned in the UserInfo
-  # Response." Enforce for OIDC providers (issuer configured); leave generic
-  # non-OIDC profile endpoints alone.
-  if (
-    is_valid_string(oauth_client@provider@issuer) &&
-      !is.na(oauth_client@provider@issuer)
-  ) {
-    if (!is_valid_string(ui$sub)) {
-      err_userinfo(c(
-        "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
-        "i" = "OIDC providers MUST always return a 'sub' claim in the UserInfo response"
-      ))
-    }
-  }
+      # Detect Content-Type to handle JWT-encoded userinfo (OIDC Core §5.3.2)
+      resp_ct <- try(httr2::resp_content_type(resp), silent = TRUE)
+      if (inherits(resp_ct, "try-error")) {
+        resp_ct <- NA_character_
+      }
+      is_jwt_response <- is_valid_string(resp_ct) &&
+        grepl("^application/jwt", resp_ct, ignore.case = TRUE)
 
-  # Emit audit event for userinfo fetch (redacted)
-  subject <- try(oauth_client@provider@userinfo_id_selector(ui), silent = TRUE)
-  if (inherits(subject, "try-error")) {
-    subject <- ui$sub %||% NA_character_
-  }
-  try(
-    audit_event(
-      "userinfo",
-      context = list(
-        provider = oauth_client@provider@name %||% NA_character_,
-        issuer = oauth_client@provider@issuer %||% NA_character_,
-        client_id_digest = string_digest(oauth_client@client_id),
-        sub_digest = string_digest(subject),
-        status = "ok"
+      require_signed <- isTRUE(oauth_client@provider@userinfo_signed_jwt_required)
+
+      # Enforce signed JWT requirement: if the provider mandates application/jwt
+      # but the response is not application/jwt, fail immediately.
+      if (require_signed && !is_jwt_response) {
+        try(
+          audit_event(
+            "userinfo",
+            context = list(
+              provider = oauth_client@provider@name %||% NA_character_,
+              issuer = oauth_client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(oauth_client@client_id),
+              sub_digest = NA_character_,
+              status = "userinfo_not_jwt",
+              content_type = if (is_valid_string(resp_ct)) {
+                resp_ct
+              } else {
+                NA_character_
+              }
+            )
+          ),
+          silent = TRUE
+        )
+        err_userinfo(c(
+          "x" = "UserInfo response is not application/jwt but signed JWT is required",
+          "i" = paste0(
+            "Content-Type: ",
+            if (is_valid_string(resp_ct)) resp_ct else "<not available>"
+          ),
+          "i" = "The provider's userinfo_signed_jwt_required = TRUE mandates a signed JWT response",
+          "i" = "Verify the provider is configured to return signed JWTs from its userinfo endpoint"
+        ))
+      }
+
+      # Guard against oversized responses before parsing
+      check_resp_body_size(resp, context = "userinfo")
+
+      # Parse from response
+      if (is_jwt_response) {
+        ui <- try(
+          decode_userinfo_jwt(resp, oauth_client),
+          silent = TRUE
+        )
+      } else {
+        ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+      }
+      if (inherits(ui, "try-error")) {
+        # Extract non-sensitive context to aid debugging without leaking tokens
+        url <- try(httr2::resp_url(resp), silent = TRUE)
+        if (inherits(url, "try-error")) {
+          url <- NA_character_
+        }
+        status <- try(httr2::resp_status(resp), silent = TRUE)
+        if (inherits(status, "try-error")) {
+          status <- NA_integer_
+        }
+        headers <- try(httr2::resp_headers(resp), silent = TRUE)
+        ct <- NA_character_
+        if (!inherits(headers, "try-error") && is.list(headers)) {
+          ct <- headers[["content-type"]] %||% NA_character_
+        }
+        body_str <- try(httr2::resp_body_string(resp), silent = TRUE)
+        if (inherits(body_str, "try-error")) {
+          body_str <- NA_character_
+        }
+        body_digest <- NA_character_
+        if (is_valid_string(body_str)) {
+          dig <- try(openssl::sha256(charToRaw(body_str)), silent = TRUE)
+          if (!inherits(dig, "try-error")) {
+            body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
+          }
+        }
+
+        # Emit audit event even on parse failures
+        try(
+          audit_event(
+            "userinfo",
+            context = list(
+              provider = oauth_client@provider@name %||% NA_character_,
+              issuer = oauth_client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(oauth_client@client_id),
+              sub_digest = NA_character_,
+              status = "parse_error",
+              http_status = status,
+              url = url,
+              content_type = ct,
+              body_digest = body_digest
+            )
+          ),
+          silent = TRUE
+        )
+
+        parse_type <- if (is_jwt_response) "jwt" else "json"
+        err_userinfo(
+          c(
+            "x" = if (is_jwt_response) {
+              "Failed to parse userinfo response as JWT"
+            } else {
+              "Failed to parse userinfo response as JSON"
+            },
+            "!" = conditionMessage(attr(ui, "condition")),
+            "i" = if (is_valid_string(ct)) paste0("Content-Type: ", ct) else NULL,
+            "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
+            "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
+          ),
+          context = list(
+            phase = "userinfo",
+            parse = parse_type,
+            http_status = status,
+            url = url,
+            content_type = ct,
+            body_digest = body_digest
+          )
+        )
+      }
+
+      # OIDC Core §5.3: "The sub Claim MUST always be returned in the UserInfo
+      # Response." Enforce for OIDC providers (issuer configured); leave generic
+      # non-OIDC profile endpoints alone.
+      if (
+        is_valid_string(oauth_client@provider@issuer) &&
+          !is.na(oauth_client@provider@issuer)
+      ) {
+        if (!is_valid_string(ui$sub)) {
+          err_userinfo(c(
+            "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
+            "i" = "OIDC providers MUST always return a 'sub' claim in the UserInfo response"
+          ))
+        }
+      }
+
+      # Emit audit event for userinfo fetch (redacted)
+      subject <- try(oauth_client@provider@userinfo_id_selector(ui), silent = TRUE)
+      if (inherits(subject, "try-error")) {
+        subject <- ui$sub %||% NA_character_
+      }
+      try(
+        audit_event(
+          "userinfo",
+          context = list(
+            provider = oauth_client@provider@name %||% NA_character_,
+            issuer = oauth_client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(oauth_client@client_id),
+            sub_digest = string_digest(subject),
+            status = "ok"
+          )
+        ),
+        silent = TRUE
       )
+
+      ui
+    },
+    attributes = otel_client_attributes(
+      client = oauth_client,
+      phase = "userinfo"
     ),
-    silent = TRUE
+    metric_name = otel_metric_names$userinfo_duration,
+    metric_attributes = otel_metric_attributes(
+      provider = oauth_client@provider@name %||% NULL,
+      async = tryCatch(isTRUE(get_async_session_context()$is_async), error = function(...) NULL)
+    )
   )
-
-  return(ui)
 }
 
 #' Internal: decode JWT-encoded userinfo response (OIDC Core §5.3.2)

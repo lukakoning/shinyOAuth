@@ -26,7 +26,8 @@ Imports:
     cachem (>= 1.1.0),
     jose (>= 1.2.0),
     cli (>= 3.0.0),
-    htmltools (>= 0.5.0)
+    htmltools (>= 0.5.0),
+    otel (>= 0.2.0)
 Suggests:
     testthat (>= 3.0.0),
     knitr,
@@ -39,7 +40,8 @@ Suggests:
     later,
     sodium,
     shinytest2,
-    xml2
+    xml2,
+    otelsdk
 Depends:
     R (>= 4.1.0)
 Config/testthat/edition: 3

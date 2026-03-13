@@ -37,138 +37,149 @@ prepare_call <- function(
   }
   validate_browser_token(browser_token)
 
-  # State, code_challenge & code_verifier, nonce -------------------------------
-
-  # State is a random value that we send with the initial auth request
-  # We expect to see it back later during the callback
-
-  state <- random_urlsafe(n = oauth_client@state_entropy %||% 64)
-
-  # Ensure state meets minimal criteria (minimal length, URL-safe)
-  validate_state(state)
-
-  # PKCE is a mechanism to ensure that the entity that initiates the
-  #   authorization request is the same entity that completes the flow
-  # We sent a code_challenge now, and later a code_verifier, to proof our
-  #   identity during the token exchange step
-  # This prevents code interception attacks
-
-  pkce_code_challenge <- NULL
-  pkce_code_verifier <- NULL
-  pkce_method <- NULL
-  if (isTRUE(oauth_client@provider@use_pkce)) {
-    method <- oauth_client@provider@pkce_method %||% "S256"
-    if (method == "S256") {
-      pkce_code_verifier <- gen_code_verifier(64)
-      sha256 <- openssl::sha256(charToRaw(pkce_code_verifier))
-      # RFC 7636 requires base64url-encoded SHA-256 without padding
-      pkce_code_challenge <- base64url_encode(sha256)
-      pkce_method <- "S256"
-    } else if (method == "plain") {
-      pkce_code_verifier <- gen_code_verifier(64)
-      pkce_code_challenge <- pkce_code_verifier
-      pkce_method <- "plain"
-    } else {
-      err_pkce(paste0("Unsupported PKCE method: ", method))
-    }
-  }
-
-  # Nonce is a random value that we sent with the initial auth request
-  # We expect to see it back later in the OIDC ID token
-
-  nonce <- NULL
-  if (oauth_client@provider@use_nonce) {
-    nonce <- random_urlsafe(n = 32)
-  }
-
-  # Create + seal (AES-GCM AEAD) payload --------------------------------------
-
-  # We seal the payload using AES-GCM AEAD, which provides confidentiality and
-  #   integrity via an authentication tag, preventing tampering.
-  # We will include some details about the provider & client, to prevent
-  #   possible mixups if multiple clients/providers are in use
-  # We will include an issued_at timestamp, as extra protection against replay
-  #   attacks (won't accept payloads older than some threshold)
-
-  payload <- list(
-    state = state,
-    client_id = oauth_client@client_id,
-    redirect_uri = oauth_client@redirect_uri,
-    scopes = oauth_client@scopes,
-    provider = oauth_client@provider |> provider_fingerprint(),
-    issued_at = as.numeric(Sys.time())
-  ) |>
-    state_encrypt_gcm(key = oauth_client@state_key)
-
-  # Store in state store -------------------------------------------------------
-
-  # We will need these values later, when we get the callback
-  # - Browser token is needed to identify the user/session
-  #   We use it to check if browser initiating the flow is the same
-  #   as the one completing it
-  # - PKCE code verifier is needed to complete the PKCE proof (see above)
-  # - Nonce is needed to validate the OIDC ID token (if applicable) (see above)
-  # Note: write AFTER successful encryption so we don't leave stale entries if
-  # encryption fails due to invalid/misconfigured state_key.
-  # Note: 'cachem' requires lowercase letters/numbers in keys; derive a lowercase-hex
-  # key from the high-entropy state to store associated values
-  tryCatch(
+  with_otel_span(
+    "shinyOAuth.login.request",
     {
-      oauth_client@state_store$set(
-        key = state_cache_key(state),
-        value = list(
-          browser_token = browser_token,
-          pkce_code_verifier = pkce_code_verifier,
-          nonce = nonce
-        )
+      # State, code_challenge & code_verifier, nonce -----------------------------
+
+      # State is a random value that we send with the initial auth request
+      # We expect to see it back later during the callback
+
+      state <- random_urlsafe(n = oauth_client@state_entropy %||% 64)
+
+      # Ensure state meets minimal criteria (minimal length, URL-safe)
+      validate_state(state)
+
+      # PKCE is a mechanism to ensure that the entity that initiates the
+      #   authorization request is the same entity that completes the flow
+      # We sent a code_challenge now, and later a code_verifier, to proof our
+      #   identity during the token exchange step
+      # This prevents code interception attacks
+
+      pkce_code_challenge <- NULL
+      pkce_code_verifier <- NULL
+      pkce_method <- NULL
+      if (isTRUE(oauth_client@provider@use_pkce)) {
+        method <- oauth_client@provider@pkce_method %||% "S256"
+        if (method == "S256") {
+          pkce_code_verifier <- gen_code_verifier(64)
+          sha256 <- openssl::sha256(charToRaw(pkce_code_verifier))
+          # RFC 7636 requires base64url-encoded SHA-256 without padding
+          pkce_code_challenge <- base64url_encode(sha256)
+          pkce_method <- "S256"
+        } else if (method == "plain") {
+          pkce_code_verifier <- gen_code_verifier(64)
+          pkce_code_challenge <- pkce_code_verifier
+          pkce_method <- "plain"
+        } else {
+          err_pkce(paste0("Unsupported PKCE method: ", method))
+        }
+      }
+
+      # Nonce is a random value that we sent with the initial auth request
+      # We expect to see it back later in the OIDC ID token
+
+      nonce <- NULL
+      if (oauth_client@provider@use_nonce) {
+        nonce <- random_urlsafe(n = 32)
+      }
+
+      # Create + seal (AES-GCM AEAD) payload ------------------------------------
+
+      # We seal the payload using AES-GCM AEAD, which provides confidentiality and
+      #   integrity via an authentication tag, preventing tampering.
+      # We will include some details about the provider & client, to prevent
+      #   possible mixups if multiple clients/providers are in use
+      # We will include an issued_at timestamp, as extra protection against replay
+      #   attacks (won't accept payloads older than some threshold)
+
+      payload <- list(
+        state = state,
+        client_id = oauth_client@client_id,
+        redirect_uri = oauth_client@redirect_uri,
+        scopes = oauth_client@scopes,
+        provider = oauth_client@provider |> provider_fingerprint(),
+        issued_at = as.numeric(Sys.time())
+      ) |>
+        state_encrypt_gcm(key = oauth_client@state_key)
+
+      # Store in state store -----------------------------------------------------
+
+      # We will need these values later, when we get the callback
+      # - Browser token is needed to identify the user/session
+      #   We use it to check if browser initiating the flow is the same
+      #   as the one completing it
+      # - PKCE code verifier is needed to complete the PKCE proof (see above)
+      # - Nonce is needed to validate the OIDC ID token (if applicable) (see above)
+      # Note: write AFTER successful encryption so we don't leave stale entries if
+      # encryption fails due to invalid/misconfigured state_key.
+      # Note: 'cachem' requires lowercase letters/numbers in keys; derive a lowercase-hex
+      # key from the high-entropy state to store associated values
+      tryCatch(
+        {
+          oauth_client@state_store$set(
+            key = state_cache_key(state),
+            value = list(
+              browser_token = browser_token,
+              pkce_code_verifier = pkce_code_verifier,
+              nonce = nonce
+            )
+          )
+        },
+        error = function(e) {
+          # Surface cache backend failures as state errors with context
+          err_invalid_state(
+            sprintf(
+              "Failed to persist state in state_store: %s",
+              conditionMessage(e)
+            ),
+            context = list(phase = "prepare_call::state_store_set")
+          )
+        }
       )
+
+      # Build authorization URL --------------------------------------------------
+
+      auth_url <- build_auth_url(
+        oauth_client,
+        payload = payload,
+        pkce_code_challenge = pkce_code_challenge,
+        pkce_method = pkce_method,
+        nonce = nonce
+      )
+
+      # Audit: redirect issuance (redacted identifiers only)
+      try(
+        {
+          audit_event(
+            "redirect_issued",
+            context = list(
+              provider = oauth_client@provider@name %||% NA_character_,
+              issuer = oauth_client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(oauth_client@client_id),
+              state_digest = string_digest(state),
+              browser_token_digest = string_digest(browser_token),
+              pkce_method = pkce_method %||% NA_character_,
+              nonce_present = isTRUE(oauth_client@provider@use_nonce),
+              scopes_count = length(oauth_client@scopes %||% character()),
+              redirect_uri = oauth_client@redirect_uri %||% NA_character_
+            )
+          )
+        },
+        silent = TRUE
+      )
+
+      auth_url
     },
-    error = function(e) {
-      # Surface cache backend failures as state errors with context
-      err_invalid_state(
-        sprintf(
-          "Failed to persist state in state_store: %s",
-          conditionMessage(e)
-        ),
-        context = list(phase = "prepare_call::state_store_set")
+    attributes = otel_client_attributes(
+      client = oauth_client,
+      phase = "login.request",
+      extra = list(
+        oauth.used_pkce = isTRUE(oauth_client@provider@use_pkce),
+        oauth.nonce_enabled = isTRUE(oauth_client@provider@use_nonce)
       )
-    }
+    )
   )
-
-  # Build authorization URL ----------------------------------------------------
-
-  auth_url <- build_auth_url(
-    oauth_client,
-    payload = payload,
-    pkce_code_challenge = pkce_code_challenge,
-    pkce_method = pkce_method,
-    nonce = nonce
-  )
-
-  # Audit: redirect issuance (redacted identifiers only)
-  try(
-    {
-      audit_event(
-        "redirect_issued",
-        context = list(
-          provider = oauth_client@provider@name %||% NA_character_,
-          issuer = oauth_client@provider@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          state_digest = string_digest(state),
-          browser_token_digest = string_digest(browser_token),
-          pkce_method = pkce_method %||% NA_character_,
-          nonce_present = isTRUE(oauth_client@provider@use_nonce),
-          scopes_count = length(oauth_client@scopes %||% character()),
-          redirect_uri = oauth_client@redirect_uri %||% NA_character_
-        )
-      )
-    },
-    silent = TRUE
-  )
-
-  # Return ---------------------------------------------------------------------
-
-  return(auth_url)
 }
 
 # Helper: turn key provider properties into a stable fingerprint string
@@ -401,14 +412,30 @@ handle_callback <- function(
   browser_token,
   shiny_session = NULL
 ) {
-  handle_callback_internal(
-    oauth_client = oauth_client,
-    code = code,
-    payload = payload,
-    browser_token = browser_token,
-    decrypted_payload = NULL,
-    state_store_values = NULL,
-    shiny_session = shiny_session
+  with_otel_span(
+    "shinyOAuth.callback",
+    {
+      handle_callback_internal(
+        oauth_client = oauth_client,
+        code = code,
+        payload = payload,
+        browser_token = browser_token,
+        decrypted_payload = NULL,
+        state_store_values = NULL,
+        shiny_session = shiny_session
+      )
+    },
+    attributes = otel_client_attributes(
+      client = oauth_client,
+      shiny_session = shiny_session,
+      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) NULL),
+      phase = "callback"
+    ),
+    metric_name = otel_metric_names$callback_duration,
+    metric_attributes = otel_metric_attributes(
+      provider = oauth_client@provider@name %||% NULL,
+      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) NULL)
+    )
   )
 }
 
@@ -498,22 +525,42 @@ handle_callback_internal <- function(
   if (!is.null(decrypted_payload)) {
     payload <- decrypted_payload
   } else {
-    # Centralized auditing now occurs inside state_payload_decrypt_validate()
-    payload <- state_payload_decrypt_validate(
-      oauth_client,
-      payload,
-      shiny_session = shiny_session
+    payload <- with_otel_span(
+      "shinyOAuth.callback.validate",
+      {
+        # Centralized auditing now occurs inside state_payload_decrypt_validate()
+        state_payload_decrypt_validate(
+          oauth_client,
+          payload,
+          shiny_session = shiny_session
+        )
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        phase = "callback.state_payload"
+      )
     )
   }
 
   # Retrieve state_info from state store ---------------------------------------
   # State is the key; value is a list with browser_token, pkce_code_verifier, nonce
   if (is.null(state_store_values)) {
-    # Centralized auditing for state store lookup occurs in state_store_get_remove()
-    state_store_values <- state_store_get_remove(
-      oauth_client,
-      payload$state,
-      shiny_session = shiny_session
+    state_store_values <- with_otel_span(
+      "shinyOAuth.callback.validate",
+      {
+        # Centralized auditing for state store lookup occurs in state_store_get_remove()
+        state_store_get_remove(
+          oauth_client,
+          payload$state,
+          shiny_session = shiny_session
+        )
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        phase = "callback.state_store_consume"
+      )
     )
   }
 
@@ -521,31 +568,39 @@ handle_callback_internal <- function(
 
   # Verify browser_token matches
   tryCatch(
-    {
-      # First validate the format of the provided browser_token. If validation
-      # fails, reclassify to a state error so downstream handling/auditing
-      # consistently treats it as a state mismatch rather than PKCE.
-      tryCatch(
-        validate_browser_token(browser_token),
-        error = function(e) {
-          err_invalid_state(
-            "Invalid browser token",
-            context = list(
-              original_error_class = paste(class(e), collapse = ", ")
+    with_otel_span(
+      "shinyOAuth.callback.validate",
+      {
+        # First validate the format of the provided browser_token. If validation
+        # fails, reclassify to a state error so downstream handling/auditing
+        # consistently treats it as a state mismatch rather than PKCE.
+        tryCatch(
+          validate_browser_token(browser_token),
+          error = function(e) {
+            err_invalid_state(
+              "Invalid browser token",
+              context = list(
+                original_error_class = paste(class(e), collapse = ", ")
+              )
             )
-          )
-        }
-      )
+          }
+        )
 
-      # Then verify the browser_token matches what was stored for this state.
-      # Use a timing-safe comparison to avoid leaking information via
-      # early-exit string comparisons.
-      if (
-        !constant_time_compare(state_store_values$browser_token, browser_token)
-      ) {
-        err_invalid_state("Browser token mismatch")
-      }
-    },
+        # Then verify the browser_token matches what was stored for this state.
+        # Use a timing-safe comparison to avoid leaking information via
+        # early-exit string comparisons.
+        if (
+          !constant_time_compare(state_store_values$browser_token, browser_token)
+        ) {
+          err_invalid_state("Browser token mismatch")
+        }
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        phase = "callback.browser_token_validation"
+      )
+    ),
     error = function(e) {
       try(
         audit_event(
@@ -574,13 +629,21 @@ handle_callback_internal <- function(
   # Verify PKCE code verifier is present if needed
   code_verifier <- state_store_values$pkce_code_verifier
   tryCatch(
-    {
-      # validate_code_verifier() throws on invalid input; no return value check
-      # needed since the function either succeeds or aborts.
-      if (isTRUE(oauth_client@provider@use_pkce)) {
-        validate_code_verifier(code_verifier)
-      }
-    },
+    with_otel_span(
+      "shinyOAuth.callback.validate",
+      {
+        # validate_code_verifier() throws on invalid input; no return value check
+        # needed since the function either succeeds or aborts.
+        if (isTRUE(oauth_client@provider@use_pkce)) {
+          validate_code_verifier(code_verifier)
+        }
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        phase = "callback.pkce_verifier_validation"
+      )
+    ),
     error = function(e) {
       try(
         audit_event(
@@ -675,13 +738,21 @@ handle_callback_internal <- function(
   # Verify nonce is present if needed
   nonce <- state_store_values$nonce
   tryCatch(
-    {
-      # validate_oidc_nonce() throws on invalid input; no return value check
-      # needed since the function either succeeds or aborts.
-      if (oauth_client@provider@use_nonce) {
-        validate_oidc_nonce(nonce)
-      }
-    },
+    with_otel_span(
+      "shinyOAuth.callback.validate",
+      {
+        # validate_oidc_nonce() throws on invalid input; no return value check
+        # needed since the function either succeeds or aborts.
+        if (oauth_client@provider@use_nonce) {
+          validate_oidc_nonce(nonce)
+        }
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        phase = "callback.nonce_validation"
+      )
+    ),
     error = function(e) {
       try(
         audit_event(
@@ -1137,112 +1208,144 @@ swap_code_for_token_set <- function(
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  params <- list(
-    grant_type = "authorization_code",
-    code = code,
-    redirect_uri = client@redirect_uri,
-    code_verifier = code_verifier
-  )
-
-  if (length(client@provider@extra_token_params) > 0) {
-    params <- c(params, client@provider@extra_token_params)
-  }
-
-  req <- httr2::request(client@provider@token_url)
-
-  tas <- client@provider@token_auth_style %||% "header"
-  if (identical(tas, "header")) {
-    req <- req |>
-      httr2::req_auth_basic(client@client_id, client@client_secret)
-  } else if (identical(tas, "body")) {
-    params$client_id <- client@client_id
-    # Only include client_secret if provided (public clients with PKCE may not have one)
-    if (is_valid_string(client@client_secret)) {
-      params$client_secret <- client@client_secret
-    }
-  } else if (
-    identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
-  ) {
-    params$client_id <- client@client_id
-    params$client_assertion_type <-
-      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-    params$client_assertion <- build_client_assertion(
-      client,
-      aud = resolve_client_assertion_audience(client, req)
-    )
-  }
-
-  # Apply defaults first; disable redirects to prevent leaking secrets
-  req <- add_req_defaults(req)
-  req <- req_no_redirect(req)
-
-  # Add any extra token headers without using rlang splicing so tests can stub
-  extra_headers <- as.list(client@provider@extra_token_headers)
-  if (length(extra_headers) > 0) {
-    req <- do.call(httr2::req_headers, c(list(req), extra_headers))
-  }
-
-  # Drop NULL entries (e.g., code_verifier when PKCE disabled) before adding form body
-  params <- Filter(function(x) !is.null(x), params)
-
-  # Add form body without using !!! so it works with simple stubs
-  req <- do.call(httr2::req_body_form, c(list(req), params))
-
-  # Token exchange consumes a single-use authorization code; do not retry.
-  resp <- req_with_retry(req, idempotent = FALSE)
-  # Security: reject redirect responses to prevent credential leakage
-  reject_redirect_response(resp, context = "token_exchange")
-  if (httr2::resp_is_error(resp)) {
-    err_http(
-      "Token exchange failed",
-      resp,
-      context = list(phase = "exchange_code")
-    )
-  }
-
-  token_set <- parse_token_response(resp)
-
-  # Some providers return expires_in as a character string (e.g., form-encoded
-  # responses or JSON where the value is quoted). Convert digit-only strings to
-  # numeric prior to validation to avoid false negatives.
-  if (!is.null(token_set$expires_in)) {
-    token_set$expires_in <- coerce_expires_in(token_set$expires_in)
-  }
-
-  # Verify 'access_token' is present in response
-  if (!is_valid_string(token_set[["access_token"]])) {
-    err_token("Token response missing access_token")
-  }
-
-  # If ID token is required, verify it's present
-  if (
-    (isTRUE(client@provider@id_token_required) ||
-      isTRUE(client@provider@id_token_validation)) &&
-      !is_valid_string(token_set[["id_token"]])
-  ) {
-    err_id_token("ID token required but missing from token response")
-  }
-
-  # Verify expires at is valid if present
-  if (!is.null(token_set$expires_in)) {
-    if (
-      !is.numeric(token_set$expires_in) ||
-        length(token_set$expires_in) != 1L ||
-        !is.finite(token_set$expires_in) ||
-        token_set$expires_in < 0
-    ) {
-      err_token("Invalid expires_in in token response")
-    }
-
-    if (token_set$expires_in <= 0) {
-      warn_about_nonpositive_expires_in(
-        token_set$expires_in,
-        phase = "exchange_code"
+  with_otel_span(
+    "shinyOAuth.token.exchange",
+    {
+      params <- list(
+        grant_type = "authorization_code",
+        code = code,
+        redirect_uri = client@redirect_uri,
+        code_verifier = code_verifier
       )
-    }
-  }
 
-  return(token_set)
+      if (length(client@provider@extra_token_params) > 0) {
+        params <- c(params, client@provider@extra_token_params)
+      }
+
+      req <- httr2::request(client@provider@token_url)
+
+      tas <- client@provider@token_auth_style %||% "header"
+      if (identical(tas, "header")) {
+        req <- req |>
+          httr2::req_auth_basic(client@client_id, client@client_secret)
+      } else if (identical(tas, "body")) {
+        params$client_id <- client@client_id
+        # Only include client_secret if provided (public clients with PKCE may not have one)
+        if (is_valid_string(client@client_secret)) {
+          params$client_secret <- client@client_secret
+        }
+      } else if (
+        identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
+      ) {
+        params$client_id <- client@client_id
+        params$client_assertion_type <-
+          "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        params$client_assertion <- build_client_assertion(
+          client,
+          aud = resolve_client_assertion_audience(client, req)
+        )
+      }
+
+      # Apply defaults first; disable redirects to prevent leaking secrets
+      req <- add_req_defaults(req)
+      req <- req_no_redirect(req)
+
+      # Add any extra token headers without using rlang splicing so tests can stub
+      extra_headers <- as.list(client@provider@extra_token_headers)
+      if (length(extra_headers) > 0) {
+        req <- do.call(httr2::req_headers, c(list(req), extra_headers))
+      }
+
+      # Drop NULL entries (e.g., code_verifier when PKCE disabled) before adding form body
+      params <- Filter(function(x) !is.null(x), params)
+
+      # Add form body without using !!! so it works with simple stubs
+      req <- do.call(httr2::req_body_form, c(list(req), params))
+
+      resp <- with_otel_span(
+        "shinyOAuth.token.exchange.http",
+        {
+          # Token exchange consumes a single-use authorization code; do not retry.
+          req_with_retry(req, idempotent = FALSE)
+        },
+        attributes = otel_http_attributes(
+          method = "POST",
+          url = client@provider@token_url,
+          extra = list(oauth.phase = "token.exchange")
+        ),
+        options = list(kind = "client")
+      )
+      # Security: reject redirect responses to prevent credential leakage
+      reject_redirect_response(resp, context = "token_exchange")
+      otel_set_span_attributes(
+        attributes = otel_http_attributes(resp = resp)
+      )
+      if (httr2::resp_is_error(resp)) {
+        err_http(
+          "Token exchange failed",
+          resp,
+          context = list(phase = "exchange_code")
+        )
+      }
+
+      token_set <- parse_token_response(resp)
+
+      # Some providers return expires_in as a character string (e.g., form-encoded
+      # responses or JSON where the value is quoted). Convert digit-only strings to
+      # numeric prior to validation to avoid false negatives.
+      if (!is.null(token_set$expires_in)) {
+        token_set$expires_in <- coerce_expires_in(token_set$expires_in)
+      }
+
+      # Verify 'access_token' is present in response
+      if (!is_valid_string(token_set[["access_token"]])) {
+        err_token("Token response missing access_token")
+      }
+
+      # If ID token is required, verify it's present
+      if (
+        (isTRUE(client@provider@id_token_required) ||
+          isTRUE(client@provider@id_token_validation)) &&
+          !is_valid_string(token_set[["id_token"]])
+      ) {
+        err_id_token("ID token required but missing from token response")
+      }
+
+      # Verify expires at is valid if present
+      if (!is.null(token_set$expires_in)) {
+        if (
+          !is.numeric(token_set$expires_in) ||
+            length(token_set$expires_in) != 1L ||
+            !is.finite(token_set$expires_in) ||
+            token_set$expires_in < 0
+        ) {
+          err_token("Invalid expires_in in token response")
+        }
+
+        if (token_set$expires_in <= 0) {
+          warn_about_nonpositive_expires_in(
+            token_set$expires_in,
+            phase = "exchange_code"
+          )
+        }
+      }
+
+      token_set
+    },
+    attributes = otel_client_attributes(
+      client = client,
+      phase = "token.exchange",
+      extra = list(oauth.used_pkce = is_valid_string(code_verifier))
+    ),
+    metric_name = otel_metric_names$token_exchange_duration,
+    metric_attributes = otel_metric_attributes(
+      provider = client@provider@name %||% NULL,
+      async = tryCatch(
+        isTRUE(get_async_session_context()$is_async),
+        error = function(...) NULL
+      )
+    )
+  )
 }
 
 verify_token_set <- function(
@@ -1260,7 +1363,10 @@ verify_token_set <- function(
     err_token("Invalid token set: must be a non-empty list")
   }
 
-  verify_token_type_allowlist(client, token_set)
+  with_otel_span(
+    "shinyOAuth.token.verify",
+    {
+      verify_token_type_allowlist(client, token_set)
 
   # Scope reconciliation --------------------------------------------------------
 
@@ -1633,10 +1739,20 @@ verify_token_set <- function(
     }
   }
 
-  # Attach the validation flag so callers can propagate it to OAuthToken.
-  token_set[[".id_token_validated"]] <- id_token_validated
+      # Attach the validation flag so callers can propagate it to OAuthToken.
+      token_set[[".id_token_validated"]] <- id_token_validated
 
-  return(token_set)
+      token_set
+    },
+    attributes = otel_client_attributes(
+      client = client,
+      phase = if (isTRUE(is_refresh)) "refresh.verify" else "callback.verify",
+      extra = list(
+        oauth.received_id_token = isTRUE(is_valid_string(token_set[["id_token"]])),
+        oauth.received_refresh_token = isTRUE(is_valid_string(token_set[["refresh_token"]]))
+      )
+    )
+  )
 }
 
 verify_token_type_allowlist <- function(client, token_set) {

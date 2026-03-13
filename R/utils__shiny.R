@@ -270,8 +270,10 @@ mirai_connection_count <- function() {
 #   When using mirai with dispatcher (the default), timed-out tasks are
 #   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
 #   when NULL (default = no timeout).
+# @param otel_context Optional list with `headers`, `worker_span_name`, and
+#   `attributes` for restoring OpenTelemetry parent context in the worker.
 # @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
-async_dispatch <- function(expr, args, .timeout = NULL) {
+async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
 
   # Wrap the expression to capture warnings and messages emitted in the worker
@@ -279,17 +281,54 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
   # result so callers can replay them on the main thread via
   # replay_async_conditions().
   wrapped_expr <- bquote({
+    .ns <- asNamespace("shinyOAuth")
+    .otel_worker_span <- NULL
+    .async_error <- NULL
+    .otel_context <- .(otel_context)
+    if (!is.null(.otel_context)) {
+      .otel_worker_span <- .ns$otel_restore_parent_in_worker(
+        otel_headers = if (!is.null(.otel_context$headers)) {
+          .otel_context$headers
+        } else {
+          NULL
+        },
+        name = if (!is.null(.otel_context$worker_span_name)) {
+          .otel_context$worker_span_name
+        } else {
+          "shinyOAuth.async.worker"
+        },
+        attributes = if (!is.null(.otel_context$attributes)) {
+          .otel_context$attributes
+        } else {
+          list()
+        }
+      )
+    }
+    on.exit(
+      .ns$otel_end_async_parent(
+        list(span = .otel_worker_span),
+        status = if (is.null(.async_error)) "ok" else "error",
+        error = .async_error
+      ),
+      add = TRUE
+    )
     .async_warnings <- list()
     .async_messages <- list()
-    .async_value <- withCallingHandlers(
-      .(expr),
-      warning = function(w) {
-        .async_warnings[[length(.async_warnings) + 1L]] <<- w
-        tryInvokeRestart("muffleWarning")
-      },
-      message = function(m) {
-        .async_messages[[length(.async_messages) + 1L]] <<- m
-        tryInvokeRestart("muffleMessage")
+    .async_value <- tryCatch(
+      withCallingHandlers(
+        .(expr),
+        warning = function(w) {
+          .async_warnings[[length(.async_warnings) + 1L]] <<- w
+          tryInvokeRestart("muffleWarning")
+        },
+        message = function(m) {
+          .async_messages[[length(.async_messages) + 1L]] <<- m
+          tryInvokeRestart("muffleMessage")
+        }
+      ),
+      error = function(e) {
+        .async_error <<- e
+        stop(e)
       }
     )
     list(

@@ -345,6 +345,19 @@ emit_trace_event <- function(event) {
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
     event
   })
+  tryCatch(
+    {
+      otel_emit_log(event)
+      otel_emit_metrics(event)
+    },
+    error = function(e) {
+      warning(
+        "[shinyOAuth] otel telemetry error: ",
+        conditionMessage(e),
+        call. = FALSE
+      )
+    }
+  )
   if (is.function(hook)) {
     # Surface hook errors as warnings so they are visible in the main process
     # (async_dispatch captures warnings and replays them on the main thread).
