@@ -784,7 +784,17 @@ refresh_token <- function(
         stop(e)
       }
     )
-    return(otel_bind_async_parent(promise, otel_parent))
+    return(
+      promise |>
+        promises::then(function(value) {
+          otel_end_async_parent(otel_parent, status = "ok")
+          value
+        }) |>
+        promises::catch(function(err) {
+          otel_end_async_parent(otel_parent, status = "error", error = err)
+          stop(err)
+        })
+    )
   }
   with_otel_span(
     "shinyOAuth.refresh",

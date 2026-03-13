@@ -1643,52 +1643,49 @@ oauth_module_server <- function(
             } else {
               # Use namespace-qualified calls to avoid passing function closures to mirai
               # (functions carry their enclosing environments, causing serialization overhead)
-              otel_bind_async_parent(
-                async_dispatch(
-                  expr = quote({
-                    .ns <- asNamespace("shinyOAuth")
-                    # Restore shinyOAuth.* options in the async worker
-                    .ns$with_async_options(captured_async_options, {
-                      # Set async context so errors include session info with is_async = TRUE
-                      .ns$with_async_session_context(
-                        captured_shiny_session,
-                        {
-                          .ns$handle_callback_internal(
-                            oauth_client = client_for_worker,
-                            code = code,
-                            payload = state,
-                            browser_token = captured_browser_token,
-                            decrypted_payload = pre_payload,
-                            state_store_values = pre_state,
-                            shiny_session = captured_shiny_session
-                          )
-                        }
-                      )
-                    })
-                  }),
-                  args = list(
-                    captured_async_options = captured_async_options,
-                    captured_shiny_session = captured_shiny_session,
-                    client_for_worker = client_for_worker,
-                    code = code,
-                    state = state,
-                    captured_browser_token = captured_browser_token,
-                    pre_payload = pre_payload,
-                    pre_state = pre_state
-                  ),
-                  otel_context = list(
-                    headers = callback_parent$headers,
-                    worker_span_name = "shinyOAuth.callback.worker",
-                    attributes = otel_client_attributes(
-                      client = client,
-                      module_id = id,
-                      shiny_session = captured_shiny_session,
-                      async = TRUE,
-                      phase = "callback.worker"
+              async_dispatch(
+                expr = quote({
+                  .ns <- asNamespace("shinyOAuth")
+                  # Restore shinyOAuth.* options in the async worker
+                  .ns$with_async_options(captured_async_options, {
+                    # Set async context so errors include session info with is_async = TRUE
+                    .ns$with_async_session_context(
+                      captured_shiny_session,
+                      {
+                        .ns$handle_callback_internal(
+                          oauth_client = client_for_worker,
+                          code = code,
+                          payload = state,
+                          browser_token = captured_browser_token,
+                          decrypted_payload = pre_payload,
+                          state_store_values = pre_state,
+                          shiny_session = captured_shiny_session
+                        )
+                      }
                     )
-                  )
+                  })
+                }),
+                args = list(
+                  captured_async_options = captured_async_options,
+                  captured_shiny_session = captured_shiny_session,
+                  client_for_worker = client_for_worker,
+                  code = code,
+                  state = state,
+                  captured_browser_token = captured_browser_token,
+                  pre_payload = pre_payload,
+                  pre_state = pre_state
                 ),
-                callback_parent
+                otel_context = list(
+                  headers = callback_parent$headers,
+                  worker_span_name = "shinyOAuth.callback.worker",
+                  attributes = otel_client_attributes(
+                    client = client,
+                    module_id = id,
+                    shiny_session = captured_shiny_session,
+                    async = TRUE,
+                    phase = "callback.worker"
+                  )
+                )
               )
             }
           } else {
@@ -1707,6 +1704,9 @@ oauth_module_server <- function(
 
             res |>
               promises::then(function(raw) {
+                if (!is.null(callback_parent)) {
+                  otel_end_async_parent(callback_parent, status = "ok")
+                }
                 tok <- replay_async_conditions(raw)
                 values$token <- tok
                 values$error <- NULL
@@ -1722,6 +1722,9 @@ oauth_module_server <- function(
                 values$reauth_triggered <- FALSE
               }) |>
               promises::catch(function(e) {
+                if (!is.null(callback_parent)) {
+                  otel_end_async_parent(callback_parent, status = "error", error = e)
+                }
                 .set_error(
                   "token_exchange_error",
                   e,

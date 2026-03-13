@@ -331,9 +331,30 @@ with_otel_span <- function(
   )
 }
 
-otel_capture_context <- function() {
-  headers <- tryCatch(otel::pack_http_context(), error = function(...) NULL)
+otel_capture_context <- function(span = NULL) {
+  headers <- tryCatch(
+    {
+      if (!is.null(span)) {
+        span$get_context()$to_http_headers()
+      } else {
+        otel::pack_http_context()
+      }
+    },
+    error = function(...) NULL
+  )
   if (is.null(headers) || !length(headers)) {
+    return(NULL)
+  }
+
+  traceparent <- unname(headers[["traceparent"]] %||% NA_character_)
+  if (
+    isTRUE(
+      identical(
+        traceparent,
+        "00-00000000000000000000000000000000-0000000000000000-00"
+      )
+    )
+  ) {
     return(NULL)
   }
 
@@ -348,16 +369,10 @@ otel_start_async_parent <- function(
 ) {
   span <- tryCatch(
     {
-      spn <- otel::start_span(
+      otel::start_span(
         name = name,
         attributes = otel_attributes(attributes)
       )
-      otel::local_active_span(
-        spn,
-        end_on_exit = FALSE,
-        activation_scope = parent.frame()
-      )
-      spn
     },
     error = function(e) {
       otel_telemetry_warning("async parent span", e)
@@ -367,7 +382,7 @@ otel_start_async_parent <- function(
 
   list(
     span = span,
-    headers = otel_capture_context(),
+    headers = otel_capture_context(span),
     metric_name = metric_name,
     metric_attributes = metric_attributes,
     started_at = proc.time()[["elapsed"]]
@@ -439,18 +454,6 @@ otel_end_async_parent <- function(parent, status = c("ok", "error"), error = NUL
 
   try(otel::end_span(parent$span), silent = TRUE)
   invisible(NULL)
-}
-
-otel_bind_async_parent <- function(promise, parent) {
-  promise |>
-    promises::then(function(value) {
-      otel_end_async_parent(parent, status = "ok")
-      value
-    }) |>
-    promises::catch(function(err) {
-      otel_end_async_parent(parent, status = "error", error = err)
-      stop(err)
-    })
 }
 
 otel_event_severity <- function(type) {
@@ -545,7 +548,9 @@ otel_emit_log <- function(event) {
   }
 
   severity <- otel_event_severity(event$type %||% NULL)
-  msg <- event$message %||% event$type %||% "shinyOAuth"
+  msg <- otel_scalar_attribute(event$message %||% NULL) %||%
+    otel_scalar_attribute(event$type %||% NULL) %||%
+    "shinyOAuth"
   otel::log(
     msg = msg,
     severity = severity,
@@ -578,6 +583,10 @@ otel_metric_attributes_from_event <- function(event, outcome = NULL) {
 }
 
 otel_emit_metrics <- function(event) {
+  if (!isTRUE(getOption("shinyOAuth.otel_metrics_enabled", FALSE))) {
+    return(invisible(NULL))
+  }
+
   if (!is.list(event) || !is_valid_string(event$type)) {
     return(invisible(NULL))
   }

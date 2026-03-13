@@ -5,31 +5,49 @@ library(otel)
 library(otelsdk)
 
 options(
+  shinyOAuth.otel_metrics_enabled = FALSE,
   shinyOAuth.print_errors = TRUE,
   shinyOAuth.print_traceback = TRUE
 )
 
 setup_otel_tui <- function(
-  endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318")
+  endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318"),
+  enable_metrics = identical(
+    tolower(Sys.getenv("OTEL_TUI_ENABLE_METRICS", "false")),
+    "true"
+  )
 ) {
   base_url <- sub("/+$", "", endpoint)
+  otel_ns <- asNamespace("otel")
+  otel_state <- get("the", envir = otel_ns)
 
-  # The current otel package keeps the active providers in its namespace state.
-  # For a playground app it is fine to replace them directly so the app can
-  # configure otel-tui entirely from R.
-  otel:::the$tracer_provider <- otelsdk::tracer_provider_http$new(list(
+  # Configure SDK providers explicitly for the playground process.
+  otel_state$tracer_provider <- getElement(
+    otelsdk::tracer_provider_http,
+    "new"
+  )(list(
     url = paste0(base_url, "/v1/traces"),
-    timeout = 1000
+    timeout = 1000L
   ))
-  otel:::the$logger_provider <- otelsdk::logger_provider_http$new(list(
+  otel_state$logger_provider <- getElement(
+    otelsdk::logger_provider_http,
+    "new"
+  )(list(
     url = paste0(base_url, "/v1/logs"),
-    timeout = 1000
+    timeout = 1000L
   ))
-  otel:::the$meter_provider <- otelsdk::meter_provider_http$new(list(
-    url = paste0(base_url, "/v1/metrics"),
-    timeout = 1000,
-    export_interval = 1000
-  ))
+  if (isTRUE(enable_metrics)) {
+    otel_state$meter_provider <- getElement(
+      otelsdk::meter_provider_http,
+      "new"
+    )(list(
+      url = paste0(base_url, "/v1/metrics"),
+      timeout = 1000L
+    ))
+    options(shinyOAuth.otel_metrics_enabled = TRUE)
+  } else {
+    options(shinyOAuth.otel_metrics_enabled = FALSE)
+  }
 
   invisible(base_url)
 }
@@ -69,7 +87,13 @@ ui <- fluidPage(
   tags$p(
     "Run ",
     tags$code("otel-tui"),
-    " in another terminal, then click login and watch traces/logs/metrics appear."
+    " in another terminal, then click login and watch traces/logs appear."
+  ),
+  tags$p(
+    "Metrics are disabled by default because the current HTTP meter provider can",
+    "stall Shiny. Set ",
+    tags$code("OTEL_TUI_ENABLE_METRICS=true"),
+    " if you want to test them explicitly."
   ),
   actionButton("login", "Login with GitHub"),
   tags$hr(),
@@ -83,7 +107,7 @@ server <- function(input, output, session) {
     id = "auth",
     client = client,
     auto_redirect = FALSE,
-    async = FALSE
+    async = TRUE
   )
 
   observeEvent(input$login, {
