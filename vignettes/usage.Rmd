@@ -360,11 +360,24 @@ Below is a list of all available options.
 - `options(shinyOAuth.print_errors = TRUE)` – concise error lines (interactive / tests only)
 - `options(shinyOAuth.print_traceback = TRUE)` – include backtraces (interactive / tests only)
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
+- `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable shinyOAuth OpenTelemetry span creation and async trace-context propagation. Default: `TRUE`
+- `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable shinyOAuth OpenTelemetry log emission. Default: `TRUE`
 - `options(shinyOAuth.trace_hook = function(event){ ... })` – structured events (errors, http, etc.)
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – separate audit stream
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic redaction of sensitive data in audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_digest_key = ...)` – key for HMAC-SHA256 audit digests
+
+The OTel options are independent. For example, you can keep logs while disabling spans:
+
+```r
+options(
+  shinyOAuth.otel_tracing_enabled = FALSE,
+  shinyOAuth.otel_logging_enabled = TRUE
+)
+```
+
+If unset, both options default to `TRUE`.
 
 See `vignette("audit-logging", package = "shinyOAuth")` for details about
 audit and trace hooks.

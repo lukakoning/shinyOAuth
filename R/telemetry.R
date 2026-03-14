@@ -10,23 +10,18 @@ otel_telemetry_warning <- function(context, error) {
   )
 }
 
-otel_metric_names <- list(
-  sessions_active = "shinyoauth.sessions.active",
-  sessions_authenticated = "shinyoauth.sessions.authenticated",
-  login_attempts = "shinyoauth.login.attempts",
-  login_success = "shinyoauth.login.success",
-  login_failure = "shinyoauth.login.failure",
-  refresh_success = "shinyoauth.refresh.success",
-  refresh_failure = "shinyoauth.refresh.failure",
-  logout_total = "shinyoauth.logout.total",
-  token_revocation_attempts = "shinyoauth.token.revocation.attempts",
-  token_revocation_success = "shinyoauth.token.revocation.success",
-  browser_cookie_error_total = "shinyoauth.browser_cookie_error.total",
-  callback_duration = "shinyoauth.callback.duration_s",
-  token_exchange_duration = "shinyoauth.token_exchange.duration_s",
-  refresh_duration = "shinyoauth.refresh.duration_s",
-  userinfo_duration = "shinyoauth.userinfo.duration_s"
-)
+otel_option_enabled <- function(name, default = TRUE) {
+  value <- getOption(name, default)
+  is.logical(value) && length(value) == 1L && !is.na(value) && isTRUE(value)
+}
+
+otel_tracing_enabled <- function() {
+  otel_option_enabled("shinyOAuth.otel_tracing_enabled", default = TRUE)
+}
+
+otel_logging_enabled <- function() {
+  otel_option_enabled("shinyOAuth.otel_logging_enabled", default = TRUE)
+}
 
 otel_scalar_attribute <- function(value) {
   if (is.null(value) || length(value) == 0) {
@@ -213,6 +208,10 @@ otel_http_attributes <- function(
 }
 
 otel_set_span_attributes <- function(span = NULL, attributes = list()) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(invisible(NULL))
+  }
+
   attributes <- compact_list(attributes)
   if (!length(attributes)) {
     return(invisible(NULL))
@@ -230,12 +229,20 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
 }
 
 otel_mark_span_ok <- function(span = NULL) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(invisible(NULL))
+  }
+
   span <- span %||% otel::get_active_span()
   try(span$set_status("ok"), silent = TRUE)
   invisible(NULL)
 }
 
 otel_note_error <- function(error, span = NULL, attributes = list()) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(invisible(NULL))
+  }
+
   span <- span %||% otel::get_active_span()
   if (is.null(error)) {
     return(invisible(NULL))
@@ -272,12 +279,13 @@ with_otel_span <- function(
   name,
   code,
   attributes = NULL,
-  options = NULL,
-  metric_name = NULL,
-  metric_attributes = NULL
+  options = NULL
 ) {
   code <- substitute(code)
-  start_time <- proc.time()[["elapsed"]]
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(eval(code, envir = parent.frame()))
+  }
+
   span_started <- FALSE
   tryCatch(
     {
@@ -297,16 +305,6 @@ with_otel_span <- function(
 
   on.exit(
     {
-      if (!is.null(metric_name)) {
-        try(
-          otel::histogram_record(
-            metric_name,
-            max(0, proc.time()[["elapsed"]] - start_time),
-            attributes = otel_attributes(metric_attributes)
-          ),
-          silent = TRUE
-        )
-      }
       if (isTRUE(span_started)) {
         if (isTRUE(ok)) {
           otel_mark_span_ok()
@@ -332,6 +330,10 @@ with_otel_span <- function(
 }
 
 otel_capture_context <- function(span = NULL) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(NULL)
+  }
+
   headers <- tryCatch(
     {
       if (!is.null(span)) {
@@ -363,10 +365,12 @@ otel_capture_context <- function(span = NULL) {
 
 otel_start_async_parent <- function(
   name,
-  attributes = NULL,
-  metric_name = NULL,
-  metric_attributes = NULL
+  attributes = NULL
 ) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(list(span = NULL, headers = NULL))
+  }
+
   span <- tryCatch(
     {
       otel::start_span(
@@ -382,10 +386,7 @@ otel_start_async_parent <- function(
 
   list(
     span = span,
-    headers = otel_capture_context(span),
-    metric_name = metric_name,
-    metric_attributes = metric_attributes,
-    started_at = proc.time()[["elapsed"]]
+    headers = otel_capture_context(span)
   )
 }
 
@@ -394,6 +395,10 @@ otel_restore_parent_in_worker <- function(
   name,
   attributes = NULL
 ) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(NULL)
+  }
+
   if (is.null(otel_headers) || !length(otel_headers)) {
     return(NULL)
   }
@@ -439,17 +444,6 @@ otel_end_async_parent <- function(parent, status = c("ok", "error"), error = NUL
     otel_mark_span_ok(parent$span)
   } else {
     otel_note_error(error, span = parent$span)
-  }
-
-  if (!is.null(parent$metric_name)) {
-    try(
-      otel::histogram_record(
-        parent$metric_name,
-        max(0, proc.time()[["elapsed"]] - (parent$started_at %||% proc.time()[["elapsed"]])),
-        attributes = otel_attributes(parent$metric_attributes)
-      ),
-      silent = TRUE
-    )
   }
 
   try(otel::end_span(parent$span), silent = TRUE)
@@ -543,6 +537,10 @@ otel_event_attributes <- function(event) {
 }
 
 otel_emit_log <- function(event) {
+  if (!isTRUE(otel_logging_enabled())) {
+    return(invisible(NULL))
+  }
+
   if (!is.list(event) || !length(event)) {
     return(invisible(NULL))
   }
@@ -556,142 +554,6 @@ otel_emit_log <- function(event) {
     severity = severity,
     attributes = otel_attributes(otel_event_attributes(event))
   )
-
-  invisible(NULL)
-}
-
-otel_metric_attributes <- function(
-  provider = NULL,
-  async = NULL,
-  outcome = NULL
-) {
-  compact_list(list(
-    oauth.provider.name = provider,
-    oauth.async = async,
-    outcome = outcome
-  ))
-}
-
-otel_metric_attributes_from_event <- function(event, outcome = NULL) {
-  provider <- event$provider %||% event$client_provider %||% NULL
-  async <- tryCatch(
-    isTRUE(event$shiny_session$is_async),
-    error = function(...) NULL
-  )
-
-  otel_metric_attributes(provider = provider, async = async, outcome = outcome)
-}
-
-otel_emit_metrics <- function(event) {
-  if (!isTRUE(getOption("shinyOAuth.otel_metrics_enabled", FALSE))) {
-    return(invisible(NULL))
-  }
-
-  if (!is.list(event) || !is_valid_string(event$type)) {
-    return(invisible(NULL))
-  }
-
-  attrs <- otel_attributes(otel_metric_attributes_from_event(event))
-  type <- event$type
-
-  if (identical(type, "audit_session_started")) {
-    otel::up_down_counter_add(
-      otel_metric_names$sessions_active,
-      1L,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_session_ended")) {
-    otel::up_down_counter_add(
-      otel_metric_names$sessions_active,
-      -1L,
-      attributes = attrs
-    )
-    if (isTRUE(event$was_authenticated)) {
-      otel::up_down_counter_add(
-        otel_metric_names$sessions_authenticated,
-        -1L,
-        attributes = attrs
-      )
-    }
-  } else if (identical(type, "audit_authenticated_changed")) {
-    delta <- if (isTRUE(event$authenticated)) 1L else -1L
-    otel::up_down_counter_add(
-      otel_metric_names$sessions_authenticated,
-      delta,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_redirect_issued")) {
-    otel::counter_add(
-      otel_metric_names$login_attempts,
-      1L,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_login_success")) {
-    otel::counter_add(
-      otel_metric_names$login_success,
-      1L,
-      attributes = attrs
-    )
-  } else if (type %in% c(
-    "audit_login_failed",
-    "audit_token_exchange_error",
-    "audit_callback_validation_failed",
-    "audit_callback_query_rejected",
-    "audit_callback_iss_mismatch"
-  )) {
-    otel::counter_add(
-      otel_metric_names$login_failure,
-      1L,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_token_refresh")) {
-    otel::counter_add(
-      otel_metric_names$refresh_success,
-      1L,
-      attributes = attrs
-    )
-  } else if (type %in% c("audit_refresh_failed_but_kept_session")) {
-    otel::counter_add(
-      otel_metric_names$refresh_failure,
-      1L,
-      attributes = attrs
-    )
-  } else if (
-    identical(type, "audit_session_cleared") &&
-      is_valid_string(event$reason %||% NULL) &&
-      grepl("^refresh_failed", event$reason)
-  ) {
-    otel::counter_add(
-      otel_metric_names$refresh_failure,
-      1L,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_logout")) {
-    otel::counter_add(
-      otel_metric_names$logout_total,
-      1L,
-      attributes = attrs
-    )
-  } else if (identical(type, "audit_token_revocation")) {
-    otel::counter_add(
-      otel_metric_names$token_revocation_attempts,
-      1L,
-      attributes = attrs
-    )
-    if (identical(event$status %||% NULL, "ok")) {
-      otel::counter_add(
-        otel_metric_names$token_revocation_success,
-        1L,
-        attributes = attrs
-      )
-    }
-  } else if (identical(type, "audit_browser_cookie_error")) {
-    otel::counter_add(
-      otel_metric_names$browser_cookie_error_total,
-      1L,
-      attributes = attrs
-    )
-  }
 
   invisible(NULL)
 }

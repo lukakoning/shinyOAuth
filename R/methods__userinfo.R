@@ -246,11 +246,6 @@ get_userinfo <- function(
     attributes = otel_client_attributes(
       client = oauth_client,
       phase = "userinfo"
-    ),
-    metric_name = otel_metric_names$userinfo_duration,
-    metric_attributes = otel_metric_attributes(
-      provider = oauth_client@provider@name %||% NULL,
-      async = tryCatch(isTRUE(get_async_session_context()$is_async), error = function(...) NULL)
     )
   )
 }

@@ -733,11 +733,6 @@ refresh_token <- function(
         shiny_session = shiny_session,
         async = TRUE,
         phase = "refresh"
-      ),
-      metric_name = otel_metric_names$refresh_duration,
-      metric_attributes = otel_metric_attributes(
-        provider = oauth_client@provider@name %||% NULL,
-        async = TRUE
       )
     )
 
@@ -1002,11 +997,6 @@ refresh_token <- function(
       shiny_session = shiny_session,
       async = async_attr,
       phase = "refresh"
-    ),
-    metric_name = otel_metric_names$refresh_duration,
-    metric_attributes = otel_metric_attributes(
-      provider = oauth_client@provider@name %||% NULL,
-      async = async_attr
     )
   )
 }

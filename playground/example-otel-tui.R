@@ -5,17 +5,12 @@ library(otel)
 library(otelsdk)
 
 options(
-  shinyOAuth.otel_metrics_enabled = FALSE,
   shinyOAuth.print_errors = TRUE,
   shinyOAuth.print_traceback = TRUE
 )
 
 setup_otel_tui <- function(
-  endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318"),
-  enable_metrics = identical(
-    tolower(Sys.getenv("OTEL_TUI_ENABLE_METRICS", "false")),
-    "true"
-  )
+  endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318")
 ) {
   base_url <- sub("/+$", "", endpoint)
   otel_ns <- asNamespace("otel")
@@ -36,18 +31,6 @@ setup_otel_tui <- function(
     url = paste0(base_url, "/v1/logs"),
     timeout = 1000L
   ))
-  if (isTRUE(enable_metrics)) {
-    otel_state$meter_provider <- getElement(
-      otelsdk::meter_provider_http,
-      "new"
-    )(list(
-      url = paste0(base_url, "/v1/metrics"),
-      timeout = 1000L
-    ))
-    options(shinyOAuth.otel_metrics_enabled = TRUE)
-  } else {
-    options(shinyOAuth.otel_metrics_enabled = FALSE)
-  }
 
   invisible(base_url)
 }
@@ -88,12 +71,6 @@ ui <- fluidPage(
     "Run ",
     tags$code("otel-tui"),
     " in another terminal, then click login and watch traces/logs appear."
-  ),
-  tags$p(
-    "Metrics are disabled by default because the current HTTP meter provider can",
-    "stall Shiny. Set ",
-    tags$code("OTEL_TUI_ENABLE_METRICS=true"),
-    " if you want to test them explicitly."
   ),
   actionButton("login", "Login with GitHub"),
   tags$hr(),
@@ -144,8 +121,6 @@ server <- function(input, output, session) {
 
   onStop(function() {
     try(otel::get_default_tracer_provider()$flush(), silent = TRUE)
-    try(otel::get_default_meter_provider()$flush(), silent = TRUE)
-    try(otel::get_default_meter_provider()$shutdown(), silent = TRUE)
   })
 }
 

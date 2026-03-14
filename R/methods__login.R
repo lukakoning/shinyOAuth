@@ -430,11 +430,6 @@ handle_callback <- function(
       shiny_session = shiny_session,
       async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) NULL),
       phase = "callback"
-    ),
-    metric_name = otel_metric_names$callback_duration,
-    metric_attributes = otel_metric_attributes(
-      provider = oauth_client@provider@name %||% NULL,
-      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) NULL)
     )
   )
 }
@@ -1336,14 +1331,6 @@ swap_code_for_token_set <- function(
       client = client,
       phase = "token.exchange",
       extra = list(oauth.used_pkce = is_valid_string(code_verifier))
-    ),
-    metric_name = otel_metric_names$token_exchange_duration,
-    metric_attributes = otel_metric_attributes(
-      provider = client@provider@name %||% NULL,
-      async = tryCatch(
-        isTRUE(get_async_session_context()$is_async),
-        error = function(...) NULL
-      )
     )
   )
 }

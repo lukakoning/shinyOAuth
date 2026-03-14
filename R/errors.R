@@ -348,7 +348,6 @@ emit_trace_event <- function(event) {
   tryCatch(
     {
       otel_emit_log(event)
-      otel_emit_metrics(event)
     },
     error = function(e) {
       warning(

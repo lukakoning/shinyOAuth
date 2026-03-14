@@ -1558,11 +1558,6 @@ oauth_module_server <- function(
                 shiny_session = captured_shiny_session,
                 async = TRUE,
                 phase = "callback"
-              ),
-              metric_name = otel_metric_names$callback_duration,
-              metric_attributes = otel_metric_attributes(
-                provider = client@provider@name %||% NULL,
-                async = TRUE
               )
             )
 
