@@ -330,6 +330,26 @@ with_otel_span <- function(
   )
 }
 
+otel_with_active_span <- function(span, code) {
+  code <- substitute(code)
+  if (!isTRUE(otel_tracing_enabled()) || is.null(span)) {
+    return(eval(code, envir = parent.frame()))
+  }
+
+  tryCatch(
+    otel::local_active_span(
+      span,
+      end_on_exit = FALSE,
+      activation_scope = environment()
+    ),
+    error = function(e) {
+      otel_telemetry_warning("span activation", e)
+    }
+  )
+
+  eval(code, envir = parent.frame())
+}
+
 otel_capture_context <- function(span = NULL) {
   if (!isTRUE(otel_tracing_enabled())) {
     return(NULL)

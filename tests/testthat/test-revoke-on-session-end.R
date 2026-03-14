@@ -121,6 +121,69 @@ testthat::test_that("revoke_on_session_end uses async only when module async = T
   testthat::expect_true(all(async_values))
 })
 
+testthat::test_that("logout propagates shiny session context to revoke_token", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  revoke_calls <- list()
+  session_token <- NULL
+  mock_revoke <- function(
+    client,
+    token,
+    which,
+    async = FALSE,
+    shiny_session = NULL
+  ) {
+    revoke_calls <<- c(revoke_calls, list(list(
+      which = which,
+      async = async,
+      shiny_session = shiny_session
+    )))
+    list(supported = TRUE, revoked = TRUE, status = "ok")
+  }
+
+  testthat::with_mocked_bindings(
+    revoke_token = mock_revoke,
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = cli,
+          auto_redirect = FALSE,
+          async = TRUE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          session_token <<- .scalar_chr(session$token)
+
+          values$token <- OAuthToken(
+            access_token = "access_tok",
+            refresh_token = "refresh_tok",
+            expires_at = as.numeric(Sys.time()) + 3600,
+            id_token = NA_character_
+          )
+          session$flushReact()
+
+          values$logout()
+        }
+      )
+    }
+  )
+
+  testthat::expect_length(revoke_calls, 2)
+  for (call in revoke_calls) {
+    testthat::expect_true(isTRUE(call$async))
+    testthat::expect_false(is.null(call$shiny_session))
+    testthat::expect_identical(
+      call$shiny_session$token %||% NA_character_,
+      session_token
+    )
+  }
+})
+
 testthat::test_that("revoke_on_session_end does NOT call revoke_token when FALSE", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

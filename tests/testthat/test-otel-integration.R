@@ -112,6 +112,27 @@ testthat::test_that("async parent span propagates context", {
   testthat::expect_identical(worker_span$status, "ok")
 })
 
+testthat::test_that("otel_with_active_span nests child spans under an existing span", {
+  testthat::skip_if_not_installed("otelsdk")
+
+  r <- otelsdk::with_otel_record({
+    parent <- shinyOAuth:::otel_start_async_parent("shinyOAuth.test.callback.parent")
+    shinyOAuth:::otel_with_active_span(parent$span, {
+      shinyOAuth:::with_otel_span("shinyOAuth.test.callback.child", 42)
+    })
+    shinyOAuth:::otel_end_async_parent(parent, status = "ok")
+  })
+
+  spans <- r$traces
+  parent_span <- spans[["shinyOAuth.test.callback.parent"]]
+  child_span <- spans[["shinyOAuth.test.callback.child"]]
+
+  testthat::expect_false(is.null(parent_span))
+  testthat::expect_false(is.null(child_span))
+  testthat::expect_identical(child_span$trace_id, parent_span$trace_id)
+  testthat::expect_identical(child_span$parent, parent_span$span_id)
+})
+
 testthat::test_that("prepare_call emits real spans with expected names", {
   testthat::skip_if_not_installed("otelsdk")
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
