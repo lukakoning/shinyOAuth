@@ -230,18 +230,3 @@ emitting all OTel spans.
 `revoke_token()`, `introspect_token()`, and audit event emission itself do not
 create dedicated spans. They may still appear inside a trace if called under an
 active parent span.
-
-## Enabling and disabling
-
-Both signals are enabled by default and controlled independently:
-
-- `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable span creation
-  and async trace-context propagation
-- `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable OTel log
-  emission (native R hooks still fire)
-
-## Exporter configuration
-
-shinyOAuth does not configure OTel exporters. Use your preferred `otel` /
-`otelsdk` setup in your application environment. If no exporter is configured
-the instrumentation is a no-op.

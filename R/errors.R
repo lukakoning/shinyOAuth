@@ -333,7 +333,16 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
   if (!is.null(shiny_session)) {
     event$shiny_session <- shiny_session
   }
-  emit_trace_event(event)
+  event_for_span <- tryCatch(augment_with_shiny_context(event), error = function(...) {
+    event
+  })
+  with_otel_span(
+    "shinyOAuth.audit.emit",
+    {
+      emit_trace_event(event)
+    },
+    attributes = otel_event_attributes(event_for_span)
+  )
   invisible(trace_id)
 }
 
