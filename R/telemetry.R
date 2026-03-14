@@ -1,5 +1,3 @@
-otel_tracer_name <- otel::default_tracer_name()
-
 otel_telemetry_warning <- function(context, error) {
   rlang::warn(
     paste0(

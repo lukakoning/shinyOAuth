@@ -169,6 +169,6 @@ testthat::test_that("instrumentation scope is set correctly", {
   s <- r$traces[["shinyOAuth.test.scope"]]
   testthat::expect_identical(
     s$instrumentation_scope$name,
-    "io.github.lukakoning.shinyOAuth"
+    "r.package.shinyOAuth"
   )
 })
