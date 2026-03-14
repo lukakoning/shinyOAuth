@@ -9,6 +9,8 @@ options(
   shinyOAuth.print_traceback = TRUE
 )
 
+mirai::daemons(2)
+
 setup_otel_tui <- function(
   endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318")
 ) {
