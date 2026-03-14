@@ -61,6 +61,8 @@ Reason:
 
 Implication: **do not add `is_tracing_enabled()` / `is_logging_enabled()` / `is_measuring_enabled()` guards** around `otel::` calls in business logic. Since all otel API functions are already no-ops without exporters, guard checks are unnecessary overhead and code noise. The only exception: if constructing attributes requires expensive computation (e.g., digesting large payloads), wrap that computation in an `is_tracing_enabled()` check — but the `otel::` call itself needs no guard.
 
+> **Implementation note:** The actual implementation added `otel_tracing_enabled()` and `otel_logging_enabled()` option gates (`shinyOAuth.otel_tracing_enabled`, `shinyOAuth.otel_logging_enabled`). These serve a different purpose than the "guard against no-op" case above: they let operators **explicitly disable** shinyOAuth's OTel instrumentation even when exporters *are* configured (e.g., to reduce noise from a specific package while keeping other packages' telemetry active). This is an intentional user-facing control, not a performance guard.
+
 Do **not** make `otelsdk` a runtime dependency of `shinyOAuth`.
 
 Reason:
@@ -185,6 +187,7 @@ Use stable, low-cardinality names such as:
 - `shinyOAuth.logout`
 - `shinyOAuth.token.revoke`
 - `shinyOAuth.session.end.revoke`
+- `shinyOAuth.audit.emit`
 
 Do not embed provider names, user ids, session ids, or route ids in span names.
 Those belong in attributes.

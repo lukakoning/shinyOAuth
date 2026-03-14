@@ -462,17 +462,29 @@ otel_event_severity <- function(type) {
     "audit_browser_cookie_error",
     "audit_callback_iss_mismatch",
     "audit_callback_query_rejected",
-    "audit_refresh_failed_but_kept_session"
+    "audit_refresh_failed_but_kept_session",
+    "audit_state_parse_failure",
+    "audit_state_store_lookup_failed",
+    "audit_state_store_removal_failed",
+    "audit_error_state_consumption_failed"
   )) {
     return("warn")
   }
 
-  if (type %in% c("error", "http_error", "transport_error")) {
+  if (type %in% c(
+    "error",
+    "http_error",
+    "transport_error",
+    "audit_token_exchange_error",
+    "audit_login_failed"
+  )) {
     return("error")
   }
 
-  if (identical(type, "audit_token_exchange_error")) {
-    return("error")
+  # Catch-all: treat any unrecognised type containing "_error" or "_failed"
+  # as a warning so that new failure events are never silently logged at info.
+  if (grepl("_error$|_failed$", type)) {
+    return("warn")
   }
 
   "info"

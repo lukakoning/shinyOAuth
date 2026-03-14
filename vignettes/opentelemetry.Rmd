@@ -24,6 +24,13 @@ Once configured, 'shinyOAuth' will automatically emit OTel signals.
 This vignette describes the OTel signals emitted by 'shinyOAuth', their content, 
 and how to enable/disable them.
 
+All signals are emitted under the instrumentation scope
+`io.github.lukakoning.shinyOAuth`. Use this identifier when configuring
+collector routing rules or filtering shinyOAuth telemetry in your backend.
+
+Note: 'shinyOAuth' currently emits **logs and traces** only.
+OpenTelemetry metrics (counters, histograms) are not yet implemented.
+
 ## Logs
 
 OTel log records are generated from the same structured events that shinyOAuth

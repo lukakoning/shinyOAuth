@@ -68,6 +68,18 @@ testthat::test_that("otel_event_severity maps event types correctly", {
   testthat::expect_identical(
     shinyOAuth:::otel_event_severity("audit_refresh_failed_but_kept_session"), "warn"
   )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_state_parse_failure"), "warn"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_state_store_lookup_failed"), "warn"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_state_store_removal_failed"), "warn"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_error_state_consumption_failed"), "warn"
+  )
 
   # Error events
   testthat::expect_identical(
@@ -82,10 +94,21 @@ testthat::test_that("otel_event_severity maps event types correctly", {
   testthat::expect_identical(
     shinyOAuth:::otel_event_severity("audit_token_exchange_error"), "error"
   )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_login_failed"), "error"
+  )
 
   # Default/unknown
   testthat::expect_identical(
     shinyOAuth:::otel_event_severity("something_unknown"), "info"
+  )
+
+  # Generic fallback: types ending in _error or _failed get "warn"
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_some_new_error"), "warn"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_future_op_failed"), "warn"
   )
 
   # NULL/NA/empty
