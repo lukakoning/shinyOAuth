@@ -35,10 +35,10 @@ options(shinyOAuth.audit_hook = function(event) {
 })
 ```
 
-To stop receiving events, unset the option:
-```r
-options(shinyOAuth.audit_hook = NULL)
-```
+Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry.
+Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
+Audit and trace events emitted via OpenTelemetry mirror the events described in this 
+vignette.
 
 ## Event structure
 
@@ -120,7 +120,10 @@ Many audit events include digest fields such as `client_id_digest`, `state_diges
 correlate events without emitting raw sensitive values.
 
 By default, these digests use HMAC-SHA256 with an auto-generated per-process key.
-This reduces the risk of correlation or dictionary reidentification if logs leak.
+If you do not configure `options(shinyOAuth.audit_digest_key = ...)`, each R
+process gets its own random key at runtime. This reduces the risk of correlation
+or dictionary reidentification if logs leak, but it also means digests are not
+stable across different workers/processes by default.
 
 If you run multiple workers/processes and want digests to be comparable across them,
 configure a shared key:

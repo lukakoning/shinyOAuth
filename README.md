@@ -45,11 +45,12 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
   
 - Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with 
   local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
-  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)) for
-  more details)
+  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
 - Provides hooks for auditing & logging key events,
-  like login successes or failures (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for more details)
+  like login successes or failures; also supports emitting OpenTelemetry signals
+  (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
+  and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
 
 ## Installation
 
@@ -139,8 +140,11 @@ runApp(
 ### Logging/auditing
 
 The package provides hooks for logging/auditing crucial events 
-(e.g., callbacks issued & received, login success/failures).
-See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for details.
+(e.g., callbacks issued & received, login success/failures). It can also emit
+signals via OpenTelemetry.
+
+See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for audit event details, 
+and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html))) for OpenTelemetry details.
 
 ## More information
 
