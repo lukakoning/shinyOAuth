@@ -225,8 +225,97 @@ emitting all OTel spans.
   - `shiny.module_id`
   - `oauth.phase = "logout"`
 
-### Spans not currently traced
+#### Span: `shinyOAuth.token.revoke`
 
-`revoke_token()`, `introspect_token()`, and audit event emission itself do not
-create dedicated spans. They may still appear inside a trace if called under an
-active parent span.
+- When: during token revocation via `revoke_token()`
+- Represents:
+  - synchronous revocation execution
+  - the parent revocation span created on the main process before async dispatch
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `oauth.async`
+  - `oauth.phase = "token.revoke"`
+  - `oauth.token.which` (`"access"` or `"refresh"`)
+  - `oauth.supported`, `oauth.revoked`, `oauth.status` after completion
+  - current or propagated Shiny session/process metadata
+
+#### Span: `shinyOAuth.token.revoke.http`
+
+- When: for the outbound revocation endpoint HTTP call
+- Represents: the actual request to the configured revocation endpoint
+- Main attributes:
+  - `http.request.method = "POST"`
+  - `server.address`
+  - `oauth.phase = "token.revoke"`
+  - `http.response.status_code` after a response is available
+- Notes:
+  - this is used as a client span (`kind = "client"`)
+  - redirects are rejected to prevent credential leakage
+
+#### Span: `shinyOAuth.token.revoke.worker`
+
+- When: when async revocation processing restores parent trace context in a worker
+- Represents: the worker-side child span for async revocation execution
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `oauth.async = TRUE`
+  - `oauth.phase = "token.revoke.worker"`
+  - `oauth.token.which` (`"access"` or `"refresh"`)
+  - propagated Shiny session/process metadata
+
+#### Span: `shinyOAuth.token.introspect`
+
+- When: during token introspection via `introspect_token()`
+- Represents:
+  - synchronous introspection execution
+  - the parent introspection span created on the main process before async dispatch
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `oauth.async`
+  - `oauth.phase = "token.introspect"`
+  - `oauth.token.which` (`"access"` or `"refresh"`)
+  - `oauth.supported`, `oauth.active`, `oauth.status` after completion
+  - current or propagated Shiny session/process metadata
+
+#### Span: `shinyOAuth.token.introspect.http`
+
+- When: for the outbound introspection endpoint HTTP call
+- Represents: the actual request to the configured introspection endpoint
+- Main attributes:
+  - `http.request.method = "POST"`
+  - `server.address`
+  - `oauth.phase = "token.introspect"`
+  - `http.response.status_code` after a response is available
+- Notes:
+  - this is used as a client span (`kind = "client"`)
+  - redirects are rejected to prevent credential leakage
+
+#### Span: `shinyOAuth.token.introspect.worker`
+
+- When: when async introspection processing restores parent trace context
+  in a worker
+- Represents: the worker-side child span for async introspection execution
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `oauth.async = TRUE`
+  - `oauth.phase = "token.introspect.worker"`
+  - `oauth.token.which` (`"access"` or `"refresh"`)
+  - propagated Shiny session/process metadata
+
+#### Span: `shinyOAuth.audit.emit`
+
+- When: whenever `audit_event()` is called
+- Represents: the emission of a structured audit event through the trace pipeline
+- Main attributes:
+  - `event.type` — the audit event type (e.g., `"audit_login_success"`)
+  - `shinyoauth.trace_id` — the package's internal correlation ID
+  - `oauth.provider.name`, `oauth.provider.issuer` when available
+  - `oauth.client_id_digest` when available
+  - Shiny session/process metadata when available
+- Notes:
+  - sensitive fields (tokens, codes, state, browser tokens) are filtered out
+  - this span wraps the `emit_trace_event()` call, which also emits OTel logs

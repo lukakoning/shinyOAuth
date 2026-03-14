@@ -359,11 +359,10 @@ emit_trace_event <- function(event) {
       otel_emit_log(event)
     },
     error = function(e) {
-      warning(
+      rlang::warn(paste0(
         "[shinyOAuth] otel telemetry error: ",
-        conditionMessage(e),
-        call. = FALSE
-      )
+        conditionMessage(e)
+      ))
     }
   )
   if (is.function(hook)) {
@@ -372,11 +371,10 @@ emit_trace_event <- function(event) {
     tryCatch(
       hook(event),
       error = function(e) {
-        warning(
+        rlang::warn(paste0(
           "[shinyOAuth] trace_hook error: ",
-          conditionMessage(e),
-          call. = FALSE
-        )
+          conditionMessage(e)
+        ))
       }
     )
   }
@@ -384,11 +382,10 @@ emit_trace_event <- function(event) {
     tryCatch(
       audit_hook(event),
       error = function(e) {
-        warning(
+        rlang::warn(paste0(
           "[shinyOAuth] audit_hook error: ",
-          conditionMessage(e),
-          call. = FALSE
-        )
+          conditionMessage(e)
+        ))
       }
     )
   }

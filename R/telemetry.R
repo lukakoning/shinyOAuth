@@ -1,12 +1,13 @@
 otel_tracer_name <- "io.github.lukakoning.shinyOAuth"
 
 otel_telemetry_warning <- function(context, error) {
-  warning(
-    "[shinyOAuth] OpenTelemetry ",
-    context,
-    " disabled for this operation: ",
-    conditionMessage(error),
-    call. = FALSE
+  rlang::warn(
+    paste0(
+      "[shinyOAuth] OpenTelemetry ",
+      context,
+      " disabled for this operation: ",
+      conditionMessage(error)
+    )
   )
 }
 

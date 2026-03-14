@@ -549,35 +549,46 @@ oauth_module_server <- function(
         # Capture token at session end; may be NULL if never authenticated
         tok <- shiny::isolate(values$token)
         if (!is.null(tok)) {
-          # Audit: session ending with revocation attempt
-          try(
-            audit_event(
-              "session_ended_revoke",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id)
-              ),
-              shiny_session = captured_session_end_context
-            ),
-            silent = TRUE
+          with_otel_span(
+            "shinyOAuth.session.end.revoke",
+            {
+              # Audit: session ending with revocation attempt
+              try(
+                audit_event(
+                  "session_ended_revoke",
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id)
+                  ),
+                  shiny_session = captured_session_end_context
+                ),
+                silent = TRUE
+              )
+              # Best-effort revocation: async only when module async = TRUE
+              use_async_revocation <- isTRUE(async)
+              try(revoke_token(
+                client,
+                tok,
+                which = "refresh",
+                async = use_async_revocation,
+                shiny_session = captured_session_end_context
+              ))
+              try(revoke_token(
+                client,
+                tok,
+                which = "access",
+                async = use_async_revocation,
+                shiny_session = captured_session_end_context
+              ))
+            },
+            attributes = otel_client_attributes(
+              client = client,
+              module_id = module_id,
+              shiny_session = captured_session_end_context,
+              phase = "session.end.revoke"
+            )
           )
-          # Best-effort revocation: async only when module async = TRUE
-          use_async_revocation <- isTRUE(async)
-          try(revoke_token(
-            client,
-            tok,
-            which = "refresh",
-            async = use_async_revocation,
-            shiny_session = captured_session_end_context
-          ))
-          try(revoke_token(
-            client,
-            tok,
-            which = "access",
-            async = use_async_revocation,
-            shiny_session = captured_session_end_context
-          ))
         }
       })
     }
