@@ -133,6 +133,63 @@ testthat::test_that("otel_with_active_span nests child spans under an existing s
   testthat::expect_identical(child_span$parent, parent_span$span_id)
 })
 
+testthat::test_that("async_dispatch activates restored worker span for nested spans", {
+  testthat::skip_if_not_installed("otelsdk")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("later")
+
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+
+  r <- otelsdk::with_otel_record({
+    parent <- shinyOAuth:::otel_start_async_parent("shinyOAuth.test.dispatch.parent")
+
+    resolved <- NULL
+    promises::then(
+      promises::as.promise(
+        shinyOAuth:::async_dispatch(
+          expr = quote({
+            .ns <- asNamespace("shinyOAuth")
+            .ns$with_otel_span("shinyOAuth.test.dispatch.child", 1)
+          }),
+          args = list(),
+          otel_context = list(
+            headers = parent$headers,
+            worker_span_name = "shinyOAuth.test.dispatch.worker"
+          )
+        )
+      ),
+      function(x) {
+        resolved <<- x
+      }
+    )
+
+    deadline <- Sys.time() + 5
+    while (is.null(resolved) && Sys.time() < deadline) {
+      later::run_now(0.05)
+      Sys.sleep(0.01)
+    }
+
+    testthat::expect_false(is.null(resolved))
+    shinyOAuth:::replay_async_conditions(resolved)
+    shinyOAuth:::otel_end_async_parent(parent, status = "ok")
+  })
+
+  spans <- r$traces
+  parent_span <- spans[["shinyOAuth.test.dispatch.parent"]]
+  worker_span <- spans[["shinyOAuth.test.dispatch.worker"]]
+  child_span <- spans[["shinyOAuth.test.dispatch.child"]]
+
+  testthat::expect_false(is.null(parent_span))
+  testthat::expect_false(is.null(worker_span))
+  testthat::expect_false(is.null(child_span))
+  testthat::expect_identical(worker_span$trace_id, parent_span$trace_id)
+  testthat::expect_identical(worker_span$parent, parent_span$span_id)
+  testthat::expect_identical(child_span$trace_id, worker_span$trace_id)
+  testthat::expect_identical(child_span$parent, worker_span$span_id)
+})
+
 testthat::test_that("prepare_call emits real spans with expected names", {
   testthat::skip_if_not_installed("otelsdk")
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))

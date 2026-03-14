@@ -22,6 +22,47 @@ otel_logging_enabled <- function() {
   otel_option_enabled("shinyOAuth.otel_logging_enabled", default = TRUE)
 }
 
+otel_runtime_enabled <- function() {
+  tracing_active <- isTRUE(otel_tracing_enabled()) && isTRUE(tryCatch(
+    otel::is_tracing_enabled(),
+    error = function(...) FALSE
+  ))
+  logging_active <- isTRUE(otel_logging_enabled()) && isTRUE(tryCatch(
+    otel::is_logging_enabled(),
+    error = function(...) FALSE
+  ))
+
+  tracing_active || logging_active
+}
+
+warn_about_async_otel_workers <- function() {
+  if (!isTRUE(otel_runtime_enabled())) {
+    return(invisible(FALSE))
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Verify OpenTelemetry is configured in async workers}",
+      "!" = paste(
+        "{.code oauth_module_server(async = TRUE)} will emit telemetry from",
+        "background worker processes as well as the main R process"
+      ),
+      "i" = paste(
+        "If OTEL is configured via environment variables, set them before",
+        "starting workers (e.g., before {.code mirai::daemons()})"
+      ),
+      "i" = paste(
+        "If OTEL is configured from R code, run the same setup in each",
+        "worker or recreate workers after configuring it"
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = "oauth_module_server_async_otel_workers"
+  )
+
+  invisible(TRUE)
+}
+
 otel_scalar_attribute <- function(value) {
   if (is.null(value) || length(value) == 0) {
     return(NULL)
@@ -432,17 +473,11 @@ otel_restore_parent_in_worker <- function(
 
   span <- tryCatch(
     {
-      spn <- otel::start_span(
+      otel::start_span(
         name = name,
         attributes = otel_attributes(attributes),
         options = list(parent = parent_ctx)
       )
-      otel::local_active_span(
-        spn,
-        end_on_exit = FALSE,
-        activation_scope = parent.frame()
-      )
-      spn
     },
     error = function(e) {
       otel_telemetry_warning("worker span", e)

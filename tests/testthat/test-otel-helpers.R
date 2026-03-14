@@ -283,3 +283,78 @@ testthat::test_that("otel_client_attributes handles NULL client", {
   testthat::expect_identical(attrs$shiny.module_id, "test")
   testthat::expect_identical(attrs$oauth.phase, "init")
 })
+
+# --- otel_runtime_enabled / async warning ------------------------------------
+
+testthat::test_that("otel_runtime_enabled reflects active tracing or logging", {
+  withr::local_options(list(
+    shinyOAuth.otel_tracing_enabled = TRUE,
+    shinyOAuth.otel_logging_enabled = TRUE
+  ))
+
+  testthat::with_mocked_bindings(
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) FALSE,
+    .package = "otel",
+    {
+      testthat::expect_true(shinyOAuth:::otel_runtime_enabled())
+    }
+  )
+
+  testthat::with_mocked_bindings(
+    is_tracing_enabled = function(...) FALSE,
+    is_logging_enabled = function(...) TRUE,
+    .package = "otel",
+    {
+      testthat::expect_true(shinyOAuth:::otel_runtime_enabled())
+    }
+  )
+
+  testthat::with_mocked_bindings(
+    is_tracing_enabled = function(...) FALSE,
+    is_logging_enabled = function(...) FALSE,
+    .package = "otel",
+    {
+      testthat::expect_false(shinyOAuth:::otel_runtime_enabled())
+    }
+  )
+})
+
+testthat::test_that("otel_runtime_enabled respects shinyOAuth option gates", {
+  withr::local_options(list(
+    shinyOAuth.otel_tracing_enabled = FALSE,
+    shinyOAuth.otel_logging_enabled = FALSE
+  ))
+
+  testthat::with_mocked_bindings(
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) TRUE,
+    .package = "otel",
+    {
+      testthat::expect_false(shinyOAuth:::otel_runtime_enabled())
+    }
+  )
+})
+
+testthat::test_that("warn_about_async_otel_workers warns only when otel is active", {
+  testthat::with_mocked_bindings(
+    otel_runtime_enabled = function() TRUE,
+    .package = "shinyOAuth",
+    {
+      testthat::expect_warning(
+        shinyOAuth:::warn_about_async_otel_workers(),
+        "configured in async workers"
+      )
+    }
+  )
+
+  testthat::with_mocked_bindings(
+    otel_runtime_enabled = function() FALSE,
+    .package = "shinyOAuth",
+    {
+      testthat::expect_no_warning(
+        shinyOAuth:::warn_about_async_otel_workers()
+      )
+    }
+  )
+})

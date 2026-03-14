@@ -316,7 +316,9 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .async_messages <- list()
     .async_value <- tryCatch(
       withCallingHandlers(
-        .(expr),
+        .ns$otel_with_active_span(.otel_worker_span, {
+          .(expr)
+        }),
         warning = function(w) {
           .async_warnings[[length(.async_warnings) + 1L]] <<- w
           tryInvokeRestart("muffleWarning")

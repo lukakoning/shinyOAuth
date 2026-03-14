@@ -9,8 +9,6 @@ options(
   shinyOAuth.print_traceback = TRUE
 )
 
-mirai::daemons(2)
-
 setup_otel_tui <- function(
   endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318")
 ) {
@@ -18,7 +16,8 @@ setup_otel_tui <- function(
   otel_ns <- asNamespace("otel")
   otel_state <- get("the", envir = otel_ns)
 
-  # Configure SDK providers explicitly for the playground process.
+  # Also configure the current process explicitly so spans/logs emitted before
+  # any lazy OTEL initialization use the same exporters immediately.
   otel_state$tracer_provider <- getElement(
     otelsdk::tracer_provider_http,
     "new"
@@ -38,6 +37,7 @@ setup_otel_tui <- function(
 }
 
 otel_endpoint <- setup_otel_tui()
+mirai::daemons(2)
 
 provider <- oauth_provider_github()
 

@@ -438,6 +438,10 @@ oauth_module_server <- function(
         .frequency_id = "oauth_module_server_future_backend"
       )
     }
+
+    if (!.is_test()) {
+      warn_about_async_otel_workers()
+    }
   }
 
   # Shiny module ---------------------------------------------------------------
