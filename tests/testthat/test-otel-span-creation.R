@@ -22,8 +22,6 @@ testthat::test_that("prepare_call creates shinyOAuth.login.request span", {
   )
 
   testthat::expect_true("shinyOAuth.login.request" %in% span_names)
-  # Audit events inside also create shinyOAuth.audit.emit spans
-  testthat::expect_true("shinyOAuth.audit.emit" %in% span_names)
 
   login_attrs <- span_attrs[["shinyOAuth.login.request"]]
   testthat::expect_identical(login_attrs$oauth.phase, "login.request")

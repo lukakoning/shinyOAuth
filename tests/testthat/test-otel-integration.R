@@ -202,7 +202,7 @@ testthat::test_that("prepare_call emits real spans with expected names", {
 
   span_names <- names(r$traces)
   testthat::expect_true("shinyOAuth.login.request" %in% span_names)
-  testthat::expect_true("shinyOAuth.audit.emit" %in% span_names)
+  testthat::expect_false("shinyOAuth.audit.emit" %in% span_names)
 
   login_span <- r$traces[["shinyOAuth.login.request"]]
   testthat::expect_identical(login_span$status, "ok")

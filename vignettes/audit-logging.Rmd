@@ -15,17 +15,14 @@ These may help detect anomalous activity (e.g., brute force, replay, or configur
 This vignette covers:
 
 - How to register audit hooks to export/store events
+- Some options for controlling the content of events
 - Which audit events are emitted & what fields are included in each event
-- Best practices
 
 ## Receiving audit events
 
-There are two hook options you can set. Both receive the same event object (a named list).
-The functions you should register under these options should be fast, non-blocking, and never
-throw errors.
-
-- `options(shinyOAuth.audit_hook = function(event) { ... })` - intended for audit-specific sinks
-- `options(shinyOAuth.trace_hook = function(event) { ... })` - a more general-purpose tracing hook used for both audit events and error traces
+You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a 
+hook function that will be called whenever an audit event is emitted.
+The function you reigster should be fast, non-blocking, and never throw errors.
 
 Example of printing audit events to console:
 ```r
@@ -35,10 +32,9 @@ options(shinyOAuth.audit_hook = function(event) {
 })
 ```
 
-Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry.
+Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry logging.
 Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
-Audit and trace events emitted via OpenTelemetry mirror the events described in this 
-vignette.
+The events sent to OpenTelemetry are the same as those sent to `shinyOAuth.audit_hook`.
 
 ## Event structure
 
@@ -74,12 +70,13 @@ Note: the raw `session$request` from Shiny is not included to keep the event JSO
 For safety, the `shiny_session$http` summary is automatically sanitized before being attached to events. 
 This prevents accidental secret leakage when forwarding events to log sinks:
   
-- **OAuth query parameters are redacted**: `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`, `session_state`, `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
-- **Sensitive headers are removed**: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`, 
+- OAuth query parameters are redacted: `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`, `session_state`, `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
+- Sensitive headers are removed: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`, 
 `Proxy_Authenticate`, and `WWW-Authenticate` headers are stripped entirely.
-- **Proxy headers are redacted**: Headers starting with `x_` (e.g., `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to avoid leaking internal infrastructure details.
+- Proxy headers are redacted: headers starting with `x_` (e.g., `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to avoid leaking internal infrastructure details.
 
-This means you can safely forward the `shiny_session$http` object to external logging systems without manually stripping secrets.
+This means you can safely forward the `shiny_session$http` object to external logging systems
+without manually stripping secrets.
 
 If you need the raw, unsanitized HTTP context in audit events, you can disable redaction:
 
@@ -102,9 +99,9 @@ This means that the `shiny_session$http` field will be `NULL` in all audit event
 When `async = TRUE` is configured in `oauth_module_server()`, and when you
 have set daemon workers `mirai::daemons()`, token exchange,
 refresh, and revocation run in background mirai daemon processes. The package
-automatically propagates your `shinyOAuth.audit_hook` and `shinyOAuth.trace_hook`
-options to these workers, so audit events fire also in the async worker processes and
-your hooks apply there.
+automatically propagates your `shinyOAuth.audit_hook`
+option to these workers, so audit events fire also in the async worker processes and
+your hook applies there.
 
 Note that your audit hook function (and any objects referenced in
 its closure) must be serializable. If your hook writes to a database connection,
@@ -373,29 +370,37 @@ When the provider returns an error response (e.g., `access_denied`) but includes
 - Context: `provider`, `issuer`, `client_id_digest`, `authenticated`, `previous_authenticated`, `reason`
 - Reasons include: `login` (when becoming authenticated), or the error code/state that caused de-authentication (e.g., `token_expired`, `logged_out`, `token_cleared`)
 
-## Where to find these in code
+### Error events
 
-- Redirect and login audits are emitted from `R/methods__login.R`
-- Module lifecycle/session audits are emitted from `R/oauth_module_server.R`
-- All events flow through `audit_event()` defined in `R/errors.R`, which delegates to the hook options
+In addition to the `audit_*` events above, the hook also receives error events
+emitted just before the package raises an R error condition. These let you log
+failures to the same sink as audit events.
 
-## Best practices for audit hooks
+#### Event: `error`
 
-- Keep hooks fast and never throw; wrap internals with `try(..., silent = TRUE)` if needed
-- Export to your logging backend in JSON for easy parsing
-- Do not attempt to reverse digests; use them only for correlation
-- Consider adding a host/app identifier to the record before exporting
-- If you also want error traces, set `options(shinyOAuth.trace_hook=...)`
+- When: a package error is raised via one of the specialized `err_*()` helpers
+  (state validation, PKCE, token, ID token, userinfo, configuration, input, parse errors)
+- Fields: 
+  - `type` (`"error"`), `trace_id`, `message`, 
+  - Plus any `context` fields  from the call site (typically `provider`, `issuer`,
+  `client_id_digest`, `phase`, `error_class`)
 
-Example of a JSON export hook:
+#### Event: `http_error`
 
-```r
-json_hook <- function(event) {
-	try({
-		line <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
-		cat(line, "\n", file = "shinyOAuth-audit.log", append = TRUE)
-	}, silent = TRUE)
-}
+- When: an outbound HTTP request to a provider endpoint returns a non-success status
+- Fields:
+	- `type` (`"http_error"`), `trace_id`, `message`
+	- `status`: HTTP status code (integer, or `NA` if unavailable)
+	- `url`: the request URL
+	- `body_digest`: SHA-256 hex digest of the response body (for correlation without leaking content)
+	- `oauth_error`, `oauth_error_description`, `oauth_error_uri`: RFC 6749 §5.2 structured error
+	  fields extracted from JSON error responses (e.g., from the token endpoint)
+	- Plus any `context` fields from the call site
 
-options(shinyOAuth.audit_hook = json_hook)
-```
+#### Event: `transport_error`
+
+- When: an outbound HTTP request fails before receiving a response (DNS failure,
+  timeout, connection reset, etc.)
+- Fields: 
+  - `type` (`"transport_error"`), `trace_id`, `message`
+  - Plus any `context` fields from the call site

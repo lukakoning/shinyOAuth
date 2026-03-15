@@ -43,7 +43,6 @@ testthat::test_that("audit_event creates a dedicated otel span", {
     }
   )
 
-  testthat::expect_true("shinyOAuth.audit.emit" %in% calls)
   testthat::expect_identical(seen_event$type, "audit_token_refresh")
 })
 
@@ -81,8 +80,7 @@ testthat::test_that("revoke_token creates otel spans for sync and async flows", 
   testthat::expect_identical(sync_result$status, "ok")
   testthat::expect_true(all(c(
     "shinyOAuth.token.revoke",
-    "shinyOAuth.token.revoke.http",
-    "shinyOAuth.audit.emit"
+    "shinyOAuth.token.revoke.http"
   ) %in% sync_calls))
 
   async_start <- NULL
@@ -149,8 +147,7 @@ testthat::test_that("introspect_token creates otel spans for sync and async flow
   testthat::expect_true(isTRUE(sync_result$active))
   testthat::expect_true(all(c(
     "shinyOAuth.token.introspect",
-    "shinyOAuth.token.introspect.http",
-    "shinyOAuth.audit.emit"
+    "shinyOAuth.token.introspect.http"
   ) %in% sync_calls))
 
   async_start <- NULL

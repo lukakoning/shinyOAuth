@@ -360,11 +360,7 @@ Below is a list of all available options.
 
 ### Observability/logging
 
-- `options(shinyOAuth.print_errors = TRUE)` – concise error lines (interactive / tests only)
-- `options(shinyOAuth.print_traceback = TRUE)` – include backtraces (interactive / tests only)
-- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
-- `options(shinyOAuth.trace_hook = function(event){ ... })` – structured events (errors, http, etc.)
-- `options(shinyOAuth.audit_hook = function(event){ ... })` – separate audit stream
+- `options(shinyOAuth.audit_hook = function(event){ ... })` – receive structured audit and error events
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic redaction of sensitive data in audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_digest_key = ...)` – shared key for HMAC-SHA256 digests used in audit/OTel attributes. By default shinyOAuth generates a random per-process key when this is not configured
@@ -372,8 +368,17 @@ Below is a list of all available options.
 - `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable shinyOAuth OpenTelemetry log emission. Default: `TRUE`
 
 See `vignette("audit-logging", package = "shinyOAuth")` for details about
-audit and trace hooks, and `vignette("opentelemetry", package = "shinyOAuth")`
+audit hooks, and `vignette("opentelemetry", package = "shinyOAuth")`
 for more details about logs and traces via OpenTelemetry.
+
+### Debugging
+
+- `options(shinyOAuth.print_errors = TRUE)` – concise error lines (interactive / tests only)
+- `options(shinyOAuth.print_traceback = TRUE)` – include backtraces (interactive / tests only)
+- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
+
+These options control the amount of information printed to the console when errors occur.
+Intended primarily for debugging during development, not for users of the package.
 
 ### Networking/security
 
@@ -421,7 +426,7 @@ you can unblock them using the following options:
 - `options(shinyOAuth.replay_async_conditions = FALSE)` – when `FALSE`, warnings and messages captured
   from async workers are silently discarded instead of being re-emitted on the main R process. Default is
   `TRUE` (replay all captured conditions). Useful if worker diagnostics are too noisy or handled
-  separately via `trace_hook` / `audit_hook`
+  separately via `audit_hook`
 
 ### Token lifetime fallback
 

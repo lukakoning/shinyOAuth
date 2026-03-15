@@ -318,7 +318,7 @@ err_parse <- function(msg, context = list()) {
 #   - shiny_session: list with session token and optional HTTP context
 #   - ...: fields from context
 
-# Broadcast audit events via the trace hook (if configured)
+# Broadcast audit events via hooks and OTel logs
 audit_event <- function(type, context = list(), shiny_session = NULL) {
   trace_id <- gen_trace_id()
   event <- c(
@@ -333,22 +333,15 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
   if (!is.null(shiny_session)) {
     event$shiny_session <- shiny_session
   }
-  event_for_span <- tryCatch(augment_with_shiny_context(event), error = function(...) {
-    event
-  })
-  with_otel_span(
-    "shinyOAuth.audit.emit",
-    {
-      emit_trace_event(event)
-    },
-    attributes = otel_event_attributes(event_for_span)
-  )
+  emit_trace_event(event)
   invisible(trace_id)
 }
 
-# Emit to: options(shinyOAuth.trace_hook = function(event){...})
+# Central event dispatcher: enriches with Shiny context, then fans out to
+# OTel logs, audit_hook, and trace_hook.
+# trace_hook is kept for backward compatibility but is no longer documented.
 emit_trace_event <- function(event) {
-  hook <- getOption("shinyOAuth.trace_hook", NULL)
+  hook <- getOption("shinyOAuth.trace_hook", NULL)        # backward-compat, undocumented
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
   # Enrich with Shiny session/request context when running inside Shiny
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
