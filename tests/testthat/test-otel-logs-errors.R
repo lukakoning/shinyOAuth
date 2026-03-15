@@ -75,6 +75,34 @@ testthat::test_that("otel_emit_log uses warn severity for validation failures", 
   testthat::expect_identical(log_calls[[1]]$severity, "warn")
 })
 
+testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome events", {
+  log_calls <- list()
+
+  testthat::with_mocked_bindings(
+    log = function(msg, severity, ...) {
+      log_calls[[length(log_calls) + 1L]] <<- list(
+        msg = msg,
+        severity = severity
+      )
+    },
+    .package = "otel",
+    {
+      shinyOAuth:::otel_emit_log(list(
+        type = "audit_userinfo",
+        status = "parse_error"
+      ))
+      shinyOAuth:::otel_emit_log(list(
+        type = "audit_token_introspection",
+        status = "invalid_json"
+      ))
+    }
+  )
+
+  testthat::expect_length(log_calls, 2L)
+  testthat::expect_identical(log_calls[[1]]$severity, "error")
+  testthat::expect_identical(log_calls[[2]]$severity, "warn")
+})
+
 testthat::test_that("otel_emit_log does not call otel::log for empty events", {
   log_called <- FALSE
   testthat::with_mocked_bindings(

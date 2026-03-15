@@ -6,6 +6,13 @@ test_that("get_userinfo rejects JSON response missing sub for OIDC provider", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
+  events <- list()
+
+  old_hook <- getOption("shinyOAuth.audit_hook")
+  options(shinyOAuth.audit_hook = function(event) {
+    events <<- c(events, list(event))
+  })
+  on.exit(options(shinyOAuth.audit_hook = old_hook), add = TRUE)
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
@@ -27,6 +34,13 @@ test_that("get_userinfo rejects JSON response missing sub for OIDC provider", {
     class = "shinyOAuth_userinfo_error",
     regexp = "sub.*claim"
   )
+
+  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  expect_true(any(vapply(
+    ui_events,
+    function(e) identical(e$status, "userinfo_missing_sub"),
+    logical(1)
+  )))
 })
 
 test_that("get_userinfo rejects JSON response with empty sub for OIDC provider", {
@@ -171,6 +185,13 @@ test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
+  events <- list()
+
+  old_hook <- getOption("shinyOAuth.audit_hook")
+  options(shinyOAuth.audit_hook = function(event) {
+    events <<- c(events, list(event))
+  })
+  on.exit(options(shinyOAuth.audit_hook = old_hook), add = TRUE)
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
@@ -190,4 +211,11 @@ test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
     class = "shinyOAuth_userinfo_error",
     regexp = "sub.*claim"
   )
+
+  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  expect_true(any(vapply(
+    ui_events,
+    function(e) identical(e$status, "userinfo_jwt_missing_sub"),
+    logical(1)
+  )))
 })

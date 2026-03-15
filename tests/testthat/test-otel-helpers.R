@@ -143,6 +143,38 @@ testthat::test_that("otel_event_severity maps event types correctly", {
   testthat::expect_identical(shinyOAuth:::otel_event_severity(""), "info")
 })
 
+testthat::test_that("otel_event_severity considers status for multi-outcome events", {
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_userinfo", status = "ok"),
+    "info"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity("audit_userinfo", status = "parse_error"),
+    "error"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity(
+      "audit_token_introspection",
+      status = "introspection_unsupported"
+    ),
+    "info"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity(
+      "audit_token_introspection",
+      status = "invalid_json"
+    ),
+    "warn"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity(
+      "audit_token_revocation",
+      status = "http_503"
+    ),
+    "warn"
+  )
+})
+
 # --- otel_translate_event_key ------------------------------------------------
 
 testthat::test_that("otel_translate_event_key maps known keys correctly", {

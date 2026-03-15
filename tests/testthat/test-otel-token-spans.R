@@ -24,7 +24,7 @@ resolve_test_promise <- function(p) {
   resolved
 }
 
-testthat::test_that("audit_event creates a dedicated otel span", {
+testthat::test_that("audit_event forwards the structured event without creating a span", {
   calls <- character()
   seen_event <- NULL
 
@@ -43,6 +43,7 @@ testthat::test_that("audit_event creates a dedicated otel span", {
     }
   )
 
+  testthat::expect_length(calls, 0L)
   testthat::expect_identical(seen_event$type, "audit_token_refresh")
 })
 

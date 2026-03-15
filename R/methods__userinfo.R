@@ -98,23 +98,16 @@ get_userinfo <- function(
       # Enforce signed JWT requirement: if the provider mandates application/jwt
       # but the response is not application/jwt, fail immediately.
       if (require_signed && !is_jwt_response) {
-        try(
-          audit_event(
-            "userinfo",
-            context = list(
-              provider = oauth_client@provider@name %||% NA_character_,
-              issuer = oauth_client@provider@issuer %||% NA_character_,
-              client_id_digest = string_digest(oauth_client@client_id),
-              sub_digest = NA_character_,
-              status = "userinfo_not_jwt",
-              content_type = if (is_valid_string(resp_ct)) {
-                resp_ct
-              } else {
-                NA_character_
-              }
-            )
-          ),
-          silent = TRUE
+        audit_userinfo_event(
+          oauth_client,
+          status = "userinfo_not_jwt",
+          extra = list(
+            content_type = if (is_valid_string(resp_ct)) {
+              resp_ct
+            } else {
+              NA_character_
+            }
+          )
         )
         err_userinfo(c(
           "x" = "UserInfo response is not application/jwt but signed JWT is required",
@@ -173,22 +166,15 @@ get_userinfo <- function(
         }
 
         # Emit audit event even on parse failures
-        try(
-          audit_event(
-            "userinfo",
-            context = list(
-              provider = oauth_client@provider@name %||% NA_character_,
-              issuer = oauth_client@provider@issuer %||% NA_character_,
-              client_id_digest = string_digest(oauth_client@client_id),
-              sub_digest = NA_character_,
-              status = "parse_error",
-              http_status = status,
-              url = url,
-              content_type = ct,
-              body_digest = body_digest
-            )
-          ),
-          silent = TRUE
+        audit_userinfo_event(
+          oauth_client,
+          status = "parse_error",
+          extra = list(
+            http_status = status,
+            url = url,
+            content_type = ct,
+            body_digest = body_digest
+          )
         )
 
         parse_type <- if (is_jwt_response) "jwt" else "json"
@@ -227,6 +213,10 @@ get_userinfo <- function(
           !is.na(oauth_client@provider@issuer)
       ) {
         if (!is_valid_string(ui$sub)) {
+          audit_userinfo_event(
+            oauth_client,
+            status = "userinfo_missing_sub"
+          )
           err_userinfo(c(
             "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
             "i" = "OIDC providers MUST always return a 'sub' claim in the UserInfo response"
@@ -242,18 +232,10 @@ get_userinfo <- function(
       if (inherits(subject, "try-error")) {
         subject <- ui$sub %||% NA_character_
       }
-      try(
-        audit_event(
-          "userinfo",
-          context = list(
-            provider = oauth_client@provider@name %||% NA_character_,
-            issuer = oauth_client@provider@issuer %||% NA_character_,
-            client_id_digest = string_digest(oauth_client@client_id),
-            sub_digest = string_digest(subject),
-            status = "ok"
-          )
-        ),
-        silent = TRUE
+      audit_userinfo_event(
+        oauth_client,
+        status = "ok",
+        sub = subject
       )
 
       ui
@@ -263,6 +245,32 @@ get_userinfo <- function(
       phase = "userinfo"
     )
   )
+}
+
+audit_userinfo_event <- function(
+  oauth_client,
+  status,
+  sub = NULL,
+  extra = list()
+) {
+  try(
+    audit_event(
+      "userinfo",
+      context = c(
+        list(
+          provider = oauth_client@provider@name %||% NA_character_,
+          issuer = oauth_client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(oauth_client@client_id),
+          sub_digest = string_digest(sub),
+          status = status
+        ),
+        extra
+      )
+    ),
+    silent = TRUE
+  )
+
+  invisible(NULL)
 }
 
 #' Internal: decode JWT-encoded userinfo response (OIDC Core §5.3.2)
@@ -310,6 +318,10 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   # We do not support JWE decryption; surface a clear error.
   n_parts <- length(strsplit(jwt_str, ".", fixed = TRUE)[[1]])
   if (n_parts == 5L) {
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_encrypted"
+    )
     err_userinfo(c(
       "x" = "UserInfo response is an encrypted JWT (JWE)",
       "i" = "JWE decryption is not supported; configure the provider to return signed-only or plain JSON userinfo"
@@ -323,18 +335,9 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   header <- try(parse_jwt_header(jwt_str), silent = TRUE)
 
   if (inherits(header, "try-error")) {
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = prov@name %||% NA_character_,
-          issuer = prov@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "userinfo_jwt_header_parse_failed"
-        )
-      ),
-      silent = TRUE
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_header_parse_failed"
     )
     err_userinfo(c(
       "x" = "UserInfo JWT header could not be parsed",
@@ -377,19 +380,10 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
       payload <- parse_jwt_payload(jwt_str)
       return(as.list(payload))
     }
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = prov@name %||% NA_character_,
-          issuer = prov@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "userinfo_jwt_unsigned",
-          jwt_alg = alg
-        )
-      ),
-      silent = TRUE
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_unsigned",
+      extra = list(jwt_alg = alg)
     )
     err_userinfo(c(
       "x" = "UserInfo JWT uses alg=none which is not allowed (OIDC Core 5.3.2)",
@@ -417,19 +411,10 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
 
   # Always enforce algorithm is in allowed asymmetric algs
   if (!(alg %in% asymmetric_algs)) {
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = prov@name %||% NA_character_,
-          issuer = prov@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "userinfo_jwt_alg_rejected",
-          jwt_alg = alg
-        )
-      ),
-      silent = TRUE
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_alg_rejected",
+      extra = list(jwt_alg = alg)
     )
     err_userinfo(c(
       "x" = paste0(
@@ -447,18 +432,9 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
 
   # Issuer must be configured for JWKS-based verification
   if (!is_valid_string(prov@issuer) || is.na(prov@issuer)) {
-    try(
-      audit_event(
-        "userinfo",
-        context = list(
-          provider = prov@name %||% NA_character_,
-          issuer = NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          sub_digest = NA_character_,
-          status = "userinfo_jwt_no_issuer"
-        )
-      ),
-      silent = TRUE
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_no_issuer"
     )
     err_userinfo(c(
       "x" = "Provider issuer is not configured but is required for UserInfo JWT verification",
@@ -480,6 +456,10 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   )
   if (inherits(jwks, "try-error")) {
     # JWKS fetch failed — fail closed.
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_jwks_fetch_failed"
+    )
     err_userinfo(c(
       "x" = "UserInfo JWT signature could not be verified: JWKS fetch failed",
       "i" = "The provider JWKS endpoint could not be reached or returned an error",
@@ -550,19 +530,28 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
         validate_signed_userinfo_claims(
           claims,
           expected_issuer = prov@issuer,
-          expected_client_id = oauth_client@client_id
+          expected_client_id = oauth_client@client_id,
+          oauth_client = oauth_client
         )
         return(claims)
       }
     }
     # Candidate keys existed but none verified the signature —
     # this indicates tampering or serious misconfiguration.
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_jwt_signature_invalid"
+    )
     err_userinfo(c(
       "x" = "UserInfo JWT signature is invalid",
       "i" = "Signature could not be verified against any candidate JWKS key"
     ))
   }
   # No compatible candidate keys in JWKS — fail closed.
+  audit_userinfo_event(
+    oauth_client,
+    status = "userinfo_jwt_no_matching_key"
+  )
   err_userinfo(c(
     "x" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
     "i" = "Signature verification is required for signed UserInfo JWTs (OIDC Core 5.3.2)"
@@ -579,11 +568,18 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
 validate_signed_userinfo_claims <- function(
   claims,
   expected_issuer,
-  expected_client_id
+  expected_client_id,
+  oauth_client = NULL
 ) {
   # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
   sub <- claims$sub
   if (!is_valid_string(sub)) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_missing_sub"
+      )
+    }
     err_userinfo(c(
       "x" = "Signed UserInfo JWT missing required 'sub' claim (OIDC Core 5.3)"
     ))
@@ -592,12 +588,24 @@ validate_signed_userinfo_claims <- function(
   # iss MUST be present and match the OP's Issuer Identifier
   iss <- claims$iss
   if (!is_valid_string(iss)) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_missing_iss"
+      )
+    }
     err_userinfo(c(
       "x" = "Signed UserInfo JWT missing required 'iss' claim (OIDC Core 5.3.2)"
     ))
   }
   # Strict string equality — no trailing-slash normalization (OIDC Core §3.1.3.7).
   if (!identical(iss, expected_issuer)) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_iss_mismatch"
+      )
+    }
     err_userinfo(c(
       "x" = "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
       "i" = paste0("Expected: ", expected_issuer),
@@ -611,11 +619,23 @@ validate_signed_userinfo_claims <- function(
     is.null(aud) ||
       (is.character(aud) && (length(aud) == 0L || !any(nzchar(aud))))
   ) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_missing_aud"
+      )
+    }
     err_userinfo(c(
       "x" = "Signed UserInfo JWT missing required 'aud' claim (OIDC Core 5.3.2)"
     ))
   }
   if (!is.character(aud) || !(expected_client_id %in% aud)) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_aud_mismatch"
+      )
+    }
     err_userinfo(c(
       "x" = "Signed UserInfo JWT 'aud' claim does not include client_id (OIDC Core 5.3.2)",
       "i" = paste0("Expected client_id: ", expected_client_id),

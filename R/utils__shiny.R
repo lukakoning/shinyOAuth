@@ -41,18 +41,19 @@ get_current_shiny_session_token <- function() {
   .scalar_chr(tryCatch(sess$token, error = function(...) NULL))
 }
 
-# Internal: capture Shiny session context for later use in async workers.
+# Internal: capture Shiny session context for later use in async workers or
+# in callbacks that no longer have a reactive domain available.
 # Call this on the main thread (inside a reactive observer or module server)
 # before spawning an async task. The returned list can be passed to
 # audit_event(..., shiny_session = <captured>) so that events emitted from
 # the async context include the originating Shiny session information.
 # Returns NULL if no session context is available.
 #
-# The returned context includes is_async = TRUE to indicate that when this
-# context is used in an audit event, the event is being emitted from an
-# async worker rather than the main R process. It also includes the main
-# process_id to help correlate events across workers.
-capture_shiny_session_context <- function() {
+# When `is_async = TRUE`, the context is intended for a worker process and
+# therefore records the main process ID for later correlation. When
+# `is_async = FALSE`, the context represents the current main R process and
+# includes its process_id directly.
+capture_shiny_session_context <- function(is_async = TRUE) {
   tok <- get_current_shiny_session_token()
 
   # Check if HTTP context should be included (default: TRUE)
@@ -73,8 +74,9 @@ capture_shiny_session_context <- function() {
     list(
       token = if (!is.na(tok)) tok else NULL,
       http = http,
-      is_async = TRUE, # When pre-captured context is used, we're in an async worker
-      main_process_id = main_pid
+      is_async = isTRUE(is_async),
+      process_id = if (!isTRUE(is_async)) main_pid else NULL,
+      main_process_id = if (isTRUE(is_async)) main_pid else NULL
     )
   } else {
     NULL

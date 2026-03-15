@@ -520,8 +520,14 @@ oauth_module_server <- function(
     # Session-end hook ---------------------------------------------------------
 
     # Capture session context now while we still have it (it won't be
-    # available in onSessionEnded callback)
-    captured_session_end_context <- capture_shiny_session_context()
+    # available in onSessionEnded callback). Keep separate sync/async variants
+    # so main-thread lifecycle events are not mislabeled as async workers.
+    captured_session_end_context <- capture_shiny_session_context(
+      is_async = FALSE
+    )
+    captured_session_end_async_context <- capture_shiny_session_context(
+      is_async = TRUE
+    )
 
     # Always log session end, regardless of revoke_on_session_end setting
     session$onSessionEnded(function() {
@@ -576,14 +582,22 @@ oauth_module_server <- function(
                 tok,
                 which = "refresh",
                 async = use_async_revocation,
-                shiny_session = captured_session_end_context
+                shiny_session = if (isTRUE(use_async_revocation)) {
+                  captured_session_end_async_context
+                } else {
+                  captured_session_end_context
+                }
               ))
               try(revoke_token(
                 client,
                 tok,
                 which = "access",
                 async = use_async_revocation,
-                shiny_session = captured_session_end_context
+                shiny_session = if (isTRUE(use_async_revocation)) {
+                  captured_session_end_async_context
+                } else {
+                  captured_session_end_context
+                }
               ))
             },
             attributes = otel_client_attributes(
@@ -1153,7 +1167,12 @@ oauth_module_server <- function(
     values$build_auth_url <- function() .build_auth_url()
     values$request_login <- function() .request_login()
     values$logout <- function(reason = "manual_logout") {
-      logout_shiny_session <- capture_shiny_session_context()
+      logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
+      logout_async_shiny_session <- if (isTRUE(async)) {
+        capture_shiny_session_context(is_async = TRUE)
+      } else {
+        NULL
+      }
       with_otel_span(
         "shinyOAuth.logout",
         {
@@ -1168,14 +1187,22 @@ oauth_module_server <- function(
               tok,
               which = "refresh",
               async = use_async_revocation,
-              shiny_session = logout_shiny_session
+              shiny_session = if (isTRUE(use_async_revocation)) {
+                logout_async_shiny_session
+              } else {
+                NULL
+              }
             ))
             try(revoke_token(
               client,
               tok,
               which = "access",
               async = use_async_revocation,
-              shiny_session = logout_shiny_session
+              shiny_session = if (isTRUE(use_async_revocation)) {
+                logout_async_shiny_session
+              } else {
+                NULL
+              }
             ))
           }
 
@@ -1896,7 +1923,11 @@ oauth_module_server <- function(
               } else {
                 # Capture Shiny session context on the main thread for audit events
                 # emitted from the async worker (which lacks reactive domain access)
-                captured_shiny_session_refresh <- capture_shiny_session_context()
+                captured_shiny_session_refresh <- if (isTRUE(async)) {
+                  capture_shiny_session_context(is_async = TRUE)
+                } else {
+                  NULL
+                }
 
                 # Delegate to refresh_token with async and handle promise if returned
                 tryCatch(

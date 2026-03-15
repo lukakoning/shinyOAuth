@@ -32,9 +32,12 @@ and how to enable/disable them.
 
 OTel log records are generated from the same structured events that shinyOAuth
 emits to its native R hook (`shinyOAuth.audit_hook`).
-The log content, event types, severity levels, and available fields all mirror
+The log content, event types, and severity levels mirror
 what is described in `vignette("audit-logging", package = "shinyOAuth")`;
 refer there for full details about the various events and their content.
+The OTel representation is flatter, though: nested objects are converted to
+scalar attributes where possible, so fields like `shiny_session` are not
+preserved verbatim as a nested payload.
 
 When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set, shinyOAuth
 stops creating OTel log records but the native R hooks still fire.

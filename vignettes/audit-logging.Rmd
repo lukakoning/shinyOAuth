@@ -34,7 +34,10 @@ options(shinyOAuth.audit_hook = function(event) {
 
 Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry logging.
 Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
-The events sent to OpenTelemetry are the same as those sent to `shinyOAuth.audit_hook`.
+OpenTelemetry logs are derived from the same underlying events as
+`shinyOAuth.audit_hook`, but they are flattened into scalar attributes.
+Nested structures like the full `shiny_session` object and the raw `timestamp`
+field are not preserved verbatim in the OTel log payload.
 
 ## Event structure
 
@@ -316,11 +319,18 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 - `status` values:
 	- `"ok"` – userinfo successfully parsed
 	- `"parse_error"` – response could not be parsed as JSON or JWT. Additional fields: `http_status`, `url`, `content_type`, `body_digest`
+	- `"userinfo_missing_sub"` – OIDC userinfo response was parsed but omitted the required `sub` claim
 	- `"userinfo_not_jwt"` – signed JWT required but response was not `application/jwt`. Additional fields: `content_type`
+	- `"userinfo_jwt_encrypted"` – userinfo response was a JWE, which shinyOAuth does not decrypt
 	- `"userinfo_jwt_header_parse_failed"` – JWT header could not be parsed
 	- `"userinfo_jwt_unsigned"` – JWT uses `alg=none`. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_alg_rejected"` – JWT algorithm not in provider's allowed asymmetric algorithms. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_no_issuer"` – provider issuer not configured for JWKS verification
+	- `"userinfo_jwt_jwks_fetch_failed"` – JWKS fetch failed during signature verification
+	- `"userinfo_jwt_signature_invalid"` – signature verification failed against candidate JWKS keys
+	- `"userinfo_jwt_no_matching_key"` – provider JWKS had no compatible key for the JWT
+	- `"userinfo_jwt_missing_sub"`, `"userinfo_jwt_missing_iss"`, `"userinfo_jwt_missing_aud"` – signed JWT omitted a required claim
+	- `"userinfo_jwt_iss_mismatch"`, `"userinfo_jwt_aud_mismatch"` – signed JWT claims did not match the configured issuer/client
 
 ### State parsing failures
 

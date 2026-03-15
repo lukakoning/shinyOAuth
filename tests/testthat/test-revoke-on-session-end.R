@@ -127,6 +127,7 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   revoke_calls <- list()
+  audit_events <- list()
   session_token <- NULL
   mock_revoke <- function(
     client,
@@ -145,6 +146,12 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
     )
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
+
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(event) {
+      audit_events <<- c(audit_events, list(event))
+    }
+  ))
 
   testthat::with_mocked_bindings(
     revoke_token = mock_revoke,
@@ -184,7 +191,15 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
       call$shiny_session$token %||% NA_character_,
       session_token
     )
+    testthat::expect_true(isTRUE(call$shiny_session$is_async))
   }
+
+  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  logout_idx <- match("audit_logout", types)
+  testthat::expect_false(is.na(logout_idx))
+  testthat::expect_false(isTRUE(
+    audit_events[[logout_idx]]$shiny_session$is_async
+  ))
 })
 
 testthat::test_that("revoke_on_session_end does NOT call revoke_token when FALSE", {
@@ -351,6 +366,7 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   ev <- audit_events[[idx]]
   seen <- (ev$shiny_session %||% list())$token %||% NA_character_
   testthat::expect_identical(seen, session_token)
+  testthat::expect_false(isTRUE((ev$shiny_session %||% list())$is_async))
 })
 
 testthat::test_that("session_ended event is emitted even without revoke_on_session_end", {
@@ -398,6 +414,7 @@ testthat::test_that("session_ended event is emitted even without revoke_on_sessi
   idx <- match("audit_session_ended", types)
   ev <- audit_events[[idx]]
   testthat::expect_true(isTRUE(ev$was_authenticated))
+  testthat::expect_false(isTRUE((ev$shiny_session %||% list())$is_async))
 })
 
 testthat::test_that("authenticated_changed event is emitted on token set", {

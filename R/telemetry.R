@@ -513,9 +513,34 @@ otel_end_async_parent <- function(
   invisible(NULL)
 }
 
-otel_event_severity <- function(type) {
+otel_event_severity <- function(type, status = NULL) {
   if (!is_valid_string(type)) {
     return("info")
+  }
+
+  status <- otel_scalar_attribute(status)
+  if (identical(type, "audit_userinfo")) {
+    return(if (identical(status, "ok")) "info" else "error")
+  }
+
+  if (identical(type, "audit_token_revocation")) {
+    if (is_valid_string(status) && grepl("^http_", status)) {
+      return("warn")
+    }
+    return("info")
+  }
+
+  if (identical(type, "audit_token_introspection")) {
+    if (
+      identical(status, "ok") ||
+        identical(status, "introspection_unsupported") ||
+        identical(status, "missing_token")
+    ) {
+      return("info")
+    }
+    if (is_valid_string(status)) {
+      return("warn")
+    }
   }
 
   if (
@@ -626,7 +651,10 @@ otel_emit_log <- function(event) {
     return(invisible(NULL))
   }
 
-  severity <- otel_event_severity(event$type %||% NULL)
+  severity <- otel_event_severity(
+    event$type %||% NULL,
+    status = event$status %||% NULL
+  )
   msg <- otel_scalar_attribute(event$message %||% NULL) %||%
     otel_scalar_attribute(event$type %||% NULL) %||%
     "shinyOAuth"
