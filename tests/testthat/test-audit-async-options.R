@@ -12,7 +12,7 @@ testthat::test_that("audit hook is called from async worker when options are pro
   # fall back to sync mode (which still validates the code path).
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE
@@ -156,6 +156,35 @@ testthat::test_that("with_async_options correctly restores options in worker", {
   testthat::expect_null(getOption("shinyOAuth.timeout"))
 })
 
+testthat::test_that("with_async_options restores captured otel env vars", {
+  withr::local_envvar(c(
+    OTEL_TRACES_EXPORTER = "http",
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+  ))
+
+  captured <- list(
+    ".shinyOAuth.otel_envvars" = c(
+      OTEL_TRACES_EXPORTER = "none",
+      OTEL_EXPORTER_OTLP_ENDPOINT = NA_character_
+    )
+  )
+
+  result <- shinyOAuth:::with_async_options(captured, {
+    Sys.getenv(
+      c("OTEL_TRACES_EXPORTER", "OTEL_EXPORTER_OTLP_ENDPOINT"),
+      unset = NA_character_
+    )
+  })
+
+  testthat::expect_identical(result[["OTEL_TRACES_EXPORTER"]], "none")
+  testthat::expect_true(is.na(result[["OTEL_EXPORTER_OTLP_ENDPOINT"]]))
+  testthat::expect_identical(Sys.getenv("OTEL_TRACES_EXPORTER"), "http")
+  testthat::expect_identical(
+    Sys.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+    "http://localhost:4318"
+  )
+})
+
 testthat::test_that("capture_async_options captures only shinyOAuth options", {
   # Set some test options - both shinyOAuth and non-shinyOAuth
   withr::local_options(list(
@@ -180,6 +209,7 @@ testthat::test_that("capture_async_options captures only shinyOAuth options", {
 
   # Should include main process ID marker
   testthat::expect_true(!is.null(captured[[".shinyOAuth.main_process_id"]]))
+  testthat::expect_true(!is.null(captured[[".shinyOAuth.otel_envvars"]]))
 })
 
 testthat::test_that("is_async_worker correctly detects worker context", {
@@ -317,6 +347,72 @@ testthat::test_that("options propagation works with actual mirai", {
   testthat::expect_equal(promise_result$main_pid_from_opts, main_pid)
 })
 
+testthat::test_that("otel env vars propagate to actual mirai workers", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(2, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  if (!ok) {
+    mirai::daemons(sync = TRUE)
+  }
+  withr::defer(mirai::daemons(0))
+
+  withr::local_envvar(c(
+    OTEL_TRACES_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_ENDPOINT = NA_character_
+  ))
+
+  captured_opts <- shinyOAuth:::capture_async_options()
+  promise_result <- NULL
+  .with_async_options <- shinyOAuth:::with_async_options
+
+  m <- mirai::mirai(
+    {
+      .with_async_options(captured_opts, {
+        Sys.getenv(
+          c(
+            "OTEL_TRACES_EXPORTER",
+            "OTEL_LOGS_EXPORTER",
+            "OTEL_METRICS_EXPORTER",
+            "OTEL_EXPORTER_OTLP_ENDPOINT"
+          ),
+          unset = NA_character_
+        )
+      })
+    },
+    .args = list(
+      .with_async_options = .with_async_options,
+      captured_opts = captured_opts
+    )
+  )
+
+  promises::then(promises::as.promise(m), function(result) {
+    promise_result <<- result
+  })
+
+  deadline <- Sys.time() + 5
+  while (is.null(promise_result) && Sys.time() < deadline) {
+    later::run_now(0.05)
+    Sys.sleep(0.01)
+  }
+
+  testthat::expect_false(is.null(promise_result))
+  testthat::expect_identical(promise_result[["OTEL_TRACES_EXPORTER"]], "none")
+  testthat::expect_identical(promise_result[["OTEL_LOGS_EXPORTER"]], "none")
+  testthat::expect_identical(promise_result[["OTEL_METRICS_EXPORTER"]], "none")
+  testthat::expect_true(is.na(promise_result[["OTEL_EXPORTER_OTLP_ENDPOINT"]]))
+})
+
 testthat::test_that("emit_trace_event surfaces trace_hook errors as warnings", {
   withr::local_options(list(
     shinyOAuth.trace_hook = function(event) stop("trace hook boom"),
@@ -349,7 +445,7 @@ testthat::test_that("hook errors in async workers propagate to main process", {
 
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE
@@ -409,7 +505,7 @@ testthat::test_that("true-async: conditions captured in daemon worker are replay
 
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE
@@ -484,7 +580,7 @@ testthat::test_that("true-async: hook errors surface as warnings from daemon wor
 
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE
@@ -548,7 +644,7 @@ testthat::test_that("true-async: hook warnings and messages are captured from da
 
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE
@@ -633,7 +729,7 @@ testthat::test_that("shinyOAuth.replay_async_conditions = FALSE suppresses repla
 
   ok <- tryCatch(
     {
-      mirai::daemons(2)
+      mirai::daemons(2, rs = "--vanilla")
       TRUE
     },
     error = function(...) FALSE

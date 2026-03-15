@@ -111,12 +111,16 @@ have set daemon workers `mirai::daemons()`, token exchange,
 refresh, and revocation run in background mirai daemon processes. The package
 automatically propagates your `shinyOAuth.audit_hook`
 option to these workers, so audit events fire also in the async worker processes and
-your hook applies there.
+your hook applies there. For shinyOAuth-managed async work, the package also
+replays the parent session's relevant `OTEL_*` / `OTEL_R_*` environment
+variables inside the worker so exporter configuration stays aligned with the
+main R process.
 
 Note that your audit hook function (and any objects referenced in
 its closure) must be serializable. If your hook writes to a database connection,
-file handle, or other non-serializable resource, it will fail silently in the
-worker process. Use hooks that create connections on demand (e.g., open a
+file handle, or other non-serializable resource, it will fail in the
+worker process and shinyOAuth will surface that failure as a warning
+(captured and replayed to the main process when using async workers). Use hooks that create connections on demand (e.g., open a
 database connection inside the hook body) rather than capturing an existing
 connection in the closure.
 
@@ -366,6 +370,12 @@ When the provider returns an error response (e.g., `access_denied`) but includes
 
 - When: consumption of state from an error response fails
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`, `error_class`, `error_message`
+
+Digest note: when the callback `state` can be decrypted, these events use the
+logical plaintext state digest so they correlate with `audit_redirect_issued`
+and the normal callback validation/store events. If decryption fails, the
+digest falls back to the encrypted callback payload because the logical state is
+unknown.
 
 ### Module/session lifecycle
 

@@ -1,6 +1,11 @@
 # Integration tests using otelsdk to verify real OTel span/attribute emission.
 # These tests require the 'otelsdk' package and are skipped when unavailable.
 
+options(
+  shinyOAuth.otel_tracing_enabled = TRUE,
+  shinyOAuth.otel_logging_enabled = FALSE
+)
+
 testthat::test_that("with_otel_span creates a real span with correct status", {
   testthat::skip_if_not_installed("otelsdk")
 

@@ -1529,38 +1529,60 @@ oauth_module_server <- function(
     # Helper to consume (validate/remove) state from an error response.
     # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
     .consume_error_state <- function(state, strict = FALSE) {
+      payload <- NULL
       tryCatch(
         {
           # Decrypt and validate the state payload
           payload <- state_payload_decrypt_validate(client, state)
-          # Consume the state store entry (single-use enforcement)
-          state_store_get_remove(client, payload$state)
-          # Audit success
-          try(
-            audit_event(
-              "error_state_consumed",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                state_digest = string_digest(state)
+          with_trace_id(
+            payload$trace_id %||% NULL,
+            {
+              # Consume the state store entry (single-use enforcement)
+              state_store_get_remove(client, payload$state)
+              # Audit success using the logical state digest for correlation.
+              try(
+                audit_event(
+                  "error_state_consumed",
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id),
+                    state_digest = string_digest(payload$state)
+                  )
+                ),
+                silent = TRUE
               )
-            ),
-            silent = TRUE
+            }
           )
         },
         error = function(e) {
+          event_trace_id <- if (!is.null(payload)) {
+            payload$trace_id %||% NULL
+          } else {
+            tryCatch(
+              e[["trace_id", exact = TRUE]],
+              error = function(...) NULL
+            )
+          }
+          state_digest <- if (!is.null(payload) && is_valid_string(payload$state)) {
+            string_digest(payload$state)
+          } else {
+            string_digest(state)
+          }
           # State consumption failed; always emit audit.
           try(
-            audit_event(
-              "error_state_consumption_failed",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                state_digest = string_digest(state),
-                error_class = paste(class(e), collapse = ", "),
-                error_message = conditionMessage(e)
+            with_trace_id(
+              event_trace_id,
+              audit_event(
+                "error_state_consumption_failed",
+                context = list(
+                  provider = client@provider@name %||% NA_character_,
+                  issuer = client@provider@issuer %||% NA_character_,
+                  client_id_digest = string_digest(client@client_id),
+                  state_digest = state_digest,
+                  error_class = paste(class(e), collapse = ", "),
+                  error_message = conditionMessage(e)
+                )
               )
             ),
             silent = TRUE

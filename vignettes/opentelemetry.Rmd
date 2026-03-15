@@ -58,6 +58,11 @@ All spans share these behaviors:
 When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set, 'shinyOAuth' stops
 emitting all OTel spans.
 
+For shinyOAuth-managed async work, the package restores the parent session's
+captured `OTEL_*` / `OTEL_R_*` environment variables inside mirai workers before
+running OAuth logic. This keeps exporter selection and OTLP endpoints
+consistent across the main process and worker processes.
+
 ### Span catalog
 
 #### Span: `shinyOAuth.module.init`

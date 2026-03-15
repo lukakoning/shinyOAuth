@@ -1,5 +1,10 @@
 # Tests for otel log emission, severity/attribute mapping, and error span status
 
+options(
+  shinyOAuth.otel_tracing_enabled = TRUE,
+  shinyOAuth.otel_logging_enabled = TRUE
+)
+
 # --- otel_emit_log -----------------------------------------------------------
 
 testthat::test_that("otel_emit_log calls otel::log with correct severity and message", {

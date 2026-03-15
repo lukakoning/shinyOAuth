@@ -1,3 +1,8 @@
+options(
+  shinyOAuth.otel_tracing_enabled = TRUE,
+  shinyOAuth.otel_logging_enabled = FALSE
+)
+
 testthat::test_that("with_otel_span falls back to uninstrumented execution on otel errors", {
   out <- testthat::with_mocked_bindings(
     start_local_active_span = function(...) {

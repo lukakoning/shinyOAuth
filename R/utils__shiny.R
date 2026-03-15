@@ -131,9 +131,36 @@ capture_async_options <- function() {
   # Filter to only shinyOAuth.* options
   shinyoauth_names <- grep("^shinyOAuth\\.", names(all_opts), value = TRUE)
   opts <- all_opts[shinyoauth_names]
+  # Capture relevant OpenTelemetry env vars as internal metadata so async
+  # workers inherit the parent session's telemetry configuration rather than
+  # the ambient shell environment.
+  opts[[".shinyOAuth.otel_envvars"]] <- capture_async_otel_envvars()
   # Also capture the originating process ID for audit event context
   opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
   opts
+}
+
+# Internal: capture the OpenTelemetry env vars that influence exporter
+# selection and OTLP endpoints. Values set to NA indicate the variable should
+# be unset in the async worker.
+capture_async_otel_envvars <- function() {
+  otel_names <- unique(c(
+    grep("^OTEL(_R)?_", names(Sys.getenv()), value = TRUE),
+    "OTEL_R_TRACES_EXPORTER",
+    "OTEL_R_LOGS_EXPORTER",
+    "OTEL_R_METRICS_EXPORTER",
+    "OTEL_TRACES_EXPORTER",
+    "OTEL_LOGS_EXPORTER",
+    "OTEL_METRICS_EXPORTER",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+  ))
+  if (!length(otel_names)) {
+    return(setNames(character(0), character(0)))
+  }
+  Sys.getenv(otel_names, unset = NA_character_)
 }
 
 # Internal: execute code with captured shinyOAuth options temporarily set.
@@ -143,10 +170,35 @@ with_async_options <- function(captured_opts, code) {
   if (is.null(captured_opts) || length(captured_opts) == 0) {
     return(force(code))
   }
+  captured_envvars <- captured_opts[[".shinyOAuth.otel_envvars"]]
   # Filter out internal markers (start with ".")
   opts_to_set <- captured_opts[
     !startsWith(names(captured_opts), ".")
   ]
+  if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
+    env_names <- names(captured_envvars)
+    old_envvars <- Sys.getenv(env_names, unset = NA_character_)
+    on.exit({
+      restore_values <- old_envvars[!is.na(old_envvars)]
+      restore_unset <- names(old_envvars)[is.na(old_envvars)]
+      if (length(restore_values)) {
+        do.call(Sys.setenv, as.list(restore_values))
+      }
+      if (length(restore_unset)) {
+        Sys.unsetenv(restore_unset)
+      }
+    }, add = TRUE)
+
+    new_values <- captured_envvars[!is.na(captured_envvars)]
+    vars_to_unset <- env_names[is.na(captured_envvars)]
+    if (length(new_values)) {
+      do.call(Sys.setenv, as.list(new_values))
+    }
+    if (length(vars_to_unset)) {
+      Sys.unsetenv(vars_to_unset)
+    }
+  }
+
   if (length(opts_to_set) == 0) {
     return(force(code))
   }
