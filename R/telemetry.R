@@ -23,14 +23,16 @@ otel_logging_enabled <- function() {
 }
 
 otel_runtime_enabled <- function() {
-  tracing_active <- isTRUE(otel_tracing_enabled()) && isTRUE(tryCatch(
-    otel::is_tracing_enabled(),
-    error = function(...) FALSE
-  ))
-  logging_active <- isTRUE(otel_logging_enabled()) && isTRUE(tryCatch(
-    otel::is_logging_enabled(),
-    error = function(...) FALSE
-  ))
+  tracing_active <- isTRUE(otel_tracing_enabled()) &&
+    isTRUE(tryCatch(
+      otel::is_tracing_enabled(),
+      error = function(...) FALSE
+    ))
+  logging_active <- isTRUE(otel_logging_enabled()) &&
+    isTRUE(tryCatch(
+      otel::is_logging_enabled(),
+      error = function(...) FALSE
+    ))
 
   tracing_active || logging_active
 }
@@ -107,7 +109,9 @@ otel_scalar_attribute <- function(value) {
   }
 
   out <- tryCatch(as.character(value), error = function(...) NULL)
-  if (is.null(out) || length(out) == 0L || is.na(out[[1]]) || !nzchar(out[[1]])) {
+  if (
+    is.null(out) || length(out) == 0L || is.na(out[[1]]) || !nzchar(out[[1]])
+  ) {
     return(NULL)
   }
 
@@ -230,10 +234,11 @@ otel_http_attributes <- function(
   extra = list()
 ) {
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
-    status_code <- status_code %||% tryCatch(
-      httr2::resp_status(resp),
-      error = function(...) NULL
-    )
+    status_code <- status_code %||%
+      tryCatch(
+        httr2::resp_status(resp),
+        error = function(...) NULL
+      )
     url <- url %||% tryCatch(httr2::resp_url(resp), error = function(...) NULL)
   }
 
@@ -488,7 +493,11 @@ otel_restore_parent_in_worker <- function(
   span
 }
 
-otel_end_async_parent <- function(parent, status = c("ok", "error"), error = NULL) {
+otel_end_async_parent <- function(
+  parent,
+  status = c("ok", "error"),
+  error = NULL
+) {
   if (is.null(parent) || is.null(parent$span)) {
     return(invisible(NULL))
   }
@@ -509,28 +518,34 @@ otel_event_severity <- function(type) {
     return("info")
   }
 
-  if (type %in% c(
-    "audit_callback_validation_failed",
-    "audit_invalid_browser_token",
-    "audit_browser_cookie_error",
-    "audit_callback_iss_mismatch",
-    "audit_callback_query_rejected",
-    "audit_refresh_failed_but_kept_session",
-    "audit_state_parse_failure",
-    "audit_state_store_lookup_failed",
-    "audit_state_store_removal_failed",
-    "audit_error_state_consumption_failed"
-  )) {
+  if (
+    type %in%
+      c(
+        "audit_callback_validation_failed",
+        "audit_invalid_browser_token",
+        "audit_browser_cookie_error",
+        "audit_callback_iss_mismatch",
+        "audit_callback_query_rejected",
+        "audit_refresh_failed_but_kept_session",
+        "audit_state_parse_failure",
+        "audit_state_store_lookup_failed",
+        "audit_state_store_removal_failed",
+        "audit_error_state_consumption_failed"
+      )
+  ) {
     return("warn")
   }
 
-  if (type %in% c(
-    "error",
-    "http_error",
-    "transport_error",
-    "audit_token_exchange_error",
-    "audit_login_failed"
-  )) {
+  if (
+    type %in%
+      c(
+        "error",
+        "http_error",
+        "transport_error",
+        "audit_token_exchange_error",
+        "audit_login_failed"
+      )
+  ) {
     return("error")
   }
 

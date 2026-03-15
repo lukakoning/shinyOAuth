@@ -341,7 +341,7 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
 # OTel logs, audit_hook, and trace_hook.
 # trace_hook is kept for backward compatibility but is no longer documented.
 emit_trace_event <- function(event) {
-  hook <- getOption("shinyOAuth.trace_hook", NULL)        # backward-compat, undocumented
+  hook <- getOption("shinyOAuth.trace_hook", NULL) # backward-compat, undocumented
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
   # Enrich with Shiny session/request context when running inside Shiny
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {

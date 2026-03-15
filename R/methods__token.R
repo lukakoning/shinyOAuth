@@ -135,16 +135,18 @@ revoke_token <- function(
     {
       .return_revoke_result <- function(result) {
         revoked <- result$revoked %||% NA
-        otel_set_span_attributes(attributes = compact_list(list(
-          oauth.token.which = which,
-          oauth.supported = isTRUE(result$supported),
-          oauth.revoked = if (length(revoked) == 1L && !is.na(revoked)) {
-            isTRUE(revoked)
-          } else {
-            NULL
-          },
-          oauth.status = result$status %||% NULL
-        )))
+        otel_set_span_attributes(
+          attributes = compact_list(list(
+            oauth.token.which = which,
+            oauth.supported = isTRUE(result$supported),
+            oauth.revoked = if (length(revoked) == 1L && !is.na(revoked)) {
+              isTRUE(revoked)
+            } else {
+              NULL
+            },
+            oauth.status = result$status %||% NULL
+          ))
+        )
         result
       }
 
@@ -214,7 +216,10 @@ revoke_token <- function(
       tas <- oauth_client@provider@token_auth_style %||% "header"
       if (identical(tas, "header")) {
         req <- req |>
-          httr2::req_auth_basic(oauth_client@client_id, oauth_client@client_secret)
+          httr2::req_auth_basic(
+            oauth_client@client_id,
+            oauth_client@client_secret
+          )
       } else if (identical(tas, "body")) {
         params$client_id <- oauth_client@client_id
         if (is_valid_string(oauth_client@client_secret)) {
@@ -270,7 +275,9 @@ revoke_token <- function(
         reject_redirect_response(resp, context = "token_revocation"),
         silent = TRUE
       )
-      if (inherits(redirect_err, "try-error") || inherits(redirect_err, "error")) {
+      if (
+        inherits(redirect_err, "try-error") || inherits(redirect_err, "error")
+      ) {
         status_code <- paste0("http_", httr2::resp_status(resp))
         try(
           audit_event(
@@ -556,16 +563,18 @@ introspect_token <- function(
     {
       .return_introspection_result <- function(result) {
         active <- result$active %||% NA
-        otel_set_span_attributes(attributes = compact_list(list(
-          oauth.token.which = which,
-          oauth.supported = isTRUE(result$supported),
-          oauth.active = if (length(active) == 1L && !is.na(active)) {
-            isTRUE(active)
-          } else {
-            NULL
-          },
-          oauth.status = result$status %||% NULL
-        )))
+        otel_set_span_attributes(
+          attributes = compact_list(list(
+            oauth.token.which = which,
+            oauth.supported = isTRUE(result$supported),
+            oauth.active = if (length(active) == 1L && !is.na(active)) {
+              isTRUE(active)
+            } else {
+              NULL
+            },
+            oauth.status = result$status %||% NULL
+          ))
+        )
         result
       }
 
@@ -608,7 +617,10 @@ introspect_token <- function(
       tas <- oauth_client@provider@token_auth_style %||% "header"
       if (identical(tas, "header")) {
         req <- req |>
-          httr2::req_auth_basic(oauth_client@client_id, oauth_client@client_secret)
+          httr2::req_auth_basic(
+            oauth_client@client_id,
+            oauth_client@client_secret
+          )
       } else if (identical(tas, "body")) {
         params$client_id <- oauth_client@client_id
         if (is_valid_string(oauth_client@client_secret)) {
@@ -663,7 +675,9 @@ introspect_token <- function(
         reject_redirect_response(resp, context = "token_introspection"),
         silent = TRUE
       )
-      if (inherits(redirect_err, "try-error") || inherits(redirect_err, "error")) {
+      if (
+        inherits(redirect_err, "try-error") || inherits(redirect_err, "error")
+      ) {
         result <- list(
           supported = TRUE,
           active = NA,
@@ -955,7 +969,10 @@ refresh_token <- function(
       tas <- oauth_client@provider@token_auth_style %||% "header"
       if (identical(tas, "header")) {
         req <- req |>
-          httr2::req_auth_basic(oauth_client@client_id, oauth_client@client_secret)
+          httr2::req_auth_basic(
+            oauth_client@client_id,
+            oauth_client@client_secret
+          )
       } else if (identical(tas, "body")) {
         params$client_id <- oauth_client@client_id
         if (is_valid_string(oauth_client@client_secret)) {
@@ -1028,7 +1045,10 @@ refresh_token <- function(
         }
 
         if (tok$expires_in <= 0) {
-          warn_about_nonpositive_expires_in(tok$expires_in, phase = "refresh_token")
+          warn_about_nonpositive_expires_in(
+            tok$expires_in,
+            phase = "refresh_token"
+          )
         }
       }
 

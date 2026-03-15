@@ -91,7 +91,9 @@ get_userinfo <- function(
       is_jwt_response <- is_valid_string(resp_ct) &&
         grepl("^application/jwt", resp_ct, ignore.case = TRUE)
 
-      require_signed <- isTRUE(oauth_client@provider@userinfo_signed_jwt_required)
+      require_signed <- isTRUE(
+        oauth_client@provider@userinfo_signed_jwt_required
+      )
 
       # Enforce signed JWT requirement: if the provider mandates application/jwt
       # but the response is not application/jwt, fail immediately.
@@ -135,7 +137,10 @@ get_userinfo <- function(
           silent = TRUE
         )
       } else {
-        ui <- try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+        ui <- try(
+          httr2::resp_body_json(resp, simplifyVector = TRUE),
+          silent = TRUE
+        )
       }
       if (inherits(ui, "try-error")) {
         # Extract non-sensitive context to aid debugging without leaking tokens
@@ -160,7 +165,10 @@ get_userinfo <- function(
         if (is_valid_string(body_str)) {
           dig <- try(openssl::sha256(charToRaw(body_str)), silent = TRUE)
           if (!inherits(dig, "try-error")) {
-            body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
+            body_digest <- paste0(
+              sprintf("%02x", as.integer(dig)),
+              collapse = ""
+            )
           }
         }
 
@@ -192,7 +200,11 @@ get_userinfo <- function(
               "Failed to parse userinfo response as JSON"
             },
             "!" = conditionMessage(attr(ui, "condition")),
-            "i" = if (is_valid_string(ct)) paste0("Content-Type: ", ct) else NULL,
+            "i" = if (is_valid_string(ct)) {
+              paste0("Content-Type: ", ct)
+            } else {
+              NULL
+            },
             "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
             "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
           ),
@@ -223,7 +235,10 @@ get_userinfo <- function(
       }
 
       # Emit audit event for userinfo fetch (redacted)
-      subject <- try(oauth_client@provider@userinfo_id_selector(ui), silent = TRUE)
+      subject <- try(
+        oauth_client@provider@userinfo_id_selector(ui),
+        silent = TRUE
+      )
       if (inherits(subject, "try-error")) {
         subject <- ui$sub %||% NA_character_
       }

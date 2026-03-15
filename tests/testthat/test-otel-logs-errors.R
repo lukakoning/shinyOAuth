@@ -118,13 +118,21 @@ testthat::test_that("otel_emit_log does not include sensitive fields in attribut
   if (!is.null(captured_attrs)) {
     attr_names <- names(captured_attrs)
     sensitive_keys <- c(
-      "access_token", "refresh_token", "id_token",
-      "code", "state", "browser_token"
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "code",
+      "state",
+      "browser_token"
     )
     for (key in sensitive_keys) {
       testthat::expect_false(
         key %in% attr_names,
-        info = paste0("Sensitive key '", key, "' must not appear in otel log attributes")
+        info = paste0(
+          "Sensitive key '",
+          key,
+          "' must not appear in otel log attributes"
+        )
       )
     }
   }
@@ -195,12 +203,14 @@ testthat::test_that("otel_note_error sets error status and adds exception event"
     },
     add_event = function(name, attributes = NULL) {
       add_event_calls[[length(add_event_calls) + 1L]] <<- list(
-        name = name, attrs = attributes
+        name = name,
+        attrs = attributes
       )
     },
     set_status = function(status, description = NULL) {
       set_status_calls[[length(set_status_calls) + 1L]] <<- list(
-        status = status, description = description
+        status = status,
+        description = description
       )
     }
   )
@@ -239,9 +249,15 @@ testthat::test_that("otel_note_error is a no-op when tracing is disabled", {
 testthat::test_that("otel_note_error is a no-op for NULL error", {
   called <- FALSE
   mock_span <- list(
-    set_attribute = function(...) { called <<- TRUE },
-    add_event = function(...) { called <<- TRUE },
-    set_status = function(...) { called <<- TRUE }
+    set_attribute = function(...) {
+      called <<- TRUE
+    },
+    add_event = function(...) {
+      called <<- TRUE
+    },
+    set_status = function(...) {
+      called <<- TRUE
+    }
   )
 
   shinyOAuth:::otel_note_error(NULL, span = mock_span)

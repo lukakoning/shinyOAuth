@@ -49,7 +49,8 @@ if (!nzchar(client_id) || !nzchar(client_secret)) {
   stop(
     paste(
       "Set GITHUB_OAUTH_CLIENT_ID and GITHUB_OAUTH_CLIENT_SECRET before running this app.",
-      "For local use, set the GitHub OAuth callback URL to", redirect_uri
+      "For local use, set the GitHub OAuth callback URL to",
+      redirect_uri
     )
   )
 }

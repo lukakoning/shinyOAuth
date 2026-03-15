@@ -1742,7 +1742,11 @@ oauth_module_server <- function(
               }) |>
               promises::catch(function(e) {
                 if (!is.null(callback_parent)) {
-                  otel_end_async_parent(callback_parent, status = "error", error = e)
+                  otel_end_async_parent(
+                    callback_parent,
+                    status = "error",
+                    error = e
+                  )
                 }
                 .set_error(
                   "token_exchange_error",

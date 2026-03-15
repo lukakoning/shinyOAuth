@@ -116,7 +116,9 @@ testthat::test_that("otel_with_active_span nests child spans under an existing s
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
-    parent <- shinyOAuth:::otel_start_async_parent("shinyOAuth.test.callback.parent")
+    parent <- shinyOAuth:::otel_start_async_parent(
+      "shinyOAuth.test.callback.parent"
+    )
     shinyOAuth:::otel_with_active_span(parent$span, {
       shinyOAuth:::with_otel_span("shinyOAuth.test.callback.child", 42)
     })
@@ -143,7 +145,9 @@ testthat::test_that("async_dispatch activates restored worker span for nested sp
   withr::defer(mirai::daemons(0))
 
   r <- otelsdk::with_otel_record({
-    parent <- shinyOAuth:::otel_start_async_parent("shinyOAuth.test.dispatch.parent")
+    parent <- shinyOAuth:::otel_start_async_parent(
+      "shinyOAuth.test.dispatch.parent"
+    )
 
     resolved <- NULL
     promises::then(

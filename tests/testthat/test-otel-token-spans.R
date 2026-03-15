@@ -78,21 +78,32 @@ testthat::test_that("revoke_token creates otel spans for sync and async flows", 
   )
 
   testthat::expect_identical(sync_result$status, "ok")
-  testthat::expect_true(all(c(
-    "shinyOAuth.token.revoke",
-    "shinyOAuth.token.revoke.http"
-  ) %in% sync_calls))
+  testthat::expect_true(all(
+    c(
+      "shinyOAuth.token.revoke",
+      "shinyOAuth.token.revoke.http"
+    ) %in%
+      sync_calls
+  ))
 
   async_start <- NULL
   async_worker <- NULL
   async_raw <- testthat::with_mocked_bindings(
     otel_start_async_parent = function(name, attributes = NULL) {
       async_start <<- name
-      list(span = NULL, headers = c(
-        traceparent = "00-11111111111111111111111111111111-2222222222222222-01"
-      ))
+      list(
+        span = NULL,
+        headers = c(
+          traceparent = "00-11111111111111111111111111111111-2222222222222222-01"
+        )
+      )
     },
-    async_dispatch = function(expr, args, .timeout = NULL, otel_context = NULL) {
+    async_dispatch = function(
+      expr,
+      args,
+      .timeout = NULL,
+      otel_context = NULL
+    ) {
       async_worker <<- otel_context$worker_span_name
       promises::promise_resolve(list(
         .shinyOAuth_async_wrapped = TRUE,
@@ -106,7 +117,9 @@ testthat::test_that("revoke_token creates otel spans for sync and async flows", 
       shinyOAuth::revoke_token(cli, tok, which = "access", async = TRUE)
     }
   )
-  async_result <- shinyOAuth:::replay_async_conditions(resolve_test_promise(async_raw))
+  async_result <- shinyOAuth:::replay_async_conditions(resolve_test_promise(
+    async_raw
+  ))
 
   testthat::expect_identical(async_start, "shinyOAuth.token.revoke")
   testthat::expect_identical(async_worker, "shinyOAuth.token.revoke.worker")
@@ -145,21 +158,32 @@ testthat::test_that("introspect_token creates otel spans for sync and async flow
   )
 
   testthat::expect_true(isTRUE(sync_result$active))
-  testthat::expect_true(all(c(
-    "shinyOAuth.token.introspect",
-    "shinyOAuth.token.introspect.http"
-  ) %in% sync_calls))
+  testthat::expect_true(all(
+    c(
+      "shinyOAuth.token.introspect",
+      "shinyOAuth.token.introspect.http"
+    ) %in%
+      sync_calls
+  ))
 
   async_start <- NULL
   async_worker <- NULL
   async_raw <- testthat::with_mocked_bindings(
     otel_start_async_parent = function(name, attributes = NULL) {
       async_start <<- name
-      list(span = NULL, headers = c(
-        traceparent = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
-      ))
+      list(
+        span = NULL,
+        headers = c(
+          traceparent = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
+        )
+      )
     },
-    async_dispatch = function(expr, args, .timeout = NULL, otel_context = NULL) {
+    async_dispatch = function(
+      expr,
+      args,
+      .timeout = NULL,
+      otel_context = NULL
+    ) {
       async_worker <<- otel_context$worker_span_name
       promises::promise_resolve(list(
         .shinyOAuth_async_wrapped = TRUE,
@@ -178,7 +202,9 @@ testthat::test_that("introspect_token creates otel spans for sync and async flow
       shinyOAuth::introspect_token(cli, tok, which = "access", async = TRUE)
     }
   )
-  async_result <- shinyOAuth:::replay_async_conditions(resolve_test_promise(async_raw))
+  async_result <- shinyOAuth:::replay_async_conditions(resolve_test_promise(
+    async_raw
+  ))
 
   testthat::expect_identical(async_start, "shinyOAuth.token.introspect")
   testthat::expect_identical(async_worker, "shinyOAuth.token.introspect.worker")

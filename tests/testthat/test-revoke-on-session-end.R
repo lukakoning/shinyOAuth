@@ -135,11 +135,14 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
     async = FALSE,
     shiny_session = NULL
   ) {
-    revoke_calls <<- c(revoke_calls, list(list(
-      which = which,
-      async = async,
-      shiny_session = shiny_session
-    )))
+    revoke_calls <<- c(
+      revoke_calls,
+      list(list(
+        which = which,
+        async = async,
+        shiny_session = shiny_session
+      ))
+    )
     list(supported = TRUE, revoked = TRUE, status = "ok")
   }
 

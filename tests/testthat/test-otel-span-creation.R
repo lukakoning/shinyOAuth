@@ -135,7 +135,9 @@ testthat::test_that("refresh_token creates shinyOAuth.refresh span (sync)", {
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"access_token":"new_at","expires_in":3600,"token_type":"bearer"}')
+        body = charToRaw(
+          '{"access_token":"new_at","expires_in":3600,"token_type":"bearer"}'
+        )
       )
     },
     .package = "shinyOAuth",

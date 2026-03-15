@@ -3,7 +3,10 @@
 # --- otel_scalar_attribute ---------------------------------------------------
 
 testthat::test_that("otel_scalar_attribute handles basic scalars", {
-  testthat::expect_identical(shinyOAuth:::otel_scalar_attribute("hello"), "hello")
+  testthat::expect_identical(
+    shinyOAuth:::otel_scalar_attribute("hello"),
+    "hello"
+  )
   testthat::expect_identical(shinyOAuth:::otel_scalar_attribute(TRUE), TRUE)
   testthat::expect_identical(shinyOAuth:::otel_scalar_attribute(42L), 42L)
   testthat::expect_identical(shinyOAuth:::otel_scalar_attribute(3.14), 3.14)
@@ -22,7 +25,10 @@ testthat::test_that("otel_scalar_attribute returns NULL for empty/NA/null", {
 testthat::test_that("otel_scalar_attribute handles lists and multi-element vectors", {
   testthat::expect_null(shinyOAuth:::otel_scalar_attribute(list(1, 2)))
   # Multi-element vector: takes first element
-  testthat::expect_identical(shinyOAuth:::otel_scalar_attribute(c("a", "b")), "a")
+  testthat::expect_identical(
+    shinyOAuth:::otel_scalar_attribute(c("a", "b")),
+    "a"
+  )
 })
 
 testthat::test_that("otel_scalar_attribute handles POSIXt", {
@@ -43,72 +49,92 @@ testthat::test_that("otel_scalar_attribute handles non-finite numeric", {
 testthat::test_that("otel_event_severity maps event types correctly", {
   # Info events
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_login_success"), "info"
+    shinyOAuth:::otel_event_severity("audit_login_success"),
+    "info"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_session_started"), "info"
+    shinyOAuth:::otel_event_severity("audit_session_started"),
+    "info"
   )
 
   # Warning events
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_callback_validation_failed"), "warn"
+    shinyOAuth:::otel_event_severity("audit_callback_validation_failed"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_invalid_browser_token"), "warn"
+    shinyOAuth:::otel_event_severity("audit_invalid_browser_token"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_browser_cookie_error"), "warn"
+    shinyOAuth:::otel_event_severity("audit_browser_cookie_error"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_callback_iss_mismatch"), "warn"
+    shinyOAuth:::otel_event_severity("audit_callback_iss_mismatch"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_callback_query_rejected"), "warn"
+    shinyOAuth:::otel_event_severity("audit_callback_query_rejected"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_refresh_failed_but_kept_session"), "warn"
+    shinyOAuth:::otel_event_severity("audit_refresh_failed_but_kept_session"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_state_parse_failure"), "warn"
+    shinyOAuth:::otel_event_severity("audit_state_parse_failure"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_state_store_lookup_failed"), "warn"
+    shinyOAuth:::otel_event_severity("audit_state_store_lookup_failed"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_state_store_removal_failed"), "warn"
+    shinyOAuth:::otel_event_severity("audit_state_store_removal_failed"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_error_state_consumption_failed"), "warn"
+    shinyOAuth:::otel_event_severity("audit_error_state_consumption_failed"),
+    "warn"
   )
 
   # Error events
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("error"), "error"
+    shinyOAuth:::otel_event_severity("error"),
+    "error"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("http_error"), "error"
+    shinyOAuth:::otel_event_severity("http_error"),
+    "error"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("transport_error"), "error"
+    shinyOAuth:::otel_event_severity("transport_error"),
+    "error"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_token_exchange_error"), "error"
+    shinyOAuth:::otel_event_severity("audit_token_exchange_error"),
+    "error"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_login_failed"), "error"
+    shinyOAuth:::otel_event_severity("audit_login_failed"),
+    "error"
   )
 
   # Default/unknown
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("something_unknown"), "info"
+    shinyOAuth:::otel_event_severity("something_unknown"),
+    "info"
   )
 
   # Generic fallback: types ending in _error or _failed get "warn"
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_some_new_error"), "warn"
+    shinyOAuth:::otel_event_severity("audit_some_new_error"),
+    "warn"
   )
   testthat::expect_identical(
-    shinyOAuth:::otel_event_severity("audit_future_op_failed"), "warn"
+    shinyOAuth:::otel_event_severity("audit_future_op_failed"),
+    "warn"
   )
 
   # NULL/NA/empty
@@ -195,8 +221,12 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
 
   # Sensitive fields must NOT be present
   sensitive_otel_keys <- c(
-    "access_token", "refresh_token", "id_token",
-    "code", "state", "browser_token"
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "code",
+    "state",
+    "browser_token"
   )
   for (key in sensitive_otel_keys) {
     testthat::expect_false(

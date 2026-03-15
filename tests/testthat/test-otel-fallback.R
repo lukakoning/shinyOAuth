@@ -43,13 +43,17 @@ testthat::test_that("otel tracing can be disabled via option", {
 
   out <- testthat::with_mocked_bindings(
     start_local_active_span = function(...) {
-      testthat::fail("start_local_active_span should not be called when tracing is disabled")
+      testthat::fail(
+        "start_local_active_span should not be called when tracing is disabled"
+      )
     },
     start_span = function(...) {
       testthat::fail("start_span should not be called when tracing is disabled")
     },
     pack_http_context = function(...) {
-      testthat::fail("pack_http_context should not be called when tracing is disabled")
+      testthat::fail(
+        "pack_http_context should not be called when tracing is disabled"
+      )
     },
     .package = "otel",
     {

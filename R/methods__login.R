@@ -428,7 +428,9 @@ handle_callback <- function(
     attributes = otel_client_attributes(
       client = oauth_client,
       shiny_session = shiny_session,
-      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) NULL),
+      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) {
+        NULL
+      }),
       phase = "callback"
     )
   )
@@ -585,7 +587,10 @@ handle_callback_internal <- function(
         # Use a timing-safe comparison to avoid leaking information via
         # early-exit string comparisons.
         if (
-          !constant_time_compare(state_store_values$browser_token, browser_token)
+          !constant_time_compare(
+            state_store_values$browser_token,
+            browser_token
+          )
         ) {
           err_invalid_state("Browser token mismatch")
         }
@@ -1355,376 +1360,380 @@ verify_token_set <- function(
     {
       verify_token_type_allowlist(client, token_set)
 
-  # Scope reconciliation --------------------------------------------------------
+      # Scope reconciliation --------------------------------------------------------
 
-  # If requested scopes exist, verify the provider returned them (or a superset).
-  # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
-  # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
-  #
-  # Refresh exception (RFC 6749 Section 6): providers MAY omit scope from refresh
-  # responses when unchanged. When is_refresh=TRUE and scope is NULL, we skip
-  # validation entirely—this is compliant behavior, not an error.
-  #
-  # Note: Some providers omit scope from the token response entirely. In strict
-  # mode this is treated as an error (we cannot verify scopes were granted);
-  # in warn mode we issue a warning.
-  scope_validation_mode <- client@scope_validation %||% "strict"
-  requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
-  requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
+      # If requested scopes exist, verify the provider returned them (or a superset).
+      # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
+      # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
+      #
+      # Refresh exception (RFC 6749 Section 6): providers MAY omit scope from refresh
+      # responses when unchanged. When is_refresh=TRUE and scope is NULL, we skip
+      # validation entirely—this is compliant behavior, not an error.
+      #
+      # Note: Some providers omit scope from the token response entirely. In strict
+      # mode this is treated as an error (we cannot verify scopes were granted);
+      # in warn mode we issue a warning.
+      scope_validation_mode <- client@scope_validation %||% "strict"
+      requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
+      requested_scopes <- sort(unique(requested_scopes[nzchar(
+        requested_scopes
+      )]))
 
-  # Helper to check if scope is missing or empty (some providers return "" for unset)
-  scope_is_missing <- is.null(token_set$scope) ||
-    (length(token_set$scope) == 1L && !nzchar(token_set$scope))
+      # Helper to check if scope is missing or empty (some providers return "" for unset)
+      scope_is_missing <- is.null(token_set$scope) ||
+        (length(token_set$scope) == 1L && !nzchar(token_set$scope))
 
-  # Skip scope validation during refresh when provider omits scope (or returns empty)
-  # Per RFC 6749 Section 6, omitted scope in refresh response = unchanged from original
-  if (
-    !identical(scope_validation_mode, "none") &&
-      length(requested_scopes) > 0 &&
-      !(isTRUE(is_refresh) && scope_is_missing)
-  ) {
-    if (scope_is_missing) {
-      # Provider did not return scope — we cannot verify requested scopes were granted
-      msg <- "Token response missing scope; cannot verify requested scopes were granted"
-      if (identical(scope_validation_mode, "strict")) {
-        err_token(c(
-          "x" = msg,
-          "i" = "Set scope_validation = 'warn' or 'none' to allow missing scope in response"
-        ))
-      } else if (identical(scope_validation_mode, "warn")) {
-        rlang::warn(
-          c(
-            "!" = msg,
-            "i" = "Set scope_validation = 'none' to suppress this warning"
-          ),
-          .frequency = "once",
-          .frequency_id = "scope-validation-missing-scope"
-        )
-      }
-    } else {
-      granted_raw <- token_set$scope
-      # Providers may return space- or comma-separated scopes; normalize to vector
-      if (length(granted_raw) == 1L) {
-        # Prefer space separation per RFC; fall back to comma when spaces absent
-        if (
-          grepl(",", granted_raw, fixed = TRUE) &&
-            !grepl(" ", granted_raw, fixed = TRUE)
-        ) {
-          granted <- unlist(
-            strsplit(granted_raw, ",", fixed = TRUE),
-            use.names = FALSE
-          )
-        } else {
-          granted <- unlist(
-            strsplit(granted_raw, " ", fixed = TRUE),
-            use.names = FALSE
-          )
-        }
-      } else {
-        granted <- as.character(granted_raw)
-      }
-      granted <- sort(unique(granted[nzchar(granted)]))
-      missing <- setdiff(requested_scopes, granted)
-      if (length(missing) > 0) {
-        msg <- paste0(
-          "Granted scopes missing requested entries: ",
-          paste(missing, collapse = ", ")
-        )
-        if (identical(scope_validation_mode, "strict")) {
-          err_token(c(
-            "x" = msg,
-            "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
-          ))
-        } else if (identical(scope_validation_mode, "warn")) {
-          rlang::warn(
-            c(
-              "!" = msg,
-              "i" = "Set scope_validation = 'none' to suppress this warning"
-            ),
-            .frequency = "once",
-            .frequency_id = "scope-validation-missing-scopes"
-          )
-        }
-      }
-    }
-  }
-
-  # ID token -------------------------------------------------------------------
-
-  # Check that it is present if required
-  id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
-
-  # Strict refresh policy: if a refresh response includes an ID token, we
-  # require an original ID token from the initial login so we can enforce
-  # OIDC Core section 12.2 subject continuity (sub MUST match). Without an original
-  # token, we cannot bind identity across refresh and must reject.
-  if (
-    isTRUE(is_refresh) &&
-      isTRUE(id_token_present) &&
-      !is_valid_string(original_id_token)
-  ) {
-    err_id_token(
-      "Refresh returned an ID token but no original ID token is available to verify sub claim (OIDC 12.2)"
-    )
-  }
-
-  # ID token is required when (only during initial login, not refresh):
-  # - id_token_required = TRUE
-  # - id_token_validation = TRUE
-  # - userinfo_id_token_match = TRUE (need both to compare subjects)
-  # - nonce was sent (must validate nonce claim in ID token)
-  # During refresh, none of these apply. OIDC Core Section 12.2 allows refresh
-  # responses to omit the ID token. Identity was already established at login.
-  id_token_required <- !isTRUE(is_refresh) &&
-    (isTRUE(client@provider@id_token_required) |
-      isTRUE(client@provider@id_token_validation) |
-      isTRUE(client@provider@userinfo_id_token_match) |
-      isTRUE(is_valid_string(nonce)))
-
-  if (isTRUE(id_token_required) && !isTRUE(id_token_present)) {
-    err_id_token("ID token required but not present")
-  }
-
-  # OIDC Core 12.2: During refresh, if a new ID token is returned, its sub
-  # claim MUST match the original. We always enforce this sub continuity when
-  # a refresh returns an ID token, even if signature/claim validation is
-  # disabled (id_token_validation = FALSE).
-  expected_sub <- NULL
-  original_iss <- NULL
-  original_aud <- NULL
-  should_validate_id_token <- isTRUE(id_token_present) &&
-    (isTRUE(client@provider@id_token_validation) ||
-      isTRUE(client@provider@use_nonce) ||
-      isTRUE(is_valid_string(nonce)))
-
-  # Track whether the ID token was actually validated for downstream consumers.
-  # This flag starts FALSE and is set to TRUE only when validate_id_token()
-  # succeeds (i.e. signature + claims are cryptographically verified).
-  id_token_validated <- FALSE
-
-  id_token <- token_set[["id_token"]]
-  if (isTRUE(is_refresh) && isTRUE(id_token_present)) {
-    original_payload <- tryCatch(
-      parse_jwt_payload(original_id_token),
-      error = function(e) NULL
-    )
-    # Security: if we have an original ID token but can't extract its sub,
-    # that's an error - don't silently skip the check.
-    if (is.null(original_payload)) {
-      err_id_token(
-        "Cannot parse original ID token to verify sub claim (OIDC 12.2)"
-      )
-    }
-    if (!is_valid_string(original_payload$sub)) {
-      err_id_token("Original ID token missing sub claim (OIDC 12.2)")
-    }
-    expected_sub <- original_payload$sub
-
-    # OIDC Core 12.2: extract original iss and aud for cross-comparison.
-    # The new ID token's iss and aud MUST match the original's actual values,
-    # not just the provider config. This guards against multi-tenant issuers
-    # that rotate issuer URIs or aud arrays that include extra audiences.
-    original_iss <- original_payload$iss
-    original_aud <- original_payload$aud
-
-    if (!isTRUE(should_validate_id_token)) {
-      # Even when full ID token validation is disabled (id_token_validation = FALSE),
-      # we still must enforce OIDC 12.2 subject continuity on refresh when the
-      # provider returns an ID token. That requires parsing the (unsigned/unchecked)
-      # payload so we can compare its sub claim to the original.
-      new_payload <- tryCatch(
-        parse_jwt_payload(id_token),
-        error = function(e) NULL
-      )
-      if (is.null(new_payload)) {
-        err_id_token(
-          "Cannot parse refreshed ID token to verify sub claim (OIDC 12.2)"
-        )
-      }
-      if (!is_valid_string(new_payload$sub)) {
-        err_id_token("Refreshed ID token missing sub claim (OIDC 12.2)")
-      }
-      if (!identical(new_payload$sub, expected_sub)) {
-        err_id_token(
-          "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
-        )
-      }
-      # OIDC Core 12.2: iss MUST be the same as in the original ID token.
-      # Strict string equality — no trailing-slash normalization.
+      # Skip scope validation during refresh when provider omits scope (or returns empty)
+      # Per RFC 6749 Section 6, omitted scope in refresh response = unchanged from original
       if (
-        is_valid_string(original_iss) &&
-          !identical(new_payload$iss %||% "", original_iss)
+        !identical(scope_validation_mode, "none") &&
+          length(requested_scopes) > 0 &&
+          !(isTRUE(is_refresh) && scope_is_missing)
       ) {
-        err_id_token(
-          "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
-        )
-      }
-      # OIDC Core 12.2: aud MUST be the same as in the original ID token.
-      if (
-        !is.null(original_aud) &&
-          !identical(
-            sort(as.character(new_payload$aud %||% character())),
-            sort(as.character(original_aud))
-          )
-      ) {
-        err_id_token(
-          "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
-        )
-      }
-    }
-  }
-
-  # Validate ID token when present and validation is requested.
-  # Covers: id_token_validation, use_nonce, or explicit nonce passed.
-  if (isTRUE(should_validate_id_token)) {
-    # Verifies signature & claims of ID token
-    # Will error if invalid
-    # OIDC Core §3.1.2.1: when max_age was requested in extra_auth_params,
-    # pass it to validate_id_token() so auth_time is enforced.
-    requested_max_age <- NULL
-    if (!isTRUE(is_refresh)) {
-      ma <- client@provider@extra_auth_params[["max_age"]]
-      if (!is.null(ma)) {
-        requested_max_age <- suppressWarnings(as.numeric(ma))
-        if (
-          is.na(requested_max_age) ||
-            !is.finite(requested_max_age) ||
-            requested_max_age < 0
-        ) {
-          requested_max_age <- NULL
-        }
-      }
-    }
-    validate_id_token(
-      client,
-      id_token,
-      expected_nonce = nonce,
-      expected_sub = expected_sub,
-      expected_access_token = token_set[["access_token"]],
-      max_age = requested_max_age
-    )
-
-    # If we reach this point, validate_id_token() succeeded —
-    # the ID token's signature and claims were cryptographically verified.
-    id_token_validated <- TRUE
-
-    # OIDC Core 12.2: during refresh, verify iss and aud match the original
-    # ID token's actual values (not just the provider config). validate_id_token()
-    # already checks iss == provider@issuer and client_id %in% aud, but 12.2
-    # additionally requires exact match against the original token's claims.
-    # Parse the new token payload directly (rather than depending on the return
-    # value of validate_id_token) so the check is robust regardless of mocking.
-    if (isTRUE(is_refresh) && !is.null(original_iss)) {
-      new_payload_for_iss_aud <- tryCatch(
-        parse_jwt_payload(id_token),
-        error = function(e) NULL
-      )
-      if (!is.null(new_payload_for_iss_aud)) {
-        if (
-          is_valid_string(original_iss) &&
-            !identical(new_payload_for_iss_aud$iss %||% "", original_iss)
-        ) {
-          err_id_token(
-            "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
-          )
-        }
-        if (
-          !is.null(original_aud) &&
-            !identical(
-              sort(as.character(new_payload_for_iss_aud$aud %||% character())),
-              sort(as.character(original_aud))
+        if (scope_is_missing) {
+          # Provider did not return scope — we cannot verify requested scopes were granted
+          msg <- "Token response missing scope; cannot verify requested scopes were granted"
+          if (identical(scope_validation_mode, "strict")) {
+            err_token(c(
+              "x" = msg,
+              "i" = "Set scope_validation = 'warn' or 'none' to allow missing scope in response"
+            ))
+          } else if (identical(scope_validation_mode, "warn")) {
+            rlang::warn(
+              c(
+                "!" = msg,
+                "i" = "Set scope_validation = 'none' to suppress this warning"
+              ),
+              .frequency = "once",
+              .frequency_id = "scope-validation-missing-scope"
             )
-        ) {
+          }
+        } else {
+          granted_raw <- token_set$scope
+          # Providers may return space- or comma-separated scopes; normalize to vector
+          if (length(granted_raw) == 1L) {
+            # Prefer space separation per RFC; fall back to comma when spaces absent
+            if (
+              grepl(",", granted_raw, fixed = TRUE) &&
+                !grepl(" ", granted_raw, fixed = TRUE)
+            ) {
+              granted <- unlist(
+                strsplit(granted_raw, ",", fixed = TRUE),
+                use.names = FALSE
+              )
+            } else {
+              granted <- unlist(
+                strsplit(granted_raw, " ", fixed = TRUE),
+                use.names = FALSE
+              )
+            }
+          } else {
+            granted <- as.character(granted_raw)
+          }
+          granted <- sort(unique(granted[nzchar(granted)]))
+          missing <- setdiff(requested_scopes, granted)
+          if (length(missing) > 0) {
+            msg <- paste0(
+              "Granted scopes missing requested entries: ",
+              paste(missing, collapse = ", ")
+            )
+            if (identical(scope_validation_mode, "strict")) {
+              err_token(c(
+                "x" = msg,
+                "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+              ))
+            } else if (identical(scope_validation_mode, "warn")) {
+              rlang::warn(
+                c(
+                  "!" = msg,
+                  "i" = "Set scope_validation = 'none' to suppress this warning"
+                ),
+                .frequency = "once",
+                .frequency_id = "scope-validation-missing-scopes"
+              )
+            }
+          }
+        }
+      }
+
+      # ID token -------------------------------------------------------------------
+
+      # Check that it is present if required
+      id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
+
+      # Strict refresh policy: if a refresh response includes an ID token, we
+      # require an original ID token from the initial login so we can enforce
+      # OIDC Core section 12.2 subject continuity (sub MUST match). Without an original
+      # token, we cannot bind identity across refresh and must reject.
+      if (
+        isTRUE(is_refresh) &&
+          isTRUE(id_token_present) &&
+          !is_valid_string(original_id_token)
+      ) {
+        err_id_token(
+          "Refresh returned an ID token but no original ID token is available to verify sub claim (OIDC 12.2)"
+        )
+      }
+
+      # ID token is required when (only during initial login, not refresh):
+      # - id_token_required = TRUE
+      # - id_token_validation = TRUE
+      # - userinfo_id_token_match = TRUE (need both to compare subjects)
+      # - nonce was sent (must validate nonce claim in ID token)
+      # During refresh, none of these apply. OIDC Core Section 12.2 allows refresh
+      # responses to omit the ID token. Identity was already established at login.
+      id_token_required <- !isTRUE(is_refresh) &&
+        (isTRUE(client@provider@id_token_required) |
+          isTRUE(client@provider@id_token_validation) |
+          isTRUE(client@provider@userinfo_id_token_match) |
+          isTRUE(is_valid_string(nonce)))
+
+      if (isTRUE(id_token_required) && !isTRUE(id_token_present)) {
+        err_id_token("ID token required but not present")
+      }
+
+      # OIDC Core 12.2: During refresh, if a new ID token is returned, its sub
+      # claim MUST match the original. We always enforce this sub continuity when
+      # a refresh returns an ID token, even if signature/claim validation is
+      # disabled (id_token_validation = FALSE).
+      expected_sub <- NULL
+      original_iss <- NULL
+      original_aud <- NULL
+      should_validate_id_token <- isTRUE(id_token_present) &&
+        (isTRUE(client@provider@id_token_validation) ||
+          isTRUE(client@provider@use_nonce) ||
+          isTRUE(is_valid_string(nonce)))
+
+      # Track whether the ID token was actually validated for downstream consumers.
+      # This flag starts FALSE and is set to TRUE only when validate_id_token()
+      # succeeds (i.e. signature + claims are cryptographically verified).
+      id_token_validated <- FALSE
+
+      id_token <- token_set[["id_token"]]
+      if (isTRUE(is_refresh) && isTRUE(id_token_present)) {
+        original_payload <- tryCatch(
+          parse_jwt_payload(original_id_token),
+          error = function(e) NULL
+        )
+        # Security: if we have an original ID token but can't extract its sub,
+        # that's an error - don't silently skip the check.
+        if (is.null(original_payload)) {
           err_id_token(
-            "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+            "Cannot parse original ID token to verify sub claim (OIDC 12.2)"
+          )
+        }
+        if (!is_valid_string(original_payload$sub)) {
+          err_id_token("Original ID token missing sub claim (OIDC 12.2)")
+        }
+        expected_sub <- original_payload$sub
+
+        # OIDC Core 12.2: extract original iss and aud for cross-comparison.
+        # The new ID token's iss and aud MUST match the original's actual values,
+        # not just the provider config. This guards against multi-tenant issuers
+        # that rotate issuer URIs or aud arrays that include extra audiences.
+        original_iss <- original_payload$iss
+        original_aud <- original_payload$aud
+
+        if (!isTRUE(should_validate_id_token)) {
+          # Even when full ID token validation is disabled (id_token_validation = FALSE),
+          # we still must enforce OIDC 12.2 subject continuity on refresh when the
+          # provider returns an ID token. That requires parsing the (unsigned/unchecked)
+          # payload so we can compare its sub claim to the original.
+          new_payload <- tryCatch(
+            parse_jwt_payload(id_token),
+            error = function(e) NULL
+          )
+          if (is.null(new_payload)) {
+            err_id_token(
+              "Cannot parse refreshed ID token to verify sub claim (OIDC 12.2)"
+            )
+          }
+          if (!is_valid_string(new_payload$sub)) {
+            err_id_token("Refreshed ID token missing sub claim (OIDC 12.2)")
+          }
+          if (!identical(new_payload$sub, expected_sub)) {
+            err_id_token(
+              "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
+            )
+          }
+          # OIDC Core 12.2: iss MUST be the same as in the original ID token.
+          # Strict string equality — no trailing-slash normalization.
+          if (
+            is_valid_string(original_iss) &&
+              !identical(new_payload$iss %||% "", original_iss)
+          ) {
+            err_id_token(
+              "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+            )
+          }
+          # OIDC Core 12.2: aud MUST be the same as in the original ID token.
+          if (
+            !is.null(original_aud) &&
+              !identical(
+                sort(as.character(new_payload$aud %||% character())),
+                sort(as.character(original_aud))
+              )
+          ) {
+            err_id_token(
+              "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+            )
+          }
+        }
+      }
+
+      # Validate ID token when present and validation is requested.
+      # Covers: id_token_validation, use_nonce, or explicit nonce passed.
+      if (isTRUE(should_validate_id_token)) {
+        # Verifies signature & claims of ID token
+        # Will error if invalid
+        # OIDC Core §3.1.2.1: when max_age was requested in extra_auth_params,
+        # pass it to validate_id_token() so auth_time is enforced.
+        requested_max_age <- NULL
+        if (!isTRUE(is_refresh)) {
+          ma <- client@provider@extra_auth_params[["max_age"]]
+          if (!is.null(ma)) {
+            requested_max_age <- suppressWarnings(as.numeric(ma))
+            if (
+              is.na(requested_max_age) ||
+                !is.finite(requested_max_age) ||
+                requested_max_age < 0
+            ) {
+              requested_max_age <- NULL
+            }
+          }
+        }
+        validate_id_token(
+          client,
+          id_token,
+          expected_nonce = nonce,
+          expected_sub = expected_sub,
+          expected_access_token = token_set[["access_token"]],
+          max_age = requested_max_age
+        )
+
+        # If we reach this point, validate_id_token() succeeded —
+        # the ID token's signature and claims were cryptographically verified.
+        id_token_validated <- TRUE
+
+        # OIDC Core 12.2: during refresh, verify iss and aud match the original
+        # ID token's actual values (not just the provider config). validate_id_token()
+        # already checks iss == provider@issuer and client_id %in% aud, but 12.2
+        # additionally requires exact match against the original token's claims.
+        # Parse the new token payload directly (rather than depending on the return
+        # value of validate_id_token) so the check is robust regardless of mocking.
+        if (isTRUE(is_refresh) && !is.null(original_iss)) {
+          new_payload_for_iss_aud <- tryCatch(
+            parse_jwt_payload(id_token),
+            error = function(e) NULL
+          )
+          if (!is.null(new_payload_for_iss_aud)) {
+            if (
+              is_valid_string(original_iss) &&
+                !identical(new_payload_for_iss_aud$iss %||% "", original_iss)
+            ) {
+              err_id_token(
+                "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+              )
+            }
+            if (
+              !is.null(original_aud) &&
+                !identical(
+                  sort(as.character(
+                    new_payload_for_iss_aud$aud %||% character()
+                  )),
+                  sort(as.character(original_aud))
+                )
+            ) {
+              err_id_token(
+                "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+              )
+            }
+          }
+        }
+      }
+
+      # Validate essential claims in ID token (OIDC Core §5.5) ---------------------
+
+      # When claims_validation is enabled and the client requested essential claims
+      # for id_token, verify they are present in the decoded ID token payload.
+      # This applies to both initial login and refresh (if a new ID token is returned).
+      if (isTRUE(id_token_present)) {
+        id_payload <- tryCatch(
+          parse_jwt_payload(token_set[["id_token"]]),
+          error = function(e) NULL
+        )
+        if (!is.null(id_payload)) {
+          validate_essential_claims(client, id_payload, "id_token")
+        }
+      }
+
+      # Validate acr claim against required_acr_values (OIDC Core §2, §3.1.2.1) ----
+
+      # When the client specifies required_acr_values, verify the ID token's acr
+      # claim is present and matches one of the allowlisted values.  This runs on
+      # both initial login and refresh (when a new ID token is returned).
+      racr <- client@required_acr_values %||% character(0)
+      if (length(racr) > 0 && isTRUE(id_token_present)) {
+        acr_payload <- tryCatch(
+          parse_jwt_payload(token_set[["id_token"]]),
+          error = function(e) NULL
+        )
+        if (is.null(acr_payload)) {
+          err_id_token(
+            "Cannot parse ID token to verify acr claim"
+          )
+        }
+        acr_value <- acr_payload$acr
+        if (is.null(acr_value) || !is_valid_string(acr_value)) {
+          err_id_token(c(
+            "x" = "ID token missing required acr claim (OIDC Core \u00a72)",
+            "i" = paste0(
+              "Required one of: ",
+              paste(racr, collapse = ", ")
+            )
+          ))
+        }
+        if (!acr_value %in% racr) {
+          err_id_token(c(
+            "x" = paste0(
+              "ID token acr claim '",
+              acr_value,
+              "' is not in the required_acr_values allowlist"
+            ),
+            "i" = paste0(
+              "Allowed: ",
+              paste(racr, collapse = ", ")
+            )
+          ))
+        }
+      }
+
+      # Validate match between userinfo & ID token ---------------------------------
+
+      # During initial login (is_refresh = FALSE): this check is now performed by
+      # handle_callback() AFTER userinfo is fetched, not here. This function is
+      # called before userinfo fetch in the new flow, so we skip this check.
+      # During refresh: validate only if BOTH userinfo and id_token are present.
+      # (userinfo is fetched when userinfo_required = TRUE; id_token may be omitted
+      # per OIDC 12.2). When both are available, verify subjects still match.
+
+      if (isTRUE(is_refresh)) {
+        id_token_present <- is_valid_string(token_set[["id_token"]])
+        userinfo_present <- is.list(token_set[["userinfo"]]) &&
+          length(token_set[["userinfo"]]) > 0
+
+        should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
+          id_token_present &&
+          userinfo_present
+
+        if (should_match) {
+          verify_userinfo_id_token_subject_match(
+            client,
+            userinfo = token_set[["userinfo"]],
+            id_token = token_set[["id_token"]]
           )
         }
       }
-    }
-  }
-
-  # Validate essential claims in ID token (OIDC Core §5.5) ---------------------
-
-  # When claims_validation is enabled and the client requested essential claims
-  # for id_token, verify they are present in the decoded ID token payload.
-  # This applies to both initial login and refresh (if a new ID token is returned).
-  if (isTRUE(id_token_present)) {
-    id_payload <- tryCatch(
-      parse_jwt_payload(token_set[["id_token"]]),
-      error = function(e) NULL
-    )
-    if (!is.null(id_payload)) {
-      validate_essential_claims(client, id_payload, "id_token")
-    }
-  }
-
-  # Validate acr claim against required_acr_values (OIDC Core §2, §3.1.2.1) ----
-
-  # When the client specifies required_acr_values, verify the ID token's acr
-  # claim is present and matches one of the allowlisted values.  This runs on
-  # both initial login and refresh (when a new ID token is returned).
-  racr <- client@required_acr_values %||% character(0)
-  if (length(racr) > 0 && isTRUE(id_token_present)) {
-    acr_payload <- tryCatch(
-      parse_jwt_payload(token_set[["id_token"]]),
-      error = function(e) NULL
-    )
-    if (is.null(acr_payload)) {
-      err_id_token(
-        "Cannot parse ID token to verify acr claim"
-      )
-    }
-    acr_value <- acr_payload$acr
-    if (is.null(acr_value) || !is_valid_string(acr_value)) {
-      err_id_token(c(
-        "x" = "ID token missing required acr claim (OIDC Core \u00a72)",
-        "i" = paste0(
-          "Required one of: ",
-          paste(racr, collapse = ", ")
-        )
-      ))
-    }
-    if (!acr_value %in% racr) {
-      err_id_token(c(
-        "x" = paste0(
-          "ID token acr claim '",
-          acr_value,
-          "' is not in the required_acr_values allowlist"
-        ),
-        "i" = paste0(
-          "Allowed: ",
-          paste(racr, collapse = ", ")
-        )
-      ))
-    }
-  }
-
-  # Validate match between userinfo & ID token ---------------------------------
-
-  # During initial login (is_refresh = FALSE): this check is now performed by
-  # handle_callback() AFTER userinfo is fetched, not here. This function is
-  # called before userinfo fetch in the new flow, so we skip this check.
-  # During refresh: validate only if BOTH userinfo and id_token are present.
-  # (userinfo is fetched when userinfo_required = TRUE; id_token may be omitted
-  # per OIDC 12.2). When both are available, verify subjects still match.
-
-  if (isTRUE(is_refresh)) {
-    id_token_present <- is_valid_string(token_set[["id_token"]])
-    userinfo_present <- is.list(token_set[["userinfo"]]) &&
-      length(token_set[["userinfo"]]) > 0
-
-    should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
-      id_token_present &&
-      userinfo_present
-
-    if (should_match) {
-      verify_userinfo_id_token_subject_match(
-        client,
-        userinfo = token_set[["userinfo"]],
-        id_token = token_set[["id_token"]]
-      )
-    }
-  }
 
       # Attach the validation flag so callers can propagate it to OAuthToken.
       token_set[[".id_token_validated"]] <- id_token_validated
@@ -1735,8 +1744,12 @@ verify_token_set <- function(
       client = client,
       phase = if (isTRUE(is_refresh)) "refresh.verify" else "callback.verify",
       extra = list(
-        oauth.received_id_token = isTRUE(is_valid_string(token_set[["id_token"]])),
-        oauth.received_refresh_token = isTRUE(is_valid_string(token_set[["refresh_token"]]))
+        oauth.received_id_token = isTRUE(is_valid_string(token_set[[
+          "id_token"
+        ]])),
+        oauth.received_refresh_token = isTRUE(is_valid_string(token_set[[
+          "refresh_token"
+        ]]))
       )
     )
   )
