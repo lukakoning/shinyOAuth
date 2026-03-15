@@ -48,45 +48,35 @@ get_userinfo <- function(
           add_req_defaults() |>
           req_no_redirect()
 
-        # Execute request
-        resp <- try(
-          with_otel_span(
-            "shinyOAuth.userinfo.http",
-            {
-              resp <- req_with_retry(req)
-              otel_record_http_result(resp)
-              resp
-            },
-            attributes = otel_http_attributes(
-              method = "GET",
-              url = oauth_client@provider@userinfo_url,
-              extra = list(oauth.phase = "userinfo")
-            ),
-            options = list(kind = "client"),
-            mark_ok = FALSE
+        # Execute request. Let transport failures propagate as
+        # shinyOAuth_transport_error so callers can distinguish network issues
+        # from HTTP responses returned by the provider.
+        resp <- with_otel_span(
+          "shinyOAuth.userinfo.http",
+          {
+            resp <- req_with_retry(req)
+            otel_record_http_result(resp)
+            resp
+          },
+          attributes = otel_http_attributes(
+            method = "GET",
+            url = oauth_client@provider@userinfo_url,
+            extra = list(oauth.phase = "userinfo")
           ),
-          silent = TRUE
+          options = list(kind = "client"),
+          mark_ok = FALSE
         )
 
         # Security: reject redirect responses to prevent leaking Bearer token
-        if (!inherits(resp, "try-error")) {
-          reject_redirect_response(resp, context = "userinfo")
-        }
+        reject_redirect_response(resp, context = "userinfo")
 
-        # Check for errors
-        if (inherits(resp, "try-error") || httr2::resp_is_error(resp)) {
-          if (inherits(resp, "try-error")) {
-            err_userinfo(c(
-              "x" = "Failed to get user info",
-              "!" = conditionMessage(attr(resp, "condition"))
-            ))
-          } else {
-            err_http(
-              c("x" = "Failed to get user info"),
-              resp,
-              context = list(phase = "userinfo")
-            )
-          }
+        # HTTP status errors are userinfo endpoint failures, not transport failures.
+        if (httr2::resp_is_error(resp)) {
+          err_http(
+            c("x" = "Failed to get user info"),
+            resp,
+            context = list(phase = "userinfo")
+          )
         }
 
         # Detect Content-Type to handle JWT-encoded userinfo (OIDC Core §5.3.2)

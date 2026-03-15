@@ -403,6 +403,7 @@ mirai_connection_count <- function() {
 # @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
 async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
+  captured_otel_envvars <- capture_async_otel_envvars()
 
   # Wrap the expression to capture warnings and messages emitted in the worker
   # process. Conditions are collected into lists and bundled alongside the
@@ -412,7 +413,34 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .ns <- asNamespace("shinyOAuth")
     .otel_worker_span <- NULL
     .async_error <- NULL
+    .otel_envvars <- .(captured_otel_envvars)
     .otel_context <- .(otel_context)
+    if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
+      .otel_env_names <- names(.otel_envvars)
+      .otel_old_envvars <- Sys.getenv(.otel_env_names, unset = NA_character_)
+      on.exit(
+        {
+          .otel_restore_values <- .otel_old_envvars[!is.na(.otel_old_envvars)]
+          .otel_restore_unset <- names(.otel_old_envvars)[is.na(.otel_old_envvars)]
+          if (length(.otel_restore_values)) {
+            do.call(Sys.setenv, as.list(.otel_restore_values))
+          }
+          if (length(.otel_restore_unset)) {
+            Sys.unsetenv(.otel_restore_unset)
+          }
+        },
+        add = TRUE
+      )
+
+      .otel_new_values <- .otel_envvars[!is.na(.otel_envvars)]
+      .otel_vars_to_unset <- .otel_env_names[is.na(.otel_envvars)]
+      if (length(.otel_new_values)) {
+        do.call(Sys.setenv, as.list(.otel_new_values))
+      }
+      if (length(.otel_vars_to_unset)) {
+        Sys.unsetenv(.otel_vars_to_unset)
+      }
+    }
     if (!is.null(.otel_context)) {
       .otel_worker_span <- .ns$otel_restore_parent_in_worker(
         otel_headers = if (!is.null(.otel_context$headers)) {

@@ -1,12 +1,21 @@
 # Integration tests using otelsdk to verify real OTel span/attribute emission.
 # These tests require the 'otelsdk' package and are skipped when unavailable.
 
-options(
-  shinyOAuth.otel_tracing_enabled = TRUE,
-  shinyOAuth.otel_logging_enabled = FALSE
-)
+reset_test_otel_cache()
+withr::defer(reset_test_otel_cache())
 
-testthat::test_that("with_otel_span creates a real span with correct status", {
+otel_test_that <- function(desc, code) {
+  testthat::test_that(desc, {
+    testthat::skip_if_not_installed("otel")
+    withr::local_options(list(
+      shinyOAuth.otel_tracing_enabled = TRUE,
+      shinyOAuth.otel_logging_enabled = FALSE
+    ))
+    force(code)
+  })
+}
+
+otel_test_that("with_otel_span creates a real span with correct status", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -19,7 +28,7 @@ testthat::test_that("with_otel_span creates a real span with correct status", {
   testthat::expect_identical(spans[["shinyOAuth.test.ok"]]$status, "ok")
 })
 
-testthat::test_that("with_otel_span marks span as error on failure", {
+otel_test_that("with_otel_span marks span as error on failure", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -36,7 +45,7 @@ testthat::test_that("with_otel_span marks span as error on failure", {
   testthat::expect_true(length(s$events) > 0)
 })
 
-testthat::test_that("with_otel_span records provided attributes", {
+otel_test_that("with_otel_span records provided attributes", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -55,7 +64,7 @@ testthat::test_that("with_otel_span records provided attributes", {
   testthat::expect_identical(s$attributes[["oauth.phase"]], "test")
 })
 
-testthat::test_that("nested spans have correct parent-child relationship", {
+otel_test_that("nested spans have correct parent-child relationship", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -76,7 +85,7 @@ testthat::test_that("nested spans have correct parent-child relationship", {
   testthat::expect_identical(child$trace_id, parent$trace_id)
 })
 
-testthat::test_that("async parent span propagates context", {
+otel_test_that("async parent span propagates context", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -117,7 +126,7 @@ testthat::test_that("async parent span propagates context", {
   testthat::expect_identical(worker_span$status, "ok")
 })
 
-testthat::test_that("otel_with_active_span nests child spans under an existing span", {
+otel_test_that("otel_with_active_span nests child spans under an existing span", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({
@@ -140,7 +149,7 @@ testthat::test_that("otel_with_active_span nests child spans under an existing s
   testthat::expect_identical(child_span$parent, parent_span$span_id)
 })
 
-testthat::test_that("async_dispatch activates restored worker span for nested spans", {
+otel_test_that("async_dispatch activates restored worker span for nested spans", {
   testthat::skip_if_not_installed("otelsdk")
   testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("promises")
@@ -199,7 +208,7 @@ testthat::test_that("async_dispatch activates restored worker span for nested sp
   testthat::expect_identical(child_span$parent, worker_span$span_id)
 })
 
-testthat::test_that("prepare_call emits real spans with expected names", {
+otel_test_that("prepare_call emits real spans with expected names", {
   testthat::skip_if_not_installed("otelsdk")
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -227,7 +236,7 @@ testthat::test_that("prepare_call emits real spans with expected names", {
   testthat::expect_true(nzchar(login_span$attributes[["shinyoauth.trace_id"]]))
 })
 
-testthat::test_that("prepare_call and callback spans share shinyOAuth trace_id", {
+otel_test_that("prepare_call and callback spans share shinyOAuth trace_id", {
   testthat::skip_if_not_installed("otelsdk")
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -274,7 +283,7 @@ testthat::test_that("prepare_call and callback spans share shinyOAuth trace_id",
   )
 })
 
-testthat::test_that("userinfo HTTP response attributes stay on the HTTP child span", {
+otel_test_that("userinfo HTTP response attributes stay on the HTTP child span", {
   testthat::skip_if_not_installed("otelsdk")
 
   cli <- make_test_client()
@@ -308,7 +317,7 @@ testthat::test_that("userinfo HTTP response attributes stay on the HTTP child sp
   testthat::expect_identical(http_span$status, "ok")
 })
 
-testthat::test_that("introspection HTTP span is marked error on HTTP failure", {
+otel_test_that("introspection HTTP span is marked error on HTTP failure", {
   testthat::skip_if_not_installed("otelsdk")
 
   cli <- make_test_client()
@@ -346,7 +355,7 @@ testthat::test_that("introspection HTTP span is marked error on HTTP failure", {
   testthat::expect_identical(http_span$status, "error")
 })
 
-testthat::test_that("instrumentation scope is set correctly", {
+otel_test_that("instrumentation scope is set correctly", {
   testthat::skip_if_not_installed("otelsdk")
 
   r <- otelsdk::with_otel_record({

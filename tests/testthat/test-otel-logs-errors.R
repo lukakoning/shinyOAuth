@@ -1,13 +1,22 @@
 # Tests for otel log emission, severity/attribute mapping, and error span status
 
-options(
-  shinyOAuth.otel_tracing_enabled = TRUE,
-  shinyOAuth.otel_logging_enabled = TRUE
-)
+reset_test_otel_cache()
+withr::defer(reset_test_otel_cache())
+
+otel_test_that <- function(desc, code) {
+  testthat::test_that(desc, {
+    testthat::skip_if_not_installed("otel")
+    withr::local_options(list(
+      shinyOAuth.otel_tracing_enabled = TRUE,
+      shinyOAuth.otel_logging_enabled = TRUE
+    ))
+    force(code)
+  })
+}
 
 # --- otel_emit_log -----------------------------------------------------------
 
-testthat::test_that("otel_emit_log calls otel::log with correct severity and message", {
+otel_test_that("otel_emit_log calls otel::log with correct severity and message", {
   log_calls <- list()
 
   testthat::with_mocked_bindings(
@@ -33,7 +42,7 @@ testthat::test_that("otel_emit_log calls otel::log with correct severity and mes
   testthat::expect_identical(log_calls[[1]]$msg, "audit_login_success")
 })
 
-testthat::test_that("otel_emit_log uses error severity for error events", {
+otel_test_that("otel_emit_log uses error severity for error events", {
   log_calls <- list()
 
   testthat::with_mocked_bindings(
@@ -58,7 +67,7 @@ testthat::test_that("otel_emit_log uses error severity for error events", {
   testthat::expect_identical(log_calls[[1]]$msg, "Token exchange failed")
 })
 
-testthat::test_that("otel_emit_log uses warn severity for validation failures", {
+otel_test_that("otel_emit_log uses warn severity for validation failures", {
   log_calls <- list()
 
   testthat::with_mocked_bindings(
@@ -80,7 +89,7 @@ testthat::test_that("otel_emit_log uses warn severity for validation failures", 
   testthat::expect_identical(log_calls[[1]]$severity, "warn")
 })
 
-testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome events", {
+otel_test_that("otel_emit_log uses status-aware severity for multi-outcome events", {
   log_calls <- list()
 
   testthat::with_mocked_bindings(
@@ -113,7 +122,7 @@ testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome 
   testthat::expect_identical(log_calls[[3]]$severity, "error")
 })
 
-testthat::test_that("otel_emit_log does not call otel::log for empty events", {
+otel_test_that("otel_emit_log does not call otel::log for empty events", {
   log_called <- FALSE
   testthat::with_mocked_bindings(
     log = function(...) {
@@ -129,7 +138,7 @@ testthat::test_that("otel_emit_log does not call otel::log for empty events", {
   testthat::expect_false(log_called)
 })
 
-testthat::test_that("otel_emit_log does not include sensitive fields in attributes", {
+otel_test_that("otel_emit_log does not include sensitive fields in attributes", {
   captured_attrs <- NULL
 
   testthat::with_mocked_bindings(
@@ -178,7 +187,7 @@ testthat::test_that("otel_emit_log does not include sensitive fields in attribut
 
 # --- Error paths and span status ---------------------------------------------
 
-testthat::test_that("with_otel_span marks span ok on success", {
+otel_test_that("with_otel_span marks span ok on success", {
   marked_ok <- FALSE
   noted_error <- FALSE
 
@@ -202,7 +211,7 @@ testthat::test_that("with_otel_span marks span ok on success", {
   testthat::expect_false(noted_error)
 })
 
-testthat::test_that("with_otel_span notes error and re-throws on failure", {
+otel_test_that("with_otel_span notes error and re-throws on failure", {
   marked_ok <- FALSE
   noted_error <- FALSE
 
@@ -230,7 +239,7 @@ testthat::test_that("with_otel_span notes error and re-throws on failure", {
   testthat::expect_true(noted_error)
 })
 
-testthat::test_that("otel_note_error sets error status and adds exception event", {
+otel_test_that("otel_note_error sets error status and adds exception event", {
   set_attr_calls <- list()
   add_event_calls <- list()
   set_status_calls <- list()
@@ -270,7 +279,7 @@ testthat::test_that("otel_note_error sets error status and adds exception event"
   )
 })
 
-testthat::test_that("otel_note_error is a no-op when tracing is disabled", {
+otel_test_that("otel_note_error is a no-op when tracing is disabled", {
   withr::local_options(list(shinyOAuth.otel_tracing_enabled = FALSE))
 
   mock_span <- list(
@@ -284,7 +293,7 @@ testthat::test_that("otel_note_error is a no-op when tracing is disabled", {
   testthat::expect_true(TRUE)
 })
 
-testthat::test_that("otel_note_error is a no-op for NULL error", {
+otel_test_that("otel_note_error is a no-op for NULL error", {
   called <- FALSE
   mock_span <- list(
     set_attribute = function(...) {
@@ -302,7 +311,7 @@ testthat::test_that("otel_note_error is a no-op for NULL error", {
   testthat::expect_false(called)
 })
 
-testthat::test_that("otel_end_async_parent marks ok or error correctly", {
+otel_test_that("otel_end_async_parent marks ok or error correctly", {
   # ok path
   ok_calls <- list()
   err_calls <- list()
@@ -360,7 +369,7 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   testthat::expect_identical(err_calls[[1]], "async failure")
 })
 
-testthat::test_that("otel_end_async_parent is a no-op for NULL parent/span", {
+otel_test_that("otel_end_async_parent is a no-op for NULL parent/span", {
   # Should not error
 
   shinyOAuth:::otel_end_async_parent(NULL, status = "ok")
@@ -370,7 +379,7 @@ testthat::test_that("otel_end_async_parent is a no-op for NULL parent/span", {
 
 # --- emit_trace_event otel bridge --------------------------------------------
 
-testthat::test_that("emit_trace_event calls otel_emit_log", {
+otel_test_that("emit_trace_event calls otel_emit_log", {
   log_called <- FALSE
 
   testthat::with_mocked_bindings(
@@ -387,7 +396,7 @@ testthat::test_that("emit_trace_event calls otel_emit_log", {
   testthat::expect_true(log_called)
 })
 
-testthat::test_that("emit_trace_event warns on otel_emit_log failure", {
+otel_test_that("emit_trace_event warns on otel_emit_log failure", {
   testthat::with_mocked_bindings(
     otel_emit_log = function(event) {
       stop("otel log error")
@@ -403,7 +412,7 @@ testthat::test_that("emit_trace_event warns on otel_emit_log failure", {
   )
 })
 
-testthat::test_that("otel_telemetry_warning uses rlang::warn", {
+otel_test_that("otel_telemetry_warning uses rlang::warn", {
   testthat::expect_warning(
     shinyOAuth:::otel_telemetry_warning("test context", simpleError("boom")),
     "OpenTelemetry test context disabled"

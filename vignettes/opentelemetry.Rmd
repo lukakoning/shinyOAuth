@@ -12,6 +12,10 @@ vignette: >
 'shinyOAuth' includes OpenTelemetry (OTel) instrumentation emitting logs and
 traces from key OAuth 2.0/OIDC operations. 
 
+To use this integration, install the optional `otel` package. Install
+`otelsdk` as well if you want the R SDK helpers/exporters used in the examples
+below.
+
 OpenTelemetry is an open standard for telemetry data 
 (logs, traces, metrics) and can be collected by various backends. 
 It can be used as an alternative to the package's native R hooks for 

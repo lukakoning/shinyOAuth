@@ -1,0 +1,16 @@
+if (!identical(Sys.getenv("SHINYOAUTH_ALLOW_AMBIENT_OTEL", unset = ""), "1")) {
+  Sys.setenv(
+    OTEL_R_TRACES_EXPORTER = "none",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_TRACES_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none"
+  )
+  Sys.unsetenv(c(
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+  ))
+}

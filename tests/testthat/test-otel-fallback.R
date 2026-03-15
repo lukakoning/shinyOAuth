@@ -1,9 +1,18 @@
-options(
-  shinyOAuth.otel_tracing_enabled = TRUE,
-  shinyOAuth.otel_logging_enabled = FALSE
-)
+reset_test_otel_cache()
+withr::defer(reset_test_otel_cache())
 
-testthat::test_that("with_otel_span falls back to uninstrumented execution on otel errors", {
+otel_test_that <- function(desc, code) {
+  testthat::test_that(desc, {
+    testthat::skip_if_not_installed("otel")
+    withr::local_options(list(
+      shinyOAuth.otel_tracing_enabled = TRUE,
+      shinyOAuth.otel_logging_enabled = FALSE
+    ))
+    force(code)
+  })
+}
+
+otel_test_that("with_otel_span falls back to uninstrumented execution on otel errors", {
   out <- testthat::with_mocked_bindings(
     start_local_active_span = function(...) {
       stop("otel span init failed")
@@ -17,7 +26,7 @@ testthat::test_that("with_otel_span falls back to uninstrumented execution on ot
   testthat::expect_equal(out, 42)
 })
 
-testthat::test_that("otel_start_async_parent degrades to NULL span on otel errors", {
+otel_test_that("otel_start_async_parent degrades to NULL span on otel errors", {
   parent <- testthat::with_mocked_bindings(
     start_span = function(...) {
       stop("otel async span init failed")
@@ -32,7 +41,7 @@ testthat::test_that("otel_start_async_parent degrades to NULL span on otel error
   testthat::expect_null(parent$headers)
 })
 
-testthat::test_that("otel_start_async_parent does not activate a main-thread span", {
+otel_test_that("otel_start_async_parent does not activate a main-thread span", {
   before <- otel::pack_http_context()
   parent <- shinyOAuth:::otel_start_async_parent("shinyOAuth.test.async")
   after <- otel::pack_http_context()
@@ -43,7 +52,7 @@ testthat::test_that("otel_start_async_parent does not activate a main-thread spa
   }
 })
 
-testthat::test_that("otel tracing can be disabled via option", {
+otel_test_that("otel tracing can be disabled via option", {
   withr::local_options(list(shinyOAuth.otel_tracing_enabled = FALSE))
 
   out <- testthat::with_mocked_bindings(
@@ -76,7 +85,7 @@ testthat::test_that("otel tracing can be disabled via option", {
   testthat::expect_null(out$ctx)
 })
 
-testthat::test_that("otel logging can be disabled via option", {
+otel_test_that("otel logging can be disabled via option", {
   withr::local_options(list(shinyOAuth.otel_logging_enabled = FALSE))
 
   testthat::with_mocked_bindings(

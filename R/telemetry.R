@@ -1,3 +1,29 @@
+otel_namespace <- function() {
+  if (!requireNamespace("otel", quietly = TRUE)) {
+    return(NULL)
+  }
+
+  asNamespace("otel")
+}
+
+otel_fn <- function(fn_name) {
+  ns <- otel_namespace()
+  if (is.null(ns) || !exists(fn_name, envir = ns, inherits = FALSE)) {
+    return(NULL)
+  }
+
+  get(fn_name, envir = ns, inherits = FALSE)
+}
+
+otel_call <- function(fn_name, ..., .default = NULL) {
+  fn <- otel_fn(fn_name)
+  if (is.null(fn)) {
+    return(.default)
+  }
+
+  fn(...)
+}
+
 otel_telemetry_warning <- function(context, error) {
   rlang::warn(
     paste0(
@@ -23,14 +49,18 @@ otel_logging_enabled <- function() {
 }
 
 otel_runtime_enabled <- function() {
+  if (is.null(otel_namespace())) {
+    return(FALSE)
+  }
+
   tracing_active <- isTRUE(otel_tracing_enabled()) &&
     isTRUE(tryCatch(
-      otel::is_tracing_enabled(),
+      otel_call("is_tracing_enabled", .default = FALSE),
       error = function(...) FALSE
     ))
   logging_active <- isTRUE(otel_logging_enabled()) &&
     isTRUE(tryCatch(
-      otel::is_logging_enabled(),
+      otel_call("is_logging_enabled", .default = FALSE),
       error = function(...) FALSE
     ))
 
@@ -139,7 +169,7 @@ otel_attributes <- function(x) {
     return(NULL)
   }
 
-  otel::as_attributes(attrs)
+  otel_call("as_attributes", attrs, .default = attrs)
 }
 
 otel_http_host <- function(url) {
@@ -265,7 +295,7 @@ otel_http_attributes <- function(
 }
 
 otel_set_span_attributes <- function(span = NULL, attributes = list()) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(invisible(NULL))
   }
 
@@ -274,7 +304,7 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_call("get_active_span")
   for (nm in names(attributes)) {
     value <- otel_scalar_attribute(attributes[[nm]])
     if (!is.null(value)) {
@@ -286,21 +316,21 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
 }
 
 otel_mark_span_ok <- function(span = NULL) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_call("get_active_span")
   try(span$set_status("ok"), silent = TRUE)
   invisible(NULL)
 }
 
 otel_note_error <- function(error, span = NULL, attributes = list()) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_call("get_active_span")
   if (is.null(error)) {
     return(invisible(NULL))
   }
@@ -333,7 +363,7 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
 }
 
 otel_record_http_result <- function(resp, span = NULL) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(invisible(NULL))
   }
 
@@ -341,7 +371,7 @@ otel_record_http_result <- function(resp, span = NULL) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_call("get_active_span")
   otel_set_span_attributes(
     span = span,
     attributes = otel_http_attributes(resp = resp)
@@ -374,17 +404,19 @@ with_otel_span <- function(
   mark_ok = TRUE
 ) {
   code <- substitute(code)
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(eval(code, envir = parent.frame()))
   }
 
   span_started <- FALSE
   tryCatch(
     {
-      otel::start_local_active_span(
+      otel_call(
+        "start_local_active_span",
         name = name,
         attributes = otel_attributes(otel_with_trace_attribute(attributes)),
-        options = options
+        options = options,
+        activation_scope = environment()
       )
       span_started <- TRUE
     },
@@ -423,12 +455,17 @@ with_otel_span <- function(
 
 otel_with_active_span <- function(span, code) {
   code <- substitute(code)
-  if (!isTRUE(otel_tracing_enabled()) || is.null(span)) {
+  if (
+    !isTRUE(otel_tracing_enabled()) ||
+      is.null(otel_namespace()) ||
+      is.null(span)
+  ) {
     return(eval(code, envir = parent.frame()))
   }
 
   tryCatch(
-    otel::local_active_span(
+    otel_call(
+      "local_active_span",
       span,
       end_on_exit = FALSE,
       activation_scope = environment()
@@ -442,7 +479,7 @@ otel_with_active_span <- function(span, code) {
 }
 
 otel_capture_context <- function(span = NULL) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(NULL)
   }
 
@@ -451,7 +488,7 @@ otel_capture_context <- function(span = NULL) {
       if (!is.null(span)) {
         span$get_context()$to_http_headers()
       } else {
-        otel::pack_http_context()
+        otel_call("pack_http_context")
       }
     },
     error = function(...) NULL
@@ -479,13 +516,14 @@ otel_start_async_parent <- function(
   name,
   attributes = NULL
 ) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(list(span = NULL, headers = NULL))
   }
 
   span <- tryCatch(
     {
-      otel::start_span(
+      otel_call(
+        "start_span",
         name = name,
         attributes = otel_attributes(otel_with_trace_attribute(attributes))
       )
@@ -507,7 +545,7 @@ otel_restore_parent_in_worker <- function(
   name,
   attributes = NULL
 ) {
-  if (!isTRUE(otel_tracing_enabled())) {
+  if (!isTRUE(otel_tracing_enabled()) || is.null(otel_namespace())) {
     return(NULL)
   }
 
@@ -516,7 +554,7 @@ otel_restore_parent_in_worker <- function(
   }
 
   parent_ctx <- tryCatch(
-    otel::extract_http_context(otel_headers),
+    otel_call("extract_http_context", otel_headers),
     error = function(...) NULL
   )
   if (is.null(parent_ctx)) {
@@ -525,7 +563,8 @@ otel_restore_parent_in_worker <- function(
 
   span <- tryCatch(
     {
-      otel::start_span(
+      otel_call(
+        "start_span",
         name = name,
         attributes = otel_attributes(otel_with_trace_attribute(attributes)),
         options = list(parent = parent_ctx)
@@ -556,7 +595,7 @@ otel_end_async_parent <- function(
     otel_note_error(error, span = parent$span)
   }
 
-  try(otel::end_span(parent$span), silent = TRUE)
+  try(otel_call("end_span", parent$span), silent = TRUE)
   invisible(NULL)
 }
 
@@ -698,7 +737,7 @@ otel_event_attributes <- function(event) {
 }
 
 otel_emit_log <- function(event) {
-  if (!isTRUE(otel_logging_enabled())) {
+  if (!isTRUE(otel_logging_enabled()) || is.null(otel_namespace())) {
     return(invisible(NULL))
   }
 
@@ -714,7 +753,8 @@ otel_emit_log <- function(event) {
   msg <- otel_scalar_attribute(event$message %||% NULL) %||%
     otel_scalar_attribute(event$type %||% NULL) %||%
     "shinyOAuth"
-  otel::log(
+  otel_call(
+    "log",
     msg = msg,
     severity = severity,
     attributes = otel_attributes(otel_event_attributes(event))

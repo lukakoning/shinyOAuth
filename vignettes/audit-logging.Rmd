@@ -21,7 +21,8 @@ This vignette covers:
 ## Receiving audit events
 
 You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a 
-hook function that will be called whenever an audit event is emitted.
+hook function that will be called whenever shinyOAuth emits a structured audit
+or error event.
 The function you register should be fast, non-blocking, and never throw errors.
 
 Example of printing audit events to console:
