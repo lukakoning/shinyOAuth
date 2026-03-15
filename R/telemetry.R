@@ -548,12 +548,13 @@ otel_end_async_parent <- function(
   invisible(NULL)
 }
 
-otel_event_severity <- function(type, status = NULL) {
+otel_event_severity <- function(type, status = NULL, reason = NULL) {
   if (!is_valid_string(type)) {
     return("info")
   }
 
   status <- otel_scalar_attribute(status)
+  reason <- otel_scalar_attribute(reason)
   if (identical(type, "audit_userinfo")) {
     return(if (identical(status, "ok")) "info" else "error")
   }
@@ -576,6 +577,13 @@ otel_event_severity <- function(type, status = NULL) {
     if (is_valid_string(status)) {
       return("warn")
     }
+  }
+
+  if (identical(type, "audit_session_cleared")) {
+    if (reason %in% c("refresh_failed_async", "refresh_failed_sync")) {
+      return("error")
+    }
+    return("info")
   }
 
   if (
@@ -688,7 +696,8 @@ otel_emit_log <- function(event) {
 
   severity <- otel_event_severity(
     event$type %||% NULL,
-    status = event$status %||% NULL
+    status = event$status %||% NULL,
+    reason = event$reason %||% NULL
   )
   msg <- otel_scalar_attribute(event$message %||% NULL) %||%
     otel_scalar_attribute(event$type %||% NULL) %||%

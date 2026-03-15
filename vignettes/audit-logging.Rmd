@@ -134,7 +134,12 @@ By default, these digests use HMAC-SHA256 with an auto-generated per-process key
 If you do not configure `options(shinyOAuth.audit_digest_key = ...)`, each R
 process gets its own random key at runtime. This reduces the risk of correlation
 or dictionary reidentification if logs leak, but it also means digests are not
-stable across different workers/processes by default.
+stable across unrelated processes by default.
+
+For shinyOAuth-managed async work, the package propagates the effective digest
+key into its workers so main-process and worker events from the same app
+instance remain comparable. If you need digests to stay comparable across
+multiple app processes or separate R sessions, configure a shared key.
 
 If you run multiple workers/processes and want digests to be comparable across them,
 configure a shared key:

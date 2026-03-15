@@ -60,6 +60,7 @@ revoke_token <- function(
       # Capture shiny_session for propagation into the async worker
       captured_shiny_session <- shiny_session
       captured_trace_id <- trace_id
+      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
 
       # Capture shinyOAuth.* options for propagation to the async worker.
       # This ensures audit hooks, HTTP settings, and other options are
@@ -69,7 +70,7 @@ revoke_token <- function(
         "shinyOAuth.token.revoke",
         attributes = otel_client_attributes(
           client = oauth_client,
-          shiny_session = shiny_session,
+          shiny_session = parent_shiny_session,
           async = TRUE,
           phase = "token.revoke",
           extra = list(oauth.token.which = which)
@@ -499,6 +500,7 @@ introspect_token <- function(
       # Capture shiny_session for propagation into the async worker
       captured_shiny_session <- shiny_session
       captured_trace_id <- trace_id
+      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
 
       # Capture shinyOAuth.* options for propagation to the async worker.
       # This ensures audit hooks, HTTP settings, and other options are
@@ -508,7 +510,7 @@ introspect_token <- function(
         "shinyOAuth.token.introspect",
         attributes = otel_client_attributes(
           client = oauth_client,
-          shiny_session = shiny_session,
+          shiny_session = parent_shiny_session,
           async = TRUE,
           phase = "token.introspect",
           extra = list(oauth.token.which = which)
@@ -897,6 +899,7 @@ refresh_token <- function(
       # Capture shiny_session for propagation into the async worker
       captured_shiny_session <- shiny_session
       captured_trace_id <- trace_id
+      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
 
       # Capture shinyOAuth.* options for propagation to the async worker.
       # This ensures audit hooks, HTTP settings, and other options are
@@ -906,7 +909,7 @@ refresh_token <- function(
         "shinyOAuth.refresh",
         attributes = otel_client_attributes(
           client = oauth_client,
-          shiny_session = shiny_session,
+          shiny_session = parent_shiny_session,
           async = TRUE,
           phase = "refresh"
         )

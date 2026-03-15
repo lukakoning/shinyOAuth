@@ -119,6 +119,10 @@ testthat::test_that("audit hook is called from async worker when options are pro
           !is.null(sess$main_process_id),
           info = "Async event should include main_process_id"
         )
+        testthat::expect_true(
+          !is.null(sess$process_id),
+          info = "Async event should include worker process_id"
+        )
       }
     }
   )
@@ -185,6 +189,31 @@ testthat::test_that("with_async_options restores captured otel env vars", {
   )
 })
 
+testthat::test_that("with_async_options restores captured digest key cache", {
+  ns <- asNamespace("shinyOAuth")
+  key_env <- get("audit_digest_key_env", envir = ns)
+  old_key <- key_env$key
+  on.exit(
+    {
+      key_env$key <- old_key
+    },
+    add = TRUE
+  )
+
+  withr::local_options(list(shinyOAuth.audit_digest_key = NULL))
+  key_env$key <- NULL
+
+  main_digest <- shinyOAuth:::string_digest("hello")
+  captured <- shinyOAuth:::capture_async_options()
+
+  key_env$key <- NULL
+  worker_digest <- shinyOAuth:::with_async_options(captured, {
+    get("string_digest", envir = asNamespace("shinyOAuth"))("hello")
+  })
+
+  testthat::expect_identical(worker_digest, main_digest)
+})
+
 testthat::test_that("capture_async_options captures only shinyOAuth options", {
   # Set some test options - both shinyOAuth and non-shinyOAuth
   withr::local_options(list(
@@ -225,6 +254,53 @@ testthat::test_that("is_async_worker correctly detects worker context", {
 
   # When captured_opts is NULL, returns NA
   testthat::expect_true(is.na(shinyOAuth:::is_async_worker(NULL)))
+})
+
+testthat::test_that("augment_with_shiny_context normalizes borrowed async context", {
+  main_pid <- Sys.getpid()
+  event <- list(
+    type = "audit_test",
+    shiny_session = list(
+      token = "tok",
+      is_async = TRUE,
+      main_process_id = main_pid
+    )
+  )
+
+  normalized <- shinyOAuth:::augment_with_shiny_context(event)
+
+  testthat::expect_false(isTRUE(normalized$shiny_session$is_async))
+  testthat::expect_identical(
+    as.integer(normalized$shiny_session$process_id),
+    as.integer(main_pid)
+  )
+})
+
+testthat::test_that("augment_with_shiny_context fills worker process_id from async context", {
+  ctx <- list(
+    token = "tok",
+    is_async = TRUE,
+    main_process_id = 12345L,
+    process_id = Sys.getpid()
+  )
+
+  shinyOAuth:::with_async_session_context(ctx, {
+    event <- list(
+      type = "audit_test",
+      shiny_session = list(
+        token = "tok",
+        is_async = TRUE,
+        main_process_id = 12345L
+      )
+    )
+
+    normalized <- shinyOAuth:::augment_with_shiny_context(event)
+    testthat::expect_true(isTRUE(normalized$shiny_session$is_async))
+    testthat::expect_identical(
+      as.integer(normalized$shiny_session$process_id),
+      as.integer(Sys.getpid())
+    )
+  })
 })
 
 testthat::test_that("shinyOAuth options are propagated to async workers via mirai", {

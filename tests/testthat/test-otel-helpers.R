@@ -173,6 +173,20 @@ testthat::test_that("otel_event_severity considers status for multi-outcome even
     ),
     "warn"
   )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity(
+      "audit_session_cleared",
+      reason = "refresh_failed_async"
+    ),
+    "error"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_event_severity(
+      "audit_session_cleared",
+      reason = "token_expired"
+    ),
+    "info"
+  )
 })
 
 # --- otel_translate_event_key ------------------------------------------------

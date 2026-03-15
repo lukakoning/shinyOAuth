@@ -83,6 +83,54 @@ capture_shiny_session_context <- function(is_async = TRUE) {
   }
 }
 
+# Internal: normalize a provided shiny_session context for the current process.
+# This fills in worker-local fields when async context is active, and corrects
+# main-process emissions that were given a worker-intended context before
+# dispatch actually happened.
+normalize_shiny_session_context <- function(shiny_session) {
+  if (is.null(shiny_session) || !is.list(shiny_session)) {
+    return(shiny_session)
+  }
+
+  normalized <- shiny_session
+  async_ctx <- get_async_session_context()
+
+  if (!is.null(async_ctx) && is.list(async_ctx)) {
+    for (nm in names(async_ctx)) {
+      if (is.null(normalized[[nm]]) && !is.null(async_ctx[[nm]])) {
+        normalized[[nm]] <- async_ctx[[nm]]
+      }
+    }
+  }
+
+  current_pid <- Sys.getpid()
+  main_pid <- suppressWarnings(as.integer(
+    normalized$main_process_id %||% NA_integer_
+  ))
+  process_pid <- suppressWarnings(as.integer(
+    normalized$process_id %||% NA_integer_
+  ))
+
+  if (isTRUE(normalized$is_async)) {
+    if (!is.na(process_pid)) {
+      normalized$process_id <- process_pid
+      return(normalized)
+    }
+
+    if (!is.na(main_pid) && identical(as.integer(current_pid), main_pid)) {
+      normalized$is_async <- FALSE
+      normalized$process_id <- current_pid
+      return(normalized)
+    }
+  }
+
+  if (!isTRUE(normalized$is_async) && is.na(process_pid)) {
+    normalized$process_id <- current_pid
+  }
+
+  normalized
+}
+
 # Internal: set a fallback session context for the current execution scope.
 # This should be called at the start of async work (inside a mirai)
 # so that errors thrown within the worker can still include session context.
@@ -115,6 +163,12 @@ with_async_session_context <- function(ctx, code) {
 
   old <- set_async_session_context(ctx)
   on.exit(set_async_session_context(old), add = TRUE)
+  if (!is.null(ctx)) {
+    try(
+      otel_set_span_attributes(attributes = otel_shiny_attributes(ctx)),
+      silent = TRUE
+    )
+  }
   force(code)
 }
 
@@ -135,6 +189,9 @@ capture_async_options <- function() {
   # workers inherit the parent session's telemetry configuration rather than
   # the ambient shell environment.
   opts[[".shinyOAuth.otel_envvars"]] <- capture_async_otel_envvars()
+  # Propagate the effective digest key so worker-emitted digests remain
+  # comparable even when the operator relies on the default auto-keying.
+  opts[[".shinyOAuth.audit_digest_key_cache"]] <- get_audit_digest_key()
   # Also capture the originating process ID for audit event context
   opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
   opts
@@ -171,6 +228,7 @@ with_async_options <- function(captured_opts, code) {
     return(force(code))
   }
   captured_envvars <- captured_opts[[".shinyOAuth.otel_envvars"]]
+  captured_digest_key <- captured_opts[[".shinyOAuth.audit_digest_key_cache"]]
   # Filter out internal markers (start with ".")
   opts_to_set <- captured_opts[
     !startsWith(names(captured_opts), ".")
@@ -178,16 +236,19 @@ with_async_options <- function(captured_opts, code) {
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
     env_names <- names(captured_envvars)
     old_envvars <- Sys.getenv(env_names, unset = NA_character_)
-    on.exit({
-      restore_values <- old_envvars[!is.na(old_envvars)]
-      restore_unset <- names(old_envvars)[is.na(old_envvars)]
-      if (length(restore_values)) {
-        do.call(Sys.setenv, as.list(restore_values))
-      }
-      if (length(restore_unset)) {
-        Sys.unsetenv(restore_unset)
-      }
-    }, add = TRUE)
+    on.exit(
+      {
+        restore_values <- old_envvars[!is.na(old_envvars)]
+        restore_unset <- names(old_envvars)[is.na(old_envvars)]
+        if (length(restore_values)) {
+          do.call(Sys.setenv, as.list(restore_values))
+        }
+        if (length(restore_unset)) {
+          Sys.unsetenv(restore_unset)
+        }
+      },
+      add = TRUE
+    )
 
     new_values <- captured_envvars[!is.na(captured_envvars)]
     vars_to_unset <- env_names[is.na(captured_envvars)]
@@ -197,6 +258,17 @@ with_async_options <- function(captured_opts, code) {
     if (length(vars_to_unset)) {
       Sys.unsetenv(vars_to_unset)
     }
+  }
+
+  if (".shinyOAuth.audit_digest_key_cache" %in% names(captured_opts)) {
+    old_digest_key <- audit_digest_key_env$key
+    audit_digest_key_env$key <- captured_digest_key
+    on.exit(
+      {
+        audit_digest_key_env$key <- old_digest_key
+      },
+      add = TRUE
+    )
   }
 
   if (length(opts_to_set) == 0) {
@@ -236,8 +308,10 @@ is_async_worker <- function(captured_opts) {
 #    (is_async = TRUE, already set in the captured context)
 augment_with_shiny_context <- function(event) {
   # If a caller already provided a shiny_session list, do not override.
-  # The pre-captured context will have is_async = TRUE already set.
+  # Normalize it first so borrowed async contexts pick up worker-local fields,
+  # or are corrected when the event is still emitted on the main process.
   if (!is.null(event$shiny_session)) {
+    event$shiny_session <- normalize_shiny_session_context(event$shiny_session)
     return(event)
   }
 

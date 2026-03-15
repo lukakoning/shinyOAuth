@@ -1564,7 +1564,9 @@ oauth_module_server <- function(
               error = function(...) NULL
             )
           }
-          state_digest <- if (!is.null(payload) && is_valid_string(payload$state)) {
+          state_digest <- if (
+            !is.null(payload) && is_valid_string(payload$state)
+          ) {
             string_digest(payload$state)
           } else {
             string_digest(state)
@@ -1624,12 +1626,15 @@ oauth_module_server <- function(
             # Capture Shiny session context on the main thread for audit events
             # emitted from the async worker (which lacks reactive domain access)
             captured_shiny_session <- capture_shiny_session_context()
+            parent_shiny_session <- normalize_shiny_session_context(
+              captured_shiny_session
+            )
             callback_parent <- otel_start_async_parent(
               "shinyOAuth.callback",
               attributes = otel_client_attributes(
                 client = client,
                 module_id = id,
-                shiny_session = captured_shiny_session,
+                shiny_session = parent_shiny_session,
                 async = TRUE,
                 phase = "callback"
               )

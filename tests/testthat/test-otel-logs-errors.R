@@ -100,12 +100,17 @@ testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome 
         type = "audit_token_introspection",
         status = "invalid_json"
       ))
+      shinyOAuth:::otel_emit_log(list(
+        type = "audit_session_cleared",
+        reason = "refresh_failed_async"
+      ))
     }
   )
 
-  testthat::expect_length(log_calls, 2L)
+  testthat::expect_length(log_calls, 3L)
   testthat::expect_identical(log_calls[[1]]$severity, "error")
   testthat::expect_identical(log_calls[[2]]$severity, "warn")
+  testthat::expect_identical(log_calls[[3]]$severity, "error")
 })
 
 testthat::test_that("otel_emit_log does not call otel::log for empty events", {

@@ -134,7 +134,10 @@ testthat::test_that("error callback state consumption keeps flow trace and logic
         redirect_event$trace_id %||% ""
       )
       testthat::expect_identical(consumed_event$state_digest, plain_digest)
-      testthat::expect_false(identical(consumed_event$state_digest, encrypted_digest))
+      testthat::expect_false(identical(
+        consumed_event$state_digest,
+        encrypted_digest
+      ))
     }
   )
 })
@@ -175,7 +178,10 @@ testthat::test_that("error callback state consumption failure keeps flow trace a
 
       types <- vapply(events, function(e) e$type %||% "", character(1))
       redirect_event <- events[[match("audit_redirect_issued", types)]]
-      failed_event <- events[[match("audit_error_state_consumption_failed", types)]]
+      failed_event <- events[[match(
+        "audit_error_state_consumption_failed",
+        types
+      )]]
 
       testthat::expect_false(is.null(redirect_event))
       testthat::expect_false(is.null(failed_event))
@@ -184,7 +190,10 @@ testthat::test_that("error callback state consumption failure keeps flow trace a
         redirect_event$trace_id %||% ""
       )
       testthat::expect_identical(failed_event$state_digest, plain_digest)
-      testthat::expect_false(identical(failed_event$state_digest, encrypted_digest))
+      testthat::expect_false(identical(
+        failed_event$state_digest,
+        encrypted_digest
+      ))
     }
   )
 })
