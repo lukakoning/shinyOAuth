@@ -1,10 +1,14 @@
-devtools::load_all()
+# devtools::load_all()
 
+library(shinyOAuth)
 library(shiny)
 library(otel)
 library(otelsdk)
 
 options(
+  shinyOAuth.otel_tracing_enabled = TRUE,
+  shinyOAuth.otel_logging_enabled = TRUE,
+  shinyOAuth.otel_force_flush = TRUE,
   shinyOAuth.print_errors = TRUE,
   shinyOAuth.print_traceback = TRUE
 )
@@ -13,37 +17,51 @@ setup_otel_tui <- function(
   endpoint = Sys.getenv("OTEL_TUI_ENDPOINT", "http://127.0.0.1:4318")
 ) {
   base_url <- sub("/+$", "", endpoint)
-  otel_ns <- asNamespace("otel")
-  otel_state <- get("the", envir = otel_ns)
 
-  # Also configure the current process explicitly so spans/logs emitted before
-  # any lazy OTEL initialization use the same exporters immediately.
-  otel_state$tracer_provider <- getElement(
-    otelsdk::tracer_provider_http,
-    "new"
-  )(list(
-    url = paste0(base_url, "/v1/traces"),
-    timeout = 1000L
-  ))
-  otel_state$logger_provider <- getElement(
-    otelsdk::logger_provider_http,
-    "new"
-  )(list(
-    url = paste0(base_url, "/v1/logs"),
-    timeout = 1000L
-  ))
+  # Make the example robust after prior test/dev sessions that may have left
+  # noop providers or disabled shinyOAuth's own telemetry gates behind.
+  # Configure via environment so mirai workers inherit the same exporters.
+  Sys.setenv(
+    OTEL_R_TRACES_EXPORTER = "http",
+    OTEL_R_LOGS_EXPORTER = "http",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_TRACES_EXPORTER = "http",
+    OTEL_LOGS_EXPORTER = "http",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_ENDPOINT = base_url,
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = paste0(base_url, "/v1/traces"),
+    OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = paste0(base_url, "/v1/logs")
+  )
+
+  # Rebuild providers from the current environment for this process too.
+  shinyOAuth:::otel_sync_runtime_with_env(traces = TRUE, logs = TRUE)
 
   invisible(base_url)
 }
 
 otel_endpoint <- setup_otel_tui()
+message(
+  "shinyOAuth OTel: tracing=",
+  getOption("shinyOAuth.otel_tracing_enabled"),
+  ", logging=",
+  getOption("shinyOAuth.otel_logging_enabled"),
+  ", otel tracing=",
+  otel::is_tracing_enabled(),
+  ", otel logging=",
+  otel::is_logging_enabled()
+)
+try(mirai::daemons(0), silent = TRUE)
 mirai::daemons(2)
 
 provider <- oauth_provider_github()
 
 client_id <- Sys.getenv("GITHUB_OAUTH_CLIENT_ID", "")
 client_secret <- Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET", "")
-redirect_uri <- Sys.getenv("GITHUB_OAUTH_REDIRECT_URI", "http://127.0.0.1:8100")
+app_port <- as.integer(Sys.getenv("GITHUB_OAUTH_APP_PORT", "8101"))
+redirect_uri <- Sys.getenv(
+  "GITHUB_OAUTH_REDIRECT_URI",
+  paste0("http://127.0.0.1:", app_port)
+)
 
 if (!nzchar(client_id) || !nzchar(client_secret)) {
   stop(
@@ -124,10 +142,12 @@ server <- function(input, output, session) {
 
   onStop(function() {
     try(otel::get_default_tracer_provider()$flush(), silent = TRUE)
+    try(otel::get_default_logger_provider()$flush(), silent = TRUE)
+    try(mirai::daemons(0), silent = TRUE)
   })
 }
 
 shiny::runApp(
   shinyApp(ui, server),
-  port = 8100
+  port = app_port
 )

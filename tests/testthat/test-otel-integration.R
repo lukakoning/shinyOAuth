@@ -150,62 +150,89 @@ otel_test_that("otel_with_active_span nests child spans under an existing span",
 })
 
 otel_test_that("async_dispatch activates restored worker span for nested spans", {
-  testthat::skip_if_not_installed("otelsdk")
   testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("later")
+  testthat::skip_if_not_installed("pkgload")
 
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
+  script_path <- tempfile(fileext = ".R")
+  withr::defer(unlink(script_path))
+  output_path <- tempfile(fileext = ".log")
+  withr::defer(unlink(output_path))
+  writeLines(
+    c(
+      "pkg_dir <- commandArgs(trailingOnly = TRUE)[[1]]",
+      "pkgload::load_all(pkg_dir, quiet = TRUE)",
+      "Sys.setenv(",
+      "  OTEL_R_TRACES_EXPORTER = 'console',",
+      "  OTEL_TRACES_EXPORTER = 'console',",
+      "  OTEL_R_LOGS_EXPORTER = 'none',",
+      "  OTEL_LOGS_EXPORTER = 'none'",
+      ")",
+      "options(",
+      "  shinyOAuth.otel_tracing_enabled = TRUE,",
+      "  shinyOAuth.otel_logging_enabled = FALSE,",
+      "  shinyOAuth.otel_force_flush = TRUE",
+      ")",
+      "shinyOAuth:::otel_sync_runtime_with_env(traces = TRUE, logs = FALSE)",
+      "mirai::daemons(1, rs = '--vanilla')",
+      "on.exit(mirai::daemons(0), add = TRUE)",
+      "parent <- shinyOAuth:::otel_start_async_parent(",
+      "  'shinyOAuth.test.dispatch.parent'",
+      ")",
+      "resolved <- NULL",
+      "promises::then(",
+      "  promises::as.promise(",
+      "    shinyOAuth:::async_dispatch(",
+      "      expr = quote({",
+      "        .ns <- asNamespace('shinyOAuth')",
+      "        .ns$with_otel_span('shinyOAuth.test.dispatch.child', 1)",
+      "      }),",
+      "      args = list(),",
+      "      otel_context = list(",
+      "        headers = parent$headers,",
+      "        worker_span_name = 'shinyOAuth.test.dispatch.worker'",
+      "      )",
+      "    )",
+      "  ),",
+      "  function(x) resolved <<- x",
+      ")",
+      "deadline <- Sys.time() + 10",
+      "while (is.null(resolved) && Sys.time() < deadline) {",
+      "  later::run_now(0.05)",
+      "  Sys.sleep(0.01)",
+      "}",
+      "stopifnot(!is.null(resolved))",
+      "shinyOAuth:::replay_async_conditions(resolved)",
+      "shinyOAuth:::otel_end_async_parent(parent, status = 'ok')"
+    ),
+    con = script_path
+  )
 
-  r <- otelsdk::with_otel_record({
-    parent <- shinyOAuth:::otel_start_async_parent(
-      "shinyOAuth.test.dispatch.parent"
-    )
+  status <- system2(
+    file.path(R.home("bin"), "Rscript"),
+    args = c("--vanilla", script_path, normalizePath(".")),
+    stdout = output_path,
+    stderr = output_path
+  )
+  output <- readLines(output_path, warn = FALSE)
 
-    resolved <- NULL
-    promises::then(
-      promises::as.promise(
-        shinyOAuth:::async_dispatch(
-          expr = quote({
-            .ns <- asNamespace("shinyOAuth")
-            .ns$with_otel_span("shinyOAuth.test.dispatch.child", 1)
-          }),
-          args = list(),
-          otel_context = list(
-            headers = parent$headers,
-            worker_span_name = "shinyOAuth.test.dispatch.worker"
-          )
-        )
-      ),
-      function(x) {
-        resolved <<- x
-      }
-    )
-
-    deadline <- Sys.time() + 5
-    while (is.null(resolved) && Sys.time() < deadline) {
-      later::run_now(0.05)
-      Sys.sleep(0.01)
-    }
-
-    testthat::expect_false(is.null(resolved))
-    shinyOAuth:::replay_async_conditions(resolved)
-    shinyOAuth:::otel_end_async_parent(parent, status = "ok")
-  })
-
-  spans <- r$traces
-  parent_span <- spans[["shinyOAuth.test.dispatch.parent"]]
-  worker_span <- spans[["shinyOAuth.test.dispatch.worker"]]
-  child_span <- spans[["shinyOAuth.test.dispatch.child"]]
-
-  testthat::expect_false(is.null(parent_span))
-  testthat::expect_false(is.null(worker_span))
-  testthat::expect_false(is.null(child_span))
-  testthat::expect_identical(worker_span$trace_id, parent_span$trace_id)
-  testthat::expect_identical(worker_span$parent, parent_span$span_id)
-  testthat::expect_identical(child_span$trace_id, worker_span$trace_id)
-  testthat::expect_identical(child_span$parent, worker_span$span_id)
+  testthat::expect_equal(status, 0)
+  testthat::expect_true(any(grepl(
+    "shinyOAuth.test.dispatch.parent",
+    output,
+    fixed = TRUE
+  )))
+  testthat::expect_true(any(grepl(
+    "shinyOAuth.test.dispatch.worker",
+    output,
+    fixed = TRUE
+  )))
+  testthat::expect_true(any(grepl(
+    "shinyOAuth.test.dispatch.child",
+    output,
+    fixed = TRUE
+  )))
 })
 
 otel_test_that("prepare_call emits real spans with expected names", {

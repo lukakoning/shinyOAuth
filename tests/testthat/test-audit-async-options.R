@@ -143,6 +143,45 @@ testthat::test_that("with_async_options restores captured otel env vars", {
   )
 })
 
+testthat::test_that("with_async_options rebuilds cached otel providers", {
+  testthat::skip_if_not_installed("otel")
+
+  old_otel_state <- capture_test_otel_state()
+  withr::defer(restore_test_otel_state(old_otel_state))
+
+  otel_ns <- asNamespace("otel")
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "none",
+    OTEL_TRACES_EXPORTER = "none",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none"
+  ))
+
+  get("otel_clean_cache", envir = otel_ns)()
+  get("setup_default_tracer_provider", envir = otel_ns)()
+  testthat::expect_false(otel::is_tracing_enabled())
+
+  result <- shinyOAuth:::with_async_options(
+    list(
+      ".shinyOAuth.otel_envvars" = c(
+        OTEL_R_TRACES_EXPORTER = "console",
+        OTEL_TRACES_EXPORTER = "console",
+        OTEL_R_LOGS_EXPORTER = "none",
+        OTEL_LOGS_EXPORTER = "none"
+      )
+    ),
+    {
+      list(
+        tracing_enabled = otel::is_tracing_enabled(),
+        traces_exporter = Sys.getenv("OTEL_R_TRACES_EXPORTER", unset = NA_character_)
+      )
+    }
+  )
+
+  testthat::expect_true(isTRUE(result$tracing_enabled))
+  testthat::expect_identical(result$traces_exporter, "console")
+})
+
 testthat::test_that("with_async_options restores captured digest key cache", {
   ns <- asNamespace("shinyOAuth")
   key_env <- get("audit_digest_key_env", envir = ns)

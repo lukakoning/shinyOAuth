@@ -48,6 +48,96 @@ otel_logging_enabled <- function() {
   otel_option_enabled("shinyOAuth.otel_logging_enabled", default = TRUE)
 }
 
+otel_force_flush_enabled <- function() {
+  otel_option_enabled("shinyOAuth.otel_force_flush", default = FALSE)
+}
+
+otel_sync_runtime_with_env <- function(traces = TRUE, logs = TRUE) {
+  if (is.null(otel_namespace())) {
+    return(invisible(FALSE))
+  }
+
+  ok <- TRUE
+  clean_cache <- otel_fn("otel_clean_cache")
+  if (is.function(clean_cache)) {
+    tryCatch(
+      clean_cache(),
+      error = function(e) {
+        ok <<- FALSE
+        otel_telemetry_warning("cache refresh", e)
+      }
+    )
+  }
+
+  if (isTRUE(traces)) {
+    tryCatch(
+      otel_call("setup_default_tracer_provider"),
+      error = function(e) {
+        ok <<- FALSE
+        otel_telemetry_warning("trace provider refresh", e)
+      }
+    )
+  }
+
+  if (isTRUE(logs)) {
+    tryCatch(
+      otel_call("setup_default_logger_provider"),
+      error = function(e) {
+        ok <<- FALSE
+        otel_telemetry_warning("log provider refresh", e)
+      }
+    )
+  }
+
+  if (requireNamespace("mirai", quietly = TRUE)) {
+    mirai_cache_tracer <- tryCatch(
+      get("otel_cache_tracer", envir = asNamespace("mirai"), inherits = FALSE),
+      error = function(...) NULL
+    )
+    if (is.function(mirai_cache_tracer)) {
+      try(mirai_cache_tracer(), silent = TRUE)
+    }
+  }
+
+  invisible(ok)
+}
+
+otel_flush_providers <- function(traces = TRUE, logs = TRUE) {
+  if (is.null(otel_namespace())) {
+    return(invisible(FALSE))
+  }
+
+  if (isTRUE(traces) && isTRUE(otel_tracing_enabled())) {
+    provider <- tryCatch(
+      otel_call("get_default_tracer_provider", .default = NULL),
+      error = function(...) NULL
+    )
+    if (!is.null(provider)) {
+      try(provider$flush(), silent = TRUE)
+    }
+  }
+
+  if (isTRUE(logs) && isTRUE(otel_logging_enabled())) {
+    provider <- tryCatch(
+      otel_call("get_default_logger_provider", .default = NULL),
+      error = function(...) NULL
+    )
+    if (!is.null(provider)) {
+      try(provider$flush(), silent = TRUE)
+    }
+  }
+
+  invisible(TRUE)
+}
+
+otel_maybe_force_flush <- function(traces = TRUE, logs = TRUE) {
+  if (!isTRUE(otel_force_flush_enabled())) {
+    return(invisible(FALSE))
+  }
+
+  otel_flush_providers(traces = traces, logs = logs)
+}
+
 otel_runtime_enabled <- function() {
   if (is.null(otel_namespace())) {
     return(FALSE)
@@ -435,6 +525,7 @@ with_otel_span <- function(
         } else if (!is.null(err)) {
           otel_note_error(err)
         }
+        otel_maybe_force_flush(traces = TRUE, logs = FALSE)
       }
     },
     add = TRUE
@@ -596,6 +687,7 @@ otel_end_async_parent <- function(
   }
 
   try(otel_call("end_span", parent$span), silent = TRUE)
+  otel_maybe_force_flush(traces = TRUE, logs = FALSE)
   invisible(NULL)
 }
 
@@ -759,6 +851,7 @@ otel_emit_log <- function(event) {
     severity = severity,
     attributes = otel_attributes(otel_event_attributes(event))
   )
+  otel_maybe_force_flush(traces = FALSE, logs = TRUE)
 
   invisible(NULL)
 }

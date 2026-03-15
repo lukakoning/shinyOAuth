@@ -49,4 +49,100 @@ reset_test_otel_cache <- function() {
   invisible(NULL)
 }
 
-reset_test_otel_cache()
+capture_test_otel_state <- function() {
+  otel_env_names <- c(
+    "OTEL_R_TRACES_EXPORTER",
+    "OTEL_R_LOGS_EXPORTER",
+    "OTEL_R_METRICS_EXPORTER",
+    "OTEL_TRACES_EXPORTER",
+    "OTEL_LOGS_EXPORTER",
+    "OTEL_METRICS_EXPORTER",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+  )
+
+  state <- list(
+    envvars = Sys.getenv(otel_env_names, unset = NA_character_),
+    options = list(
+      shinyOAuth.otel_tracing_enabled = getOption(
+        "shinyOAuth.otel_tracing_enabled"
+      ),
+      shinyOAuth.otel_logging_enabled = getOption(
+        "shinyOAuth.otel_logging_enabled"
+      )
+    ),
+    otel_cache = NULL,
+    mirai_cache = NULL
+  )
+
+  if (requireNamespace("otel", quietly = TRUE)) {
+    state$otel_cache <- get("otel_save_cache", envir = asNamespace("otel"))()
+  }
+
+  if (requireNamespace("mirai", quietly = TRUE)) {
+    mirai_otel_env <- environment(
+      get("otel_cache_tracer", envir = asNamespace("mirai"))
+    )
+    state$mirai_cache <- list(
+      env = mirai_otel_env,
+      otel_is_tracing = get("otel_is_tracing", envir = mirai_otel_env),
+      otel_tracer = get("otel_tracer", envir = mirai_otel_env)
+    )
+  }
+
+  state
+}
+
+restore_test_otel_state <- function(state) {
+  if (is.null(state) || !is.list(state)) {
+    return(invisible(NULL))
+  }
+
+  envvars <- state$envvars %||% character()
+  if (length(envvars)) {
+    restore_values <- envvars[!is.na(envvars)]
+    restore_unset <- names(envvars)[is.na(envvars)]
+    if (length(restore_values)) {
+      do.call(Sys.setenv, as.list(restore_values))
+    }
+    if (length(restore_unset)) {
+      Sys.unsetenv(restore_unset)
+    }
+  }
+
+  do.call(options, state$options %||% list())
+
+  if (!is.null(state$otel_cache) && requireNamespace("otel", quietly = TRUE)) {
+    get("otel_restore_cache", envir = asNamespace("otel"))(state$otel_cache)
+  }
+
+  if (!is.null(state$mirai_cache) && requireNamespace("mirai", quietly = TRUE)) {
+    assign(
+      "otel_is_tracing",
+      state$mirai_cache$otel_is_tracing,
+      envir = state$mirai_cache$env
+    )
+    assign(
+      "otel_tracer",
+      state$mirai_cache$otel_tracer,
+      envir = state$mirai_cache$env
+    )
+  }
+
+  invisible(NULL)
+}
+
+# Keep `devtools::load_all()`/`pkgload::load_all()` sessions usable for manual
+# OTel verification. testthat sets `TESTTHAT=true` for real test execution,
+# but load_all's helper sourcing does not.
+if (identical(Sys.getenv("TESTTHAT"), "true")) {
+  old_otel_state <- capture_test_otel_state()
+  reg.finalizer(
+    parent.frame(),
+    function(...) restore_test_otel_state(old_otel_state),
+    onexit = TRUE
+  )
+  reset_test_otel_cache()
+}

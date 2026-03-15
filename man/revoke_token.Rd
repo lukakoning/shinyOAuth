@@ -22,9 +22,8 @@ revoke_token(
 \item{async}{Logical, default FALSE. If TRUE and an async backend is
 configured, the operation is performed off the main R session and this
 function returns a promise-compatible async result that resolves to the
-result list. \pkg{mirai} is preferred when daemons are configured via
-\code{\link[mirai:daemons]{mirai::daemons()}}; otherwise a non-sequential
-\pkg{future} plan is used.}
+result list. \link[mirai:mirai]{mirai::mirai} is preferred when daemons are configured via
+\code{\link[mirai:daemons]{mirai::daemons()}}; otherwise a non-sequential \link[future:future]{future::future} plan is used.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when

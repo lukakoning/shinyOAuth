@@ -235,6 +235,11 @@ with_async_options <- function(captured_opts, code) {
   ]
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
     env_names <- names(captured_envvars)
+    refresh_otel_runtime <- any(
+      !is.na(captured_envvars) &
+        nzchar(captured_envvars) &
+        tolower(captured_envvars) != "none"
+    )
     old_envvars <- Sys.getenv(env_names, unset = NA_character_)
     on.exit(
       {
@@ -257,6 +262,62 @@ with_async_options <- function(captured_opts, code) {
     }
     if (length(vars_to_unset)) {
       Sys.unsetenv(vars_to_unset)
+    }
+
+    # OTEL_* env vars only affect provider setup at initialization time, so
+    # reused async workers must rebuild cached providers after env propagation.
+    if (isTRUE(refresh_otel_runtime)) {
+      sync_runtime <- tryCatch(
+        get("otel_sync_runtime_with_env", envir = environment(), inherits = TRUE),
+        error = function(...) NULL
+      )
+      if (is.function(sync_runtime)) {
+        sync_runtime(traces = TRUE, logs = TRUE)
+      } else if (requireNamespace("otel", quietly = TRUE)) {
+        otel_ns <- asNamespace("otel")
+        otel_clean_cache <- tryCatch(
+          get("otel_clean_cache", envir = otel_ns, inherits = FALSE),
+          error = function(...) NULL
+        )
+        if (is.function(otel_clean_cache)) {
+          try(otel_clean_cache(), silent = TRUE)
+        }
+        setup_tracer <- tryCatch(
+          get(
+            "setup_default_tracer_provider",
+            envir = otel_ns,
+            inherits = FALSE
+          ),
+          error = function(...) NULL
+        )
+        setup_logger <- tryCatch(
+          get(
+            "setup_default_logger_provider",
+            envir = otel_ns,
+            inherits = FALSE
+          ),
+          error = function(...) NULL
+        )
+        if (is.function(setup_tracer)) {
+          try(setup_tracer(), silent = TRUE)
+        }
+        if (is.function(setup_logger)) {
+          try(setup_logger(), silent = TRUE)
+        }
+      }
+      if (requireNamespace("mirai", quietly = TRUE)) {
+        mirai_cache_tracer <- tryCatch(
+          get(
+            "otel_cache_tracer",
+            envir = asNamespace("mirai"),
+            inherits = FALSE
+          ),
+          error = function(...) NULL
+        )
+        if (is.function(mirai_cache_tracer)) {
+          try(mirai_cache_tracer(), silent = TRUE)
+        }
+      }
     }
   }
 
@@ -417,6 +478,11 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .otel_context <- .(otel_context)
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
       .otel_env_names <- names(.otel_envvars)
+      .otel_refresh_runtime <- any(
+        !is.na(.otel_envvars) &
+          nzchar(.otel_envvars) &
+          tolower(.otel_envvars) != "none"
+      )
       .otel_old_envvars <- Sys.getenv(.otel_env_names, unset = NA_character_)
       on.exit(
         {
@@ -439,6 +505,59 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       }
       if (length(.otel_vars_to_unset)) {
         Sys.unsetenv(.otel_vars_to_unset)
+      }
+      if (isTRUE(.otel_refresh_runtime)) {
+        .otel_sync_runtime <- tryCatch(
+          get("otel_sync_runtime_with_env", envir = .ns, inherits = FALSE),
+          error = function(...) NULL
+        )
+        if (is.function(.otel_sync_runtime)) {
+          .otel_sync_runtime(traces = TRUE, logs = TRUE)
+        } else if (requireNamespace("otel", quietly = TRUE)) {
+          .otel_ns <- asNamespace("otel")
+          .otel_clean_cache <- tryCatch(
+            get("otel_clean_cache", envir = .otel_ns, inherits = FALSE),
+            error = function(...) NULL
+          )
+          if (is.function(.otel_clean_cache)) {
+            try(.otel_clean_cache(), silent = TRUE)
+          }
+          .otel_setup_tracer <- tryCatch(
+            get(
+              "setup_default_tracer_provider",
+              envir = .otel_ns,
+              inherits = FALSE
+            ),
+            error = function(...) NULL
+          )
+          .otel_setup_logger <- tryCatch(
+            get(
+              "setup_default_logger_provider",
+              envir = .otel_ns,
+              inherits = FALSE
+            ),
+            error = function(...) NULL
+          )
+          if (is.function(.otel_setup_tracer)) {
+            try(.otel_setup_tracer(), silent = TRUE)
+          }
+          if (is.function(.otel_setup_logger)) {
+            try(.otel_setup_logger(), silent = TRUE)
+          }
+        }
+        if (requireNamespace("mirai", quietly = TRUE)) {
+          .mirai_cache_tracer <- tryCatch(
+            get(
+              "otel_cache_tracer",
+              envir = asNamespace("mirai"),
+              inherits = FALSE
+            ),
+            error = function(...) NULL
+          )
+          if (is.function(.mirai_cache_tracer)) {
+            try(.mirai_cache_tracer(), silent = TRUE)
+          }
+        }
       }
     }
     if (!is.null(.otel_context)) {
