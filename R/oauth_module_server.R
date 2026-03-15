@@ -1649,10 +1649,26 @@ oauth_module_server <- function(
                 captured_async_options <- capture_async_options()
 
                 pre_payload <- tryCatch(
-                  state_payload_decrypt_validate(
-                    client,
-                    state,
-                    shiny_session = captured_shiny_session
+                  with_otel_span(
+                    "shinyOAuth.callback.validate",
+                    {
+                      payload <- state_payload_decrypt_validate(
+                        client,
+                        state,
+                        shiny_session = captured_shiny_session
+                      )
+                      otel_set_span_attributes(attributes = list(
+                        shinyoauth.trace_id = payload$trace_id %||% NULL
+                      ))
+                      payload
+                    },
+                    attributes = otel_client_attributes(
+                      client = client,
+                      module_id = id,
+                      shiny_session = captured_shiny_session,
+                      async = TRUE,
+                      phase = "callback.state_payload"
+                    )
                   ),
                   error = function(e) {
                     .set_error(
@@ -1670,11 +1686,28 @@ oauth_module_server <- function(
                 with_trace_id(
                   captured_trace_id,
                   {
+                    otel_set_span_attributes(
+                      span = callback_parent$span,
+                      attributes = list(shinyoauth.trace_id = captured_trace_id)
+                    )
+
                     pre_state <- tryCatch(
-                      state_store_get_remove(
-                        client,
-                        pre_payload$state,
-                        shiny_session = captured_shiny_session
+                      with_otel_span(
+                        "shinyOAuth.callback.validate",
+                        {
+                          state_store_get_remove(
+                            client,
+                            pre_payload$state,
+                            shiny_session = captured_shiny_session
+                          )
+                        },
+                        attributes = otel_client_attributes(
+                          client = client,
+                          module_id = id,
+                          shiny_session = captured_shiny_session,
+                          async = TRUE,
+                          phase = "callback.state_store_consume"
+                        )
                       ),
                       error = function(e) {
                         .set_error(

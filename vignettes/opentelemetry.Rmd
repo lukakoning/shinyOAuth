@@ -40,6 +40,8 @@ scalar attributes where possible, so fields like `shiny_session` are not
 preserved verbatim as a nested payload.
 The package's own audit correlation id is exported as the scalar attribute
 `shinyoauth.trace_id`; it is distinct from OpenTelemetry's trace/span ids.
+When a shinyOAuth operation-level correlation id is available, spans also carry
+the same `shinyoauth.trace_id` attribute for cross-redirect correlation.
 
 When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set, shinyOAuth
 stops creating OTel log records but the native R hooks still fire.
@@ -60,10 +62,11 @@ All spans share these behaviors:
 When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set, 'shinyOAuth' stops
 emitting all OTel spans.
 
-For shinyOAuth-managed async work, the package restores the parent session's
-captured `OTEL_*` / `OTEL_R_*` environment variables inside mirai workers before
-running OAuth logic. This keeps exporter selection and OTLP endpoints
-consistent across the main process and worker processes.
+For shinyOAuth-managed async work, the package captures the parent session's
+relevant `OTEL_*` / `OTEL_R_*` environment variables and reapplies them inside
+the async execution context before running OAuth logic. This keeps exporter
+selection and OTLP endpoints aligned across the main R process and async
+evaluation backends such as mirai workers and future-based execution.
 
 ### Span catalog
 
@@ -110,11 +113,13 @@ consistent across the main process and worker processes.
 - Represents multiple validation stages; distinguish them through
   `oauth.phase`
 - Emitted phases currently include:
-  - `callback.state_payload`
-  - `callback.state_store_consume`
+  - `callback.state_payload` and `callback.state_store_consume`
+    - emitted on the main process in async callback mode, before worker dispatch
   - `callback.browser_token_validation`
   - `callback.pkce_verifier_validation`
   - `callback.nonce_validation`
+    - emitted during the normal synchronous callback path and inside the async
+      worker after parent context restoration
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`

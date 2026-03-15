@@ -195,6 +195,18 @@ otel_shiny_attributes <- function(shiny_session = NULL) {
   ))
 }
 
+otel_with_trace_attribute <- function(attributes = NULL, trace_id = NULL) {
+  attrs <- attributes %||% list()
+  trace_id <- otel_scalar_attribute(trace_id %||% get_current_trace_id())
+  if (is.null(trace_id)) {
+    return(attrs)
+  }
+  if (!("shinyoauth.trace_id" %in% names(attrs))) {
+    attrs[["shinyoauth.trace_id"]] <- trace_id
+  }
+  attrs
+}
+
 otel_client_attributes <- function(
   client = NULL,
   module_id = NULL,
@@ -371,7 +383,7 @@ with_otel_span <- function(
     {
       otel::start_local_active_span(
         name = name,
-        attributes = otel_attributes(attributes),
+        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
         options = options
       )
       span_started <- TRUE
@@ -475,7 +487,7 @@ otel_start_async_parent <- function(
     {
       otel::start_span(
         name = name,
-        attributes = otel_attributes(attributes)
+        attributes = otel_attributes(otel_with_trace_attribute(attributes))
       )
     },
     error = function(e) {
@@ -515,7 +527,7 @@ otel_restore_parent_in_worker <- function(
     {
       otel::start_span(
         name = name,
-        attributes = otel_attributes(attributes),
+        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
         options = list(parent = parent_ctx)
       )
     },

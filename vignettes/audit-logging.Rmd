@@ -68,7 +68,7 @@ The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 - If you pre-capture a worker-intended context with `capture_shiny_session_context(is_async = TRUE)` but emit the event before any worker dispatch actually happens, shinyOAuth normalizes that borrowed context back to `FALSE` because the event was still emitted on the main process.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
-- `mirai_error_type`: (async failure events only) classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
+- `mirai_error_type`: a top-level event field on certain async failure events. It classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
   - `"mirai_error"` — code threw an R error inside the worker
   - `"mirai_timeout"` — the task exceeded its timeout and was cancelled by dispatcher
   - `"mirai_connection_reset"` — the daemon process crashed or was terminated
@@ -111,14 +111,15 @@ This means that the `shiny_session$http` field will be `NULL` in all audit event
 
 ### Audit events from async workers (mirai daemons)
 
-When `async = TRUE` is configured in `oauth_module_server()`, and when you
-have set daemon workers `mirai::daemons()`, token exchange,
-refresh, and revocation run in background mirai daemon processes. The package
-automatically propagates your `shinyOAuth.audit_hook`
-option to these workers, so audit events fire also in the async worker processes and
-your hook applies there. For shinyOAuth-managed async work, the package also
-replays the parent session's relevant `OTEL_*` / `OTEL_R_*` environment
-variables inside the worker so exporter configuration stays aligned with the
+When `async = TRUE` is configured in `oauth_module_server()`, token exchange,
+refresh, and revocation run through shinyOAuth's async dispatch layer. With
+mirai daemons and future multisession plans this means background worker
+processes; with `future::sequential` the code stays in-process but still uses
+the async promise path. The package automatically propagates your
+`shinyOAuth.audit_hook` option to these async executions, so audit events fire
+there as well. For shinyOAuth-managed async work, the package also replays the
+parent session's relevant `OTEL_*` / `OTEL_R_*` environment variables inside
+the async execution context so exporter configuration stays aligned with the
 main R process.
 
 Note that your audit hook function (and any objects referenced in

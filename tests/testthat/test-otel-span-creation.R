@@ -100,6 +100,74 @@ testthat::test_that("handle_callback creates shinyOAuth.callback span", {
   testthat::expect_true("shinyOAuth.token.verify" %in% span_names)
 })
 
+testthat::test_that("async callback emits validation sub-spans before worker dispatch", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("later")
+
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  if (rlang::is_installed("mirai")) {
+    tryCatch(mirai::daemons(0), error = function(...) NULL)
+  }
+
+  old_plan <- future::plan()
+  future::plan(future::sequential)
+  withr::defer(future::plan(old_plan))
+
+  seen_spans <- list()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = make_test_client(use_pkce = TRUE, use_nonce = FALSE),
+      auto_redirect = FALSE,
+      async = TRUE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      testthat::with_mocked_bindings(
+        with_otel_span = function(
+          name,
+          code,
+          attributes = NULL,
+          options = NULL,
+          mark_ok = TRUE
+        ) {
+          seen_spans[[length(seen_spans) + 1L]] <<- list(
+            name = name,
+            phase = attributes$oauth.phase %||% NA_character_
+          )
+          eval.parent(substitute(code))
+        },
+        emit_trace_event = function(event) invisible(NULL),
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          list(access_token = "t-async", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=ok&state=", enc))
+          poll_for_async(function() !is.null(values$token), session)
+        }
+      )
+    }
+  )
+
+  callback_validate_phases <- vapply(
+    Filter(function(x) identical(x$name, "shinyOAuth.callback.validate"), seen_spans),
+    function(x) x$phase,
+    character(1)
+  )
+
+  testthat::expect_true("callback.state_payload" %in% callback_validate_phases)
+  testthat::expect_true("callback.state_store_consume" %in% callback_validate_phases)
+})
+
 testthat::test_that("get_userinfo creates shinyOAuth.userinfo span", {
   span_names <- character()
 

@@ -223,6 +223,55 @@ testthat::test_that("prepare_call emits real spans with expected names", {
     login_span$attributes[["oauth.provider.name"]],
     "example"
   )
+  testthat::expect_true(is.character(login_span$attributes[["shinyoauth.trace_id"]]))
+  testthat::expect_true(nzchar(login_span$attributes[["shinyoauth.trace_id"]]))
+})
+
+testthat::test_that("prepare_call and callback spans share shinyOAuth trace_id", {
+  testthat::skip_if_not_installed("otelsdk")
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  r <- otelsdk::with_otel_record({
+    cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+    btok <- valid_browser_token()
+    url <- shinyOAuth::prepare_call(cli, browser_token = btok)
+    enc <- parse_query_param(url, "state")
+
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(access_token = "test_at", expires_in = 3600)
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::handle_callback(
+          cli,
+          code = "test_code",
+          payload = enc,
+          browser_token = btok
+        )
+      }
+    )
+  })
+
+  login_span <- r$traces[["shinyOAuth.login.request"]]
+  callback_span <- r$traces[["shinyOAuth.callback"]]
+  verify_span <- r$traces[["shinyOAuth.token.verify"]]
+
+  testthat::expect_false(is.null(login_span))
+  testthat::expect_false(is.null(callback_span))
+  testthat::expect_false(is.null(verify_span))
+
+  trace_id <- login_span$attributes[["shinyoauth.trace_id"]]
+  testthat::expect_true(is.character(trace_id))
+  testthat::expect_true(nzchar(trace_id))
+  testthat::expect_identical(
+    callback_span$attributes[["shinyoauth.trace_id"]],
+    trace_id
+  )
+  testthat::expect_identical(
+    verify_span$attributes[["shinyoauth.trace_id"]],
+    trace_id
+  )
 })
 
 testthat::test_that("userinfo HTTP response attributes stay on the HTTP child span", {
