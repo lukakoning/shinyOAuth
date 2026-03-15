@@ -402,7 +402,9 @@ audit_event <- function(
     ),
     context
   )
-  # Pre-inject shiny_session if provided (augment_with_shiny_context won't override)
+  # Pre-inject shiny_session if provided. emit_trace_event() will still
+  # normalize it for the current process so borrowed async contexts pick up
+  # worker-local fields or are corrected when emitted on the main thread.
   if (!is.null(shiny_session)) {
     event$shiny_session <- shiny_session
   }

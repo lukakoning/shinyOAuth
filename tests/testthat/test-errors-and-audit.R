@@ -398,7 +398,7 @@ test_that("augment_with_shiny_context preserves pre-captured is_async = TRUE", {
   )
 })
 
-test_that("audit_event includes is_async in shiny_session when captured", {
+test_that("audit_event normalizes borrowed async context on the main thread", {
   events <- list()
   old <- options(shinyOAuth.trace_hook = function(ev) {
     events[[length(events) + 1]] <<- ev
@@ -431,15 +431,40 @@ test_that("audit_event includes is_async in shiny_session when captured", {
   expect_length(async_event, 1)
   expect_length(sync_event, 1)
 
-  # Async event should have is_async = TRUE (from pre-captured context)
+  # Borrowed async context is normalized back to main-thread semantics
+  # when the event is still emitted on the main process.
   if (!is.null(async_event[[1]]$shiny_session)) {
-    expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))
+    expect_false(isTRUE(async_event[[1]]$shiny_session$is_async))
   }
 
   # Sync event should have is_async = FALSE (from augment on main thread)
   if (!is.null(sync_event[[1]]$shiny_session)) {
     expect_false(isTRUE(sync_event[[1]]$shiny_session$is_async))
   }
+})
+
+test_that("audit_event preserves is_async inside async session context", {
+  events <- list()
+  old <- options(shinyOAuth.trace_hook = function(ev) {
+    events[[length(events) + 1]] <<- ev
+  })
+  on.exit(options(old), add = TRUE)
+
+  captured_ctx <- list(
+    token = "mock-session-token",
+    http = NULL,
+    is_async = TRUE,
+    main_process_id = 12345L
+  )
+
+  shinyOAuth:::with_async_session_context(captured_ctx, {
+    shinyOAuth:::audit_event("test_async_context")
+  })
+
+  async_event <- Filter(function(e) e$type == "audit_test_async_context", events)
+  expect_length(async_event, 1)
+  expect_equal(async_event[[1]]$shiny_session$token, "mock-session-token")
+  expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))
 })
 
 

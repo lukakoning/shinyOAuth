@@ -55,12 +55,17 @@ login success or failure handling. The trace id is embedded inside the
 encrypted state payload so it survives the browser round-trip without exposing
 raw OAuth values.
 
+This `trace_id` is shinyOAuth's own application-level correlation id. When OTel
+logging is enabled it is exported as the `shinyoauth.trace_id` log attribute,
+which is distinct from the backend's native OpenTelemetry trace/span ids.
+
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
 is attached to every event to correlate audit activity with the HTTP request and session. 
 The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
 - `shiny_session$is_async`: a logical indicating whether the event was emitted from the main R process (`FALSE`) or from an async worker (`TRUE`). This helps distinguish logs produced by background tasks (e.g., async token exchange or refresh) from those in the main reactive flow.
+- If you pre-capture a worker-intended context with `capture_shiny_session_context(is_async = TRUE)` but emit the event before any worker dispatch actually happens, shinyOAuth normalizes that borrowed context back to `FALSE` because the event was still emitted on the main process.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
 - `mirai_error_type`: (async failure events only) classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
@@ -123,6 +128,12 @@ worker process and shinyOAuth will surface that failure as a warning
 (captured and replayed to the main process when using async workers). Use hooks that create connections on demand (e.g., open a
 database connection inside the hook body) rather than capturing an existing
 connection in the closure.
+
+Also note that in true async mode a worker cannot mutate the main R process's
+in-memory objects. Patterns like appending to a global list or incrementing a
+counter inside `audit_hook` only affect the worker's private copy. For
+cross-process delivery, write to an external sink (database, file, queue, OTLP
+exporter, etc.) or explicitly return captured data from the worker in tests.
 
 ### Digest fields and keying
 

@@ -1,15 +1,9 @@
-testthat::test_that("audit hook is called from async worker when options are propagated", {
+testthat::test_that("audit hook options propagate to async workers with async session context", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("mirai")
   testthat::skip_if_not_installed("later")
 
-  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-
-  # Use mirai daemons to test true cross-process option propagation.
-  # Note: on systems where daemons aren't available, this will
-
-  # fall back to sync mode (which still validates the code path).
   ok <- tryCatch(
     {
       mirai::daemons(2, rs = "--vanilla")
@@ -17,114 +11,74 @@ testthat::test_that("audit hook is called from async worker when options are pro
     },
     error = function(...) FALSE
   )
-  if (!ok) {
-    mirai::daemons(sync = TRUE)
-  }
+  testthat::skip_if(!ok, "Could not start mirai daemons")
   withr::defer(mirai::daemons(0))
 
-  # Capture audit events via the audit hook. This hook is set in the main
-
-  # process and should be propagated to async workers.
-  audit_events <- list()
+  main_pid <- Sys.getpid()
   withr::local_options(list(
-    shinyOAuth.audit_hook = function(event) {
-      # Record the event along with the current process ID to verify
-      # that events from workers are correctly routed back
-      event$.captured_in_pid <- Sys.getpid()
-      audit_events <<- c(audit_events, list(event))
-    }
+    shinyOAuth.audit_hook = local({
+      worker_events <- list()
+      function(event) {
+        worker_events <<- c(worker_events, list(event))
+        invisible(NULL)
+      }
+    })
   ))
 
-  # Verify capture_async_options includes the audit hook
   captured <- capture_async_options()
   testthat::expect_true(is.function(captured[["shinyOAuth.audit_hook"]]))
   testthat::expect_true(
     is.numeric(captured[[".shinyOAuth.main_process_id"]])
   )
-
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-
-  shiny::testServer(
-    app = oauth_module_server,
+  resolved <- NULL
+  ctx <- list(
+    token = "session-token-from-main",
+    is_async = TRUE,
+    main_process_id = main_pid
+  )
+  promise <- shinyOAuth:::async_dispatch(
+    expr = quote({
+      .ns <- asNamespace("shinyOAuth")
+      .ns$with_async_options(captured_opts, {
+        .ns$with_async_session_context(ctx, {
+          .ns$audit_event("test_async_worker")
+        })
+        hook <- getOption("shinyOAuth.audit_hook")
+        get("worker_events", envir = environment(hook), inherits = FALSE)
+      })
+    }),
     args = list(
-      id = "auth",
-      client = cli,
-      auto_redirect = FALSE,
-      async = TRUE,
-      indefinite_session = TRUE
-    ),
-    expr = {
-      testthat::expect_true(values$has_browser_token())
+      captured_opts = captured,
+      ctx = ctx
+    )
+  )
+  promises::then(promises::as.promise(promise), function(value) {
+    resolved <<- value
+  })
+  poll_for_async(function() !is.null(resolved), timeout = 10)
 
-      # Build the authorization URL and capture encoded state
-      url <- values$build_auth_url()
-      enc <- parse_query_param(url, "state")
-      testthat::expect_true(is.character(enc) && nzchar(enc))
+  worker_events <- shinyOAuth:::replay_async_conditions(resolved)
+  testthat::expect_true(length(worker_events) > 0)
 
-      # Mock token exchange to avoid HTTP
-      testthat::with_mocked_bindings(
-        swap_code_for_token_set = function(
-          client,
-          code,
-          code_verifier,
-          shiny_session = NULL
-        ) {
-          list(access_token = "t-async-options", expires_in = 3600)
-        },
-        .package = "shinyOAuth",
-        {
-          values$.process_query(paste0("?code=ok&state=", enc))
+  async_events <- Filter(
+    function(e) isTRUE((e$shiny_session %||% list())$is_async),
+    worker_events
+  )
+  testthat::expect_true(length(async_events) > 0)
 
-          # Allow promise handlers to run
-          deadline <- Sys.time() + 5
-          while (is.null(values$token) && Sys.time() < deadline) {
-            later::run_now(0.05)
-            session$flushReact()
-            Sys.sleep(0.01)
-          }
-        }
-      )
-
-      # Wait for audit hook events to arrive
-      deadline <- Sys.time() + 5
-      while (length(audit_events) == 0 && Sys.time() < deadline) {
-        later::run_now(0.05)
-        session$flushReact()
-        Sys.sleep(0.01)
-      }
-
-      testthat::expect_true(
-        length(audit_events) > 0,
-        info = "Expected at least one audit event to be captured"
-      )
-
-      # Check that at least one event has is_async = TRUE (indicating it came
-      # from an async worker context)
-      async_events <- Filter(
-        function(e) {
-          isTRUE((e$shiny_session %||% list())$is_async)
-        },
-        audit_events
-      )
-
-      testthat::expect_true(
-        length(async_events) > 0,
-        info = "Expected at least one audit event with is_async = TRUE"
-      )
-
-      # Verify async events include process_id information
-      for (evt in async_events) {
-        sess <- evt$shiny_session
-        testthat::expect_true(
-          !is.null(sess$main_process_id),
-          info = "Async event should include main_process_id"
-        )
-        testthat::expect_true(
-          !is.null(sess$process_id),
-          info = "Async event should include worker process_id"
-        )
-      }
-    }
+  event <- async_events[[1]]
+  testthat::expect_identical(event$type, "audit_test_async_worker")
+  testthat::expect_identical(event$shiny_session$token, ctx$token)
+  testthat::expect_identical(
+    as.integer(event$shiny_session$main_process_id),
+    as.integer(main_pid)
+  )
+  testthat::expect_true(!is.null(event$shiny_session$process_id))
+  testthat::expect_false(
+    identical(
+      as.integer(event$shiny_session$process_id),
+      as.integer(main_pid)
+    )
   )
 })
 
