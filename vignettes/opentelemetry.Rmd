@@ -49,6 +49,9 @@ All spans share these behaviors:
 
 - Successful operations are marked with status `ok`; errors are marked `error`
   and include an `exception` event with the error class and message
+- HTTP client spans record `http.response.status_code` on the `*.http` span
+  itself once a response is available; non-success HTTP responses mark that
+  client span as `error`
 - Sensitive values (tokens, codes, state payloads, browser tokens) are never
   attached as span attributes
   

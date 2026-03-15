@@ -7,7 +7,13 @@ testthat::test_that("prepare_call creates shinyOAuth.login.request span", {
   span_attrs <- list()
 
   testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       span_names <<- c(span_names, name)
       span_attrs[[name]] <<- attributes
       eval.parent(substitute(code))
@@ -40,7 +46,13 @@ testthat::test_that("handle_callback creates shinyOAuth.callback span", {
 
   # Prepare a valid state
   url <- testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       eval.parent(substitute(code))
     },
     emit_trace_event = function(event) invisible(NULL),
@@ -52,7 +64,13 @@ testthat::test_that("handle_callback creates shinyOAuth.callback span", {
   enc <- parse_query_param(url, "state")
 
   testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       span_names <<- c(span_names, name)
       eval.parent(substitute(code))
     },
@@ -89,7 +107,13 @@ testthat::test_that("get_userinfo creates shinyOAuth.userinfo span", {
   cli@provider@userinfo_url <- "https://example.com/userinfo"
 
   testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       span_names <<- c(span_names, name)
       eval.parent(substitute(code))
     },
@@ -125,7 +149,13 @@ testthat::test_that("refresh_token creates shinyOAuth.refresh span (sync)", {
   )
 
   testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       span_names <<- c(span_names, name)
       eval.parent(substitute(code))
     },

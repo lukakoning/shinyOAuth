@@ -220,6 +220,78 @@ testthat::test_that("prepare_call emits real spans with expected names", {
   )
 })
 
+testthat::test_that("userinfo HTTP response attributes stay on the HTTP child span", {
+  testthat::skip_if_not_installed("otelsdk")
+
+  cli <- make_test_client()
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+
+  r <- otelsdk::with_otel_record({
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/userinfo",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"user123"}')
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::get_userinfo(cli, token = "at")
+      }
+    )
+  })
+
+  http_span <- r$traces[["shinyOAuth.userinfo.http"]]
+  parent_span <- r$traces[["shinyOAuth.userinfo"]]
+
+  testthat::expect_identical(
+    as.integer(http_span$attributes[["http.response.status_code"]]),
+    200L
+  )
+  testthat::expect_null(parent_span$attributes[["http.response.status_code"]])
+  testthat::expect_identical(http_span$status, "ok")
+})
+
+testthat::test_that("introspection HTTP span is marked error on HTTP failure", {
+  testthat::skip_if_not_installed("otelsdk")
+
+  cli <- make_test_client()
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  tok <- OAuthToken(
+    access_token = "at",
+    refresh_token = NA_character_,
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+
+  r <- otelsdk::with_otel_record({
+    res <- testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/introspect",
+          status = 500,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::introspect_token(cli, tok, which = "access", async = FALSE)
+      }
+    )
+    testthat::expect_identical(res$status, "http_500")
+  })
+
+  http_span <- r$traces[["shinyOAuth.token.introspect.http"]]
+  testthat::expect_identical(
+    as.integer(http_span$attributes[["http.response.status_code"]]),
+    500L
+  )
+  testthat::expect_identical(http_span$status, "error")
+})
+
 testthat::test_that("instrumentation scope is set correctly", {
   testthat::skip_if_not_installed("otelsdk")
 

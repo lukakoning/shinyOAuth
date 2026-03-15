@@ -36,18 +36,21 @@ state_payload_decrypt_validate <- function(
       payload_verify_client_binding(client, pld)
 
       # Success audit (redacted identifiers only)
-      try(
-        audit_event(
-          "callback_validation_success",
-          context = list(
-            provider = client@provider@name %||% NA_character_,
-            issuer = client@provider@issuer %||% NA_character_,
-            client_id_digest = string_digest(client@client_id),
-            state_digest = string_digest(pld$state)
+      with_trace_id(
+        pld$trace_id %||% NULL,
+        try(
+          audit_event(
+            "callback_validation_success",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              issuer = client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id),
+              state_digest = string_digest(pld$state)
+            ),
+            shiny_session = shiny_session
           ),
-          shiny_session = shiny_session
-        ),
-        silent = TRUE
+          silent = TRUE
+        )
       )
       pld
     },
@@ -68,13 +71,13 @@ state_payload_decrypt_validate <- function(
         ),
         silent = TRUE
       )
-      rlang::abort(
+      rethrow_with_context(
+        e,
+        class = c("shinyOAuth_state_error", "shinyOAuth_error"),
         message = c(
           "State payload decryption or validation failed",
           "i" = paste0("", conditionMessage(e))
-        ),
-        class = c("shinyOAuth_state_error", "shinyOAuth_error"),
-        parent = e
+        )
       )
     }
   )

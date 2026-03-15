@@ -144,7 +144,7 @@ The package provides hooks for logging/auditing crucial events
 signals via OpenTelemetry.
 
 See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for audit event details, 
-and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html))) for OpenTelemetry details.
+and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)) for OpenTelemetry details.
 
 ## More information
 

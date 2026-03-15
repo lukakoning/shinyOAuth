@@ -320,11 +320,46 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
   invisible(NULL)
 }
 
+otel_record_http_result <- function(resp, span = NULL) {
+  if (!isTRUE(otel_tracing_enabled())) {
+    return(invisible(NULL))
+  }
+
+  if (is.null(resp) || !inherits(resp, "httr2_response")) {
+    return(invisible(NULL))
+  }
+
+  span <- span %||% otel::get_active_span()
+  otel_set_span_attributes(
+    span = span,
+    attributes = otel_http_attributes(resp = resp)
+  )
+
+  status_code <- tryCatch(httr2::resp_status(resp), error = function(...) NULL)
+  if (
+    !is.numeric(status_code) || length(status_code) != 1L || is.na(status_code)
+  ) {
+    return(invisible(NULL))
+  }
+
+  if (status_code < 300L) {
+    try(span$set_status("ok"), silent = TRUE)
+  } else {
+    try(
+      span$set_status("error", description = paste0("HTTP ", status_code)),
+      silent = TRUE
+    )
+  }
+
+  invisible(NULL)
+}
+
 with_otel_span <- function(
   name,
   code,
   attributes = NULL,
-  options = NULL
+  options = NULL,
+  mark_ok = TRUE
 ) {
   code <- substitute(code)
   if (!isTRUE(otel_tracing_enabled())) {
@@ -351,7 +386,7 @@ with_otel_span <- function(
   on.exit(
     {
       if (isTRUE(span_started)) {
-        if (isTRUE(ok)) {
+        if (isTRUE(ok) && isTRUE(mark_ok)) {
           otel_mark_span_ok()
         } else if (!is.null(err)) {
           otel_note_error(err)

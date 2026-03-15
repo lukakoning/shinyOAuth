@@ -22,7 +22,7 @@ This vignette covers:
 
 You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a 
 hook function that will be called whenever an audit event is emitted.
-The function you reigster should be fast, non-blocking, and never throw errors.
+The function you register should be fast, non-blocking, and never throw errors.
 
 Example of printing audit events to console:
 ```r
@@ -44,9 +44,16 @@ field are not preserved verbatim in the OTel log payload.
 All audit events share the following base shape:
 
 - `type`: a string starting with `audit_...`
-- `trace_id`: a short correlation id for linking related records
+- `trace_id`: a short correlation id for linking related records from the same
+  operation or auth flow
 - `timestamp`: POSIXct time when the event was created (from `Sys.time()`)
 - Additional key/value fields depending on the event (see event catalog)
+
+For the interactive login flow, shinyOAuth propagates the same `trace_id`
+from redirect preparation through callback validation, token exchange, and
+login success or failure handling. The trace id is embedded inside the
+encrypted state payload so it survives the browser round-trip without exposing
+raw OAuth values.
 
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
 is attached to every event to correlate audit activity with the HTTP request and session. 
@@ -254,7 +261,12 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_login_failed`
 
 - When: surface-level login failure during callback handling in the Shiny module
-- Context: `provider`, `issuer`, `client_id_digest`, `phase` (`sync_token_exchange`|`async_token_exchange`), `error_class`, `mirai_error_type`
+- Context: `provider`, `issuer`, `client_id_digest`, `phase`, `error_class`, `mirai_error_type`
+- `phase` currently includes:
+  - `sync_token_exchange`
+  - `async_token_exchange`
+  - `async_payload_validation`
+  - `async_state_store_lookup`
 
 ### Logout and session clears
 

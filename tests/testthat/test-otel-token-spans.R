@@ -29,7 +29,13 @@ testthat::test_that("audit_event forwards the structured event without creating 
   seen_event <- NULL
 
   testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       calls <<- c(calls, name)
       eval.parent(substitute(code))
     },
@@ -59,7 +65,13 @@ testthat::test_that("revoke_token creates otel spans for sync and async flows", 
 
   sync_calls <- character()
   sync_result <- testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       sync_calls <<- c(sync_calls, name)
       eval.parent(substitute(code))
     },
@@ -139,7 +151,13 @@ testthat::test_that("introspect_token creates otel spans for sync and async flow
 
   sync_calls <- character()
   sync_result <- testthat::with_mocked_bindings(
-    with_otel_span = function(name, code, attributes = NULL, options = NULL) {
+    with_otel_span = function(
+      name,
+      code,
+      attributes = NULL,
+      options = NULL,
+      mark_ok = TRUE
+    ) {
       sync_calls <<- c(sync_calls, name)
       eval.parent(substitute(code))
     },
