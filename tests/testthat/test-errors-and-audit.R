@@ -461,7 +461,10 @@ test_that("audit_event preserves is_async inside async session context", {
     shinyOAuth:::audit_event("test_async_context")
   })
 
-  async_event <- Filter(function(e) e$type == "audit_test_async_context", events)
+  async_event <- Filter(
+    function(e) e$type == "audit_test_async_context",
+    events
+  )
   expect_length(async_event, 1)
   expect_equal(async_event[[1]]$shiny_session$token, "mock-session-token")
   expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))

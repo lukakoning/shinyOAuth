@@ -8,7 +8,6 @@ library(otelsdk)
 options(
   shinyOAuth.otel_tracing_enabled = TRUE,
   shinyOAuth.otel_logging_enabled = TRUE,
-  shinyOAuth.otel_force_flush = TRUE,
   shinyOAuth.print_errors = TRUE,
   shinyOAuth.print_traceback = TRUE
 )
@@ -33,8 +32,14 @@ setup_otel_tui <- function(
     OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = paste0(base_url, "/v1/logs")
   )
 
-  # Rebuild providers from the current environment for this process too.
-  shinyOAuth:::otel_sync_runtime_with_env(traces = TRUE, logs = TRUE)
+  # Clear otel's internal cache so it re-detects exporters from the env vars.
+  otel_clean_cache <- tryCatch(
+    get("otel_clean_cache", envir = asNamespace("otel"), inherits = FALSE),
+    error = function(...) NULL
+  )
+  if (is.function(otel_clean_cache)) {
+    otel_clean_cache()
+  }
 
   invisible(base_url)
 }

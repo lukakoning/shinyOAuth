@@ -518,9 +518,11 @@ handle_callback_internal <- function(
           payload,
           shiny_session = shiny_session
         )
-        otel_set_span_attributes(attributes = list(
-          shinyoauth.trace_id = payload$trace_id %||% NULL
-        ))
+        otel_set_span_attributes(
+          attributes = list(
+            shinyoauth.trace_id = payload$trace_id %||% NULL
+          )
+        )
         payload
       },
       attributes = otel_client_attributes(
@@ -534,9 +536,11 @@ handle_callback_internal <- function(
   with_trace_id(
     payload$trace_id %||% NULL,
     {
-      otel_set_span_attributes(attributes = list(
-        shinyoauth.trace_id = payload$trace_id %||% NULL
-      ))
+      otel_set_span_attributes(
+        attributes = list(
+          shinyoauth.trace_id = payload$trace_id %||% NULL
+        )
+      )
 
       # Audit: callback received
       try(

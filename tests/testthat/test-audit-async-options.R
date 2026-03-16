@@ -173,7 +173,10 @@ testthat::test_that("with_async_options rebuilds cached otel providers", {
     {
       list(
         tracing_enabled = otel::is_tracing_enabled(),
-        traces_exporter = Sys.getenv("OTEL_R_TRACES_EXPORTER", unset = NA_character_)
+        traces_exporter = Sys.getenv(
+          "OTEL_R_TRACES_EXPORTER",
+          unset = NA_character_
+        )
       )
     }
   )

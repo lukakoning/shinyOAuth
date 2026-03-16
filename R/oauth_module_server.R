@@ -1657,9 +1657,11 @@ oauth_module_server <- function(
                         state,
                         shiny_session = captured_shiny_session
                       )
-                      otel_set_span_attributes(attributes = list(
-                        shinyoauth.trace_id = payload$trace_id %||% NULL
-                      ))
+                      otel_set_span_attributes(
+                        attributes = list(
+                          shinyoauth.trace_id = payload$trace_id %||% NULL
+                        )
+                      )
                       payload
                     },
                     attributes = otel_client_attributes(

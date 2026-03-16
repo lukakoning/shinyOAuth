@@ -118,7 +118,9 @@ restore_test_otel_state <- function(state) {
     get("otel_restore_cache", envir = asNamespace("otel"))(state$otel_cache)
   }
 
-  if (!is.null(state$mirai_cache) && requireNamespace("mirai", quietly = TRUE)) {
+  if (
+    !is.null(state$mirai_cache) && requireNamespace("mirai", quietly = TRUE)
+  ) {
     assign(
       "otel_is_tracing",
       state$mirai_cache$otel_is_tracing,
