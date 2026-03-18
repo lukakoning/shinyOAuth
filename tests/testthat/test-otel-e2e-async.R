@@ -1,6 +1,6 @@
 # End-to-end OpenTelemetry tests for async span propagation.
-# Uses otelsdk::with_otel_record() with mirai sync mode (in-process) to
-# capture parent/worker spans without subprocess complications.
+# Covers both sync mirai (in-process) and real mirai daemons with a shared
+# OTLP file exporter.
 
 reset_test_otel_cache()
 withr::defer(reset_test_otel_cache())
@@ -18,6 +18,158 @@ otel_async <- function(desc, code) {
     ))
     force(code)
   })
+}
+
+otel_async_daemon <- function(desc, code) {
+  testthat::test_that(desc, {
+    testthat::skip_on_cran()
+    testthat::skip_if_not_installed("otelsdk")
+    testthat::skip_if_not_installed("mirai")
+    testthat::skip_if_not_installed("promises")
+    testthat::skip_if_not_installed("later")
+    testthat::skip_if_not_installed("webfakes")
+    withr::local_options(list(
+      shinyOAuth.otel_tracing_enabled = TRUE,
+      shinyOAuth.otel_logging_enabled = FALSE,
+      shinyOAuth.skip_browser_token = TRUE
+    ))
+    force(code)
+  })
+}
+
+otel_null_coalesce <- function(x, y) {
+  if (is.null(x)) y else x
+}
+
+otel_export_attr_value <- function(attributes, key) {
+  if (is.null(attributes) || !length(attributes)) {
+    return(NULL)
+  }
+
+  for (attr in attributes) {
+    if (!identical(attr$key, key)) {
+      next
+    }
+    value <- otel_null_coalesce(attr$value, list())
+    for (field in c("stringValue", "intValue", "boolValue", "doubleValue")) {
+      if (!is.null(value[[field]])) {
+        return(value[[field]])
+      }
+    }
+  }
+
+  NULL
+}
+
+otel_exported_spans <- function(path) {
+  if (!file.exists(path)) {
+    return(list())
+  }
+
+  docs <- lapply(
+    readLines(path, warn = FALSE),
+    jsonlite::fromJSON,
+    simplifyVector = FALSE
+  )
+
+  spans <- list()
+  for (doc in docs) {
+    for (resource_span in otel_null_coalesce(doc$resourceSpans, list())) {
+      process_id <- suppressWarnings(as.integer(
+        otel_export_attr_value(
+          otel_null_coalesce(resource_span$resource$attributes, list()),
+          "process.pid"
+        )
+      ))
+      for (scope_span in otel_null_coalesce(resource_span$scopeSpans, list())) {
+        scope_name <- otel_null_coalesce(scope_span$scope$name, NA_character_)
+        for (span in otel_null_coalesce(scope_span$spans, list())) {
+          spans[[length(spans) + 1L]] <- list(
+            name = otel_null_coalesce(span$name, NA_character_),
+            trace_id = otel_null_coalesce(span$traceId, NA_character_),
+            span_id = otel_null_coalesce(span$spanId, NA_character_),
+            parent_span_id = otel_null_coalesce(
+              span$parentSpanId,
+              NA_character_
+            ),
+            scope_name = scope_name,
+            process_id = process_id,
+            attributes = otel_null_coalesce(span$attributes, list())
+          )
+        }
+      }
+    }
+  }
+
+  spans
+}
+
+otel_find_spans <- function(spans, name) {
+  Filter(function(span) identical(span$name, name), spans)
+}
+
+otel_span_attribute <- function(span, key) {
+  otel_export_attr_value(span$attributes, key)
+}
+
+assert_shinyoauth_available_in_daemon <- function() {
+  pkg_check <- mirai::mirai(requireNamespace("shinyOAuth", quietly = TRUE))
+  mirai::call_mirai(pkg_check)
+  testthat::skip_if_not(
+    isTRUE(pkg_check$data),
+    "shinyOAuth must be installed (not just load_all'd) for mirai daemon tests"
+  )
+}
+
+otel_temp_jsonl_path <- function(prefix) {
+  stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
+  file.path(
+    tempdir(),
+    paste0(prefix, "-", Sys.getpid(), "-", stamp, ".jsonl")
+  )
+}
+
+make_async_otel_client <- function(token_url) {
+  prov <- shinyOAuth::oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = token_url,
+    userinfo_url = NA_character_,
+    introspection_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    extra_auth_params = list(),
+    extra_token_params = list(),
+    extra_token_headers = character(),
+    token_auth_style = "body",
+    jwks_cache = cachem::cache_mem(max_age = 60),
+    jwks_pins = character(),
+    jwks_pin_mode = "any",
+    allowed_algs = c("RS256", "ES256"),
+    allowed_token_types = character(),
+    leeway = 60
+  )
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_payload_max_age = 300,
+    state_entropy = 64,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
 }
 
 otel_async("async parent/worker span propagation via sync mirai", {
@@ -96,4 +248,231 @@ otel_async("async context headers contain traceparent", {
 
   testthat::expect_true("traceparent" %in% names(r$value))
   testthat::expect_true(nzchar(r$value[["traceparent"]]))
+})
+
+otel_async_daemon("async parent/worker span propagation via real mirai daemon", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-async")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  parent <- shinyOAuth:::otel_start_async_parent(
+    "shinyOAuth.test.async.parent",
+    attributes = list(oauth.phase = "test")
+  )
+  testthat::expect_true(
+    is.character(parent$headers[["traceparent"]]) &&
+      nzchar(parent$headers[["traceparent"]])
+  )
+
+  resolved <- NULL
+  promises::then(
+    promises::as.promise(
+      shinyOAuth:::async_dispatch(
+        expr = quote({
+          .ns <- asNamespace("shinyOAuth")
+          .ns$with_otel_span("shinyOAuth.test.async.child", 1)
+        }),
+        args = list(),
+        otel_context = list(
+          headers = parent$headers,
+          worker_span_name = "shinyOAuth.test.async.worker"
+        )
+      )
+    ),
+    function(x) resolved <<- x
+  )
+
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+  testthat::expect_false(is.null(resolved))
+  shinyOAuth:::replay_async_conditions(resolved)
+  shinyOAuth:::otel_end_async_parent(parent, status = "ok")
+
+  poll_for_async(
+    function() {
+      spans <- Filter(
+        function(span) {
+          identical(span$scope_name, "io.github.lukakoning.shinyOAuth")
+        },
+        otel_exported_spans(otel_file)
+      )
+      length(spans) >= 3L
+    },
+    timeout = 10
+  )
+
+  spans <- Filter(
+    function(span) identical(span$scope_name, "io.github.lukakoning.shinyOAuth"),
+    otel_exported_spans(otel_file)
+  )
+  parent_span <- otel_find_spans(spans, "shinyOAuth.test.async.parent")
+  worker_span <- otel_find_spans(spans, "shinyOAuth.test.async.worker")
+  child_span <- otel_find_spans(spans, "shinyOAuth.test.async.child")
+
+  testthat::expect_length(parent_span, 1L)
+  testthat::expect_length(worker_span, 1L)
+  testthat::expect_length(child_span, 1L)
+  testthat::expect_identical(parent_span[[1L]]$trace_id, worker_span[[1L]]$trace_id)
+  testthat::expect_identical(worker_span[[1L]]$trace_id, child_span[[1L]]$trace_id)
+  testthat::expect_identical(worker_span[[1L]]$parent_span_id, parent_span[[1L]]$span_id)
+  testthat::expect_identical(child_span[[1L]]$parent_span_id, worker_span[[1L]]$span_id)
+  testthat::expect_false(
+    identical(parent_span[[1L]]$process_id, worker_span[[1L]]$process_id)
+  )
+})
+
+otel_async_daemon("refresh_token async exports correlated spans from a real daemon", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  app <- webfakes::new_app()
+  app$post("/token", function(req, res) {
+    res$set_status(200L)
+    res$set_type("application/json")
+    res$send_json(list(access_token = "new_at", expires_in = 3600))
+  })
+  srv <- webfakes::local_app_process(app)
+
+  cli <- make_async_otel_client(srv$url("/token"))
+  tok <- shinyOAuth::OAuthToken(
+    access_token = "at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) - 60,
+    id_token = NA_character_
+  )
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-refresh")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  resolved <- NULL
+  promises::then(
+    promises::as.promise(
+      shinyOAuth::refresh_token(
+        cli,
+        tok,
+        async = TRUE,
+        introspect = FALSE
+      )
+    ),
+    function(x) resolved <<- x
+  )
+
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+  testthat::expect_false(is.null(resolved))
+  refreshed <- shinyOAuth:::replay_async_conditions(resolved)
+  testthat::expect_true(S7::S7_inherits(refreshed, shinyOAuth::OAuthToken))
+  testthat::expect_identical(refreshed@access_token, "new_at")
+
+  poll_for_async(
+    function() {
+      spans <- Filter(
+        function(span) {
+          identical(span$scope_name, "io.github.lukakoning.shinyOAuth")
+        },
+        otel_exported_spans(otel_file)
+      )
+      length(spans) >= 4L
+    },
+    timeout = 10
+  )
+
+  spans <- Filter(
+    function(span) identical(span$scope_name, "io.github.lukakoning.shinyOAuth"),
+    otel_exported_spans(otel_file)
+  )
+
+  refresh_spans <- otel_find_spans(spans, "shinyOAuth.refresh")
+  worker_span <- otel_find_spans(spans, "shinyOAuth.refresh.worker")
+  http_span <- otel_find_spans(spans, "shinyOAuth.token.exchange.http")
+
+  testthat::expect_length(refresh_spans, 2L)
+  testthat::expect_length(worker_span, 1L)
+  testthat::expect_length(http_span, 1L)
+
+  root_refresh <- Filter(
+    function(span) identical(span$process_id, Sys.getpid()),
+    refresh_spans
+  )
+  worker_refresh <- Filter(
+    function(span) identical(span$process_id, worker_span[[1L]]$process_id),
+    refresh_spans
+  )
+
+  testthat::expect_length(root_refresh, 1L)
+  testthat::expect_length(worker_refresh, 1L)
+
+  trace_ids <- unique(vapply(
+    c(refresh_spans, worker_span, http_span),
+    function(span) span$trace_id,
+    character(1)
+  ))
+  testthat::expect_length(trace_ids, 1L)
+  testthat::expect_identical(
+    worker_span[[1L]]$parent_span_id,
+    root_refresh[[1L]]$span_id
+  )
+  testthat::expect_identical(
+    worker_refresh[[1L]]$parent_span_id,
+    worker_span[[1L]]$span_id
+  )
+  testthat::expect_identical(
+    http_span[[1L]]$parent_span_id,
+    worker_refresh[[1L]]$span_id
+  )
+  testthat::expect_identical(
+    as.integer(otel_span_attribute(http_span[[1L]], "http.response.status_code")),
+    200L
+  )
+  testthat::expect_false(
+    identical(root_refresh[[1L]]$process_id, worker_span[[1L]]$process_id)
+  )
 })
