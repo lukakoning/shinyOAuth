@@ -57,6 +57,7 @@ message(
 )
 try(mirai::daemons(0), silent = TRUE)
 mirai::daemons(2)
+mirai::everywhere(setup_otel_tui())
 
 provider <- oauth_provider_github()
 
