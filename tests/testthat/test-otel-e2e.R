@@ -101,6 +101,34 @@ otel_e2e("async parent span propagates context via headers", {
   testthat::expect_identical(worker$parent, parent$span_id)
 })
 
+otel_e2e("async parent span honors an explicit parent context", {
+  r <- otelsdk::with_otel_record({
+    login_headers <- shinyOAuth:::with_otel_span(
+      "shinyOAuth.test.async.login",
+      {
+        shinyOAuth:::otel_capture_context()
+      },
+      parent = NA
+    )
+
+    shinyOAuth:::with_otel_span("reactive_update.async", {
+      parent <- shinyOAuth:::otel_start_async_parent(
+        "shinyOAuth.test.async.explicit",
+        parent = shinyOAuth:::otel_span_context_from_headers(login_headers)
+      )
+      shinyOAuth:::otel_end_async_parent(parent, status = "ok")
+    })
+  })
+
+  login <- r$traces[["shinyOAuth.test.async.login"]]
+  outer <- r$traces[["reactive_update.async"]]
+  parent <- r$traces[["shinyOAuth.test.async.explicit"]]
+
+  testthat::expect_identical(parent$trace_id, login$trace_id)
+  testthat::expect_identical(parent$parent, login$span_id)
+  testthat::expect_false(identical(parent$parent, outer$span_id))
+})
+
 # ---------------------------------------------------------------------------
 # prepare_call() — full span emission
 # ---------------------------------------------------------------------------
@@ -156,6 +184,46 @@ otel_e2e("prepare_call and callback share shinyOAuth trace_id", {
   # token.verify is a child of callback
   verify_span <- r$traces[["shinyOAuth.token.verify"]]
   testthat::expect_false(is.null(verify_span))
+})
+
+otel_e2e("prepare_call roots itself and callback parents to login span", {
+  r <- otelsdk::with_otel_record({
+    cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+    btok <- valid_browser_token()
+
+    url <- shinyOAuth:::with_otel_span("reactive_update.login", {
+      shinyOAuth::prepare_call(cli, browser_token = btok)
+    })
+    enc <- parse_query_param(url, "state")
+
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(access_token = "test_at", expires_in = 3600)
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth:::with_otel_span("reactive_update.callback", {
+          shinyOAuth::handle_callback(
+            cli,
+            code = "test_code",
+            payload = enc,
+            browser_token = btok
+          )
+        })
+      }
+    )
+  })
+
+  outer_login <- r$traces[["reactive_update.login"]]
+  outer_callback <- r$traces[["reactive_update.callback"]]
+  login_span <- r$traces[["shinyOAuth.login.request"]]
+  callback_span <- r$traces[["shinyOAuth.callback"]]
+
+  testthat::expect_identical(login_span$parent, "0000000000000000")
+  testthat::expect_identical(callback_span$parent, login_span$span_id)
+  testthat::expect_identical(callback_span$trace_id, login_span$trace_id)
+  testthat::expect_false(identical(login_span$parent, outer_login$span_id))
+  testthat::expect_false(identical(callback_span$parent, outer_callback$span_id))
 })
 
 # ---------------------------------------------------------------------------

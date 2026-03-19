@@ -44,6 +44,8 @@ prepare_call <- function(
     with_otel_span(
       "shinyOAuth.login.request",
       {
+        login_span_headers <- otel_capture_context()
+
         # State, code_challenge & code_verifier, nonce -----------------------------
 
         # State is a random value that we send with the initial auth request
@@ -97,15 +99,16 @@ prepare_call <- function(
         # We will include an issued_at timestamp, as extra protection against replay
         #   attacks (won't accept payloads older than some threshold)
 
-        payload <- list(
+        payload <- compact_list(list(
           state = state,
           client_id = oauth_client@client_id,
           redirect_uri = oauth_client@redirect_uri,
           scopes = oauth_client@scopes,
           provider = oauth_client@provider |> provider_fingerprint(),
           issued_at = as.numeric(Sys.time()),
-          trace_id = flow_trace_id
-        ) |>
+          trace_id = flow_trace_id,
+          otel_login_span_headers = login_span_headers
+        )) |>
           state_encrypt_gcm(key = oauth_client@state_key)
 
         # Store in state store -----------------------------------------------------
@@ -183,7 +186,8 @@ prepare_call <- function(
           oauth.used_pkce = isTRUE(oauth_client@provider@use_pkce),
           oauth.nonce_enabled = isTRUE(oauth_client@provider@use_nonce)
         )
-      )
+      ),
+      parent = NA
     )
   )
 }
@@ -388,6 +392,67 @@ build_auth_url <- function(
   httr2::url_modify(oauth_client@provider@auth_url, query = params)
 }
 
+otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!otel_tracing_enabled()) {
+    return(list(trace_id = NULL, parent = NULL))
+  }
+
+  if (!is_valid_string(encrypted_payload)) {
+    return(list(trace_id = NULL, parent = NULL))
+  }
+
+  payload_ok <- tryCatch(
+    {
+      validate_untrusted_query_param(
+        "state",
+        encrypted_payload,
+        max_bytes = get_option_positive_number(
+          "shinyOAuth.callback_max_state_bytes",
+          8192
+        )
+      )
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  if (!isTRUE(payload_ok)) {
+    return(list(trace_id = NULL, parent = NULL))
+  }
+
+  payload <- tryCatch(
+    {
+      pld <- state_decrypt_gcm(encrypted_payload, key = oauth_client@state_key)
+      payload_verify_issued_at(oauth_client, pld)
+      if (
+        !is_valid_string(pld$client_id %||% NULL) ||
+          !identical(pld$client_id, oauth_client@client_id)
+      ) {
+        NULL
+      } else if (
+        !is_valid_string(pld$redirect_uri %||% NULL) ||
+          !identical(pld$redirect_uri, oauth_client@redirect_uri)
+      ) {
+        NULL
+      } else {
+        pld
+      }
+    },
+    error = function(...) NULL
+  )
+  if (is.null(payload)) {
+    return(list(trace_id = NULL, parent = NULL))
+  }
+
+  list(
+    trace_id = payload$trace_id %||% NULL,
+    parent = otel_span_context_from_headers(
+      payload$otel_login_span_headers %||% NULL
+    )
+  )
+}
+
 
 # Handle callback ---------------------------------------------------------
 
@@ -418,26 +483,57 @@ handle_callback <- function(
   browser_token,
   shiny_session = NULL
 ) {
-  with_otel_span(
-    "shinyOAuth.callback",
-    {
-      handle_callback_internal(
-        oauth_client = oauth_client,
-        code = code,
-        payload = payload,
-        browser_token = browser_token,
-        decrypted_payload = NULL,
-        state_store_values = NULL,
-        shiny_session = shiny_session
-      )
-    },
-    attributes = otel_client_attributes(
-      client = oauth_client,
-      shiny_session = shiny_session,
-      async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) {
-        NULL
-      }),
-      phase = "callback"
+  validate_untrusted_query_param(
+    "code",
+    code,
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_code_bytes",
+      4096
+    )
+  )
+  validate_untrusted_query_param(
+    "state",
+    payload,
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_state_bytes",
+      8192
+    )
+  )
+  validate_untrusted_query_param(
+    "browser_token",
+    browser_token,
+    max_bytes = get_option_positive_number(
+      "shinyOAuth.callback_max_browser_token_bytes",
+      256
+    )
+  )
+
+  callback_hint <- otel_callback_parent_hint(oauth_client, payload)
+
+  with_trace_id(
+    callback_hint$trace_id %||% NULL,
+    with_otel_span(
+      "shinyOAuth.callback",
+      {
+        handle_callback_internal(
+          oauth_client = oauth_client,
+          code = code,
+          payload = payload,
+          browser_token = browser_token,
+          decrypted_payload = NULL,
+          state_store_values = NULL,
+          shiny_session = shiny_session
+        )
+      },
+      attributes = otel_client_attributes(
+        client = oauth_client,
+        shiny_session = shiny_session,
+        async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) {
+          NULL
+        }),
+        phase = "callback"
+      ),
+      parent = callback_hint$parent %||% NA
     )
   )
 }

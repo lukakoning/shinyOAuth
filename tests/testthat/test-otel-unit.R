@@ -727,6 +727,36 @@ testthat::test_that("with_otel_span marks span ok on success", {
   testthat::expect_false(noted_error)
 })
 
+testthat::test_that("with_otel_span forwards an explicit parent option", {
+  withr::local_options(list(shinyOAuth.otel_tracing_enabled = TRUE))
+  captured_parent <- "unset"
+
+  testthat::with_mocked_bindings(
+    start_local_active_span = function(
+      name,
+      attributes = NULL,
+      options = NULL,
+      activation_scope = parent.frame(),
+      ...
+    ) {
+      captured_parent <<- options$parent
+      invisible(NULL)
+    },
+    .package = "otel",
+    {
+      result <- shinyOAuth:::with_otel_span(
+        "test.parent",
+        42,
+        mark_ok = FALSE,
+        parent = NA
+      )
+      testthat::expect_identical(result, 42)
+    }
+  )
+
+  testthat::expect_true(is.na(captured_parent))
+})
+
 testthat::test_that("with_otel_span notes error and re-throws on failure", {
   withr::local_options(list(shinyOAuth.otel_tracing_enabled = TRUE))
   marked_ok <- FALSE

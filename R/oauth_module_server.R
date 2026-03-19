@@ -514,7 +514,8 @@ oauth_module_server <- function(
         client = client,
         module_id = id,
         phase = "module.init"
-      )
+      ),
+      parent = NA
     )
 
     # Session-end hook ---------------------------------------------------------
@@ -607,7 +608,8 @@ oauth_module_server <- function(
                 module_id = id,
                 shiny_session = captured_session_end_context,
                 phase = "session.end.revoke"
-              )
+              ),
+              parent = NA
             )
           )
         }
@@ -1239,7 +1241,8 @@ oauth_module_server <- function(
             client = client,
             module_id = id,
             phase = "logout"
-          )
+          ),
+          parent = NA
         )
       )
     }
@@ -1600,6 +1603,7 @@ oauth_module_server <- function(
     # Function to handle code & state once received in query string
     .handle_callback <- function(code, state) {
       callback_parent <- NULL
+      callback_hint <- otel_callback_parent_hint(client, state)
       # Always clear callback params once we've parsed them (success or failure)
       on.exit(
         {
@@ -1616,8 +1620,11 @@ oauth_module_server <- function(
 
       tryCatch(
         {
-          async_fallback <- FALSE
-          res <- if (isTRUE(async)) {
+          with_trace_id(
+            callback_hint$trace_id %||% NULL,
+            {
+              async_fallback <- FALSE
+              res <- if (isTRUE(async)) {
             # Use mirai to move work off the main thread. To avoid
             # cross-process cache visibility issues with client@state_store,
             # pre-decrypt the payload and prefetch+remove the state_store entry on the
@@ -1637,7 +1644,8 @@ oauth_module_server <- function(
                 shiny_session = parent_shiny_session,
                 async = TRUE,
                 phase = "callback"
-              )
+              ),
+              parent = callback_hint$parent %||% NA
             )
 
             otel_with_active_span(
@@ -1826,7 +1834,7 @@ oauth_module_server <- function(
           }
 
           # Handle async/sync
-          if (isTRUE(async) && !isTRUE(async_fallback)) {
+              if (isTRUE(async) && !isTRUE(async_fallback)) {
             # Mark that we exercised the async pathway (testing aid)
             values$last_login_async_used <- TRUE
 
@@ -1887,23 +1895,25 @@ oauth_module_server <- function(
                   rlang::abort(message = conditionMessage(e), parent = e)
                 }
               })
-          } else {
-            values$token <- res
-            values$error <- NULL
-            values$error_description <- NULL
-            values$error_uri <- NULL
-            values$auth_started_at <- as.numeric(Sys.time())
-            values$token_stale <- FALSE
-            .clear_browser_token()
-            # Immediately re-issue a fresh browser token so that
-            # subsequent manual logins can redirect on the first click.
-            .set_browser_token()
-            # Reset reauth guard on successful sync login
-            values$reauth_triggered <- FALSE
-            if (!is.null(callback_parent)) {
-              otel_end_async_parent(callback_parent, status = "ok")
+              } else {
+                values$token <- res
+                values$error <- NULL
+                values$error_description <- NULL
+                values$error_uri <- NULL
+                values$auth_started_at <- as.numeric(Sys.time())
+                values$token_stale <- FALSE
+                .clear_browser_token()
+                # Immediately re-issue a fresh browser token so that
+                # subsequent manual logins can redirect on the first click.
+                .set_browser_token()
+                # Reset reauth guard on successful sync login
+                values$reauth_triggered <- FALSE
+                if (!is.null(callback_parent)) {
+                  otel_end_async_parent(callback_parent, status = "ok")
+                }
+              }
             }
-          }
+          )
         },
         error = function(e) {
           failure_phase <- tryCatch(

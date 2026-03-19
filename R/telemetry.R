@@ -359,11 +359,17 @@ with_otel_span <- function(
   code,
   attributes = NULL,
   options = NULL,
-  mark_ok = TRUE
+  mark_ok = TRUE,
+  parent = NULL
 ) {
   code <- substitute(code)
   if (!otel_tracing_enabled()) {
     return(eval(code, envir = parent.frame()))
+  }
+
+  span_options <- options %||% list()
+  if (!is.null(parent) || (length(parent) == 1L && is.na(parent))) {
+    span_options$parent <- parent
   }
 
   span_started <- FALSE
@@ -372,7 +378,7 @@ with_otel_span <- function(
       otel::start_local_active_span(
         name = name,
         attributes = otel_attributes(otel_with_trace_attribute(attributes)),
-        options = options,
+        options = span_options,
         activation_scope = environment()
       )
       span_started <- TRUE
@@ -464,9 +470,45 @@ otel_capture_context <- function(span = NULL) {
   headers
 }
 
+otel_span_context_from_headers <- function(otel_headers) {
+  if (is.null(otel_headers) || !length(otel_headers)) {
+    return(NULL)
+  }
+
+  if (is.character(otel_headers)) {
+    if (
+      length(otel_headers) == 1L &&
+        is_valid_string(as.character(otel_headers)[[1]])
+    ) {
+      header_name <- (names(otel_headers) %||% "traceparent")[[1]]
+      otel_headers <- stats::setNames(
+        list(as.character(otel_headers)[[1]]),
+        header_name
+      )
+    } else {
+      otel_headers <- as.list(otel_headers)
+    }
+  }
+
+  parent_ctx <- tryCatch(
+    otel::extract_http_context(otel_headers),
+    error = function(...) NULL
+  )
+  if (is.null(parent_ctx)) {
+    return(NULL)
+  }
+
+  if (!isTRUE(tryCatch(parent_ctx$is_valid(), error = function(...) FALSE))) {
+    return(NULL)
+  }
+
+  parent_ctx
+}
+
 otel_start_async_parent <- function(
   name,
-  attributes = NULL
+  attributes = NULL,
+  parent = NA
 ) {
   if (!otel_tracing_enabled()) {
     return(list(span = NULL, headers = NULL))
@@ -476,7 +518,8 @@ otel_start_async_parent <- function(
     {
       otel::start_span(
         name = name,
-        attributes = otel_attributes(otel_with_trace_attribute(attributes))
+        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
+        options = list(parent = parent)
       )
     },
     error = function(e) {
@@ -504,10 +547,7 @@ otel_restore_parent_in_worker <- function(
     return(NULL)
   }
 
-  parent_ctx <- tryCatch(
-    otel::extract_http_context(otel_headers),
-    error = function(...) NULL
-  )
+  parent_ctx <- otel_span_context_from_headers(otel_headers)
   if (is.null(parent_ctx)) {
     return(NULL)
   }

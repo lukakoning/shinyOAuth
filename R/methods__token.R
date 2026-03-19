@@ -366,7 +366,8 @@ revoke_token <- function(
         async = async_attr,
         phase = "token.revoke",
         extra = list(oauth.token.which = which)
-      )
+      ),
+      parent = NA
     )
   })
 }
@@ -805,7 +806,8 @@ introspect_token <- function(
         async = async_attr,
         phase = "token.introspect",
         extra = list(oauth.token.which = which)
-      )
+      ),
+      parent = NA
     )
   })
 }
@@ -1188,7 +1190,8 @@ refresh_token <- function(
         shiny_session = shiny_session,
         async = async_attr,
         phase = "refresh"
-      )
+      ),
+      parent = NA
     )
   })
 }
