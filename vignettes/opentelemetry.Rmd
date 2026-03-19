@@ -26,7 +26,7 @@ package to learn more about configuring your OpenTelemetry setup and exporters i
 Once configured, 'shinyOAuth' will automatically emit OTel signals.
 
 All signals are emitted under the instrumentation scope
-`r.package.shinyOAuth`. Use this identifier when configuring
+`io.github.lukakoning.shinyOAuth`. Use this identifier when configuring
 collector routing rules or filtering 'shinyOAuth' telemetry in your backend.
 
 This vignette describes the OTel signals emitted by 'shinyOAuth', their content, 
@@ -57,9 +57,16 @@ All spans share these behaviors:
 
 - Successful operations are marked with status `ok`; errors are marked `error`
   and include an `exception` event with the error class and message
-- HTTP client spans record `http.response.status_code` on the `*.http` span
-  itself once a response is available; non-success HTTP responses mark that
-  client span as `error`
+- Top-level shinyOAuth operation spans are started with explicit root parenting
+  where appropriate so they are not hidden under Shiny's internal
+  `reactive_update` spans
+- When a callback can be matched back to the originating login request,
+  `shinyOAuth.callback` is parented to that original `shinyOAuth.login.request`
+  span even when the redirect returns in a different Shiny session; otherwise it
+  falls back to a root span
+- HTTP client spans record both `http.response.status_code` and
+  `http.response.content_type` on the `*.http` span itself once a response is
+  available; non-success HTTP responses mark that client span as `error`
 - Sensitive values (tokens, codes, state payloads, browser tokens) are never
   attached as span attributes
   
@@ -83,6 +90,10 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.client_id_digest`
   - `shiny.module_id`
   - `oauth.phase = "module.init"`
+  - `oauth.auto_redirect`, `oauth.refresh_proactively`,
+    `oauth.revoke_on_session_end`, `oauth.indefinite_session`
+  - `oauth.reauth_after_seconds`, `oauth.refresh_lead_seconds`
+  - `oauth.browser_cookie_samesite`, `oauth.browser_cookie_path_root`
   - Shiny session/process metadata when available
 
 #### Span: `shinyOAuth.login.request`
@@ -90,12 +101,20 @@ evaluation backends such as mirai workers and future-based execution.
 - When: when shinyOAuth prepares the authorization redirect in `prepare_call()`
 - Represents: generation of state, PKCE material, nonce, state-store write, and
   construction of the authorization URL
+- Parenting: this span is started as a root span so it remains visible even when
+  login is triggered from within a Shiny reactive update
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase = "login.request"`
   - `oauth.used_pkce`
   - `oauth.nonce_enabled`
+  - `oauth.scopes.requested`, `oauth.scopes.requested_count`
+  - `oauth.claims.requested`
+  - `oauth.claims.targets`
+  - `oauth.required_acr_values`, `oauth.required_acr_values_count`
+  - `oauth.max_age.requested`
+  - `oauth.extra_auth_params_count`
   - Shiny session/process metadata when available
 
 #### Span: `shinyOAuth.callback`
@@ -109,7 +128,17 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.client_id_digest`
   - `oauth.async`
   - `oauth.phase = "callback"`
+  - `oauth.introspect`, `oauth.introspect_elements`,
+    `oauth.introspect_elements_count`
+  - `oauth.userinfo.required`
+  - `oauth.userinfo.id_token_match_required`
+  - `oauth.id_token.validation_enabled`
   - Shiny session/process metadata when available
+- Parenting:
+  - when the callback can recover the original login span context from the
+    encrypted state payload, it becomes a child of that `shinyOAuth.login.request`
+  - otherwise it is started as a root span instead of inheriting Shiny's
+    `reactive_update`
 
 #### Span: `shinyOAuth.callback.validate`
 
@@ -152,6 +181,13 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.client_id_digest`
   - `oauth.phase = "token.exchange"`
   - `oauth.used_pkce`
+  - `oauth.client_auth_style`
+  - `oauth.extra_token_params_count`
+  - `oauth.extra_token_headers_count`
+  - `oauth.token_type`
+  - `oauth.received_id_token`, `oauth.received_refresh_token`
+  - `oauth.expires_in_present`, `oauth.expires_in_synthesized`
+  - `oauth.scope.present`, `oauth.scopes.granted`
   - Shiny session/process metadata when available
 
 #### Span: `shinyOAuth.token.exchange.http`
@@ -168,7 +204,8 @@ evaluation backends such as mirai workers and future-based execution.
   - `http.request.method = "POST"`
   - `server.address`
   - `oauth.phase`
-  - `http.response.status_code` after a response is available
+  - `http.response.status_code`, `http.response.content_type` after a response
+    is available
 - Notes:
   - this is used as a client span (`kind = "client"`)
   - redirects are rejected before credentials can leak
@@ -191,6 +228,14 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.phase`
   - `oauth.received_id_token`
   - `oauth.received_refresh_token`
+  - `oauth.id_token.required`, `oauth.id_token.present`,
+    `oauth.id_token.validated`
+  - `oauth.nonce.required`
+  - `oauth.scope.validation_mode`
+  - `oauth.scopes.requested`, `oauth.scopes.requested_count`
+  - `oauth.scopes.granted`, `oauth.scopes.granted_count`
+  - `oauth.required_acr_values`, `oauth.required_acr_values_count`
+  - `oauth.refresh_flow`
 
 #### Span: `shinyOAuth.userinfo`
 
@@ -201,6 +246,9 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase = "userinfo"`
+  - `oauth.userinfo.jwt_required`
+  - `oauth.userinfo.jwt_response`
+  - `oauth.userinfo.subject_present`
   - Shiny session/process metadata when available
 
 #### Span: `shinyOAuth.userinfo.http`
@@ -211,7 +259,8 @@ evaluation backends such as mirai workers and future-based execution.
   - `http.request.method = "GET"`
   - `server.address`
   - `oauth.phase = "userinfo"`
-  - `http.response.status_code` after a response is available
+  - `http.response.status_code`, `http.response.content_type` after a response
+    is available
 - Notes:
   - this is used as a client span (`kind = "client"`)
   - redirects are rejected to avoid bearer-token leakage
@@ -227,6 +276,13 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.client_id_digest`
   - `oauth.async`
   - `oauth.phase = "refresh"`
+  - `oauth.client_auth_style`
+  - `oauth.extra_token_params_count`
+  - `oauth.extra_token_headers_count`
+  - `oauth.token_type`
+  - `oauth.received_id_token`, `oauth.received_refresh_token`
+  - `oauth.expires_in_present`, `oauth.expires_in_synthesized`
+  - `oauth.scope.present`, `oauth.scopes.granted`
   - current or propagated Shiny session/process metadata
 
 #### Span: `shinyOAuth.refresh.worker`
@@ -276,6 +332,9 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.async`
   - `oauth.phase = "token.revoke"`
   - `oauth.token.which` (`"access"` or `"refresh"`)
+  - `oauth.client_auth_style`
+  - `oauth.extra_token_params_count`
+  - `oauth.extra_token_headers_count`
   - `oauth.supported`, `oauth.revoked`, `oauth.status` after completion
   - current or propagated Shiny session/process metadata
 
@@ -287,7 +346,8 @@ evaluation backends such as mirai workers and future-based execution.
   - `http.request.method = "POST"`
   - `server.address`
   - `oauth.phase = "token.revoke"`
-  - `http.response.status_code` after a response is available
+  - `http.response.status_code`, `http.response.content_type` after a response
+    is available
 - Notes:
   - this is used as a client span (`kind = "client"`)
   - redirects are rejected to prevent credential leakage
@@ -316,6 +376,9 @@ evaluation backends such as mirai workers and future-based execution.
   - `oauth.async`
   - `oauth.phase = "token.introspect"`
   - `oauth.token.which` (`"access"` or `"refresh"`)
+  - `oauth.client_auth_style`
+  - `oauth.extra_token_params_count`
+  - `oauth.extra_token_headers_count`
   - `oauth.supported`, `oauth.active`, `oauth.status` after completion
   - current or propagated Shiny session/process metadata
 
@@ -327,7 +390,8 @@ evaluation backends such as mirai workers and future-based execution.
   - `http.request.method = "POST"`
   - `server.address`
   - `oauth.phase = "token.introspect"`
-  - `http.response.status_code` after a response is available
+  - `http.response.status_code`, `http.response.content_type` after a response
+    is available
 - Notes:
   - this is used as a client span (`kind = "client"`)
   - redirects are rejected to prevent credential leakage

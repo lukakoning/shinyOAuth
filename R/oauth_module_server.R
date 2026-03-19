@@ -513,7 +513,19 @@ oauth_module_server <- function(
       attributes = otel_client_attributes(
         client = client,
         module_id = id,
-        phase = "module.init"
+        phase = "module.init",
+        extra = list(
+          oauth.auto_redirect = isTRUE(auto_redirect),
+          oauth.refresh_proactively = isTRUE(refresh_proactively),
+          oauth.revoke_on_session_end = isTRUE(revoke_on_session_end),
+          oauth.indefinite_session = isTRUE(indefinite_session),
+          oauth.reauth_after_seconds = reauth_after_seconds %||% NULL,
+          oauth.refresh_lead_seconds = refresh_lead_seconds,
+          oauth.browser_cookie_samesite = browser_cookie_samesite,
+          oauth.browser_cookie_path_root = otel_browser_cookie_path_root(
+            browser_cookie_path
+          )
+        )
       ),
       parent = NA
     )
@@ -1643,7 +1655,22 @@ oauth_module_server <- function(
                 module_id = id,
                 shiny_session = parent_shiny_session,
                 async = TRUE,
-                phase = "callback"
+                phase = "callback",
+                extra = list(
+                  oauth.introspect = isTRUE(client@introspect),
+                  oauth.introspect_elements_count = otel_count_items(
+                    client@introspect_elements %||% character(0)
+                  ),
+                  oauth.userinfo.required = isTRUE(
+                    client@provider@userinfo_required
+                  ),
+                  oauth.userinfo.id_token_match_required = isTRUE(
+                    client@provider@userinfo_id_token_match
+                  ),
+                  oauth.id_token.validation_enabled = isTRUE(
+                    client@provider@id_token_validation
+                  )
+                )
               ),
               parent = callback_hint$parent %||% NA
             )

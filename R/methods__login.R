@@ -184,7 +184,31 @@ prepare_call <- function(
         phase = "login.request",
         extra = list(
           oauth.used_pkce = isTRUE(oauth_client@provider@use_pkce),
-          oauth.nonce_enabled = isTRUE(oauth_client@provider@use_nonce)
+          oauth.nonce_enabled = isTRUE(oauth_client@provider@use_nonce),
+          oauth.scopes.requested = otel_scope_string(
+            oauth_client@scopes,
+            provider = oauth_client@provider,
+            ensure_openid = TRUE
+          ),
+          oauth.scopes.requested_count = otel_scope_count(
+            oauth_client@scopes,
+            provider = oauth_client@provider,
+            ensure_openid = TRUE
+          ),
+          oauth.claims.requested = otel_claims_requested(oauth_client@claims),
+          oauth.claims.targets = otel_claim_targets(oauth_client@claims),
+          oauth.required_acr_values = otel_required_acr_values(
+            oauth_client@required_acr_values %||% character(0)
+          ),
+          oauth.required_acr_values_count = otel_count_items(
+            oauth_client@required_acr_values %||% character(0)
+          ),
+          oauth.max_age.requested = otel_requested_max_age(
+            oauth_client@provider
+          ),
+          oauth.extra_auth_params_count = otel_count_items(
+            oauth_client@provider@extra_auth_params
+          )
         )
       ),
       parent = NA
@@ -531,7 +555,25 @@ handle_callback <- function(
         async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) {
           NULL
         }),
-        phase = "callback"
+        phase = "callback",
+        extra = list(
+          oauth.introspect = isTRUE(oauth_client@introspect),
+          oauth.introspect_elements = otel_introspect_elements(
+            oauth_client@introspect_elements %||% character(0)
+          ),
+          oauth.introspect_elements_count = otel_count_items(
+            oauth_client@introspect_elements %||% character(0)
+          ),
+          oauth.userinfo.required = isTRUE(
+            oauth_client@provider@userinfo_required
+          ),
+          oauth.userinfo.id_token_match_required = isTRUE(
+            oauth_client@provider@userinfo_id_token_match
+          ),
+          oauth.id_token.validation_enabled = isTRUE(
+            oauth_client@provider@id_token_validation
+          )
+        )
       ),
       parent = callback_hint$parent %||% NA
     )
@@ -1424,6 +1466,10 @@ swap_code_for_token_set <- function(
         token_set$expires_in <- coerce_expires_in(token_set$expires_in)
       }
 
+      otel_set_span_attributes(
+        attributes = otel_token_response_attributes(token_set)
+      )
+
       # Verify 'access_token' is present in response
       if (!is_valid_string(token_set[["access_token"]])) {
         err_token("Token response missing access_token")
@@ -1462,7 +1508,16 @@ swap_code_for_token_set <- function(
     attributes = otel_client_attributes(
       client = client,
       phase = "token.exchange",
-      extra = list(oauth.used_pkce = is_valid_string(code_verifier))
+      extra = list(
+        oauth.used_pkce = is_valid_string(code_verifier),
+        oauth.client_auth_style = otel_client_auth_style(client),
+        oauth.extra_token_params_count = otel_count_items(
+          client@provider@extra_token_params
+        ),
+        oauth.extra_token_headers_count = otel_count_items(
+          client@provider@extra_token_headers
+        )
+      )
     )
   )
 }
@@ -1482,6 +1537,33 @@ verify_token_set <- function(
     err_token("Invalid token set: must be a non-empty list")
   }
 
+  scope_validation_mode <- client@scope_validation %||% "strict"
+  requested_scopes <- otel_scope_tokens(client@scopes %||% NULL)
+  requested_scope_string <- otel_scope_string(client@scopes %||% NULL)
+  granted_scope_string <- otel_scope_string(
+    token_set$scope %||% NULL,
+    allow_commas = TRUE
+  )
+  granted_scope_count <- {
+    granted <- otel_scope_tokens(
+      token_set$scope %||% NULL,
+      allow_commas = TRUE
+    )
+    if (!length(granted)) {
+      NULL
+    } else {
+      as.integer(length(granted))
+    }
+  }
+  id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
+  id_token_required <- !isTRUE(is_refresh) &&
+    (isTRUE(client@provider@id_token_required) |
+      isTRUE(client@provider@id_token_validation) |
+      isTRUE(client@provider@userinfo_id_token_match) |
+      isTRUE(client@provider@use_nonce) |
+      isTRUE(is_valid_string(nonce)))
+  racr <- client@required_acr_values %||% character(0)
+
   with_otel_span(
     "shinyOAuth.token.verify",
     {
@@ -1500,8 +1582,6 @@ verify_token_set <- function(
       # Note: Some providers omit scope from the token response entirely. In strict
       # mode this is treated as an error (we cannot verify scopes were granted);
       # in warn mode we issue a warning.
-      scope_validation_mode <- client@scope_validation %||% "strict"
-      requested_scopes <- as_scope_tokens(client@scopes %||% NULL)
       requested_scopes <- sort(unique(requested_scopes[nzchar(
         requested_scopes
       )]))
@@ -1586,8 +1666,6 @@ verify_token_set <- function(
       # ID token -------------------------------------------------------------------
 
       # Check that it is present if required
-      id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
-
       # Strict refresh policy: if a refresh response includes an ID token, we
       # require an original ID token from the initial login so we can enforce
       # OIDC Core section 12.2 subject continuity (sub MUST match). Without an original
@@ -1609,12 +1687,6 @@ verify_token_set <- function(
       # - nonce was sent (must validate nonce claim in ID token)
       # During refresh, none of these apply. OIDC Core Section 12.2 allows refresh
       # responses to omit the ID token. Identity was already established at login.
-      id_token_required <- !isTRUE(is_refresh) &&
-        (isTRUE(client@provider@id_token_required) |
-          isTRUE(client@provider@id_token_validation) |
-          isTRUE(client@provider@userinfo_id_token_match) |
-          isTRUE(is_valid_string(nonce)))
-
       if (isTRUE(id_token_required) && !isTRUE(id_token_present)) {
         err_id_token("ID token required but not present")
       }
@@ -1799,7 +1871,6 @@ verify_token_set <- function(
       # When the client specifies required_acr_values, verify the ID token's acr
       # claim is present and matches one of the allowlisted values.  This runs on
       # both initial login and refresh (when a new ID token is returned).
-      racr <- client@required_acr_values %||% character(0)
       if (length(racr) > 0 && isTRUE(id_token_present)) {
         acr_payload <- tryCatch(
           parse_jwt_payload(token_set[["id_token"]]),
@@ -1863,6 +1934,13 @@ verify_token_set <- function(
       }
 
       # Attach the validation flag so callers can propagate it to OAuthToken.
+      otel_set_span_attributes(
+        attributes = compact_list(list(
+          oauth.id_token.validated = isTRUE(id_token_validated),
+          oauth.scopes.granted = granted_scope_string,
+          oauth.scopes.granted_count = granted_scope_count
+        ))
+      )
       token_set[[".id_token_validated"]] <- id_token_validated
 
       token_set
@@ -1871,12 +1949,23 @@ verify_token_set <- function(
       client = client,
       phase = if (isTRUE(is_refresh)) "refresh.verify" else "callback.verify",
       extra = list(
-        oauth.received_id_token = isTRUE(is_valid_string(token_set[[
-          "id_token"
-        ]])),
+        oauth.received_id_token = id_token_present,
         oauth.received_refresh_token = isTRUE(is_valid_string(token_set[[
           "refresh_token"
-        ]]))
+        ]])),
+        oauth.id_token.required = isTRUE(id_token_required),
+        oauth.id_token.present = isTRUE(id_token_present),
+        oauth.id_token.validated = FALSE,
+        oauth.nonce.required = isTRUE(client@provider@use_nonce) ||
+          isTRUE(is_valid_string(nonce)),
+        oauth.scope.validation_mode = scope_validation_mode,
+        oauth.scopes.requested = requested_scope_string,
+        oauth.scopes.requested_count = as.integer(length(requested_scopes)),
+        oauth.scopes.granted = granted_scope_string,
+        oauth.scopes.granted_count = granted_scope_count,
+        oauth.required_acr_values = otel_required_acr_values(racr),
+        oauth.required_acr_values_count = otel_count_items(racr),
+        oauth.refresh_flow = isTRUE(is_refresh)
       )
     )
   )

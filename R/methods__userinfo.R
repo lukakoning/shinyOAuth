@@ -87,6 +87,12 @@ get_userinfo <- function(
         is_jwt_response <- is_valid_string(resp_ct) &&
           grepl("^application/jwt", resp_ct, ignore.case = TRUE)
 
+        otel_set_span_attributes(
+          attributes = list(
+            oauth.userinfo.jwt_response = isTRUE(is_jwt_response)
+          )
+        )
+
         require_signed <- isTRUE(
           oauth_client@provider@userinfo_signed_jwt_required
         )
@@ -201,6 +207,12 @@ get_userinfo <- function(
           )
         }
 
+        otel_set_span_attributes(
+          attributes = list(
+            oauth.userinfo.subject_present = isTRUE(is_valid_string(ui$sub))
+          )
+        )
+
         # OIDC Core §5.3: "The sub Claim MUST always be returned in the UserInfo
         # Response." Enforce for OIDC providers (issuer configured); leave generic
         # non-OIDC profile endpoints alone.
@@ -238,7 +250,12 @@ get_userinfo <- function(
       },
       attributes = otel_client_attributes(
         client = oauth_client,
-        phase = "userinfo"
+        phase = "userinfo",
+        extra = list(
+          oauth.userinfo.jwt_required = isTRUE(
+            oauth_client@provider@userinfo_signed_jwt_required
+          )
+        )
       )
     )
   )

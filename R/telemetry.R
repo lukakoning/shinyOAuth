@@ -148,6 +148,254 @@ otel_http_host <- function(url) {
   host
 }
 
+otel_count_items <- function(x) {
+  if (is.null(x)) {
+    return(0L)
+  }
+
+  if (is.list(x)) {
+    return(as.integer(length(x)))
+  }
+
+  x <- tryCatch(as.vector(x), error = function(...) x)
+  x <- x[!is.na(x)]
+  as.integer(length(x))
+}
+
+otel_join_values <- function(x, sep = " ", sort_values = TRUE) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+
+  if (is.list(x)) {
+    x <- unlist(x, recursive = TRUE, use.names = FALSE)
+  }
+
+  x <- tryCatch(as.vector(x), error = function(...) x)
+  x <- as.character(x)
+  x <- x[!is.na(x)]
+  x <- trimws(x)
+  x <- unique(x[nzchar(x)])
+
+  if (!length(x)) {
+    return(NULL)
+  }
+
+  if (isTRUE(sort_values)) {
+    x <- sort(x)
+  }
+
+  paste(x, collapse = sep)
+}
+
+otel_scope_tokens <- function(
+  scopes,
+  provider = NULL,
+  ensure_openid = FALSE,
+  allow_commas = FALSE
+) {
+  if (is.null(scopes)) {
+    tokens <- character()
+  } else if (
+    isTRUE(allow_commas) &&
+      length(scopes) == 1L &&
+      is_valid_string(as.character(scopes)[[1]]) &&
+      grepl(",", as.character(scopes)[[1]], fixed = TRUE) &&
+      !grepl(" ", as.character(scopes)[[1]], fixed = TRUE)
+  ) {
+    tokens <- unlist(
+      strsplit(as.character(scopes)[[1]], ",", fixed = TRUE),
+      use.names = FALSE
+    )
+  } else {
+    tokens <- as_scope_tokens(scopes)
+  }
+
+  tokens <- as.character(tokens)
+  tokens <- tokens[!is.na(tokens)]
+  tokens <- trimws(tokens)
+  tokens <- unique(tokens[nzchar(tokens)])
+
+  if (
+    isTRUE(ensure_openid) &&
+      !is.null(provider) &&
+      is_valid_string(provider@issuer) &&
+      !("openid" %in% tokens)
+  ) {
+    tokens <- c("openid", tokens)
+  }
+
+  tokens
+}
+
+otel_scope_string <- function(
+  scopes,
+  provider = NULL,
+  ensure_openid = FALSE,
+  allow_commas = FALSE
+) {
+  otel_join_values(
+    otel_scope_tokens(
+      scopes = scopes,
+      provider = provider,
+      ensure_openid = ensure_openid,
+      allow_commas = allow_commas
+    ),
+    sep = " ",
+    sort_values = FALSE
+  )
+}
+
+otel_scope_count <- function(
+  scopes,
+  provider = NULL,
+  ensure_openid = FALSE,
+  allow_commas = FALSE
+) {
+  as.integer(length(otel_scope_tokens(
+    scopes = scopes,
+    provider = provider,
+    ensure_openid = ensure_openid,
+    allow_commas = allow_commas
+  )))
+}
+
+otel_claims_requested <- function(claims) {
+  if (is.null(claims)) {
+    return(FALSE)
+  }
+
+  if (is.list(claims)) {
+    return(length(claims) > 0L)
+  }
+
+  is_valid_string(tryCatch(as.character(claims)[[1]], error = function(...) {
+    NA_character_
+  }))
+}
+
+otel_claim_targets <- function(claims) {
+  if (is.null(claims)) {
+    return(NULL)
+  }
+
+  if (is.character(claims)) {
+    parsed <- tryCatch(
+      jsonlite::fromJSON(claims, simplifyVector = FALSE),
+      error = function(...) NULL
+    )
+    if (is.null(parsed)) {
+      return(NULL)
+    }
+    claims <- parsed
+  }
+
+  if (!is.list(claims) || !length(claims)) {
+    return(NULL)
+  }
+
+  otel_join_values(names(claims), sep = ",", sort_values = TRUE)
+}
+
+otel_requested_max_age <- function(provider) {
+  if (is.null(provider)) {
+    return(NULL)
+  }
+
+  max_age <- provider@extra_auth_params[["max_age"]] %||% NULL
+  if (is.null(max_age)) {
+    return(NULL)
+  }
+
+  max_age <- suppressWarnings(as.numeric(max_age[[1]]))
+  if (
+    length(max_age) != 1L ||
+      is.na(max_age) ||
+      !is.finite(max_age) ||
+      max_age < 0
+  ) {
+    return(NULL)
+  }
+
+  as.numeric(max_age)
+}
+
+otel_client_auth_style <- function(client) {
+  if (is.null(client)) {
+    return(NULL)
+  }
+
+  client@provider@token_auth_style %||% "header"
+}
+
+otel_browser_cookie_path_root <- function(browser_cookie_path) {
+  if (is.null(browser_cookie_path)) {
+    return(TRUE)
+  }
+
+  if (!is_valid_string(browser_cookie_path)) {
+    return(NULL)
+  }
+
+  identical(browser_cookie_path, "/")
+}
+
+otel_http_content_type <- function(content_type = NULL, resp = NULL) {
+  if (!is.null(resp) && inherits(resp, "httr2_response")) {
+    content_type <- content_type %||% tryCatch(
+      httr2::resp_header(resp, "content-type"),
+      error = function(...) NULL
+    )
+  }
+
+  if (!is_valid_string(content_type)) {
+    return(NULL)
+  }
+
+  content_type <- tolower(trimws(as.character(content_type)[[1]]))
+  content_type <- trimws(strsplit(content_type, ";", fixed = TRUE)[[1]][1])
+  if (!nzchar(content_type)) {
+    return(NULL)
+  }
+
+  content_type
+}
+
+otel_required_acr_values <- function(values) {
+  otel_join_values(values, sep = " ", sort_values = FALSE)
+}
+
+otel_introspect_elements <- function(values) {
+  otel_join_values(values, sep = ",", sort_values = TRUE)
+}
+
+otel_token_response_attributes <- function(token_set) {
+  if (!is.list(token_set) || !length(token_set)) {
+    return(list())
+  }
+
+  scope_tokens <- otel_scope_tokens(
+    token_set$scope %||% NULL,
+    allow_commas = TRUE
+  )
+  expires_in_present <- !is.null(token_set$expires_in)
+
+  compact_list(list(
+    oauth.token_type = otel_scalar_attribute(token_set$token_type %||% NULL),
+    oauth.received_id_token = isTRUE(is_valid_string(token_set$id_token)),
+    oauth.received_refresh_token = isTRUE(is_valid_string(
+      token_set$refresh_token
+    )),
+    oauth.expires_in_present = isTRUE(expires_in_present),
+    oauth.expires_in_synthesized = !isTRUE(expires_in_present),
+    oauth.scope.present = length(scope_tokens) > 0L,
+    oauth.scopes.granted = otel_scope_string(
+      token_set$scope %||% NULL,
+      allow_commas = TRUE
+    )
+  ))
+}
+
 otel_current_shiny_session <- function() {
   event <- tryCatch(augment_with_shiny_context(list()), error = function(...) {
     list()
@@ -231,6 +479,7 @@ otel_http_attributes <- function(
   url = NULL,
   resp = NULL,
   status_code = NULL,
+  content_type = NULL,
   extra = list()
 ) {
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
@@ -240,12 +489,16 @@ otel_http_attributes <- function(
         error = function(...) NULL
       )
     url <- url %||% tryCatch(httr2::resp_url(resp), error = function(...) NULL)
+    content_type <- content_type %||% otel_http_content_type(resp = resp)
   }
 
   compact_list(c(
     list(
       http.request.method = method,
       http.response.status_code = as.integer(status_code %||% NA_integer_),
+      http.response.content_type = otel_http_content_type(
+        content_type = content_type
+      ),
       server.address = otel_http_host(url)
     ),
     extra

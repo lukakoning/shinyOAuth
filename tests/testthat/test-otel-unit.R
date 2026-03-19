@@ -288,7 +288,19 @@ testthat::test_that("otel_http_attributes extracts from httr2 response", {
 
   attrs <- shinyOAuth:::otel_http_attributes(resp = resp)
   testthat::expect_identical(attrs$http.response.status_code, 200L)
+  testthat::expect_identical(
+    attrs$http.response.content_type,
+    "application/json"
+  )
   testthat::expect_identical(attrs$server.address, "provider.example.com")
+})
+
+testthat::test_that("otel_http_content_type normalizes media type", {
+  testthat::expect_identical(
+    shinyOAuth:::otel_http_content_type("Application/JSON; charset=utf-8"),
+    "application/json"
+  )
+  testthat::expect_null(shinyOAuth:::otel_http_content_type(NULL))
 })
 
 # ===========================================================================
@@ -323,6 +335,92 @@ testthat::test_that("otel_client_attributes handles NULL client", {
   testthat::expect_null(attrs$oauth.client_id_digest)
   testthat::expect_identical(attrs$shiny.module_id, "test")
   testthat::expect_identical(attrs$oauth.phase, "init")
+})
+
+testthat::test_that("otel_scope_count includes implied openid for OIDC login", {
+  cli <- make_test_client(use_nonce = TRUE, scopes = c("profile", "email"))
+
+  testthat::expect_identical(
+    shinyOAuth:::otel_scope_count(
+      cli@scopes,
+      provider = cli@provider,
+      ensure_openid = TRUE
+    ),
+    3L
+  )
+})
+
+testthat::test_that("otel_scope_string normalizes requested and granted scopes", {
+  cli <- make_test_client(use_nonce = TRUE, scopes = c("profile", "email"))
+
+  testthat::expect_identical(
+    shinyOAuth:::otel_scope_string(
+      cli@scopes,
+      provider = cli@provider,
+      ensure_openid = TRUE
+    ),
+    "openid profile email"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_scope_string("openid,profile", allow_commas = TRUE),
+    "openid profile"
+  )
+})
+
+testthat::test_that("otel_claim_targets and list join helpers summarize safe lists", {
+  testthat::expect_identical(
+    shinyOAuth:::otel_claim_targets(
+      list(
+        userinfo = list(email = NULL),
+        id_token = list(auth_time = list(essential = TRUE))
+      )
+    ),
+    "id_token,userinfo"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_required_acr_values(c("loa2", "loa3")),
+    "loa2 loa3"
+  )
+  testthat::expect_identical(
+    shinyOAuth:::otel_introspect_elements(c("sub", "scope")),
+    "scope,sub"
+  )
+})
+
+testthat::test_that("otel_browser_cookie_path_root reflects effective path mode", {
+  testthat::expect_true(shinyOAuth:::otel_browser_cookie_path_root(NULL))
+  testthat::expect_true(shinyOAuth:::otel_browser_cookie_path_root("/"))
+  testthat::expect_false(shinyOAuth:::otel_browser_cookie_path_root("/app"))
+})
+
+testthat::test_that("otel_token_response_attributes captures response shape", {
+  attrs <- shinyOAuth:::otel_token_response_attributes(list(
+    token_type = "Bearer",
+    id_token = "idtok",
+    refresh_token = "reftok",
+    expires_in = 3600,
+    scope = "openid,profile"
+  ))
+
+  testthat::expect_identical(attrs$oauth.token_type, "Bearer")
+  testthat::expect_identical(attrs$oauth.received_id_token, TRUE)
+  testthat::expect_identical(attrs$oauth.received_refresh_token, TRUE)
+  testthat::expect_identical(attrs$oauth.expires_in_present, TRUE)
+  testthat::expect_identical(attrs$oauth.expires_in_synthesized, FALSE)
+  testthat::expect_identical(attrs$oauth.scope.present, TRUE)
+  testthat::expect_identical(attrs$oauth.scopes.granted, "openid profile")
+
+  missing_attrs <- shinyOAuth:::otel_token_response_attributes(list(
+    access_token = "at",
+    scope = ""
+  ))
+  testthat::expect_identical(missing_attrs$oauth.expires_in_present, FALSE)
+  testthat::expect_identical(
+    missing_attrs$oauth.expires_in_synthesized,
+    TRUE
+  )
+  testthat::expect_identical(missing_attrs$oauth.scope.present, FALSE)
+  testthat::expect_null(missing_attrs$oauth.scopes.granted)
 })
 
 # ===========================================================================

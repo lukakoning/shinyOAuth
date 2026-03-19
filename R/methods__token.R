@@ -73,7 +73,14 @@ revoke_token <- function(
           shiny_session = parent_shiny_session,
           async = TRUE,
           phase = "token.revoke",
-          extra = list(oauth.token.which = which)
+          extra = list(
+            oauth.token.which = which,
+            oauth.client_auth_style = otel_client_auth_style(oauth_client),
+            oauth.extra_token_params_count = 0L,
+            oauth.extra_token_headers_count = otel_count_items(
+              oauth_client@provider@extra_token_headers
+            )
+          )
         )
       )
 
@@ -365,7 +372,14 @@ revoke_token <- function(
         shiny_session = shiny_session,
         async = async_attr,
         phase = "token.revoke",
-        extra = list(oauth.token.which = which)
+        extra = list(
+          oauth.token.which = which,
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = 0L,
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
+          )
+        )
       ),
       parent = NA
     )
@@ -514,7 +528,14 @@ introspect_token <- function(
           shiny_session = parent_shiny_session,
           async = TRUE,
           phase = "token.introspect",
-          extra = list(oauth.token.which = which)
+          extra = list(
+            oauth.token.which = which,
+            oauth.client_auth_style = otel_client_auth_style(oauth_client),
+            oauth.extra_token_params_count = 0L,
+            oauth.extra_token_headers_count = otel_count_items(
+              oauth_client@provider@extra_token_headers
+            )
+          )
         )
       )
 
@@ -805,7 +826,14 @@ introspect_token <- function(
         shiny_session = shiny_session,
         async = async_attr,
         phase = "token.introspect",
-        extra = list(oauth.token.which = which)
+        extra = list(
+          oauth.token.which = which,
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = 0L,
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
+          )
+        )
       ),
       parent = NA
     )
@@ -913,7 +941,16 @@ refresh_token <- function(
           client = oauth_client,
           shiny_session = parent_shiny_session,
           async = TRUE,
-          phase = "refresh"
+          phase = "refresh",
+          extra = list(
+            oauth.client_auth_style = otel_client_auth_style(oauth_client),
+            oauth.extra_token_params_count = otel_count_items(
+              oauth_client@provider@extra_token_params
+            ),
+            oauth.extra_token_headers_count = otel_count_items(
+              oauth_client@provider@extra_token_headers
+            )
+          )
         )
       )
 
@@ -1064,6 +1101,10 @@ refresh_token <- function(
           tok$expires_in <- coerce_expires_in(tok$expires_in)
         }
 
+        otel_set_span_attributes(
+          attributes = otel_token_response_attributes(tok)
+        )
+
         # Validate expires_in if present (align with swap_code_for_token_set())
         if (!is.null(tok$expires_in)) {
           if (
@@ -1189,7 +1230,16 @@ refresh_token <- function(
         client = oauth_client,
         shiny_session = shiny_session,
         async = async_attr,
-        phase = "refresh"
+        phase = "refresh",
+        extra = list(
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = otel_count_items(
+            oauth_client@provider@extra_token_params
+          ),
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
+          )
+        )
       ),
       parent = NA
     )
