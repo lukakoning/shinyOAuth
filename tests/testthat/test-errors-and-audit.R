@@ -470,6 +470,52 @@ test_that("audit_event preserves is_async inside async session context", {
   expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))
 })
 
+test_that("get_userinfo preserves explicit async shiny_session in audit events", {
+  events <- list()
+  old <- options(shinyOAuth.trace_hook = function(ev) {
+    events[[length(events) + 1L]] <<- ev
+  })
+  on.exit(options(old), add = TRUE)
+
+  cli <- make_test_client()
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  captured_ctx <- list(
+    token = "mock-session-token",
+    http = NULL,
+    is_async = TRUE,
+    main_process_id = 12345L
+  )
+
+  shinyOAuth:::with_async_session_context(captured_ctx, {
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/userinfo",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"user123"}')
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::get_userinfo(
+          cli,
+          token = "at",
+          shiny_session = captured_ctx
+        )
+      }
+    )
+  })
+
+  userinfo_events <- Filter(
+    function(e) identical(e$type, "audit_userinfo"),
+    events
+  )
+  expect_length(userinfo_events, 1L)
+  expect_equal(userinfo_events[[1L]]$shiny_session$token, "mock-session-token")
+  expect_true(isTRUE(userinfo_events[[1L]]$shiny_session$is_async))
+})
+
 
 # with_async_session_context for errors -----------------------------------
 

@@ -774,3 +774,57 @@ test_that("introspect_token emits audit events even when login fails", {
   testthat::expect_equal(intro_evt$status, "ok")
   testthat::expect_equal(intro_evt$which, "access")
 })
+
+test_that("handle_callback forwards shiny_session to introspect_token", {
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  captured <- NULL
+  shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = 4321L,
+    main_process_id = 1234L
+  )
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier, ...) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer"
+      )
+    },
+    introspect_token = function(
+      oauth_client,
+      oauth_token,
+      which,
+      async,
+      shiny_session = NULL
+    ) {
+      captured <<- shiny_session
+      list(
+        supported = TRUE,
+        active = TRUE,
+        raw = list(active = TRUE),
+        status = "ok"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      tok_obj <- shinyOAuth:::handle_callback(
+        cli,
+        code = "abc",
+        payload = enc,
+        browser_token = tok,
+        shiny_session = shiny_session
+      )
+      testthat::expect_s3_class(tok_obj, "shinyOAuth::OAuthToken")
+    }
+  )
+
+  testthat::expect_identical(captured, shiny_session)
+})

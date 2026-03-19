@@ -826,10 +826,12 @@ handle_callback_internal <- function(
       # Perform token exchange
       token_set <- tryCatch(
         {
-          ts <- swap_code_for_token_set(
-            oauth_client,
+          ts <- call_with_optional_shiny_session(
+            swap_code_for_token_set,
+            client = oauth_client,
             code = code,
-            code_verifier = code_verifier
+            code_verifier = code_verifier,
+            shiny_session = shiny_session
           )
           try(
             audit_event(
@@ -939,7 +941,8 @@ handle_callback_internal <- function(
         oauth_client,
         token_set = token_set,
         nonce = nonce,
-        is_refresh = FALSE
+        is_refresh = FALSE,
+        shiny_session = shiny_session
       )
 
       # Fetch userinfo -------------------------------------------------------------
@@ -948,9 +951,11 @@ handle_callback_internal <- function(
       # make external calls after cryptographic validation passes.
 
       if (isTRUE(oauth_client@provider@userinfo_required)) {
-        userinfo <- get_userinfo(
-          oauth_client,
-          token = token_set[["access_token"]]
+        userinfo <- call_with_optional_shiny_session(
+          get_userinfo,
+          oauth_client = oauth_client,
+          token = token_set[["access_token"]],
+          shiny_session = shiny_session
         )
         token_set[["userinfo"]] <- userinfo
 
@@ -993,11 +998,13 @@ handle_callback_internal <- function(
       # Optional token introspection validation -----------------------------------
 
       if (isTRUE(introspect)) {
-        intro_res <- introspect_token(
+        intro_res <- call_with_optional_shiny_session(
+          introspect_token,
           oauth_client = oauth_client,
           oauth_token = token,
           which = "access",
-          async = FALSE
+          async = FALSE,
+          shiny_session = shiny_session
         )
 
         # Fail login if introspection is unsupported when requested
@@ -1373,7 +1380,8 @@ payload_verify_client_binding <- function(client, payload) {
 swap_code_for_token_set <- function(
   client,
   code,
-  code_verifier
+  code_verifier,
+  shiny_session = NULL
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -1507,6 +1515,7 @@ swap_code_for_token_set <- function(
     },
     attributes = otel_client_attributes(
       client = client,
+      shiny_session = shiny_session,
       phase = "token.exchange",
       extra = list(
         oauth.used_pkce = is_valid_string(code_verifier),
@@ -1527,7 +1536,8 @@ verify_token_set <- function(
   token_set,
   nonce,
   is_refresh = FALSE,
-  original_id_token = NULL
+  original_id_token = NULL,
+  shiny_session = NULL
 ) {
   # Helpers/types --------------------------------------------------------------
 
@@ -1947,6 +1957,7 @@ verify_token_set <- function(
     },
     attributes = otel_client_attributes(
       client = client,
+      shiny_session = shiny_session,
       phase = if (isTRUE(is_refresh)) "refresh.verify" else "callback.verify",
       extra = list(
         oauth.received_id_token = id_token_present,

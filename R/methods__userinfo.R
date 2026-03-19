@@ -7,6 +7,10 @@
 #' @param oauth_client [OAuthClient] object. The client must have a
 #' `userinfo_url` configured in its [OAuthProvider].
 #' @param token Either an [OAuthToken] object or a raw access token string.
+#' @param shiny_session Optional pre-captured Shiny session context (from
+#'   `capture_shiny_session_context()`) to include in audit events and span
+#'   attributes. Used when calling from async workers that lack access to the
+#'   reactive domain.
 #'
 #' @return A list containing the user information as returned by the provider.
 #'
@@ -15,7 +19,8 @@
 #' @export
 get_userinfo <- function(
   oauth_client,
-  token
+  token,
+  shiny_session = NULL
 ) {
   # Type checks/helpers --------------------------------------------------------
 
@@ -103,6 +108,7 @@ get_userinfo <- function(
           audit_userinfo_event(
             oauth_client,
             status = "userinfo_not_jwt",
+            shiny_session = shiny_session,
             extra = list(
               content_type = if (is_valid_string(resp_ct)) {
                 resp_ct
@@ -128,7 +134,11 @@ get_userinfo <- function(
         # Parse from response
         if (is_jwt_response) {
           ui <- try(
-            decode_userinfo_jwt(resp, oauth_client),
+            decode_userinfo_jwt(
+              resp,
+              oauth_client,
+              shiny_session = shiny_session
+            ),
             silent = TRUE
           )
         } else {
@@ -171,6 +181,7 @@ get_userinfo <- function(
           audit_userinfo_event(
             oauth_client,
             status = "parse_error",
+            shiny_session = shiny_session,
             extra = list(
               http_status = status,
               url = url,
@@ -223,7 +234,8 @@ get_userinfo <- function(
           if (!is_valid_string(ui$sub)) {
             audit_userinfo_event(
               oauth_client,
-              status = "userinfo_missing_sub"
+              status = "userinfo_missing_sub",
+              shiny_session = shiny_session
             )
             err_userinfo(c(
               "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
@@ -243,13 +255,15 @@ get_userinfo <- function(
         audit_userinfo_event(
           oauth_client,
           status = "ok",
-          sub = subject
+          sub = subject,
+          shiny_session = shiny_session
         )
 
         ui
       },
       attributes = otel_client_attributes(
         client = oauth_client,
+        shiny_session = shiny_session,
         phase = "userinfo",
         extra = list(
           oauth.userinfo.jwt_required = isTRUE(
@@ -265,6 +279,7 @@ audit_userinfo_event <- function(
   oauth_client,
   status,
   sub = NULL,
+  shiny_session = NULL,
   extra = list()
 ) {
   try(
@@ -279,7 +294,8 @@ audit_userinfo_event <- function(
           status = status
         ),
         extra
-      )
+      ),
+      shiny_session = shiny_session
     ),
     silent = TRUE
   )
@@ -315,10 +331,16 @@ audit_userinfo_event <- function(
 #'
 #' @param resp An httr2 response object with a JWT body.
 #' @param oauth_client An OAuthClient object (used for JWKS-based verification).
+#' @param shiny_session Optional pre-captured Shiny session context for audit
+#'   events emitted during JWT validation.
 #' @return A named list of userinfo claims.
 #' @keywords internal
 #' @noRd
-decode_userinfo_jwt <- function(resp, oauth_client) {
+decode_userinfo_jwt <- function(
+  resp,
+  oauth_client,
+  shiny_session = NULL
+) {
   jwt_str <- httr2::resp_body_string(resp)
 
   if (!is_valid_string(jwt_str)) {
@@ -334,7 +356,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   if (n_parts == 5L) {
     audit_userinfo_event(
       oauth_client,
-      status = "userinfo_jwt_encrypted"
+      status = "userinfo_jwt_encrypted",
+      shiny_session = shiny_session
     )
     err_userinfo(c(
       "x" = "UserInfo response is an encrypted JWT (JWE)",
@@ -351,7 +374,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   if (inherits(header, "try-error")) {
     audit_userinfo_event(
       oauth_client,
-      status = "userinfo_jwt_header_parse_failed"
+      status = "userinfo_jwt_header_parse_failed",
+      shiny_session = shiny_session
     )
     err_userinfo(c(
       "x" = "UserInfo JWT header could not be parsed",
@@ -397,6 +421,7 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     audit_userinfo_event(
       oauth_client,
       status = "userinfo_jwt_unsigned",
+      shiny_session = shiny_session,
       extra = list(jwt_alg = alg)
     )
     err_userinfo(c(
@@ -428,6 +453,7 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     audit_userinfo_event(
       oauth_client,
       status = "userinfo_jwt_alg_rejected",
+      shiny_session = shiny_session,
       extra = list(jwt_alg = alg)
     )
     err_userinfo(c(
@@ -448,7 +474,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   if (!is_valid_string(prov@issuer) || is.na(prov@issuer)) {
     audit_userinfo_event(
       oauth_client,
-      status = "userinfo_jwt_no_issuer"
+      status = "userinfo_jwt_no_issuer",
+      shiny_session = shiny_session
     )
     err_userinfo(c(
       "x" = "Provider issuer is not configured but is required for UserInfo JWT verification",
@@ -472,7 +499,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     # JWKS fetch failed — fail closed.
     audit_userinfo_event(
       oauth_client,
-      status = "userinfo_jwt_jwks_fetch_failed"
+      status = "userinfo_jwt_jwks_fetch_failed",
+      shiny_session = shiny_session
     )
     err_userinfo(c(
       "x" = "UserInfo JWT signature could not be verified: JWKS fetch failed",
@@ -545,7 +573,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
           claims,
           expected_issuer = prov@issuer,
           expected_client_id = oauth_client@client_id,
-          oauth_client = oauth_client
+          oauth_client = oauth_client,
+          shiny_session = shiny_session
         )
         return(claims)
       }
@@ -554,7 +583,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
     # this indicates tampering or serious misconfiguration.
     audit_userinfo_event(
       oauth_client,
-      status = "userinfo_jwt_signature_invalid"
+      status = "userinfo_jwt_signature_invalid",
+      shiny_session = shiny_session
     )
     err_userinfo(c(
       "x" = "UserInfo JWT signature is invalid",
@@ -564,7 +594,8 @@ decode_userinfo_jwt <- function(resp, oauth_client) {
   # No compatible candidate keys in JWKS — fail closed.
   audit_userinfo_event(
     oauth_client,
-    status = "userinfo_jwt_no_matching_key"
+    status = "userinfo_jwt_no_matching_key",
+    shiny_session = shiny_session
   )
   err_userinfo(c(
     "x" = "UserInfo JWT signature could not be verified: no compatible keys in provider JWKS",
@@ -583,7 +614,8 @@ validate_signed_userinfo_claims <- function(
   claims,
   expected_issuer,
   expected_client_id,
-  oauth_client = NULL
+  oauth_client = NULL,
+  shiny_session = NULL
 ) {
   # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
   sub <- claims$sub
@@ -591,7 +623,8 @@ validate_signed_userinfo_claims <- function(
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
-        status = "userinfo_jwt_missing_sub"
+        status = "userinfo_jwt_missing_sub",
+        shiny_session = shiny_session
       )
     }
     err_userinfo(c(
@@ -605,7 +638,8 @@ validate_signed_userinfo_claims <- function(
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
-        status = "userinfo_jwt_missing_iss"
+        status = "userinfo_jwt_missing_iss",
+        shiny_session = shiny_session
       )
     }
     err_userinfo(c(
@@ -617,7 +651,8 @@ validate_signed_userinfo_claims <- function(
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
-        status = "userinfo_jwt_iss_mismatch"
+        status = "userinfo_jwt_iss_mismatch",
+        shiny_session = shiny_session
       )
     }
     err_userinfo(c(
@@ -636,7 +671,8 @@ validate_signed_userinfo_claims <- function(
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
-        status = "userinfo_jwt_missing_aud"
+        status = "userinfo_jwt_missing_aud",
+        shiny_session = shiny_session
       )
     }
     err_userinfo(c(
@@ -647,7 +683,8 @@ validate_signed_userinfo_claims <- function(
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
-        status = "userinfo_jwt_aud_mismatch"
+        status = "userinfo_jwt_aud_mismatch",
+        shiny_session = shiny_session
       )
     }
     err_userinfo(c(

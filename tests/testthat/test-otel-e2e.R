@@ -374,6 +374,13 @@ otel_e2e("token.exchange span captures request and response attributes", {
   cli <- make_test_client(use_pkce = TRUE)
   cli@provider@extra_token_params <- list(resource = "https://api.example.com")
   cli@provider@extra_token_headers <- c(Accept = "application/json")
+  shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = 4321L,
+    main_process_id = 1234L
+  )
 
   r <- otelsdk::with_otel_record({
     testthat::with_mocked_bindings(
@@ -393,7 +400,8 @@ otel_e2e("token.exchange span captures request and response attributes", {
         shinyOAuth:::swap_code_for_token_set(
           cli,
           code = "test_code",
-          code_verifier = "test_verifier"
+          code_verifier = "test_verifier",
+          shiny_session = shiny_session
         )
       }
     )
@@ -425,6 +433,7 @@ otel_e2e("token.exchange span captures request and response attributes", {
     FALSE
   )
   testthat::expect_identical(s$attributes[["oauth.scope.present"]], TRUE)
+  testthat::expect_identical(s$attributes[["shiny.session.is_async"]], TRUE)
 })
 
 otel_e2e("token.verify span captures validation decision attributes", {
@@ -434,6 +443,13 @@ otel_e2e("token.verify span captures validation decision attributes", {
   )
   cli@provider@id_token_validation <- TRUE
   cli@required_acr_values <- "loa2"
+  shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = 4321L,
+    main_process_id = 1234L
+  )
 
   r <- otelsdk::with_otel_record({
     testthat::with_mocked_bindings(
@@ -451,7 +467,8 @@ otel_e2e("token.verify span captures validation decision attributes", {
             scope = "openid profile"
           ),
           nonce = "nonce-1",
-          is_refresh = FALSE
+          is_refresh = FALSE,
+          shiny_session = shiny_session
         )
       }
     )
@@ -491,6 +508,7 @@ otel_e2e("token.verify span captures validation decision attributes", {
     1L
   )
   testthat::expect_identical(s$attributes[["oauth.refresh_flow"]], FALSE)
+  testthat::expect_identical(s$attributes[["shiny.session.is_async"]], TRUE)
 })
 
 # ---------------------------------------------------------------------------
@@ -542,6 +560,53 @@ otel_e2e("userinfo HTTP response attributes stay on HTTP child span", {
     TRUE
   )
   testthat::expect_identical(http_span$status, "ok")
+})
+
+otel_e2e("userinfo span preserves explicit async shiny session attributes", {
+  cli <- make_test_client()
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = 4321L,
+    main_process_id = 1234L
+  )
+
+  r <- otelsdk::with_otel_record({
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/userinfo",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"user123"}')
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::get_userinfo(
+          cli,
+          token = "at",
+          shiny_session = shiny_session
+        )
+      }
+    )
+  })
+
+  parent_span <- r$traces[["shinyOAuth.userinfo"]]
+
+  testthat::expect_identical(
+    parent_span$attributes[["shiny.session.is_async"]],
+    TRUE
+  )
+  testthat::expect_identical(
+    as.integer(parent_span$attributes[["shiny.session.process_id"]]),
+    4321L
+  )
+  testthat::expect_true(nzchar(parent_span$attributes[[
+    "shiny.session_token_digest"
+  ]]))
 })
 
 # ---------------------------------------------------------------------------

@@ -366,6 +366,23 @@ augment_with_shiny_context <- function(event) {
   event
 }
 
+# Internal: call a helper and forward `shiny_session` only when the target
+# explicitly declares that parameter. This keeps async context propagation
+# explicit in runtime code without breaking tests that mock helpers using the
+# older two/three-argument signatures.
+call_with_optional_shiny_session <- function(
+  fn,
+  ...,
+  shiny_session = NULL
+) {
+  args <- list(...)
+  fn_formals <- tryCatch(names(formals(fn)), error = function(...) NULL)
+  if (!is.null(fn_formals) && "shiny_session" %in% fn_formals) {
+    args$shiny_session <- shiny_session
+  }
+  do.call(fn, args)
+}
+
 # Internal: dispatch an async task using the best available backend.
 # Internal: check whether mirai daemons are currently active.
 #

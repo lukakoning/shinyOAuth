@@ -260,6 +260,23 @@ testthat::test_that("otel_event_attributes skips timestamp and shiny_session", {
   testthat::expect_false("shiny_session" %in% names(attrs))
 })
 
+testthat::test_that("otel_event_attributes includes normalized shiny session attributes", {
+  attrs <- shinyOAuth:::otel_event_attributes(list(
+    type = "audit_userinfo",
+    status = "ok",
+    shiny_session = list(
+      token = "session-token",
+      is_async = TRUE,
+      process_id = 4321L,
+      main_process_id = 1234L
+    )
+  ))
+
+  testthat::expect_identical(attrs[["shiny.session.is_async"]], TRUE)
+  testthat::expect_identical(attrs[["shiny.session.process_id"]], 4321L)
+  testthat::expect_true(nzchar(attrs[["shiny.session_token_digest"]]))
+})
+
 testthat::test_that("otel_event_attributes returns NULL for empty/null input", {
   testthat::expect_null(shinyOAuth:::otel_event_attributes(NULL))
   testthat::expect_null(shinyOAuth:::otel_event_attributes(list()))
