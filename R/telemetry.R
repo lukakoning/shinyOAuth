@@ -342,10 +342,11 @@ otel_browser_cookie_path_root <- function(browser_cookie_path) {
 
 otel_http_content_type <- function(content_type = NULL, resp = NULL) {
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
-    content_type <- content_type %||% tryCatch(
-      httr2::resp_header(resp, "content-type"),
-      error = function(...) NULL
-    )
+    content_type <- content_type %||%
+      tryCatch(
+        httr2::resp_header(resp, "content-type"),
+        error = function(...) NULL
+      )
   }
 
   if (!is_valid_string(content_type)) {

@@ -260,7 +260,10 @@ otel_e2e("prepare_call roots itself and callback parents to login span", {
   testthat::expect_identical(callback_span$parent, login_span$span_id)
   testthat::expect_identical(callback_span$trace_id, login_span$trace_id)
   testthat::expect_false(identical(login_span$parent, outer_login$span_id))
-  testthat::expect_false(identical(callback_span$parent, outer_callback$span_id))
+  testthat::expect_false(identical(
+    callback_span$parent,
+    outer_callback$span_id
+  ))
 })
 
 otel_e2e("handle_callback span captures callback flow attributes", {

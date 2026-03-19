@@ -166,9 +166,18 @@ testthat::test_that("otel_note_error is a no-op for NULL error", {
 
   called <- FALSE
   mock_span <- list(
-    set_attribute = function(...) called <<- TRUE,
-    add_event = function(...) called <<- TRUE,
-    set_status = function(...) called <<- TRUE
+    set_attribute = function(...) {
+      called <<- TRUE
+      invisible(NULL)
+    },
+    add_event = function(...) {
+      called <<- TRUE
+      invisible(NULL)
+    },
+    set_status = function(...) {
+      called <<- TRUE
+      invisible(NULL)
+    }
   )
 
   shinyOAuth:::otel_note_error(NULL, span = mock_span)

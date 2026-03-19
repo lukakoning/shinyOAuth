@@ -597,7 +597,10 @@ testthat::test_that("otel_emit_log does not call otel::log for empty events", {
   withr::local_options(list(shinyOAuth.otel_logging_enabled = TRUE))
   log_called <- FALSE
   testthat::with_mocked_bindings(
-    log = function(...) log_called <<- TRUE,
+    log = function(...) {
+      log_called <<- TRUE
+      invisible(NULL)
+    },
     .package = "otel",
     {
       shinyOAuth:::otel_emit_log(NULL)
@@ -712,9 +715,11 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   testthat::with_mocked_bindings(
     otel_mark_span_ok = function(span) {
       ok_calls[[length(ok_calls) + 1L]] <<- TRUE
+      invisible(NULL)
     },
     otel_note_error = function(error, span, ...) {
       err_calls[[length(err_calls) + 1L]] <<- conditionMessage(error)
+      invisible(NULL)
     },
     .package = "shinyOAuth",
     {
@@ -733,9 +738,11 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   testthat::with_mocked_bindings(
     otel_mark_span_ok = function(span) {
       ok_calls[[length(ok_calls) + 1L]] <<- TRUE
+      invisible(NULL)
     },
     otel_note_error = function(error, span, ...) {
       err_calls[[length(err_calls) + 1L]] <<- conditionMessage(error)
+      invisible(NULL)
     },
     .package = "shinyOAuth",
     {
@@ -760,7 +767,10 @@ testthat::test_that("emit_trace_event calls otel_emit_log", {
   log_called <- FALSE
 
   testthat::with_mocked_bindings(
-    otel_emit_log = function(event) log_called <<- TRUE,
+    otel_emit_log = function(event) {
+      log_called <<- TRUE
+      invisible(NULL)
+    },
     augment_with_shiny_context = function(event) event,
     .package = "shinyOAuth",
     {
@@ -810,9 +820,13 @@ testthat::test_that("with_otel_span marks span ok on success", {
   noted_error <- FALSE
 
   testthat::with_mocked_bindings(
-    otel_mark_span_ok = function(span = NULL) marked_ok <<- TRUE,
+    otel_mark_span_ok = function(span = NULL) {
+      marked_ok <<- TRUE
+      invisible(NULL)
+    },
     otel_note_error = function(error, span = NULL, attributes = list()) {
       noted_error <<- TRUE
+      invisible(NULL)
     },
     .package = "shinyOAuth",
     {
@@ -861,11 +875,15 @@ testthat::test_that("with_otel_span notes error and re-throws on failure", {
   noted_error <- FALSE
 
   testthat::with_mocked_bindings(
-    otel_mark_span_ok = function(span = NULL) marked_ok <<- TRUE,
+    otel_mark_span_ok = function(span = NULL) {
+      marked_ok <<- TRUE
+      invisible(NULL)
+    },
     otel_note_error = function(error, span = NULL, attributes = list()) {
       noted_error <<- TRUE
       testthat::expect_true(inherits(error, "error"))
       testthat::expect_match(conditionMessage(error), "test failure")
+      invisible(NULL)
     },
     .package = "shinyOAuth",
     {

@@ -197,7 +197,10 @@ otel_async("async parent/worker span propagation via sync mirai", {
           )
         )
       ),
-      function(x) resolved <<- x
+      function(x) {
+        resolved <<- x
+        invisible(NULL)
+      }
     )
 
     deadline <- Sys.time() + 10
@@ -305,7 +308,10 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
         )
       )
     ),
-    function(x) resolved <<- x
+    function(x) {
+      resolved <<- x
+      invisible(NULL)
+    }
   )
 
   poll_for_async(function() !is.null(resolved), timeout = 10)
@@ -327,7 +333,9 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   )
 
   spans <- Filter(
-    function(span) identical(span$scope_name, "io.github.lukakoning.shinyOAuth"),
+    function(span) {
+      identical(span$scope_name, "io.github.lukakoning.shinyOAuth")
+    },
     otel_exported_spans(otel_file)
   )
   parent_span <- otel_find_spans(spans, "shinyOAuth.test.async.parent")
@@ -337,10 +345,22 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   testthat::expect_length(parent_span, 1L)
   testthat::expect_length(worker_span, 1L)
   testthat::expect_length(child_span, 1L)
-  testthat::expect_identical(parent_span[[1L]]$trace_id, worker_span[[1L]]$trace_id)
-  testthat::expect_identical(worker_span[[1L]]$trace_id, child_span[[1L]]$trace_id)
-  testthat::expect_identical(worker_span[[1L]]$parent_span_id, parent_span[[1L]]$span_id)
-  testthat::expect_identical(child_span[[1L]]$parent_span_id, worker_span[[1L]]$span_id)
+  testthat::expect_identical(
+    parent_span[[1L]]$trace_id,
+    worker_span[[1L]]$trace_id
+  )
+  testthat::expect_identical(
+    worker_span[[1L]]$trace_id,
+    child_span[[1L]]$trace_id
+  )
+  testthat::expect_identical(
+    worker_span[[1L]]$parent_span_id,
+    parent_span[[1L]]$span_id
+  )
+  testthat::expect_identical(
+    child_span[[1L]]$parent_span_id,
+    worker_span[[1L]]$span_id
+  )
   testthat::expect_false(
     identical(parent_span[[1L]]$process_id, worker_span[[1L]]$process_id)
   )
@@ -403,7 +423,10 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
         introspect = FALSE
       )
     ),
-    function(x) resolved <<- x
+    function(x) {
+      resolved <<- x
+      invisible(NULL)
+    }
   )
 
   poll_for_async(function() !is.null(resolved), timeout = 10)
@@ -426,7 +449,9 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
   )
 
   spans <- Filter(
-    function(span) identical(span$scope_name, "io.github.lukakoning.shinyOAuth"),
+    function(span) {
+      identical(span$scope_name, "io.github.lukakoning.shinyOAuth")
+    },
     otel_exported_spans(otel_file)
   )
 
@@ -469,7 +494,10 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
     worker_refresh[[1L]]$span_id
   )
   testthat::expect_identical(
-    as.integer(otel_span_attribute(http_span[[1L]], "http.response.status_code")),
+    as.integer(otel_span_attribute(
+      http_span[[1L]],
+      "http.response.status_code"
+    )),
     200L
   )
   testthat::expect_false(

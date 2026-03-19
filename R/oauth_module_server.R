@@ -1637,291 +1637,296 @@ oauth_module_server <- function(
             {
               async_fallback <- FALSE
               res <- if (isTRUE(async)) {
-            # Use mirai to move work off the main thread. To avoid
-            # cross-process cache visibility issues with client@state_store,
-            # pre-decrypt the payload and prefetch+remove the state_store entry on the
-            # main thread, and pass these to handle_callback.
+                # Use mirai to move work off the main thread. To avoid
+                # cross-process cache visibility issues with client@state_store,
+                # pre-decrypt the payload and prefetch+remove the state_store entry on the
+                # main thread, and pass these to handle_callback.
 
-            # Capture Shiny session context on the main thread for audit events
-            # emitted from the async worker (which lacks reactive domain access)
-            captured_shiny_session <- capture_shiny_session_context()
-            parent_shiny_session <- normalize_shiny_session_context(
-              captured_shiny_session
-            )
-            callback_parent <- otel_start_async_parent(
-              "shinyOAuth.callback",
-              attributes = otel_client_attributes(
-                client = client,
-                module_id = id,
-                shiny_session = parent_shiny_session,
-                async = TRUE,
-                phase = "callback",
-                extra = list(
-                  oauth.introspect = isTRUE(client@introspect),
-                  oauth.introspect_elements_count = otel_count_items(
-                    client@introspect_elements %||% character(0)
-                  ),
-                  oauth.userinfo.required = isTRUE(
-                    client@provider@userinfo_required
-                  ),
-                  oauth.userinfo.id_token_match_required = isTRUE(
-                    client@provider@userinfo_id_token_match
-                  ),
-                  oauth.id_token.validation_enabled = isTRUE(
-                    client@provider@id_token_validation
-                  )
+                # Capture Shiny session context on the main thread for audit events
+                # emitted from the async worker (which lacks reactive domain access)
+                captured_shiny_session <- capture_shiny_session_context()
+                parent_shiny_session <- normalize_shiny_session_context(
+                  captured_shiny_session
                 )
-              ),
-              parent = callback_hint$parent %||% NA
-            )
-
-            otel_with_active_span(
-              callback_parent$span,
-              {
-                # Capture shinyOAuth.* options for propagation to the async worker.
-                # This ensures audit hooks, HTTP settings, and other options are
-                # available in the worker process.
-                captured_async_options <- capture_async_options()
-
-                pre_payload <- tryCatch(
-                  with_otel_span(
-                    "shinyOAuth.callback.validate",
-                    {
-                      payload <- state_payload_decrypt_validate(
-                        client,
-                        state,
-                        shiny_session = captured_shiny_session
+                callback_parent <- otel_start_async_parent(
+                  "shinyOAuth.callback",
+                  attributes = otel_client_attributes(
+                    client = client,
+                    module_id = id,
+                    shiny_session = parent_shiny_session,
+                    async = TRUE,
+                    phase = "callback",
+                    extra = list(
+                      oauth.introspect = isTRUE(client@introspect),
+                      oauth.introspect_elements_count = otel_count_items(
+                        client@introspect_elements %||% character(0)
+                      ),
+                      oauth.userinfo.required = isTRUE(
+                        client@provider@userinfo_required
+                      ),
+                      oauth.userinfo.id_token_match_required = isTRUE(
+                        client@provider@userinfo_id_token_match
+                      ),
+                      oauth.id_token.validation_enabled = isTRUE(
+                        client@provider@id_token_validation
                       )
-                      otel_set_span_attributes(
-                        attributes = list(
-                          shinyoauth.trace_id = payload$trace_id %||% NULL
-                        )
-                      )
-                      payload
-                    },
-                    attributes = otel_client_attributes(
-                      client = client,
-                      module_id = id,
-                      shiny_session = captured_shiny_session,
-                      async = TRUE,
-                      phase = "callback.state_payload"
                     )
                   ),
-                  error = function(e) {
-                    .set_error(
-                      "token_exchange_error",
-                      e,
-                      phase = "async_payload_validation"
-                    )
-                    rethrow_with_context(e, phase = "async_payload_validation")
-                  }
+                  parent = callback_hint$parent %||% NA
                 )
 
-                captured_trace_id <- pre_payload$trace_id %||%
-                  resolve_trace_id()
-
-                with_trace_id(
-                  captured_trace_id,
+                otel_with_active_span(
+                  callback_parent$span,
                   {
-                    otel_set_span_attributes(
-                      span = callback_parent$span,
-                      attributes = list(shinyoauth.trace_id = captured_trace_id)
-                    )
+                    # Capture shinyOAuth.* options for propagation to the async worker.
+                    # This ensures audit hooks, HTTP settings, and other options are
+                    # available in the worker process.
+                    captured_async_options <- capture_async_options()
 
-                    pre_state <- tryCatch(
+                    pre_payload <- tryCatch(
                       with_otel_span(
                         "shinyOAuth.callback.validate",
                         {
-                          state_store_get_remove(
+                          payload <- state_payload_decrypt_validate(
                             client,
-                            pre_payload$state,
+                            state,
                             shiny_session = captured_shiny_session
                           )
+                          otel_set_span_attributes(
+                            attributes = list(
+                              shinyoauth.trace_id = payload$trace_id %||% NULL
+                            )
+                          )
+                          payload
                         },
                         attributes = otel_client_attributes(
                           client = client,
                           module_id = id,
                           shiny_session = captured_shiny_session,
                           async = TRUE,
-                          phase = "callback.state_store_consume"
+                          phase = "callback.state_payload"
                         )
                       ),
                       error = function(e) {
                         .set_error(
                           "token_exchange_error",
                           e,
-                          phase = "async_state_store_lookup"
+                          phase = "async_payload_validation"
                         )
                         rethrow_with_context(
                           e,
-                          phase = "async_state_store_lookup"
+                          phase = "async_payload_validation"
                         )
                       }
                     )
 
-                    # Capture the browser token value on the main thread to avoid
-                    # touching reactive values inside the worker
-                    captured_browser_token <- tryCatch(
-                      shiny::isolate(values$browser_token),
-                      error = function(...) values$browser_token
-                    )
-                    # Build a serialization-safe client for the worker.
-                    # The state_store is already consumed on the main thread, so
-                    # prepare_client_for_worker() replaces it with a lightweight
-                    # serializable dummy and verifies overall serializability.
-                    client_for_worker <- prepare_client_for_worker(client)
-                    async_fallback <- is.null(client_for_worker)
+                    captured_trace_id <- pre_payload$trace_id %||%
+                      resolve_trace_id()
 
-                    if (async_fallback) {
-                      rlang::warn(
-                        c(
-                          "Async callback dispatch failed: client object contains non-serializable components",
-                          "i" = "Falling back to synchronous callback execution",
-                          "i" = "Custom state_store or JWKS cache backends must be serializable for async mode",
-                          "i" = "Consider using cachem::cache_mem() or cachem::cache_disk() for async compatibility"
-                        ),
-                        class = "shinyOAuth_async_serialization_fallback",
-                        .frequency = "once",
-                        .frequency_id = "shinyOAuth-async-serialization-fallback"
-                      )
-                      # Fall back to synchronous execution using pre-computed values
-                      # (state_store was already consumed above, so we must use
-                      # handle_callback_internal with the pre-fetched data)
-                      handle_callback_internal(
-                        oauth_client = client,
-                        code = code,
-                        payload = state,
-                        browser_token = captured_browser_token,
-                        decrypted_payload = pre_payload,
-                        state_store_values = pre_state,
-                        shiny_session = captured_shiny_session
-                      )
-                    } else {
-                      # Use namespace-qualified calls to avoid passing function closures to mirai
-                      # (functions carry their enclosing environments, causing serialization overhead)
-                      async_dispatch(
-                        expr = quote({
-                          .ns <- asNamespace("shinyOAuth")
-                          # Restore shinyOAuth.* options in the async worker
-                          .ns$with_trace_id(captured_trace_id, {
-                            .ns$with_async_options(captured_async_options, {
-                              # Set async context so errors include session info with is_async = TRUE
-                              .ns$with_async_session_context(
-                                captured_shiny_session,
-                                {
-                                  .ns$handle_callback_internal(
-                                    oauth_client = client_for_worker,
-                                    code = code,
-                                    payload = state,
-                                    browser_token = captured_browser_token,
-                                    decrypted_payload = pre_payload,
-                                    state_store_values = pre_state,
-                                    shiny_session = captured_shiny_session
-                                  )
-                                }
-                              )
-                            })
-                          })
-                        }),
-                        args = list(
-                          captured_trace_id = captured_trace_id,
-                          captured_async_options = captured_async_options,
-                          captured_shiny_session = captured_shiny_session,
-                          client_for_worker = client_for_worker,
-                          code = code,
-                          state = state,
-                          captured_browser_token = captured_browser_token,
-                          pre_payload = pre_payload,
-                          pre_state = pre_state
-                        ),
-                        otel_context = list(
-                          headers = callback_parent$headers,
-                          worker_span_name = "shinyOAuth.callback.worker",
-                          attributes = otel_client_attributes(
-                            client = client,
-                            module_id = id,
-                            shiny_session = captured_shiny_session,
-                            async = TRUE,
-                            phase = "callback.worker"
+                    with_trace_id(
+                      captured_trace_id,
+                      {
+                        otel_set_span_attributes(
+                          span = callback_parent$span,
+                          attributes = list(
+                            shinyoauth.trace_id = captured_trace_id
                           )
                         )
-                      )
-                    }
+
+                        pre_state <- tryCatch(
+                          with_otel_span(
+                            "shinyOAuth.callback.validate",
+                            {
+                              state_store_get_remove(
+                                client,
+                                pre_payload$state,
+                                shiny_session = captured_shiny_session
+                              )
+                            },
+                            attributes = otel_client_attributes(
+                              client = client,
+                              module_id = id,
+                              shiny_session = captured_shiny_session,
+                              async = TRUE,
+                              phase = "callback.state_store_consume"
+                            )
+                          ),
+                          error = function(e) {
+                            .set_error(
+                              "token_exchange_error",
+                              e,
+                              phase = "async_state_store_lookup"
+                            )
+                            rethrow_with_context(
+                              e,
+                              phase = "async_state_store_lookup"
+                            )
+                          }
+                        )
+
+                        # Capture the browser token value on the main thread to avoid
+                        # touching reactive values inside the worker
+                        captured_browser_token <- tryCatch(
+                          shiny::isolate(values$browser_token),
+                          error = function(...) values$browser_token
+                        )
+                        # Build a serialization-safe client for the worker.
+                        # The state_store is already consumed on the main thread, so
+                        # prepare_client_for_worker() replaces it with a lightweight
+                        # serializable dummy and verifies overall serializability.
+                        client_for_worker <- prepare_client_for_worker(client)
+                        async_fallback <- is.null(client_for_worker)
+
+                        if (async_fallback) {
+                          rlang::warn(
+                            c(
+                              "Async callback dispatch failed: client object contains non-serializable components",
+                              "i" = "Falling back to synchronous callback execution",
+                              "i" = "Custom state_store or JWKS cache backends must be serializable for async mode",
+                              "i" = "Consider using cachem::cache_mem() or cachem::cache_disk() for async compatibility"
+                            ),
+                            class = "shinyOAuth_async_serialization_fallback",
+                            .frequency = "once",
+                            .frequency_id = "shinyOAuth-async-serialization-fallback"
+                          )
+                          # Fall back to synchronous execution using pre-computed values
+                          # (state_store was already consumed above, so we must use
+                          # handle_callback_internal with the pre-fetched data)
+                          handle_callback_internal(
+                            oauth_client = client,
+                            code = code,
+                            payload = state,
+                            browser_token = captured_browser_token,
+                            decrypted_payload = pre_payload,
+                            state_store_values = pre_state,
+                            shiny_session = captured_shiny_session
+                          )
+                        } else {
+                          # Use namespace-qualified calls to avoid passing function closures to mirai
+                          # (functions carry their enclosing environments, causing serialization overhead)
+                          async_dispatch(
+                            expr = quote({
+                              .ns <- asNamespace("shinyOAuth")
+                              # Restore shinyOAuth.* options in the async worker
+                              .ns$with_trace_id(captured_trace_id, {
+                                .ns$with_async_options(captured_async_options, {
+                                  # Set async context so errors include session info with is_async = TRUE
+                                  .ns$with_async_session_context(
+                                    captured_shiny_session,
+                                    {
+                                      .ns$handle_callback_internal(
+                                        oauth_client = client_for_worker,
+                                        code = code,
+                                        payload = state,
+                                        browser_token = captured_browser_token,
+                                        decrypted_payload = pre_payload,
+                                        state_store_values = pre_state,
+                                        shiny_session = captured_shiny_session
+                                      )
+                                    }
+                                  )
+                                })
+                              })
+                            }),
+                            args = list(
+                              captured_trace_id = captured_trace_id,
+                              captured_async_options = captured_async_options,
+                              captured_shiny_session = captured_shiny_session,
+                              client_for_worker = client_for_worker,
+                              code = code,
+                              state = state,
+                              captured_browser_token = captured_browser_token,
+                              pre_payload = pre_payload,
+                              pre_state = pre_state
+                            ),
+                            otel_context = list(
+                              headers = callback_parent$headers,
+                              worker_span_name = "shinyOAuth.callback.worker",
+                              attributes = otel_client_attributes(
+                                client = client,
+                                module_id = id,
+                                shiny_session = captured_shiny_session,
+                                async = TRUE,
+                                phase = "callback.worker"
+                              )
+                            )
+                          )
+                        }
+                      }
+                    )
                   }
                 )
+              } else {
+                handle_callback(
+                  client,
+                  code = code,
+                  payload = state,
+                  browser_token = values$browser_token
+                )
               }
-            )
-          } else {
-            handle_callback(
-              client,
-              code = code,
-              payload = state,
-              browser_token = values$browser_token
-            )
-          }
 
-          # Handle async/sync
+              # Handle async/sync
               if (isTRUE(async) && !isTRUE(async_fallback)) {
-            # Mark that we exercised the async pathway (testing aid)
-            values$last_login_async_used <- TRUE
+                # Mark that we exercised the async pathway (testing aid)
+                values$last_login_async_used <- TRUE
 
-            res |>
-              promises::then(function(raw) {
-                if (!is.null(callback_parent)) {
-                  otel_end_async_parent(callback_parent, status = "ok")
-                }
-                tok <- replay_async_conditions(raw)
-                values$token <- tok
-                values$error <- NULL
-                values$error_description <- NULL
-                values$error_uri <- NULL
-                values$auth_started_at <- as.numeric(Sys.time())
-                values$token_stale <- FALSE
-                .clear_browser_token()
-                # Immediately re-issue a fresh browser token so that
-                # subsequent manual logins can redirect on the first click.
-                .set_browser_token()
-                # A successful login completes any prior reauth cycle
-                values$reauth_triggered <- FALSE
-              }) |>
-              promises::catch(function(e) {
-                failure_phase <- tryCatch(
-                  e[["phase", exact = TRUE]],
-                  error = function(...) NULL
-                ) %||%
-                  "async_token_exchange"
-                if (!is.null(callback_parent)) {
-                  otel_end_async_parent(
-                    callback_parent,
-                    status = "error",
-                    error = e
-                  )
-                }
-                .set_error(
-                  "token_exchange_error",
-                  e,
-                  phase = failure_phase
-                )
-                try(
-                  audit_event(
-                    "login_failed",
-                    context = list(
-                      provider = client@provider@name %||% NA_character_,
-                      issuer = client@provider@issuer %||% NA_character_,
-                      client_id_digest = string_digest(client@client_id),
-                      phase = failure_phase,
-                      error_class = paste(class(e), collapse = ", "),
-                      mirai_error_type = classify_mirai_error(e) %||%
-                        NA_character_
-                    ),
-                    shiny_session = captured_shiny_session
-                  ),
-                  silent = TRUE
-                )
-                if (isTRUE(getOption("shinyOAuth.debug", FALSE))) {
-                  rlang::abort(message = conditionMessage(e), parent = e)
-                }
-              })
+                res |>
+                  promises::then(function(raw) {
+                    if (!is.null(callback_parent)) {
+                      otel_end_async_parent(callback_parent, status = "ok")
+                    }
+                    tok <- replay_async_conditions(raw)
+                    values$token <- tok
+                    values$error <- NULL
+                    values$error_description <- NULL
+                    values$error_uri <- NULL
+                    values$auth_started_at <- as.numeric(Sys.time())
+                    values$token_stale <- FALSE
+                    .clear_browser_token()
+                    # Immediately re-issue a fresh browser token so that
+                    # subsequent manual logins can redirect on the first click.
+                    .set_browser_token()
+                    # A successful login completes any prior reauth cycle
+                    values$reauth_triggered <- FALSE
+                  }) |>
+                  promises::catch(function(e) {
+                    failure_phase <- tryCatch(
+                      e[["phase", exact = TRUE]],
+                      error = function(...) NULL
+                    ) %||%
+                      "async_token_exchange"
+                    if (!is.null(callback_parent)) {
+                      otel_end_async_parent(
+                        callback_parent,
+                        status = "error",
+                        error = e
+                      )
+                    }
+                    .set_error(
+                      "token_exchange_error",
+                      e,
+                      phase = failure_phase
+                    )
+                    try(
+                      audit_event(
+                        "login_failed",
+                        context = list(
+                          provider = client@provider@name %||% NA_character_,
+                          issuer = client@provider@issuer %||% NA_character_,
+                          client_id_digest = string_digest(client@client_id),
+                          phase = failure_phase,
+                          error_class = paste(class(e), collapse = ", "),
+                          mirai_error_type = classify_mirai_error(e) %||%
+                            NA_character_
+                        ),
+                        shiny_session = captured_shiny_session
+                      ),
+                      silent = TRUE
+                    )
+                    if (isTRUE(getOption("shinyOAuth.debug", FALSE))) {
+                      rlang::abort(message = conditionMessage(e), parent = e)
+                    }
+                  })
               } else {
                 values$token <- res
                 values$error <- NULL
