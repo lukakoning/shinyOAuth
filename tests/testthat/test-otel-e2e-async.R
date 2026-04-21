@@ -108,6 +108,16 @@ otel_find_spans <- function(spans, name) {
   Filter(function(span) identical(span$name, name), spans)
 }
 
+otel_find_phase_spans <- function(spans, name, phase) {
+  Filter(
+    function(span) {
+      identical(span$name, name) &&
+        identical(otel_span_attribute(span, "oauth.phase"), phase)
+    },
+    spans
+  )
+}
+
 otel_span_attribute <- function(span, key) {
   otel_export_attr_value(span$attributes, key)
 }
@@ -498,6 +508,188 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   )
   testthat::expect_false(
     identical(parent_span[[1L]]$process_id, worker_span[[1L]]$process_id)
+  )
+})
+
+otel_async_daemon("async module callback/login success exports correct main and worker session metadata", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  app <- webfakes::new_app()
+  app$post("/token", function(req, res) {
+    res$set_status(200L)
+    res$set_type("application/json")
+    res$send_json(list(access_token = "ok_at", expires_in = 3600))
+  })
+  srv <- webfakes::local_app_process(app)
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-callback-success")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  cli <- make_async_otel_client(srv$url("/token"))
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = TRUE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      auth_url <- values$build_auth_url()
+      enc <- parse_query_param(auth_url, "state")
+      testthat::expect_true(is.character(enc) && nzchar(enc))
+
+      values$.process_query(paste0("?code=ok&state=", enc))
+      poll_for_async(function() !is.null(values$token), session, timeout = 15)
+
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_false(is.null(values$token))
+    }
+  )
+
+  poll_for_async(
+    function() {
+      spans <- otel_scope_spans(otel_file)
+      length(otel_find_spans(spans, "shinyOAuth.login.request")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.callback")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.callback.worker")) >= 1L &&
+        length(otel_find_phase_spans(
+          spans,
+          "shinyOAuth.callback.validate",
+          "callback.state_payload"
+        )) >=
+          1L &&
+        length(otel_find_phase_spans(
+          spans,
+          "shinyOAuth.callback.validate",
+          "callback.state_store_consume"
+        )) >=
+          1L &&
+        length(otel_find_spans(spans, "shinyOAuth.token.exchange")) >= 1L
+    },
+    timeout = 15
+  )
+
+  spans <- otel_scope_spans(otel_file)
+  login_span <- otel_find_spans(spans, "shinyOAuth.login.request")
+  callback_span <- otel_find_spans(spans, "shinyOAuth.callback")
+  worker_span <- otel_find_spans(spans, "shinyOAuth.callback.worker")
+  state_payload_span <- otel_find_phase_spans(
+    spans,
+    "shinyOAuth.callback.validate",
+    "callback.state_payload"
+  )
+  state_store_span <- otel_find_phase_spans(
+    spans,
+    "shinyOAuth.callback.validate",
+    "callback.state_store_consume"
+  )
+  token_exchange_span <- otel_find_spans(spans, "shinyOAuth.token.exchange")
+  token_http_span <- otel_find_spans(spans, "shinyOAuth.token.exchange.http")
+
+  testthat::expect_length(login_span, 1L)
+  testthat::expect_length(callback_span, 1L)
+  testthat::expect_length(worker_span, 1L)
+  testthat::expect_length(state_payload_span, 1L)
+  testthat::expect_length(state_store_span, 1L)
+  testthat::expect_length(token_exchange_span, 1L)
+  testthat::expect_length(token_http_span, 1L)
+
+  if (
+    length(login_span) != 1L ||
+      length(callback_span) != 1L ||
+      length(worker_span) != 1L ||
+      length(state_payload_span) != 1L ||
+      length(state_store_span) != 1L ||
+      length(token_exchange_span) != 1L ||
+      length(token_http_span) != 1L
+  ) {
+    return(invisible(NULL))
+  }
+
+  login_span <- login_span[[1L]]
+  callback_span <- callback_span[[1L]]
+  worker_span <- worker_span[[1L]]
+  state_payload_span <- state_payload_span[[1L]]
+  state_store_span <- state_store_span[[1L]]
+  token_exchange_span <- token_exchange_span[[1L]]
+  token_http_span <- token_http_span[[1L]]
+
+  testthat::expect_identical(callback_span$trace_id, login_span$trace_id)
+  testthat::expect_identical(callback_span$parent_span_id, login_span$span_id)
+  testthat::expect_identical(worker_span$trace_id, callback_span$trace_id)
+  testthat::expect_identical(worker_span$parent_span_id, callback_span$span_id)
+  testthat::expect_identical(
+    token_exchange_span$parent_span_id,
+    worker_span$span_id
+  )
+  testthat::expect_identical(
+    token_http_span$parent_span_id,
+    token_exchange_span$span_id
+  )
+
+  for (span in list(state_payload_span, state_store_span)) {
+    testthat::expect_identical(span$trace_id, callback_span$trace_id)
+    testthat::expect_identical(span$parent_span_id, callback_span$span_id)
+    testthat::expect_identical(span$process_id, Sys.getpid())
+    testthat::expect_identical(
+      otel_span_attribute(span, "shiny.session.is_async"),
+      FALSE
+    )
+    testthat::expect_identical(
+      as.integer(otel_span_attribute(span, "shiny.session.process_id")),
+      Sys.getpid()
+    )
+  }
+
+  testthat::expect_false(identical(worker_span$process_id, Sys.getpid()))
+  testthat::expect_identical(
+    otel_span_attribute(worker_span, "shiny.session.is_async"),
+    TRUE
+  )
+  testthat::expect_identical(
+    as.integer(otel_span_attribute(worker_span, "shiny.session.process_id")),
+    worker_span$process_id
+  )
+  testthat::expect_identical(
+    token_exchange_span$process_id,
+    worker_span$process_id
+  )
+  testthat::expect_identical(
+    as.integer(otel_span_attribute(
+      token_exchange_span,
+      "shiny.session.process_id"
+    )),
+    worker_span$process_id
   )
 })
 

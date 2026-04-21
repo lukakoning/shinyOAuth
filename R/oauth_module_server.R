@@ -1842,6 +1842,7 @@ oauth_module_server <- function(
                             otel_context = list(
                               headers = callback_parent$headers,
                               worker_span_name = "shinyOAuth.callback.worker",
+                              shiny_session = captured_shiny_session,
                               attributes = otel_client_attributes(
                                 client = client,
                                 module_id = id,

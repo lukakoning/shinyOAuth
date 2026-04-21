@@ -609,6 +609,52 @@ otel_e2e("userinfo span preserves explicit async shiny session attributes", {
   ]]))
 })
 
+otel_e2e("userinfo span normalizes borrowed async shiny session context", {
+  cli <- make_test_client()
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  borrowed_shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = NULL,
+    main_process_id = 1234L
+  )
+
+  r <- otelsdk::with_otel_record({
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/userinfo",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"user123"}')
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth:::with_async_session_context(borrowed_shiny_session, {
+          shinyOAuth::get_userinfo(
+            cli,
+            token = "at",
+            shiny_session = borrowed_shiny_session
+          )
+        })
+      }
+    )
+  })
+
+  parent_span <- r$traces[["shinyOAuth.userinfo"]]
+
+  testthat::expect_identical(
+    parent_span$attributes[["shiny.session.is_async"]],
+    TRUE
+  )
+  testthat::expect_identical(
+    as.integer(parent_span$attributes[["shiny.session.process_id"]]),
+    Sys.getpid()
+  )
+})
+
 # ---------------------------------------------------------------------------
 # revoke_token — sync span hierarchy
 # ---------------------------------------------------------------------------

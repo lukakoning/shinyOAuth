@@ -122,6 +122,14 @@ normalize_shiny_session_context <- function(shiny_session) {
       normalized$process_id <- current_pid
       return(normalized)
     }
+
+    if (
+      isTRUE(is_async_worker_context()) ||
+        (!is.na(main_pid) && !identical(as.integer(current_pid), main_pid))
+    ) {
+      normalized$process_id <- current_pid
+      return(normalized)
+    }
   }
 
   if (!isTRUE(normalized$is_async) && is.na(process_pid)) {
@@ -477,8 +485,9 @@ mirai_connection_count <- function() {
 #   When using mirai with dispatcher (the default), timed-out tasks are
 #   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
 #   when NULL (default = no timeout).
-# @param otel_context Optional list with `headers`, `worker_span_name`, and
-#   `attributes` for restoring OpenTelemetry parent context in the worker.
+# @param otel_context Optional list with `headers`, `worker_span_name`,
+#   `attributes`, and `shiny_session` for restoring OpenTelemetry parent
+#   context in the worker.
 # @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
 async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
@@ -519,6 +528,11 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
           .otel_context$attributes
         } else {
           list()
+        },
+        shiny_session = if (!is.null(.otel_context$shiny_session)) {
+          .otel_context$shiny_session
+        } else {
+          NULL
         }
       )
     }

@@ -412,6 +412,7 @@ otel_current_shiny_session <- function() {
 
 otel_shiny_attributes <- function(shiny_session = NULL) {
   shiny_session <- shiny_session %||% otel_current_shiny_session()
+  shiny_session <- normalize_shiny_session_context(shiny_session)
   if (is.null(shiny_session)) {
     return(list())
   }
@@ -478,6 +479,28 @@ otel_client_attributes <- function(
     ),
     otel_shiny_attributes(shiny_session = shiny_session),
     extra
+  ))
+}
+
+otel_replace_shiny_attributes <- function(
+  attributes = NULL,
+  shiny_session = NULL
+) {
+  attrs <- attributes %||% list()
+  if (is.null(shiny_session)) {
+    return(attrs)
+  }
+
+  if (length(attrs)) {
+    shiny_attr_names <- names(attrs) %in%
+      "shiny.session_token_digest" |
+      startsWith(names(attrs), "shiny.session.")
+    attrs <- attrs[!shiny_attr_names]
+  }
+
+  compact_list(c(
+    attrs,
+    otel_shiny_attributes(shiny_session = shiny_session)
   ))
 }
 
@@ -797,7 +820,8 @@ otel_start_async_parent <- function(
 otel_restore_parent_in_worker <- function(
   otel_headers,
   name,
-  attributes = NULL
+  attributes = NULL,
+  shiny_session = NULL
 ) {
   if (!otel_tracing_enabled()) {
     return(NULL)
@@ -811,6 +835,11 @@ otel_restore_parent_in_worker <- function(
   if (is.null(parent_ctx)) {
     return(NULL)
   }
+
+  attributes <- otel_replace_shiny_attributes(
+    attributes = attributes,
+    shiny_session = shiny_session
+  )
 
   span <- tryCatch(
     {

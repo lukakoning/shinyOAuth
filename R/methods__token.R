@@ -118,6 +118,7 @@ revoke_token <- function(
           otel_context = list(
             headers = otel_parent$headers,
             worker_span_name = "shinyOAuth.token.revoke.worker",
+            shiny_session = captured_shiny_session,
             attributes = otel_client_attributes(
               client = oauth_client,
               shiny_session = shiny_session,
@@ -574,6 +575,7 @@ introspect_token <- function(
           otel_context = list(
             headers = otel_parent$headers,
             worker_span_name = "shinyOAuth.token.introspect.worker",
+            shiny_session = captured_shiny_session,
             attributes = otel_client_attributes(
               client = oauth_client,
               shiny_session = shiny_session,
@@ -990,6 +992,7 @@ refresh_token <- function(
           otel_context = list(
             headers = otel_parent$headers,
             worker_span_name = "shinyOAuth.refresh.worker",
+            shiny_session = captured_shiny_session,
             attributes = otel_client_attributes(
               client = oauth_client,
               shiny_session = shiny_session,

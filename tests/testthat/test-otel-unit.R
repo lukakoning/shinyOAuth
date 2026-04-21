@@ -277,6 +277,43 @@ testthat::test_that("otel_event_attributes includes normalized shiny session att
   testthat::expect_true(nzchar(attrs[["shiny.session_token_digest"]]))
 })
 
+testthat::test_that("otel_shiny_attributes normalizes borrowed async worker session", {
+  borrowed_shiny_session <- list(
+    token = "session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = NULL,
+    main_process_id = 1234L
+  )
+
+  attrs <- shinyOAuth:::with_async_session_context(
+    borrowed_shiny_session,
+    shinyOAuth:::otel_shiny_attributes(borrowed_shiny_session)
+  )
+
+  testthat::expect_identical(attrs[["shiny.session.is_async"]], TRUE)
+  testthat::expect_identical(
+    as.integer(attrs[["shiny.session.process_id"]]),
+    Sys.getpid()
+  )
+})
+
+testthat::test_that("otel_shiny_attributes normalizes async main-thread callback session", {
+  attrs <- shinyOAuth:::otel_shiny_attributes(list(
+    token = "session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = NULL,
+    main_process_id = Sys.getpid()
+  ))
+
+  testthat::expect_identical(attrs[["shiny.session.is_async"]], FALSE)
+  testthat::expect_identical(
+    as.integer(attrs[["shiny.session.process_id"]]),
+    Sys.getpid()
+  )
+})
+
 testthat::test_that("otel_event_attributes returns NULL for empty/null input", {
   testthat::expect_null(shinyOAuth:::otel_event_attributes(NULL))
   testthat::expect_null(shinyOAuth:::otel_event_attributes(list()))
