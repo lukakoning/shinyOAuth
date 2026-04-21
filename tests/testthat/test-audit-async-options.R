@@ -25,7 +25,7 @@ testthat::test_that("audit hook options propagate to async workers with async se
     })
   ))
 
-  captured <- capture_async_options()
+  captured <- shinyOAuth:::capture_async_options()
   testthat::expect_true(is.function(captured[["shinyOAuth.audit_hook"]]))
   testthat::expect_true(
     is.numeric(captured[[".shinyOAuth.main_process_id"]])
@@ -183,6 +183,57 @@ testthat::test_that("with_async_options rebuilds cached otel providers", {
 
   testthat::expect_true(isTRUE(result$tracing_enabled))
   testthat::expect_identical(result$traces_exporter, "console")
+})
+
+testthat::test_that("with_async_options rebuilds cached otel providers when exporters are disabled", {
+  testthat::skip_if_not_installed("otel")
+
+  old_otel_state <- capture_test_otel_state()
+  withr::defer(restore_test_otel_state(old_otel_state))
+
+  otel_ns <- asNamespace("otel")
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "console",
+    OTEL_TRACES_EXPORTER = "console",
+    OTEL_R_LOGS_EXPORTER = "console",
+    OTEL_LOGS_EXPORTER = "console"
+  ))
+
+  get("otel_clean_cache", envir = otel_ns)()
+  get("setup_default_tracer_provider", envir = otel_ns)()
+  get("setup_default_logger_provider", envir = otel_ns)()
+  testthat::expect_true(otel::is_tracing_enabled())
+  testthat::expect_true(otel::is_logging_enabled())
+
+  result <- shinyOAuth:::with_async_options(
+    list(
+      ".shinyOAuth.otel_envvars" = c(
+        OTEL_R_TRACES_EXPORTER = "none",
+        OTEL_TRACES_EXPORTER = "none",
+        OTEL_R_LOGS_EXPORTER = "none",
+        OTEL_LOGS_EXPORTER = "none"
+      )
+    ),
+    {
+      list(
+        tracing_enabled = otel::is_tracing_enabled(),
+        logging_enabled = otel::is_logging_enabled(),
+        traces_exporter = Sys.getenv(
+          "OTEL_R_TRACES_EXPORTER",
+          unset = NA_character_
+        ),
+        logs_exporter = Sys.getenv(
+          "OTEL_R_LOGS_EXPORTER",
+          unset = NA_character_
+        )
+      )
+    }
+  )
+
+  testthat::expect_false(isTRUE(result$tracing_enabled))
+  testthat::expect_false(isTRUE(result$logging_enabled))
+  testthat::expect_identical(result$traces_exporter, "none")
+  testthat::expect_identical(result$logs_exporter, "none")
 })
 
 testthat::test_that("with_async_options restores captured digest key cache", {
@@ -483,6 +534,94 @@ testthat::test_that("otel env vars propagate to actual mirai workers", {
   testthat::expect_identical(promise_result[["OTEL_LOGS_EXPORTER"]], "none")
   testthat::expect_identical(promise_result[["OTEL_METRICS_EXPORTER"]], "none")
   testthat::expect_true(is.na(promise_result[["OTEL_EXPORTER_OTLP_ENDPOINT"]]))
+})
+
+testthat::test_that("reused async workers honor otel exporter disable transitions", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("otel")
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("later")
+
+  old_otel_state <- capture_test_otel_state()
+  withr::defer(restore_test_otel_state(old_otel_state))
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+
+  dispatch_state <- function() {
+    resolved <- NULL
+    promises::then(
+      promises::as.promise(
+        shinyOAuth:::async_dispatch(
+          expr = quote({
+            .otel_ns <- asNamespace("otel")
+            get("setup_default_tracer_provider", envir = .otel_ns)()
+            get("setup_default_logger_provider", envir = .otel_ns)()
+            list(
+              pid = Sys.getpid(),
+              tracing_enabled = otel::is_tracing_enabled(),
+              logging_enabled = otel::is_logging_enabled(),
+              traces_exporter = Sys.getenv(
+                "OTEL_R_TRACES_EXPORTER",
+                unset = NA_character_
+              ),
+              logs_exporter = Sys.getenv(
+                "OTEL_R_LOGS_EXPORTER",
+                unset = NA_character_
+              )
+            )
+          }),
+          args = list()
+        )
+      ),
+      function(value) {
+        resolved <<- value
+        invisible(NULL)
+      }
+    )
+
+    poll_for_async(function() !is.null(resolved), timeout = 10)
+    testthat::expect_false(is.null(resolved))
+    shinyOAuth:::replay_async_conditions(resolved)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "console",
+    OTEL_TRACES_EXPORTER = "console",
+    OTEL_R_LOGS_EXPORTER = "console",
+    OTEL_LOGS_EXPORTER = "console",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none"
+  ))
+  first_result <- dispatch_state()
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "none",
+    OTEL_TRACES_EXPORTER = "none",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none"
+  ))
+  second_result <- dispatch_state()
+
+  testthat::expect_true(isTRUE(first_result$tracing_enabled))
+  testthat::expect_true(isTRUE(first_result$logging_enabled))
+  testthat::expect_identical(first_result$traces_exporter, "console")
+  testthat::expect_identical(first_result$logs_exporter, "console")
+  testthat::expect_identical(second_result$pid, first_result$pid)
+  testthat::expect_false(isTRUE(second_result$tracing_enabled))
+  testthat::expect_false(isTRUE(second_result$logging_enabled))
+  testthat::expect_identical(second_result$traces_exporter, "none")
+  testthat::expect_identical(second_result$logs_exporter, "none")
 })
 
 testthat::test_that("emit_trace_event surfaces trace_hook errors as warnings", {

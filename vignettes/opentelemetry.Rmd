@@ -77,7 +77,8 @@ For shinyOAuth-managed async work, the package captures the parent session's
 relevant `OTEL_*` / `OTEL_R_*` environment variables and reapplies them inside
 the async execution context before running OAuth logic. This keeps exporter
 selection and OTLP endpoints aligned across the main R process and async
-evaluation backends such as mirai workers and future-based execution.
+evaluation backends such as mirai workers and future-based execution, including
+long-lived workers that are reused across tasks.
 
 ### Span catalog
 

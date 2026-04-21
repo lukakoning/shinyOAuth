@@ -27,3 +27,4 @@ codex/*
 integration/*
 .dockerignore
 ^jarl\.toml$
+^otel_plan\.md$

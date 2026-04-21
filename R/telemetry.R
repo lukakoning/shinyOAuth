@@ -38,12 +38,18 @@ warn_about_async_otel_workers <- function() {
         "background worker processes as well as the main R process"
       ),
       "i" = paste(
-        "If OTEL is configured via environment variables, set them before",
-        "starting workers (e.g., before {.code mirai::daemons()})"
+        "When OTEL is configured via environment variables, shinyOAuth",
+        "captures the current OTEL_* values for each async task and",
+        "reapplies them inside the worker before running OAuth logic"
       ),
       "i" = paste(
-        "If OTEL is configured from R code, run the same setup in each",
-        "worker or recreate workers after configuring it"
+        "You can enable or disable exporters after workers start, but do so",
+        "before dispatching the async work that should use the new settings"
+      ),
+      "i" = paste(
+        "If OTEL is configured from R code instead of environment variables,",
+        "run the same setup in each worker or recreate workers after",
+        "changing it"
       )
     ),
     .frequency = "once",

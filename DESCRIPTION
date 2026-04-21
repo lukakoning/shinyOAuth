@@ -38,6 +38,7 @@ Suggests:
     future,
     withr,
     later,
+    callr,
     sodium,
     shinytest2,
     xml2,

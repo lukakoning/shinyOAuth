@@ -230,9 +230,71 @@ capture_async_otel_envvars <- function() {
     "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
   ))
   if (!length(otel_names)) {
-    return(setNames(character(0), character(0)))
+    return(stats::setNames(character(0), character(0)))
   }
   Sys.getenv(otel_names, unset = NA_character_)
+}
+
+# Internal: apply captured OTEL env vars in the current process and rebuild
+# cached providers whenever the effective OTEL configuration changes.
+apply_async_otel_envvars <- function(captured_envvars) {
+  if (is.null(captured_envvars) || length(captured_envvars) == 0) {
+    return(list(
+      changed = FALSE,
+      old_envvars = stats::setNames(character(0), character(0))
+    ))
+  }
+
+  env_names <- names(captured_envvars)
+  old_envvars <- Sys.getenv(env_names, unset = NA_character_)
+  otel_envvars_changed <- !identical(old_envvars, captured_envvars)
+  if (!isTRUE(otel_envvars_changed)) {
+    return(list(changed = FALSE, old_envvars = old_envvars))
+  }
+
+  new_values <- captured_envvars[!is.na(captured_envvars)]
+  vars_to_unset <- env_names[is.na(captured_envvars)]
+  if (length(new_values)) {
+    do.call(Sys.setenv, as.list(new_values))
+  }
+  if (length(vars_to_unset)) {
+    Sys.unsetenv(vars_to_unset)
+  }
+
+  # OTEL_* env vars only affect provider setup at initialization time, so
+  # reused async workers must rebuild cached providers after any env change,
+  # including transitions from an enabled exporter back to "none".
+  otel_clean_cache <- tryCatch(
+    get(
+      "otel_clean_cache",
+      envir = asNamespace("otel"),
+      inherits = FALSE
+    ),
+    error = function(...) NULL
+  )
+  if (is.function(otel_clean_cache)) {
+    try(otel_clean_cache(), silent = TRUE)
+  }
+
+  list(changed = TRUE, old_envvars = old_envvars)
+}
+
+# Internal: restore OTEL env vars after temporary async worker propagation.
+restore_async_otel_envvars <- function(old_envvars) {
+  if (is.null(old_envvars) || length(old_envvars) == 0) {
+    return(invisible(NULL))
+  }
+
+  restore_values <- old_envvars[!is.na(old_envvars)]
+  restore_unset <- names(old_envvars)[is.na(old_envvars)]
+  if (length(restore_values)) {
+    do.call(Sys.setenv, as.list(restore_values))
+  }
+  if (length(restore_unset)) {
+    Sys.unsetenv(restore_unset)
+  }
+
+  invisible(NULL)
 }
 
 # Internal: execute code with captured shinyOAuth options temporarily set.
@@ -251,53 +313,12 @@ with_async_options <- function(captured_opts, code) {
     !startsWith(names(captured_opts), ".")
   ]
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
-    env_names <- names(captured_envvars)
-    old_envvars <- Sys.getenv(env_names, unset = NA_character_)
-    otel_envvars_changed <- !identical(old_envvars, captured_envvars)
-    refresh_otel_runtime <- any(
-      !is.na(captured_envvars) &
-        nzchar(captured_envvars) &
-        tolower(captured_envvars) != "none"
-    )
-    if (isTRUE(otel_envvars_changed)) {
+    otel_env_state <- apply_async_otel_envvars(captured_envvars)
+    if (isTRUE(otel_env_state$changed)) {
       on.exit(
-        {
-          restore_values <- old_envvars[!is.na(old_envvars)]
-          restore_unset <- names(old_envvars)[is.na(old_envvars)]
-          if (length(restore_values)) {
-            do.call(Sys.setenv, as.list(restore_values))
-          }
-          if (length(restore_unset)) {
-            Sys.unsetenv(restore_unset)
-          }
-        },
+        restore_async_otel_envvars(otel_env_state$old_envvars),
         add = TRUE
       )
-
-      new_values <- captured_envvars[!is.na(captured_envvars)]
-      vars_to_unset <- env_names[is.na(captured_envvars)]
-      if (length(new_values)) {
-        do.call(Sys.setenv, as.list(new_values))
-      }
-      if (length(vars_to_unset)) {
-        Sys.unsetenv(vars_to_unset)
-      }
-
-      # OTEL_* env vars only affect provider setup at initialization time, so
-      # reused async workers must rebuild cached providers after env propagation.
-      if (isTRUE(refresh_otel_runtime)) {
-        otel_clean_cache <- tryCatch(
-          get(
-            "otel_clean_cache",
-            envir = asNamespace("otel"),
-            inherits = FALSE
-          ),
-          error = function(...) NULL
-        )
-        if (is.function(otel_clean_cache)) {
-          try(otel_clean_cache(), silent = TRUE)
-        }
-      }
     }
   }
 
@@ -474,49 +495,12 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .otel_envvars <- .(captured_otel_envvars)
     .otel_context <- .(otel_context)
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
-      .otel_env_names <- names(.otel_envvars)
-      .otel_refresh_runtime <- any(
-        !is.na(.otel_envvars) &
-          nzchar(.otel_envvars) &
-          tolower(.otel_envvars) != "none"
-      )
-      .otel_old_envvars <- Sys.getenv(.otel_env_names, unset = NA_character_)
-      on.exit(
-        {
-          .otel_restore_values <- .otel_old_envvars[!is.na(.otel_old_envvars)]
-          .otel_restore_unset <- names(.otel_old_envvars)[is.na(
-            .otel_old_envvars
-          )]
-          if (length(.otel_restore_values)) {
-            do.call(Sys.setenv, as.list(.otel_restore_values))
-          }
-          if (length(.otel_restore_unset)) {
-            Sys.unsetenv(.otel_restore_unset)
-          }
-        },
-        add = TRUE
-      )
-
-      .otel_new_values <- .otel_envvars[!is.na(.otel_envvars)]
-      .otel_vars_to_unset <- .otel_env_names[is.na(.otel_envvars)]
-      if (length(.otel_new_values)) {
-        do.call(Sys.setenv, as.list(.otel_new_values))
-      }
-      if (length(.otel_vars_to_unset)) {
-        Sys.unsetenv(.otel_vars_to_unset)
-      }
-      if (isTRUE(.otel_refresh_runtime)) {
-        .otel_clean_cache <- tryCatch(
-          get(
-            "otel_clean_cache",
-            envir = asNamespace("otel"),
-            inherits = FALSE
-          ),
-          error = function(...) NULL
+      .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
+      if (isTRUE(.otel_env_state$changed)) {
+        on.exit(
+          .ns$restore_async_otel_envvars(.otel_env_state$old_envvars),
+          add = TRUE
         )
-        if (is.function(.otel_clean_cache)) {
-          try(.otel_clean_cache(), silent = TRUE)
-        }
       }
     }
     if (!is.null(.otel_context)) {

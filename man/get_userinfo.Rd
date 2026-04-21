@@ -4,13 +4,18 @@
 \alias{get_userinfo}
 \title{Get user info from OAuth 2.0 provider}
 \usage{
-get_userinfo(oauth_client, token)
+get_userinfo(oauth_client, token, shiny_session = NULL)
 }
 \arguments{
 \item{oauth_client}{\link{OAuthClient} object. The client must have a
 \code{userinfo_url} configured in its \link{OAuthProvider}.}
 
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
+
+\item{shiny_session}{Optional pre-captured Shiny session context (from
+\code{capture_shiny_session_context()}) to include in audit events and span
+attributes. Used when calling from async workers that lack access to the
+reactive domain.}
 }
 \value{
 A list containing the user information as returned by the provider.
