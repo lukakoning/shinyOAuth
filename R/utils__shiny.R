@@ -141,6 +141,20 @@ set_async_session_context <- function(ctx) {
   invisible(old)
 }
 
+# Internal: mark whether the current execution scope is an async worker.
+# This is separate from the Shiny session context so direct async token APIs
+# can still detect worker execution when no `shiny_session` is available.
+set_async_worker_context <- function(is_worker) {
+  old <- isTRUE(.async_context_env$is_worker)
+  .async_context_env$is_worker <- isTRUE(is_worker)
+  invisible(old)
+}
+
+# Internal: check whether the current execution scope is an async worker.
+is_async_worker_context <- function() {
+  isTRUE(.async_context_env$is_worker)
+}
+
 # Internal: get the current fallback session context, if any.
 get_async_session_context <- function() {
   .async_context_env$current
@@ -149,6 +163,7 @@ get_async_session_context <- function() {
 # Internal: clear the fallback session context.
 clear_async_session_context <- function() {
   .async_context_env$current <- NULL
+  .async_context_env$is_worker <- FALSE
   invisible(NULL)
 }
 
@@ -227,6 +242,8 @@ with_async_options <- function(captured_opts, code) {
   if (is.null(captured_opts) || length(captured_opts) == 0) {
     return(force(code))
   }
+  old_async_worker <- set_async_worker_context(is_async_worker(captured_opts))
+  on.exit(set_async_worker_context(old_async_worker), add = TRUE)
   captured_envvars <- captured_opts[[".shinyOAuth.otel_envvars"]]
   captured_digest_key <- captured_opts[[".shinyOAuth.audit_digest_key_cache"]]
   # Filter out internal markers (start with ".")
@@ -235,44 +252,51 @@ with_async_options <- function(captured_opts, code) {
   ]
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
     env_names <- names(captured_envvars)
+    old_envvars <- Sys.getenv(env_names, unset = NA_character_)
+    otel_envvars_changed <- !identical(old_envvars, captured_envvars)
     refresh_otel_runtime <- any(
       !is.na(captured_envvars) &
         nzchar(captured_envvars) &
         tolower(captured_envvars) != "none"
     )
-    old_envvars <- Sys.getenv(env_names, unset = NA_character_)
-    on.exit(
-      {
-        restore_values <- old_envvars[!is.na(old_envvars)]
-        restore_unset <- names(old_envvars)[is.na(old_envvars)]
-        if (length(restore_values)) {
-          do.call(Sys.setenv, as.list(restore_values))
-        }
-        if (length(restore_unset)) {
-          Sys.unsetenv(restore_unset)
-        }
-      },
-      add = TRUE
-    )
-
-    new_values <- captured_envvars[!is.na(captured_envvars)]
-    vars_to_unset <- env_names[is.na(captured_envvars)]
-    if (length(new_values)) {
-      do.call(Sys.setenv, as.list(new_values))
-    }
-    if (length(vars_to_unset)) {
-      Sys.unsetenv(vars_to_unset)
-    }
-
-    # OTEL_* env vars only affect provider setup at initialization time, so
-    # reused async workers must rebuild cached providers after env propagation.
-    if (isTRUE(refresh_otel_runtime)) {
-      otel_clean_cache <- tryCatch(
-        get("otel_clean_cache", envir = asNamespace("otel"), inherits = FALSE),
-        error = function(...) NULL
+    if (isTRUE(otel_envvars_changed)) {
+      on.exit(
+        {
+          restore_values <- old_envvars[!is.na(old_envvars)]
+          restore_unset <- names(old_envvars)[is.na(old_envvars)]
+          if (length(restore_values)) {
+            do.call(Sys.setenv, as.list(restore_values))
+          }
+          if (length(restore_unset)) {
+            Sys.unsetenv(restore_unset)
+          }
+        },
+        add = TRUE
       )
-      if (is.function(otel_clean_cache)) {
-        try(otel_clean_cache(), silent = TRUE)
+
+      new_values <- captured_envvars[!is.na(captured_envvars)]
+      vars_to_unset <- env_names[is.na(captured_envvars)]
+      if (length(new_values)) {
+        do.call(Sys.setenv, as.list(new_values))
+      }
+      if (length(vars_to_unset)) {
+        Sys.unsetenv(vars_to_unset)
+      }
+
+      # OTEL_* env vars only affect provider setup at initialization time, so
+      # reused async workers must rebuild cached providers after env propagation.
+      if (isTRUE(refresh_otel_runtime)) {
+        otel_clean_cache <- tryCatch(
+          get(
+            "otel_clean_cache",
+            envir = asNamespace("otel"),
+            inherits = FALSE
+          ),
+          error = function(...) NULL
+        )
+        if (is.function(otel_clean_cache)) {
+          try(otel_clean_cache(), silent = TRUE)
+        }
       }
     }
   }

@@ -533,6 +533,11 @@ handle_callback <- function(
   )
 
   callback_hint <- otel_callback_parent_hint(oauth_client, payload)
+  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+    NULL
+  })) ||
+    isTRUE(get_async_session_context()$is_async) ||
+    isTRUE(is_async_worker_context())
 
   with_trace_id(
     callback_hint$trace_id %||% NULL,
@@ -552,9 +557,7 @@ handle_callback <- function(
       attributes = otel_client_attributes(
         client = oauth_client,
         shiny_session = shiny_session,
-        async = tryCatch(isTRUE(shiny_session$is_async), error = function(...) {
-          NULL
-        }),
+        async = async_attr,
         phase = "callback",
         extra = list(
           oauth.introspect = isTRUE(oauth_client@introspect),
@@ -575,7 +578,13 @@ handle_callback <- function(
           )
         )
       ),
-      parent = callback_hint$parent %||% NA
+      parent = if (!is.null(callback_hint$parent)) {
+        callback_hint$parent
+      } else if (isTRUE(async_attr)) {
+        NULL
+      } else {
+        NA
+      }
     )
   )
 }

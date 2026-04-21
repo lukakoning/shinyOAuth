@@ -49,10 +49,11 @@ revoke_token <- function(
   }
 
   which <- match.arg(which)
-  async_attr <- tryCatch(
-    isTRUE(shiny_session$is_async),
-    error = function(...) isTRUE(get_async_session_context()$is_async)
-  )
+  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+    NULL
+  })) ||
+    isTRUE(get_async_session_context()$is_async) ||
+    isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
 
   with_trace_id(trace_id, {
@@ -381,7 +382,7 @@ revoke_token <- function(
           )
         )
       ),
-      parent = NA
+      parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
 }
@@ -453,10 +454,11 @@ introspect_token <- function(
   }
 
   which <- match.arg(which)
-  async_attr <- tryCatch(
-    isTRUE(shiny_session$is_async),
-    error = function(...) isTRUE(get_async_session_context()$is_async)
-  )
+  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+    NULL
+  })) ||
+    isTRUE(get_async_session_context()$is_async) ||
+    isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
 
   .audit_introspection <- function(result) {
@@ -835,7 +837,7 @@ introspect_token <- function(
           )
         )
       ),
-      parent = NA
+      parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
 }
@@ -917,10 +919,11 @@ refresh_token <- function(
     err_input("{.arg introspect} must be a single non-NA logical.")
   }
 
-  async_attr <- tryCatch(
-    isTRUE(shiny_session$is_async),
-    error = function(...) isTRUE(get_async_session_context()$is_async)
-  )
+  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+    NULL
+  })) ||
+    isTRUE(get_async_session_context()$is_async) ||
+    isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
 
   # Optional async execution using mirai if requested and available.
@@ -1247,7 +1250,7 @@ refresh_token <- function(
           )
         )
       ),
-      parent = NA
+      parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
 }
