@@ -94,7 +94,12 @@ otel_exported_spans <- function(path) {
             ),
             scope_name = scope_name,
             process_id = process_id,
-            attributes = otel_null_coalesce(span$attributes, list())
+            attributes = otel_null_coalesce(span$attributes, list()),
+            events = otel_null_coalesce(span$events, list()),
+            status_code = otel_null_coalesce(
+              otel_null_coalesce(span$status, list())$code,
+              NA_character_
+            )
           )
         }
       }
@@ -120,6 +125,20 @@ otel_find_phase_spans <- function(spans, name, phase) {
 
 otel_span_attribute <- function(span, key) {
   otel_export_attr_value(span$attributes, key)
+}
+
+otel_span_status_is_error <- function(span) {
+  code <- span$status_code %||% NA_character_
+  identical(code, "STATUS_CODE_ERROR") ||
+    identical(as.character(code), "2")
+}
+
+otel_span_has_event <- function(span, name) {
+  any(vapply(
+    otel_null_coalesce(span$events, list()),
+    function(event) identical(otel_null_coalesce(event$name, NA_character_), name),
+    logical(1)
+  ))
 }
 
 otel_exported_logs <- function(path) {
@@ -613,6 +632,103 @@ otel_async_daemon("async parent/worker propagation survives stale worker tracing
   testthat::expect_identical(child_span$trace_id, parent_span$trace_id)
   testthat::expect_identical(worker_span$parent_span_id, parent_span$span_id)
   testthat::expect_identical(child_span$parent_span_id, worker_span$span_id)
+})
+
+otel_async_daemon("async error propagation exports error parent and worker spans from a real mirai daemon", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-async-error")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  parent <- shinyOAuth:::otel_start_async_parent(
+    "shinyOAuth.test.async.error.parent"
+  )
+
+  resolved_error <- NULL
+  promises::then(
+    promises::as.promise(
+      shinyOAuth:::async_dispatch(
+        expr = quote(stop("real daemon boom")),
+        args = list(),
+        otel_context = list(
+          headers = parent$headers,
+          worker_span_name = "shinyOAuth.test.async.error.worker"
+        )
+      )
+    ),
+    onFulfilled = function(x) {
+      resolved_error <<- structure(list(value = x), class = "unexpected_success")
+      invisible(NULL)
+    },
+    onRejected = function(err) {
+      resolved_error <<- err
+      invisible(NULL)
+    }
+  )
+
+  poll_for_async(function() !is.null(resolved_error), timeout = 10)
+  testthat::expect_false(is.null(resolved_error))
+  testthat::expect_s3_class(resolved_error, "error")
+  shinyOAuth:::otel_end_async_parent(
+    parent,
+    status = "error",
+    error = resolved_error
+  )
+
+  poll_for_async(
+    function() {
+      spans <- otel_scope_spans(otel_file)
+      length(otel_find_spans(spans, "shinyOAuth.test.async.error.parent")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.error.worker")) >= 1L
+    },
+    timeout = 10
+  )
+
+  spans <- otel_scope_spans(otel_file)
+  parent_span <- otel_find_spans(spans, "shinyOAuth.test.async.error.parent")
+  worker_span <- otel_find_spans(spans, "shinyOAuth.test.async.error.worker")
+
+  testthat::expect_length(parent_span, 1L)
+  testthat::expect_length(worker_span, 1L)
+
+  if (length(parent_span) != 1L || length(worker_span) != 1L) {
+    return(invisible(NULL))
+  }
+
+  parent_span <- parent_span[[1L]]
+  worker_span <- worker_span[[1L]]
+
+  testthat::expect_identical(parent_span$trace_id, worker_span$trace_id)
+  testthat::expect_identical(worker_span$parent_span_id, parent_span$span_id)
+  testthat::expect_true(otel_span_status_is_error(parent_span))
+  testthat::expect_true(otel_span_status_is_error(worker_span))
+  testthat::expect_true(otel_span_has_event(parent_span, "exception"))
+  testthat::expect_true(otel_span_has_event(worker_span, "exception"))
 })
 
 otel_async_daemon("reused real mirai daemons clear stale file exporters after env restore", {
