@@ -119,6 +119,46 @@ testthat::test_that("otel_start_async_parent degrades to NULL on otel error", {
   testthat::expect_null(parent$headers)
 })
 
+testthat::test_that("otel_start_async_parent does not capture ambient headers on start failure", {
+  withr::local_options(list(shinyOAuth.otel_tracing_enabled = TRUE))
+
+  warned <- FALSE
+  capture_calls <- 0L
+  parent <- withCallingHandlers(
+    testthat::with_mocked_bindings(
+      otel_capture_context = function(...) {
+        capture_calls <<- capture_calls + 1L
+        c(traceparent = "00-11111111111111111111111111111111-1111111111111111-01")
+      },
+      .package = "shinyOAuth",
+      {
+        testthat::with_mocked_bindings(
+          start_span = function(...) {
+            stop("otel async span init failed")
+          },
+          .package = "otel",
+          {
+            shinyOAuth:::with_otel_span("shinyOAuth.test.outer", {
+              shinyOAuth:::otel_start_async_parent("shinyOAuth.test.async")
+            }, parent = NA)
+          }
+        )
+      }
+    ),
+    warning = function(w) {
+      if (grepl("OpenTelemetry", conditionMessage(w))) {
+        warned <<- TRUE
+        tryInvokeRestart("muffleWarning")
+      }
+    }
+  )
+
+  testthat::expect_true(warned)
+  testthat::expect_equal(capture_calls, 0L)
+  testthat::expect_null(parent$span)
+  testthat::expect_null(parent$headers)
+})
+
 testthat::test_that("otel_start_async_parent does not activate main-thread span", {
   withr::local_options(list(shinyOAuth.otel_tracing_enabled = TRUE))
 

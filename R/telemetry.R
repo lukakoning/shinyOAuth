@@ -813,7 +813,11 @@ otel_start_async_parent <- function(
 
   list(
     span = span,
-    headers = otel_capture_context(span)
+    headers = if (is.null(span)) {
+      NULL
+    } else {
+      otel_capture_context(span)
+    }
   )
 }
 
