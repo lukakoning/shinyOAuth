@@ -137,7 +137,7 @@ revoke_token <- function(
         promise |>
           promises::then(function(value) {
             otel_end_async_parent(otel_parent, status = "ok")
-            value
+            replay_async_conditions(value)
           }) |>
           promises::catch(function(err) {
             otel_end_async_parent(otel_parent, status = "error", error = err)
@@ -594,7 +594,7 @@ introspect_token <- function(
         promise |>
           promises::then(function(value) {
             otel_end_async_parent(otel_parent, status = "ok")
-            value
+            replay_async_conditions(value)
           }) |>
           promises::catch(function(err) {
             otel_end_async_parent(otel_parent, status = "error", error = err)
@@ -1010,7 +1010,7 @@ refresh_token <- function(
         promise |>
           promises::then(function(value) {
             otel_end_async_parent(otel_parent, status = "ok")
-            value
+            replay_async_conditions(value)
           }) |>
           promises::catch(function(err) {
             otel_end_async_parent(otel_parent, status = "error", error = err)

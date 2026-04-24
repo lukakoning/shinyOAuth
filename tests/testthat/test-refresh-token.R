@@ -65,6 +65,58 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
   testthat::expect_true(is.finite(t3@expires_at))
 })
 
+testthat::test_that("refresh_token async resolves to OAuthToken directly", {
+  testthat::skip_if_not_installed("mirai")
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("later")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@token_auth_style <- "body"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"async_new_at","refresh_token":"async_new_rt","expires_in":60}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+
+  token <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "old_rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  p <- refresh_token(cli, token, async = TRUE, introspect = FALSE)
+  p <- promises::as.promise(p)
+  testthat::expect_s3_class(p, "promise")
+
+  val <- NULL
+  p$then(function(x) {
+    val <<- x
+  })
+
+  deadline <- Sys.time() + 5
+  while (is.null(val) && Sys.time() < deadline) {
+    later::run_now(0.05)
+    Sys.sleep(0.02)
+  }
+
+  testthat::expect_true(S7::S7_inherits(val, OAuthToken))
+  testthat::expect_identical(val@access_token, "async_new_at")
+  testthat::expect_identical(val@refresh_token, "async_new_rt")
+})
+
 testthat::test_that("refresh_token can fetch userinfo and optionally introspect", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   # Set URLs first to satisfy provider validation when toggling userinfo_required
