@@ -280,18 +280,123 @@ capture_async_otel_envvars <- function() {
 
 # Internal: apply captured OTEL env vars in the current process and rebuild
 # cached providers whenever the effective OTEL configuration changes.
-reset_async_otel_cache <- function() {
-  otel_clean_cache <- tryCatch(
-    get(
-      "otel_clean_cache",
-      envir = asNamespace("otel"),
-      inherits = FALSE
-    ),
-    error = function(...) NULL
-  )
-  if (is.function(otel_clean_cache)) {
-    try(otel_clean_cache(), silent = TRUE)
+resolve_async_otel_cache_reset <- function() {
+  if (!requireNamespace("otel", quietly = TRUE)) {
+    return(list(
+      reset = NULL,
+      source = "missing",
+      name = NA_character_
+    ))
   }
+
+  exported_names <- tryCatch(
+    getNamespaceExports("otel"),
+    error = function(...) character()
+  )
+  for (candidate in c(
+    "otel_clean_cache",
+    "reset_otel_cache",
+    "reset_provider_cache"
+  )) {
+    if (!(candidate %in% exported_names)) {
+      next
+    }
+
+    reset <- tryCatch(
+      getExportedValue("otel", candidate),
+      error = function(...) NULL
+    )
+    if (is.function(reset)) {
+      return(list(
+        reset = reset,
+        source = "exported",
+        name = candidate
+      ))
+    }
+  }
+
+  otel_ns <- asNamespace("otel")
+  for (candidate in c("otel_clean_cache")) {
+    reset <- tryCatch(
+      get(candidate, envir = otel_ns, inherits = FALSE),
+      error = function(...) NULL
+    )
+    if (is.function(reset)) {
+      return(list(
+        reset = reset,
+        source = "private",
+        name = candidate
+      ))
+    }
+  }
+
+  list(
+    reset = NULL,
+    source = "missing",
+    name = NA_character_
+  )
+}
+
+warn_about_async_otel_cache_reset <- function(reason = c("missing", "failed"),
+                                              name = NA_character_,
+                                              error = NULL) {
+  reason <- match.arg(reason)
+
+  detail <- if (identical(reason, "failed")) {
+    paste0(
+      "shinyOAuth changed OTEL_* environment variables in a reused async ",
+      "worker, but the otel cache reset hook",
+      if (is_valid_string(name)) paste0(" '", name, "'") else "",
+      " failed: ",
+      conditionMessage(error %||% simpleError("unknown error"))
+    )
+  } else {
+    paste(
+      "shinyOAuth changed OTEL_* environment variables in a reused async",
+      "worker, but the installed otel package does not expose a cache",
+      "reset hook shinyOAuth can call."
+    )
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Async OpenTelemetry exporter changes may not take effect in reused workers}",
+      "!" = detail,
+      "i" = paste(
+        "Reused Mirai workers may keep stale tracer, logger, or exporter",
+        "providers until they are recreated."
+      ),
+      "i" = paste(
+        "shinyOAuth feature-tests otel's cache reset hook and uses the",
+        "internal otel_clean_cache helper when it is available."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = paste0("async_otel_cache_reset_", reason)
+  )
+
+  invisible(FALSE)
+}
+
+reset_async_otel_cache <- function() {
+  cache_reset <- resolve_async_otel_cache_reset()
+  if (!is.function(cache_reset$reset)) {
+    return(warn_about_async_otel_cache_reset("missing"))
+  }
+
+  tryCatch(
+    {
+      cache_reset$reset()
+      invisible(TRUE)
+    },
+    error = function(e) {
+      warn_about_async_otel_cache_reset(
+        "failed",
+        name = cache_reset$name,
+        error = e
+      )
+    }
+  )
 }
 
 apply_async_otel_envvars <- function(captured_envvars) {

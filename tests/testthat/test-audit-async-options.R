@@ -177,6 +177,40 @@ testthat::test_that("with_async_options clears stale worker otel vars missing fr
   )
 })
 
+testthat::test_that("with_async_options warns when otel cache reset hook is unavailable", {
+  withr::local_envvar(c(OTEL_TRACES_EXPORTER = "http"))
+
+  warned <- NULL
+  result <- withCallingHandlers(
+    testthat::with_mocked_bindings(
+      resolve_async_otel_cache_reset = function() {
+        list(
+          reset = NULL,
+          source = "missing",
+          name = NA_character_
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth:::apply_async_otel_envvars(
+          c(OTEL_TRACES_EXPORTER = "none")
+        )
+      }
+    ),
+    warning = function(w) {
+      warned <<- conditionMessage(w)
+      tryInvokeRestart("muffleWarning")
+    }
+  )
+
+  testthat::expect_true(isTRUE(result$changed))
+  testthat::expect_identical(Sys.getenv("OTEL_TRACES_EXPORTER"), "none")
+  testthat::expect_match(
+    warned %||% "",
+    "Async OpenTelemetry exporter changes may not take effect"
+  )
+})
+
 testthat::test_that("with_async_options rebuilds cached otel providers", {
   testthat::skip_if_not_installed("otel")
 
