@@ -3,7 +3,7 @@
 error_on_softened()
 
 # Below call would error (is therefore not run):
-\dontrun{
-options(shinyOAuth.skip_id_sig = TRUE)
-error_on_softened()
+if (interactive()) {
+  options(shinyOAuth.skip_id_sig = TRUE)
+  error_on_softened()
 }
