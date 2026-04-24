@@ -223,9 +223,13 @@ capture_async_options <- function() {
 # Internal: capture the OpenTelemetry env vars that influence exporter
 # selection and OTLP endpoints. Values set to NA indicate the variable should
 # be unset in the async worker.
+current_async_otel_envvar_names <- function() {
+  grep("^OTEL(_R)?_", names(Sys.getenv()), value = TRUE)
+}
+
 capture_async_otel_envvars <- function() {
   otel_names <- unique(c(
-    grep("^OTEL(_R)?_", names(Sys.getenv()), value = TRUE),
+    current_async_otel_envvar_names(),
     "OTEL_R_TRACES_EXPORTER",
     "OTEL_R_LOGS_EXPORTER",
     "OTEL_R_METRICS_EXPORTER",
@@ -267,15 +271,27 @@ apply_async_otel_envvars <- function(captured_envvars) {
     ))
   }
 
-  env_names <- names(captured_envvars)
+  # Reused workers may still carry OTEL_* values that were not explicitly
+  # captured by the parent because they were unset there. Treat the captured
+  # state as authoritative and clear any extra OTEL vars currently living in
+  # the worker, while preserving them for restore on exit.
+  env_names <- unique(c(
+    names(captured_envvars),
+    current_async_otel_envvar_names()
+  ))
   old_envvars <- Sys.getenv(env_names, unset = NA_character_)
-  otel_envvars_changed <- !identical(old_envvars, captured_envvars)
+  desired_envvars <- stats::setNames(
+    rep(NA_character_, length(env_names)),
+    env_names
+  )
+  desired_envvars[names(captured_envvars)] <- captured_envvars
+  otel_envvars_changed <- !identical(old_envvars, desired_envvars)
   if (!isTRUE(otel_envvars_changed)) {
     return(list(changed = FALSE, old_envvars = old_envvars))
   }
 
-  new_values <- captured_envvars[!is.na(captured_envvars)]
-  vars_to_unset <- env_names[is.na(captured_envvars)]
+  new_values <- desired_envvars[!is.na(desired_envvars)]
+  vars_to_unset <- names(desired_envvars)[is.na(desired_envvars)]
   if (length(new_values)) {
     do.call(Sys.setenv, as.list(new_values))
   }

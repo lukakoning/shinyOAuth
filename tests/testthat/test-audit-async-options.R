@@ -143,6 +143,40 @@ testthat::test_that("with_async_options restores captured otel env vars", {
   )
 })
 
+testthat::test_that("with_async_options clears stale worker otel vars missing from capture", {
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "none",
+    OTEL_TRACES_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = "stale-worker.jsonl"
+  ))
+
+  captured <- list(
+    ".shinyOAuth.otel_envvars" = c(
+      OTEL_R_TRACES_EXPORTER = "none",
+      OTEL_TRACES_EXPORTER = "none"
+    )
+  )
+
+  result <- shinyOAuth:::with_async_options(captured, {
+    Sys.getenv(
+      c(
+        "OTEL_R_TRACES_EXPORTER",
+        "OTEL_TRACES_EXPORTER",
+        "OTEL_EXPORTER_OTLP_TRACES_FILE"
+      ),
+      unset = NA_character_
+    )
+  })
+
+  testthat::expect_identical(result[["OTEL_R_TRACES_EXPORTER"]], "none")
+  testthat::expect_identical(result[["OTEL_TRACES_EXPORTER"]], "none")
+  testthat::expect_true(is.na(result[["OTEL_EXPORTER_OTLP_TRACES_FILE"]]))
+  testthat::expect_identical(
+    Sys.getenv("OTEL_EXPORTER_OTLP_TRACES_FILE"),
+    "stale-worker.jsonl"
+  )
+})
+
 testthat::test_that("with_async_options rebuilds cached otel providers", {
   testthat::skip_if_not_installed("otel")
 
