@@ -9,7 +9,7 @@ vignette: >
 
 ## Overview
 
-'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow. 
+'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow.
 These may help detect anomalous activity (e.g., brute force, replay, or configuration errors).
 
 This vignette covers:
@@ -20,7 +20,7 @@ This vignette covers:
 
 ## Receiving audit events
 
-You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a 
+You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a
 hook function that will be called whenever shinyOAuth emits a structured audit
 or error event.
 The function you register should be fast, non-blocking, and never throw errors.
@@ -61,7 +61,7 @@ logging is enabled it is exported as the `shinyoauth.trace_id` log attribute,
 which is distinct from the backend's native OpenTelemetry trace/span ids.
 
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
-is attached to every event to correlate audit activity with the HTTP request and session. 
+is attached to every event to correlate audit activity with the HTTP request and session.
 The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
@@ -83,11 +83,11 @@ Note: the raw `session$request` from Shiny is not included to keep the event JSO
 
 ### HTTP context sanitization
 
-For safety, the `shiny_session$http` summary is automatically sanitized before being attached to events. 
+For safety, the `shiny_session$http` summary is automatically sanitized before being attached to events.
 This prevents accidental secret leakage when forwarding events to log sinks:
-  
+
 - OAuth query parameters are redacted: `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`, `session_state`, `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
-- Sensitive headers are removed: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`, 
+- Sensitive headers are removed: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`,
 `Proxy_Authenticate`, and `WWW-Authenticate` headers are stripped entirely.
 - Proxy headers are redacted: headers starting with `x_` (e.g., `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to avoid leaking internal infrastructure details.
 
@@ -430,8 +430,8 @@ failures to the same sink as audit events.
 
 - When: a package error is raised via one of the specialized `err_*()` helpers
   (state validation, PKCE, token, ID token, userinfo, configuration, input, parse errors)
-- Fields: 
-  - `type` (`"error"`), `trace_id`, `message`, 
+- Fields:
+	- `type` (`"error"`), `trace_id`, `message`,
   - Plus any `context` fields  from the call site (typically `provider`, `issuer`,
   `client_id_digest`, `phase`, `error_class`)
 
@@ -451,6 +451,6 @@ failures to the same sink as audit events.
 
 - When: an outbound HTTP request fails before receiving a response (DNS failure,
   timeout, connection reset, etc.)
-- Fields: 
+- Fields:
   - `type` (`"transport_error"`), `trace_id`, `message`
   - Plus any `context` fields from the call site

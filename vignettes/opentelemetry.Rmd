@@ -10,18 +10,18 @@ vignette: >
 ## Overview
 
 'shinyOAuth' includes OpenTelemetry (OTel) instrumentation emitting logs and
-traces from key OAuth 2.0/OIDC operations. 
+traces from key OAuth 2.0/OIDC operations.
 
 The `otel` package is installed automatically with `shinyOAuth`. Install
 `otelsdk` as well if you want the R SDK helpers/exporters used in the examples
 below.
 
-OpenTelemetry is an open standard for telemetry data 
-(logs, traces, metrics) and can be collected by various backends. 
-It can be used as an alternative to the package's native R hooks for 
-auditing and tracing (see `vignette("audit-logging", package = "shinyOAuth")`). 
+OpenTelemetry is an open standard for telemetry data
+(logs, traces, metrics) and can be collected by various backends.
+It can be used as an alternative to the package's native R hooks for
+auditing and tracing (see `vignette("audit-logging", package = "shinyOAuth")`).
 
-Please refer to the '[otelsdk](https://otelsdk.r-lib.org/reference/collecting.html)' 
+Please refer to the '[otelsdk](https://otelsdk.r-lib.org/reference/collecting.html)'
 package to learn more about configuring your OpenTelemetry setup and exporters in R.
 Once configured, 'shinyOAuth' will automatically emit OTel signals.
 
@@ -29,7 +29,7 @@ All signals are emitted under the instrumentation scope
 `io.github.lukakoning.shinyOAuth`. Use this identifier when configuring
 collector routing rules or filtering 'shinyOAuth' telemetry in your backend.
 
-This vignette describes the OTel signals emitted by 'shinyOAuth', their content, 
+This vignette describes the OTel signals emitted by 'shinyOAuth', their content,
 and how to enable/disable them.
 
 ## Logs
@@ -69,7 +69,7 @@ All spans share these behaviors:
   available; non-success HTTP responses mark that client span as `error`
 - Sensitive values (tokens, codes, state payloads, browser tokens) are never
   attached as span attributes
-  
+
 When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set, 'shinyOAuth' stops
 emitting all OTel spans.
 
