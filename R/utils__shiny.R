@@ -245,6 +245,20 @@ capture_async_otel_envvars <- function() {
 
 # Internal: apply captured OTEL env vars in the current process and rebuild
 # cached providers whenever the effective OTEL configuration changes.
+reset_async_otel_cache <- function() {
+  otel_clean_cache <- tryCatch(
+    get(
+      "otel_clean_cache",
+      envir = asNamespace("otel"),
+      inherits = FALSE
+    ),
+    error = function(...) NULL
+  )
+  if (is.function(otel_clean_cache)) {
+    try(otel_clean_cache(), silent = TRUE)
+  }
+}
+
 apply_async_otel_envvars <- function(captured_envvars) {
   if (is.null(captured_envvars) || length(captured_envvars) == 0) {
     return(list(
@@ -272,17 +286,7 @@ apply_async_otel_envvars <- function(captured_envvars) {
   # OTEL_* env vars only affect provider setup at initialization time, so
   # reused async workers must rebuild cached providers after any env change,
   # including transitions from an enabled exporter back to "none".
-  otel_clean_cache <- tryCatch(
-    get(
-      "otel_clean_cache",
-      envir = asNamespace("otel"),
-      inherits = FALSE
-    ),
-    error = function(...) NULL
-  )
-  if (is.function(otel_clean_cache)) {
-    try(otel_clean_cache(), silent = TRUE)
-  }
+  reset_async_otel_cache()
 
   list(changed = TRUE, old_envvars = old_envvars)
 }
@@ -301,6 +305,8 @@ restore_async_otel_envvars <- function(old_envvars) {
   if (length(restore_unset)) {
     Sys.unsetenv(restore_unset)
   }
+
+  reset_async_otel_cache()
 
   invisible(NULL)
 }

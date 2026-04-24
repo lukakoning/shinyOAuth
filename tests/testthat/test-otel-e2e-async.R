@@ -511,6 +511,134 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   )
 })
 
+otel_async_daemon("reused real mirai daemons clear stale file exporters after env restore", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  old_otel_state <- capture_test_otel_state()
+  withr::defer(restore_test_otel_state(old_otel_state))
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-reused-daemon")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  dispatch_span <- function(span_name) {
+    resolved <- NULL
+    promises::then(
+      promises::as.promise(
+        shinyOAuth:::async_dispatch(
+          expr = quote({
+            .ns <- asNamespace("shinyOAuth")
+            .ns$with_otel_span(span_name, {
+              list(
+                pid = Sys.getpid(),
+                tracing_enabled = otel::is_tracing_enabled(),
+                traces_exporter = Sys.getenv(
+                  "OTEL_R_TRACES_EXPORTER",
+                  unset = NA_character_
+                ),
+                traces_file = Sys.getenv(
+                  "OTEL_EXPORTER_OTLP_TRACES_FILE",
+                  unset = NA_character_
+                )
+              )
+            })
+          }),
+          args = list(span_name = span_name)
+        )
+      ),
+      function(value) {
+        resolved <<- value
+        invisible(NULL)
+      }
+    )
+
+    poll_for_async(function() !is.null(resolved), timeout = 10)
+    testthat::expect_false(is.null(resolved))
+    shinyOAuth:::replay_async_conditions(resolved)
+  }
+
+  first_result <- withr::with_envvar(
+    c(
+      OTEL_R_TRACES_EXPORTER = "otlp/file",
+      OTEL_TRACES_EXPORTER = "otlp/file",
+      OTEL_R_LOGS_EXPORTER = "none",
+      OTEL_LOGS_EXPORTER = "none",
+      OTEL_R_METRICS_EXPORTER = "none",
+      OTEL_METRICS_EXPORTER = "none",
+      OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+      OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+      OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+    ),
+    dispatch_span("shinyOAuth.test.async.file.enabled")
+  )
+
+  poll_for_async(
+    function() {
+      length(otel_find_spans(
+        otel_scope_spans(otel_file),
+        "shinyOAuth.test.async.file.enabled"
+      )) >=
+        1L
+    },
+    timeout = 10
+  )
+
+  spans_after_first <- otel_scope_spans(otel_file)
+  first_spans <- otel_find_spans(
+    spans_after_first,
+    "shinyOAuth.test.async.file.enabled"
+  )
+
+  second_result <- withr::with_envvar(
+    c(
+      OTEL_R_TRACES_EXPORTER = NA_character_,
+      OTEL_TRACES_EXPORTER = NA_character_,
+      OTEL_R_LOGS_EXPORTER = NA_character_,
+      OTEL_LOGS_EXPORTER = NA_character_,
+      OTEL_R_METRICS_EXPORTER = NA_character_,
+      OTEL_METRICS_EXPORTER = NA_character_,
+      OTEL_EXPORTER_OTLP_TRACES_FILE = NA_character_,
+      OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = NA_character_,
+      OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = NA_character_
+    ),
+    dispatch_span("shinyOAuth.test.async.file.unset")
+  )
+
+  deadline <- Sys.time() + 1
+  while (Sys.time() < deadline) {
+    later::run_now(0.05)
+    Sys.sleep(0.01)
+  }
+
+  spans_after_second <- otel_scope_spans(otel_file)
+  second_spans <- otel_find_spans(
+    spans_after_second,
+    "shinyOAuth.test.async.file.unset"
+  )
+
+  testthat::expect_true(isTRUE(first_result$tracing_enabled))
+  testthat::expect_identical(first_result$traces_exporter, "otlp/file")
+  testthat::expect_identical(first_result$traces_file, otel_file)
+  testthat::expect_length(first_spans, 1L)
+
+  testthat::expect_identical(second_result$pid, first_result$pid)
+  testthat::expect_false(isTRUE(second_result$tracing_enabled))
+  testthat::expect_true(is.na(second_result$traces_exporter))
+  testthat::expect_true(is.na(second_result$traces_file))
+  testthat::expect_length(second_spans, 0L)
+  testthat::expect_length(spans_after_second, length(spans_after_first))
+})
+
 otel_async_daemon("async module callback/login success exports correct main and worker session metadata", {
   ok <- tryCatch(
     {
