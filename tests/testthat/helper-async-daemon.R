@@ -7,10 +7,8 @@ async_daemon_is_source_root <- function(path) {
   file.exists(file.path(root, "DESCRIPTION")) &&
     file.exists(file.path(root, "NAMESPACE")) &&
     dir.exists(file.path(root, "R")) &&
-    (
-      dir.exists(file.path(root, ".git")) ||
-        file.exists(file.path(root, "shinyOAuth.Rproj"))
-    )
+    (dir.exists(file.path(root, ".git")) ||
+      file.exists(file.path(root, "shinyOAuth.Rproj")))
 }
 
 async_daemon_source_root <- function() {
