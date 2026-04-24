@@ -546,6 +546,13 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   captured_otel_envvars <- capture_async_otel_envvars()
   captured_otel_option_gates <- capture_async_otel_option_gates()
+  captured_trace_id <- get_current_trace_id()
+  if (!is.null(otel_context)) {
+    otel_context$attributes <- otel_with_trace_attribute(
+      attributes = otel_context$attributes,
+      trace_id = captured_trace_id
+    )
+  }
 
   # Wrap the expression to capture warnings and messages emitted in the worker
   # process. Conditions are collected into lists and bundled alongside the

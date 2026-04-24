@@ -439,34 +439,46 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   get("otel_clean_cache", envir = asNamespace("otel"))()
   withr::defer(reset_test_otel_cache())
 
-  parent <- shinyOAuth:::otel_start_async_parent(
-    "shinyOAuth.test.async.parent",
-    attributes = list(oauth.phase = "test")
-  )
+  app_trace_id <- "app-trace-123"
+  resolved <- NULL
+  parent <- shinyOAuth:::with_trace_id(app_trace_id, {
+    async_parent <- shinyOAuth:::otel_start_async_parent(
+      "shinyOAuth.test.async.parent",
+      attributes = list(oauth.phase = "test")
+    )
+    testthat::expect_true(
+      is.character(async_parent$headers[["traceparent"]]) &&
+        nzchar(async_parent$headers[["traceparent"]])
+    )
+
+    resolved <- NULL
+    promises::then(
+      promises::as.promise(
+        shinyOAuth:::async_dispatch(
+          expr = quote({
+            .ns <- asNamespace("shinyOAuth")
+            .ns$with_trace_id(app_trace_id, {
+              .ns$with_otel_span("shinyOAuth.test.async.child", 1)
+            })
+          }),
+          args = list(app_trace_id = app_trace_id),
+          otel_context = list(
+            headers = async_parent$headers,
+            worker_span_name = "shinyOAuth.test.async.worker"
+          )
+        )
+      ),
+      function(x) {
+        resolved <<- x
+        invisible(NULL)
+      }
+    )
+
+    async_parent
+  })
   testthat::expect_true(
     is.character(parent$headers[["traceparent"]]) &&
       nzchar(parent$headers[["traceparent"]])
-  )
-
-  resolved <- NULL
-  promises::then(
-    promises::as.promise(
-      shinyOAuth:::async_dispatch(
-        expr = quote({
-          .ns <- asNamespace("shinyOAuth")
-          .ns$with_otel_span("shinyOAuth.test.async.child", 1)
-        }),
-        args = list(),
-        otel_context = list(
-          headers = parent$headers,
-          worker_span_name = "shinyOAuth.test.async.worker"
-        )
-      )
-    ),
-    function(x) {
-      resolved <<- x
-      invisible(NULL)
-    }
   )
 
   poll_for_async(function() !is.null(resolved), timeout = 10)
@@ -515,6 +527,18 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   testthat::expect_identical(
     child_span[[1L]]$parent_span_id,
     worker_span[[1L]]$span_id
+  )
+  testthat::expect_identical(
+    otel_span_attribute(parent_span[[1L]], "shinyoauth.trace_id"),
+    app_trace_id
+  )
+  testthat::expect_identical(
+    otel_span_attribute(worker_span[[1L]], "shinyoauth.trace_id"),
+    app_trace_id
+  )
+  testthat::expect_identical(
+    otel_span_attribute(child_span[[1L]], "shinyoauth.trace_id"),
+    app_trace_id
   )
   testthat::expect_false(
     identical(parent_span[[1L]]$process_id, worker_span[[1L]]$process_id)
