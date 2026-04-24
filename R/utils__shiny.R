@@ -220,6 +220,37 @@ capture_async_options <- function() {
   opts
 }
 
+# Internal: capture the effective shinyOAuth OTel option gates, including
+# default values when the options are currently unset in the main process.
+capture_async_otel_option_gates <- function() {
+  list(
+    shinyOAuth.otel_tracing_enabled = otel_tracing_enabled(),
+    shinyOAuth.otel_logging_enabled = otel_logging_enabled()
+  )
+}
+
+# Internal: apply captured shinyOAuth OTel option gates before restoring worker
+# spans. This keeps reused workers from reusing stale FALSE option values from
+# previous tasks when the main process expects tracing/logging to be enabled.
+apply_async_otel_option_gates <- function(captured_gates) {
+  if (is.null(captured_gates) || length(captured_gates) == 0) {
+    return(list(old_options = list()))
+  }
+
+  list(old_options = do.call(options, captured_gates))
+}
+
+# Internal: restore worker-local shinyOAuth OTel option gates after temporary
+# async propagation.
+restore_async_otel_option_gates <- function(old_options) {
+  if (is.null(old_options) || length(old_options) == 0) {
+    return(invisible(NULL))
+  }
+
+  do.call(options, old_options)
+  invisible(NULL)
+}
+
 # Internal: capture the OpenTelemetry env vars that influence exporter
 # selection and OTLP endpoints. Values set to NA indicate the variable should
 # be unset in the async worker.
@@ -514,6 +545,7 @@ mirai_connection_count <- function() {
 async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   captured_otel_envvars <- capture_async_otel_envvars()
+  captured_otel_option_gates <- capture_async_otel_option_gates()
 
   # Wrap the expression to capture warnings and messages emitted in the worker
   # process. Conditions are collected into lists and bundled alongside the
@@ -524,7 +556,17 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .otel_worker_span <- NULL
     .async_error <- NULL
     .otel_envvars <- .(captured_otel_envvars)
+    .otel_option_gates <- .(captured_otel_option_gates)
     .otel_context <- .(otel_context)
+    if (!is.null(.otel_option_gates) && length(.otel_option_gates) > 0) {
+      .otel_option_state <- .ns$apply_async_otel_option_gates(
+        .otel_option_gates
+      )
+      on.exit(
+        .ns$restore_async_otel_option_gates(.otel_option_state$old_options),
+        add = TRUE
+      )
+    }
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
       .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
       if (isTRUE(.otel_env_state$changed)) {

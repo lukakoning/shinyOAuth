@@ -502,6 +502,119 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
   )
 })
 
+otel_async_daemon("async parent/worker propagation survives stale worker tracing option in real mirai daemon", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  otel_file <- otel_temp_jsonl_path("shinyoauth-otel-stale-option")
+  if (file.exists(otel_file)) {
+    file.remove(otel_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = otel_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  poison_worker <- mirai::mirai({
+    options(shinyOAuth.otel_tracing_enabled = FALSE)
+    Sys.getpid()
+  })
+  mirai::call_mirai(poison_worker)
+  poison_pid <- poison_worker$data
+
+  parent <- shinyOAuth:::otel_start_async_parent(
+    "shinyOAuth.test.async.stale.parent"
+  )
+  captured_async_options <- shinyOAuth:::capture_async_options()
+
+  resolved <- NULL
+  promises::then(
+    promises::as.promise(
+      shinyOAuth:::async_dispatch(
+        expr = quote({
+          .ns <- asNamespace("shinyOAuth")
+          .ns$with_async_options(captured_async_options, {
+            .ns$with_otel_span(
+              "shinyOAuth.test.async.stale.child",
+              Sys.getpid()
+            )
+          })
+        }),
+        args = list(captured_async_options = captured_async_options),
+        otel_context = list(
+          headers = parent$headers,
+          worker_span_name = "shinyOAuth.test.async.stale.worker"
+        )
+      )
+    ),
+    function(x) {
+      resolved <<- x
+      invisible(NULL)
+    }
+  )
+
+  poll_for_async(function() !is.null(resolved), timeout = 10)
+  testthat::expect_false(is.null(resolved))
+  worker_pid <- shinyOAuth:::replay_async_conditions(resolved)
+  shinyOAuth:::otel_end_async_parent(parent, status = "ok")
+
+  poll_for_async(
+    function() {
+      spans <- otel_scope_spans(otel_file)
+      length(otel_find_spans(spans, "shinyOAuth.test.async.stale.parent")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.worker")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.child")) >= 1L
+    },
+    timeout = 10
+  )
+
+  spans <- otel_scope_spans(otel_file)
+  parent_span <- otel_find_spans(spans, "shinyOAuth.test.async.stale.parent")
+  worker_span <- otel_find_spans(spans, "shinyOAuth.test.async.stale.worker")
+  child_span <- otel_find_spans(spans, "shinyOAuth.test.async.stale.child")
+
+  testthat::expect_length(parent_span, 1L)
+  testthat::expect_length(worker_span, 1L)
+  testthat::expect_length(child_span, 1L)
+
+  if (
+    length(parent_span) != 1L ||
+      length(worker_span) != 1L ||
+      length(child_span) != 1L
+  ) {
+    return(invisible(NULL))
+  }
+
+  parent_span <- parent_span[[1L]]
+  worker_span <- worker_span[[1L]]
+  child_span <- child_span[[1L]]
+
+  testthat::expect_identical(worker_pid, poison_pid)
+  testthat::expect_identical(worker_span$process_id, poison_pid)
+  testthat::expect_identical(worker_span$trace_id, parent_span$trace_id)
+  testthat::expect_identical(child_span$trace_id, parent_span$trace_id)
+  testthat::expect_identical(worker_span$parent_span_id, parent_span$span_id)
+  testthat::expect_identical(child_span$parent_span_id, worker_span$span_id)
+})
+
 otel_async_daemon("reused real mirai daemons clear stale file exporters after env restore", {
   ok <- tryCatch(
     {
