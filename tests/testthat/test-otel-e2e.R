@@ -23,6 +23,79 @@ otel_named_spans <- function(traces, name) {
   Filter(function(span) identical(span$name %||% NA_character_, name), traces)
 }
 
+otel_log_attr_value <- function(attributes, key) {
+  if (is.null(attributes) || !length(attributes)) {
+    return(NULL)
+  }
+
+  for (attr in attributes) {
+    if (!identical(attr$key %||% NA_character_, key)) {
+      next
+    }
+    value <- attr$value %||% list()
+    for (field in c("stringValue", "intValue", "boolValue", "doubleValue")) {
+      if (!is.null(value[[field]])) {
+        return(value[[field]])
+      }
+    }
+  }
+
+  NULL
+}
+
+otel_exported_logs <- function(path) {
+  if (!file.exists(path)) {
+    return(list())
+  }
+
+  docs <- lapply(
+    readLines(path, warn = FALSE),
+    jsonlite::fromJSON,
+    simplifyVector = FALSE
+  )
+
+  logs <- list()
+  for (doc in docs) {
+    for (resource_log in doc$resourceLogs %||% list()) {
+      for (scope_log in resource_log$scopeLogs %||% list()) {
+        scope_name <- scope_log$scope$name %||% NA_character_
+        for (log_record in scope_log$logRecords %||% list()) {
+          logs[[length(logs) + 1L]] <- list(
+            body = log_record$body$stringValue %||% NA_character_,
+            trace_id = log_record$traceId %||% NA_character_,
+            span_id = log_record$spanId %||% NA_character_,
+            scope_name = scope_name,
+            attributes = log_record$attributes %||% list()
+          )
+        }
+      }
+    }
+  }
+
+  logs
+}
+
+otel_scope_logs <- function(path) {
+  Filter(
+    function(log_record) {
+      identical(log_record$scope_name, "io.github.lukakoning.shinyOAuth")
+    },
+    otel_exported_logs(path)
+  )
+}
+
+otel_log_attribute <- function(log_record, key) {
+  otel_log_attr_value(log_record$attributes, key)
+}
+
+otel_temp_jsonl_path <- function(prefix) {
+  stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
+  file.path(
+    tempdir(),
+    paste0(prefix, "-", Sys.getpid(), "-", stamp, ".jsonl")
+  )
+}
+
 # ---------------------------------------------------------------------------
 # Span basics
 # ---------------------------------------------------------------------------
@@ -555,6 +628,76 @@ otel_e2e("module logout and session-end flows emit lifecycle spans around revoke
     },
     logical(1)
   )))
+})
+
+otel_e2e("get_userinfo sync exports filtered audit logs correlated with span", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+
+  log_file <- otel_temp_jsonl_path("shinyoauth-otel-userinfo-logs")
+  if (file.exists(log_file)) {
+    file.remove(log_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_LOGS_EXPORTER = "otlp/file",
+    OTEL_LOGS_EXPORTER = "otlp/file",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_LOGS_FILE = log_file,
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  r <- otelsdk::with_otel_record({
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/userinfo",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"user-123","name":"Ada"}')
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shinyOAuth::get_userinfo(cli, token = "access-secret-token")
+      }
+    )
+  })
+
+  userinfo_span <- r$traces[["shinyOAuth.userinfo"]]
+  testthat::expect_false(is.null(userinfo_span))
+  testthat::expect_identical(userinfo_span$status, "ok")
+
+  poll_for_async(function() {
+    length(otel_scope_logs(log_file)) >= 1L
+  }, timeout = 5)
+
+  userinfo_logs <- Filter(
+    function(log_record) {
+      identical(otel_log_attribute(log_record, "event.type"), "audit_userinfo")
+    },
+    otel_scope_logs(log_file)
+  )
+
+  testthat::expect_length(userinfo_logs, 1L)
+  if (length(userinfo_logs) != 1L) {
+    return(invisible(NULL))
+  }
+
+  userinfo_log <- userinfo_logs[[1L]]
+  testthat::expect_identical(userinfo_log$trace_id, userinfo_span$trace_id)
+  testthat::expect_identical(userinfo_log$span_id, userinfo_span$span_id)
+  testthat::expect_identical(otel_log_attribute(userinfo_log, "oauth.status"), "ok")
+  testthat::expect_true(is.character(otel_log_attribute(userinfo_log, "sub_digest")))
+  testthat::expect_null(otel_log_attribute(userinfo_log, "access_token"))
+  testthat::expect_identical(
+    otel_log_attribute(userinfo_log, "shinyoauth.trace_id"),
+    userinfo_span$attributes[["shinyoauth.trace_id"]]
+  )
 })
 
 otel_e2e("token.exchange span captures request and response attributes", {

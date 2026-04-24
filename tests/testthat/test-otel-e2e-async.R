@@ -1070,6 +1070,196 @@ otel_async_daemon("async module callback/login success exports correct main and 
   )
 })
 
+otel_async_daemon("async callback exports worker userinfo spans and logs from a real daemon", {
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemons")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+  withr::local_options(list(shinyOAuth.otel_logging_enabled = TRUE))
+
+  app <- webfakes::new_app()
+  app$post("/token", function(req, res) {
+    res$set_status(200L)
+    res$set_type("application/json")
+    res$send_json(list(access_token = "ok_at", expires_in = 3600))
+  })
+  app$get("/userinfo", function(req, res) {
+    res$set_status(200L)
+    res$set_type("application/json")
+    res$send_json(list(sub = "user-123", name = "Ada"))
+  })
+  srv <- webfakes::local_app_process(app)
+
+  trace_file <- otel_temp_jsonl_path("shinyoauth-otel-callback-userinfo-traces")
+  log_file <- otel_temp_jsonl_path("shinyoauth-otel-callback-userinfo-logs")
+  if (file.exists(trace_file)) {
+    file.remove(trace_file)
+  }
+  if (file.exists(log_file)) {
+    file.remove(log_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "otlp/file",
+    OTEL_LOGS_EXPORTER = "otlp/file",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = trace_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms",
+    OTEL_EXPORTER_OTLP_LOGS_FILE = log_file,
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  cli <- make_async_otel_client(srv$url("/token"))
+  cli@provider@userinfo_url <- srv$url("/userinfo")
+  cli@provider@userinfo_required <- TRUE
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = TRUE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      auth_url <- values$build_auth_url()
+      enc <- parse_query_param(auth_url, "state")
+      testthat::expect_true(is.character(enc) && nzchar(enc))
+
+      values$.process_query(paste0("?code=ok&state=", enc))
+      poll_for_async(function() !is.null(values$token), session, timeout = 15)
+      poll_for_async(
+        function() isTRUE(values$authenticated),
+        session,
+        timeout = 15
+      )
+
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_identical(values$token@userinfo$sub %||% NA_character_, "user-123")
+    }
+  )
+
+  poll_for_async(
+    function() {
+      spans <- otel_scope_spans(trace_file)
+      length(otel_find_spans(spans, "shinyOAuth.callback.worker")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.userinfo")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.userinfo.http")) >= 1L &&
+        length(otel_scope_logs(log_file)) >= 4L
+    },
+    timeout = 15
+  )
+
+  spans <- otel_scope_spans(trace_file)
+  worker_span <- otel_find_spans(spans, "shinyOAuth.callback.worker")
+  userinfo_span <- otel_find_spans(spans, "shinyOAuth.userinfo")
+  userinfo_http_span <- otel_find_spans(spans, "shinyOAuth.userinfo.http")
+  callback_received_logs <- Filter(
+    function(log_record) {
+      identical(
+        otel_log_attribute(log_record, "event.type"),
+        "audit_callback_received"
+      )
+    },
+    otel_scope_logs(log_file)
+  )
+  login_success_logs <- Filter(
+    function(log_record) {
+      identical(
+        otel_log_attribute(log_record, "event.type"),
+        "audit_login_success"
+      )
+    },
+    otel_scope_logs(log_file)
+  )
+  userinfo_logs <- Filter(
+    function(log_record) {
+      identical(
+        otel_log_attribute(log_record, "event.type"),
+        "audit_userinfo"
+      )
+    },
+    otel_scope_logs(log_file)
+  )
+
+  testthat::expect_length(worker_span, 1L)
+  testthat::expect_length(userinfo_span, 1L)
+  testthat::expect_length(userinfo_http_span, 1L)
+  testthat::expect_length(callback_received_logs, 1L)
+  testthat::expect_length(login_success_logs, 1L)
+  testthat::expect_length(userinfo_logs, 1L)
+
+  if (
+    length(worker_span) != 1L ||
+      length(userinfo_span) != 1L ||
+      length(userinfo_http_span) != 1L ||
+      length(callback_received_logs) != 1L ||
+      length(login_success_logs) != 1L ||
+      length(userinfo_logs) != 1L
+  ) {
+    return(invisible(NULL))
+  }
+
+  worker_span <- worker_span[[1L]]
+  userinfo_span <- userinfo_span[[1L]]
+  userinfo_http_span <- userinfo_http_span[[1L]]
+  callback_received_log <- callback_received_logs[[1L]]
+  login_success_log <- login_success_logs[[1L]]
+  userinfo_log <- userinfo_logs[[1L]]
+
+  testthat::expect_identical(userinfo_span$trace_id, worker_span$trace_id)
+  testthat::expect_identical(userinfo_span$parent_span_id, worker_span$span_id)
+  testthat::expect_identical(
+    userinfo_http_span$parent_span_id,
+    userinfo_span$span_id
+  )
+  testthat::expect_identical(
+    as.integer(otel_span_attribute(userinfo_http_span, "http.response.status_code")),
+    200L
+  )
+
+  testthat::expect_identical(callback_received_log$trace_id, worker_span$trace_id)
+  testthat::expect_identical(callback_received_log$span_id, worker_span$span_id)
+  testthat::expect_true(is.character(otel_log_attribute(callback_received_log, "code_digest")))
+  testthat::expect_true(is.character(otel_log_attribute(callback_received_log, "state_digest")))
+  testthat::expect_true(is.character(otel_log_attribute(
+    callback_received_log,
+    "browser_token_digest"
+  )))
+  testthat::expect_null(otel_log_attribute(callback_received_log, "code"))
+  testthat::expect_null(otel_log_attribute(callback_received_log, "state"))
+  testthat::expect_null(otel_log_attribute(callback_received_log, "browser_token"))
+
+  testthat::expect_identical(login_success_log$trace_id, worker_span$trace_id)
+  testthat::expect_identical(login_success_log$span_id, worker_span$span_id)
+  testthat::expect_null(otel_log_attribute(login_success_log, "refresh_token"))
+
+  testthat::expect_identical(userinfo_log$trace_id, worker_span$trace_id)
+  testthat::expect_identical(userinfo_log$span_id, userinfo_span$span_id)
+  testthat::expect_identical(otel_log_attribute(userinfo_log, "oauth.status"), "ok")
+  testthat::expect_true(is.character(otel_log_attribute(userinfo_log, "sub_digest")))
+  testthat::expect_null(otel_log_attribute(userinfo_log, "access_token"))
+  testthat::expect_identical(
+    otel_log_attribute(userinfo_log, "shinyoauth.trace_id"),
+    otel_span_attribute(userinfo_span, "shinyoauth.trace_id")
+  )
+})
+
 otel_async_daemon("refresh_token async exports correlated spans from a real daemon", {
   ok <- tryCatch(
     {
