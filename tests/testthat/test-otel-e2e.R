@@ -19,6 +19,10 @@ otel_e2e <- function(desc, code) {
   })
 }
 
+otel_named_spans <- function(traces, name) {
+  Filter(function(span) identical(span$name %||% NA_character_, name), traces)
+}
+
 # ---------------------------------------------------------------------------
 # Span basics
 # ---------------------------------------------------------------------------
@@ -368,6 +372,189 @@ otel_e2e("module.init span captures module configuration attributes", {
     s$attributes[["oauth.browser_cookie_path_root"]],
     FALSE
   )
+})
+
+otel_e2e("module logout and session-end flows emit lifecycle spans around revoke spans", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@revocation_url <- "https://example.com/revoke"
+
+  make_token <- function() {
+    OAuthToken(
+      access_token = "at",
+      refresh_token = "rt",
+      expires_at = as.numeric(Sys.time()) + 60,
+      id_token = NA_character_
+    )
+  }
+
+  r <- otelsdk::with_otel_record({
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = "https://example.com/revoke",
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shiny::testServer(
+          shinyOAuth::oauth_module_server,
+          args = list(
+            id = "logout_mod",
+            client = cli,
+            auto_redirect = FALSE,
+            async = FALSE,
+            revoke_on_session_end = FALSE
+          ),
+          {
+            values$token <- make_token()
+            session$flushReact()
+            values$logout()
+            session$flushReact()
+          }
+        )
+
+        shiny::testServer(
+          shinyOAuth::oauth_module_server,
+          args = list(
+            id = "session_end_mod",
+            client = cli,
+            auto_redirect = FALSE,
+            async = FALSE,
+            revoke_on_session_end = TRUE
+          ),
+          {
+            values$token <- make_token()
+            session$flushReact()
+            testthat::expect_true(values$authenticated)
+          }
+        )
+      }
+    )
+  })
+
+  logout_span <- otel_named_spans(r$traces, "shinyOAuth.logout")
+  session_end_span <- otel_named_spans(r$traces, "shinyOAuth.session.end.revoke")
+  revoke_spans <- otel_named_spans(r$traces, "shinyOAuth.token.revoke")
+  revoke_http_spans <- otel_named_spans(r$traces, "shinyOAuth.token.revoke.http")
+
+  testthat::expect_length(logout_span, 1L)
+  testthat::expect_length(session_end_span, 1L)
+  testthat::expect_length(revoke_spans, 4L)
+  testthat::expect_length(revoke_http_spans, 4L)
+
+  logout_span <- logout_span[[1L]]
+  session_end_span <- session_end_span[[1L]]
+  logout_app_trace_id <- logout_span$attributes[["shinyoauth.trace_id"]]
+  session_end_app_trace_id <- session_end_span$attributes[[
+    "shinyoauth.trace_id"
+  ]]
+
+  logout_revoke_spans <- Filter(
+    function(span) {
+      identical(
+        span$attributes[["shinyoauth.trace_id"]],
+        logout_app_trace_id
+      )
+    },
+    revoke_spans
+  )
+  session_end_revoke_spans <- Filter(
+    function(span) {
+      identical(
+        span$attributes[["shinyoauth.trace_id"]],
+        session_end_app_trace_id
+      )
+    },
+    revoke_spans
+  )
+  logout_revoke_ids <- vapply(logout_revoke_spans, `[[`, "", "span_id")
+  session_end_revoke_ids <- vapply(
+    session_end_revoke_spans,
+    `[[`,
+    "",
+    "span_id"
+  )
+  logout_http_spans <- Filter(
+    function(span) {
+      identical(
+        span$attributes[["shinyoauth.trace_id"]],
+        logout_app_trace_id
+      ) &&
+        span$parent %in% logout_revoke_ids
+    },
+    revoke_http_spans
+  )
+  session_end_http_spans <- Filter(
+    function(span) {
+      identical(
+        span$attributes[["shinyoauth.trace_id"]],
+        session_end_app_trace_id
+      ) &&
+        span$parent %in% session_end_revoke_ids
+    },
+    revoke_http_spans
+  )
+
+  testthat::expect_identical(logout_span$status, "ok")
+  testthat::expect_identical(
+    logout_span$attributes[["oauth.phase"]],
+    "logout"
+  )
+  testthat::expect_identical(
+    logout_span$attributes[["shiny.module_id"]],
+    "logout_mod"
+  )
+  testthat::expect_true(is_valid_string(logout_app_trace_id))
+  testthat::expect_length(logout_revoke_spans, 2L)
+  testthat::expect_length(logout_http_spans, 2L)
+  testthat::expect_true(all(vapply(
+    logout_revoke_spans,
+    function(span) {
+      identical(span$status, "ok") &&
+        identical(span$parent, "0000000000000000")
+    },
+    logical(1)
+  )))
+
+  testthat::expect_identical(session_end_span$status, "ok")
+  testthat::expect_identical(
+    session_end_span$attributes[["oauth.phase"]],
+    "session.end.revoke"
+  )
+  testthat::expect_identical(
+    session_end_span$attributes[["shiny.module_id"]],
+    "session_end_mod"
+  )
+  testthat::expect_identical(
+    session_end_span$attributes[["shiny.session.is_async"]],
+    FALSE
+  )
+  testthat::expect_identical(
+    as.integer(session_end_span$attributes[["shiny.session.process_id"]]),
+    Sys.getpid()
+  )
+  testthat::expect_true(is_valid_string(session_end_app_trace_id))
+  testthat::expect_length(session_end_revoke_spans, 2L)
+  testthat::expect_length(session_end_http_spans, 2L)
+  testthat::expect_true(all(vapply(
+    session_end_revoke_spans,
+    function(span) {
+      identical(span$status, "ok") &&
+        identical(span$parent, "0000000000000000") &&
+        identical(
+          span$attributes[["shiny.session.is_async"]],
+          FALSE
+        ) &&
+        identical(
+          as.integer(span$attributes[["shiny.session.process_id"]]),
+          Sys.getpid()
+        )
+    },
+    logical(1)
+  )))
 })
 
 otel_e2e("token.exchange span captures request and response attributes", {
