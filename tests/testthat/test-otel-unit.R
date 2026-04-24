@@ -759,7 +759,8 @@ testthat::test_that("otel_end_async_parent marks ok or error correctly", {
   mock_span <- list(
     set_status = function(...) {},
     add_event = function(...) {},
-    set_attribute = function(...) {}
+    set_attribute = function(...) {},
+    end = function() invisible(NULL)
   )
 
   # ok path
