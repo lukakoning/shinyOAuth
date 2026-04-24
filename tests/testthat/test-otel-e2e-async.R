@@ -688,6 +688,7 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
       values$.process_query(paste0("?code=ok&state=", enc))
       poll_for_async(function() !is.null(values$token), session, timeout = 15)
+      poll_for_async(function() isTRUE(values$authenticated), session, timeout = 15)
 
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_null(values$error)
