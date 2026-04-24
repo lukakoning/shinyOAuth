@@ -76,15 +76,9 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
   mirai::daemons(1)
   withr::defer(mirai::daemons(0))
 
-  # The daemon is a separate R process that must be able to load shinyOAuth.
-  # When only loaded via devtools::load_all() the package is unavailable to
-  # subprocess workers, so skip in that case.
-  pkg_check <- mirai::mirai(requireNamespace("shinyOAuth", quietly = TRUE))
-  mirai::call_mirai(pkg_check)
-  testthat::skip_if_not(
-    isTRUE(pkg_check$data),
-    "shinyOAuth must be installed (not just load_all'd) for mirai daemon tests"
-  )
+  # The daemon is a separate R process and must load a current installed copy
+  # of shinyOAuth rather than a stale library build from an older checkout.
+  assert_shinyoauth_available_in_daemon()
 
   # Stand up a webfakes server whose /token endpoint always returns HTTP 400.
   # The mirai worker process hits this real endpoint, so no mocking is needed

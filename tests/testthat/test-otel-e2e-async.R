@@ -257,15 +257,6 @@ expect_async_operation_spans <- function(
   )
 }
 
-assert_shinyoauth_available_in_daemon <- function() {
-  pkg_check <- mirai::mirai(requireNamespace("shinyOAuth", quietly = TRUE))
-  mirai::call_mirai(pkg_check)
-  testthat::skip_if_not(
-    isTRUE(pkg_check$data),
-    "shinyOAuth must be installed (not just load_all'd) for mirai daemon tests"
-  )
-}
-
 otel_temp_jsonl_path <- function(prefix) {
   stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
   file.path(
