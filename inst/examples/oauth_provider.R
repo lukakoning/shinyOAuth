@@ -16,14 +16,14 @@ generic_oidc_provider <- oauth_provider_oidc(
 
 # Configure a OIDC provider via OIDC discovery
 # (requires network access)
-if (interactive()) {
-  # Using Auth0 sample issuer as an example
-  oidc_discovery_provider <- oauth_provider_oidc_discover(
-    issuer = "https://samples.auth0.com"
-  )
+\donttest{
+# Using Auth0 sample issuer as an example
+oidc_discovery_provider <- oauth_provider_oidc_discover(
+  issuer = "https://samples.auth0.com"
+)
 }
 
-# GitHub preconfigured provider
+# GitHub preconfigured provider 
 github_provider <- oauth_provider_github()
 
 # Google preconfigured provider
@@ -32,29 +32,29 @@ google_provider <- oauth_provider_google()
 # Microsoft preconfigured provider
 # See `?oauth_provider_microsoft` for example using a custom tenant ID
 
-# Spotify preconfigured provider
+# Spotify preconfigured provider 
 spotify_provider <- oauth_provider_spotify()
 
 # Slack via OIDC discovery
 # (requires network access)
-if (interactive()) {
-  slack_provider <- oauth_provider_slack()
+\donttest{
+slack_provider <- oauth_provider_slack()
 }
-
+  
 # Keycloak
 # (requires configured Keycloak realm; example below is therefore not run)
-if (interactive()) {
-  oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
+\dontrun{
+oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
 }
 
 # Auth0
 # (requires configured Auth0 domain; example below is therefore not run)
-if (interactive()) {
-  oauth_provider_auth0(domain = "your-tenant.auth0.com")
+\dontrun{
+oauth_provider_auth0(domain = "your-tenant.auth0.com")
 }
 
 # Okta
 # (requires configured Okta domain; example below is therefore not run)
-if (interactive()) {
-  oauth_provider_okta(domain = "dev-123456.okta.com")
+\dontrun{
+oauth_provider_okta(domain = "dev-123456.okta.com")
 }
