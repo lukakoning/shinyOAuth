@@ -35,6 +35,12 @@
   a negative elapsed value that always passed the `max_age` freshness
   check.
 
+- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  now refuses to update userinfo unless it can verify the refreshed
+  identity against a new or preserved ID token subject, preventing
+  identity confusion when providers omit `id_token` from refresh
+  responses.
+
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now always requires a non-empty `sub` claim in userinfo responses from
   OIDC providers (those with an `issuer` configured), per OIDC Core

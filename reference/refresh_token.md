@@ -19,8 +19,11 @@ fully validated (signature and claims) in addition to the OIDC 12.2
 `sub` continuity check.
 
 When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
-access token. If both a new ID token and fresh userinfo are present and
-`userinfo_id_token_match = TRUE`, their subjects are verified to match.
+access token. If `userinfo_id_token_match = TRUE`, refreshed userinfo is
+checked against the refresh ID token when one is returned, otherwise
+against the preserved original ID token from the initial login. If no
+trustworthy ID token baseline is available, refresh fails instead of
+updating userinfo.
 
 ## Usage
 
