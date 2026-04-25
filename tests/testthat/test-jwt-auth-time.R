@@ -35,7 +35,8 @@ mk_client <- function(extra_auth_params = list()) {
     prov,
     client_id = "client-xyz",
     client_secret = "secret",
-    redirect_uri = "http://localhost:8100"
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid"
   )
 }
 
@@ -292,7 +293,7 @@ test_that("verify_token_set passes max_age from extra_auth_params to validate_id
     access_token = "at_123",
     token_type = "Bearer",
     id_token = jwt,
-    scope = ""
+    scope = "openid"
   )
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
@@ -344,7 +345,7 @@ test_that("verify_token_set does not pass max_age during refresh", {
     access_token = "at_refresh",
     token_type = "Bearer",
     id_token = new_jwt,
-    scope = ""
+    scope = "openid"
   )
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
@@ -383,7 +384,7 @@ test_that("verify_token_set accepts token when auth_time is within max_age", {
     access_token = "at_ok",
     token_type = "Bearer",
     id_token = jwt,
-    scope = ""
+    scope = "openid"
   )
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
@@ -499,7 +500,7 @@ test_that("verify_token_set rejects ID token missing auth_time when max_age requ
     access_token = "at_missing",
     token_type = "Bearer",
     id_token = jwt,
-    scope = ""
+    scope = "openid"
   )
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
