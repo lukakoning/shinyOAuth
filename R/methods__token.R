@@ -870,8 +870,10 @@ introspect_token <- function(
 #' continuity check.
 #'
 #' When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
-#' access token. If both a new ID token and fresh userinfo are present and
-#' `userinfo_id_token_match = TRUE`, their subjects are verified to match.
+#' access token. If `userinfo_id_token_match = TRUE`, refreshed userinfo is
+#' checked against the refresh ID token when one is returned, otherwise against
+#' the preserved original ID token from the initial login. If no trustworthy ID
+#' token baseline is available, refresh fails instead of updating userinfo.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
@@ -1175,20 +1177,32 @@ refresh_token <- function(
             token = tok$access_token,
             shiny_session = shiny_session
           )
-          token_set$userinfo <- ui
 
-          if (
-            isTRUE(oauth_client@provider@userinfo_id_token_match) &&
-              is_valid_string(token_set[["id_token"]])
-          ) {
+          if (isTRUE(oauth_client@provider@userinfo_id_token_match)) {
+            baseline_id_token <- token_set[["id_token"]]
+            if (!is_valid_string(baseline_id_token)) {
+              baseline_id_token <- token@id_token
+            }
+
+            if (!is_valid_string(baseline_id_token)) {
+              err_userinfo(c(
+                "x" = "Cannot verify refreshed userinfo subject",
+                "i" = paste(
+                  "userinfo_id_token_match = TRUE requires a new or preserved",
+                  "ID token during refresh"
+                )
+              ))
+            }
+
             verify_userinfo_id_token_subject_match(
               oauth_client,
               userinfo = ui,
-              id_token = token_set[["id_token"]]
+              id_token = baseline_id_token
             )
           }
 
           validate_essential_claims(oauth_client, ui, "userinfo")
+          token_set$userinfo <- ui
         }
 
         expires_at <- if (

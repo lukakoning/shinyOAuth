@@ -26,6 +26,10 @@ logical state digest when available for better correlation. See
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
 
+* `refresh_token()` now refuses to update userinfo unless it can verify the 
+refreshed identity against a new or preserved ID token subject, preventing
+identity confusion when providers omit `id_token` from refresh responses.
+
 * `get_userinfo()` now always requires a non-empty `sub` claim in userinfo
 responses from OIDC providers (those with an `issuer` configured), per OIDC Core 
 section 5.3. Previously, a non-compliant response without `sub` could be 

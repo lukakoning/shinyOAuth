@@ -1294,8 +1294,9 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
   )
 })
 
-testthat::test_that("refresh_token skips userinfo_id_token_match when id_token missing", {
-  # When refresh omits id_token but userinfo is fetched, skip the match check
+testthat::test_that("refresh_token errors when userinfo_id_token_match lacks an id_token baseline", {
+  # When refresh omits id_token and no original id_token is available,
+  # fail closed rather than storing unverifiable userinfo.
 
   prov <- oauth_provider(
     name = "oidc-example",
@@ -1356,10 +1357,94 @@ testthat::test_that("refresh_token skips userinfo_id_token_match when id_token m
     .package = "shinyOAuth"
   )
 
-  # Should succeed - no id_token to match against
-  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
-  testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
-  testthat::expect_identical(t2@access_token, "new_at")
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "Cannot verify refreshed userinfo subject"
+  )
+})
+
+testthat::test_that("refresh_token rejects refreshed userinfo that mismatches preserved id_token", {
+  prov <- oauth_provider(
+    name = "oidc-example",
+    auth_url = "https://issuer.example.com/auth",
+    token_url = "https://issuer.example.com/token",
+    userinfo_url = "https://issuer.example.com/userinfo",
+    issuer = "https://issuer.example.com",
+    id_token_validation = TRUE,
+    id_token_required = FALSE,
+    userinfo_required = TRUE,
+    userinfo_id_token_match = TRUE,
+    userinfo_id_selector = function(ui) ui$sub,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "body"
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  original_payload <- list(
+    iss = "https://issuer.example.com",
+    sub = "user-123",
+    aud = "abc",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  )
+  original_id_token <- paste(
+    shinyOAuth:::base64url_encode(charToRaw('{"alg":"none"}')),
+    shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
+      original_payload,
+      auto_unbox = TRUE
+    ))),
+    "",
+    sep = "."
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = original_id_token,
+    userinfo = list(sub = "user-123", name = "Old Name")
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      url <- as.character(req$url)
+      if (grepl("userinfo", url, fixed = TRUE)) {
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"different-user","name":"Imposter"}')
+        )
+      } else {
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            '{"access_token":"new_at","token_type":"Bearer","expires_in":3600}'
+          )
+        )
+      }
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    class = "shinyOAuth_userinfo_mismatch"
+  )
 })
 
 testthat::test_that("refresh_token succeeds when userinfo and id_token subjects match", {
@@ -1478,10 +1563,9 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
   testthat::expect_identical(t2@id_token, new_id_token)
 })
 
-testthat::test_that("refresh_token updates userinfo even when id_token omitted", {
-  # When refresh omits id_token but userinfo_required is TRUE,
-
-  # userinfo should still be fetched and updated
+testthat::test_that("refresh_token updates userinfo when it matches the preserved id_token", {
+  # When refresh omits id_token, refreshed userinfo can still be stored if it
+  # matches the preserved original id_token subject.
 
   prov <- oauth_provider(
     name = "oidc-example",
@@ -1563,9 +1647,9 @@ testthat::test_that("refresh_token updates userinfo even when id_token omitted",
   t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "new_at")
-  # Userinfo should be updated with fresh data
+  # Userinfo should be updated with fresh data.
   testthat::expect_identical(t2@userinfo$name, "Fresh Name")
-  # Original id_token should be preserved (refresh didn't return a new one)
+  # Original id_token should be preserved when refresh omits a new one.
   testthat::expect_identical(t2@id_token, original_id_token)
 })
 
