@@ -75,8 +75,11 @@ or directory GUID). Defaults to "common"</p></dd>
 
 <dt id="arg-id-token-validation">id_token_validation<a class="anchor" aria-label="anchor" href="#arg-id-token-validation"></a></dt>
 <dd><p>Optional override (logical). If <code>NULL</code> (default),
-it's enabled automatically when <code>tenant</code> looks like a GUID, otherwise
-disabled</p></dd>
+it's enabled automatically when <code>tenant</code> looks like a GUID or one of the
+Microsoft alias tenants (<code>common</code>, <code>organizations</code>, <code>consumers</code>).
+<code>common</code> and <code>organizations</code> use Microsoft's tenant-independent issuer and
+signing-key validation rules; <code>consumers</code> uses the stable consumer tenant
+issuer</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -88,15 +91,19 @@ disabled</p></dd>
     <p>The <code>tenant</code> can be one of the special values "common", "organizations",
 or "consumers", or a specific directory (tenant) ID GUID
 (e.g., "00000000-0000-0000-0000-000000000000").</p>
-<p>When <code>tenant</code> is a specific GUID, the provider will enable strict ID token
-validation (issuer match). When using the multi-tenant aliases ("common",
-"organizations", "consumers"), the exact issuer depends on the account that
-signs in and therefore ID token validation is disabled by default to avoid
-false negatives. You can override this via <code>id_token_validation</code> if you know
-the environment guarantees a fixed issuer.</p>
-<p>Note: ID token validation requires a stable issuer. For multi-tenant aliases,
-this provider sets <code>issuer = NA</code> and therefore also disables <code>use_nonce</code> by
-default (nonce validation relies on validating the ID token).</p>
+<p>When <code>tenant</code> is a specific GUID, the provider enables strict ID token
+validation with the tenant-specific issuer.</p>
+<p>For <code>tenant = "common"</code> or <code>tenant = "organizations"</code>, the helper enables
+Microsoft Entra's tenant-independent validation mode by default: ID tokens
+are checked against Microsoft's <code>{tenantid}</code> issuer template and the signing
+key's own <code>issuer</code> scope, as documented by Microsoft for multi-tenant
+metadata.</p>
+<p>For <code>tenant = "consumers"</code>, the helper resolves the stable consumer tenant
+issuer (<code>9188040d-6c67-4c5b-b112-36a304b66dad</code>) and performs normal exact-
+issuer validation.</p>
+<p>Set <code>id_token_validation = FALSE</code> to opt out of ID token and nonce
+validation for these aliases, which falls back to OAuth 2.0 plus userinfo
+identity only.</p>
 <p>Microsoft issues RS256 ID tokens; <code>allowed_algs</code> is restricted accordingly.
 The userinfo endpoint is provided by Microsoft Graph
 (https://graph.microsoft.com/oidc/userinfo).</p>

@@ -30,7 +30,11 @@ oauth_provider_microsoft(
 - id_token_validation:
 
   Optional override (logical). If `NULL` (default), it's enabled
-  automatically when `tenant` looks like a GUID, otherwise disabled
+  automatically when `tenant` looks like a GUID or one of the Microsoft
+  alias tenants (`common`, `organizations`, `consumers`). `common` and
+  `organizations` use Microsoft's tenant-independent issuer and
+  signing-key validation rules; `consumers` uses the stable consumer
+  tenant issuer
 
 ## Value
 
@@ -43,18 +47,22 @@ The `tenant` can be one of the special values "common", "organizations",
 or "consumers", or a specific directory (tenant) ID GUID (e.g.,
 "00000000-0000-0000-0000-000000000000").
 
-When `tenant` is a specific GUID, the provider will enable strict ID
-token validation (issuer match). When using the multi-tenant aliases
-("common", "organizations", "consumers"), the exact issuer depends on
-the account that signs in and therefore ID token validation is disabled
-by default to avoid false negatives. You can override this via
-`id_token_validation` if you know the environment guarantees a fixed
-issuer.
+When `tenant` is a specific GUID, the provider enables strict ID token
+validation with the tenant-specific issuer.
 
-Note: ID token validation requires a stable issuer. For multi-tenant
-aliases, this provider sets `issuer = NA` and therefore also disables
-`use_nonce` by default (nonce validation relies on validating the ID
-token).
+For `tenant = "common"` or `tenant = "organizations"`, the helper
+enables Microsoft Entra's tenant-independent validation mode by default:
+ID tokens are checked against Microsoft's `{tenantid}` issuer template
+and the signing key's own `issuer` scope, as documented by Microsoft for
+multi-tenant metadata.
+
+For `tenant = "consumers"`, the helper resolves the stable consumer
+tenant issuer (`9188040d-6c67-4c5b-b112-36a304b66dad`) and performs
+normal exact- issuer validation.
+
+Set `id_token_validation = FALSE` to opt out of ID token and nonce
+validation for these aliases, which falls back to OAuth 2.0 plus
+userinfo identity only.
 
 Microsoft issues RS256 ID tokens; `allowed_algs` is restricted
 accordingly. The userinfo endpoint is provided by Microsoft Graph

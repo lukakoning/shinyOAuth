@@ -2,6 +2,13 @@
 
 ## shinyOAuth (development version)
 
+- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
+  no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
+  identity by default. `common` and `organizations` now validate ID
+  tokens using Microsoft’s tenant-independent issuer and signing-key
+  issuer rules, and `consumers` now validates against the stable
+  consumer tenant issuer.
+
 - Added OpenTelemetry (OTel) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback
