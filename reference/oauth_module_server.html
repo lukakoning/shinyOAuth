@@ -85,7 +85,8 @@ necessary JavaScript dependencies.</p>
 <span>  tab_title_cleaning <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  tab_title_replacement <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  browser_cookie_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  browser_cookie_samesite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Strict"</span>, <span class="st">"Lax"</span>, <span class="st">"None"</span><span class="op">)</span></span>
+<span>  browser_cookie_samesite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Strict"</span>, <span class="st">"Lax"</span>, <span class="st">"None"</span><span class="op">)</span>,</span>
+<span>  require_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -209,6 +210,15 @@ associated risk. If set to "None", the cookie will be marked
 non-HTTPS origins because browsers reject <code>SameSite=None</code> cookies without
 the <code>Secure</code> attribute</p></dd>
 
+
+<dt id="arg-require-callback-issuer">require_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-require-callback-issuer"></a></dt>
+<dd><p>If TRUE, require the authorization response to
+include an RFC 9207 <code>iss</code> parameter and reject the callback unless it
+exactly matches <code>client@provider@issuer</code>. This fails closed before any
+token exchange and is recommended when one Shiny app can interact with more
+than one authorization server using the same callback URL. Requires the
+provider to have a configured <code>issuer</code>. Default is FALSE.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -328,6 +338,12 @@ conservative default of 5 minutes (300 seconds) is used to align with the
 built-in <code>cachem::cache_mem(max_age = 300)</code> default. Separately, the state
 payload <code>issued_at</code> freshness window is controlled by the client's
 <code>state_payload_max_age</code> (default 300 seconds).</p></li>
+<li><p>Multi-issuer deployments: when one Shiny app can interact with more than
+one authorization server and those flows share a callback URL, RFC 9700
+requires a mix-up defense. For issuer-configured OIDC clients, set
+<code>require_callback_issuer = TRUE</code> to require the RFC 9207 <code>iss</code> callback
+parameter before any token exchange occurs. If your provider does not send
+<code>iss</code>, register distinct <code>redirect_uri</code> values per issuer instead.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

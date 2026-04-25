@@ -29,7 +29,8 @@ oauth_module_server(
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None")
+  browser_cookie_samesite = c("Strict", "Lax", "None"),
+  require_callback_issuer = FALSE
 )
 ```
 
@@ -160,6 +161,15 @@ oauth_module_server(
   `SameSite=None; Secure` in the browser, and authentication will error
   on non-HTTPS origins because browsers reject `SameSite=None` cookies
   without the `Secure` attribute
+
+- require_callback_issuer:
+
+  If TRUE, require the authorization response to include an RFC 9207
+  `iss` parameter and reject the callback unless it exactly matches
+  `client@provider@issuer`. This fails closed before any token exchange
+  and is recommended when one Shiny app can interact with more than one
+  authorization server using the same callback URL. Requires the
+  provider to have a configured `issuer`. Default is FALSE.
 
 ## Value
 
@@ -317,6 +327,14 @@ It also contains the following helper functions, mainly useful when
   Separately, the state payload `issued_at` freshness window is
   controlled by the client's `state_payload_max_age` (default 300
   seconds).
+
+- Multi-issuer deployments: when one Shiny app can interact with more
+  than one authorization server and those flows share a callback URL,
+  RFC 9700 requires a mix-up defense. For issuer-configured OIDC
+  clients, set `require_callback_issuer = TRUE` to require the RFC 9207
+  `iss` callback parameter before any token exchange occurs. If your
+  provider does not send `iss`, register distinct `redirect_uri` values
+  per issuer instead.
 
 ## See also
 

@@ -828,6 +828,11 @@ bringing your app to production:</p>
 <ul>
 <li>Use HTTPS everywhere in production</li>
 <li>Verify issuer used in your provider is correct</li>
+<li>If one app can interact with multiple authorization servers, either
+give each issuer a distinct <code>redirect_uri</code> or set
+<code>require_callback_issuer = TRUE</code> for issuer-configured
+clients so callbacks without RFC 9207 <code>iss</code> are rejected
+before token exchange</li>
 <li>In your <code>OAuthProvider</code>, set as many of the security
 options as possible; for instance, set
 <code>jwks_host_issuer_match</code>/<code>jwks_host_allow_only</code>

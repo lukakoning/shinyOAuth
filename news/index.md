@@ -2,6 +2,19 @@
 
 ## shinyOAuth (development version)
 
+- `OAuthProvider(extra_auth_params = list(response_mode = ...))` now
+  fails fast unless `response_mode = "query"`. Plain Shiny callback URLs
+  reject POST requests, so `response_mode = "form_post"` was previously
+  allowed but led to a broken callback round-trip instead of a clear
+  configuration error.
+
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now supports `require_callback_issuer = TRUE` to reject
+  issuer-configured callbacks that omit the RFC 9207 `iss` parameter.
+  Use this strict mode when one Shiny app can talk to multiple
+  authorization servers through the same callback URL; otherwise use
+  distinct redirect URIs per issuer.
+
 - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
   no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
   identity by default. `common` and `organizations` now validate ID
