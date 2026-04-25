@@ -26,6 +26,57 @@ is_valid_string <- function(x, min_char = 1) {
     nchar(x) >= min_char
 }
 
+inspect_auth_response_mode <- function(extra_auth_params) {
+  out <- list(index = integer(0), mode = NULL, error = NULL)
+
+  if (!is.list(extra_auth_params) || length(extra_auth_params) == 0) {
+    return(out)
+  }
+
+  nms <- names(extra_auth_params)
+  if (is.null(nms)) {
+    return(out)
+  }
+
+  idx <- which(tolower(trimws(nms)) == "response_mode")
+  if (!length(idx)) {
+    return(out)
+  }
+  if (length(idx) > 1L) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$response_mode must be supplied at most once"
+    )
+    return(out)
+  }
+
+  out$index <- idx[[1]]
+  raw_mode <- extra_auth_params[[out$index]]
+  if (
+    !is.character(raw_mode) ||
+      length(raw_mode) != 1L ||
+      is.na(raw_mode) ||
+      !nzchar(trimws(raw_mode))
+  ) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$response_mode must be a single non-empty string"
+    )
+    return(out)
+  }
+
+  mode <- tolower(trimws(raw_mode))
+  if (!identical(mode, "query")) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$response_mode = ",
+      sQuote(raw_mode),
+      " is not supported. shinyOAuth only supports the default 'query' response mode because plain Shiny callback URLs do not accept POST form callbacks."
+    )
+    return(out)
+  }
+
+  out$mode <- mode
+  out
+}
+
 #' Internal: validate untrusted scalar query param sizes
 #'
 #' This helper is used for values that originate from URL query strings.

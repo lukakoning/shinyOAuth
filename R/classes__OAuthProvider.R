@@ -422,6 +422,11 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    response_mode_info <- inspect_auth_response_mode(self@extra_auth_params)
+    if (!is.null(response_mode_info$error)) {
+      return(response_mode_info$error)
+    }
+
     # Validate extra_auth_params: block reserved keys that could desync state,
     # bypass PKCE, or corrupt the authorization request.
     # These fields are managed internally by shinyOAuth and must not be overridden.

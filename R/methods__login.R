@@ -366,6 +366,14 @@ build_auth_url <- function(
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params
 
+    response_mode_info <- inspect_auth_response_mode(extra)
+    if (!is.null(response_mode_info$error)) {
+      err_config(response_mode_info$error)
+    }
+    if (length(response_mode_info$index) == 1L) {
+      extra[[response_mode_info$index]] <- response_mode_info$mode
+    }
+
     # Block parameters that are critical to OAuth security. Allowing these to be
     # overridden via extra_auth_params would break state binding, redirect_uri
     # validation, or PKCE integrity and could lead to unsafe configurations.
