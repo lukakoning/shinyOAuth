@@ -1,5 +1,27 @@
 # shinyOAuth (development version)
 
+* Added OpenTelemetry (OTel) support (using the 'otel' package). 
+'shinyOAuth' now emits OTel logs from existing audit events and traces
+key OAuth operations such as module initialization, login/callback handling, 
+token exchange/refresh, userinfo/introspection/revocation, and session-end cleanup. 
+See `vignette("opentelemetry", package = "shinyOAuth")` for more information.
+
+* Improved observability correlation for existing audit flows. Interactive
+login now reuses a single flow `trace_id` across redirect issuance, callback
+validation, token exchange, and login outcome events, making it easier to
+correlate the pre-redirect and post-redirect Shiny sessions for a single login
+round-trip; async work also carries more accurate originating Shiny
+session/process context into worker-emitted events.
+
+* Improved existing audit event types. `audit_token_exchange` and `audit_token_refresh`
+now include `expires_in_synthesized`, indicating that the provider did not 
+return a usable `expires_in` and shinyOAuth had to synthesize one; `audit_login_failed`
+now distinguishes async payload-validation and state-store-lookup failures from
+async token-exchange failures; `audit_userinfo` distinguishes missing `sub`
+and JWT/JWKS validation failures; and error-state consumption events use the
+logical state digest when available for better correlation. See 
+`vignette("audit-logging", package = "shinyOAuth")` for more information.
+
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
@@ -16,11 +38,6 @@ transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
 refresh tokens may be rotated on each use; retrying after the server has
 already committed the first request would replay an invalidated credential,
 causing `invalid_grant` errors or triggering refresh-token replay detection.
-
-* `audit_token_exchange` and `audit_token_refresh` events now include an
-`expires_in_synthesized` boolean field. It is `TRUE` when the provider's
-token response did not contain a usable `expires_in` value and the package
-fell back to `resolve_missing_expires_in()`.
 
 # shinyOAuth 0.4.0
 

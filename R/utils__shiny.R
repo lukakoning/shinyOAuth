@@ -41,18 +41,19 @@ get_current_shiny_session_token <- function() {
   .scalar_chr(tryCatch(sess$token, error = function(...) NULL))
 }
 
-# Internal: capture Shiny session context for later use in async workers.
+# Internal: capture Shiny session context for later use in async workers or
+# in callbacks that no longer have a reactive domain available.
 # Call this on the main thread (inside a reactive observer or module server)
 # before spawning an async task. The returned list can be passed to
 # audit_event(..., shiny_session = <captured>) so that events emitted from
 # the async context include the originating Shiny session information.
 # Returns NULL if no session context is available.
 #
-# The returned context includes is_async = TRUE to indicate that when this
-# context is used in an audit event, the event is being emitted from an
-# async worker rather than the main R process. It also includes the main
-# process_id to help correlate events across workers.
-capture_shiny_session_context <- function() {
+# When `is_async = TRUE`, the context is intended for a worker process and
+# therefore records the main process ID for later correlation. When
+# `is_async = FALSE`, the context represents the current main R process and
+# includes its process_id directly.
+capture_shiny_session_context <- function(is_async = TRUE) {
   tok <- get_current_shiny_session_token()
 
   # Check if HTTP context should be included (default: TRUE)
@@ -73,12 +74,69 @@ capture_shiny_session_context <- function() {
     list(
       token = if (!is.na(tok)) tok else NULL,
       http = http,
-      is_async = TRUE, # When pre-captured context is used, we're in an async worker
-      main_process_id = main_pid
+      is_async = isTRUE(is_async),
+      process_id = if (!isTRUE(is_async)) main_pid else NULL,
+      main_process_id = if (isTRUE(is_async)) main_pid else NULL
     )
   } else {
     NULL
   }
+}
+
+# Internal: normalize a provided shiny_session context for the current process.
+# This fills in worker-local fields when async context is active, and corrects
+# main-process emissions that were given a worker-intended context before
+# dispatch actually happened.
+normalize_shiny_session_context <- function(shiny_session) {
+  if (is.null(shiny_session) || !is.list(shiny_session)) {
+    return(shiny_session)
+  }
+
+  normalized <- shiny_session
+  async_ctx <- get_async_session_context()
+
+  if (!is.null(async_ctx) && is.list(async_ctx)) {
+    for (nm in names(async_ctx)) {
+      if (is.null(normalized[[nm]]) && !is.null(async_ctx[[nm]])) {
+        normalized[[nm]] <- async_ctx[[nm]]
+      }
+    }
+  }
+
+  current_pid <- Sys.getpid()
+  main_pid <- suppressWarnings(as.integer(
+    normalized$main_process_id %||% NA_integer_
+  ))
+  process_pid <- suppressWarnings(as.integer(
+    normalized$process_id %||% NA_integer_
+  ))
+
+  if (isTRUE(normalized$is_async)) {
+    if (!is.na(process_pid)) {
+      normalized$process_id <- process_pid
+      return(normalized)
+    }
+
+    if (!is.na(main_pid) && identical(as.integer(current_pid), main_pid)) {
+      normalized$is_async <- FALSE
+      normalized$process_id <- current_pid
+      return(normalized)
+    }
+
+    if (
+      isTRUE(is_async_worker_context()) ||
+        (!is.na(main_pid) && !identical(as.integer(current_pid), main_pid))
+    ) {
+      normalized$process_id <- current_pid
+      return(normalized)
+    }
+  }
+
+  if (!isTRUE(normalized$is_async) && is.na(process_pid)) {
+    normalized$process_id <- current_pid
+  }
+
+  normalized
 }
 
 # Internal: set a fallback session context for the current execution scope.
@@ -91,15 +149,23 @@ set_async_session_context <- function(ctx) {
   invisible(old)
 }
 
+# Internal: mark whether the current execution scope is an async worker.
+# This is separate from the Shiny session context so direct async token APIs
+# can still detect worker execution when no `shiny_session` is available.
+set_async_worker_context <- function(is_worker) {
+  old <- isTRUE(.async_context_env$is_worker)
+  .async_context_env$is_worker <- isTRUE(is_worker)
+  invisible(old)
+}
+
+# Internal: check whether the current execution scope is an async worker.
+is_async_worker_context <- function() {
+  isTRUE(.async_context_env$is_worker)
+}
+
 # Internal: get the current fallback session context, if any.
 get_async_session_context <- function() {
   .async_context_env$current
-}
-
-# Internal: clear the fallback session context.
-clear_async_session_context <- function() {
-  .async_context_env$current <- NULL
-  invisible(NULL)
 }
 
 # Internal: execute code with a fallback session context set.
@@ -113,6 +179,12 @@ with_async_session_context <- function(ctx, code) {
 
   old <- set_async_session_context(ctx)
   on.exit(set_async_session_context(old), add = TRUE)
+  if (!is.null(ctx)) {
+    try(
+      otel_set_span_attributes(attributes = otel_shiny_attributes(ctx)),
+      silent = TRUE
+    )
+  }
   force(code)
 }
 
@@ -129,9 +201,261 @@ capture_async_options <- function() {
   # Filter to only shinyOAuth.* options
   shinyoauth_names <- grep("^shinyOAuth\\.", names(all_opts), value = TRUE)
   opts <- all_opts[shinyoauth_names]
+  # Capture relevant OpenTelemetry env vars as internal metadata so async
+  # workers inherit the parent session's telemetry configuration rather than
+  # the ambient shell environment.
+  opts[[".shinyOAuth.otel_envvars"]] <- capture_async_otel_envvars()
+  # Propagate the effective digest key so worker-emitted digests remain
+  # comparable even when the operator relies on the default auto-keying.
+  opts[[".shinyOAuth.audit_digest_key_cache"]] <- get_audit_digest_key()
   # Also capture the originating process ID for audit event context
   opts[[".shinyOAuth.main_process_id"]] <- Sys.getpid()
   opts
+}
+
+# Internal: capture the effective shinyOAuth OTel option gates, including
+# default values when the options are currently unset in the main process.
+capture_async_otel_option_gates <- function() {
+  list(
+    shinyOAuth.otel_tracing_enabled = otel_tracing_enabled(),
+    shinyOAuth.otel_logging_enabled = otel_logging_enabled()
+  )
+}
+
+# Internal: apply captured shinyOAuth OTel option gates before restoring worker
+# spans. This keeps reused workers from reusing stale FALSE option values from
+# previous tasks when the main process expects tracing/logging to be enabled.
+apply_async_otel_option_gates <- function(captured_gates) {
+  if (is.null(captured_gates) || length(captured_gates) == 0) {
+    return(list(old_options = list()))
+  }
+
+  list(old_options = do.call(options, captured_gates))
+}
+
+# Internal: restore worker-local shinyOAuth OTel option gates after temporary
+# async propagation.
+restore_async_otel_option_gates <- function(old_options) {
+  if (is.null(old_options) || length(old_options) == 0) {
+    return(invisible(NULL))
+  }
+
+  do.call(options, old_options)
+  invisible(NULL)
+}
+
+# Internal: capture the OpenTelemetry env vars that influence exporter
+# selection and OTLP endpoints. Values set to NA indicate the variable should
+# be unset in the async worker.
+current_async_otel_envvar_names <- function() {
+  grep("^OTEL(_R)?_", names(Sys.getenv()), value = TRUE)
+}
+
+capture_async_otel_envvars <- function() {
+  otel_names <- unique(c(
+    current_async_otel_envvar_names(),
+    "OTEL_R_TRACES_EXPORTER",
+    "OTEL_R_LOGS_EXPORTER",
+    "OTEL_R_METRICS_EXPORTER",
+    "OTEL_TRACES_EXPORTER",
+    "OTEL_LOGS_EXPORTER",
+    "OTEL_METRICS_EXPORTER",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"
+  ))
+  if (!length(otel_names)) {
+    return(stats::setNames(character(0), character(0)))
+  }
+  Sys.getenv(otel_names, unset = NA_character_)
+}
+
+# Internal: apply captured OTEL env vars in the current process and rebuild
+# cached providers whenever the effective OTEL configuration changes.
+resolve_async_otel_cache_reset <- function() {
+  if (!requireNamespace("otel", quietly = TRUE)) {
+    return(list(
+      reset = NULL,
+      source = "missing",
+      name = NA_character_
+    ))
+  }
+
+  exported_names <- tryCatch(
+    getNamespaceExports("otel"),
+    error = function(...) character()
+  )
+  for (candidate in c(
+    "otel_clean_cache",
+    "reset_otel_cache",
+    "reset_provider_cache"
+  )) {
+    if (!(candidate %in% exported_names)) {
+      next
+    }
+
+    reset <- tryCatch(
+      getExportedValue("otel", candidate),
+      error = function(...) NULL
+    )
+    if (is.function(reset)) {
+      return(list(
+        reset = reset,
+        source = "exported",
+        name = candidate
+      ))
+    }
+  }
+
+  otel_ns <- asNamespace("otel")
+  for (candidate in c("otel_clean_cache")) {
+    reset <- tryCatch(
+      get(candidate, envir = otel_ns, inherits = FALSE),
+      error = function(...) NULL
+    )
+    if (is.function(reset)) {
+      return(list(
+        reset = reset,
+        source = "private",
+        name = candidate
+      ))
+    }
+  }
+
+  list(
+    reset = NULL,
+    source = "missing",
+    name = NA_character_
+  )
+}
+
+warn_about_async_otel_cache_reset <- function(
+  reason = c("missing", "failed"),
+  name = NA_character_,
+  error = NULL
+) {
+  reason <- match.arg(reason)
+
+  detail <- if (identical(reason, "failed")) {
+    paste0(
+      "shinyOAuth changed OTEL_* environment variables in a reused async ",
+      "worker, but the otel cache reset hook",
+      if (is_valid_string(name)) paste0(" '", name, "'") else "",
+      " failed: ",
+      conditionMessage(error %||% simpleError("unknown error"))
+    )
+  } else {
+    paste(
+      "shinyOAuth changed OTEL_* environment variables in a reused async",
+      "worker, but the installed otel package does not expose a cache",
+      "reset hook shinyOAuth can call."
+    )
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Async OpenTelemetry exporter changes may not take effect in reused workers}",
+      "!" = detail,
+      "i" = paste(
+        "Reused Mirai workers may keep stale tracer, logger, or exporter",
+        "providers until they are recreated."
+      ),
+      "i" = paste(
+        "shinyOAuth feature-tests otel's cache reset hook and uses the",
+        "internal otel_clean_cache helper when it is available."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = paste0("async_otel_cache_reset_", reason)
+  )
+
+  invisible(FALSE)
+}
+
+reset_async_otel_cache <- function() {
+  cache_reset <- resolve_async_otel_cache_reset()
+  if (!is.function(cache_reset$reset)) {
+    return(warn_about_async_otel_cache_reset("missing"))
+  }
+
+  tryCatch(
+    {
+      cache_reset$reset()
+      invisible(TRUE)
+    },
+    error = function(e) {
+      warn_about_async_otel_cache_reset(
+        "failed",
+        name = cache_reset$name,
+        error = e
+      )
+    }
+  )
+}
+
+apply_async_otel_envvars <- function(captured_envvars) {
+  if (is.null(captured_envvars) || length(captured_envvars) == 0) {
+    return(list(
+      changed = FALSE,
+      old_envvars = stats::setNames(character(0), character(0))
+    ))
+  }
+
+  # Reused workers may still carry OTEL_* values that were not explicitly
+  # captured by the parent because they were unset there. Treat the captured
+  # state as authoritative and clear any extra OTEL vars currently living in
+  # the worker, while preserving them for restore on exit.
+  env_names <- unique(c(
+    names(captured_envvars),
+    current_async_otel_envvar_names()
+  ))
+  old_envvars <- Sys.getenv(env_names, unset = NA_character_)
+  desired_envvars <- stats::setNames(
+    rep(NA_character_, length(env_names)),
+    env_names
+  )
+  desired_envvars[names(captured_envvars)] <- captured_envvars
+  otel_envvars_changed <- !identical(old_envvars, desired_envvars)
+  if (!isTRUE(otel_envvars_changed)) {
+    return(list(changed = FALSE, old_envvars = old_envvars))
+  }
+
+  new_values <- desired_envvars[!is.na(desired_envvars)]
+  vars_to_unset <- names(desired_envvars)[is.na(desired_envvars)]
+  if (length(new_values)) {
+    do.call(Sys.setenv, as.list(new_values))
+  }
+  if (length(vars_to_unset)) {
+    Sys.unsetenv(vars_to_unset)
+  }
+
+  # OTEL_* env vars only affect provider setup at initialization time, so
+  # reused async workers must rebuild cached providers after any env change,
+  # including transitions from an enabled exporter back to "none".
+  reset_async_otel_cache()
+
+  list(changed = TRUE, old_envvars = old_envvars)
+}
+
+# Internal: restore OTEL env vars after temporary async worker propagation.
+restore_async_otel_envvars <- function(old_envvars) {
+  if (is.null(old_envvars) || length(old_envvars) == 0) {
+    return(invisible(NULL))
+  }
+
+  restore_values <- old_envvars[!is.na(old_envvars)]
+  restore_unset <- names(old_envvars)[is.na(old_envvars)]
+  if (length(restore_values)) {
+    do.call(Sys.setenv, as.list(restore_values))
+  }
+  if (length(restore_unset)) {
+    Sys.unsetenv(restore_unset)
+  }
+
+  reset_async_otel_cache()
+
+  invisible(NULL)
 }
 
 # Internal: execute code with captured shinyOAuth options temporarily set.
@@ -141,10 +465,35 @@ with_async_options <- function(captured_opts, code) {
   if (is.null(captured_opts) || length(captured_opts) == 0) {
     return(force(code))
   }
+  old_async_worker <- set_async_worker_context(is_async_worker(captured_opts))
+  on.exit(set_async_worker_context(old_async_worker), add = TRUE)
+  captured_envvars <- captured_opts[[".shinyOAuth.otel_envvars"]]
+  captured_digest_key <- captured_opts[[".shinyOAuth.audit_digest_key_cache"]]
   # Filter out internal markers (start with ".")
   opts_to_set <- captured_opts[
     !startsWith(names(captured_opts), ".")
   ]
+  if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
+    otel_env_state <- apply_async_otel_envvars(captured_envvars)
+    if (isTRUE(otel_env_state$changed)) {
+      on.exit(
+        restore_async_otel_envvars(otel_env_state$old_envvars),
+        add = TRUE
+      )
+    }
+  }
+
+  if (".shinyOAuth.audit_digest_key_cache" %in% names(captured_opts)) {
+    old_digest_key <- audit_digest_key_env$key
+    audit_digest_key_env$key <- captured_digest_key
+    on.exit(
+      {
+        audit_digest_key_env$key <- old_digest_key
+      },
+      add = TRUE
+    )
+  }
+
   if (length(opts_to_set) == 0) {
     return(force(code))
   }
@@ -182,8 +531,10 @@ is_async_worker <- function(captured_opts) {
 #    (is_async = TRUE, already set in the captured context)
 augment_with_shiny_context <- function(event) {
   # If a caller already provided a shiny_session list, do not override.
-  # The pre-captured context will have is_async = TRUE already set.
+  # Normalize it first so borrowed async contexts pick up worker-local fields,
+  # or are corrected when the event is still emitted on the main process.
   if (!is.null(event$shiny_session)) {
+    event$shiny_session <- normalize_shiny_session_context(event$shiny_session)
     return(event)
   }
 
@@ -219,6 +570,23 @@ augment_with_shiny_context <- function(event) {
   }
 
   event
+}
+
+# Internal: call a helper and forward `shiny_session` only when the target
+# explicitly declares that parameter. This keeps async context propagation
+# explicit in runtime code without breaking tests that mock helpers using the
+# older two/three-argument signatures.
+call_with_optional_shiny_session <- function(
+  fn,
+  ...,
+  shiny_session = NULL
+) {
+  args <- list(...)
+  fn_formals <- tryCatch(names(formals(fn)), error = function(...) NULL)
+  if (!is.null(fn_formals) && "shiny_session" %in% fn_formals) {
+    args$shiny_session <- shiny_session
+  }
+  do.call(fn, args)
 }
 
 # Internal: dispatch an async task using the best available backend.
@@ -270,26 +638,102 @@ mirai_connection_count <- function() {
 #   When using mirai with dispatcher (the default), timed-out tasks are
 #   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
 #   when NULL (default = no timeout).
+# @param otel_context Optional list with `headers`, `worker_span_name`,
+#   `attributes`, and `shiny_session` for restoring OpenTelemetry parent
+#   context in the worker.
 # @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
-async_dispatch <- function(expr, args, .timeout = NULL) {
+async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
+  captured_otel_envvars <- capture_async_otel_envvars()
+  captured_otel_option_gates <- capture_async_otel_option_gates()
+  captured_trace_id <- get_current_trace_id()
+  if (!is.null(otel_context)) {
+    otel_context$attributes <- otel_with_trace_attribute(
+      attributes = otel_context$attributes,
+      trace_id = captured_trace_id
+    )
+  }
 
   # Wrap the expression to capture warnings and messages emitted in the worker
   # process. Conditions are collected into lists and bundled alongside the
   # result so callers can replay them on the main thread via
   # replay_async_conditions().
   wrapped_expr <- bquote({
+    .ns <- asNamespace("shinyOAuth")
+    .otel_worker_span <- NULL
+    .async_error <- NULL
+    .otel_envvars <- .(captured_otel_envvars)
+    .otel_option_gates <- .(captured_otel_option_gates)
+    .otel_context <- .(otel_context)
+    if (!is.null(.otel_option_gates) && length(.otel_option_gates) > 0) {
+      .otel_option_state <- .ns$apply_async_otel_option_gates(
+        .otel_option_gates
+      )
+      on.exit(
+        .ns$restore_async_otel_option_gates(.otel_option_state$old_options),
+        add = TRUE
+      )
+    }
+    if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
+      .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
+      if (isTRUE(.otel_env_state$changed)) {
+        on.exit(
+          .ns$restore_async_otel_envvars(.otel_env_state$old_envvars),
+          add = TRUE
+        )
+      }
+    }
+    if (!is.null(.otel_context)) {
+      .otel_worker_span <- .ns$otel_restore_parent_in_worker(
+        otel_headers = if (!is.null(.otel_context$headers)) {
+          .otel_context$headers
+        } else {
+          NULL
+        },
+        name = if (!is.null(.otel_context$worker_span_name)) {
+          .otel_context$worker_span_name
+        } else {
+          "shinyOAuth.async.worker"
+        },
+        attributes = if (!is.null(.otel_context$attributes)) {
+          .otel_context$attributes
+        } else {
+          list()
+        },
+        shiny_session = if (!is.null(.otel_context$shiny_session)) {
+          .otel_context$shiny_session
+        } else {
+          NULL
+        }
+      )
+    }
+    on.exit(
+      .ns$otel_end_async_parent(
+        list(span = .otel_worker_span),
+        status = if (is.null(.async_error)) "ok" else "error",
+        error = .async_error
+      ),
+      add = TRUE
+    )
     .async_warnings <- list()
     .async_messages <- list()
-    .async_value <- withCallingHandlers(
-      .(expr),
-      warning = function(w) {
-        .async_warnings[[length(.async_warnings) + 1L]] <<- w
-        tryInvokeRestart("muffleWarning")
-      },
-      message = function(m) {
-        .async_messages[[length(.async_messages) + 1L]] <<- m
-        tryInvokeRestart("muffleMessage")
+    .async_value <- tryCatch(
+      withCallingHandlers(
+        .ns$otel_with_active_span(.otel_worker_span, {
+          .(expr)
+        }),
+        warning = function(w) {
+          .async_warnings[[length(.async_warnings) + 1L]] <<- w
+          tryInvokeRestart("muffleWarning")
+        },
+        message = function(m) {
+          .async_messages[[length(.async_messages) + 1L]] <<- m
+          tryInvokeRestart("muffleMessage")
+        }
+      ),
+      error = function(e) {
+        .async_error <<- e
+        stop(e)
       }
     )
     list(
@@ -316,7 +760,7 @@ async_dispatch <- function(expr, args, .timeout = NULL) {
     rlang::is_installed("future") &&
     tryCatch(
       {
-        # Check if a non-sequential plan is set
+        # Check if a future plan is set; sequential still reports one worker.
         future::nbrOfWorkers() > 0
       },
       error = function(...) FALSE

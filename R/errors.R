@@ -1,10 +1,73 @@
 # Internal error helpers with trace IDs and sanitization
 
+# Trace context ------------------------------------------------------------
+
+.trace_context_env <- new.env(parent = emptyenv())
+
+get_current_trace_id <- function() {
+  trace_id <- .trace_context_env$current %||% NULL
+  if (is_valid_string(trace_id)) {
+    return(as.character(trace_id)[[1]])
+  }
+  NULL
+}
+
+resolve_trace_id <- function(trace_id = NULL) {
+  trace_id <- trace_id %||% get_current_trace_id()
+  if (is_valid_string(trace_id)) {
+    return(as.character(trace_id)[[1]])
+  }
+  gen_trace_id()
+}
+
+with_trace_id <- function(trace_id = NULL, code) {
+  trace_id <- resolve_trace_id(trace_id)
+  old <- .trace_context_env$current %||% NULL
+  .trace_context_env$current <- trace_id
+  on.exit(
+    {
+      .trace_context_env$current <- old
+    },
+    add = TRUE
+  )
+  force(code)
+}
+
+rethrow_with_context <- function(e, class = NULL, ...) {
+  extra <- list(...)
+  trace_id <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) {
+    NULL
+  })
+  message <- extra$message %||% conditionMessage(e)
+  extra$message <- NULL
+
+  args <- c(
+    list(
+      message = message,
+      parent = e
+    ),
+    extra
+  )
+  if (!is.null(class)) {
+    args$class <- class
+  }
+  if (is_valid_string(trace_id)) {
+    args$trace_id <- trace_id
+  }
+
+  do.call(rlang::abort, args)
+}
+
 # Generic -----------------------------------------------------------------
 
 # Generic error abortor with trace id and structured context
-err_abort <- function(msg, class = "shinyOAuth_error", context = list()) {
-  trace_id <- gen_trace_id()
+err_abort <- function(
+  msg,
+  class = "shinyOAuth_error",
+  context = list(),
+  trace_id = NULL
+) {
+  trace_id <- resolve_trace_id(trace_id)
   emit_trace_event(c(
     list(type = "error", trace_id = trace_id, message = msg),
     context
@@ -89,8 +152,8 @@ normalize_bullets <- function(msg, default_type = "!") {
 # Specialized error constructors (complex) --------------------------------
 
 # Compose an http error with structured condition and optional sanitized body
-err_http <- function(msg, resp = NULL, context = list()) {
-  trace_id <- gen_trace_id()
+err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
+  trace_id <- resolve_trace_id(trace_id)
   expose <- isTRUE(allow_expose_error_body())
   status <- NA_integer_
   desc <- NULL
@@ -233,8 +296,13 @@ err_http <- function(msg, resp = NULL, context = list()) {
 
 # Compose a transport error (no HTTP response available)
 # Includes a trace id and chains the original error via `parent` when provided.
-err_transport <- function(msg, context = list(), parent = NULL) {
-  trace_id <- gen_trace_id()
+err_transport <- function(
+  msg,
+  context = list(),
+  parent = NULL,
+  trace_id = NULL
+) {
+  trace_id <- resolve_trace_id(trace_id)
   emit_trace_event(c(
     list(type = "transport_error", trace_id = trace_id, message = msg),
     context
@@ -318,9 +386,14 @@ err_parse <- function(msg, context = list()) {
 #   - shiny_session: list with session token and optional HTTP context
 #   - ...: fields from context
 
-# Broadcast audit events via the trace hook (if configured)
-audit_event <- function(type, context = list(), shiny_session = NULL) {
-  trace_id <- gen_trace_id()
+# Broadcast audit events via hooks and OTel logs
+audit_event <- function(
+  type,
+  context = list(),
+  shiny_session = NULL,
+  trace_id = NULL
+) {
+  trace_id <- resolve_trace_id(trace_id)
   event <- c(
     list(
       type = paste0("audit_", type),
@@ -329,7 +402,9 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
     ),
     context
   )
-  # Pre-inject shiny_session if provided (augment_with_shiny_context won't override)
+  # Pre-inject shiny_session if provided. emit_trace_event() will still
+  # normalize it for the current process so borrowed async contexts pick up
+  # worker-local fields or are corrected when emitted on the main thread.
   if (!is.null(shiny_session)) {
     event$shiny_session <- shiny_session
   }
@@ -337,25 +412,37 @@ audit_event <- function(type, context = list(), shiny_session = NULL) {
   invisible(trace_id)
 }
 
-# Emit to: options(shinyOAuth.trace_hook = function(event){...})
+# Central event dispatcher: enriches with Shiny context, then fans out to
+# OTel logs, audit_hook, and trace_hook.
+# trace_hook is kept for backward compatibility but is no longer documented.
 emit_trace_event <- function(event) {
-  hook <- getOption("shinyOAuth.trace_hook", NULL)
+  hook <- getOption("shinyOAuth.trace_hook", NULL) # backward-compat, undocumented
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
   # Enrich with Shiny session/request context when running inside Shiny
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
     event
   })
+  tryCatch(
+    {
+      otel_emit_log(event)
+    },
+    error = function(e) {
+      rlang::warn(paste0(
+        "[shinyOAuth] otel telemetry error: ",
+        conditionMessage(e)
+      ))
+    }
+  )
   if (is.function(hook)) {
     # Surface hook errors as warnings so they are visible in the main process
     # (async_dispatch captures warnings and replays them on the main thread).
     tryCatch(
       hook(event),
       error = function(e) {
-        warning(
+        rlang::warn(paste0(
           "[shinyOAuth] trace_hook error: ",
-          conditionMessage(e),
-          call. = FALSE
-        )
+          conditionMessage(e)
+        ))
       }
     )
   }
@@ -363,11 +450,10 @@ emit_trace_event <- function(event) {
     tryCatch(
       audit_hook(event),
       error = function(e) {
-        warning(
+        rlang::warn(paste0(
           "[shinyOAuth] audit_hook error: ",
-          conditionMessage(e),
-          call. = FALSE
-        )
+          conditionMessage(e)
+        ))
       }
     )
   }
@@ -478,36 +564,4 @@ log_condition <- function(e, context = list()) {
   )
 
   invisible(NULL)
-}
-
-print_compact_trace <- function(e) {
-  if (!requireNamespace("rlang", quietly = TRUE)) {
-    return(invisible(NULL))
-  }
-  bt <- if (inherits(e, "rlang_error") && !is.null(e$trace)) {
-    e$trace
-  } else {
-    rlang::trace_back()
-  }
-  # Collapse parallel branches for readability using print() output
-  lines <- utils::capture.output(print(bt, simplify = "branch"))
-
-  # Hide noisy framework frames
-  drop_pat <- paste(
-    c(
-      "^.*promises::",
-      "^.*shiny::",
-      "serviceApp\\(",
-      "flush",
-      "with_promise_domain",
-      "wrapSync\\(",
-      "captureStackTraces",
-      "\\.domain\\$",
-      "Reactive",
-      "observeEvent"
-    ),
-    collapse = "|"
-  )
-  keep <- lines[!grepl(drop_pat, lines)]
-  cat(paste(keep, collapse = "\n"), "\n", sep = "")
 }

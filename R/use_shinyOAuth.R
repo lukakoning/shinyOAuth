@@ -94,11 +94,6 @@ assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
   invisible(TRUE)
 }
 
-# call this from your UI helper that injects the JS dependency
-mark_js_dependency_called <- function() {
-  .set_flag(".called_js_dependency", TRUE)
-}
-
 warn_about_missing_js_dependency <- function() {
   if (.is_test()) {
     return(invisible(NULL))

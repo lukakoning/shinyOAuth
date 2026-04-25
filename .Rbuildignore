@@ -1,4 +1,5 @@
 ^.*\.Rproj$
+^\.Rprofile$
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
@@ -26,3 +27,4 @@ codex/*
 integration/*
 .dockerignore
 ^jarl\.toml$
+^otel_plan\.md$

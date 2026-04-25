@@ -6,25 +6,25 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/shinyOAuth)](https://CRAN.R-project.org/package=shinyOAuth)
 <!-- badges: end -->
 
-'[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC) 
+'[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC)
 authorization and authentication for [Shiny](https://github.com/rstudio/shiny) apps. It is built
 with modern S7 classes and security in mind.
 
-OAuth 2.0/OIDC lets users sign in to your app using accounts they already have (e.g., Google, Microsoft, GitHub, 
+OAuth 2.0/OIDC lets users sign in to your app using accounts they already have (e.g., Google, Microsoft, GitHub,
 and many more), or via your self-hosted identity provider (e.g., Keycloak), or
 via an identity-as-a-service provider (e.g., Auth0, Okta).
 
-To achieve this, your app redirects unauthenticated users to the identity provider, they authenticate there, 
-and are redirected back to your app with an authorization code. Your app exchanges this code for tokens 
+To achieve this, your app redirects unauthenticated users to the identity provider, they authenticate there,
+and are redirected back to your app with an authorization code. Your app exchanges this code for tokens
 which prove the user's identity, and optionally allow your app to call the provider's APIs on the user's behalf
 (e.g., to fetch data associated with the user's account).
 
 This package streamlines this flow for Shiny applications,
 enabling developers to add OAuth 2.0/OIDC authorization/authentication to their apps with
-minimal code. The provided Shiny module handles redirecting unauthenticated users, 
-managing state/PKCE/nonce for secure code-token exchange, 
+minimal code. The provided Shiny module handles redirecting unauthenticated users,
+managing state/PKCE/nonce for secure code-token exchange,
 verifying OIDC tokens, automatically fetching user info and performing token refresh,
-using asynchronous execution, and more. The package is highly configurable 
+using asynchronous execution, and more. The package is highly configurable
 and works with various OAuth 2.0/OIDC providers and protocol features.
 
 ## Features
@@ -39,17 +39,18 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 - Functions: `prepare_call()`, `handle_callback()`, `introspect_token()`, `refresh_token()`, and more,
   should you wish to manually implement parts of the OAuth 2.0/OIDC flow
 
-- Provider helpers: you can configure your own OAuth 2.0/OIDC providers, 
+- Provider helpers: you can configure your own OAuth 2.0/OIDC providers,
   but the package also includes an `oauth_provider_oidc_discover()` function for quick OIDC setup, and
   contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).
-  
-- Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with 
+
+- Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with
   local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
-  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)) for
-  more details)
+  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
 - Provides hooks for auditing & logging key events,
-  like login successes or failures (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for more details)
+  like login successes or failures; also supports emitting OpenTelemetry signals
+  (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
+  and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
 
 ## Installation
 
@@ -105,7 +106,7 @@ ui <- fluidPage(
   uiOutput("login_information")
 )
 
-# Server which obtains authentication 
+# Server which obtains authentication
 server <- function(input, output, session) {
   # Start authentication module; will automatically redirect unauthenticated users
   #   to the provider's login page and handle the callback
@@ -128,7 +129,7 @@ server <- function(input, output, session) {
 }
 
 runApp(
-  shinyApp(ui, server), port = 8100, 
+  shinyApp(ui, server), port = 8100,
   launch.browser = FALSE
 )
 
@@ -138,15 +139,18 @@ runApp(
 
 ### Logging/auditing
 
-The package provides hooks for logging/auditing crucial events 
-(e.g., callbacks issued & received, login success/failures).
-See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for details.
+The package provides hooks for logging/auditing crucial events
+(e.g., callbacks issued & received, login success/failures). It can also emit
+signals via OpenTelemetry.
+
+See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for audit event details,
+and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)) for OpenTelemetry details.
 
 ## More information
 
 ### What happens during the authentication flow?
 
-For an in-depth step-by-step explanation of what happens during the authentication flow, see: 
+For an in-depth step-by-step explanation of what happens during the authentication flow, see:
 `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
 
 ### What do I need to consider for production use?

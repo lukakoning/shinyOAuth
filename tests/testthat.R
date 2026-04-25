@@ -4,5 +4,9 @@
 library(testthat)
 library(shiny)
 library(shinyOAuth)
+helper_otel <- file.path("testthat", "helper-otel.R")
+if (file.exists(helper_otel)) {
+  source(helper_otel, local = TRUE)
+}
 
 test_check("shinyOAuth")

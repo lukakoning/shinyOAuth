@@ -9,23 +9,21 @@ vignette: >
 
 ## Overview
 
-'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow. 
+'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow.
 These may help detect anomalous activity (e.g., brute force, replay, or configuration errors).
 
 This vignette covers:
 
 - How to register audit hooks to export/store events
+- Some options for controlling the content of events
 - Which audit events are emitted & what fields are included in each event
-- Best practices
 
 ## Receiving audit events
 
-There are two hook options you can set. Both receive the same event object (a named list).
-The functions you should register under these options should be fast, non-blocking, and never
-throw errors.
-
-- `options(shinyOAuth.audit_hook = function(event) { ... })` - intended for audit-specific sinks
-- `options(shinyOAuth.trace_hook = function(event) { ... })` - a more general-purpose tracing hook used for both audit events and error traces
+You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a
+hook function that will be called whenever shinyOAuth emits a structured audit
+or error event.
+The function you register should be fast, non-blocking, and never throw errors.
 
 Example of printing audit events to console:
 ```r
@@ -35,29 +33,43 @@ options(shinyOAuth.audit_hook = function(event) {
 })
 ```
 
-To stop receiving events, unset the option:
-```r
-options(shinyOAuth.audit_hook = NULL)
-```
+Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry logging.
+Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
+OpenTelemetry logs are derived from the same underlying events as
+`shinyOAuth.audit_hook`, but they are flattened into scalar attributes.
+Nested structures like the full `shiny_session` object and the raw `timestamp`
+field are not preserved verbatim in the OTel log payload.
 
 ## Event structure
 
 All audit events share the following base shape:
 
 - `type`: a string starting with `audit_...`
-- `trace_id`: a short correlation id for linking related records
+- `trace_id`: a short correlation id for linking related records from the same
+  operation or auth flow
 - `timestamp`: POSIXct time when the event was created (from `Sys.time()`)
 - Additional key/value fields depending on the event (see event catalog)
 
+For the interactive login flow, shinyOAuth propagates the same `trace_id`
+from redirect preparation through callback validation, token exchange, and
+login success or failure handling. The trace id is embedded inside the
+encrypted state payload so it survives the browser round-trip without exposing
+raw OAuth values.
+
+This `trace_id` is shinyOAuth's own application-level correlation id. When OTel
+logging is enabled it is exported as the `shinyoauth.trace_id` log attribute,
+which is distinct from the backend's native OpenTelemetry trace/span ids.
+
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
-is attached to every event to correlate audit activity with the HTTP request and session. 
+is attached to every event to correlate audit activity with the HTTP request and session.
 The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
 - `shiny_session$is_async`: a logical indicating whether the event was emitted from the main R process (`FALSE`) or from an async worker (`TRUE`). This helps distinguish logs produced by background tasks (e.g., async token exchange or refresh) from those in the main reactive flow.
+- If you pre-capture a worker-intended context with `capture_shiny_session_context(is_async = TRUE)` but emit the event before any worker dispatch actually happens, shinyOAuth normalizes that borrowed context back to `FALSE` because the event was still emitted on the main process.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
-- `mirai_error_type`: (async failure events only) classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
+- `mirai_error_type`: a top-level event field on certain async failure events. It classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
   - `"mirai_error"` — code threw an R error inside the worker
   - `"mirai_timeout"` — the task exceeded its timeout and was cancelled by dispatcher
   - `"mirai_connection_reset"` — the daemon process crashed or was terminated
@@ -71,15 +83,16 @@ Note: the raw `session$request` from Shiny is not included to keep the event JSO
 
 ### HTTP context sanitization
 
-For safety, the `shiny_session$http` summary is automatically sanitized before being attached to events. 
+For safety, the `shiny_session$http` summary is automatically sanitized before being attached to events.
 This prevents accidental secret leakage when forwarding events to log sinks:
-  
-- **OAuth query parameters are redacted**: `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`, `session_state`, `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
-- **Sensitive headers are removed**: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`, 
-`Proxy_Authenticate`, and `WWW-Authenticate` headers are stripped entirely.
-- **Proxy headers are redacted**: Headers starting with `x_` (e.g., `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to avoid leaking internal infrastructure details.
 
-This means you can safely forward the `shiny_session$http` object to external logging systems without manually stripping secrets.
+- OAuth query parameters are redacted: `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`, `session_state`, `code_verifier`, and `nonce` are replaced with `[REDACTED]`.
+- Sensitive headers are removed: `Cookie`, `Set-Cookie`, `Authorization`, `Proxy_Authorization`,
+`Proxy_Authenticate`, and `WWW-Authenticate` headers are stripped entirely.
+- Proxy headers are redacted: headers starting with `x_` (e.g., `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to avoid leaking internal infrastructure details.
+
+This means you can safely forward the `shiny_session$http` object to external logging systems
+without manually stripping secrets.
 
 If you need the raw, unsanitized HTTP context in audit events, you can disable redaction:
 
@@ -99,19 +112,30 @@ This means that the `shiny_session$http` field will be `NULL` in all audit event
 
 ### Audit events from async workers (mirai daemons)
 
-When `async = TRUE` is configured in `oauth_module_server()`, and when you
-have set daemon workers `mirai::daemons()`, token exchange,
-refresh, and revocation run in background mirai daemon processes. The package
-automatically propagates your `shinyOAuth.audit_hook` and `shinyOAuth.trace_hook`
-options to these workers, so audit events fire also in the async worker processes and
-your hooks apply there.
+When `async = TRUE` is configured in `oauth_module_server()`, token exchange,
+refresh, and revocation run through shinyOAuth's async dispatch layer. With
+mirai daemons and future multisession plans this means background worker
+processes; with `future::sequential` the code stays in-process but still uses
+the async promise path. The package automatically propagates your
+`shinyOAuth.audit_hook` option to these async executions, so audit events fire
+there as well. For shinyOAuth-managed async work, the package also replays the
+parent session's relevant `OTEL_*` / `OTEL_R_*` environment variables inside
+the async execution context so exporter configuration stays aligned with the
+main R process.
 
 Note that your audit hook function (and any objects referenced in
 its closure) must be serializable. If your hook writes to a database connection,
-file handle, or other non-serializable resource, it will fail silently in the
-worker process. Use hooks that create connections on demand (e.g., open a
+file handle, or other non-serializable resource, it will fail in the
+worker process and shinyOAuth will surface that failure as a warning
+(captured and replayed to the main process when using async workers). Use hooks that create connections on demand (e.g., open a
 database connection inside the hook body) rather than capturing an existing
 connection in the closure.
+
+Also note that in true async mode a worker cannot mutate the main R process's
+in-memory objects. Patterns like appending to a global list or incrementing a
+counter inside `audit_hook` only affect the worker's private copy. For
+cross-process delivery, write to an external sink (database, file, queue, OTLP
+exporter, etc.) or explicitly return captured data from the worker in tests.
 
 ### Digest fields and keying
 
@@ -120,7 +144,15 @@ Many audit events include digest fields such as `client_id_digest`, `state_diges
 correlate events without emitting raw sensitive values.
 
 By default, these digests use HMAC-SHA256 with an auto-generated per-process key.
-This reduces the risk of correlation or dictionary reidentification if logs leak.
+If you do not configure `options(shinyOAuth.audit_digest_key = ...)`, each R
+process gets its own random key at runtime. This reduces the risk of correlation
+or dictionary reidentification if logs leak, but it also means digests are not
+stable across unrelated processes by default.
+
+For shinyOAuth-managed async work, the package propagates the effective digest
+key into its workers so main-process and worker events from the same app
+instance remain comparable. If you need digests to stay comparable across
+multiple app processes or separate R sessions, configure a shared key.
 
 If you run multiple workers/processes and want digests to be comparable across them,
 configure a shared key:
@@ -251,7 +283,12 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 #### Event: `audit_login_failed`
 
 - When: surface-level login failure during callback handling in the Shiny module
-- Context: `provider`, `issuer`, `client_id_digest`, `phase` (`sync_token_exchange`|`async_token_exchange`), `error_class`, `mirai_error_type`
+- Context: `provider`, `issuer`, `client_id_digest`, `phase`, `error_class`, `mirai_error_type`
+- `phase` currently includes:
+  - `sync_token_exchange`
+  - `async_token_exchange`
+  - `async_payload_validation`
+  - `async_state_store_lookup`
 
 ### Logout and session clears
 
@@ -316,11 +353,18 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 - `status` values:
 	- `"ok"` – userinfo successfully parsed
 	- `"parse_error"` – response could not be parsed as JSON or JWT. Additional fields: `http_status`, `url`, `content_type`, `body_digest`
+	- `"userinfo_missing_sub"` – OIDC userinfo response was parsed but omitted the required `sub` claim
 	- `"userinfo_not_jwt"` – signed JWT required but response was not `application/jwt`. Additional fields: `content_type`
+	- `"userinfo_jwt_encrypted"` – userinfo response was a JWE, which shinyOAuth does not decrypt
 	- `"userinfo_jwt_header_parse_failed"` – JWT header could not be parsed
 	- `"userinfo_jwt_unsigned"` – JWT uses `alg=none`. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_alg_rejected"` – JWT algorithm not in provider's allowed asymmetric algorithms. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_no_issuer"` – provider issuer not configured for JWKS verification
+	- `"userinfo_jwt_jwks_fetch_failed"` – JWKS fetch failed during signature verification
+	- `"userinfo_jwt_signature_invalid"` – signature verification failed against candidate JWKS keys
+	- `"userinfo_jwt_no_matching_key"` – provider JWKS had no compatible key for the JWT
+	- `"userinfo_jwt_missing_sub"`, `"userinfo_jwt_missing_iss"`, `"userinfo_jwt_missing_aud"` – signed JWT omitted a required claim
+	- `"userinfo_jwt_iss_mismatch"`, `"userinfo_jwt_aud_mismatch"` – signed JWT claims did not match the configured issuer/client
 
 ### State parsing failures
 
@@ -344,6 +388,12 @@ When the provider returns an error response (e.g., `access_denied`) but includes
 
 - When: consumption of state from an error response fails
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`, `error_class`, `error_message`
+
+Digest note: when the callback `state` can be decrypted, these events use the
+logical plaintext state digest so they correlate with `audit_redirect_issued`
+and the normal callback validation/store events. If decryption fails, the
+digest falls back to the encrypted callback payload because the logical state is
+unknown.
 
 ### Module/session lifecycle
 
@@ -370,29 +420,37 @@ When the provider returns an error response (e.g., `access_denied`) but includes
 - Context: `provider`, `issuer`, `client_id_digest`, `authenticated`, `previous_authenticated`, `reason`
 - Reasons include: `login` (when becoming authenticated), or the error code/state that caused de-authentication (e.g., `token_expired`, `logged_out`, `token_cleared`)
 
-## Where to find these in code
+### Error events
 
-- Redirect and login audits are emitted from `R/methods__login.R`
-- Module lifecycle/session audits are emitted from `R/oauth_module_server.R`
-- All events flow through `audit_event()` defined in `R/errors.R`, which delegates to the hook options
+In addition to the `audit_*` events above, the hook also receives error events
+emitted just before the package raises an R error condition. These let you log
+failures to the same sink as audit events.
 
-## Best practices for audit hooks
+#### Event: `error`
 
-- Keep hooks fast and never throw; wrap internals with `try(..., silent = TRUE)` if needed
-- Export to your logging backend in JSON for easy parsing
-- Do not attempt to reverse digests; use them only for correlation
-- Consider adding a host/app identifier to the record before exporting
-- If you also want error traces, set `options(shinyOAuth.trace_hook=...)`
+- When: a package error is raised via one of the specialized `err_*()` helpers
+  (state validation, PKCE, token, ID token, userinfo, configuration, input, parse errors)
+- Fields:
+	- `type` (`"error"`), `trace_id`, `message`,
+  - Plus any `context` fields  from the call site (typically `provider`, `issuer`,
+  `client_id_digest`, `phase`, `error_class`)
 
-Example of a JSON export hook:
+#### Event: `http_error`
 
-```r
-json_hook <- function(event) {
-	try({
-		line <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
-		cat(line, "\n", file = "shinyOAuth-audit.log", append = TRUE)
-	}, silent = TRUE)
-}
+- When: an outbound HTTP request to a provider endpoint returns a non-success status
+- Fields:
+	- `type` (`"http_error"`), `trace_id`, `message`
+	- `status`: HTTP status code (integer, or `NA` if unavailable)
+	- `url`: the request URL
+	- `body_digest`: SHA-256 hex digest of the response body (for correlation without leaking content)
+	- `oauth_error`, `oauth_error_description`, `oauth_error_uri`: RFC 6749 §5.2 structured error
+	  fields extracted from JSON error responses (e.g., from the token endpoint)
+	- Plus any `context` fields from the call site
 
-options(shinyOAuth.audit_hook = json_hook)
-```
+#### Event: `transport_error`
+
+- When: an outbound HTTP request fails before receiving a response (DNS failure,
+  timeout, connection reset, etc.)
+- Fields:
+  - `type` (`"transport_error"`), `trace_id`, `message`
+  - Plus any `context` fields from the call site

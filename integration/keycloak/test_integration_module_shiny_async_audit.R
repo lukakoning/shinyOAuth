@@ -395,14 +395,19 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     cat("\n=== Async worker verification ===\n")
 
     # Verify async events include process tracking info
-    # Note: main_process_id is always present for async events, but process_id
-    # may be missing for some events that are emitted via captured context
     for (evt in async_events) {
       sess <- evt$shiny_session
       testthat::expect_true(
         !is.null(sess$main_process_id),
         info = paste0(
           "Async event should include main_process_id. Type: ",
+          evt$type
+        )
+      )
+      testthat::expect_true(
+        !is.null(sess$process_id),
+        info = paste0(
+          "Async event should include process_id. Type: ",
           evt$type
         )
       )
@@ -414,7 +419,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
           "| main_pid:",
           sess$main_process_id,
           "| worker_pid:",
-          sess$process_id %||% "<inherited>",
+          sess$process_id,
           "\n"
         )
       }

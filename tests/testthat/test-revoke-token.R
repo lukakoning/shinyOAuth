@@ -113,7 +113,7 @@ testthat::test_that("revoke_token async returns a resolved promise", {
   testthat::expect_s3_class(p, "promise")
   val <- NULL
   p$then(function(x) {
-    val <<- shinyOAuth:::replay_async_conditions(x)
+    val <<- x
   })
   deadline <- Sys.time() + 5
   while (is.null(val) && Sys.time() < deadline) {
@@ -121,5 +121,6 @@ testthat::test_that("revoke_token async returns a resolved promise", {
     Sys.sleep(0.02)
   }
   testthat::expect_type(val, "list")
+  testthat::expect_false(isTRUE(val$.shinyOAuth_async_wrapped))
   testthat::expect_true(isTRUE(val$revoked))
 })
