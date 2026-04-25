@@ -168,13 +168,6 @@ get_async_session_context <- function() {
   .async_context_env$current
 }
 
-# Internal: clear the fallback session context.
-clear_async_session_context <- function() {
-  .async_context_env$current <- NULL
-  .async_context_env$is_worker <- FALSE
-  invisible(NULL)
-}
-
 # Internal: execute code with a fallback session context set.
 # This is useful for wrapping async work so that errors include session info.
 # Also injects the worker's process_id into the context for cross-process tracing.

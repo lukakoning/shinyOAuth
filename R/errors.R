@@ -565,35 +565,3 @@ log_condition <- function(e, context = list()) {
 
   invisible(NULL)
 }
-
-print_compact_trace <- function(e) {
-  if (!requireNamespace("rlang", quietly = TRUE)) {
-    return(invisible(NULL))
-  }
-  bt <- if (inherits(e, "rlang_error") && !is.null(e$trace)) {
-    e$trace
-  } else {
-    rlang::trace_back()
-  }
-  # Collapse parallel branches for readability using print() output
-  lines <- utils::capture.output(print(bt, simplify = "branch"))
-
-  # Hide noisy framework frames
-  drop_pat <- paste(
-    c(
-      "^.*promises::",
-      "^.*shiny::",
-      "serviceApp\\(",
-      "flush",
-      "with_promise_domain",
-      "wrapSync\\(",
-      "captureStackTraces",
-      "\\.domain\\$",
-      "Reactive",
-      "observeEvent"
-    ),
-    collapse = "|"
-  )
-  keep <- lines[!grepl(drop_pat, lines)]
-  cat(paste(keep, collapse = "\n"), "\n", sep = "")
-}
