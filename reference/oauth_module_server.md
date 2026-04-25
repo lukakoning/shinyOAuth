@@ -244,9 +244,10 @@ It also contains the following helper functions, mainly useful when
 - `request_login()`: initiates login by redirecting to the authorization
   endpoint, with cookie-ensure semantics: if `browser_token` is missing,
   the module sets the cookie and defers the redirect until
-  `browser_token` is present, then redirects. This is the main entry
-  point for login when `auto_redirect = FALSE` and you want to trigger
-  login from your own UI
+  `browser_token` is present, then redirects. If the module is already
+  authenticated, the request is ignored and no new OAuth state is
+  created. This is the main entry point for login when
+  `auto_redirect = FALSE` and you want to trigger login from your own UI
 
 - `logout()`: clears the current token setting `authenticated` to FALSE,
   and clears the browser token cookie. You might call this when the user
@@ -256,9 +257,10 @@ It also contains the following helper functions, mainly useful when
   URL, also storing the relevant state in the client's `state_store`
   (for validation during callback). Note that this requires
   `browser_token` to be present, so it will throw an error if called too
-  early (verify with `has_browser_token()` first). Typically you would
-  not call this directly, but use `request_login()` instead, which calls
-  it internally.
+  early. When the module is already authenticated it returns `NA` and
+  does not mint new state (verify with `has_browser_token()` first).
+  Typically you would not call this directly, but use `request_login()`
+  instead, which calls it internally.
 
 - `set_browser_token()`: internal; injects JS to set the browser token
   cookie if missing. Normally called automatically on first load, but
