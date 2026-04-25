@@ -163,16 +163,22 @@ oauth_provider_google <- function(name = "google") {
 #' or "consumers", or a specific directory (tenant) ID GUID
 #' (e.g., "00000000-0000-0000-0000-000000000000").
 #'
-#' When `tenant` is a specific GUID, the provider will enable strict ID token
-#' validation (issuer match). When using the multi-tenant aliases ("common",
-#' "organizations", "consumers"), the exact issuer depends on the account that
-#' signs in and therefore ID token validation is disabled by default to avoid
-#' false negatives. You can override this via `id_token_validation` if you know
-#' the environment guarantees a fixed issuer.
+#' When `tenant` is a specific GUID, the provider enables strict ID token
+#' validation with the tenant-specific issuer.
 #'
-#' Note: ID token validation requires a stable issuer. For multi-tenant aliases,
-#' this provider sets `issuer = NA` and therefore also disables `use_nonce` by
-#' default (nonce validation relies on validating the ID token).
+#' For `tenant = "common"` or `tenant = "organizations"`, the helper enables
+#' Microsoft Entra's tenant-independent validation mode by default: ID tokens
+#' are checked against Microsoft's `{tenantid}` issuer template and the signing
+#' key's own `issuer` scope, as documented by Microsoft for multi-tenant
+#' metadata.
+#'
+#' For `tenant = "consumers"`, the helper resolves the stable consumer tenant
+#' issuer (`9188040d-6c67-4c5b-b112-36a304b66dad`) and performs normal exact-
+#' issuer validation.
+#'
+#' Set `id_token_validation = FALSE` to opt out of ID token and nonce
+#' validation for these aliases, which falls back to OAuth 2.0 plus userinfo
+#' identity only.
 #'
 #' Microsoft issues RS256 ID tokens; `allowed_algs` is restricted accordingly.
 #' The userinfo endpoint is provided by Microsoft Graph
@@ -181,15 +187,18 @@ oauth_provider_google <- function(name = "google") {
 #' When configuring your [OAuthClient], if you do not have the option to
 #' register an app or simply wish to test during development, you may be able
 #' to use the default Azure CLI public app, with `client_id`
-#' '9391afd1-7129-4938-9e4d-633c688f93c0' (uses `redirect_uri`
+#' '04b07795-8ddb-461a-bbee-02f9e1bf7b46' (uses `redirect_uri`
 #' 'http://localhost:8100').
 #'
 #' @param name Optional friendly name for the provider. Defaults to "microsoft"
 #' @param tenant Tenant identifier ("common", "organizations", "consumers",
 #'   or directory GUID). Defaults to "common"
 #' @param id_token_validation Optional override (logical). If `NULL` (default),
-#'   it's enabled automatically when `tenant` looks like a GUID, otherwise
-#'   disabled
+#'   it's enabled automatically when `tenant` looks like a GUID or one of the
+#'   Microsoft alias tenants (`common`, `organizations`, `consumers`).
+#'   `common` and `organizations` use Microsoft's tenant-independent issuer and
+#'   signing-key validation rules; `consumers` uses the stable consumer tenant
+#'   issuer
 #'
 #' @return [OAuthProvider] object configured for Microsoft identity platform
 #'
@@ -203,22 +212,30 @@ oauth_provider_microsoft <- function(
 ) {
   tenant <- tenant[1]
   stopifnot(is.character(tenant), length(tenant) == 1, nzchar(tenant))
+  consumer_tenant_guid <- "9188040d-6c67-4c5b-b112-36a304b66dad"
+  tenant_independent_alias <- tenant %in% c("common", "organizations")
+  consumer_alias <- identical(tenant, "consumers")
   # Detect GUID-like tenant IDs
   is_guid <- grepl(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
     tenant
   )
   if (is.null(id_token_validation)) {
-    id_token_validation <- is_guid
+    id_token_validation <- is_guid || tenant_independent_alias || consumer_alias
   }
 
   base <- sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0", tenant)
   auth_url <- paste0(base, "/authorize")
   token_url <- paste0(base, "/token")
   userinfo_url <- "https://graph.microsoft.com/oidc/userinfo"
-  # Only set issuer when it's stable (GUID tenant); otherwise leave NA
   issuer <- if (is_guid) {
     sprintf("https://login.microsoftonline.com/%s/v2.0", tenant)
+  } else if (!isTRUE(id_token_validation)) {
+    NA_character_
+  } else if (tenant_independent_alias) {
+    sprintf("https://login.microsoftonline.com/%s/v2.0", tenant)
+  } else if (consumer_alias) {
+    sprintf("https://login.microsoftonline.com/%s/v2.0", consumer_tenant_guid)
   } else {
     NA_character_
   }

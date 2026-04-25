@@ -71,11 +71,11 @@ test_that("OAuthProvider HS* algs require allow_hs opt-in", {
 test_that("oauth_provider_microsoft defaults are compatible with multi-tenant aliases", {
   p <- oauth_provider_microsoft(tenant = "common")
 
-  # Multi-tenant issuer varies by signing tenant; default disables validation.
-  expect_true(is.na(p@issuer))
-  expect_identical(p@id_token_validation, FALSE)
-  expect_identical(p@id_token_required, FALSE)
-  expect_identical(p@use_nonce, FALSE)
+  # Multi-tenant aliases should use Microsoft's tenant-independent OIDC rules.
+  expect_identical(p@issuer, "https://login.microsoftonline.com/common/v2.0")
+  expect_identical(p@id_token_validation, TRUE)
+  expect_identical(p@id_token_required, TRUE)
+  expect_identical(p@use_nonce, TRUE)
   expect_identical(p@allowed_algs, c("RS256"))
 })
 

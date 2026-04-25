@@ -100,14 +100,32 @@ test_that("oauth_provider_microsoft with common tenant has correct defaults", {
   expect_match(p@auth_url, "login\\.microsoftonline\\.com/common")
   expect_match(p@token_url, "login\\.microsoftonline\\.com/common")
   expect_match(p@userinfo_url, "graph\\.microsoft\\.com")
-  expect_true(is.na(p@issuer))
+  expect_identical(
+    p@issuer,
+    "https://login.microsoftonline.com/common/v2.0"
+  )
   expect_true(is.na(p@introspection_url))
-  expect_false(p@use_nonce)
+  expect_true(p@use_nonce)
   expect_true(p@use_pkce)
   expect_identical(p@token_auth_style, "body")
   expect_identical(p@allowed_algs, c("RS256"))
-  expect_false(p@id_token_validation)
-  expect_false(p@id_token_required)
+  expect_true(p@id_token_validation)
+  expect_true(p@id_token_required)
+  expect_true(p@userinfo_id_token_match)
+})
+
+test_that("oauth_provider_microsoft with consumers tenant uses stable issuer", {
+  p <- oauth_provider_microsoft(tenant = "consumers")
+
+  expect_match(p@auth_url, "login\\.microsoftonline\\.com/consumers")
+  expect_match(p@token_url, "login\\.microsoftonline\\.com/consumers")
+  expect_identical(
+    p@issuer,
+    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0"
+  )
+  expect_true(p@use_nonce)
+  expect_true(p@id_token_validation)
+  expect_true(p@id_token_required)
 })
 
 test_that("oauth_provider_microsoft with GUID tenant enables validation", {
@@ -131,17 +149,29 @@ test_that("oauth_provider_microsoft respects explicit id_token_validation overri
     id_token_validation = FALSE
   )
   expect_false(p@id_token_validation)
+  expect_match(p@issuer, guid, fixed = TRUE)
 
-  # Explicitly enable for common tenant is impossible because it requires
-  # use_nonce = TRUE which requires an issuer, and common has no stable issuer.
-  # This should error at validation.
-  expect_error(
-    oauth_provider_microsoft(
-      tenant = "common",
-      id_token_validation = TRUE
-    ),
-    regexp = "use_nonce.*issuer"
+  # Explicitly disable for tenant-independent aliases should opt back into
+  # OAuth + userinfo only.
+  p_common <- oauth_provider_microsoft(
+    tenant = "common",
+    id_token_validation = FALSE
   )
+  expect_true(is.na(p_common@issuer))
+  expect_false(p_common@id_token_validation)
+  expect_false(p_common@id_token_required)
+  expect_false(p_common@use_nonce)
+
+  # Explicitly enabling for common should preserve the tenant-independent issuer.
+  p_common_oidc <- oauth_provider_microsoft(
+    tenant = "common",
+    id_token_validation = TRUE
+  )
+  expect_identical(
+    p_common_oidc@issuer,
+    "https://login.microsoftonline.com/common/v2.0"
+  )
+  expect_true(p_common_oidc@use_nonce)
 })
 
 test_that("oauth_provider_oidc builds correct endpoint URLs from base_url", {

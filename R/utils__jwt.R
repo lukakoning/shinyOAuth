@@ -48,6 +48,109 @@ parse_jwt_header <- function(jwt) {
   )
 }
 
+is_guid_like <- function(value) {
+  is.character(value) &&
+    length(value) == 1L &&
+    !is.na(value) &&
+    grepl(
+      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      value
+    )
+}
+
+microsoft_tenant_independent_issuer <- function(issuer) {
+  if (!is_valid_string(issuer)) {
+    return(NULL)
+  }
+
+  parsed <- try(httr2::url_parse(issuer), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(NULL)
+  }
+
+  host <- tolower(parsed$hostname %||% "")
+  path <- tolower(gsub("^/+|/+$", "", parsed$path %||% ""))
+
+  if (!identical(host, "login.microsoftonline.com")) {
+    return(NULL)
+  }
+
+  if (path %in% c("common/v2.0", "organizations/v2.0")) {
+    return(path)
+  }
+
+  NULL
+}
+
+resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
+  if (is.null(microsoft_tenant_independent_issuer(provider_issuer))) {
+    return(list(
+      expected_issuer = provider_issuer,
+      enforce_key_issuer = FALSE,
+      token_tid = NULL
+    ))
+  }
+
+  token_tid <- token_payload$tid %||% NULL
+  if (!is_guid_like(token_tid)) {
+    err_id_token(c(
+      "x" = "Microsoft ID token missing or invalid tid claim",
+      "i" = paste(
+        "Tenant-independent Microsoft authorities require a GUID tid claim"
+      )
+    ))
+  }
+
+  list(
+    expected_issuer = sprintf(
+      "https://login.microsoftonline.com/%s/v2.0",
+      token_tid
+    ),
+    enforce_key_issuer = TRUE,
+    token_tid = token_tid
+  )
+}
+
+filter_microsoft_jwks_for_token_issuer <- function(
+  keys,
+  provider_issuer,
+  token_issuer,
+  token_tid
+) {
+  if (
+    is.null(microsoft_tenant_independent_issuer(provider_issuer)) ||
+      length(keys) == 0L ||
+      !is_valid_string(token_issuer) ||
+      !is_guid_like(token_tid)
+  ) {
+    return(keys)
+  }
+
+  keep <- vapply(
+    keys,
+    function(key) {
+      key_issuer <- key$issuer %||% NULL
+      if (!is_valid_string(key_issuer)) {
+        return(FALSE)
+      }
+
+      if (grepl("\\{tenantid\\}", key_issuer, ignore.case = TRUE)) {
+        key_issuer <- gsub(
+          "\\{tenantid\\}",
+          token_tid,
+          key_issuer,
+          ignore.case = TRUE
+        )
+      }
+
+      identical(key_issuer, token_issuer)
+    },
+    logical(1)
+  )
+
+  keys[keep]
+}
+
 #' Internal: validate ID token
 #'
 #' This function validates an ID token, by checking its signature and claims.
@@ -172,8 +275,19 @@ validate_id_token <- function(
     err_id_token(paste0("JWT alg not allowed by provider: ", header$alg))
   }
 
+  parsed_payload <- tryCatch(
+    parse_jwt_payload(id_token),
+    error = function(e) {
+      err_id_token(c(
+        "Invalid ID token: cannot parse payload",
+        "i" = conditionMessage(e)
+      ))
+    }
+  )
+  issuer_expectation <- resolve_expected_id_token_issuer(issuer, parsed_payload)
+
   # Signature verification
-  payload <- NULL
+  payload <- parsed_payload
   if (!isTRUE(skip_signature)) {
     # All asymmetric algs are verified using the provider JWKS (RSA/EC/OKP)
     if (
@@ -266,6 +380,15 @@ validate_id_token <- function(
       if (length(keys) == 0L) {
         err_id_token("No compatible JWKS keys for alg")
       }
+      keys <- filter_microsoft_jwks_for_token_issuer(
+        keys,
+        provider_issuer = issuer,
+        token_issuer = parsed_payload$iss %||% NULL,
+        token_tid = issuer_expectation$token_tid
+      )
+      if (length(keys) == 0L && isTRUE(issuer_expectation$enforce_key_issuer)) {
+        err_id_token("No Microsoft JWKS key matches token issuer scope")
+      }
 
       # Attempt verification only with the selected keys (no fallback to all when kid is present)
       for (jk in keys) {
@@ -275,7 +398,6 @@ validate_id_token <- function(
         }
         dec <- try(jose::jwt_decode_sig(id_token, pub), silent = TRUE)
         if (!inherits(dec, "try-error")) {
-          payload <- dec
           verified <- TRUE
           break
         }
@@ -308,32 +430,19 @@ validate_id_token <- function(
       if (inherits(dec, "try-error")) {
         err_id_token("ID token HMAC invalid")
       }
-      payload <- dec
     } else {
       err_id_token(paste0("Unsupported JWT alg: ", header$alg))
     }
   }
-  if (is.null(payload)) {
-    # Map payload parse failures to ID token errors for consistency
-    payload <- tryCatch(
-      parse_jwt_payload(id_token),
-      error = function(e) {
-        err_id_token(c(
-          "Invalid ID token: cannot parse payload",
-          "i" = conditionMessage(e)
-        ))
-      }
-    )
-  }
 
   # Claims checks
   # OIDC Core §3.1.3.7 step 2: iss MUST exactly match the Issuer Identifier.
-  # No normalization (e.g. trailing-slash trimming) is applied so that
-  # configuration or mix-up problems surface immediately.
+  # For Microsoft tenant-independent metadata, the effective issuer is derived
+  # from the token's GUID tid claim.
   if (!is_valid_string(payload$iss)) {
     err_id_token("Issuer mismatch/invalid")
   }
-  if (!identical(payload$iss, issuer)) {
+  if (!identical(payload$iss, issuer_expectation$expected_issuer)) {
     err_id_token("Issuer mismatch/invalid")
   }
   aud <- payload$aud

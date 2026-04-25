@@ -17,8 +17,11 @@ oauth_provider_microsoft(
 or directory GUID). Defaults to "common"}
 
 \item{id_token_validation}{Optional override (logical). If \code{NULL} (default),
-it's enabled automatically when \code{tenant} looks like a GUID, otherwise
-disabled}
+it's enabled automatically when \code{tenant} looks like a GUID or one of the
+Microsoft alias tenants (\code{common}, \code{organizations}, \code{consumers}).
+\code{common} and \code{organizations} use Microsoft's tenant-independent issuer and
+signing-key validation rules; \code{consumers} uses the stable consumer tenant
+issuer}
 }
 \value{
 \link{OAuthProvider} object configured for Microsoft identity platform
@@ -33,16 +36,22 @@ The \code{tenant} can be one of the special values "common", "organizations",
 or "consumers", or a specific directory (tenant) ID GUID
 (e.g., "00000000-0000-0000-0000-000000000000").
 
-When \code{tenant} is a specific GUID, the provider will enable strict ID token
-validation (issuer match). When using the multi-tenant aliases ("common",
-"organizations", "consumers"), the exact issuer depends on the account that
-signs in and therefore ID token validation is disabled by default to avoid
-false negatives. You can override this via \code{id_token_validation} if you know
-the environment guarantees a fixed issuer.
+When \code{tenant} is a specific GUID, the provider enables strict ID token
+validation with the tenant-specific issuer.
 
-Note: ID token validation requires a stable issuer. For multi-tenant aliases,
-this provider sets \code{issuer = NA} and therefore also disables \code{use_nonce} by
-default (nonce validation relies on validating the ID token).
+For \code{tenant = "common"} or \code{tenant = "organizations"}, the helper enables
+Microsoft Entra's tenant-independent validation mode by default: ID tokens
+are checked against Microsoft's \code{{tenantid}} issuer template and the signing
+key's own \code{issuer} scope, as documented by Microsoft for multi-tenant
+metadata.
+
+For \code{tenant = "consumers"}, the helper resolves the stable consumer tenant
+issuer (\verb{9188040d-6c67-4c5b-b112-36a304b66dad}) and performs normal exact-
+issuer validation.
+
+Set \code{id_token_validation = FALSE} to opt out of ID token and nonce
+validation for these aliases, which falls back to OAuth 2.0 plus userinfo
+identity only.
 
 Microsoft issues RS256 ID tokens; \code{allowed_algs} is restricted accordingly.
 The userinfo endpoint is provided by Microsoft Graph
@@ -51,7 +60,7 @@ The userinfo endpoint is provided by Microsoft Graph
 When configuring your \link{OAuthClient}, if you do not have the option to
 register an app or simply wish to test during development, you may be able
 to use the default Azure CLI public app, with \code{client_id}
-'9391afd1-7129-4938-9e4d-633c688f93c0' (uses \code{redirect_uri}
+'04b07795-8ddb-461a-bbee-02f9e1bf7b46' (uses \code{redirect_uri}
 'http://localhost:8100').
 }
 \examples{
