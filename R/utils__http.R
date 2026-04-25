@@ -218,8 +218,9 @@ check_resp_body_size <- function(
 #' Note: This helper currently implements backoff via `Sys.sleep()` on the main
 #' R thread. In Shiny, calling this from the server will block the event loop
 #' during the sleep intervals. To avoid blocking, consider running flows with
-#' `async = TRUE` in `oauth_module_server()` (which executes network calls in a
-#' background future), or reduce retries/timeouts using the options below.
+#' `async = TRUE` in `oauth_module_server()` (which can execute network calls
+#' away from the main process when backed by [mirai] or a non-sequential
+#' [future] plan), or reduce retries/timeouts using the options below.
 #'
 #' @param req An httr2 request object.
 #' @param idempotent Logical. When `FALSE`, the request is assumed to consume

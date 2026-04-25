@@ -292,3 +292,19 @@ testthat::test_that("async_backend_available falls back to 'future' when mirai n
 
   testthat::expect_equal(shinyOAuth:::async_backend_available(), "future")
 })
+
+testthat::test_that("async_backend_available treats future::sequential as a configured future backend", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("future")
+  testthat::skip_if_not_installed("promises")
+
+  if (rlang::is_installed("mirai")) {
+    tryCatch(mirai::daemons(0), error = function(...) NULL)
+  }
+
+  old_plan <- future::plan()
+  future::plan(future::sequential)
+  withr::defer(future::plan(old_plan))
+
+  testthat::expect_equal(shinyOAuth:::async_backend_available(), "future")
+})

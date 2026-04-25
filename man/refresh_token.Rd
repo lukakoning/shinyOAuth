@@ -18,10 +18,12 @@ refresh_token(
 \item{token}{\link{OAuthToken} object containing the refresh token}
 
 \item{async}{Logical, default FALSE. If TRUE and an async backend is
-configured, the refresh is performed off the main R session and this
-function returns a promise-compatible async result that resolves to an
-updated \code{OAuthToken}. \link[mirai:mirai]{mirai::mirai} is preferred when daemons are configured via
-\code{\link[mirai:daemons]{mirai::daemons()}}; otherwise a non-sequential \link[future:future]{future::future} plan is used.}
+configured, the refresh is dispatched through shinyOAuth's async promise
+path and this function returns a promise-compatible async result that
+resolves to an updated \code{OAuthToken}. \link[mirai:mirai]{mirai::mirai} is preferred when daemons are
+configured via \code{\link[mirai:daemons]{mirai::daemons()}}; otherwise the current \link[future:future]{future::future} plan is
+used. Non-sequential future plans run off the main R session;
+\code{future::sequential()} stays in-process.}
 
 \item{introspect}{Logical, default FALSE. After a successful refresh, if the
 provider exposes an introspection endpoint, perform a best-effort

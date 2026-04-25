@@ -21,9 +21,9 @@
 #'   In Shiny, `Sys.sleep()` blocks the event loop for the entire worker
 #'   process, potentially freezing UI updates for all sessions on that worker
 #'   during slow provider responses or retry backoff. To keep the UI
-#'   responsive: set `async = TRUE` so network calls run in a background
-#'   process via the [mirai] package (configure daemons with
-#'   `mirai::daemons(n)`), or reduce/block retries (see
+#'   responsive: set `async = TRUE` and configure an async backend that runs
+#'   off the main process, such as [mirai] daemons (`mirai::daemons(n)`) or a
+#'   non-sequential [future] plan, or reduce/block retries (see
 #'   `vignette("usage", package = "shinyOAuth")`).
 #'
 #' - Browser requirements: the module relies on the browser's Web Crypto API to
@@ -55,11 +55,13 @@
 #'   instead, the returned object exposes helpers for triggering login
 #'   manually (use: `$request_login()`)
 #'
-#' @param async If TRUE, performs token exchange and refresh in the background
-#'   using the [mirai] package, and updates values when the
-#'   promise resolves. Requires the [promises] and [mirai] packages, and
-#'   mirai daemons to be configured with [mirai::daemons()].
-#'   If FALSE (default), token exchange and refresh are performed synchronously
+#' @param async If TRUE, dispatches token exchange and refresh through
+#'   shinyOAuth's async promise path and updates values when the promise
+#'   resolves. [mirai] is preferred when daemons are configured with
+#'   [mirai::daemons()]. Otherwise, if [promises] and [future] are installed,
+#'   the current [future] plan is used. Non-sequential future plans run off
+#'   the main R session; `future::sequential()` stays in-process. If FALSE
+#'   (default), token exchange and refresh are performed synchronously
 #'   (which may block the Shiny event loop; it is thus strongly recommended to set
 #'   `async = TRUE` in production apps)
 #'

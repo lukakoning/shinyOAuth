@@ -24,10 +24,12 @@
 #' @param oauth_token [OAuthToken] object containing tokens to revoke
 #' @param which Which token to revoke: "refresh" (default) or "access"
 #' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the operation is performed off the main R session and this
-#'   function returns a promise-compatible async result that resolves to the
-#'   result list. [mirai] is preferred when daemons are configured via
-#'   [mirai::daemons()]; otherwise a non-sequential [future] plan is used.
+#'   configured, the operation is dispatched through shinyOAuth's async
+#'   promise path and this function returns a promise-compatible async result
+#'   that resolves to the result list. [mirai] is preferred when daemons are
+#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
+#'   used. Non-sequential future plans run off the main R session;
+#'   `future::sequential()` stays in-process.
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -427,10 +429,12 @@ revoke_token <- function(
 #' @param oauth_token [OAuthToken] object to introspect
 #' @param which Which token to introspect: "access" (default) or "refresh".
 #' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the operation is performed off the main R session and this
-#'   function returns a promise-compatible async result that resolves to the
-#'   result list. [mirai] is preferred when daemons are configured via
-#'   [mirai::daemons()]; otherwise a non-sequential [future] plan is used.
+#'   configured, the operation is dispatched through shinyOAuth's async
+#'   promise path and this function returns a promise-compatible async result
+#'   that resolves to the result list. [mirai] is preferred when daemons are
+#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
+#'   used. Non-sequential future plans run off the main R session;
+#'   `future::sequential()` stays in-process.
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -872,10 +876,12 @@ introspect_token <- function(
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
 #' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the refresh is performed off the main R session and this
-#'   function returns a promise-compatible async result that resolves to an
-#'   updated `OAuthToken`. [mirai] is preferred when daemons are configured via
-#'   [mirai::daemons()]; otherwise a non-sequential [future] plan is used.
+#'   configured, the refresh is dispatched through shinyOAuth's async promise
+#'   path and this function returns a promise-compatible async result that
+#'   resolves to an updated `OAuthToken`. [mirai] is preferred when daemons are
+#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
+#'   used. Non-sequential future plans run off the main R session;
+#'   `future::sequential()` stays in-process.
 #' @param introspect Logical, default FALSE. After a successful refresh, if the
 #'   provider exposes an introspection endpoint, perform a best-effort
 #'   introspection of the new access token for audit/diagnostics. The result

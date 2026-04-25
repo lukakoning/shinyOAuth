@@ -330,9 +330,11 @@ resolve_async_otel_cache_reset <- function() {
   )
 }
 
-warn_about_async_otel_cache_reset <- function(reason = c("missing", "failed"),
-                                              name = NA_character_,
-                                              error = NULL) {
+warn_about_async_otel_cache_reset <- function(
+  reason = c("missing", "failed"),
+  name = NA_character_,
+  error = NULL
+) {
   reason <- match.arg(reason)
 
   detail <- if (identical(reason, "failed")) {
@@ -758,7 +760,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     rlang::is_installed("future") &&
     tryCatch(
       {
-        # Check if a non-sequential plan is set
+        # Check if a future plan is set; sequential still reports one worker.
         future::nbrOfWorkers() > 0
       },
       error = function(...) FALSE
