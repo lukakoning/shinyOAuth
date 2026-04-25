@@ -45,6 +45,13 @@
 #'   payload `issued_at` freshness window is controlled by the client's
 #'   `state_payload_max_age` (default 300 seconds).
 #'
+#' - Multi-issuer deployments: when one Shiny app can interact with more than
+#'   one authorization server and those flows share a callback URL, RFC 9700
+#'   requires a mix-up defense. For issuer-configured OIDC clients, set
+#'   `require_callback_issuer = TRUE` to require the RFC 9207 `iss` callback
+#'   parameter before any token exchange occurs. If your provider does not send
+#'   `iss`, register distinct `redirect_uri` values per issuer instead.
+#'
 
 #' @param id Shiny module id
 #' @param client [OAuthClient] object
@@ -130,6 +137,13 @@
 #'   `SameSite=None; Secure` in the browser, and authentication will error on
 #'   non-HTTPS origins because browsers reject `SameSite=None` cookies without
 #'   the `Secure` attribute
+#'
+#' @param require_callback_issuer If TRUE, require the authorization response to
+#'   include an RFC 9207 `iss` parameter and reject the callback unless it
+#'   exactly matches `client@provider@issuer`. This fails closed before any
+#'   token exchange and is recommended when one Shiny app can interact with more
+#'   than one authorization server using the same callback URL. Requires the
+#'   provider to have a configured `issuer`. Default is FALSE.
 #'
 #' @return A reactiveValues object with `token`, `error`, `error_description`,
 #'   `error_uri`, and `authenticated`, plus additional fields used by the module.
@@ -243,7 +257,8 @@ oauth_module_server <- function(
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None")
+  browser_cookie_samesite = c("Strict", "Lax", "None"),
+  require_callback_issuer = FALSE
 ) {
   # Validate parameters ------------------------------------------------------
 
@@ -335,6 +350,13 @@ oauth_module_server <- function(
   ) {
     err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
   }
+  if (
+    !(is.logical(require_callback_issuer) &&
+      length(require_callback_issuer) == 1 &&
+      !is.na(require_callback_issuer))
+  ) {
+    err_input("{.arg require_callback_issuer} must be a single non-NA logical.")
+  }
 
   # Fail fast: revoke_on_session_end requires a revocation URL
 
@@ -346,6 +368,24 @@ oauth_module_server <- function(
           "{.arg revoke_on_session_end} = {.val TRUE} requires\n            the provider to have a {.arg revocation_url} configured.",
           "x" = "Provider {.val {client@provider@name %||% '(unnamed)'}}\n            does not expose a revocation endpoint.",
           "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\n            configure the provider with a valid {.arg revocation_url}."
+        )
+      )
+    }
+  }
+
+  if (isTRUE(require_callback_issuer)) {
+    expected_issuer <- client@provider@issuer %||% NA_character_
+    if (!is_valid_string(expected_issuer)) {
+      provider_name <- client@provider@name %||% "(unnamed)"
+      err_config(
+        c(
+          "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+          "x" = paste0(
+            "Provider {.val ",
+            provider_name,
+            "} does not expose a stable issuer identifier."
+          ),
+          "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
         )
       )
     }
@@ -1465,16 +1505,32 @@ oauth_module_server <- function(
       }
 
       # RFC 9207: Authorization Server Issuer Identification.
-      # When the callback includes an `iss` parameter, validate it against
-      # the provider's configured/discovered issuer. This prevents
-      # authorization-server mix-up attacks in multi-provider/misrouting
-      # scenarios. If iss is absent we retain current behavior (no enforcement)
-      # unless a future strict-mode option is added.
-      # Note: validate_untrusted_query_param() above already ensures that if
-      # qs$iss is non-NULL it is a valid non-empty scalar string, so we use
-      # !is.null() here to fail closed on any present iss key.
+      # When strict mode is enabled, require `iss` for issuer-configured
+      # providers and reject the callback before any token exchange occurs.
+      # Otherwise, validate `iss` only when present to preserve existing
+      # single-issuer behavior.
+      expected_issuer <- client@provider@issuer
+      if (isTRUE(require_callback_issuer) && is.null(qs$iss)) {
+        .clear_query_and_fix_title()
+        .set_error(
+          "issuer_missing",
+          simpleError("Callback missing required iss parameter (RFC 9207)"),
+          phase = "callback_iss_validation"
+        )
+        try(
+          audit_event(
+            "callback_iss_missing",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              expected_issuer = expected_issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id)
+            )
+          ),
+          silent = TRUE
+        )
+        return(invisible(NULL))
+      }
       if (!is.null(qs$iss)) {
-        expected_issuer <- client@provider@issuer
         if (
           is_valid_string(expected_issuer) &&
             !identical(qs$iss, expected_issuer)

@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* `oauth_module_server()` now supports `require_callback_issuer = TRUE` to
+reject issuer-configured callbacks that omit the RFC 9207 `iss` parameter.
+Use this strict mode when one Shiny app can talk to multiple authorization
+servers through the same callback URL; otherwise use distinct redirect URIs
+per issuer.
+
 * `oauth_provider_microsoft()` no longer drops the Microsoft alias tenants to
 OAuth 2.0 plus userinfo identity by default. `common` and `organizations` now
 validate ID tokens using Microsoft's tenant-independent issuer and signing-key

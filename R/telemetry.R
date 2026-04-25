@@ -926,6 +926,7 @@ otel_event_severity <- function(type, status = NULL, reason = NULL) {
         "audit_callback_validation_failed",
         "audit_invalid_browser_token",
         "audit_browser_cookie_error",
+        "audit_callback_iss_missing",
         "audit_callback_iss_mismatch",
         "audit_callback_query_rejected",
         "audit_refresh_failed_but_kept_session",
