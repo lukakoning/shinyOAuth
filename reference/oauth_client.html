@@ -101,7 +101,10 @@ enabled, a non-empty <code>client_secret</code> is required for signature valida
 
 
 <dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
-<dd><p>Vector of scopes to request</p></dd>
+<dd><p>Vector of scopes to request. For OIDC providers (those with an
+<code>issuer</code>), shinyOAuth automatically prepends <code>openid</code> when it is missing;
+that effective scope set is what gets sent in the authorization request
+and used for later state and token-scope validation.</p></dd>
 
 
 <dt id="arg-claims">claims<a class="anchor" aria-label="anchor" href="#arg-claims"></a></dt>

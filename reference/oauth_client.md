@@ -67,7 +67,11 @@ oauth_client(
 
 - scopes:
 
-  Vector of scopes to request
+  Vector of scopes to request. For OIDC providers (those with an
+  `issuer`), shinyOAuth automatically prepends `openid` when it is
+  missing; that effective scope set is what gets sent in the
+  authorization request and used for later state and token-scope
+  validation.
 
 - claims:
 
