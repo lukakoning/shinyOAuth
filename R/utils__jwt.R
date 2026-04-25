@@ -262,35 +262,7 @@ validate_id_token <- function(
         )
       }
 
-      # Defense-in-depth: filter by key type/curve compatibility with alg
-      jwk_compatible <- function(k, alg0) {
-        kty <- toupper(k$kty %||% "")
-        crv <- toupper(k$crv %||% "")
-        switch(
-          alg0,
-          RS256 = kty == "RSA",
-          RS384 = kty == "RSA",
-          RS512 = kty == "RSA",
-          PS256 = kty == "RSA",
-          PS384 = kty == "RSA",
-          PS512 = kty == "RSA",
-          ES256 = (kty == "EC" && crv == "P-256"),
-          ES384 = (kty == "EC" && crv == "P-384"),
-          ES512 = (kty == "EC" && crv == "P-521"),
-          EDDSA = (kty == "OKP" && crv %in% c("ED25519", "ED448")),
-          FALSE
-        )
-      }
-      keys <- Filter(function(k) jwk_compatible(k, alg), keys)
-
-      # Treat JWK alg as a hard constraint when present to avoid misconfig
-      keys <- Filter(
-        function(k) {
-          ka <- k$alg %||% NULL
-          is.null(ka) || toupper(ka) == alg
-        },
-        keys
-      )
+      keys <- filter_jwks_for_alg(keys, alg)
       if (length(keys) == 0L) {
         err_id_token("No compatible JWKS keys for alg")
       }

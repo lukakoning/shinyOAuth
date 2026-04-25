@@ -119,6 +119,49 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   expect_equal(result$name, "Signed User")
 })
 
+test_that("get_userinfo rejects signed JWT when JWK alg mismatches header alg", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "test-kid-alg-mismatch"
+  jwk$use <- "sig"
+  jwk$alg <- "RS512"
+
+  jwks <- list(keys = list(jwk))
+
+  claims <- list(
+    sub = "user-sig",
+    name = "Signed User",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "test-kid-alg-mismatch")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "no compatible keys"
+  )
+})
+
 test_that("get_userinfo errors when JWKS has no compatible keys for signed JWT", {
   # Generate two different RSA keys — sign with one, serve JWKS with other
   sign_key <- openssl::rsa_keygen(2048)

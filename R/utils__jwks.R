@@ -366,6 +366,46 @@ select_candidate_jwks <- function(
   keys
 }
 
+# Filter candidate JWKs to those that are compatible with a JWT alg.
+# This mirrors the stricter ID token behavior: key type/curve must match the
+# JWT alg, and an advertised JWK alg becomes a hard constraint when present.
+filter_jwks_for_alg <- function(keys, alg) {
+  if (!is.list(keys) || length(keys) == 0L) {
+    return(list())
+  }
+
+  alg <- toupper(alg %||% "")
+
+  jwk_compatible <- function(k, alg0) {
+    kty <- toupper(k$kty %||% "")
+    crv <- toupper(k$crv %||% "")
+    switch(
+      alg0,
+      RS256 = kty == "RSA",
+      RS384 = kty == "RSA",
+      RS512 = kty == "RSA",
+      PS256 = kty == "RSA",
+      PS384 = kty == "RSA",
+      PS512 = kty == "RSA",
+      ES256 = (kty == "EC" && crv == "P-256"),
+      ES384 = (kty == "EC" && crv == "P-384"),
+      ES512 = (kty == "EC" && crv == "P-521"),
+      EDDSA = (kty == "OKP" && crv %in% c("ED25519", "ED448")),
+      FALSE
+    )
+  }
+
+  keys <- Filter(function(k) jwk_compatible(k, alg), keys)
+
+  Filter(
+    function(k) {
+      ka <- k$alg %||% NULL
+      is.null(ka) || toupper(ka) == alg
+    },
+    keys
+  )
+}
+
 #' Internal: Compute cache key for JWKS entries
 #'
 #' Uses hex SHA-256 of issuer URL concatenated with hex SHA-256 of the

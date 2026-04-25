@@ -514,6 +514,7 @@ decode_userinfo_jwt <- function(
     kid = kid,
     pins = prov@jwks_pins %||% character()
   )
+  keys <- filter_jwks_for_alg(keys, alg)
 
   # One-shot JWKS refresh-on-kid-miss: if kid is present but no candidate keys
   # match, force-refresh JWKS once then re-select (mirrors validate_id_token()).
@@ -553,6 +554,7 @@ decode_userinfo_jwt <- function(
           kid = kid,
           pins = prov@jwks_pins %||% character()
         )
+        keys <- filter_jwks_for_alg(keys, alg)
       }
     }
   }

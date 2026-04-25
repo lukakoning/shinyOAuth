@@ -30,6 +30,11 @@ elapsed value that always passed the `max_age` freshness check.
 refreshed identity against a new or preserved ID token subject, preventing
 identity confusion when providers omit `id_token` from refresh responses.
 
+* `get_userinfo()` now applies the same hard JWK `alg` compatibility checks to
+signed UserInfo JWT verification as ID token verification, rejecting JWKS keys
+that advertise a different algorithm even if signature verification would
+otherwise succeed.
+
 * `get_userinfo()` now always requires a non-empty `sub` claim in userinfo
 responses from OIDC providers (those with an `issuer` configured), per OIDC Core 
 section 5.3. Previously, a non-compliant response without `sub` could be 
