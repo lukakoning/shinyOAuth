@@ -194,6 +194,8 @@
 #'    authorization endpoint, with cookie-ensure semantics: if
 #'    `browser_token` is missing, the module sets the cookie and defers
 #'    the redirect until `browser_token` is present, then redirects.
+#'    If the module is already authenticated, the request is ignored and no
+#'    new OAuth state is created.
 #'    This is the main entry point for login when `auto_redirect = FALSE`
 #'    and you want to trigger login from your own UI
 #'    \item `logout()`: clears the current token setting `authenticated` to FALSE,
@@ -202,7 +204,9 @@
 #'    \item `build_auth_url()`: internal; builds and returns the authorization URL,
 #'    also storing the relevant state in the client's `state_store` (for
 #'    validation during callback). Note that this requires `browser_token` to
-#'    be present, so it will throw an error if called too early
+#'    be present, so it will throw an error if called too early. When the
+#'    module is already authenticated it returns `NA` and does not mint new
+#'    state
 #'    (verify with `has_browser_token()` first). Typically you would not call
 #'    this directly, but use `request_login()` instead, which calls it internally.
 #'    \item `set_browser_token()`: internal; injects JS to set the browser token
@@ -1124,7 +1128,34 @@ oauth_module_server <- function(
 
     # Auth URL & redirection helpers -------------------------------------------
 
+    .warn_about_authenticated_login_request <- function(action) {
+      rlang::warn(
+        c(
+          "Ignoring OAuth login request while already authenticated",
+          "i" = paste0(
+            "`",
+            action,
+            "()` does not start a new OAuth flow when `authenticated` is TRUE."
+          ),
+          "i" = "Call `logout()` first if you need to start a fresh authorization flow."
+        ),
+        class = "shinyOAuth_authenticated_login_request",
+        .frequency = "once",
+        .frequency_id = paste0(
+          "shinyOAuth-authenticated-login-request-",
+          action
+        )
+      )
+
+      invisible(FALSE)
+    }
+
     .build_auth_url <- function() {
+      if (isTRUE(values$authenticated)) {
+        .warn_about_authenticated_login_request("build_auth_url")
+        return(NA_character_)
+      }
+
       # If no browser token yet, defer URL building (return NA) so callers can
       # render a button/link reactively once the cookie arrives
       if (!.has_browser_token()) {
@@ -1171,6 +1202,11 @@ oauth_module_server <- function(
     # Request a login, ensuring a browser cookie exists first. This is the
     # single entry point used by auto-redirect, manual login, and reauth.
     .request_login <- function() {
+      if (isTRUE(values$authenticated)) {
+        .warn_about_authenticated_login_request("request_login")
+        return(invisible(FALSE))
+      }
+
       if (.has_browser_token()) {
         .initiate_login()
       } else {
@@ -1358,6 +1394,8 @@ oauth_module_server <- function(
 
       if (!is.null(values$token)) {
         if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
+          existing_qs <- shiny::parseQueryString(query_string %||% "")
+          .consume_callback_state_payload(existing_qs$state, strict = FALSE)
           .clear_query_and_fix_title()
         }
         return(invisible(NULL))
@@ -1543,11 +1581,16 @@ oauth_module_server <- function(
       invisible(NULL)
     }
 
-    # Helper to consume (validate/remove) state from an error response.
+    # Helper to consume (validate/remove) state from a callback payload.
     # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
-    .consume_error_state <- function(state, strict = FALSE) {
+    .consume_callback_state_payload <- function(
+      state,
+      strict = FALSE,
+      success_event = NULL,
+      failure_event = NULL
+    ) {
       payload <- NULL
-      tryCatch(
+      consumed <- tryCatch(
         {
           # Decrypt and validate the state payload
           payload <- state_payload_decrypt_validate(client, state)
@@ -1556,21 +1599,26 @@ oauth_module_server <- function(
             {
               # Consume the state store entry (single-use enforcement)
               state_store_get_remove(client, payload$state)
-              # Audit success using the logical state digest for correlation.
-              try(
-                audit_event(
-                  "error_state_consumed",
-                  context = list(
-                    provider = client@provider@name %||% NA_character_,
-                    issuer = client@provider@issuer %||% NA_character_,
-                    client_id_digest = string_digest(client@client_id),
-                    state_digest = string_digest(payload$state)
-                  )
-                ),
-                silent = TRUE
-              )
+
+              if (is_valid_string(success_event)) {
+                # Audit success using the logical state digest for correlation.
+                try(
+                  audit_event(
+                    success_event,
+                    context = list(
+                      provider = client@provider@name %||% NA_character_,
+                      issuer = client@provider@issuer %||% NA_character_,
+                      client_id_digest = string_digest(client@client_id),
+                      state_digest = string_digest(payload$state)
+                    )
+                  ),
+                  silent = TRUE
+                )
+              }
             }
           )
+
+          TRUE
         },
         error = function(e) {
           event_trace_id <- if (!is.null(payload)) {
@@ -1586,32 +1634,50 @@ oauth_module_server <- function(
           ) {
             string_digest(payload$state)
           } else {
-            string_digest(state)
+            string_digest(state %||% NA_character_)
           }
-          # State consumption failed; always emit audit.
-          try(
-            with_trace_id(
-              event_trace_id,
-              audit_event(
-                "error_state_consumption_failed",
-                context = list(
-                  provider = client@provider@name %||% NA_character_,
-                  issuer = client@provider@issuer %||% NA_character_,
-                  client_id_digest = string_digest(client@client_id),
-                  state_digest = state_digest,
-                  error_class = paste(class(e), collapse = ", "),
-                  error_message = conditionMessage(e)
+
+          if (is_valid_string(failure_event)) {
+            # State consumption failed; always emit audit when requested.
+            try(
+              with_trace_id(
+                event_trace_id,
+                audit_event(
+                  failure_event,
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id),
+                    state_digest = state_digest,
+                    error_class = paste(class(e), collapse = ", "),
+                    error_message = conditionMessage(e)
+                  )
                 )
-              )
-            ),
-            silent = TRUE
-          )
+              ),
+              silent = TRUE
+            )
+          }
+
           if (isTRUE(strict)) {
             rlang::abort(message = conditionMessage(e), parent = e)
           }
+
+          FALSE
         }
       )
-      invisible(NULL)
+
+      invisible(consumed)
+    }
+
+    # Helper to consume (validate/remove) state from an error response.
+    # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
+    .consume_error_state <- function(state, strict = FALSE) {
+      .consume_callback_state_payload(
+        state,
+        strict = strict,
+        success_event = "error_state_consumed",
+        failure_event = "error_state_consumption_failed"
+      )
     }
 
     # Function to handle code & state once received in query string

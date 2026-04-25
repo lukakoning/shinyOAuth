@@ -176,6 +176,8 @@ It also contains the following helper functions, mainly useful when
 authorization endpoint, with cookie-ensure semantics: if
 \code{browser_token} is missing, the module sets the cookie and defers
 the redirect until \code{browser_token} is present, then redirects.
+If the module is already authenticated, the request is ignored and no
+new OAuth state is created.
 This is the main entry point for login when \code{auto_redirect = FALSE}
 and you want to trigger login from your own UI
 \item \code{logout()}: clears the current token setting \code{authenticated} to FALSE,
@@ -184,7 +186,9 @@ clicks a "logout" button
 \item \code{build_auth_url()}: internal; builds and returns the authorization URL,
 also storing the relevant state in the client's \code{state_store} (for
 validation during callback). Note that this requires \code{browser_token} to
-be present, so it will throw an error if called too early
+be present, so it will throw an error if called too early. When the
+module is already authenticated it returns \code{NA} and does not mint new
+state
 (verify with \code{has_browser_token()} first). Typically you would not call
 this directly, but use \code{request_login()} instead, which calls it internally.
 \item \code{set_browser_token()}: internal; injects JS to set the browser token

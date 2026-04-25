@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `oauth_module_server()` now ignores new login requests while a session is
+already authenticated, and best-effort consumes callback state before clearing
+duplicate OAuth query parameters so stale state entries do not linger until TTL.
+
 * Added OpenTelemetry (OTel) support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
 key OAuth operations such as module initialization, login/callback handling, 

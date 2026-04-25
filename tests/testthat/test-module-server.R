@@ -901,6 +901,13 @@ testthat::test_that("callback params are cleared when token already exists", {
       session$flushReact()
       seen <<- character(0)
 
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+      payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
+      key <- shinyOAuth:::state_cache_key(payload$state)
+      before <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_false(is.null(before))
+
       t <- OAuthToken(
         access_token = "existing",
         refresh_token = NA_character_,
@@ -909,14 +916,58 @@ testthat::test_that("callback params are cleared when token already exists", {
       )
       values$token <- t
 
-      values$.process_query("?code=abc&state=s1&foo=1")
+      values$.process_query(paste0("?code=abc&state=", enc, "&foo=1"))
       session$flushReact()
+
+      after <- cli@state_store$get(key, missing = NULL)
 
       testthat::expect_true(
         any(seen == "shinyOAuth:clearQueryAndFixTitle"),
         info = "Expected clearQueryAndFixTitle when callback params appear with existing token"
       )
       testthat::expect_identical(values$token@access_token, "existing")
+      testthat::expect_null(after)
+    }
+  )
+})
+
+testthat::test_that("request_login is ignored while already authenticated", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      t <- OAuthToken(
+        access_token = "existing",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      session$flushReact()
+
+      keys_before <- sort(cli@state_store$keys())
+      result <- NULL
+      testthat::expect_warning(
+        {
+          result <- values$request_login()
+        },
+        "already authenticated"
+      )
+      session$flushReact()
+      keys_after <- sort(cli@state_store$keys())
+
+      testthat::expect_identical(result, FALSE)
+      testthat::expect_identical(keys_after, keys_before)
+      testthat::expect_false(isTRUE(values$auto_redirected))
+      testthat::expect_false(isTRUE(values$pending_login))
     }
   )
 })
