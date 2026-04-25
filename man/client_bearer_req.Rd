@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__client_bearer_req.R
 \name{client_bearer_req}
 \alias{client_bearer_req}
-\title{Build an authorized httr2 request with Bearer token}
+\title{Build an authorized httr2 request with an OAuth access token}
 \usage{
 client_bearer_req(
   token,
@@ -11,7 +11,10 @@ client_bearer_req(
   headers = NULL,
   query = NULL,
   follow_redirect = FALSE,
-  check_url = TRUE
+  check_url = TRUE,
+  oauth_client = NULL,
+  token_type = NULL,
+  dpop_nonce = NULL
 )
 }
 \arguments{
@@ -23,23 +26,33 @@ client_bearer_req(
 
 \item{headers}{Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.
-Any user-supplied \code{Authorization}
-header is ignored to ensure the Bearer token set by this function is not
-overridden.}
+Any user-supplied \code{Authorization} or \code{DPoP} header is ignored to ensure
+the token authentication set by this function is not overridden.}
 
 \item{query}{Optional named list of query parameters to append to the URL.}
 
 \item{follow_redirect}{Logical. If \code{FALSE} (the default), HTTP redirects
-are disabled to prevent leaking the Bearer token to unexpected hosts.
+are disabled to prevent leaking the access token to unexpected hosts.
 Set to \code{TRUE} only if you trust all possible redirect targets and
 understand the security implications.}
 
 \item{check_url}{Logical. If \code{TRUE} (the default), validates \code{url} against
-\code{\link[=is_ok_host]{is_ok_host()}} before attaching the Bearer token. This rejects relative
+\code{\link[=is_ok_host]{is_ok_host()}} before attaching the access token. This rejects relative
 URLs, plain HTTP to non-loopback hosts, and – when
 \code{options(shinyOAuth.allowed_hosts)} is set – hosts outside the allowlist.
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
+
+\item{oauth_client}{Optional \link{OAuthClient}. Required when the effective
+token type is \code{DPoP}, because the client carries the configured DPoP proof
+key.}
+
+\item{token_type}{Optional override for the access token type when \code{token}
+is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.}
+
+\item{dpop_nonce}{Optional DPoP nonce to embed in the proof for this
+request. This is primarily useful after a resource server challenges with
+\code{DPoP-Nonce}.}
 }
 \value{
 An httr2 request object, ready to be further customized or
@@ -48,8 +61,8 @@ performed with \code{\link[httr2:req_perform]{httr2::req_perform()}}.
 \description{
 Convenience helper to reduce boilerplate when calling downstream APIs.
 It creates an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the
-\verb{Authorization: Bearer <token>} header, and applies the package's standard
-HTTP defaults (timeout and User-Agent).
+appropriate \code{Authorization} header for the supplied token type, and applies
+the package's standard HTTP defaults (timeout and User-Agent).
 
 Accepts either a raw access token string or an \link{OAuthToken} object.
 }

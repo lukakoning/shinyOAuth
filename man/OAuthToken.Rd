@@ -6,6 +6,7 @@
 \usage{
 OAuthToken(
   access_token = character(0),
+  token_type = NA_character_,
   refresh_token = NA_character_,
   id_token = NA_character_,
   expires_at = Inf,
@@ -15,6 +16,8 @@ OAuthToken(
 }
 \arguments{
 \item{access_token}{Access token}
+
+\item{token_type}{OAuth access token type (for example \code{Bearer} or \code{DPoP})}
 
 \item{refresh_token}{Refresh token (if provided by the provider)}
 

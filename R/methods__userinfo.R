@@ -7,6 +7,8 @@
 #' @param oauth_client [OAuthClient] object. The client must have a
 #' `userinfo_url` configured in its [OAuthProvider].
 #' @param token Either an [OAuthToken] object or a raw access token string.
+#' @param token_type Optional override for the access token type when `token`
+#'   is provided as a raw string. Supported values are `Bearer` and `DPoP`.
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events and span
 #'   attributes. Used when calling from async workers that lack access to the
@@ -20,6 +22,7 @@
 get_userinfo <- function(
   oauth_client,
   token,
+  token_type = NULL,
   shiny_session = NULL
 ) {
   # Type checks/helpers --------------------------------------------------------
@@ -28,6 +31,7 @@ get_userinfo <- function(
 
   if (S7::S7_inherits(token, class = OAuthToken)) {
     access_token <- token@access_token
+    token_type <- token@token_type %||% token_type
   } else {
     access_token <- token
   }
@@ -47,11 +51,13 @@ get_userinfo <- function(
       {
         # Main logic ---------------------------------------------------------------
 
-        # Define request; disable redirects to prevent leaking Bearer token
-        req <- httr2::request(oauth_client@provider@userinfo_url) |>
-          httr2::req_auth_bearer_token(access_token) |>
-          add_req_defaults() |>
-          req_no_redirect()
+        # Define request; disable redirects to prevent leaking the access token.
+        req <- client_bearer_req(
+          token = access_token,
+          url = oauth_client@provider@userinfo_url,
+          oauth_client = oauth_client,
+          token_type = token_type
+        )
 
         # Execute request. Let transport failures propagate as
         # shinyOAuth_transport_error so callers can distinguish network issues
@@ -59,7 +65,10 @@ get_userinfo <- function(
         resp <- with_otel_span(
           "shinyOAuth.userinfo.http",
           {
-            resp <- req_with_retry(req)
+            resp <- req_with_retry(
+              req,
+              idempotent = !is_dpop_token_type(token_type %||% NA_character_)
+            )
             otel_record_http_result(resp)
             resp
           },

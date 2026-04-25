@@ -186,12 +186,12 @@
 #'   token response MUST include `token_type` and it must be one of the allowed
 #'   values; otherwise the flow fails fast with a `shinyOAuth_token_error`.
 #'   When empty, no check is performed and `token_type` may be omitted by the
-#'   provider. The [oauth_provider()] helper defaults to `c("Bearer")` for all
-#'   providers because the package only supports Bearer tokens (i.e.,
-#'   [client_bearer_req()] sends `Authorization: Bearer`). This ensures that if
-#'   a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
-#'   fails fast rather than misusing the token. Set `allowed_token_types =
-#'   character()` explicitly to opt out of enforcement.
+#'   provider. The [oauth_provider()] helper defaults to `c("Bearer")`. When
+#'   the [OAuthClient] is configured with `dpop_private_key`, shinyOAuth also
+#'   accepts `token_type = "DPoP"` and uses DPoP proofs on supported token and
+#'   downstream requests. Other non-Bearer token types (for example `MAC`) still
+#'   fail fast rather than being misused. Set `allowed_token_types = character()`
+#'   explicitly to opt out of enforcement.
 #'
 #' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
 #'   and state payload `issued_at` future check. Default 30. Can be globally
@@ -951,10 +951,10 @@ oauth_provider <- function(
       (isTRUE(id_token_validation) || isTRUE(id_token_required))
   }
 
-  # Default to Bearer for all providers. The package only supports Bearer tokens
-  # (client_bearer_req sends Authorization: Bearer). If a provider returns a
-  # non-Bearer token_type (e.g., DPoP, MAC), we fail fast rather than misusing
-  # it. Set allowed_token_types = character() to opt out of enforcement.
+  # Default to Bearer for all providers. If an OAuthClient later enables DPoP
+  # via dpop_private_key, shinyOAuth also accepts token_type = DPoP
+  # automatically; other non-Bearer token types still fail fast rather than
+  # being misused. Set allowed_token_types = character() to opt out.
   if (is.null(allowed_token_types)) {
     allowed_token_types <- c("Bearer")
   }

@@ -275,11 +275,12 @@ revoke_token <- function(
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
         req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- httr2::req_method(req, "POST")
         req <- httr2::req_error(req, is_error = function(resp) FALSE)
         resp <- with_otel_span(
           "shinyOAuth.token.revoke.http",
           {
-            resp <- req_with_retry(req)
+            resp <- req_with_dpop_retry(req, oauth_client)
             otel_record_http_result(resp)
             resp
           },
@@ -705,11 +706,12 @@ introspect_token <- function(
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
         req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- httr2::req_method(req, "POST")
         req <- httr2::req_error(req, is_error = function(resp) FALSE)
         resp <- with_otel_span(
           "shinyOAuth.token.introspect.http",
           {
-            resp <- req_with_retry(req)
+            resp <- req_with_dpop_retry(req, oauth_client)
             otel_record_http_result(resp)
             resp
           },
@@ -1081,11 +1083,12 @@ refresh_token <- function(
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
         req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- httr2::req_method(req, "POST")
         resp <- with_otel_span(
           "shinyOAuth.token.exchange.http",
           {
             # Refresh may consume a rotatable refresh token; do not retry.
-            resp <- req_with_retry(req, idempotent = FALSE)
+            resp <- req_with_dpop_retry(req, oauth_client, idempotent = FALSE)
             otel_record_http_result(resp)
             resp
           },
@@ -1175,6 +1178,7 @@ refresh_token <- function(
             get_userinfo,
             oauth_client = oauth_client,
             token = tok$access_token,
+            token_type = tok$token_type %||% NA_character_,
             shiny_session = shiny_session
           )
 
@@ -1216,6 +1220,9 @@ refresh_token <- function(
         token@access_token <- token_set$access_token
         if (is_valid_string(token_set$refresh_token)) {
           token@refresh_token <- token_set$refresh_token
+        }
+        if (is_valid_string(token_set$token_type)) {
+          token@token_type <- token_set$token_type
         }
         token@expires_at <- expires_at
 

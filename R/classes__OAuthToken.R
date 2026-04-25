@@ -4,6 +4,7 @@
 #' S7 class representing OAuth tokens and (optionally) user information.
 #'
 #' @param access_token Access token
+#' @param token_type OAuth access token type (for example `Bearer` or `DPoP`)
 #' @param refresh_token Refresh token (if provided by the provider)
 #' @param id_token ID token (if provided by the provider; OpenID Connect)
 #' @param expires_at Numeric timestamp (seconds since epoch) when the access
@@ -35,6 +36,11 @@ OAuthToken <- S7::new_class(
   package = "shinyOAuth",
   properties = list(
     access_token = S7::class_character,
+
+    token_type = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
 
     refresh_token = S7::new_property(
       S7::class_character,

@@ -227,11 +227,12 @@ returned by the token endpoint (case-insensitive). When non-empty, the
 token response MUST include \code{token_type} and it must be one of the allowed
 values; otherwise the flow fails fast with a \code{shinyOAuth_token_error}.
 When empty, no check is performed and \code{token_type} may be omitted by the
-provider. The \code{\link[=oauth_provider]{oauth_provider()}} helper defaults to \code{c("Bearer")} for all
-providers because the package only supports Bearer tokens (i.e.,
-\code{\link[=client_bearer_req]{client_bearer_req()}} sends \code{Authorization: Bearer}). This ensures that if
-a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
-fails fast rather than misusing the token. Set \code{allowed_token_types = character()} explicitly to opt out of enforcement.}
+provider. The \code{\link[=oauth_provider]{oauth_provider()}} helper defaults to \code{c("Bearer")}. When
+the \link{OAuthClient} is configured with \code{dpop_private_key}, shinyOAuth also
+accepts \code{token_type = "DPoP"} and uses DPoP proofs on supported token and
+downstream requests. Other non-Bearer token types (for example \code{MAC}) still
+fail fast rather than being misused. Set \code{allowed_token_types = character()}
+explicitly to opt out of enforcement.}
 
 \item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
 and state payload \code{issued_at} future check. Default 30. Can be globally

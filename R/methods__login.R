@@ -969,6 +969,7 @@ handle_callback_internal <- function(
           get_userinfo,
           oauth_client = oauth_client,
           token = token_set[["access_token"]],
+          token_type = token_set$token_type %||% NA_character_,
           shiny_session = shiny_session
         )
         token_set[["userinfo"]] <- userinfo
@@ -995,6 +996,7 @@ handle_callback_internal <- function(
       token <- OAuthToken(
         access_token = token_set[["access_token"]] %||%
           err_token("Token response missing access_token"),
+        token_type = token_set$token_type %||% NA_character_,
         refresh_token = token_set$refresh_token %||% NA_character_,
         expires_at = if (
           is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
@@ -1452,12 +1454,15 @@ swap_code_for_token_set <- function(
 
       # Add form body without using !!! so it works with simple stubs
       req <- do.call(httr2::req_body_form, c(list(req), params))
+      req <- httr2::req_method(req, "POST")
 
       resp <- with_otel_span(
         "shinyOAuth.token.exchange.http",
         {
           # Token exchange consumes a single-use authorization code; do not retry.
-          resp <- req_with_retry(req, idempotent = FALSE)
+          # When DPoP is enabled, req_with_dpop_retry() may regenerate the
+          # proof once if the authorization server challenges with DPoP-Nonce.
+          resp <- req_with_dpop_retry(req, client, idempotent = FALSE)
           otel_record_http_result(resp)
           resp
         },
@@ -2013,14 +2018,21 @@ verify_token_type_allowlist <- function(client, token_set) {
   # - If allowed_token_types is non-empty, token_type MUST be present and one
   #   of the allowed values (case-insensitive).
   allowed_vec <- client@provider@allowed_token_types %||% character(0)
-  if (length(allowed_vec) > 0) {
-    tt <- token_set$token_type
-    if (is.null(tt)) {
-      err_token("Token response missing token_type")
-    }
+  if (client_has_dpop(client) && !any(tolower(allowed_vec) == "dpop")) {
+    allowed_vec <- c(allowed_vec, "DPoP")
+  }
+
+  tt <- token_set$token_type
+  if (!is.null(tt)) {
     tt <- as.character(tt)[1]
     if (!is_valid_string(tt)) {
       err_token("Invalid token_type in token response")
+    }
+  }
+
+  if (length(allowed_vec) > 0) {
+    if (is.null(tt)) {
+      err_token("Token response missing token_type")
     }
     allowed <- tolower(as.character(allowed_vec))
     if (!tolower(tt) %in% allowed) {
@@ -2031,6 +2043,29 @@ verify_token_type_allowlist <- function(client, token_set) {
           "Expected one of: ",
           paste(unique(allowed_vec), collapse = ", ")
         )
+      ))
+    }
+  }
+
+  if (
+    is_valid_string(tt) && is_dpop_token_type(tt) && !client_has_dpop(client)
+  ) {
+    err_token(c(
+      "x" = "Received token_type = DPoP but OAuthClient has no dpop_private_key configured",
+      "i" = "Configure dpop_private_key on the OAuthClient to use DPoP-bound tokens."
+    ))
+  }
+
+  if (isTRUE(client@dpop_require_access_token)) {
+    if (!is_valid_string(tt)) {
+      err_token(
+        "Token response missing token_type but dpop_require_access_token = TRUE"
+      )
+    }
+    if (!is_dpop_token_type(tt)) {
+      err_token(c(
+        "x" = "Expected token_type = DPoP",
+        "i" = "Set dpop_require_access_token = FALSE to allow Bearer access tokens when using DPoP-bound refresh tokens."
       ))
     }
   }

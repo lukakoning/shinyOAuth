@@ -19,6 +19,10 @@ oauth_client(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = FALSE,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
   required_acr_values = character(0),
@@ -162,6 +166,28 @@ supported by \code{jose::jwt_encode_sig} (e.g., \code{RS256}, \code{PS256}, \cod
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.}
+
+\item{dpop_private_key}{Optional private key used to generate DPoP proofs
+(RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
+asymmetric private key. When provided, shinyOAuth can attach \code{DPoP}
+proofs to token endpoint requests and use DPoP-bound access tokens in
+downstream request helpers.}
+
+\item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
+the JOSE header of DPoP proofs. Useful when the authorization or resource
+server expects a stable key identifier alongside the embedded public JWK.}
+
+\item{dpop_signing_alg}{Optional JWT signing algorithm to use for DPoP
+proofs. When omitted, a compatible asymmetric default is selected based on
+the private key type/curve (for example \code{RS256}, \code{ES256}, or \code{EdDSA}). If
+an explicit value is provided but incompatible with the key, validation
+fails early with a configuration error.}
+
+\item{dpop_require_access_token}{Logical. When \code{TRUE} and \code{dpop_private_key}
+is configured, shinyOAuth requires the authorization server to return
+\code{token_type = "DPoP"} for access tokens and fails fast otherwise. Leave at
+the default \code{FALSE} to allow deployments where DPoP is only used to bind
+refresh tokens.}
 
 \item{scope_validation}{Controls how scope discrepancies are handled when
 the authorization server grants fewer scopes than requested. RFC 6749

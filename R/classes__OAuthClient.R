@@ -48,6 +48,28 @@
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
 #'
+#' @param dpop_private_key Optional private key used to generate DPoP proofs
+#'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
+#'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
+#'   proofs to token endpoint requests and use DPoP-bound access tokens in
+#'   downstream request helpers.
+#'
+#' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
+#'   the JOSE header of DPoP proofs. Useful when the authorization or resource
+#'   server expects a stable key identifier alongside the embedded public JWK.
+#'
+#' @param dpop_signing_alg Optional JWT signing algorithm to use for DPoP
+#'   proofs. When omitted, a compatible asymmetric default is selected based on
+#'   the private key type/curve (for example `RS256`, `ES256`, or `EdDSA`). If
+#'   an explicit value is provided but incompatible with the key, validation
+#'   fails early with a configuration error.
+#'
+#' @param dpop_require_access_token Logical. When `TRUE` and `dpop_private_key`
+#'   is configured, shinyOAuth requires the authorization server to return
+#'   `token_type = "DPoP"` for access tokens and fails fast otherwise. Leave at
+#'   the default `FALSE` to allow deployments where DPoP is only used to bind
+#'   refresh tokens.
+#'
 #' @param redirect_uri Redirect URI registered with provider
 #'
 #' @param scopes Vector of scopes to request. For OIDC providers (those with an
@@ -229,6 +251,24 @@ OAuthClient <- S7::new_class(
     client_assertion_audience = S7::new_property(
       S7::class_character,
       default = NA_character_
+    ),
+    # Optional DPoP proof key (PEM string or openssl::key) used to
+    # sender-constrain token and resource requests.
+    dpop_private_key = S7::new_property(S7::class_any, default = NULL),
+    # Optional kid header to include in DPoP proofs.
+    dpop_private_key_kid = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the DPoP proof signing algorithm.
+    dpop_signing_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional strict mode: require DPoP access tokens when DPoP is enabled.
+    dpop_require_access_token = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
@@ -472,6 +512,90 @@ OAuthClient <- S7::new_class(
     if (!is.na(caa) && !nzchar(caa)) {
       return(
         "OAuthClient: client_assertion_audience must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    # Validate DPoP configuration when provided.
+    if (!is.null(self@dpop_private_key)) {
+      if (is.character(self@dpop_private_key)) {
+        pem <- paste(self@dpop_private_key, collapse = "\n")
+        if (
+          !grepl(
+            "BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY",
+            pem,
+            ignore.case = TRUE,
+            perl = TRUE
+          )
+        ) {
+          return(
+            "OAuthClient: dpop_private_key must be a PEM string (BEGIN ... PRIVATE KEY) or an openssl::key"
+          )
+        }
+      }
+    }
+
+    dpop_kid <- self@dpop_private_key_kid %||% NA_character_
+    if (!is.character(dpop_kid) || length(dpop_kid) != 1L) {
+      return(
+        "OAuthClient: dpop_private_key_kid must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(dpop_kid) && !nzchar(dpop_kid)) {
+      return(
+        "OAuthClient: dpop_private_key_kid must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    dpop_alg_raw <- self@dpop_signing_alg %||% NA_character_
+    if (!is.character(dpop_alg_raw) || length(dpop_alg_raw) != 1L) {
+      return(
+        "OAuthClient: dpop_signing_alg must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(dpop_alg_raw) && nzchar(dpop_alg_raw)) {
+      if (is.null(self@dpop_private_key)) {
+        return(
+          "OAuthClient: dpop_signing_alg requires dpop_private_key to also be configured"
+        )
+      }
+      dpop_alg <- toupper(dpop_alg_raw)
+      allowed_dpop_algs <- c(
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EDDSA"
+      )
+      if (!(dpop_alg %in% allowed_dpop_algs)) {
+        return(paste0(
+          "OAuthClient: dpop_signing_alg '",
+          dpop_alg,
+          "' is incompatible with DPoP (expected one of: ",
+          paste(allowed_dpop_algs, collapse = ", "),
+          ")"
+        ))
+      }
+    }
+
+    if (
+      !(is.logical(self@dpop_require_access_token) &&
+        length(self@dpop_require_access_token) == 1L &&
+        !is.na(self@dpop_require_access_token))
+    ) {
+      return(
+        "OAuthClient: dpop_require_access_token must be a single non-NA logical"
+      )
+    }
+    if (
+      isTRUE(self@dpop_require_access_token) && is.null(self@dpop_private_key)
+    ) {
+      return(
+        "OAuthClient: dpop_require_access_token = TRUE requires dpop_private_key"
       )
     }
 
@@ -783,6 +907,10 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = FALSE,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
   required_acr_values = character(0),
@@ -824,6 +952,10 @@ oauth_client <- function(
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
+    dpop_signing_alg = dpop_signing_alg %||% NA_character_,
+    dpop_require_access_token = isTRUE(dpop_require_access_token),
     scope_validation = scope_validation,
     claims_validation = claims_validation,
     required_acr_values = required_acr_values,

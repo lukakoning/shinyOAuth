@@ -858,7 +858,7 @@ resolve_client_assertion_audience <- function(client, req) {
 #' if needed.
 #' @keywords internal
 #' @noRd
-normalize_private_key_input <- function(key) {
+normalize_private_key_input <- function(key, arg_name = "client_private_key") {
   if (inherits(key, "key") || inherits(key, "rsa") || inherits(key, "ecdsa")) {
     return(key)
   }
@@ -866,11 +866,11 @@ normalize_private_key_input <- function(key) {
     pem <- paste(key, collapse = "\n")
     k <- try(openssl::read_key(text = pem), silent = TRUE)
     if (inherits(k, "try-error")) {
-      err_config("Failed to parse client_private_key PEM")
+      err_config(paste0("Failed to parse ", arg_name, " PEM"))
     }
     return(k)
   }
-  err_config("client_private_key must be an openssl::key or PEM string")
+  err_config(paste0(arg_name, " must be an openssl::key or PEM string"))
 }
 
 #' Choose a default JWT alg compatible with a given private key
