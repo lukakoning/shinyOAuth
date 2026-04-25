@@ -57,6 +57,11 @@
   request, the sealed state payload and later scope validation now use
   that same effective scope set.
 
+- OIDC discovery now fails fast when metadata advertises PKCE methods
+  but omits `S256`. shinyOAuth keeps `S256` as the default and only
+  allows a downgrade to `plain` when you pass `pkce_method = "plain"`
+  explicitly.
+
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now always requires a non-empty `sub` claim in userinfo responses from
   OIDC providers (those with an `issuer` configured), per OIDC Core

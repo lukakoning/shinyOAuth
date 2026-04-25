@@ -109,6 +109,9 @@ oauth_provider_oidc_discover(
 
   Additional fields passed to
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  (for example, `pkce_method = "plain"` when a provider explicitly
+  advertises only plain PKCE support and you intentionally want to allow
+  that downgrade)
 
 ## Value
 
@@ -129,6 +132,11 @@ object configured from discovery
   (header), `client_secret_post` (body), public clients using `none`
   (with PKCE), as well as JWT-based methods `private_key_jwt` and
   `client_secret_jwt` per RFC 7523.
+
+- PKCE method discovery: shinyOAuth keeps `S256` as the default and does
+  not silently downgrade to `plain`. If discovery metadata explicitly
+  omits `S256`, discovery fails with a configuration error unless you
+  explicitly opt into `pkce_method = "plain"`.
 
   Important: discovery metadata lists methods supported across the
   provider, not per-client provisioning. This helper does not
