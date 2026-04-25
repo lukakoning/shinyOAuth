@@ -137,10 +137,13 @@
 #'
 #' @param scope_validation Controls how scope discrepancies are handled when
 #'   the authorization server grants fewer scopes than requested. RFC 6749
-#'   Section 3.3 permits servers to issue tokens with reduced scope.
+#'   Section 3.3 permits servers to issue tokens with reduced scope, and
+#'   Section 5.1 allows token responses to omit `scope` when it is unchanged
+#'   from the requested scope.
 #'
 #'   - `"strict"` (default): Throws an error if any requested scope is missing
-#'     from the granted scopes.
+#'     from the granted scopes. Omitted `scope` is treated as unchanged, not as
+#'     an error.
 #'   - `"warn"`: Emits a warning but continues authentication if scopes are
 #'     missing.
 #'   - `"none"`: Skips scope validation entirely.

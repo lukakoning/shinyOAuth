@@ -1594,35 +1594,36 @@ verify_token_set <- function(
       # RFC 6749 Section 3.3 allows servers to reduce scopes; behavior is controlled
       # by client@scope_validation: "strict" (error), "warn", or "none" (skip).
       #
-      # Refresh exception (RFC 6749 Section 6): providers MAY omit scope from refresh
-      # responses when unchanged. When is_refresh=TRUE and scope is NULL, we skip
-      # validation entirely—this is compliant behavior, not an error.
-      #
-      # Note: Some providers omit scope from the token response entirely. In strict
-      # mode this is treated as an error (we cannot verify scopes were granted);
-      # in warn mode we issue a warning.
+      # RFC 6749 Section 5.1 allows the token response to omit scope when the
+      # granted scope is identical to the requested scope. RFC 6749 Section 6
+      # applies the same rule to refresh responses. We therefore treat an
+      # omitted scope as unchanged from the request rather than as an error.
       requested_scopes <- sort(unique(requested_scopes[nzchar(
         requested_scopes
       )]))
 
-      # Helper to check if scope is missing or empty (some providers return "" for unset)
-      scope_is_missing <- is.null(token_set$scope) ||
-        (length(token_set$scope) == 1L && !nzchar(token_set$scope))
+      scope_is_omitted <- is.null(token_set$scope)
+      scope_is_empty <- !scope_is_omitted &&
+        length(token_set$scope) == 1L &&
+        !nzchar(token_set$scope)
 
-      # Skip scope validation during refresh when provider omits scope (or returns empty)
-      # Per RFC 6749 Section 6, omitted scope in refresh response = unchanged from original
+      # Skip explicit scope reconciliation when provider omits scope. Per RFC
+      # 6749 Sections 5.1 and 6, omission means unchanged from the requested
+      # scope. During refresh we also continue tolerating empty string scope to
+      # preserve compatibility with providers that serialize an unchanged scope
+      # that way.
       if (
         !identical(scope_validation_mode, "none") &&
           length(requested_scopes) > 0 &&
-          !(isTRUE(is_refresh) && scope_is_missing)
+          !scope_is_omitted &&
+          !(isTRUE(is_refresh) && scope_is_empty)
       ) {
-        if (scope_is_missing) {
-          # Provider did not return scope — we cannot verify requested scopes were granted
-          msg <- "Token response missing scope; cannot verify requested scopes were granted"
+        if (scope_is_empty) {
+          msg <- "Token response scope is empty; cannot verify requested scopes were granted"
           if (identical(scope_validation_mode, "strict")) {
             err_token(c(
               "x" = msg,
-              "i" = "Set scope_validation = 'warn' or 'none' to allow missing scope in response"
+              "i" = "Set scope_validation = 'warn' or 'none' to allow empty scope in response"
             ))
           } else if (identical(scope_validation_mode, "warn")) {
             rlang::warn(
@@ -1631,7 +1632,7 @@ verify_token_set <- function(
                 "i" = "Set scope_validation = 'none' to suppress this warning"
               ),
               .frequency = "once",
-              .frequency_id = "scope-validation-missing-scope"
+              .frequency_id = "scope-validation-empty-scope"
             )
           }
         } else {

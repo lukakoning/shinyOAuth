@@ -427,7 +427,7 @@ test_that("scope_validation = 'strict' error message includes hint", {
 
 # Tests for missing scope in token response (new behavior) ----------------------
 
-test_that("scope_validation = 'strict' errors when token response omits scope", {
+test_that("scope_validation = 'strict' accepts token response that omits scope", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -463,31 +463,30 @@ test_that("scope_validation = 'strict' errors when token response omits scope", 
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  # Token response omits scope entirely
-  expect_error(
-    testthat::with_mocked_bindings(
-      swap_code_for_token_set = function(client, code, code_verifier) {
-        list(
-          access_token = "t",
-          token_type = "Bearer",
-          # No scope field at all
-          expires_in = 3600
-        )
-      },
-      .package = "shinyOAuth",
-      shinyOAuth:::handle_callback(
-        cli,
-        code = "ok",
-        payload = enc,
-        browser_token = tok
+  # Token response omits scope entirely; RFC 6749 treats that as unchanged.
+  result <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "t",
+        token_type = "Bearer",
+        # No scope field at all
+        expires_in = 3600
       )
-    ),
-    regexp = "missing scope|cannot verify",
-    class = "shinyOAuth_token_error"
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "ok",
+      payload = enc,
+      browser_token = tok
+    )
   )
+
+  expect_true(S7::S7_inherits(result, OAuthToken))
+  expect_equal(result@access_token, "t")
 })
 
-test_that("scope_validation = 'warn' warns when token response omits scope", {
+test_that("scope_validation = 'warn' accepts token response that omits scope", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -523,9 +522,9 @@ test_that("scope_validation = 'warn' warns when token response omits scope", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  # Should warn but not error, and return a token
-  expect_warning(
-    result <- testthat::with_mocked_bindings(
+  # Should not warn or error; omitted scope means unchanged.
+  result <- expect_no_warning(
+    testthat::with_mocked_bindings(
       swap_code_for_token_set = function(client, code, code_verifier) {
         list(
           access_token = "my_access_token",
@@ -541,8 +540,7 @@ test_that("scope_validation = 'warn' warns when token response omits scope", {
         payload = enc,
         browser_token = tok
       )
-    ),
-    regexp = "missing scope|cannot verify"
+    )
   )
 
   # Token should still be returned
