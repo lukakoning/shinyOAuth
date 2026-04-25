@@ -926,7 +926,7 @@ testthat::test_that("callback params are cleared when token already exists", {
         info = "Expected clearQueryAndFixTitle when callback params appear with existing token"
       )
       testthat::expect_identical(values$token@access_token, "existing")
-      testthat::expect_null(after)
+      testthat::expect_identical(after, before)
     }
   )
 })

@@ -1,9 +1,5 @@
 # shinyOAuth (development version)
 
-* `oauth_module_server()` now ignores new login requests while a session is
-already authenticated, and best-effort consumes callback state before clearing
-duplicate OAuth query parameters so stale state entries do not linger until TTL.
-
 * Added OpenTelemetry (OTel) support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
 key OAuth operations such as module initialization, login/callback handling, 
@@ -25,6 +21,9 @@ async token-exchange failures; `audit_userinfo` distinguishes missing `sub`
 and JWT/JWKS validation failures; and error-state consumption events use the
 logical state digest when available for better correlation. See 
 `vignette("audit-logging", package = "shinyOAuth")` for more information.
+
+* `oauth_module_server()` now explicitly ignores new login requests while a 
+session is already authenticated.
 
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 

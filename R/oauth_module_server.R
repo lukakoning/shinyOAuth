@@ -1394,8 +1394,6 @@ oauth_module_server <- function(
 
       if (!is.null(values$token)) {
         if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
-          existing_qs <- shiny::parseQueryString(query_string %||% "")
-          .consume_callback_state_payload(existing_qs$state, strict = FALSE)
           .clear_query_and_fix_title()
         }
         return(invisible(NULL))
@@ -1581,14 +1579,9 @@ oauth_module_server <- function(
       invisible(NULL)
     }
 
-    # Helper to consume (validate/remove) state from a callback payload.
+    # Helper to consume (validate/remove) state from an error response.
     # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
-    .consume_callback_state_payload <- function(
-      state,
-      strict = FALSE,
-      success_event = NULL,
-      failure_event = NULL
-    ) {
+    .consume_error_state <- function(state, strict = FALSE) {
       payload <- NULL
       consumed <- tryCatch(
         {
@@ -1600,21 +1593,19 @@ oauth_module_server <- function(
               # Consume the state store entry (single-use enforcement)
               state_store_get_remove(client, payload$state)
 
-              if (is_valid_string(success_event)) {
-                # Audit success using the logical state digest for correlation.
-                try(
-                  audit_event(
-                    success_event,
-                    context = list(
-                      provider = client@provider@name %||% NA_character_,
-                      issuer = client@provider@issuer %||% NA_character_,
-                      client_id_digest = string_digest(client@client_id),
-                      state_digest = string_digest(payload$state)
-                    )
-                  ),
-                  silent = TRUE
-                )
-              }
+              # Audit success using the logical state digest for correlation.
+              try(
+                audit_event(
+                  "error_state_consumed",
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id),
+                    state_digest = string_digest(payload$state)
+                  )
+                ),
+                silent = TRUE
+              )
             }
           )
 
@@ -1637,26 +1628,24 @@ oauth_module_server <- function(
             string_digest(state %||% NA_character_)
           }
 
-          if (is_valid_string(failure_event)) {
-            # State consumption failed; always emit audit when requested.
-            try(
-              with_trace_id(
-                event_trace_id,
-                audit_event(
-                  failure_event,
-                  context = list(
-                    provider = client@provider@name %||% NA_character_,
-                    issuer = client@provider@issuer %||% NA_character_,
-                    client_id_digest = string_digest(client@client_id),
-                    state_digest = state_digest,
-                    error_class = paste(class(e), collapse = ", "),
-                    error_message = conditionMessage(e)
-                  )
+          # State consumption failed; always emit audit.
+          try(
+            with_trace_id(
+              event_trace_id,
+              audit_event(
+                "error_state_consumption_failed",
+                context = list(
+                  provider = client@provider@name %||% NA_character_,
+                  issuer = client@provider@issuer %||% NA_character_,
+                  client_id_digest = string_digest(client@client_id),
+                  state_digest = state_digest,
+                  error_class = paste(class(e), collapse = ", "),
+                  error_message = conditionMessage(e)
                 )
-              ),
-              silent = TRUE
-            )
-          }
+              )
+            ),
+            silent = TRUE
+          )
 
           if (isTRUE(strict)) {
             rlang::abort(message = conditionMessage(e), parent = e)
@@ -1667,17 +1656,6 @@ oauth_module_server <- function(
       )
 
       invisible(consumed)
-    }
-
-    # Helper to consume (validate/remove) state from an error response.
-    # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
-    .consume_error_state <- function(state, strict = FALSE) {
-      .consume_callback_state_payload(
-        state,
-        strict = strict,
-        success_event = "error_state_consumed",
-        failure_event = "error_state_consumption_failed"
-      )
     }
 
     # Function to handle code & state once received in query string
