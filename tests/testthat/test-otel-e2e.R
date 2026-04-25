@@ -509,9 +509,15 @@ otel_e2e("module logout and session-end flows emit lifecycle spans around revoke
   })
 
   logout_span <- otel_named_spans(r$traces, "shinyOAuth.logout")
-  session_end_span <- otel_named_spans(r$traces, "shinyOAuth.session.end.revoke")
+  session_end_span <- otel_named_spans(
+    r$traces,
+    "shinyOAuth.session.end.revoke"
+  )
   revoke_spans <- otel_named_spans(r$traces, "shinyOAuth.token.revoke")
-  revoke_http_spans <- otel_named_spans(r$traces, "shinyOAuth.token.revoke.http")
+  revoke_http_spans <- otel_named_spans(
+    r$traces,
+    "shinyOAuth.token.revoke.http"
+  )
 
   testthat::expect_length(logout_span, 1L)
   testthat::expect_length(session_end_span, 1L)
@@ -672,9 +678,12 @@ otel_e2e("get_userinfo sync exports filtered audit logs correlated with span", {
   testthat::expect_false(is.null(userinfo_span))
   testthat::expect_identical(userinfo_span$status, "ok")
 
-  poll_for_async(function() {
-    length(otel_scope_logs(log_file)) >= 1L
-  }, timeout = 5)
+  poll_for_async(
+    function() {
+      length(otel_scope_logs(log_file)) >= 1L
+    },
+    timeout = 5
+  )
 
   userinfo_logs <- Filter(
     function(log_record) {
@@ -691,8 +700,14 @@ otel_e2e("get_userinfo sync exports filtered audit logs correlated with span", {
   userinfo_log <- userinfo_logs[[1L]]
   testthat::expect_identical(userinfo_log$trace_id, userinfo_span$trace_id)
   testthat::expect_identical(userinfo_log$span_id, userinfo_span$span_id)
-  testthat::expect_identical(otel_log_attribute(userinfo_log, "oauth.status"), "ok")
-  testthat::expect_true(is.character(otel_log_attribute(userinfo_log, "sub_digest")))
+  testthat::expect_identical(
+    otel_log_attribute(userinfo_log, "oauth.status"),
+    "ok"
+  )
+  testthat::expect_true(is.character(otel_log_attribute(
+    userinfo_log,
+    "sub_digest"
+  )))
   testthat::expect_null(otel_log_attribute(userinfo_log, "access_token"))
   testthat::expect_identical(
     otel_log_attribute(userinfo_log, "shinyoauth.trace_id"),

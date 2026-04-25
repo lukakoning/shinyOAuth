@@ -128,7 +128,9 @@ testthat::test_that("otel_start_async_parent does not capture ambient headers on
     testthat::with_mocked_bindings(
       otel_capture_context = function(...) {
         capture_calls <<- capture_calls + 1L
-        c(traceparent = "00-11111111111111111111111111111111-1111111111111111-01")
+        c(
+          traceparent = "00-11111111111111111111111111111111-1111111111111111-01"
+        )
       },
       .package = "shinyOAuth",
       {
@@ -138,9 +140,13 @@ testthat::test_that("otel_start_async_parent does not capture ambient headers on
           },
           .package = "otel",
           {
-            shinyOAuth:::with_otel_span("shinyOAuth.test.outer", {
-              shinyOAuth:::otel_start_async_parent("shinyOAuth.test.async")
-            }, parent = NA)
+            shinyOAuth:::with_otel_span(
+              "shinyOAuth.test.outer",
+              {
+                shinyOAuth:::otel_start_async_parent("shinyOAuth.test.async")
+              },
+              parent = NA
+            )
           }
         )
       }

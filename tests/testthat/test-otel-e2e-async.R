@@ -136,7 +136,9 @@ otel_span_status_is_error <- function(span) {
 otel_span_has_event <- function(span, name) {
   any(vapply(
     otel_null_coalesce(span$events, list()),
-    function(event) identical(otel_null_coalesce(event$name, NA_character_), name),
+    function(event) {
+      identical(otel_null_coalesce(event$name, NA_character_), name)
+    },
     logical(1)
   ))
 }
@@ -622,9 +624,12 @@ otel_async_daemon("async parent/worker propagation survives stale worker tracing
   poll_for_async(
     function() {
       spans <- otel_scope_spans(otel_file)
-      length(otel_find_spans(spans, "shinyOAuth.test.async.stale.parent")) >= 1L &&
-        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.worker")) >= 1L &&
-        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.child")) >= 1L
+      length(otel_find_spans(spans, "shinyOAuth.test.async.stale.parent")) >=
+        1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.worker")) >=
+          1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.stale.child")) >=
+          1L
     },
     timeout = 10
   )
@@ -706,7 +711,10 @@ otel_async_daemon("async error propagation exports error parent and worker spans
       )
     ),
     onFulfilled = function(x) {
-      resolved_error <<- structure(list(value = x), class = "unexpected_success")
+      resolved_error <<- structure(
+        list(value = x),
+        class = "unexpected_success"
+      )
       invisible(NULL)
     },
     onRejected = function(err) {
@@ -727,8 +735,10 @@ otel_async_daemon("async error propagation exports error parent and worker spans
   poll_for_async(
     function() {
       spans <- otel_scope_spans(otel_file)
-      length(otel_find_spans(spans, "shinyOAuth.test.async.error.parent")) >= 1L &&
-        length(otel_find_spans(spans, "shinyOAuth.test.async.error.worker")) >= 1L
+      length(otel_find_spans(spans, "shinyOAuth.test.async.error.parent")) >=
+        1L &&
+        length(otel_find_spans(spans, "shinyOAuth.test.async.error.worker")) >=
+          1L
     },
     timeout = 10
   )
@@ -1150,7 +1160,10 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
       )
 
       testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_identical(values$token@userinfo$sub %||% NA_character_, "user-123")
+      testthat::expect_identical(
+        values$token@userinfo$sub %||% NA_character_,
+        "user-123"
+      )
     }
   )
 
@@ -1229,21 +1242,36 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
     userinfo_span$span_id
   )
   testthat::expect_identical(
-    as.integer(otel_span_attribute(userinfo_http_span, "http.response.status_code")),
+    as.integer(otel_span_attribute(
+      userinfo_http_span,
+      "http.response.status_code"
+    )),
     200L
   )
 
-  testthat::expect_identical(callback_received_log$trace_id, worker_span$trace_id)
+  testthat::expect_identical(
+    callback_received_log$trace_id,
+    worker_span$trace_id
+  )
   testthat::expect_identical(callback_received_log$span_id, worker_span$span_id)
-  testthat::expect_true(is.character(otel_log_attribute(callback_received_log, "code_digest")))
-  testthat::expect_true(is.character(otel_log_attribute(callback_received_log, "state_digest")))
+  testthat::expect_true(is.character(otel_log_attribute(
+    callback_received_log,
+    "code_digest"
+  )))
+  testthat::expect_true(is.character(otel_log_attribute(
+    callback_received_log,
+    "state_digest"
+  )))
   testthat::expect_true(is.character(otel_log_attribute(
     callback_received_log,
     "browser_token_digest"
   )))
   testthat::expect_null(otel_log_attribute(callback_received_log, "code"))
   testthat::expect_null(otel_log_attribute(callback_received_log, "state"))
-  testthat::expect_null(otel_log_attribute(callback_received_log, "browser_token"))
+  testthat::expect_null(otel_log_attribute(
+    callback_received_log,
+    "browser_token"
+  ))
 
   testthat::expect_identical(login_success_log$trace_id, worker_span$trace_id)
   testthat::expect_identical(login_success_log$span_id, worker_span$span_id)
@@ -1251,8 +1279,14 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
 
   testthat::expect_identical(userinfo_log$trace_id, worker_span$trace_id)
   testthat::expect_identical(userinfo_log$span_id, userinfo_span$span_id)
-  testthat::expect_identical(otel_log_attribute(userinfo_log, "oauth.status"), "ok")
-  testthat::expect_true(is.character(otel_log_attribute(userinfo_log, "sub_digest")))
+  testthat::expect_identical(
+    otel_log_attribute(userinfo_log, "oauth.status"),
+    "ok"
+  )
+  testthat::expect_true(is.character(otel_log_attribute(
+    userinfo_log,
+    "sub_digest"
+  )))
   testthat::expect_null(otel_log_attribute(userinfo_log, "access_token"))
   testthat::expect_identical(
     otel_log_attribute(userinfo_log, "shinyoauth.trace_id"),
