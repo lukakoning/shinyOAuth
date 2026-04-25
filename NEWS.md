@@ -1,5 +1,19 @@
 # shinyOAuth (development version)
 
+* Added first-class OpenTelemetry support. shinyOAuth now emits OTel logs from
+existing audit/error events and traces key OAuth operations such as module
+initialization, login/callback handling, token exchange/refresh,
+userinfo/introspection/revocation, and session-end cleanup. See
+`vignette("opentelemetry", package = "shinyOAuth")` for configuration and
+signal details.
+
+* Improved observability correlation for existing audit flows. Interactive
+login now reuses a single flow `trace_id` across redirect issuance, callback
+validation, token exchange, and login outcome events, making it easier to
+correlate the pre-redirect and post-redirect Shiny sessions for a single login
+round-trip; async work also carries more accurate originating Shiny
+session/process context into worker-emitted events.
+
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
