@@ -137,7 +137,7 @@ testthat::test_that("discovery rejects non-JSON content-type", {
   )
 })
 
-testthat::test_that("PKCE advisory does not block provider when S256 not advertised", {
+testthat::test_that("discovery errors when S256 is not advertised and plain is not explicit", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
@@ -156,9 +156,39 @@ testthat::test_that("PKCE advisory does not block provider when S256 not adverti
   srv <- webfakes::local_app_process(app)
   issuer <- srv$url()
 
-  testthat::expect_no_error(
-    oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
+  testthat::expect_error(
+    oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE),
+    class = "shinyOAuth_config_error",
+    regexp = "does not advertise PKCE S256 support|pkce_method = 'plain'"
   )
+})
+
+testthat::test_that("discovery allows explicit plain PKCE downgrade when advertised", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          code_challenge_methods_supported = list("plain")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = issuer,
+    use_pkce = TRUE,
+    pkce_method = "plain"
+  )
+
+  testthat::expect_identical(prov@pkce_method, "plain")
 })
 
 testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required from signing algs (capability != requirement)", {

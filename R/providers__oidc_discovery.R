@@ -23,6 +23,11 @@
 #'   (with PKCE), as well as JWT-based methods `private_key_jwt` and
 #'   `client_secret_jwt` per RFC 7523.
 #'
+#' - PKCE method discovery: shinyOAuth keeps `S256` as the default and does not
+#'   silently downgrade to `plain`. If discovery metadata explicitly omits
+#'   `S256`, discovery fails with a configuration error unless you explicitly
+#'   opt into `pkce_method = "plain"`.
+#'
 #'   Important: discovery metadata lists methods supported across the provider,
 #'   not per-client provisioning. This helper does not automatically select
 #'   JWT-based methods just because they are advertised. By default it prefers
@@ -84,7 +89,9 @@
 #'
 #'  Prefer `"url"` and tighten hosts via `options(shinyOAuth.allowed_hosts)`
 #'  when feasible.
-#' @param ... Additional fields passed to [oauth_provider()]
+#' @param ... Additional fields passed to [oauth_provider()] (for example,
+#'   `pkce_method = "plain"` when a provider explicitly advertises only plain
+#'   PKCE support and you intentionally want to allow that downgrade)
 #'
 #' @return [OAuthProvider] object configured from discovery
 #'
@@ -158,8 +165,15 @@ oauth_provider_oidc_discover <- function(
     endpoints$token_url
   )
 
-  # 9) Optional PKCE S256 warning
-  .discover_warn_pkce_s256(disc, use_pkce, iss_host)
+  # 9) Resolve PKCE method against discovery metadata
+  dots <- list(...)
+  pkce_method <- .discover_resolve_pkce_method(
+    disc = disc,
+    use_pkce = use_pkce,
+    iss = iss,
+    iss_host = iss_host,
+    pkce_method = dots$pkce_method %||% NULL
+  )
 
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
@@ -170,7 +184,7 @@ oauth_provider_oidc_discover <- function(
   #      Whether the userinfo response is application/jwt depends on per-client
   #      configuration at the provider. Therefore we do NOT auto-enable
   #      userinfo_signed_jwt_required from discovery; callers must opt in.
-  dots <- list(...)
+  dots$pkce_method <- pkce_method
 
   # 11) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
@@ -506,33 +520,69 @@ oauth_provider_oidc_discover <- function(
   "header"
 }
 
-#' Internal: warn if PKCE S256 not advertised
+#' Internal: resolve PKCE method against discovery metadata
 #'
 #' @keywords internal
 #' @noRd
-.discover_warn_pkce_s256 <- function(disc, use_pkce, iss_host) {
+.discover_resolve_pkce_method <- function(
+  disc,
+  use_pkce,
+  iss,
+  iss_host,
+  pkce_method = NULL
+) {
   if (!isTRUE(use_pkce)) {
-    return(invisible(FALSE))
+    return(pkce_method)
   }
 
   cc_methods <- disc[["code_challenge_methods_supported"]] %||% character(0)
   cc_methods <- toupper(as.character(cc_methods))
-
-  if (length(cc_methods) > 0 && !("S256" %in% cc_methods)) {
-    if (!.is_test()) {
-      rlang::warn(
-        c(
-          "!" = "Discovery does not advertise PKCE S256 support",
-          "i" = "Provider may accept only 'plain' code challenge; explore if enabling it is possible with the provider"
-        ),
-        .frequency = "once",
-        .frequency_id = paste0("pkce-s256-", iss_host)
-      )
-    }
-    return(invisible(TRUE))
+  pkce_method <- pkce_method %||% NULL
+  if (!is.null(pkce_method) && !is.na(pkce_method)) {
+    pkce_method <- if (tolower(pkce_method) == "plain") "plain" else "S256"
+  } else {
+    pkce_method <- NULL
   }
 
-  invisible(FALSE)
+  # When the provider does not advertise methods, preserve the historical
+  # default and let oauth_provider() choose S256 unless the caller explicitly
+  # requests plain.
+  if (length(cc_methods) == 0L) {
+    return(pkce_method)
+  }
+
+  requested_method <- toupper(pkce_method %||% "S256")
+
+  if (!(requested_method %in% cc_methods)) {
+    remediation <- if ("PLAIN" %in% cc_methods) {
+      "Discovery will not silently downgrade; pass `pkce_method = 'plain'` explicitly only if you intend to allow plain PKCE"
+    } else {
+      "Adjust the provider or discovery configuration so it supports PKCE S256"
+    }
+
+    err_config(
+      c(
+        "x" = paste0(
+          "OIDC discovery does not advertise PKCE ",
+          requested_method,
+          " support"
+        ),
+        "!" = paste0(
+          "Advertised methods: ",
+          paste(cc_methods, collapse = ", ")
+        ),
+        "i" = remediation
+      ),
+      context = list(
+        issuer = iss,
+        issuer_host = iss_host,
+        code_challenge_methods_supported = cc_methods,
+        requested_pkce_method = requested_method
+      )
+    )
+  }
+
+  pkce_method
 }
 
 #' Internal: intersect allowed ID token algs with discovery

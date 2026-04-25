@@ -73,7 +73,9 @@ trailing-slash normalization (recommended).
 Prefer \code{"url"} and tighten hosts via \code{options(shinyOAuth.allowed_hosts)}
 when feasible.}
 
-\item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}}}
+\item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}} (for example,
+\code{pkce_method = "plain"} when a provider explicitly advertises only plain
+PKCE support and you intentionally want to allow that downgrade)}
 }
 \value{
 \link{OAuthProvider} object configured from discovery
@@ -97,6 +99,10 @@ discovery-advertised set.
 (header), \code{client_secret_post} (body), public clients using \code{none}
 (with PKCE), as well as JWT-based methods \code{private_key_jwt} and
 \code{client_secret_jwt} per RFC 7523.
+\item PKCE method discovery: shinyOAuth keeps \code{S256} as the default and does not
+silently downgrade to \code{plain}. If discovery metadata explicitly omits
+\code{S256}, discovery fails with a configuration error unless you explicitly
+opt into \code{pkce_method = "plain"}.
 
 Important: discovery metadata lists methods supported across the provider,
 not per-client provisioning. This helper does not automatically select
