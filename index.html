@@ -38,6 +38,7 @@
 <li><a class="dropdown-item" href="articles/audit-logging.html">Audit logging and hooks</a></li>
     <li><a class="dropdown-item" href="articles/authentication-flow.html">Authentication flow</a></li>
     <li><a class="dropdown-item" href="articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
+    <li><a class="dropdown-item" href="articles/opentelemetry.html">OpenTelemetry</a></li>
     <li><a class="dropdown-item" href="articles/usage.html">Usage</a></li>
   </ul>
 </li>
@@ -72,8 +73,8 @@
 <li><p>S7 classes: <code>OAuthProvider</code>, <code>OAuthClient</code>, <code>OAuthToken</code>, for a structured representation of key elements of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Functions: <code><a href="reference/prepare_call.html">prepare_call()</a></code>, <code><a href="reference/handle_callback.html">handle_callback()</a></code>, <code><a href="reference/introspect_token.html">introspect_token()</a></code>, <code><a href="reference/refresh_token.html">refresh_token()</a></code>, and more, should you wish to manually implement parts of the OAuth 2.0/OIDC flow</p></li>
 <li><p>Provider helpers: you can configure your own OAuth 2.0/OIDC providers, but the package also includes an <code><a href="reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> function for quick OIDC setup, and contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).</p></li>
-<li><p>Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce), userinfo subject match, and more (see <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">link</a>) for more details)</p></li>
-<li><p>Provides hooks for auditing &amp; logging key events, like login successes or failures (see <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) for more details)</p></li>
+<li><p>Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce), userinfo subject match, and more (see <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">link</a>))</p></li>
+<li><p>Provides hooks for auditing &amp; logging key events, like login successes or failures; also supports emitting OpenTelemetry signals (see <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) and <code><a href="articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html">link</a>))</p></li>
 </ul>
 </div>
 <div class="section level2">
@@ -124,7 +125,7 @@
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login_information"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Server which obtains authentication </span></span>
+<span><span class="co"># Server which obtains authentication</span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Start authentication module; will automatically redirect unauthenticated users</span></span>
 <span>  <span class="co">#   to the provider's login page and handle the callback</span></span>
@@ -147,7 +148,7 @@
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>, </span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>,</span>
 <span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -157,7 +158,8 @@
 <div class="section level3">
 <h3 id="loggingauditing">Logging/auditing<a class="anchor" aria-label="anchor" href="#loggingauditing"></a>
 </h3>
-<p>The package provides hooks for logging/auditing crucial events (e.g., callbacks issued &amp; received, login success/failures). See <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) for details.</p>
+<p>The package provides hooks for logging/auditing crucial events (e.g., callbacks issued &amp; received, login success/failures). It can also emit signals via OpenTelemetry.</p>
+<p>See <code><a href="articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html">link</a>) for audit event details, and <code><a href="articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html">link</a>) for OpenTelemetry details.</p>
 </div>
 </div>
 <div class="section level2">

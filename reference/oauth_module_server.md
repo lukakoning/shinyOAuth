@@ -54,16 +54,22 @@ oauth_module_server(
 
 - async:
 
-  If TRUE, performs token exchange and refresh in the background using
-  the [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html)
-  package, and updates values when the promise resolves. Requires the
-  [promises::promises](https://rstudio.github.io/promises/reference/promises-package.html)
-  and [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html)
-  packages, and mirai daemons to be configured with
+  If TRUE, dispatches token exchange and refresh through shinyOAuth's
+  async promise path and updates values when the promise resolves.
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) is
+  preferred when daemons are configured with
   [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
-  If FALSE (default), token exchange and refresh are performed
-  synchronously (which may block the Shiny event loop; it is thus
-  strongly recommended to set `async = TRUE` in production apps)
+  Otherwise, if
+  [promises::promises](https://rstudio.github.io/promises/reference/promises-package.html)
+  and
+  [future::future](https://future.futureverse.org/reference/future.html)
+  are installed, the current
+  [future::future](https://future.futureverse.org/reference/future.html)
+  plan is used. Non-sequential future plans run off the main R session;
+  [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
+  stays in-process. If FALSE (default), token exchange and refresh are
+  performed synchronously (which may block the Shiny event loop; it is
+  thus strongly recommended to set `async = TRUE` in production apps)
 
 - indefinite_session:
 
@@ -281,11 +287,12 @@ It also contains the following helper functions, mainly useful when
   Shiny, [`Sys.sleep()`](https://rdrr.io/r/base/Sys.sleep.html) blocks
   the event loop for the entire worker process, potentially freezing UI
   updates for all sessions on that worker during slow provider responses
-  or retry backoff. To keep the UI responsive: set `async = TRUE` so
-  network calls run in a background process via the
-  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) package
-  (configure daemons with `mirai::daemons(n)`), or reduce/block retries
-  (see
+  or retry backoff. To keep the UI responsive: set `async = TRUE` and
+  configure an async backend that runs off the main process, such as
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) daemons
+  (`mirai::daemons(n)`) or a non-sequential
+  [future::future](https://future.futureverse.org/reference/future.html)
+  plan, or reduce/block retries (see
   [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)).
 
 - Browser requirements: the module relies on the browser's Web Crypto

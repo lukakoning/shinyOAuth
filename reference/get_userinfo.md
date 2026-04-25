@@ -6,7 +6,7 @@ provided access token. Emits an audit event with redacted details.
 ## Usage
 
 ``` r
-get_userinfo(oauth_client, token)
+get_userinfo(oauth_client, token, shiny_session = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,13 @@ get_userinfo(oauth_client, token)
   Either an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   object or a raw access token string.
+
+- shiny_session:
+
+  Optional pre-captured Shiny session context (from
+  `capture_shiny_session_context()`) to include in audit events and span
+  attributes. Used when calling from async workers that lack access to
+  the reactive domain.
 
 ## Value
 

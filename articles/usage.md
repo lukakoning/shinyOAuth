@@ -20,6 +20,9 @@ For a detailed explanation of audit logging key events during the flow,
 see:
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md).
 
+For a dedicated description of shinyOAuth’s OpenTelemetry support, see:
+[`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md).
+
 ## Minimal Shiny module example
 
 Below is a minimal example using a GitHub’s OAuth 2.0 app (same as shown
@@ -385,26 +388,40 @@ is a list of all available options.
 
 ### Observability/logging
 
+- `options(shinyOAuth.audit_hook = function(event){ ... })` – receive
+  structured audit and error events
+- `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
+  request details from audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
+  redaction of sensitive data in audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_digest_key = ...)` – shared key for
+  HMAC-SHA256 digests used in audit/OTel attributes. By default
+  shinyOAuth generates a random per-process key when this is not
+  configured
+- `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable
+  shinyOAuth OpenTelemetry span creation and async trace-context
+  propagation. Default: `TRUE`
+- `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable
+  shinyOAuth OpenTelemetry log emission. Default: `TRUE`
+
+See
+[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+for details about audit hooks, and
+[`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
+for more details about logs and traces via OpenTelemetry.
+
+### Debugging
+
 - `options(shinyOAuth.print_errors = TRUE)` – concise error lines
   (interactive / tests only)
 - `options(shinyOAuth.print_traceback = TRUE)` – include backtraces
   (interactive / tests only)
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
   HTTP bodies (may reveal details)
-- `options(shinyOAuth.trace_hook = function(event){ ... })` – structured
-  events (errors, http, etc.)
-- `options(shinyOAuth.audit_hook = function(event){ ... })` – separate
-  audit stream
-- `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
-  request details from audit events (default: `TRUE`)
-- `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
-  redaction of sensitive data in audit events (default: `TRUE`)
-- `options(shinyOAuth.audit_digest_key = ...)` – key for HMAC-SHA256
-  audit digests
 
-See
-[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-for details about audit and trace hooks.
+These options control the amount of information printed to the console
+when errors occur. Intended primarily for debugging during development,
+not for users of the package.
 
 ### Networking/security
 
@@ -475,8 +492,7 @@ options:
   warnings and messages captured from async workers are silently
   discarded instead of being re-emitted on the main R process. Default
   is `TRUE` (replay all captured conditions). Useful if worker
-  diagnostics are too noisy or handled separately via `trace_hook` /
-  `audit_hook`
+  diagnostics are too noisy or handled separately via `audit_hook`
 
 ### Token lifetime fallback
 

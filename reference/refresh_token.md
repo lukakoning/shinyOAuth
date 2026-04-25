@@ -48,14 +48,18 @@ refresh_token(
 
 - async:
 
-  Logical, default FALSE. If TRUE and the
-  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) package
-  is available, the refresh is performed off the main R session using
-  [`mirai::mirai()`](https://mirai.r-lib.org/reference/mirai.html) and
-  this function returns a mirai (which implements `as.promise()`) that
-  resolves to an updated `OAuthToken`. Requires mirai daemons to be
-  configured with
-  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
+  Logical, default FALSE. If TRUE and an async backend is configured,
+  the refresh is dispatched through shinyOAuth's async promise path and
+  this function returns a promise-compatible async result that resolves
+  to an updated `OAuthToken`.
+  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) is
+  preferred when daemons are configured via
+  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html);
+  otherwise the current
+  [future::future](https://future.futureverse.org/reference/future.html)
+  plan is used. Non-sequential future plans run off the main R session;
+  [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
+  stays in-process.
 
 - introspect:
 

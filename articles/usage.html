@@ -36,6 +36,7 @@
 <li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
+    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
     <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
   </ul>
 </li>
@@ -90,6 +91,8 @@ vignette:
 <p>For a detailed explanation of audit logging key events during the
 flow, see:
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>.</p>
+<p>For a dedicated description of shinyOAuth’s OpenTelemetry support,
+see: <code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="minimal-shiny-module-example">Minimal Shiny module example<a class="anchor" aria-label="anchor" href="#minimal-shiny-module-example"></a>
@@ -441,20 +444,8 @@ Below is a list of all available options.</p>
 </h3>
 <ul>
 <li>
-<code>options(shinyOAuth.print_errors = TRUE)</code> – concise error
-lines (interactive / tests only)</li>
-<li>
-<code>options(shinyOAuth.print_traceback = TRUE)</code> – include
-backtraces (interactive / tests only)</li>
-<li>
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies (may reveal details)</li>
-<li>
-<code>options(shinyOAuth.trace_hook = function(event){ ... })</code>
-– structured events (errors, http, etc.)</li>
-<li>
 <code>options(shinyOAuth.audit_hook = function(event){ ... })</code>
-– separate audit stream</li>
+– receive structured audit and error events</li>
 <li>
 <code>options(shinyOAuth.audit_include_http = FALSE)</code> –
 exclude HTTP request details from audit events (default:
@@ -464,11 +455,43 @@ exclude HTTP request details from audit events (default:
 automatic redaction of sensitive data in audit events (default:
 <code>TRUE</code>)</li>
 <li>
-<code>options(shinyOAuth.audit_digest_key = ...)</code> – key for
-HMAC-SHA256 audit digests</li>
+<code>options(shinyOAuth.audit_digest_key = ...)</code> – shared key
+for HMAC-SHA256 digests used in audit/OTel attributes. By default
+shinyOAuth generates a random per-process key when this is not
+configured</li>
+<li>
+<code>options(shinyOAuth.otel_tracing_enabled = FALSE)</code> –
+disable shinyOAuth OpenTelemetry span creation and async trace-context
+propagation. Default: <code>TRUE</code>
+</li>
+<li>
+<code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> –
+disable shinyOAuth OpenTelemetry log emission. Default:
+<code>TRUE</code>
+</li>
 </ul>
 <p>See <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>
-for details about audit and trace hooks.</p>
+for details about audit hooks, and
+<code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more
+details about logs and traces via OpenTelemetry.</p>
+</div>
+<div class="section level3">
+<h3 id="debugging">Debugging<a class="anchor" aria-label="anchor" href="#debugging"></a>
+</h3>
+<ul>
+<li>
+<code>options(shinyOAuth.print_errors = TRUE)</code> – concise error
+lines (interactive / tests only)</li>
+<li>
+<code>options(shinyOAuth.print_traceback = TRUE)</code> – include
+backtraces (interactive / tests only)</li>
+<li>
+<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
+sanitized HTTP bodies (may reveal details)</li>
+</ul>
+<p>These options control the amount of information printed to the
+console when errors occur. Intended primarily for debugging during
+development, not for users of the package.</p>
 </div>
 <div class="section level3">
 <h3 id="networkingsecurity">Networking/security<a class="anchor" aria-label="anchor" href="#networkingsecurity"></a>
@@ -576,7 +599,7 @@ when <code>FALSE</code>, warnings and messages captured from async
 workers are silently discarded instead of being re-emitted on the main R
 process. Default is <code>TRUE</code> (replay all captured conditions).
 Useful if worker diagnostics are too noisy or handled separately via
-<code>trace_hook</code> / <code>audit_hook</code>
+<code>audit_hook</code>
 </li>
 </ul>
 </div>

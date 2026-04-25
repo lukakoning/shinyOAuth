@@ -36,6 +36,7 @@
 <li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
+    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
     <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
   </ul>
 </li>
@@ -77,35 +78,33 @@ force, replay, or configuration errors).</p>
 <p>This vignette covers:</p>
 <ul>
 <li>How to register audit hooks to export/store events</li>
+<li>Some options for controlling the content of events</li>
 <li>Which audit events are emitted &amp; what fields are included in
 each event</li>
-<li>Best practices</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="receiving-audit-events">Receiving audit events<a class="anchor" aria-label="anchor" href="#receiving-audit-events"></a>
 </h2>
-<p>There are two hook options you can set. Both receive the same event
-object (a named list). The functions you should register under these
-options should be fast, non-blocking, and never throw errors.</p>
-<ul>
-<li>
-<code>options(shinyOAuth.audit_hook = function(event) { ... })</code>
-- intended for audit-specific sinks</li>
-<li>
-<code>options(shinyOAuth.trace_hook = function(event) { ... })</code>
-- a more general-purpose tracing hook used for both audit events and
-error traces</li>
-</ul>
+<p>You can use
+<code>options(shinyOAuth.audit_hook = function(event) { ... })</code> to
+register a hook function that will be called whenever shinyOAuth emits a
+structured audit or error event. The function you register should be
+fast, non-blocking, and never throw errors.</p>
 <p>Example of printing audit events to console:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"[AUDIT] %s %s\n"</span>, <span class="va">event</span><span class="op">$</span><span class="va">type</span>, <span class="va">event</span><span class="op">$</span><span class="va">trace_id</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>To stop receiving events, unset the option:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<p>Another way that ‘shinyOAuth’ can emit audit events is via
+OpenTelemetry logging. Please see
+<code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more
+details. OpenTelemetry logs are derived from the same underlying events
+as <code>shinyOAuth.audit_hook</code>, but they are flattened into
+scalar attributes. Nested structures like the full
+<code>shiny_session</code> object and the raw <code>timestamp</code>
+field are not preserved verbatim in the OTel log payload.</p>
 </div>
 <div class="section level2">
 <h2 id="event-structure">Event structure<a class="anchor" aria-label="anchor" href="#event-structure"></a>
@@ -118,13 +117,22 @@ error traces</li>
 </li>
 <li>
 <code>trace_id</code>: a short correlation id for linking related
-records</li>
+records from the same operation or auth flow</li>
 <li>
 <code>timestamp</code>: POSIXct time when the event was created
 (from <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>)</li>
 <li>Additional key/value fields depending on the event (see event
 catalog)</li>
 </ul>
+<p>For the interactive login flow, shinyOAuth propagates the same
+<code>trace_id</code> from redirect preparation through callback
+validation, token exchange, and login success or failure handling. The
+trace id is embedded inside the encrypted state payload so it survives
+the browser round-trip without exposing raw OAuth values.</p>
+<p>This <code>trace_id</code> is shinyOAuth’s own application-level
+correlation id. When OTel logging is enabled it is exported as the
+<code>shinyoauth.trace_id</code> log attribute, which is distinct from
+the backend’s native OpenTelemetry trace/span ids.</p>
 <p>When events are emitted from within a Shiny session, a JSON-friendly
 <code>shiny_session</code> list is attached to every event to correlate
 audit activity with the HTTP request and session. The structure is
@@ -140,6 +148,11 @@ the event was emitted from the main R process (<code>FALSE</code>) or
 from an async worker (<code>TRUE</code>). This helps distinguish logs
 produced by background tasks (e.g., async token exchange or refresh)
 from those in the main reactive flow.</li>
+<li>If you pre-capture a worker-intended context with
+<code>capture_shiny_session_context(is_async = TRUE)</code> but emit the
+event before any worker dispatch actually happens, shinyOAuth normalizes
+that borrowed context back to <code>FALSE</code> because the event was
+still emitted on the main process.</li>
 <li>
 <code>shiny_session$process_id</code>: the process ID (PID) of the R
 process that emitted the event.</li>
@@ -149,10 +162,10 @@ PID of the main R process that spawned the async worker. This allows you
 to correlate events from workers back to the originating main
 process.</li>
 <li>
-<code>mirai_error_type</code>: (async failure events only)
-classifies mirai transport-level failures separately from
-application-level errors. Present on <code>login_failed</code>,
-<code>session_cleared</code>, and
+<code>mirai_error_type</code>: a top-level event field on certain
+async failure events. It classifies mirai transport-level failures
+separately from application-level errors. Present on
+<code>login_failed</code>, <code>session_cleared</code>, and
 <code>refresh_failed_but_kept_session</code> events:
 <ul>
 <li>
@@ -196,36 +209,33 @@ to keep the event JSON-serializable and concise.</p>
 automatically sanitized before being attached to events. This prevents
 accidental secret leakage when forwarding events to log sinks:</p>
 <ul>
-<li>
-<strong>OAuth query parameters are redacted</strong>:
-<code>code</code>, <code>state</code>, <code>access_token</code>,
+<li>OAuth query parameters are redacted: <code>code</code>,
+<code>state</code>, <code>access_token</code>,
 <code>refresh_token</code>, <code>id_token</code>, <code>token</code>,
 <code>session_state</code>, <code>code_verifier</code>, and
 <code>nonce</code> are replaced with <code>[REDACTED]</code>.</li>
-<li>
-<strong>Sensitive headers are removed</strong>: <code>Cookie</code>,
+<li>Sensitive headers are removed: <code>Cookie</code>,
 <code>Set-Cookie</code>, <code>Authorization</code>,
 <code>Proxy_Authorization</code>, <code>Proxy_Authenticate</code>, and
 <code>WWW-Authenticate</code> headers are stripped entirely.</li>
-<li>
-<strong>Proxy headers are redacted</strong>: Headers starting with
-<code>x_</code> (e.g., <code>x_forwarded_for</code>,
-<code>x_real_ip</code>) are replaced with <code>[REDACTED]</code> to
-avoid leaking internal infrastructure details.</li>
+<li>Proxy headers are redacted: headers starting with <code>x_</code>
+(e.g., <code>x_forwarded_for</code>, <code>x_real_ip</code>) are
+replaced with <code>[REDACTED]</code> to avoid leaking internal
+infrastructure details.</li>
 </ul>
 <p>This means you can safely forward the <code>shiny_session$http</code>
 object to external logging systems without manually stripping
 secrets.</p>
 <p>If you need the raw, unsanitized HTTP context in audit events, you
 can disable redaction:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_redact_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="excluding-http-context-entirely">Excluding HTTP context entirely<a class="anchor" aria-label="anchor" href="#excluding-http-context-entirely"></a>
 </h3>
 <p>To completely exclude HTTP request details from audit events:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>This means that the <code>shiny_session$http</code> field will be
 <code>NULL</code> in all audit events.</p>
@@ -234,19 +244,31 @@ can disable redaction:</p>
 <h3 id="audit-events-from-async-workers-mirai-daemons">Audit events from async workers (mirai daemons)<a class="anchor" aria-label="anchor" href="#audit-events-from-async-workers-mirai-daemons"></a>
 </h3>
 <p>When <code>async = TRUE</code> is configured in
-<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, and when you have set daemon workers
-<code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>, token exchange, refresh, and revocation
-run in background mirai daemon processes. The package automatically
-propagates your <code>shinyOAuth.audit_hook</code> and
-<code>shinyOAuth.trace_hook</code> options to these workers, so audit
-events fire also in the async worker processes and your hooks apply
-there.</p>
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, token exchange, refresh, and
+revocation run through shinyOAuth’s async dispatch layer. With mirai
+daemons and future multisession plans this means background worker
+processes; with <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential</a></code> the code stays
+in-process but still uses the async promise path. The package
+automatically propagates your <code>shinyOAuth.audit_hook</code> option
+to these async executions, so audit events fire there as well. For
+shinyOAuth-managed async work, the package also replays the parent
+session’s relevant <code>OTEL_*</code> / <code>OTEL_R_*</code>
+environment variables inside the async execution context so exporter
+configuration stays aligned with the main R process.</p>
 <p>Note that your audit hook function (and any objects referenced in its
 closure) must be serializable. If your hook writes to a database
 connection, file handle, or other non-serializable resource, it will
-fail silently in the worker process. Use hooks that create connections
-on demand (e.g., open a database connection inside the hook body) rather
-than capturing an existing connection in the closure.</p>
+fail in the worker process and shinyOAuth will surface that failure as a
+warning (captured and replayed to the main process when using async
+workers). Use hooks that create connections on demand (e.g., open a
+database connection inside the hook body) rather than capturing an
+existing connection in the closure.</p>
+<p>Also note that in true async mode a worker cannot mutate the main R
+process’s in-memory objects. Patterns like appending to a global list or
+incrementing a counter inside <code>audit_hook</code> only affect the
+worker’s private copy. For cross-process delivery, write to an external
+sink (database, file, queue, OTLP exporter, etc.) or explicitly return
+captured data from the worker in tests.</p>
 </div>
 <div class="section level3">
 <h3 id="digest-fields-and-keying">Digest fields and keying<a class="anchor" aria-label="anchor" href="#digest-fields-and-keying"></a>
@@ -257,14 +279,22 @@ than capturing an existing connection in the closure.</p>
 <code>sub_digest</code>. These are intended to let you correlate events
 without emitting raw sensitive values.</p>
 <p>By default, these digests use HMAC-SHA256 with an auto-generated
-per-process key. This reduces the risk of correlation or dictionary
-reidentification if logs leak.</p>
+per-process key. If you do not configure
+<code>options(shinyOAuth.audit_digest_key = ...)</code>, each R process
+gets its own random key at runtime. This reduces the risk of correlation
+or dictionary reidentification if logs leak, but it also means digests
+are not stable across unrelated processes by default.</p>
+<p>For shinyOAuth-managed async work, the package propagates the
+effective digest key into its workers so main-process and worker events
+from the same app instance remain comparable. If you need digests to
+stay comparable across multiple app processes or separate R sessions,
+configure a shared key.</p>
 <p>If you run multiple workers/processes and want digests to be
 comparable across them, configure a shared key:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>To disable keying (legacy deterministic SHA-256 digests):</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>Note: unkeyed digests are pseudonymous, not anonymized—low-entropy
 identifiers (like email addresses) can be dictionary-attacked.</p>
@@ -531,9 +561,17 @@ payload parse when ID token validation was not performed</li>
 <li>When: surface-level login failure during callback handling in the
 Shiny module</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>phase</code>
-(<code>sync_token_exchange</code>|<code>async_token_exchange</code>),
+<code>client_id_digest</code>, <code>phase</code>,
 <code>error_class</code>, <code>mirai_error_type</code>
+</li>
+<li>
+<code>phase</code> currently includes:
+<ul>
+<li><code>sync_token_exchange</code></li>
+<li><code>async_token_exchange</code></li>
+<li><code>async_payload_validation</code></li>
+<li><code>async_state_store_lookup</code></li>
+</ul>
 </li>
 </ul>
 </div>
@@ -700,10 +738,16 @@ JWT. Additional fields: <code>http_status</code>, <code>url</code>,
 <code>content_type</code>, <code>body_digest</code>
 </li>
 <li>
+<code>"userinfo_missing_sub"</code> – OIDC userinfo response was
+parsed but omitted the required <code>sub</code> claim</li>
+<li>
 <code>"userinfo_not_jwt"</code> – signed JWT required but response
 was not <code>application/jwt</code>. Additional fields:
 <code>content_type</code>
 </li>
+<li>
+<code>"userinfo_jwt_encrypted"</code> – userinfo response was a JWE,
+which shinyOAuth does not decrypt</li>
 <li>
 <code>"userinfo_jwt_header_parse_failed"</code> – JWT header could
 not be parsed</li>
@@ -719,6 +763,24 @@ provider’s allowed asymmetric algorithms. Additional fields:
 <li>
 <code>"userinfo_jwt_no_issuer"</code> – provider issuer not
 configured for JWKS verification</li>
+<li>
+<code>"userinfo_jwt_jwks_fetch_failed"</code> – JWKS fetch failed
+during signature verification</li>
+<li>
+<code>"userinfo_jwt_signature_invalid"</code> – signature
+verification failed against candidate JWKS keys</li>
+<li>
+<code>"userinfo_jwt_no_matching_key"</code> – provider JWKS had no
+compatible key for the JWT</li>
+<li>
+<code>"userinfo_jwt_missing_sub"</code>,
+<code>"userinfo_jwt_missing_iss"</code>,
+<code>"userinfo_jwt_missing_aud"</code> – signed JWT omitted a required
+claim</li>
+<li>
+<code>"userinfo_jwt_iss_mismatch"</code>,
+<code>"userinfo_jwt_aud_mismatch"</code> – signed JWT claims did not
+match the configured issuer/client</li>
 </ul>
 </li>
 </ul>
@@ -771,6 +833,11 @@ and clean up the store.</p>
 <code>error_class</code>, <code>error_message</code>
 </li>
 </ul>
+<p>Digest note: when the callback <code>state</code> can be decrypted,
+these events use the logical plaintext state digest so they correlate
+with <code>audit_redirect_issued</code> and the normal callback
+validation/store events. If decryption fails, the digest falls back to
+the encrypted callback payload because the logical state is unknown.</p>
 </div>
 </div>
 <div class="section level3">
@@ -831,46 +898,80 @@ or the error code/state that caused de-authentication (e.g.,
 </ul>
 </div>
 </div>
-</div>
-<div class="section level2">
-<h2 id="where-to-find-these-in-code">Where to find these in code<a class="anchor" aria-label="anchor" href="#where-to-find-these-in-code"></a>
-</h2>
+<div class="section level3">
+<h3 id="error-events">Error events<a class="anchor" aria-label="anchor" href="#error-events"></a>
+</h3>
+<p>In addition to the <code>audit_*</code> events above, the hook also
+receives error events emitted just before the package raises an R error
+condition. These let you log failures to the same sink as audit
+events.</p>
+<div class="section level4">
+<h4 id="event-error">Event: <code>error</code><a class="anchor" aria-label="anchor" href="#event-error"></a>
+</h4>
 <ul>
-<li>Redirect and login audits are emitted from
-<code>R/methods__login.R</code>
+<li>When: a package error is raised via one of the specialized
+<code>err_*()</code> helpers (state validation, PKCE, token, ID token,
+userinfo, configuration, input, parse errors)</li>
+<li>Fields:
+<ul>
+<li>
+<code>type</code> (<code>"error"</code>), <code>trace_id</code>,
+<code>message</code>,</li>
+<li>Plus any <code>context</code> fields from the call site (typically
+<code>provider</code>, <code>issuer</code>,
+<code>client_id_digest</code>, <code>phase</code>,
+<code>error_class</code>)</li>
+</ul>
 </li>
-<li>Module lifecycle/session audits are emitted from
-<code>R/oauth_module_server.R</code>
-</li>
-<li>All events flow through <code>audit_event()</code> defined in
-<code>R/errors.R</code>, which delegates to the hook options</li>
 </ul>
 </div>
-<div class="section level2">
-<h2 id="best-practices-for-audit-hooks">Best practices for audit hooks<a class="anchor" aria-label="anchor" href="#best-practices-for-audit-hooks"></a>
-</h2>
+<div class="section level4">
+<h4 id="event-http_error">Event: <code>http_error</code><a class="anchor" aria-label="anchor" href="#event-http_error"></a>
+</h4>
 <ul>
-<li>Keep hooks fast and never throw; wrap internals with
-<code>try(..., silent = TRUE)</code> if needed</li>
-<li>Export to your logging backend in JSON for easy parsing</li>
-<li>Do not attempt to reverse digests; use them only for
-correlation</li>
-<li>Consider adding a host/app identifier to the record before
-exporting</li>
-<li>If you also want error traces, set
-<code>options(shinyOAuth.trace_hook=...)</code>
+<li>When: an outbound HTTP request to a provider endpoint returns a
+non-success status</li>
+<li>Fields:
+<ul>
+<li>
+<code>type</code> (<code>"http_error"</code>),
+<code>trace_id</code>, <code>message</code>
+</li>
+<li>
+<code>status</code>: HTTP status code (integer, or <code>NA</code>
+if unavailable)</li>
+<li>
+<code>url</code>: the request URL</li>
+<li>
+<code>body_digest</code>: SHA-256 hex digest of the response body
+(for correlation without leaking content)</li>
+<li>
+<code>oauth_error</code>, <code>oauth_error_description</code>,
+<code>oauth_error_uri</code>: RFC 6749 §5.2 structured error fields
+extracted from JSON error responses (e.g., from the token endpoint)</li>
+<li>Plus any <code>context</code> fields from the call site</li>
+</ul>
 </li>
 </ul>
-<p>Example of a JSON export hook:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">json_hook</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>        <span class="va">line</span> <span class="op">&lt;-</span> <span class="fu">jsonlite</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">toJSON</a></span><span class="op">(</span><span class="va">event</span>, auto_unbox <span class="op">=</span> <span class="cn">TRUE</span>, null <span class="op">=</span> <span class="st">"null"</span><span class="op">)</span></span>
-<span>        <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">line</span>, <span class="st">"\n"</span>, file <span class="op">=</span> <span class="st">"shinyOAuth-audit.log"</span>, append <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>    <span class="op">}</span>, silent <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="va">json_hook</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="event-transport_error">Event: <code>transport_error</code><a class="anchor" aria-label="anchor" href="#event-transport_error"></a>
+</h4>
+<ul>
+<li>When: an outbound HTTP request fails before receiving a response
+(DNS failure, timeout, connection reset, etc.)</li>
+<li>Fields:
+<ul>
+<li>
+<code>type</code> (<code>"transport_error"</code>),
+<code>trace_id</code>, <code>message</code>
+</li>
+<li>Plus any <code>context</code> fields from the call site</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

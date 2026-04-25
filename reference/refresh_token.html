@@ -51,6 +51,7 @@ userinfo_id_token_match = TRUE, their subjects are verified to match."></head><b
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
+    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
     <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -113,11 +114,13 @@ access token. If both a new ID token and fresh userinfo are present and
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
-<dd><p>Logical, default FALSE. If TRUE and the <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> package is
-available, the refresh is performed off the main R session using
-<code><a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai()</a></code> and this function returns a mirai (which implements
-<code>as.promise()</code>) that resolves to an updated <code>OAuthToken</code>. Requires mirai
-daemons to be configured with <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>.</p></dd>
+<dd><p>Logical, default FALSE. If TRUE and an async backend is
+configured, the refresh is dispatched through shinyOAuth's async promise
+path and this function returns a promise-compatible async result that
+resolves to an updated <code>OAuthToken</code>. <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai::mirai</a> is preferred when daemons are
+configured via <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>; otherwise the current <a href="https://future.futureverse.org/reference/future.html" class="external-link">future::future</a> plan is
+used. Non-sequential future plans run off the main R session;
+<code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> stays in-process.</p></dd>
 
 
 <dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>

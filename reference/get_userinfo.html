@@ -23,6 +23,7 @@ provided access token. Emits an audit event with redacted details."></head><body
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
+    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
     <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -49,7 +50,7 @@ provided access token. Emits an audit event with redacted details.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span>, shiny_session <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -63,6 +64,13 @@ provided access token. Emits an audit event with redacted details.</p>
 
 <dt id="arg-token">token<a class="anchor" aria-label="anchor" href="#arg-token"></a></dt>
 <dd><p>Either an <a href="OAuthToken.html">OAuthToken</a> object or a raw access token string.</p></dd>
+
+
+<dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
+<dd><p>Optional pre-captured Shiny session context (from
+<code>capture_shiny_session_context()</code>) to include in audit events and span
+attributes. Used when calling from async workers that lack access to the
+reactive domain.</p></dd>
 
 </dl></div>
     <div class="section level2">
