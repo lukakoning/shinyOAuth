@@ -72,7 +72,7 @@ When configuring your
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md),
 if you do not have the option to register an app or simply wish to test
 during development, you may be able to use the default Azure CLI public
-app, with `client_id` '9391afd1-7129-4938-9e4d-633c688f93c0' (uses
+app, with `client_id` '04b07795-8ddb-461a-bbee-02f9e1bf7b46' (uses
 `redirect_uri` 'http://localhost:8100').
 
 ## Examples
