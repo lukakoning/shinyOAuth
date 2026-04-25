@@ -73,7 +73,10 @@ audience value; set this to the exact value your IdP expects.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 
-\item{scopes}{Vector of scopes to request}
+\item{scopes}{Vector of scopes to request. For OIDC providers (those with an
+\code{issuer}), shinyOAuth automatically prepends \code{openid} when it is missing;
+that effective scope set is what gets sent in the authorization request
+and used for later state and token-scope validation.}
 
 \item{claims}{OIDC claims request parameter (OIDC Core §5.5). Allows
 requesting specific claims from the UserInfo Endpoint and/or in the ID

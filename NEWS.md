@@ -39,6 +39,10 @@ otherwise succeed.
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
 of rejecting otherwise compliant authorization servers by default.
 
+* OIDC clients now carry the same effective requested scopes through the whole
+login flow. If `openid` is auto-added to the authorization request, the sealed
+state payload and later scope validation now use that same effective scope set.
+
 * `get_userinfo()` now always requires a non-empty `sub` claim in userinfo
 responses from OIDC providers (those with an `issuer` configured), per OIDC Core 
 section 5.3. Previously, a non-compliant response without `sub` could be 

@@ -90,6 +90,8 @@ prepare_call <- function(
           nonce <- random_urlsafe(n = 32)
         }
 
+        effective_scopes <- effective_client_scopes(oauth_client)
+
         # Create + seal (AES-GCM AEAD) payload ------------------------------------
 
         # We seal the payload using AES-GCM AEAD, which provides confidentiality and
@@ -103,7 +105,7 @@ prepare_call <- function(
           state = state,
           client_id = oauth_client@client_id,
           redirect_uri = oauth_client@redirect_uri,
-          scopes = oauth_client@scopes,
+          scopes = effective_scopes,
           provider = oauth_client@provider |> provider_fingerprint(),
           issued_at = as.numeric(Sys.time()),
           trace_id = flow_trace_id,
@@ -151,6 +153,7 @@ prepare_call <- function(
         auth_url <- build_auth_url(
           oauth_client,
           payload = payload,
+          scopes = effective_scopes,
           pkce_code_challenge = pkce_code_challenge,
           pkce_method = pkce_method,
           nonce = nonce
@@ -169,7 +172,7 @@ prepare_call <- function(
                 browser_token_digest = string_digest(browser_token),
                 pkce_method = pkce_method %||% NA_character_,
                 nonce_present = isTRUE(oauth_client@provider@use_nonce),
-                scopes_count = length(oauth_client@scopes %||% character()),
+                scopes_count = length(effective_scopes),
                 redirect_uri = oauth_client@redirect_uri %||% NA_character_
               )
             )
@@ -185,16 +188,8 @@ prepare_call <- function(
         extra = list(
           oauth.used_pkce = isTRUE(oauth_client@provider@use_pkce),
           oauth.nonce_enabled = isTRUE(oauth_client@provider@use_nonce),
-          oauth.scopes.requested = otel_scope_string(
-            oauth_client@scopes,
-            provider = oauth_client@provider,
-            ensure_openid = TRUE
-          ),
-          oauth.scopes.requested_count = otel_scope_count(
-            oauth_client@scopes,
-            provider = oauth_client@provider,
-            ensure_openid = TRUE
-          ),
+          oauth.scopes.requested = otel_scope_string(effective_scopes),
+          oauth.scopes.requested_count = otel_scope_count(effective_scopes),
           oauth.claims.requested = otel_claims_requested(oauth_client@claims),
           oauth.claims.targets = otel_claim_targets(oauth_client@claims),
           oauth.required_acr_values = otel_required_acr_values(
@@ -275,6 +270,7 @@ provider_fingerprint <- function(provider) {
 build_auth_url <- function(
   oauth_client,
   payload,
+  scopes,
   pkce_code_challenge,
   pkce_method,
   nonce
@@ -333,12 +329,9 @@ build_auth_url <- function(
     params$nonce <- nonce
   }
 
-  effective_scopes <- ensure_openid_scope(
-    oauth_client@scopes,
-    oauth_client@provider
-  )
-  if (length(effective_scopes) > 0) {
-    params$scope <- paste(effective_scopes, collapse = " ")
+  scopes <- as_scope_tokens(scopes %||% NULL)
+  if (length(scopes) > 0) {
+    params$scope <- paste(scopes, collapse = " ")
   }
 
   # OIDC claims parameter (OIDC Core §5.5): JSON-encode if a list,
@@ -951,6 +944,7 @@ handle_callback_internal <- function(
         token_set = token_set,
         nonce = nonce,
         is_refresh = FALSE,
+        requested_scopes = payload$scopes %||% NULL,
         shiny_session = shiny_session
       )
 
@@ -1334,7 +1328,7 @@ payload_verify_client_binding <- function(client, payload) {
 
   # Scopes (order-insensitive set comparison) ----------------------------------
 
-  expected_scopes <- as_scope_tokens(client@scopes %||% NULL)
+  expected_scopes <- as_scope_tokens(effective_client_scopes(client))
   payload_scopes <- as_scope_tokens(payload$scopes %||% NULL)
 
   # Normalize by unique + sort so we can produce clear differences
@@ -1546,6 +1540,7 @@ verify_token_set <- function(
   nonce,
   is_refresh = FALSE,
   original_id_token = NULL,
+  requested_scopes = NULL,
   shiny_session = NULL
 ) {
   # Helpers/types --------------------------------------------------------------
@@ -1557,8 +1552,9 @@ verify_token_set <- function(
   }
 
   scope_validation_mode <- client@scope_validation %||% "strict"
-  requested_scopes <- otel_scope_tokens(client@scopes %||% NULL)
-  requested_scope_string <- otel_scope_string(client@scopes %||% NULL)
+  requested_scopes <- requested_scopes %||% effective_client_scopes(client)
+  requested_scopes <- otel_scope_tokens(requested_scopes %||% NULL)
+  requested_scope_string <- otel_scope_string(requested_scopes %||% NULL)
   granted_scope_string <- otel_scope_string(
     token_set$scope %||% NULL,
     allow_commas = TRUE

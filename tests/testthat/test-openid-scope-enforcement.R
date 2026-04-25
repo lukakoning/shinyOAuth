@@ -219,3 +219,56 @@ test_that("build_auth_url does not duplicate openid with space-delimited scopes"
   expect_equal(sum(scope_tokens == "openid"), 1L)
   expect_true("profile" %in% scope_tokens)
 })
+
+test_that("prepare_call seals the effective scopes sent in the auth request", {
+  reset_openid_warn()
+  cli <- make_oidc_client(scopes = c("profile", "email"))
+  cli@provider@use_nonce <- FALSE
+  tok <- valid_browser_token()
+
+  expect_warning(
+    url <- shinyOAuth:::prepare_call(cli, browser_token = tok),
+    "openid"
+  )
+
+  enc <- parse_query_param(url, "state")
+  payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
+
+  expect_identical(payload$scopes, c("openid", "profile", "email"))
+})
+
+test_that("handle_callback validates scopes against auto-added openid scope", {
+  reset_openid_warn()
+  cli <- make_oidc_client(scopes = "profile")
+  cli@provider@use_nonce <- FALSE
+  tok <- valid_browser_token()
+
+  expect_warning(
+    url <- shinyOAuth:::prepare_call(cli, browser_token = tok),
+    "openid"
+  )
+
+  enc <- parse_query_param(url, "state")
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(
+          access_token = "t",
+          token_type = "Bearer",
+          scope = "profile",
+          expires_in = 3600
+        )
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
+      )
+    ),
+    class = "shinyOAuth_token_error",
+    regexp = "Granted scopes missing requested entries: openid"
+  )
+})

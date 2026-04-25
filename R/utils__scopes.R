@@ -135,3 +135,20 @@ ensure_openid_scope <- function(scopes, provider) {
 
   c("openid", scopes)
 }
+
+#' Resolve effective requested scopes for an OAuth client
+#'
+#' For OIDC providers this includes an auto-prepended `openid` scope when the
+#' caller omitted it.
+#'
+#' @param client An [OAuthClient] object.
+#'
+#' @return Character vector of scope tokens used in the authorization request.
+#'
+#' @keywords internal
+#' @noRd
+effective_client_scopes <- function(client) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  ensure_openid_scope(client@scopes, client@provider)
+}

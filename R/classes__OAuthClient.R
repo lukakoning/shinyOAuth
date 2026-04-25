@@ -50,7 +50,10 @@
 #'
 #' @param redirect_uri Redirect URI registered with provider
 #'
-#' @param scopes Vector of scopes to request
+#' @param scopes Vector of scopes to request. For OIDC providers (those with an
+#'   `issuer`), shinyOAuth automatically prepends `openid` when it is missing;
+#'   that effective scope set is what gets sent in the authorization request
+#'   and used for later state and token-scope validation.
 #'
 #' @param state_store State storage backend. Defaults to `cachem::cache_mem(max_age = 300)`.
 #'    Alternative backends should use [custom_cache()] with an atomic `$take()`
