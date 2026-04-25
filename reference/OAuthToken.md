@@ -7,6 +7,7 @@ S7 class representing OAuth tokens and (optionally) user information.
 ``` r
 OAuthToken(
   access_token = character(0),
+  token_type = NA_character_,
   refresh_token = NA_character_,
   id_token = NA_character_,
   expires_at = Inf,
@@ -20,6 +21,10 @@ OAuthToken(
 - access_token:
 
   Access token
+
+- token_type:
+
+  OAuth access token type (for example `Bearer` or `DPoP`)
 
 - refresh_token:
 

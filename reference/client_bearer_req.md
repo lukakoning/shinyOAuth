@@ -1,10 +1,11 @@
-# Build an authorized httr2 request with Bearer token
+# Build an authorized httr2 request with an OAuth access token
 
 Convenience helper to reduce boilerplate when calling downstream APIs.
 It creates an
 [`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
-the given URL, attaches the `Authorization: Bearer <token>` header, and
-applies the package's standard HTTP defaults (timeout and User-Agent).
+the given URL, attaches the appropriate `Authorization` header for the
+supplied token type, and applies the package's standard HTTP defaults
+(timeout and User-Agent).
 
 Accepts either a raw access token string or an
 [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
@@ -20,7 +21,10 @@ client_bearer_req(
   headers = NULL,
   query = NULL,
   follow_redirect = FALSE,
-  check_url = TRUE
+  check_url = TRUE,
+  oauth_client = NULL,
+  token_type = NULL,
+  dpop_nonce = NULL
 )
 ```
 
@@ -44,8 +48,8 @@ client_bearer_req(
 
   Optional named list or named character vector of extra headers to set
   on the request. Header names are case-insensitive. Any user-supplied
-  `Authorization` header is ignored to ensure the Bearer token set by
-  this function is not overridden.
+  `Authorization` or `DPoP` header is ignored to ensure the token
+  authentication set by this function is not overridden.
 
 - query:
 
@@ -54,7 +58,7 @@ client_bearer_req(
 - follow_redirect:
 
   Logical. If `FALSE` (the default), HTTP redirects are disabled to
-  prevent leaking the Bearer token to unexpected hosts. Set to `TRUE`
+  prevent leaking the access token to unexpected hosts. Set to `TRUE`
   only if you trust all possible redirect targets and understand the
   security implications.
 
@@ -62,11 +66,28 @@ client_bearer_req(
 
   Logical. If `TRUE` (the default), validates `url` against
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  before attaching the Bearer token. This rejects relative URLs, plain
+  before attaching the access token. This rejects relative URLs, plain
   HTTP to non-loopback hosts, and – when
   `options(shinyOAuth.allowed_hosts)` is set – hosts outside the
   allowlist. Set to `FALSE` only if you have already validated the URL
   and understand the security implications.
+
+- oauth_client:
+
+  Optional
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
+  Required when the effective token type is `DPoP`, because the client
+  carries the configured DPoP proof key.
+
+- token_type:
+
+  Optional override for the access token type when `token` is supplied
+  as a raw string. Supported values are `Bearer` and `DPoP`.
+
+- dpop_nonce:
+
+  Optional DPoP nonce to embed in the proof for this request. This is
+  primarily useful after a resource server challenges with `DPoP-Nonce`.
 
 ## Value
 

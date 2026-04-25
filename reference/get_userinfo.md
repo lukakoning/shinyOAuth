@@ -6,7 +6,7 @@ provided access token. Emits an audit event with redacted details.
 ## Usage
 
 ``` r
-get_userinfo(oauth_client, token, shiny_session = NULL)
+get_userinfo(oauth_client, token, token_type = NULL, shiny_session = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,11 @@ get_userinfo(oauth_client, token, shiny_session = NULL)
   Either an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   object or a raw access token string.
+
+- token_type:
+
+  Optional override for the access token type when `token` is provided
+  as a raw string. Supported values are `Bearer` and `DPoP`.
 
 - shiny_session:
 

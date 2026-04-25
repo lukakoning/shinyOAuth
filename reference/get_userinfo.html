@@ -50,7 +50,7 @@ provided access token. Emits an audit event with redacted details.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span>, shiny_session <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span>, token_type <span class="op">=</span> <span class="cn">NULL</span>, shiny_session <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -64,6 +64,11 @@ provided access token. Emits an audit event with redacted details.</p>
 
 <dt id="arg-token">token<a class="anchor" aria-label="anchor" href="#arg-token"></a></dt>
 <dd><p>Either an <a href="OAuthToken.html">OAuthToken</a> object or a raw access token string.</p></dd>
+
+
+<dt id="arg-token-type">token_type<a class="anchor" aria-label="anchor" href="#arg-token-type"></a></dt>
+<dd><p>Optional override for the access token type when <code>token</code>
+is provided as a raw string. Supported values are <code>Bearer</code> and <code>DPoP</code>.</p></dd>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>

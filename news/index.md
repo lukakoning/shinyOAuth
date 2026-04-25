@@ -2,6 +2,13 @@
 
 ## shinyOAuth (development version)
 
+- Added optional DPoP sender-constrained token support.
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  can now take a DPoP private key, token
+  exchange/refresh/revocation/introspection requests can attach DPoP
+  proofs with nonce retry, and downstream helpers now preserve and use
+  `token_type = "DPoP"` when the server returns it.
+
 - `OAuthProvider(extra_auth_params = list(response_mode = ...))` now
   fails fast unless `response_mode = "query"`. Plain Shiny callback URLs
   reject POST requests, so `response_mode = "form_post"` was previously

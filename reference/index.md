@@ -75,7 +75,7 @@
 - [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
   : Introspect an OAuth 2.0 token
 - [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  : Build an authorized httr2 request with Bearer token
+  : Build an authorized httr2 request with an OAuth access token
 
 ## Miscellaneous
 

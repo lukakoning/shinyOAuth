@@ -313,11 +313,12 @@ returned by the token endpoint (case-insensitive). When non-empty, the
 token response MUST include <code>token_type</code> and it must be one of the allowed
 values; otherwise the flow fails fast with a <code>shinyOAuth_token_error</code>.
 When empty, no check is performed and <code>token_type</code> may be omitted by the
-provider. The <code>oauth_provider()</code> helper defaults to <code>c("Bearer")</code> for all
-providers because the package only supports Bearer tokens (i.e.,
-<code><a href="client_bearer_req.html">client_bearer_req()</a></code> sends <code>Authorization: Bearer</code>). This ensures that if
-a provider returns a non-Bearer token type (e.g., DPoP, MAC), the flow
-fails fast rather than misusing the token. Set <code>allowed_token_types = character()</code> explicitly to opt out of enforcement.</p></dd>
+provider. The <code>oauth_provider()</code> helper defaults to <code>c("Bearer")</code>. When
+the <a href="OAuthClient.html">OAuthClient</a> is configured with <code>dpop_private_key</code>, shinyOAuth also
+accepts <code>token_type = "DPoP"</code> and uses DPoP proofs on supported token and
+downstream requests. Other non-Bearer token types (for example <code>MAC</code>) still
+fail fast rather than being misused. Set <code>allowed_token_types = character()</code>
+explicitly to opt out of enforcement.</p></dd>
 
 
 <dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>

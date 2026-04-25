@@ -306,12 +306,13 @@ oauth_provider(
   include `token_type` and it must be one of the allowed values;
   otherwise the flow fails fast with a `shinyOAuth_token_error`. When
   empty, no check is performed and `token_type` may be omitted by the
-  provider. The `oauth_provider()` helper defaults to `c("Bearer")` for
-  all providers because the package only supports Bearer tokens (i.e.,
-  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  sends `Authorization: Bearer`). This ensures that if a provider
-  returns a non-Bearer token type (e.g., DPoP, MAC), the flow fails fast
-  rather than misusing the token. Set
+  provider. The `oauth_provider()` helper defaults to `c("Bearer")`.
+  When the
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  is configured with `dpop_private_key`, shinyOAuth also accepts
+  `token_type = "DPoP"` and uses DPoP proofs on supported token and
+  downstream requests. Other non-Bearer token types (for example `MAC`)
+  still fail fast rather than being misused. Set
   `allowed_token_types = character()` explicitly to opt out of
   enforcement.
 

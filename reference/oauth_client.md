@@ -21,6 +21,10 @@ oauth_client(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = FALSE,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
   required_acr_values = character(0),
@@ -215,6 +219,35 @@ oauth_client(
   shinyOAuth uses the exact token endpoint request URL. Some identity
   providers require a different audience value; set this to the exact
   value your IdP expects.
+
+- dpop_private_key:
+
+  Optional private key used to generate DPoP proofs (RFC 9449). Can be
+  an `openssl::key` or a PEM string containing an asymmetric private
+  key. When provided, shinyOAuth can attach `DPoP` proofs to token
+  endpoint requests and use DPoP-bound access tokens in downstream
+  request helpers.
+
+- dpop_private_key_kid:
+
+  Optional key identifier (`kid`) to include in the JOSE header of DPoP
+  proofs. Useful when the authorization or resource server expects a
+  stable key identifier alongside the embedded public JWK.
+
+- dpop_signing_alg:
+
+  Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
+  compatible asymmetric default is selected based on the private key
+  type/curve (for example `RS256`, `ES256`, or `EdDSA`). If an explicit
+  value is provided but incompatible with the key, validation fails
+  early with a configuration error.
+
+- dpop_require_access_token:
+
+  Logical. When `TRUE` and `dpop_private_key` is configured, shinyOAuth
+  requires the authorization server to return `token_type = "DPoP"` for
+  access tokens and fails fast otherwise. Leave at the default `FALSE`
+  to allow deployments where DPoP is only used to bind refresh tokens.
 
 - scope_validation:
 
