@@ -38,6 +38,7 @@ prepare_call <- function(
   validate_browser_token(browser_token)
 
   flow_trace_id <- gen_trace_id()
+  effective_scopes <- effective_client_scopes(oauth_client)
 
   with_trace_id(
     flow_trace_id,
@@ -89,8 +90,6 @@ prepare_call <- function(
         if (oauth_client@provider@use_nonce) {
           nonce <- random_urlsafe(n = 32)
         }
-
-        effective_scopes <- effective_client_scopes(oauth_client)
 
         # Create + seal (AES-GCM AEAD) payload ------------------------------------
 
@@ -310,6 +309,10 @@ build_auth_url <- function(
         "build_auth_url: Nonce is disabled but 'nonce' was provided"
       )
     }
+  }
+
+  if (missing(scopes)) {
+    scopes <- effective_client_scopes(oauth_client)
   }
 
   # Base params

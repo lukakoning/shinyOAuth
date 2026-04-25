@@ -8,6 +8,8 @@ withr::defer(reset_test_otel_cache())
 otel_e2e <- function(desc, code) {
   testthat::test_that(desc, {
     testthat::skip_if_not_installed("otelsdk")
+    reset_test_otel_cache()
+    withr::defer(reset_test_otel_cache())
     withr::local_options(list(
       shinyOAuth.otel_tracing_enabled = TRUE,
       shinyOAuth.otel_logging_enabled = TRUE,

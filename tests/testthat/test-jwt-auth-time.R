@@ -36,7 +36,8 @@ mk_client <- function(extra_auth_params = list()) {
     client_id = "client-xyz",
     client_secret = "secret",
     redirect_uri = "http://localhost:8100",
-    scopes = "openid"
+    scopes = "openid",
+    scope_validation = "none"
   )
 }
 
