@@ -224,8 +224,11 @@ audience value; set this to the exact value your IdP expects.</p></dd>
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
 <dd><p>Controls how scope discrepancies are handled when
 the authorization server grants fewer scopes than requested. RFC 6749
-Section 3.3 permits servers to issue tokens with reduced scope.</p><ul><li><p><code>"strict"</code> (default): Throws an error if any requested scope is missing
-from the granted scopes.</p></li>
+Section 3.3 permits servers to issue tokens with reduced scope, and
+Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
+from the requested scope.</p><ul><li><p><code>"strict"</code> (default): Throws an error if any requested scope is missing
+from the granted scopes. Omitted <code>scope</code> is treated as unchanged, not as
+an error.</p></li>
 <li><p><code>"warn"</code>: Emits a warning but continues authentication if scopes are
 missing.</p></li>
 <li><p><code>"none"</code>: Skips scope validation entirely.</p></li>

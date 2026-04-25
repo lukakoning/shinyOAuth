@@ -47,6 +47,11 @@
   keys that advertise a different algorithm even if signature
   verification would otherwise succeed.
 
+- Scope validation now treats an omitted `scope` in the initial token
+  response as unchanged from the requested scope, matching RFC 6749
+  section 5.1 instead of rejecting otherwise compliant authorization
+  servers by default.
+
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now always requires a non-empty `sub` claim in userinfo responses from
   OIDC providers (those with an `issuer` configured), per OIDC Core
