@@ -905,7 +905,7 @@ testthat::test_that("true-async: conditions captured in daemon worker are replay
   testthat::expect_equal(val$val, 99)
 })
 
-testthat::test_that("true-async: hook errors surface as warnings from daemon worker", {
+testthat::test_that("true-async: audit_hook takes precedence over trace_hook alias", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("mirai")
@@ -948,11 +948,11 @@ testthat::test_that("true-async: hook errors surface as warnings from daemon wor
 
   testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
   testthat::expect_equal(resolved$value, "hook_test_done")
-  # Both hook errors should have been captured as warnings
-  testthat::expect_true(length(resolved$warnings) >= 2)
+  # audit_hook should win when both options are set
+  testthat::expect_length(resolved$warnings, 1)
   msgs <- vapply(resolved$warnings, conditionMessage, character(1))
-  testthat::expect_true(any(grepl("trace_hook error: trace kaboom", msgs)))
   testthat::expect_true(any(grepl("audit_hook error: audit kaboom", msgs)))
+  testthat::expect_false(any(grepl("trace_hook error: trace kaboom", msgs)))
 
   # Replay surfaces them on main thread
   w_captured <- list()
@@ -965,11 +965,11 @@ testthat::test_that("true-async: hook errors surface as warnings from daemon wor
   )
   testthat::expect_equal(val, "hook_test_done")
   w_msgs <- vapply(w_captured, conditionMessage, character(1))
-  testthat::expect_true(any(grepl("trace kaboom", w_msgs)))
   testthat::expect_true(any(grepl("audit kaboom", w_msgs)))
+  testthat::expect_false(any(grepl("trace kaboom", w_msgs)))
 })
 
-testthat::test_that("true-async: hook warnings and messages are captured from daemon worker", {
+testthat::test_that("true-async: trace_hook alias captures conditions from daemon worker", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("mirai")
@@ -991,10 +991,7 @@ testthat::test_that("true-async: hook warnings and messages are captured from da
       warning("trace hook user warning", call. = FALSE)
       message("trace hook user message")
     },
-    shinyOAuth.audit_hook = function(event) {
-      warning("audit hook user warning", call. = FALSE)
-      message("audit hook user message")
-    }
+    shinyOAuth.audit_hook = NULL
   ))
 
   captured_opts <- shinyOAuth:::capture_async_options()
@@ -1019,17 +1016,15 @@ testthat::test_that("true-async: hook warnings and messages are captured from da
   testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
   testthat::expect_equal(resolved$value, "hook_conditions_done")
 
-  # Both hooks emit 1 warning each -> at least 2 warnings
-  testthat::expect_true(length(resolved$warnings) >= 2)
+  testthat::expect_length(resolved$warnings, 1)
   w_msgs <- vapply(resolved$warnings, conditionMessage, character(1))
   testthat::expect_true(any(grepl("trace hook user warning", w_msgs)))
-  testthat::expect_true(any(grepl("audit hook user warning", w_msgs)))
+  testthat::expect_false(any(grepl("audit hook user warning", w_msgs)))
 
-  # Both hooks emit 1 message each -> at least 2 messages
-  testthat::expect_true(length(resolved$messages) >= 2)
+  testthat::expect_length(resolved$messages, 1)
   m_msgs <- vapply(resolved$messages, conditionMessage, character(1))
   testthat::expect_true(any(grepl("trace hook user message", m_msgs)))
-  testthat::expect_true(any(grepl("audit hook user message", m_msgs)))
+  testthat::expect_false(any(grepl("audit hook user message", m_msgs)))
 
   # Replay surfaces all conditions on the main thread
   replayed_w <- list()
@@ -1049,9 +1044,9 @@ testthat::test_that("true-async: hook warnings and messages are captured from da
   rw_msgs <- vapply(replayed_w, conditionMessage, character(1))
   rm_msgs <- vapply(replayed_m, conditionMessage, character(1))
   testthat::expect_true(any(grepl("trace hook user warning", rw_msgs)))
-  testthat::expect_true(any(grepl("audit hook user warning", rw_msgs)))
+  testthat::expect_false(any(grepl("audit hook user warning", rw_msgs)))
   testthat::expect_true(any(grepl("trace hook user message", rm_msgs)))
-  testthat::expect_true(any(grepl("audit hook user message", rm_msgs)))
+  testthat::expect_false(any(grepl("audit hook user message", rm_msgs)))
 })
 
 testthat::test_that("shinyOAuth.replay_async_conditions = FALSE suppresses replay", {

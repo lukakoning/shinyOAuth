@@ -73,10 +73,10 @@ test_that("err_http includes status and optional body when exposure enabled", {
   })
 })
 
-test_that("audit_event emits audit_ events via trace hook", {
+test_that("audit_event emits audit_ events via audit hook", {
   events <- list()
   local_with_options(
-    list(shinyOAuth.trace_hook = function(ev) {
+    list(shinyOAuth.audit_hook = function(ev) {
       events[[length(events) + 1]] <<- ev
     }),
     {
@@ -400,7 +400,7 @@ test_that("augment_with_shiny_context preserves pre-captured is_async = TRUE", {
 
 test_that("audit_event normalizes borrowed async context on the main thread", {
   events <- list()
-  old <- options(shinyOAuth.trace_hook = function(ev) {
+  old <- options(shinyOAuth.audit_hook = function(ev) {
     events[[length(events) + 1]] <<- ev
   })
   on.exit(options(old), add = TRUE)
@@ -445,7 +445,7 @@ test_that("audit_event normalizes borrowed async context on the main thread", {
 
 test_that("audit_event preserves is_async inside async session context", {
   events <- list()
-  old <- options(shinyOAuth.trace_hook = function(ev) {
+  old <- options(shinyOAuth.audit_hook = function(ev) {
     events[[length(events) + 1]] <<- ev
   })
   on.exit(options(old), add = TRUE)
@@ -472,7 +472,7 @@ test_that("audit_event preserves is_async inside async session context", {
 
 test_that("get_userinfo preserves explicit async shiny_session in audit events", {
   events <- list()
-  old <- options(shinyOAuth.trace_hook = function(ev) {
+  old <- options(shinyOAuth.audit_hook = function(ev) {
     events[[length(events) + 1L]] <<- ev
   })
   on.exit(options(old), add = TRUE)
@@ -521,7 +521,7 @@ test_that("get_userinfo preserves explicit async shiny_session in audit events",
 
 test_that("with_async_session_context makes errors include async session info", {
   events <- list()
-  old <- options(shinyOAuth.trace_hook = function(ev) {
+  old <- options(shinyOAuth.audit_hook = function(ev) {
     events[[length(events) + 1]] <<- ev
   })
   on.exit(options(old), add = TRUE)
@@ -552,7 +552,7 @@ test_that("with_async_session_context makes errors include async session info", 
 
 test_that("errors on main thread have is_async = FALSE", {
   events <- list()
-  old <- options(shinyOAuth.trace_hook = function(ev) {
+  old <- options(shinyOAuth.audit_hook = function(ev) {
     events[[length(events) + 1]] <<- ev
   })
   on.exit(options(old), add = TRUE)

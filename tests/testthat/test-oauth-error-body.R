@@ -131,7 +131,7 @@ test_that("err_http does not extract fields when JSON has no error field", {
 test_that("err_http propagates RFC 6749 §5.2 fields to trace event", {
   events <- list()
   withr::local_options(list(
-    shinyOAuth.trace_hook = function(ev) {
+    shinyOAuth.audit_hook = function(ev) {
       events[[length(events) + 1]] <<- ev
     }
   ))

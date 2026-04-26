@@ -413,11 +413,16 @@ audit_event <- function(
 }
 
 # Central event dispatcher: enriches with Shiny context, then fans out to
-# OTel logs, audit_hook, and trace_hook.
-# trace_hook is kept for backward compatibility but is no longer documented.
+# OTel logs and the configured native event hook.
+# trace_hook remains as a backward-compatible alias for audit_hook when the
+# latter is unset.
 emit_trace_event <- function(event) {
-  hook <- getOption("shinyOAuth.trace_hook", NULL) # backward-compat, undocumented
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
+  hook_name <- "audit_hook"
+  if (!is.function(audit_hook)) {
+    audit_hook <- getOption("shinyOAuth.trace_hook", NULL)
+    hook_name <- "trace_hook"
+  }
   # Enrich with Shiny session/request context when running inside Shiny
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
     event
@@ -433,25 +438,16 @@ emit_trace_event <- function(event) {
       ))
     }
   )
-  if (is.function(hook)) {
+  if (is.function(audit_hook)) {
     # Surface hook errors as warnings so they are visible in the main process
     # (async_dispatch captures warnings and replays them on the main thread).
-    tryCatch(
-      hook(event),
-      error = function(e) {
-        rlang::warn(paste0(
-          "[shinyOAuth] trace_hook error: ",
-          conditionMessage(e)
-        ))
-      }
-    )
-  }
-  if (is.function(audit_hook)) {
     tryCatch(
       audit_hook(event),
       error = function(e) {
         rlang::warn(paste0(
-          "[shinyOAuth] audit_hook error: ",
+          "[shinyOAuth] ",
+          hook_name,
+          " error: ",
           conditionMessage(e)
         ))
       }
