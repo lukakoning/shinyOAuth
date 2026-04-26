@@ -282,9 +282,12 @@ If the module is already authenticated, the request is ignored and no
 new OAuth state is created.
 This is the main entry point for login when <code>auto_redirect = FALSE</code>
 and you want to trigger login from your own UI</p></li>
-<li><p><code>logout()</code>: clears the current token setting <code>authenticated</code> to FALSE,
-and clears the browser token cookie. You might call this when the user
-clicks a "logout" button</p></li>
+<li><p><code>logout()</code>: if a token is present, makes best-effort revocation
+requests for the refresh token and access token when the provider exposes
+a revocation endpoint. This may perform network I/O, can revoke refresh
+tokens, and follows the module's <code>async</code> setting. It then clears the
+current token, sets <code>authenticated</code> to FALSE, and rotates the browser
+token cookie. You might call this when the user clicks a "logout" button</p></li>
 <li><p><code>build_auth_url()</code>: internal; builds and returns the authorization URL,
 also storing the relevant state in the client's <code>state_store</code> (for
 validation during callback). Note that this requires <code>browser_token</code> to

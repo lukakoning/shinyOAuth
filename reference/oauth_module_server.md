@@ -259,8 +259,12 @@ It also contains the following helper functions, mainly useful when
   created. This is the main entry point for login when
   `auto_redirect = FALSE` and you want to trigger login from your own UI
 
-- `logout()`: clears the current token setting `authenticated` to FALSE,
-  and clears the browser token cookie. You might call this when the user
+- `logout()`: if a token is present, makes best-effort revocation
+  requests for the refresh token and access token when the provider
+  exposes a revocation endpoint. This may perform network I/O, can
+  revoke refresh tokens, and follows the module's `async` setting. It
+  then clears the current token, sets `authenticated` to FALSE, and
+  rotates the browser token cookie. You might call this when the user
   clicks a "logout" button
 
 - `build_auth_url()`: internal; builds and returns the authorization
