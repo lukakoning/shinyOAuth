@@ -26,17 +26,17 @@
     post-redirect Shiny sessions for a single login round-trip; async
     work also carries more accurate originating Shiny session/process
     context into worker-emitted events.
-    - Improved existing audit event types. `audit_token_exchange` and
-      `audit_token_refresh` now include `expires_in_synthesized`,
-      indicating that the provider did not return a usable `expires_in`
-      and shinyOAuth had to synthesize one; `audit_login_failed` now
-      distinguishes async payload-validation and state-store-lookup
-      failures from async token-exchange failures; `audit_userinfo`
-      distinguishes missing `sub` and JWT/JWKS validation failures; and
-      error-state consumption events use the logical state digest when
-      available for better correlation. See
-      [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-      for more information.
+  - Improved existing audit event types. `audit_token_exchange` and
+    `audit_token_refresh` now include `expires_in_synthesized`,
+    indicating that the provider did not return a usable `expires_in`
+    and shinyOAuth had to synthesize one; `audit_login_failed` now
+    distinguishes async payload-validation and state-store-lookup
+    failures from async token-exchange failures; `audit_userinfo`
+    distinguishes missing `sub` and JWT/JWKS validation failures; and
+    error-state consumption events use the logical state digest when
+    available for better correlation. See
+    [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+    for more information.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a
     separate documented event sink. Prefer
     `options(shinyOAuth.audit_hook = ...)`; the old `trace_hook` option
