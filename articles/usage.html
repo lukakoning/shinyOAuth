@@ -480,18 +480,12 @@ details about logs and traces via OpenTelemetry.</p>
 </h3>
 <ul>
 <li>
-<code>options(shinyOAuth.print_errors = TRUE)</code> – concise error
-lines (interactive / tests only)</li>
-<li>
-<code>options(shinyOAuth.print_traceback = TRUE)</code> – include
-backtraces (interactive / tests only)</li>
-<li>
 <code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
 sanitized HTTP bodies (may reveal details)</li>
 </ul>
-<p>These options control the amount of information printed to the
-console when errors occur. Intended primarily for debugging during
-development, not for users of the package.</p>
+<p>This option exposes sanitized HTTP response bodies in thrown errors
+for local debugging. It is intended for development, not for normal
+package usage.</p>
 </div>
 <div class="section level3">
 <h3 id="networkingsecurity">Networking/security<a class="anchor" aria-label="anchor" href="#networkingsecurity"></a>

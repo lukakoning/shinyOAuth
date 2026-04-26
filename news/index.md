@@ -26,6 +26,15 @@
     post-redirect Shiny sessions for a single login round-trip; async
     work also carries more accurate originating Shiny session/process
     context into worker-emitted events.
+  - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a
+    separate documented event sink. Prefer
+    `options(shinyOAuth.audit_hook = ...)`; the old `trace_hook` option
+    now remains only as a backward-compatible alias when `audit_hook` is
+    unset.
+  - Removed the documented global `shinyOAuth.print_errors` /
+    `shinyOAuth.print_traceback` runtime knobs. Internal console error
+    logging now uses explicit internal flags instead of package-wide
+    option fallbacks.
   - Improved existing audit event types. `audit_token_exchange` and
     `audit_token_refresh` now include `expires_in_synthesized`,
     indicating that the provider did not return a usable `expires_in`
