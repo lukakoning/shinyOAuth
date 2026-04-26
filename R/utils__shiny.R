@@ -41,6 +41,15 @@ get_current_shiny_session_token <- function() {
   .scalar_chr(tryCatch(sess$token, error = function(...) NULL))
 }
 
+current_audit_http_summary <- function() {
+  if (!isTRUE(getOption("shinyOAuth.audit_include_http", TRUE))) {
+    return(NULL)
+  }
+
+  req <- get_current_shiny_request()
+  build_http_summary(req)
+}
+
 # Internal: capture Shiny session context for later use in async workers or
 # in callbacks that no longer have a reactive domain available.
 # Call this on the main thread (inside a reactive observer or module server)
@@ -55,16 +64,7 @@ get_current_shiny_session_token <- function() {
 # includes its process_id directly.
 capture_shiny_session_context <- function(is_async = TRUE) {
   tok <- get_current_shiny_session_token()
-
-  # Check if HTTP context should be included (default: TRUE)
-  include_http <- !.is_test() &&
-    isTRUE(getOption("shinyOAuth.audit_include_http", TRUE))
-  http <- if (include_http) {
-    req <- get_current_shiny_request()
-    build_http_summary(req)
-  } else {
-    NULL
-  }
+  http <- current_audit_http_summary()
 
   # Capture main process ID for cross-worker correlation
   main_pid <- Sys.getpid()
@@ -539,16 +539,7 @@ augment_with_shiny_context <- function(event) {
   }
 
   tok <- get_current_shiny_session_token()
-
-  # Check if HTTP context should be included (default: TRUE)
-  include_http <- !.is_test() &&
-    isTRUE(getOption("shinyOAuth.audit_include_http", TRUE))
-  http <- if (include_http) {
-    req <- get_current_shiny_request()
-    build_http_summary(req)
-  } else {
-    NULL
-  }
+  http <- current_audit_http_summary()
 
   # If we have reactive domain context, use it (main thread)
   if (!is.null(http) || !is.na(tok)) {

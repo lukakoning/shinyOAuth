@@ -88,3 +88,88 @@ testthat::test_that("shinyOAuth.audit_include_http = FALSE excludes http from ev
   # token should still be present
   testthat::expect_true("token" %in% names(ss))
 })
+
+testthat::test_that("audit_event includes redacted HTTP context by default", {
+  events <- list()
+  req <- list(
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/callback",
+    QUERY_STRING = "code=authcode123&state=mystate&safe=keep_me",
+    HTTP_HOST = "example.com",
+    HTTP_COOKIE = "session=secret123",
+    HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_USER_AGENT = "TestClient/1.0",
+    HTTP_X_FORWARDED_FOR = "192.168.1.1"
+  )
+
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(e) {
+      events[[length(events) + 1L]] <<- e
+    },
+    shinyOAuth.audit_include_http = TRUE,
+    shinyOAuth.audit_redact_http = TRUE
+  ))
+
+  testthat::with_mocked_bindings(
+    get_current_shiny_request = function() req,
+    get_current_shiny_session_token = function() "session-token",
+    .package = "shinyOAuth",
+    {
+      shinyOAuth:::audit_event("http_context")
+    }
+  )
+
+  http_event <- Filter(function(e) e$type == "audit_http_context", events)
+  testthat::expect_length(http_event, 1L)
+
+  http <- http_event[[1L]]$shiny_session$http
+  testthat::expect_equal(http$method, "GET")
+  testthat::expect_match(http$query_string, "safe=keep_me")
+  testthat::expect_no_match(http$query_string, "authcode123")
+  testthat::expect_no_match(http$query_string, "mystate")
+  testthat::expect_null(http$headers$cookie)
+  testthat::expect_null(http$headers$authorization)
+  testthat::expect_equal(http$headers$user_agent, "TestClient/1.0")
+  testthat::expect_equal(http$headers$x_forwarded_for, "[REDACTED]")
+})
+
+testthat::test_that("audit_event can include raw HTTP context when redaction is disabled", {
+  events <- list()
+  req <- list(
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/callback",
+    QUERY_STRING = "code=authcode123&state=mystate",
+    HTTP_HOST = "example.com",
+    HTTP_COOKIE = "session=secret123",
+    HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_USER_AGENT = "TestClient/1.0",
+    HTTP_X_FORWARDED_FOR = "192.168.1.1"
+  )
+
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(e) {
+      events[[length(events) + 1L]] <<- e
+    },
+    shinyOAuth.audit_include_http = TRUE,
+    shinyOAuth.audit_redact_http = FALSE
+  ))
+
+  testthat::with_mocked_bindings(
+    get_current_shiny_request = function() req,
+    get_current_shiny_session_token = function() "session-token",
+    .package = "shinyOAuth",
+    {
+      shinyOAuth:::audit_event("http_context_raw")
+    }
+  )
+
+  http_event <- Filter(function(e) e$type == "audit_http_context_raw", events)
+  testthat::expect_length(http_event, 1L)
+
+  http <- http_event[[1L]]$shiny_session$http
+  testthat::expect_match(http$query_string, "authcode123")
+  testthat::expect_match(http$query_string, "mystate")
+  testthat::expect_equal(http$headers$cookie, "session=secret123")
+  testthat::expect_equal(http$headers$authorization, "Bearer token123")
+  testthat::expect_equal(http$headers$x_forwarded_for, "192.168.1.1")
+})
