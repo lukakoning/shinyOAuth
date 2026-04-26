@@ -541,6 +541,7 @@ decode_userinfo_jwt <- function(
         pins = prov@jwks_pins %||% character(),
         pin_mode = prov@jwks_pin_mode %||% "any",
         min_interval = 30,
+        issuer_match = provider_issuer_match(prov),
         jwks_host_issuer_match = isTRUE(try(
           prov@jwks_host_issuer_match,
           silent = TRUE

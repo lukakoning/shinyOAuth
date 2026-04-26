@@ -204,6 +204,7 @@ oauth_provider_oidc_discover <- function(
         introspection_url = endpoints$introspection_url,
         revocation_url = endpoints$revocation_url,
         issuer = iss,
+        issuer_match = issuer_match,
         use_nonce = use_nonce,
         id_token_validation = id_token_validation,
         use_pkce = use_pkce,

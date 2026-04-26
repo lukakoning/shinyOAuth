@@ -12,6 +12,7 @@ oauth_provider(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   issuer = NA_character_,
+  issuer_match = "url",
   use_nonce = NULL,
   use_pkce = TRUE,
   pkce_method = "S256",
@@ -58,6 +59,19 @@ token matches the expected issuer. It is also used to fetch the provider's
 JSON Web Key Set (JWKS) for verifying ID token signatures (typically via
 the OIDC discovery document located at \verb{/.well-known/openid-configuration}
 relative to the issuer URL)}
+
+\item{issuer_match}{Character scalar controlling how strictly shinyOAuth
+validates the discovery document's \code{issuer} against \code{issuer} when it later
+performs runtime discovery to locate the JWKS URI.
+\itemize{
+\item \code{"url"} (default): require the full issuer URL to match after
+trailing-slash normalization.
+\item \code{"host"}: compare only scheme + host.
+\item \code{"none"}: do not validate discovery issuer consistency.
+}
+
+Prefer \code{"url"} unless the provider publishes tenant-independent metadata
+with a templated issuer (for example, Microsoft multi-tenant aliases).}
 
 \item{use_nonce}{Whether to use OIDC nonce. This adds a \code{nonce} parameter to
 the authorization request and validates the \code{nonce} claim in the ID token.
@@ -172,8 +186,9 @@ traffic; longer TTLs reduce traffic but may delay new keys slightly. Signature
 verification will automatically perform a one‑time JWKS refresh when a new \code{kid}
 appears in an ID token.
 
-Cache keys are internal, hashed by issuer and pinning configuration. Cache values are
-lists with elements \code{jwks} and \code{fetched_at} (numeric epoch seconds)}
+Cache keys are internal, hashed by issuer, issuer-match, and pinning
+configuration. Cache values are internal lists and may include
+diagnostics used for defense-in-depth re-validation.}
 
 \item{jwks_pins}{Optional character vector of RFC 7638 JWK thumbprints
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys

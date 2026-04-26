@@ -27,6 +27,17 @@
 #' JSON Web Key Set (JWKS) for verifying ID token signatures (typically via
 #' the OIDC discovery document located at `/.well-known/openid-configuration`
 #' relative to the issuer URL)
+#' @param issuer_match Character scalar controlling how strictly shinyOAuth
+#' validates the discovery document's `issuer` against `issuer` when it later
+#' performs runtime discovery to locate the JWKS URI.
+#'
+#' - `"url"` (default): require the full issuer URL to match after
+#'   trailing-slash normalization.
+#' - `"host"`: compare only scheme + host.
+#' - `"none"`: do not validate discovery issuer consistency.
+#'
+#' Prefer `"url"` unless the provider publishes tenant-independent metadata
+#' with a templated issuer (for example, Microsoft multi-tenant aliases).
 #'
 #' @param use_nonce Whether to use OIDC nonce. This adds a `nonce` parameter to
 #' the authorization request and validates the `nonce` claim in the ID token.
@@ -142,8 +153,9 @@
 #'   verification will automatically perform a one‑time JWKS refresh when a new `kid`
 #'   appears in an ID token.
 #'
-#'   Cache keys are internal, hashed by issuer and pinning configuration. Cache values are
-#'   lists with elements `jwks` and `fetched_at` (numeric epoch seconds)
+#'   Cache keys are internal, hashed by issuer, issuer-match, and pinning
+#'   configuration. Cache values are internal lists and may include
+#'   diagnostics used for defense-in-depth re-validation.
 #' @param jwks_pins Optional character vector of RFC 7638 JWK thumbprints
 #'   (base64url) to pin against. If non-empty, fetched JWKS must contain keys
 #'   whose thumbprints match these values depending on `jwks_pin_mode`.
@@ -220,6 +232,10 @@ OAuthProvider <- S7::new_class(
       default = NA_character_
     ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
+    issuer_match = S7::new_property(
+      S7::class_character,
+      default = "url"
+    ),
     use_nonce = S7::new_property(S7::class_logical, default = FALSE),
     use_pkce = S7::new_property(S7::class_logical, default = TRUE),
     pkce_method = S7::new_property(S7::class_character, default = "S256"),
@@ -358,6 +374,10 @@ OAuthProvider <- S7::new_class(
           "OAuthProvider: issuer must not contain query or fragment components"
         )
       }
+    }
+
+    if (!isTRUE(self@issuer_match %in% c("url", "host", "none"))) {
+      return("OAuthProvider: issuer_match must be 'url', 'host', or 'none'")
     }
 
     # Validate extra_token_headers: must be named character vector of length n
@@ -821,6 +841,7 @@ oauth_provider <- function(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   issuer = NA_character_,
+  issuer_match = "url",
   use_nonce = NULL,
   use_pkce = TRUE,
   pkce_method = "S256",
@@ -902,6 +923,10 @@ oauth_provider <- function(
     pkce_method <- "S256"
   }
   pkce_method <- if (tolower(pkce_method) == "plain") "plain" else "S256"
+  issuer_match <- match.arg(
+    issuer_match,
+    choices = c("url", "host", "none")
+  )
 
   # Normalize and validate allowed_algs
   if (is.null(allowed_algs)) {
@@ -1005,6 +1030,7 @@ oauth_provider <- function(
     introspection_url = introspection_url,
     revocation_url = revocation_url,
     issuer = issuer,
+    issuer_match = issuer_match,
     use_nonce = use_nonce,
     use_pkce = use_pkce,
     pkce_method = pkce_method,

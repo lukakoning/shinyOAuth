@@ -44,6 +44,15 @@ test_that("OAuthProvider default jwks_host_issuer_match is FALSE", {
   expect_identical(p@jwks_host_issuer_match, FALSE)
 })
 
+test_that("OAuthProvider default issuer_match is url", {
+  p <- OAuthProvider(
+    name = "t",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token"
+  )
+  expect_identical(p@issuer_match, "url")
+})
+
 test_that("OAuthProvider HS* algs require allow_hs opt-in", {
   base_args <- list(
     name = "t",
@@ -73,6 +82,7 @@ test_that("oauth_provider_microsoft defaults are compatible with multi-tenant al
 
   # Multi-tenant aliases should use Microsoft's tenant-independent OIDC rules.
   expect_identical(p@issuer, "https://login.microsoftonline.com/common/v2.0")
+  expect_identical(p@issuer_match, "host")
   expect_identical(p@id_token_validation, TRUE)
   expect_identical(p@id_token_required, TRUE)
   expect_identical(p@use_nonce, TRUE)

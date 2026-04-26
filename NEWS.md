@@ -76,6 +76,12 @@ validate ID tokens using Microsoft's tenant-independent issuer and signing-key
 issuer rules, and `consumers` now validates against the stable consumer tenant
 issuer.
 
+- Hardened runtime JWKS discovery by validating the discovery issuer before 
+trusting `jwks_uri`. This policy is now stored on `OAuthProvider` via `issuer_match`,
+so both provider discovery and runtime JWKS fetches apply the same rule: 
+`url` for exact issuer URL matching, `host` for scheme-and-host matching,
+or `none` to skip the discovery issuer check.
+
 * OIDC discovery now fails fast when metadata advertises PKCE methods but omits
 `S256`. shinyOAuth keeps `S256` as the default and only allows a downgrade to
 `plain` when you pass `pkce_method = "plain"` explicitly.

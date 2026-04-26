@@ -49,6 +49,31 @@ test_that("jwks_cache_key varies with host-policy fields", {
   expect_identical(k_base, k_explicit_defaults)
 })
 
+test_that("jwks_cache_key varies with discovery issuer policy", {
+  issuer <- "https://issuer.example.com"
+
+  k_url <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = NULL,
+    pin_mode = "any",
+    issuer_match = "url"
+  )
+  k_host <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = NULL,
+    pin_mode = "any",
+    issuer_match = "host"
+  )
+  k_none <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = NULL,
+    pin_mode = "any",
+    issuer_match = "none"
+  )
+
+  expect_equal(length(unique(c(k_url, k_host, k_none))), 3L)
+})
+
 test_that("jwks_cache_key is case-insensitive for jwks_host_allow_only", {
   issuer <- "https://issuer.example.com"
   k_lower <- shinyOAuth:::jwks_cache_key(
@@ -150,6 +175,90 @@ test_that("fetch_jwks stores jwks_uri_host in cache entry", {
   expect_false(is.null(entry$jwks_uri_host))
   expect_true(is.character(entry$jwks_uri_host))
   expect_true(nzchar(entry$jwks_uri_host))
+})
+
+test_that("fetch_jwks rejects discovery issuer mismatch by default", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  rsa_jwk <- list(kty = "RSA", n = "n-mismatch", e = "AQAB", kid = "k1")
+  good_jwks <- list(keys = list(rsa_jwk))
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    jwks_url <- paste0("http://", host, "/jwks")
+    res$send_json(
+      object = list(
+        issuer = "https://accounts.example.com/tenant-b",
+        jwks_uri = jwks_url
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/jwks", function(req, res) {
+    res$send_json(object = good_jwks, auto_unbox = TRUE)
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- srv$url()
+
+  cache <- cachem::cache_mem(max_age = 3600)
+  expect_error(
+    shinyOAuth:::fetch_jwks(
+      issuer = base,
+      jwks_cache = cache,
+      pins = NULL,
+      pin_mode = "any"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "issuer mismatch"
+  )
+})
+
+test_that("fetch_jwks honors provider issuer_match policy", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  rsa_jwk <- list(kty = "RSA", n = "n-host", e = "AQAB", kid = "k1")
+  good_jwks <- list(keys = list(rsa_jwk))
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    base <- paste0("http://", host)
+    res$send_json(
+      object = list(
+        issuer = paste0(base, "/tenant-b"),
+        jwks_uri = paste0(base, "/jwks")
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/jwks", function(req, res) {
+    res$send_json(object = good_jwks, auto_unbox = TRUE)
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- srv$url()
+
+  provider <- oauth_provider(
+    name = "host-only-discovery",
+    auth_url = paste0(base, "/authorize"),
+    token_url = paste0(base, "/token"),
+    issuer = base,
+    issuer_match = "host",
+    jwks_host_issuer_match = FALSE
+  )
+
+  cache <- cachem::cache_mem(max_age = 3600)
+  jwks <- shinyOAuth:::fetch_jwks(
+    issuer = base,
+    jwks_cache = cache,
+    pins = NULL,
+    pin_mode = "any",
+    provider = provider
+  )
+
+  expect_identical(jwks, good_jwks)
 })
 
 test_that("fetch_jwks evicts cache entry when stored host fails host-policy re-validation", {
