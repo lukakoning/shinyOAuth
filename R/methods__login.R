@@ -1201,7 +1201,9 @@ handle_callback_internal <- function(
           # - "none": skip scope checks
           # - "warn": warn (do not fail login)
           # - "strict": error
-          requested_scopes <- as_scope_tokens(oauth_client@scopes %||% NULL)
+          requested_scopes <- as_scope_tokens(
+            payload$scopes %||% effective_client_scopes(oauth_client)
+          )
           requested_scopes <- sort(unique(requested_scopes[nzchar(
             requested_scopes
           )]))

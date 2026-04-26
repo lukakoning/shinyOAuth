@@ -99,7 +99,8 @@ with a URL like `https://issuer.example/`.
 
 * OIDC clients now carry the same effective requested scopes through the whole
 login flow. If `openid` is auto-added to the authorization request, the sealed
-state payload and later scope validation now use that same effective scope set.
+state payload, token-response scope validation, and introspection scope
+validation now use that same effective scope set.
 
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
