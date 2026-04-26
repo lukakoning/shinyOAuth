@@ -332,11 +332,11 @@ client_state_store_max_age <- function(client, default = 300) {
 #'
 #' RFC 6749 §5.1 says `expires_in` is RECOMMENDED. When it is absent we check
 #' `options(shinyOAuth.default_expires_in)` for a configurable fallback (seconds).
-#' If neither is available, falls back to `Inf`, meaning proactive refresh will
-#' never trigger. A once-per-phase warning is emitted either way so operators
-#' know the value was not server-provided.
+#' If the option is absent or invalid, shinyOAuth falls back to 3600 seconds.
+#' A once-per-phase warning is emitted either way so operators know the value
+#' was not server-provided.
 #'
-#' @return Numeric scalar: computed `expires_at` (epoch seconds or `Inf`).
+#' @return Numeric scalar: computed `expires_at` (epoch seconds).
 #' @keywords internal
 #' @noRd
 resolve_missing_expires_in <- function(phase = NULL) {
@@ -346,37 +346,35 @@ resolve_missing_expires_in <- function(phase = NULL) {
     ""
   }
 
-  # Check configurable fallback
-  default_ei <- getOption("shinyOAuth.default_expires_in", NULL)
-  if (!is.null(default_ei)) {
-    default_ei <- suppressWarnings(as.numeric(default_ei))
-    if (
-      length(default_ei) == 1L &&
-        is.finite(default_ei) &&
-        default_ei > 0
-    ) {
-      rlang::warn(
-        c(
-          format_header("Token response missing expires_in"),
-          "!" = paste0(
-            "The token response did not include an expires_in value",
-            phase_msg
-          ),
-          "i" = paste0(
-            "Using `options(shinyOAuth.default_expires_in = ",
-            default_ei,
-            ")` as fallback"
-          ),
-          "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
-        ),
-        class = "shinyOAuth_missing_expires_in",
-        .frequency = "once",
-        .frequency_id = paste0(
-          "expires_in_missing",
-          if (is_valid_string(phase)) paste0("-", phase) else ""
-        )
+  package_default_ei <- 3600
+  option_ei <- getOption("shinyOAuth.default_expires_in", NULL)
+  option_ei_num <- suppressWarnings(as.numeric(option_ei))
+
+  if (
+    !is.null(option_ei) &&
+      length(option_ei_num) == 1L &&
+      is.finite(option_ei_num) &&
+      option_ei_num > 0
+  ) {
+    fallback_ei <- option_ei_num
+    fallback_msg <- paste0(
+      "Using `options(shinyOAuth.default_expires_in = ",
+      fallback_ei,
+      ")` as fallback"
+    )
+  } else {
+    fallback_ei <- package_default_ei
+    fallback_msg <- paste0(
+      "Using shinyOAuth's default fallback of ",
+      package_default_ei,
+      " seconds"
+    )
+
+    if (!is.null(option_ei)) {
+      fallback_msg <- paste0(
+        "Ignoring invalid `options(shinyOAuth.default_expires_in)`; ",
+        fallback_msg
       )
-      return(as.numeric(Sys.time()) + default_ei)
     }
   }
 
@@ -385,11 +383,10 @@ resolve_missing_expires_in <- function(phase = NULL) {
       format_header("Token response missing expires_in"),
       "!" = paste0(
         "The token response did not include an expires_in value",
-        phase_msg,
-        "; assuming infinite token lifetime"
+        phase_msg
       ),
-      "i" = "Proactive token refresh will not trigger without a known expiry",
-      "i" = "Set `options(shinyOAuth.default_expires_in = <seconds>)` to supply a fallback",
+      "i" = fallback_msg,
+      "i" = "Set `options(shinyOAuth.default_expires_in = <seconds>)` to override this fallback",
       "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
     ),
     class = "shinyOAuth_missing_expires_in",
@@ -400,7 +397,7 @@ resolve_missing_expires_in <- function(phase = NULL) {
     )
   )
 
-  Inf
+  as.numeric(Sys.time()) + fallback_ei
 }
 
 #' Internal: warn when expires_in is non-positive

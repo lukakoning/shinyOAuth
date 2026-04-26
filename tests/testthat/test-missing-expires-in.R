@@ -1,14 +1,15 @@
 # Tests for the warning emitted when `expires_in` is absent from a token
 # response (RFC 6749 §5.1: expires_in is RECOMMENDED).
-# When missing, `expires_at` falls back to `Inf` (or to a configurable default
-# via `options(shinyOAuth.default_expires_in)`) and a warning is emitted so
-# operators know the value was not server-provided.
+# When missing, `expires_at` falls back to a finite lifetime (default 3600
+# seconds, or a configurable value via `options(shinyOAuth.default_expires_in)`).
+# A warning is emitted so operators know the value was not server-provided.
 
 # --- Login path (swap_code_for_token_set → OAuthToken construction) ----------
 
 testthat::test_that("handle_callback warns when expires_in is absent (login)", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   rlang::reset_warning_verbosity("expires_in_missing-exchange_code")
+  withr::local_options(shinyOAuth.default_expires_in = NULL)
 
   # Mock token exchange to return a response WITHOUT expires_in
   testthat::local_mocked_bindings(
@@ -26,6 +27,7 @@ testthat::test_that("handle_callback warns when expires_in is absent (login)", {
   bt <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = bt)
   enc <- parse_query_param(url, "state")
+  before <- as.numeric(Sys.time())
 
   testthat::expect_warning(
     {
@@ -38,10 +40,13 @@ testthat::test_that("handle_callback warns when expires_in is absent (login)", {
     },
     class = "shinyOAuth_missing_expires_in"
   )
+  after <- as.numeric(Sys.time())
 
   testthat::expect_true(S7::S7_inherits(tok, OAuthToken))
   testthat::expect_identical(tok@access_token, "tok_no_exp")
-  testthat::expect_identical(tok@expires_at, Inf)
+  testthat::expect_true(is.finite(tok@expires_at))
+  testthat::expect_gte(tok@expires_at, before + 3600)
+  testthat::expect_lte(tok@expires_at, after + 3600)
 })
 
 testthat::test_that("handle_callback does NOT warn when expires_in is present (login)", {
@@ -84,6 +89,7 @@ testthat::test_that("handle_callback does NOT warn when expires_in is present (l
 testthat::test_that("refresh_token warns when expires_in is absent (refresh)", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   rlang::reset_warning_verbosity("expires_in_missing-refresh_token")
+  withr::local_options(shinyOAuth.default_expires_in = NULL)
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
@@ -105,6 +111,7 @@ testthat::test_that("refresh_token warns when expires_in is absent (refresh)", {
     expires_at = as.numeric(Sys.time()) + 10,
     id_token = NA_character_
   )
+  before <- as.numeric(Sys.time())
 
   testthat::expect_warning(
     {
@@ -112,10 +119,13 @@ testthat::test_that("refresh_token warns when expires_in is absent (refresh)", {
     },
     class = "shinyOAuth_missing_expires_in"
   )
+  after <- as.numeric(Sys.time())
 
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "refreshed_tok")
-  testthat::expect_identical(t2@expires_at, Inf)
+  testthat::expect_true(is.finite(t2@expires_at))
+  testthat::expect_gte(t2@expires_at, before + 3600)
+  testthat::expect_lte(t2@expires_at, after + 3600)
 })
 
 testthat::test_that("refresh_token does NOT warn when expires_in is present (refresh)", {
@@ -153,18 +163,22 @@ testthat::test_that("refresh_token does NOT warn when expires_in is present (ref
 
 # --- Unit test for resolve_missing_expires_in itself -------------------------
 
-testthat::test_that("resolve_missing_expires_in returns Inf and warns without option", {
+testthat::test_that("resolve_missing_expires_in uses 3600-second fallback without option", {
   # Reset rlang once-per-session frequency guard for this warning
   rlang::reset_warning_verbosity("expires_in_missing-test_phase")
   withr::local_options(shinyOAuth.default_expires_in = NULL)
 
+  before <- as.numeric(Sys.time())
   result <- NULL
   w <- testthat::expect_warning(
     result <- shinyOAuth:::resolve_missing_expires_in(phase = "test_phase"),
     class = "shinyOAuth_missing_expires_in"
   )
+  after <- as.numeric(Sys.time())
 
-  testthat::expect_identical(result, Inf)
+  testthat::expect_true(is.finite(result))
+  testthat::expect_gte(result, before + 3600)
+  testthat::expect_lte(result, after + 3600)
   testthat::expect_match(
     conditionMessage(w),
     "expires_in",
@@ -172,8 +186,8 @@ testthat::test_that("resolve_missing_expires_in returns Inf and warns without op
   )
   testthat::expect_match(
     conditionMessage(w),
-    "infinite",
-    ignore.case = TRUE
+    "3600",
+    fixed = TRUE
   )
 })
 
@@ -205,34 +219,46 @@ testthat::test_that("resolve_missing_expires_in ignores invalid option values", 
   withr::local_options(shinyOAuth.default_expires_in = "not_a_number")
   rlang::reset_warning_verbosity("expires_in_missing-bad_opt1")
 
+  before <- as.numeric(Sys.time())
   result <- NULL
   testthat::expect_warning(
     result <- shinyOAuth:::resolve_missing_expires_in(phase = "bad_opt1"),
     class = "shinyOAuth_missing_expires_in"
   )
-  testthat::expect_identical(result, Inf)
+  after <- as.numeric(Sys.time())
+  testthat::expect_true(is.finite(result))
+  testthat::expect_gte(result, before + 3600)
+  testthat::expect_lte(result, after + 3600)
 
   # Negative value
   withr::local_options(shinyOAuth.default_expires_in = -100)
   rlang::reset_warning_verbosity("expires_in_missing-bad_opt2")
 
+  before2 <- as.numeric(Sys.time())
   result2 <- NULL
   testthat::expect_warning(
     result2 <- shinyOAuth:::resolve_missing_expires_in(phase = "bad_opt2"),
     class = "shinyOAuth_missing_expires_in"
   )
-  testthat::expect_identical(result2, Inf)
+  after2 <- as.numeric(Sys.time())
+  testthat::expect_true(is.finite(result2))
+  testthat::expect_gte(result2, before2 + 3600)
+  testthat::expect_lte(result2, after2 + 3600)
 
   # Zero
   withr::local_options(shinyOAuth.default_expires_in = 0)
   rlang::reset_warning_verbosity("expires_in_missing-bad_opt3")
 
+  before3 <- as.numeric(Sys.time())
   result3 <- NULL
   testthat::expect_warning(
     result3 <- shinyOAuth:::resolve_missing_expires_in(phase = "bad_opt3"),
     class = "shinyOAuth_missing_expires_in"
   )
-  testthat::expect_identical(result3, Inf)
+  after3 <- as.numeric(Sys.time())
+  testthat::expect_true(is.finite(result3))
+  testthat::expect_gte(result3, before3 + 3600)
+  testthat::expect_lte(result3, after3 + 3600)
 })
 
 testthat::test_that("resolve_missing_expires_in fires only once per phase", {
