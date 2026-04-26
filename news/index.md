@@ -2,32 +2,12 @@
 
 ## shinyOAuth (development version)
 
-- Added optional DPoP sender-constrained token support.
+- Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
   exchange/refresh/revocation/introspection requests can attach DPoP
   proofs with nonce retry, and downstream helpers now preserve and use
   `token_type = "DPoP"` when the server returns it.
-
-- `OAuthProvider(extra_auth_params = list(response_mode = ...))` now
-  fails fast unless `response_mode = "query"`. Plain Shiny callback URLs
-  reject POST requests, so `response_mode = "form_post"` was previously
-  allowed but led to a broken callback round-trip instead of a clear
-  configuration error.
-
-- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  now supports `require_callback_issuer = TRUE` to reject
-  issuer-configured callbacks that omit the RFC 9207 `iss` parameter.
-  Use this strict mode when one Shiny app can talk to multiple
-  authorization servers through the same callback URL; otherwise use
-  distinct redirect URIs per issuer.
-
-- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
-  no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
-  identity by default. `common` and `organizations` now validate ID
-  tokens using Microsoft’s tenant-independent issuer and signing-key
-  issuer rules, and `consumers` now validates against the stable
-  consumer tenant issuer.
 
 - Added OpenTelemetry (OTel) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
@@ -37,29 +17,37 @@
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
   for more information.
 
-- Improved observability correlation for existing audit flows.
-  Interactive login now reuses a single flow `trace_id` across redirect
-  issuance, callback validation, token exchange, and login outcome
-  events, making it easier to correlate the pre-redirect and
-  post-redirect Shiny sessions for a single login round-trip; async work
-  also carries more accurate originating Shiny session/process context
-  into worker-emitted events.
+- Observability and audit logging improvements:
 
-- Improved existing audit event types. `audit_token_exchange` and
-  `audit_token_refresh` now include `expires_in_synthesized`, indicating
-  that the provider did not return a usable `expires_in` and shinyOAuth
-  had to synthesize one; `audit_login_failed` now distinguishes async
-  payload-validation and state-store-lookup failures from async
-  token-exchange failures; `audit_userinfo` distinguishes missing `sub`
-  and JWT/JWKS validation failures; and error-state consumption events
-  use the logical state digest when available for better correlation.
-  See
-  [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-  for more information.
+  - Improved observability correlation for existing audit flows.
+    Interactive login now reuses a single flow `trace_id` across
+    redirect issuance, callback validation, token exchange, and login
+    outcome events, making it easier to correlate the pre-redirect and
+    post-redirect Shiny sessions for a single login round-trip; async
+    work also carries more accurate originating Shiny session/process
+    context into worker-emitted events.
+  - Improved existing audit event types. `audit_token_exchange` and
+    `audit_token_refresh` now include `expires_in_synthesized`,
+    indicating that the provider did not return a usable `expires_in`
+    and shinyOAuth had to synthesize one; `audit_login_failed` now
+    distinguishes async payload-validation and state-store-lookup
+    failures from async token-exchange failures; `audit_userinfo`
+    distinguishes missing `sub` and JWT/JWKS validation failures; and
+    error-state consumption events use the logical state digest when
+    available for better correlation. See
+    [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+    for more information.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now explicitly ignores new login requests while a session is already
   authenticated.
+
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now supports `require_callback_issuer = TRUE` to reject
+  issuer-configured callbacks that omit the RFC 9207 `iss` parameter.
+  Use this strict mode when one Shiny app can talk to multiple
+  authorization servers through the same callback URL; otherwise use
+  distinct redirect URIs per issuer.
 
 - `validate_id_token()` now properly rejects `auth_time` claims set in
   the future (beyond leeway). Previously, a future `auth_time` produced
@@ -78,10 +66,26 @@
   keys that advertise a different algorithm even if signature
   verification would otherwise succeed.
 
-- Scope validation now treats an omitted `scope` in the initial token
-  response as unchanged from the requested scope, matching RFC 6749
-  section 5.1 instead of rejecting otherwise compliant authorization
-  servers by default.
+- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  now always requires a non-empty `sub` claim in userinfo responses from
+  OIDC providers (those with an `issuer` configured), per OIDC Core
+  section 5.3. Previously, a non-compliant response without `sub` could
+  be accepted if `userinfo_id_token_match` was not enabled. The
+  signed-JWT path (`validate_signed_userinfo_claims()`) also now checks
+  `sub` alongside the existing `iss`/`aud` validation.
+
+- `oauth_provider(extra_auth_params = list(response_mode = ...))` now
+  fails fast unless `response_mode = "query"`. Plain Shiny callback URLs
+  reject POST requests, so `response_mode = "form_post"` was previously
+  allowed but led to a broken callback round-trip instead of a clear
+  configuration error.
+
+- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
+  no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
+  identity by default. `common` and `organizations` now validate ID
+  tokens using Microsoft’s tenant-independent issuer and signing-key
+  issuer rules, and `consumers` now validates against the stable
+  consumer tenant issuer.
 
 - OIDC clients now carry the same effective requested scopes through the
   whole login flow. If `openid` is auto-added to the authorization
@@ -93,13 +97,10 @@
   allows a downgrade to `plain` when you pass `pkce_method = "plain"`
   explicitly.
 
-- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  now always requires a non-empty `sub` claim in userinfo responses from
-  OIDC providers (those with an `issuer` configured), per OIDC Core
-  section 5.3. Previously, a non-compliant response without `sub` could
-  be accepted if `userinfo_id_token_match` was not enabled. The
-  signed-JWT path (`validate_signed_userinfo_claims()`) also now checks
-  `sub` alongside the existing `iss`/`aud` validation.
+- Scope validation now treats an omitted `scope` in the initial token
+  response as unchanged from the requested scope, matching RFC 6749
+  section 5.1 instead of rejecting otherwise compliant authorization
+  servers by default.
 
 - Token exchange and refresh requests no longer retry on transport
   errors or transient HTTP statuses (408/429/5xx). Authorization codes
