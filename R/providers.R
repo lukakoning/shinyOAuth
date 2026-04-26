@@ -43,6 +43,8 @@ oauth_provider_oidc <- function(
   allowed_token_types = c('Bearer'),
   ...
 ) {
+  base_url <- sub("/+$", "", base_url)
+
   auth_url <- paste0(base_url, auth_path)
   token_url <- paste0(base_url, token_path)
   userinfo_url <- paste0(base_url, userinfo_path)

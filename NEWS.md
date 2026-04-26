@@ -84,6 +84,11 @@ issuer.
 login flow. If `openid` is auto-added to the authorization request, the sealed
 state payload and later scope validation now use that same effective scope set.
 
+* `oauth_provider_oidc()` now trims trailing slashes from `base_url` before
+deriving endpoint URLs and the configured `issuer`, avoiding valid ID tokens
+being rejected on a strict OIDC `iss` comparison when the helper was configured
+with a URL like `https://issuer.example/`.
+
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
 of rejecting otherwise compliant authorization servers by default.

@@ -193,6 +193,19 @@ test_that("oauth_provider_oidc builds correct endpoint URLs from base_url", {
   expect_identical(p@allowed_token_types, "Bearer")
 })
 
+test_that("oauth_provider_oidc trims trailing slashes from base_url", {
+  p <- oauth_provider_oidc(
+    name = "test-oidc-trailing-slash",
+    base_url = "https://auth.example.com/"
+  )
+
+  expect_identical(p@auth_url, "https://auth.example.com/authorize")
+  expect_identical(p@token_url, "https://auth.example.com/token")
+  expect_identical(p@userinfo_url, "https://auth.example.com/userinfo")
+  expect_identical(p@introspection_url, "https://auth.example.com/introspect")
+  expect_identical(p@issuer, "https://auth.example.com")
+})
+
 test_that("oauth_provider_oidc allows custom paths", {
   p <- oauth_provider_oidc(
     name = "custom-oidc",
