@@ -19,7 +19,7 @@ information.
   correlate the pre-redirect and post-redirect Shiny sessions for a single login
   round-trip; async work also carries more accurate originating Shiny
   session/process context into worker-emitted events.
-    - Improved existing audit event types. `audit_token_exchange` and 
+  - Improved existing audit event types. `audit_token_exchange` and 
   `audit_token_refresh` now include `expires_in_synthesized`, indicating that 
   the provider did not return a usable `expires_in` and shinyOAuth had to 
   synthesize one; `audit_login_failed` now distinguishes async 
@@ -76,13 +76,13 @@ validate ID tokens using Microsoft's tenant-independent issuer and signing-key
 issuer rules, and `consumers` now validates against the stable consumer tenant
 issuer.
 
-* OIDC clients now carry the same effective requested scopes through the whole
-login flow. If `openid` is auto-added to the authorization request, the sealed
-state payload and later scope validation now use that same effective scope set.
-
 * OIDC discovery now fails fast when metadata advertises PKCE methods but omits
 `S256`. shinyOAuth keeps `S256` as the default and only allows a downgrade to
 `plain` when you pass `pkce_method = "plain"` explicitly.
+
+* OIDC clients now carry the same effective requested scopes through the whole
+login flow. If `openid` is auto-added to the authorization request, the sealed
+state payload and later scope validation now use that same effective scope set.
 
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
