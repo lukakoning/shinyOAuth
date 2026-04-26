@@ -6,25 +6,51 @@
 
 .submit_keycloak_login <- function(drv) {
   drv$wait_for_js(
-    paste(
-      "document.querySelector('#kc-login')",
-      "document.querySelector('#username')",
-      "document.querySelector('#password')",
-      "document.forms.length > 0",
-      "document.forms[0].action.indexOf('/login-actions/authenticate') !== -1",
-      sep = " && "
-    ),
-    timeout = 15000
+    "
+    (function () {
+      var authState = document.querySelector('#auth_state');
+      var login = document.querySelector('#kc-login');
+      var username = document.querySelector('#username');
+      var password = document.querySelector('#password');
+      var form = document.forms.length > 0 ? document.forms[0] : null;
+      var onLoginForm = !!(
+        login &&
+        username &&
+        password &&
+        form &&
+        form.action &&
+        form.action.indexOf('/login-actions/authenticate') !== -1
+      );
+      var alreadyAuthenticated = !!(
+        authState &&
+        authState.innerText.indexOf('authenticated: TRUE') !== -1
+      );
+      return onLoginForm || alreadyAuthenticated;
+    })();
+  ",
+    timeout = 20000
   )
   Sys.sleep(1)
 
   drv$run_js(
     "
     (function () {
+      var authState = document.querySelector('#auth_state');
+      if (
+        authState &&
+        authState.innerText.indexOf('authenticated: TRUE') !== -1
+      ) {
+        return 'already-authenticated';
+      }
+
       var username = document.querySelector('#username');
       var password = document.querySelector('#password');
       var login = document.querySelector('#kc-login');
       var form = (login && login.form) || document.forms[0];
+
+      if (!(username && password && form)) {
+        return 'login-form-missing';
+      }
 
       username.value = 'alice';
       password.value = 'alice';
@@ -34,6 +60,7 @@
       password.dispatchEvent(new Event('change', { bubbles: true }));
 
       HTMLFormElement.prototype.submit.call(form);
+      return 'submitted';
     })();
   "
   )
