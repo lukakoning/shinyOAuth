@@ -45,14 +45,6 @@
 #'   payload `issued_at` freshness window is controlled by the client's
 #'   `state_payload_max_age` (default 300 seconds).
 #'
-#' - Multi-issuer deployments: when one Shiny app can interact with more than
-#'   one authorization server and those flows share a callback URL, RFC 9700
-#'   requires a mix-up defense. For issuer-configured OIDC clients, set
-#'   `require_callback_issuer = TRUE` to require the RFC 9207 `iss` callback
-#'   parameter before any token exchange occurs. If your provider does not send
-#'   `iss`, register distinct `redirect_uri` values per issuer instead.
-#'
-
 #' @param id Shiny module id
 #' @param client [OAuthClient] object
 #'
@@ -138,13 +130,6 @@
 #'   non-HTTPS origins because browsers reject `SameSite=None` cookies without
 #'   the `Secure` attribute
 #'
-#' @param require_callback_issuer If TRUE, require the authorization response to
-#'   include an RFC 9207 `iss` parameter and reject the callback unless it
-#'   exactly matches `client@provider@issuer`. This fails closed before any
-#'   token exchange and is recommended when one Shiny app can interact with more
-#'   than one authorization server using the same callback URL. Requires the
-#'   provider to have a configured `issuer`. Default is FALSE.
-#'
 #' @return A reactiveValues object with `token`, `error`, `error_description`,
 #'   `error_uri`, and `authenticated`, plus additional fields used by the module.
 #'
@@ -175,7 +160,7 @@
 #'    the provider does not include one.
 #'    \item `browser_token`: internal opaque browser cookie value; used for state
 #'    double-submit protection; NULL if not yet set
-#'    \item `pending_callback`: internal list(code, state); used to defer token
+#'    \item `pending_callback`: internal list(code, state, iss); used to defer token
 #'    exchange until `browser_token` is available; NULL otherwise.
 #'    \item `pending_login`: internal logical; TRUE when a login was requested but must
 #'    wait for `browser_token` to be set, FALSE otherwise.
@@ -260,8 +245,7 @@ oauth_module_server <- function(
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None"),
-  require_callback_issuer = FALSE
+  browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
   # Validate parameters ------------------------------------------------------
 
@@ -353,13 +337,6 @@ oauth_module_server <- function(
   ) {
     err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
   }
-  if (
-    !(is.logical(require_callback_issuer) &&
-      length(require_callback_issuer) == 1 &&
-      !is.na(require_callback_issuer))
-  ) {
-    err_input("{.arg require_callback_issuer} must be a single non-NA logical.")
-  }
 
   # Fail fast: revoke_on_session_end requires a revocation URL
 
@@ -371,24 +348,6 @@ oauth_module_server <- function(
           "{.arg revoke_on_session_end} = {.val TRUE} requires\n            the provider to have a {.arg revocation_url} configured.",
           "x" = "Provider {.val {client@provider@name %||% '(unnamed)'}}\n            does not expose a revocation endpoint.",
           "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\n            configure the provider with a valid {.arg revocation_url}."
-        )
-      )
-    }
-  }
-
-  if (isTRUE(require_callback_issuer)) {
-    expected_issuer <- client@provider@issuer %||% NA_character_
-    if (!is_valid_string(expected_issuer)) {
-      provider_name <- client@provider@name %||% "(unnamed)"
-      err_config(
-        c(
-          "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
-          "x" = paste0(
-            "Provider {.val ",
-            provider_name,
-            "} does not expose a stable issuer identifier."
-          ),
-          "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
         )
       )
     }
@@ -1507,60 +1466,6 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      # RFC 9207: Authorization Server Issuer Identification.
-      # When strict mode is enabled, require `iss` for issuer-configured
-      # providers and reject the callback before any token exchange occurs.
-      # Otherwise, validate `iss` only when present to preserve existing
-      # single-issuer behavior.
-      expected_issuer <- client@provider@issuer
-      if (isTRUE(require_callback_issuer) && is.null(qs$iss)) {
-        .clear_query_and_fix_title()
-        .set_error(
-          "issuer_missing",
-          simpleError("Callback missing required iss parameter (RFC 9207)"),
-          phase = "callback_iss_validation"
-        )
-        try(
-          audit_event(
-            "callback_iss_missing",
-            context = list(
-              provider = client@provider@name %||% NA_character_,
-              expected_issuer = expected_issuer %||% NA_character_,
-              client_id_digest = string_digest(client@client_id)
-            )
-          ),
-          silent = TRUE
-        )
-        return(invisible(NULL))
-      }
-      if (!is.null(qs$iss)) {
-        if (
-          is_valid_string(expected_issuer) &&
-            !identical(qs$iss, expected_issuer)
-        ) {
-          .clear_query_and_fix_title()
-          .set_error(
-            "issuer_mismatch",
-            simpleError(paste0(
-              "Callback iss parameter does not match expected issuer (RFC 9207)"
-            )),
-            phase = "callback_iss_validation"
-          )
-          try(
-            audit_event(
-              "callback_iss_mismatch",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                expected_issuer = expected_issuer,
-                client_id_digest = string_digest(client@client_id)
-              )
-            ),
-            silent = TRUE
-          )
-          return(invisible(NULL))
-        }
-      }
-
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.
@@ -1572,14 +1477,19 @@ oauth_module_server <- function(
           error = qs$error,
           error_description = qs$error_description,
           error_uri = qs$error_uri,
-          state = qs$state
+          state = qs$state,
+          iss = qs$iss %||% NULL
         )
         return(invisible(NULL))
       }
 
       # If we're on the callback step, handle immediately and stop here
       if (!is.null(qs$code)) {
-        .handle_callback(code = qs$code, state = qs$state)
+        .handle_callback(
+          code = qs$code,
+          state = qs$state,
+          iss = qs$iss %||% NULL
+        )
         return(invisible(NULL))
       }
 
@@ -1598,13 +1508,65 @@ oauth_module_server <- function(
       return(invisible(NULL))
     }
 
+    .validate_callback_issuer_or_set_error <- function(iss = NULL) {
+      tryCatch(
+        {
+          validate_callback_issuer(
+            oauth_client = client,
+            iss = iss
+          )
+          TRUE
+        },
+        error = function(e) {
+          error_context <- tryCatch(e[["context"]], error = function(...) {
+            NULL
+          })
+          callback_error <- error_context$callback_error %||%
+            "callback_iss_validation_error"
+          expected_issuer <- client@provider@issuer %||% NA_character_
+
+          .set_error(
+            callback_error,
+            e,
+            phase = "callback_iss_validation"
+          )
+
+          audit_name <- switch(
+            callback_error,
+            issuer_missing = "callback_iss_missing",
+            issuer_mismatch = "callback_iss_mismatch",
+            "callback_iss_validation_failed"
+          )
+          try(
+            audit_event(
+              audit_name,
+              context = compact_list(list(
+                provider = client@provider@name %||% NA_character_,
+                expected_issuer = expected_issuer,
+                callback_issuer = iss %||% NULL,
+                client_id_digest = string_digest(client@client_id),
+                error_class = paste(class(e), collapse = ", ")
+              ))
+            ),
+            silent = TRUE
+          )
+          FALSE
+        }
+      )
+    }
+
     # Function to handle OAuth error responses and require state validation
     .handle_error_response <- function(
       error,
       error_description,
       error_uri,
-      state
+      state,
+      iss = NULL
     ) {
+      if (!isTRUE(.validate_callback_issuer_or_set_error(iss))) {
+        return(invisible(NULL))
+      }
+
       # Security: treat provider error callbacks as valid only when state is
       # present and can be successfully validated/consumed.
       state_ok <- tryCatch(
@@ -1718,7 +1680,7 @@ oauth_module_server <- function(
     }
 
     # Function to handle code & state once received in query string
-    .handle_callback <- function(code, state) {
+    .handle_callback <- function(code, state, iss = NULL) {
       callback_parent <- NULL
       callback_hint <- otel_callback_parent_hint(client, state)
       # Always clear callback params once we've parsed them (success or failure)
@@ -1729,9 +1691,13 @@ oauth_module_server <- function(
         add = TRUE
       )
 
+      if (!isTRUE(.validate_callback_issuer_or_set_error(iss))) {
+        return(invisible(NULL))
+      }
+
       # If browser token isn't here yet, defer (set as pending) and wait for browser token
       if (!is_valid_string(values$browser_token)) {
-        values$pending_callback <- list(code = code, state = state)
+        values$pending_callback <- list(code = code, state = state, iss = iss)
         return(invisible(NULL))
       }
 
@@ -1967,7 +1933,8 @@ oauth_module_server <- function(
                   client,
                   code = code,
                   payload = state,
-                  browser_token = values$browser_token
+                  browser_token = values$browser_token,
+                  iss = iss
                 )
               }
 
@@ -2092,7 +2059,7 @@ oauth_module_server <- function(
         pc <- shiny::isolate(values$pending_callback)
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
-          .handle_callback(pc$code, pc$state)
+          .handle_callback(pc$code, pc$state, pc$iss %||% NULL)
         }
       },
       ignoreInit = FALSE

@@ -484,6 +484,61 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 # Handle callback ---------------------------------------------------------
 
+validate_callback_issuer <- function(
+  oauth_client,
+  iss = NULL
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!(is.null(iss) || is_valid_string(iss))) {
+    err_input("{.arg iss} must be NULL or a non-empty string.")
+  }
+
+  require_callback_issuer <- isTRUE(oauth_client@require_callback_issuer)
+  expected_issuer <- oauth_client@provider@issuer %||% NA_character_
+  if (isTRUE(require_callback_issuer) && !is_valid_string(expected_issuer)) {
+    provider_name <- oauth_client@provider@name %||% "(unnamed)"
+    err_config(
+      c(
+        "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "x" = paste0(
+          "Provider {.val ",
+          provider_name,
+          "} does not expose a stable issuer identifier."
+        ),
+        "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+      )
+    )
+  }
+
+  if (isTRUE(require_callback_issuer) && is.null(iss)) {
+    err_invalid_state(
+      "Callback missing required iss parameter (RFC 9207)",
+      context = list(
+        callback_error = "issuer_missing",
+        expected_issuer = expected_issuer
+      )
+    )
+  }
+
+  if (
+    !is.null(iss) &&
+      is_valid_string(expected_issuer) &&
+      !identical(iss, expected_issuer)
+  ) {
+    err_invalid_state(
+      "Callback iss parameter does not match expected issuer (RFC 9207)",
+      context = list(
+        callback_error = "issuer_mismatch",
+        expected_issuer = expected_issuer,
+        callback_issuer = iss
+      )
+    )
+  }
+
+  invisible(iss)
+}
+
 #' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 #'
 #' @param oauth_client An [OAuthClient] object representing the OAuth client configuration.
@@ -495,6 +550,11 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
+#' @param iss Optional RFC 9207 callback issuer (`iss`) from the authorization
+#'   response. Pass this when one callback URL can receive responses from more
+#'   than one authorization server. If `oauth_client@require_callback_issuer`
+#'   is `TRUE`, this parameter is required and must match the configured
+#'   provider issuer before any token exchange occurs.
 #'
 #' @return An [OAuthToken] object containing the access token, refresh token,
 #' expiration time, user information (if requested), and ID token (if applicable).
@@ -509,7 +569,8 @@ handle_callback <- function(
   code,
   payload,
   browser_token,
-  shiny_session = NULL
+  shiny_session = NULL,
+  iss = NULL
 ) {
   validate_untrusted_query_param(
     "code",
@@ -535,6 +596,16 @@ handle_callback <- function(
       256
     )
   )
+  if (!is.null(iss)) {
+    validate_untrusted_query_param(
+      "iss",
+      iss,
+      max_bytes = get_option_positive_number(
+        "shinyOAuth.callback_max_iss_bytes",
+        2048
+      )
+    )
+  }
 
   callback_hint <- otel_callback_parent_hint(oauth_client, payload)
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
@@ -548,6 +619,10 @@ handle_callback <- function(
     with_otel_span(
       "shinyOAuth.callback",
       {
+        validate_callback_issuer(
+          oauth_client = oauth_client,
+          iss = iss
+        )
         handle_callback_internal(
           oauth_client = oauth_client,
           code = code,

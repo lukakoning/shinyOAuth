@@ -71,6 +71,12 @@
 #'   refresh tokens.
 #'
 #' @param redirect_uri Redirect URI registered with provider
+#' @param require_callback_issuer Logical. When `TRUE`, require authorization
+#'   responses handled through this client to include an RFC 9207 `iss`
+#'   parameter and reject callbacks unless it exactly matches
+#'   `provider@issuer`. This is recommended when one callback URL can receive
+#'   responses from more than one authorization server. Requires the provider
+#'   to have a configured `issuer`. Default is `FALSE`.
 #'
 #' @param scopes Vector of scopes to request. For OIDC providers (those with an
 #'   `issuer`), shinyOAuth automatically prepends `openid` when it is missing;
@@ -271,6 +277,10 @@ OAuthClient <- S7::new_class(
       default = FALSE
     ),
     redirect_uri = S7::class_character,
+    require_callback_issuer = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     scopes = S7::class_character,
     # Optional OIDC claims request parameter (OIDC Core §5.5):
     # can be NULL (no claims), a list (auto JSON-encoded), or a character
@@ -348,6 +358,24 @@ OAuthClient <- S7::new_class(
         "OAuthClient: redirect URI not accepted as a host ",
         "(see `?is_ok_host` for details)"
       ))
+    }
+
+    if (
+      !(is.logical(self@require_callback_issuer) &&
+        length(self@require_callback_issuer) == 1L &&
+        !is.na(self@require_callback_issuer))
+    ) {
+      return(
+        "OAuthClient: require_callback_issuer must be a single non-NA logical"
+      )
+    }
+    if (
+      isTRUE(self@require_callback_issuer) &&
+        !is_valid_string(self@provider@issuer %||% NA_character_)
+    ) {
+      return(
+        "OAuthClient: require_callback_issuer = TRUE requires the provider to have an issuer configured"
+      )
     }
 
     # State payload freshness window (issued_at)
@@ -897,6 +925,7 @@ oauth_client <- function(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
+  require_callback_issuer = FALSE,
   scopes = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -921,6 +950,32 @@ oauth_client <- function(
     state_key_missing = missing(state_key)
   )
 
+  if (
+    !(is.logical(require_callback_issuer) &&
+      length(require_callback_issuer) == 1 &&
+      !is.na(require_callback_issuer))
+  ) {
+    err_input("{.arg require_callback_issuer} must be a single non-NA logical.")
+  }
+  if (
+    isTRUE(require_callback_issuer) &&
+      S7::S7_inherits(provider, OAuthProvider) &&
+      !is_valid_string(provider@issuer %||% NA_character_)
+  ) {
+    provider_name <- provider@name %||% "(unnamed)"
+    err_config(
+      c(
+        "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "x" = paste0(
+          "Provider {.val ",
+          provider_name,
+          "} does not expose a stable issuer identifier."
+        ),
+        "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+      )
+    )
+  }
+
   scope_validation <- match.arg(scope_validation)
   claims_validation <- match.arg(claims_validation)
 
@@ -942,6 +997,7 @@ oauth_client <- function(
     client_id = client_id,
     client_secret = client_secret,
     redirect_uri = redirect_uri,
+    require_callback_issuer = isTRUE(require_callback_issuer),
     scopes = scopes,
     claims = claims,
     state_store = state_store,

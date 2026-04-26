@@ -9,7 +9,8 @@ handle_callback(
   code,
   payload,
   browser_token,
-  shiny_session = NULL
+  shiny_session = NULL,
+  iss = NULL
 )
 }
 \arguments{
@@ -26,6 +27,12 @@ by \code{oauth_module_server()} and should match the one used in \code{prepare_c
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when
 calling from async workers that lack access to the reactive domain.}
+
+\item{iss}{Optional RFC 9207 callback issuer (\code{iss}) from the authorization
+response. Pass this when one callback URL can receive responses from more
+than one authorization server. If \code{oauth_client@require_callback_issuer}
+is \code{TRUE}, this parameter is required and must match the configured
+provider issuer before any token exchange occurs.}
 }
 \value{
 An \link{OAuthToken} object containing the access token, refresh token,

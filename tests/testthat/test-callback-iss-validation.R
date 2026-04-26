@@ -1,9 +1,13 @@
 # Tests for RFC 9207: Authorization Server Issuer Identification
 # Verifies that callback `iss` parameter is validated against the
-# provider's configured issuer in oauth_module_server .process_query().
+# provider's configured issuer in both oauth_module_server() and the
+# exported low-level handle_callback() API.
 
 # Helper: build provider + client for callback iss tests
-make_iss_test_client <- function(issuer = "https://issuer.example.com") {
+make_iss_test_client <- function(
+  issuer = "https://issuer.example.com",
+  require_callback_issuer = FALSE
+) {
   prov <- oauth_provider(
     name = "oidc-iss-test",
     auth_url = paste0(issuer, "/auth"),
@@ -20,6 +24,7 @@ make_iss_test_client <- function(issuer = "https://issuer.example.com") {
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    require_callback_issuer = require_callback_issuer,
     scopes = c("openid"),
     scope_validation = "none",
     state_store = cachem::cache_mem(max_age = 600),
@@ -29,6 +34,19 @@ make_iss_test_client <- function(issuer = "https://issuer.example.com") {
     )
   )
 }
+
+test_that("callback issuer strictness is configured on OAuthClient", {
+  expect_true(
+    "require_callback_issuer" %in% names(formals(shinyOAuth::oauth_client))
+  )
+  expect_false(
+    "require_callback_issuer" %in%
+      names(formals(shinyOAuth::oauth_module_server))
+  )
+  expect_false(
+    "require_callback_issuer" %in% names(formals(shinyOAuth::handle_callback))
+  )
+})
 
 test_that("callback iss matching expected issuer is accepted", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
@@ -73,7 +91,7 @@ test_that("callback iss matching expected issuer is accepted", {
 
 test_that("callback iss matching expected issuer is accepted in strict mode", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(require_callback_issuer = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -81,8 +99,7 @@ test_that("callback iss matching expected issuer is accepted in strict mode", {
       id = "auth",
       client = cli,
       auto_redirect = FALSE,
-      indefinite_session = TRUE,
-      require_callback_issuer = TRUE
+      indefinite_session = TRUE
     ),
     expr = {
       testthat::expect_true(values$has_browser_token())
@@ -190,7 +207,7 @@ test_that("callback without iss parameter retains current behavior", {
 
 test_that("callback without iss parameter is rejected in strict mode", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(require_callback_issuer = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -198,8 +215,7 @@ test_that("callback without iss parameter is rejected in strict mode", {
       id = "auth",
       client = cli,
       auto_redirect = FALSE,
-      indefinite_session = TRUE,
-      require_callback_issuer = TRUE
+      indefinite_session = TRUE
     ),
     expr = {
       testthat::expect_true(values$has_browser_token())
@@ -227,39 +243,29 @@ test_that("callback without iss parameter is rejected in strict mode", {
 test_that("strict callback issuer mode requires a configured provider issuer", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- oauth_client(
-    provider = oauth_provider(
-      name = "plain-oauth",
-      auth_url = "https://example.com/auth",
-      token_url = "https://example.com/token",
-      id_token_validation = FALSE,
-      id_token_required = FALSE,
-      use_nonce = FALSE,
-      use_pkce = TRUE,
-      token_auth_style = "body"
-    ),
-    client_id = "abc",
-    client_secret = "",
-    redirect_uri = "http://localhost:8100",
-    scopes = character(0),
-    scope_validation = "none",
-    state_store = cachem::cache_mem(max_age = 600),
-    state_key = paste0(
-      "0123456789abcdefghijklmnopqrstuvwxyz",
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    )
-  )
-
   testthat::expect_error(
-    shiny::testServer(
-      app = oauth_module_server,
-      args = list(
-        id = "auth",
-        client = cli,
-        auto_redirect = FALSE,
-        require_callback_issuer = TRUE
+    oauth_client(
+      provider = oauth_provider(
+        name = "plain-oauth",
+        auth_url = "https://example.com/auth",
+        token_url = "https://example.com/token",
+        id_token_validation = FALSE,
+        id_token_required = FALSE,
+        use_nonce = FALSE,
+        use_pkce = TRUE,
+        token_auth_style = "body"
       ),
-      expr = {}
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      require_callback_issuer = TRUE,
+      scopes = character(0),
+      scope_validation = "none",
+      state_store = cachem::cache_mem(max_age = 600),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      )
     ),
     "require_callback_issuer"
   )
@@ -397,5 +403,119 @@ test_that("callback with oversized iss parameter is rejected", {
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, "invalid_callback_query")
     }
+  )
+})
+
+test_that("handle_callback accepts matching callback iss", {
+  cli <- make_iss_test_client()
+  browser_token <- valid_browser_token()
+  url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
+  enc <- parse_query_param(url, "state")
+
+  token <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shinyOAuth::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = browser_token,
+        iss = "https://issuer.example.com"
+      )
+    }
+  )
+
+  testthat::expect_true(
+    is.character(token@access_token) && nzchar(token@access_token)
+  )
+})
+
+test_that("handle_callback rejects mismatched callback iss before token exchange", {
+  cli <- make_iss_test_client()
+  browser_token <- valid_browser_token()
+  url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      testthat::fail(
+        "token exchange should not run when callback iss mismatches"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        shinyOAuth::handle_callback(
+          cli,
+          code = "ok",
+          payload = enc,
+          browser_token = browser_token,
+          iss = "https://evil.example.com"
+        ),
+        class = "shinyOAuth_state_error",
+        regexp = "does not match expected issuer"
+      )
+    }
+  )
+})
+
+test_that("handle_callback rejects missing iss in strict mode before token exchange", {
+  cli <- make_iss_test_client(require_callback_issuer = TRUE)
+  browser_token <- valid_browser_token()
+  url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      testthat::fail(
+        "token exchange should not run when callback iss is required"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        shinyOAuth::handle_callback(
+          cli,
+          code = "ok",
+          payload = enc,
+          browser_token = browser_token
+        ),
+        class = "shinyOAuth_state_error",
+        regexp = "missing required iss"
+      )
+    }
+  )
+})
+
+test_that("handle_callback strict issuer mode requires a configured provider issuer", {
+  testthat::expect_error(
+    oauth_client(
+      provider = oauth_provider(
+        name = "plain-oauth",
+        auth_url = "https://example.com/auth",
+        token_url = "https://example.com/token",
+        id_token_validation = FALSE,
+        id_token_required = FALSE,
+        use_nonce = FALSE,
+        use_pkce = TRUE,
+        token_auth_style = "body"
+      ),
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      require_callback_issuer = TRUE,
+      scopes = character(0),
+      scope_validation = "none",
+      state_store = cachem::cache_mem(max_age = 600),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      )
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "require_callback_issuer"
   )
 })

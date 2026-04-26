@@ -17,6 +17,7 @@ OAuthClient(
   dpop_signing_alg = NA_character_,
   dpop_require_access_token = FALSE,
   redirect_uri = character(0),
+  require_callback_issuer = FALSE,
   scopes = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -98,6 +99,13 @@ the default \code{FALSE} to allow deployments where DPoP is only used to bind
 refresh tokens.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
+
+\item{require_callback_issuer}{Logical. When \code{TRUE}, require authorization
+responses handled through this client to include an RFC 9207 \code{iss}
+parameter and reject callbacks unless it exactly matches
+\code{provider@issuer}. This is recommended when one callback URL can receive
+responses from more than one authorization server. Requires the provider
+to have a configured \code{issuer}. Default is \code{FALSE}.}
 
 \item{scopes}{Vector of scopes to request. For OIDC providers (those with an
 \code{issuer}), shinyOAuth automatically prepends \code{openid} when it is missing;

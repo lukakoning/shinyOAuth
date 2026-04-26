@@ -9,6 +9,7 @@ oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
+  require_callback_issuer = FALSE,
   scopes = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -53,6 +54,13 @@ Note: If your provider issues HS256 ID tokens and \code{id_token_validation} is
 enabled, a non-empty \code{client_secret} is required for signature validation.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
+
+\item{require_callback_issuer}{Logical. When \code{TRUE}, require authorization
+responses handled through this client to include an RFC 9207 \code{iss}
+parameter and reject callbacks unless it exactly matches
+\code{provider@issuer}. This is recommended when one callback URL can receive
+responses from more than one authorization server. Requires the provider
+to have a configured \code{issuer}. Default is \code{FALSE}.}
 
 \item{scopes}{Vector of scopes to request. For OIDC providers (those with an
 \code{issuer}), shinyOAuth automatically prepends \code{openid} when it is missing;

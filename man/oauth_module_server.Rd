@@ -18,8 +18,7 @@ oauth_module_server(
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None"),
-  require_callback_issuer = FALSE
+  browser_cookie_samesite = c("Strict", "Lax", "None")
 )
 }
 \arguments{
@@ -112,13 +111,6 @@ associated risk. If set to "None", the cookie will be marked
 \verb{SameSite=None; Secure} in the browser, and authentication will error on
 non-HTTPS origins because browsers reject \code{SameSite=None} cookies without
 the \code{Secure} attribute}
-
-\item{require_callback_issuer}{If TRUE, require the authorization response to
-include an RFC 9207 \code{iss} parameter and reject the callback unless it
-exactly matches \code{client@provider@issuer}. This fails closed before any
-token exchange and is recommended when one Shiny app can interact with more
-than one authorization server using the same callback URL. Requires the
-provider to have a configured \code{issuer}. Default is FALSE.}
 }
 \value{
 A reactiveValues object with \code{token}, \code{error}, \code{error_description},
@@ -151,7 +143,7 @@ information about the error (per RFC 6749 section 4.1.2.1). NULL when
 the provider does not include one.
 \item \code{browser_token}: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set
-\item \code{pending_callback}: internal list(code, state); used to defer token
+\item \code{pending_callback}: internal list(code, state, iss); used to defer token
 exchange until \code{browser_token} is available; NULL otherwise.
 \item \code{pending_login}: internal logical; TRUE when a login was requested but must
 wait for \code{browser_token} to be set, FALSE otherwise.
@@ -259,12 +251,6 @@ conservative default of 5 minutes (300 seconds) is used to align with the
 built-in \code{cachem::cache_mem(max_age = 300)} default. Separately, the state
 payload \code{issued_at} freshness window is controlled by the client's
 \code{state_payload_max_age} (default 300 seconds).
-\item Multi-issuer deployments: when one Shiny app can interact with more than
-one authorization server and those flows share a callback URL, RFC 9700
-requires a mix-up defense. For issuer-configured OIDC clients, set
-\code{require_callback_issuer = TRUE} to require the RFC 9207 \code{iss} callback
-parameter before any token exchange occurs. If your provider does not send
-\code{iss}, register distinct \code{redirect_uri} values per issuer instead.
 }
 }
 \examples{
