@@ -151,6 +151,9 @@ oauth_provider_oidc_discover <- function(
   allowed_hosts_vec <- .discover_compute_allowed_hosts(iss_host)
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
+  # 6b) ID token validation requires a JWKS endpoint up front.
+  .discover_require_jwks_uri(disc, iss, id_token_validation)
+
   # 7) Enforce JWKS host pinning if enabled
   if (isTRUE(jwks_host_issuer_match)) {
     .discover_enforce_jwks_pinning(disc, iss, iss_host, allowed_hosts_vec)
@@ -398,6 +401,41 @@ oauth_provider_oidc_discover <- function(
   validate_endpoint(endpoints$revocation_url, allowed_hosts_vec)
 
   invisible(TRUE)
+}
+
+#' Internal: require jwks_uri when ID token validation is enabled
+#'
+#' @keywords internal
+#' @noRd
+.discover_require_jwks_uri <- function(disc, iss, id_token_validation) {
+  if (!isTRUE(id_token_validation)) {
+    return(invisible(TRUE))
+  }
+
+  jwks_uri <- disc[["jwks_uri"]] %||% ""
+  if (
+    is_valid_string(jwks_uri) &&
+      nzchar(trimws(jwks_uri))
+  ) {
+    return(invisible(TRUE))
+  }
+
+  err_config(
+    c(
+      "x" = "Discovery document missing jwks_uri",
+      "i" = paste0(
+        "Issuer: ",
+        iss
+      ),
+      "i" = paste0(
+        "id_token_validation = TRUE requires jwks_uri to fetch signing keys for ID token validation"
+      )
+    ),
+    context = list(
+      issuer = iss,
+      id_token_validation = id_token_validation
+    )
+  )
 }
 
 #' Internal: enforce JWKS pinning per issuer/allowed hosts

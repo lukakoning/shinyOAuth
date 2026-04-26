@@ -8,6 +8,7 @@ testthat::test_that("discovery selects conservative client auth methods (basic/p
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list(
             # Server advertises JWT and basic; we should prefer basic (header)
             "private_key_jwt",
@@ -36,6 +37,7 @@ testthat::test_that("discovery returns body when only client_secret_post is adve
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list("client_secret_post")
         ),
         auto_unbox = TRUE
@@ -60,6 +62,7 @@ testthat::test_that("discovery with 'none' requires PKCE and uses body when enab
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list("none")
         ),
         auto_unbox = TRUE
@@ -91,6 +94,7 @@ testthat::test_that("JWT-only advertisement requires explicit token_auth_style",
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list("private_key_jwt")
         ),
         auto_unbox = TRUE
@@ -125,6 +129,7 @@ testthat::test_that("mixed none + client_secret_basic prefers confidential auth"
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list(
             "none",
             "client_secret_basic"
@@ -158,6 +163,7 @@ testthat::test_that("mixed none + client_secret_post prefers confidential auth",
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
           token_endpoint_auth_methods_supported = list(
             "none",
             "client_secret_post"
@@ -185,7 +191,8 @@ testthat::test_that("when methods are not advertised, fall back to header (histo
       jsonlite::toJSON(
         list(
           authorization_endpoint = "https://127.0.0.1/auth",
-          token_endpoint = "https://127.0.0.1/token"
+          token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks"
           # no token_endpoint_auth_methods_supported field
         ),
         auto_unbox = TRUE
