@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- Guard oversized HTTP error bodies inside `err_http()` before hashing
+  or JSON parsing, so large chunked or misleading error responses now
+  trip the existing body-size limit consistently.
+
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
@@ -124,8 +128,9 @@
 
 - OIDC clients now carry the same effective requested scopes through the
   whole login flow. If `openid` is auto-added to the authorization
-  request, the sealed state payload and later scope validation now use
-  that same effective scope set.
+  request, the sealed state payload, token-response scope validation,
+  and introspection scope validation now use that same effective scope
+  set.
 
 - Scope validation now treats an omitted `scope` in the initial token
   response as unchanged from the requested scope, matching RFC 6749
