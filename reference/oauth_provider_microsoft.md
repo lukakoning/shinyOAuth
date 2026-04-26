@@ -54,7 +54,10 @@ For `tenant = "common"` or `tenant = "organizations"`, the helper
 enables Microsoft Entra's tenant-independent validation mode by default:
 ID tokens are checked against Microsoft's `{tenantid}` issuer template
 and the signing key's own `issuer` scope, as documented by Microsoft for
-multi-tenant metadata.
+multi-tenant metadata. Runtime JWKS discovery for these aliases also
+uses host-only discovery issuer matching because Microsoft's
+tenant-independent metadata publishes a templated issuer rather than
+echoing the alias URL exactly.
 
 For `tenant = "consumers"`, the helper resolves the stable consumer
 tenant issuer (`9188040d-6c67-4c5b-b112-36a304b66dad`) and performs

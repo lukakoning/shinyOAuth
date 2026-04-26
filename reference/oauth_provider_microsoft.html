@@ -97,7 +97,9 @@ validation with the tenant-specific issuer.</p>
 Microsoft Entra's tenant-independent validation mode by default: ID tokens
 are checked against Microsoft's <code>{tenantid}</code> issuer template and the signing
 key's own <code>issuer</code> scope, as documented by Microsoft for multi-tenant
-metadata.</p>
+metadata. Runtime JWKS discovery for these aliases also uses host-only
+discovery issuer matching because Microsoft's tenant-independent metadata
+publishes a templated issuer rather than echoing the alias URL exactly.</p>
 <p>For <code>tenant = "consumers"</code>, the helper resolves the stable consumer tenant
 issuer (<code>9188040d-6c67-4c5b-b112-36a304b66dad</code>) and performs normal exact-
 issuer validation.</p>

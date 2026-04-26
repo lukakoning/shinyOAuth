@@ -16,6 +16,7 @@ oauth_provider(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   issuer = NA_character_,
+  issuer_match = "url",
   use_nonce = NULL,
   use_pkce = TRUE,
   pkce_method = "S256",
@@ -78,6 +79,23 @@ oauth_provider(
   JSON Web Key Set (JWKS) for verifying ID token signatures (typically
   via the OIDC discovery document located at
   `/.well-known/openid-configuration` relative to the issuer URL)
+
+- issuer_match:
+
+  Character scalar controlling how strictly shinyOAuth validates the
+  discovery document's `issuer` against `issuer` when it later performs
+  runtime discovery to locate the JWKS URI.
+
+  - `"url"` (default): require the full issuer URL to match after
+    trailing-slash normalization.
+
+  - `"host"`: compare only scheme + host.
+
+  - `"none"`: do not validate discovery issuer consistency.
+
+  Prefer `"url"` unless the provider publishes tenant-independent
+  metadata with a templated issuer (for example, Microsoft multi-tenant
+  aliases).
 
 - use_nonce:
 
@@ -240,9 +258,9 @@ oauth_provider(
   automatically perform a one‑time JWKS refresh when a new `kid` appears
   in an ID token.
 
-  Cache keys are internal, hashed by issuer and pinning configuration.
-  Cache values are lists with elements `jwks` and `fetched_at` (numeric
-  epoch seconds)
+  Cache keys are internal, hashed by issuer, issuer-match, and pinning
+  configuration. Cache values are internal lists and may include
+  diagnostics used for defense-in-depth re-validation.
 
 - jwks_pins:
 
