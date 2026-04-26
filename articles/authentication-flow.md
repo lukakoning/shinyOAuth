@@ -311,11 +311,19 @@ works as follows:
 - A token request is sent with `grant_type=refresh_token` and the
   current `refresh_token`
 - The response must include a new `access_token`. `expires_at` is
-  updated from `expires_in` when present; otherwise it is set to `Inf`
+  updated from `expires_in` when present; otherwise shinyOAuth
+  synthesizes a finite fallback lifetime (default `3600` seconds,
+  configurable via `options(shinyOAuth.default_expires_in = ...)`)
 - If the provider rotates the refresh token (returns a new
   `refresh_token`), it is stored; otherwise the original is preserved
 - If `oauth_provider(userinfo_required = TRUE)`, userinfo is re-fetched
   using the fresh access token
+
+If you are running a security-sensitive app, set
+`options(shinyOAuth.default_expires_in = ...)` to the provider’s
+documented lifetime instead of relying on the package default, and
+consider `oauth_module_server(reauth_after_seconds = ...)` when you need
+a hard upper bound on session age.
 
 With respect to OIDC ID token handling:
 

@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- Missing `expires_in` values now default to a finite 3600-second
+  fallback rather than an effectively indefinite session. Override this
+  with `options(shinyOAuth.default_expires_in = <seconds>)`, and use
+  `oauth_module_server(reauth_after_seconds = ...)` when you need a
+  stricter session-age cap.
+
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
@@ -100,6 +106,10 @@
   but omits `S256`. shinyOAuth keeps `S256` as the default and only
   allows a downgrade to `plain` when you pass `pkce_method = "plain"`
   explicitly.
+
+- OIDC discovery now fails fast when `id_token_validation = TRUE` but
+  the discovery document omits `jwks_uri`, surfacing a configuration
+  error during provider setup instead of a later JWKS fetch failure.
 
 - OIDC clients now carry the same effective requested scopes through the
   whole login flow. If `openid` is auto-added to the authorization
@@ -329,8 +339,8 @@ CRAN release: 2026-02-14
   once per phase (`exchange_code` / `refresh_token`) so operators know
   that proactive token refresh will not trigger. Users can now also set
   a finite default lifetime for such tokens via
-  `options(shinyOAuth.default_expires_in = <seconds>)` (instead of the
-  default of `Inf`).
+  `options(shinyOAuth.default_expires_in = <seconds>)`; when unset,
+  shinyOAuth now falls back to 3600 seconds.
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now supports JWT-encoded userinfo responses per OIDC Core, section

@@ -494,9 +494,12 @@ options:
 
 - `options(shinyOAuth.default_expires_in = 3600)` – fallback token
   lifetime (in seconds) when the provider omits `expires_in` from the
-  token response. Without this option the lifetime defaults to `Inf` and
-  proactive refresh will never trigger. A warning is emitted in either
-  case
+  token response. Without this option the lifetime now defaults to
+  `3600` seconds. Set this explicitly in production if your provider
+  documents a different access-token lifetime, and use
+  `oauth_module_server(reauth_after_seconds = ...)` if you need a
+  stricter session cap than token expiry alone. A warning is emitted in
+  either case
 
 ### HTTP settings (timeout, retries, user agent)
 

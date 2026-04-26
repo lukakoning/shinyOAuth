@@ -439,14 +439,21 @@ and the current <code>refresh_token</code>
 </li>
 <li>The response must include a new <code>access_token</code>.
 <code>expires_at</code> is updated from <code>expires_in</code> when
-present; otherwise it is set to <code>Inf</code>
-</li>
+present; otherwise shinyOAuth synthesizes a finite fallback lifetime
+(default <code>3600</code> seconds, configurable via
+<code>options(shinyOAuth.default_expires_in = ...)</code>)</li>
 <li>If the provider rotates the refresh token (returns a new
 <code>refresh_token</code>), it is stored; otherwise the original is
 preserved</li>
 <li>If <code>oauth_provider(userinfo_required = TRUE)</code>, userinfo
 is re-fetched using the fresh access token</li>
 </ul>
+<p>If you are running a security-sensitive app, set
+<code>options(shinyOAuth.default_expires_in = ...)</code> to the
+provider’s documented lifetime instead of relying on the package
+default, and consider
+<code>oauth_module_server(reauth_after_seconds = ...)</code> when you
+need a hard upper bound on session age.</p>
 <p>With respect to OIDC ID token handling:</p>
 <ul>
 <li>Per OIDC Core Section 12.2, refresh responses may omit
