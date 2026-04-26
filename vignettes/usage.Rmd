@@ -373,12 +373,10 @@ for more details about logs and traces via OpenTelemetry.
 
 ### Debugging
 
-- `options(shinyOAuth.print_errors = TRUE)` – concise error lines (interactive / tests only)
-- `options(shinyOAuth.print_traceback = TRUE)` – include backtraces (interactive / tests only)
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
 
-These options control the amount of information printed to the console when errors occur.
-Intended primarily for debugging during development, not for users of the package.
+This option exposes sanitized HTTP response bodies in thrown errors for local debugging.
+It is intended for development, not for normal package usage.
 
 ### Networking/security
 

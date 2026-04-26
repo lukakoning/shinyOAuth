@@ -93,22 +93,16 @@ test_that("audit_event emits audit_ events via audit hook", {
   expect_identical(events[[1]]$foo, "bar")
 })
 
-test_that("log_condition prints when enabled but remains silent otherwise", {
+test_that("log_condition prints only when explicitly enabled", {
   # By default should be silent
   e <- tryCatch(shinyOAuth:::err_pkce("x"), error = identity)
   expect_invisible(shinyOAuth:::log_condition(e))
 
-  # When enabled, still should not error (capture output to avoid noise in test log)
-  local_with_options(
-    list(shinyOAuth.print_errors = TRUE, shinyOAuth.print_traceback = FALSE),
-    {
-      out <- capture.output(
-        expect_invisible(shinyOAuth:::log_condition(e)),
-        type = "output"
-      )
-      expect_true(length(out) > 0)
-    }
+  out <- capture.output(
+    expect_invisible(shinyOAuth:::log_condition(e, enabled = TRUE)),
+    type = "output"
   )
+  expect_true(length(out) > 0)
 })
 
 test_that("normalize_bullets preserves named types and defaults unnamed", {

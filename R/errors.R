@@ -481,29 +481,17 @@ sanitize_body <- function(body, max_chars = 200) {
   }
 }
 
-# Optionally print error with traceback to console
-# Controlled by options:
-#   - options(shinyOAuth.print_errors = TRUE/FALSE)
-#   - options(shinyOAuth.print_traceback = TRUE/FALSE)
-log_condition <- function(e, context = list()) {
-  # Do NOT coerce overrides with isTRUE() yet; we need NULL to mean "no override"
-  print_errors_override <- allow_print_errors()
-  print_traceback_override <- allow_print_traceback()
-
-  # Effective flags: module override > global option > default
-  pe <- if (!is.null(print_errors_override)) {
-    isTRUE(print_errors_override)
-  } else {
-    isTRUE(getOption("shinyOAuth.print_errors", FALSE))
-  }
-  if (!pe) {
+# Optionally print a concise internal error summary to the console.
+# This is an internal debugging aid for interactive development and explicit
+# tests, not a user-configurable package option.
+log_condition <- function(
+  e,
+  context = list(),
+  enabled = .is_interactive(),
+  include_traceback = FALSE
+) {
+  if (!isTRUE(enabled)) {
     return(invisible(NULL))
-  }
-
-  ptb <- if (!is.null(print_traceback_override)) {
-    isTRUE(print_traceback_override)
-  } else {
-    isTRUE(getOption("shinyOAuth.print_traceback", FALSE))
   }
 
   # Compose header
@@ -529,7 +517,7 @@ log_condition <- function(e, context = list()) {
       cat(header, "\n", sep = "")
       cat("  ", msg, "\n", sep = "")
 
-      if (isTRUE(ptb)) {
+      if (isTRUE(include_traceback)) {
         # Prefer rlang backtrace if present (after entrace())
         if (inherits(e, "rlang_error") && !is.null(e$trace)) {
           cat("-- Backtrace (rlang) --\n")
