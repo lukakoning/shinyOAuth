@@ -191,6 +191,36 @@ test_that("swap_code_for_token_set surfaces structured error on 400", {
   )
 })
 
+test_that("swap_code_for_token_set rejects oversized error bodies", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  withr::local_options(list(shinyOAuth.max_body_bytes = 1024))
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, client, idempotent = FALSE) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 400,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(paste0(
+          '{"error":"invalid_grant","error_description":"',
+          paste(rep("x", 3000), collapse = ""),
+          '"}'
+        ))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::swap_code_for_token_set(cli, "bad_code", "verifier123"),
+    class = "shinyOAuth_parse_error"
+  )
+  expect_error(
+    shinyOAuth:::swap_code_for_token_set(cli, "bad_code", "verifier123"),
+    regexp = "too large"
+  )
+})
+
 test_that("refresh_token surfaces structured error on 400", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 

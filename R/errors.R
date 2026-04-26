@@ -175,6 +175,15 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     if (inherits(url, "try-error")) {
       url <- NULL
     }
+    # Some callers reach err_http() before their usual parse-time body guard.
+    check_resp_body_size(
+      resp,
+      context = if (is_valid_string(context[["phase"]])) {
+        context[["phase"]]
+      } else {
+        "error response"
+      }
+    )
     if (expose) {
       body_snippet <- try(httr2::resp_body_string(resp), silent = TRUE)
       if (!inherits(body_snippet, "try-error")) {

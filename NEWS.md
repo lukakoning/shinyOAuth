@@ -1,5 +1,7 @@
 # shinyOAuth (development version)
 
+* Guard oversized HTTP error bodies inside `err_http()` before hashing or JSON parsing, so large chunked or misleading error responses now trip the existing body-size limit consistently.
+
 * Added DPoP token support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
