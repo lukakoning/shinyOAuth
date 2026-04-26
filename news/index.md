@@ -54,13 +54,8 @@
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   now supports `require_callback_issuer = TRUE` to require the RFC 9207
   `iss` callback parameter for shared-redirect multi-issuer deployments.
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  and
+  Relatedly,
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  now read this mix-up-defense policy from the client instead of
-  carrying separate settings.
-
-- [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
   now accepts `iss`, so advanced callers building around
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
   can supply the callback issuer and get the same client-level RFC 9207
