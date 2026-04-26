@@ -42,8 +42,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Guard oversized HTTP error bodies inside <code>err_http()</code> before hashing or JSON parsing, so large chunked or misleading error responses now trip the existing body-size limit consistently.</p></li>
-<li><p>Added DPoP token support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh/revocation/introspection requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
+<ul><li><p>Added DPoP token support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh/revocation/introspection requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
 <li><p>Added OpenTelemetry (OTel) support (using the ‘otel’ package). ‘shinyOAuth’ now emits OTel logs from existing audit events and traces key OAuth operations such as module initialization, login/callback handling, token exchange/refresh, userinfo/introspection/revocation, and session-end cleanup. See <code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more information.</p></li>
 <li>
 <p>Observability and audit logging improvements:</p>
@@ -69,6 +68,7 @@
 <li><p>OIDC clients now carry the same effective requested scopes through the whole login flow. If <code>openid</code> is auto-added to the authorization request, the sealed state payload, token-response scope validation, and introspection scope validation now use that same effective scope set.</p></li>
 <li><p>Scope validation now treats an omitted <code>scope</code> in the initial token response as unchanged from the requested scope, matching RFC 6749 section 5.1 instead of rejecting otherwise compliant authorization servers by default.</p></li>
 <li><p>Missing <code>expires_in</code> values now default to a finite 3600-second fallback rather than an effectively indefinite session. Override this with <code>options(shinyOAuth.default_expires_in = &lt;seconds&gt;)</code>, and use <code>oauth_module_server(reauth_after_seconds = ...)</code> when you need a stricter session-age cap.</p></li>
+<li><p><code>err_http()</code> now guards against oversized HTTP error bodies before hashing or JSON parsing, so large chunked or misleading error responses now trip the existing body-size limit consistently.</p></li>
 <li><p>Token exchange and refresh requests no longer retry on transport errors or transient HTTP statuses (408/429/5xx). Authorization codes are single-use and refresh tokens may be rotated on each use; retrying after the server has already committed the first request would replay an invalidated credential, causing <code>invalid_grant</code> errors or triggering refresh-token replay detection.</p></li>
 </ul></div>
     <div class="section level2">

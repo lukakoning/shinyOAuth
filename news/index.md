@@ -2,10 +2,6 @@
 
 ## shinyOAuth (development version)
 
-- Guard oversized HTTP error bodies inside `err_http()` before hashing
-  or JSON parsing, so large chunked or misleading error responses now
-  trip the existing body-size limit consistently.
-
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
@@ -142,6 +138,10 @@
   with `options(shinyOAuth.default_expires_in = <seconds>)`, and use
   `oauth_module_server(reauth_after_seconds = ...)` when you need a
   stricter session-age cap.
+
+- `err_http()` now guards against oversized HTTP error bodies before
+  hashing or JSON parsing, so large chunked or misleading error
+  responses now trip the existing body-size limit consistently.
 
 - Token exchange and refresh requests no longer retry on transport
   errors or transient HTTP statuses (408/429/5xx). Authorization codes
