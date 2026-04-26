@@ -572,10 +572,9 @@ augment_with_shiny_context <- function(event) {
   event
 }
 
-# Internal: call a helper and forward `shiny_session` only when the target
-# explicitly declares that parameter. This keeps async context propagation
-# explicit in runtime code without breaking tests that mock helpers using the
-# older two/three-argument signatures.
+# Internal: call a helper and forward optional context only when the target can
+# accept it. This keeps async context propagation explicit in runtime code
+# without breaking tests that mock helpers using older signatures.
 call_with_optional_shiny_session <- function(
   fn,
   ...,
@@ -583,7 +582,16 @@ call_with_optional_shiny_session <- function(
 ) {
   args <- list(...)
   fn_formals <- tryCatch(names(formals(fn)), error = function(...) NULL)
-  if (!is.null(fn_formals) && "shiny_session" %in% fn_formals) {
+  has_dots <- !is.null(fn_formals) && "..." %in% fn_formals
+
+  if (!is.null(fn_formals) && !has_dots) {
+    arg_names <- names(args) %||% rep("", length(args))
+    arg_names[is.na(arg_names)] <- ""
+    keep <- !nzchar(arg_names) | arg_names %in% fn_formals
+    args <- args[keep]
+  }
+
+  if (!is.null(fn_formals) && ("shiny_session" %in% fn_formals || has_dots)) {
     args$shiny_session <- shiny_session
   }
   do.call(fn, args)

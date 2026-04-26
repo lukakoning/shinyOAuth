@@ -4,6 +4,41 @@
 # These tests verify that the authenticated flag correctly flips to FALSE
 # when tokens expire, without requiring manual reactive value changes.
 
+.submit_keycloak_login <- function(drv) {
+  drv$wait_for_js(
+    paste(
+      "document.querySelector('#kc-login')",
+      "document.querySelector('#username')",
+      "document.querySelector('#password')",
+      "document.forms.length > 0",
+      "document.forms[0].action.indexOf('/login-actions/authenticate') !== -1",
+      sep = " && "
+    ),
+    timeout = 15000
+  )
+  Sys.sleep(1)
+
+  drv$run_js(
+    "
+    (function () {
+      var username = document.querySelector('#username');
+      var password = document.querySelector('#password');
+      var login = document.querySelector('#kc-login');
+      var form = (login && login.form) || document.forms[0];
+
+      username.value = 'alice';
+      password.value = 'alice';
+      username.dispatchEvent(new Event('input', { bubbles: true }));
+      password.dispatchEvent(new Event('input', { bubbles: true }));
+      username.dispatchEvent(new Event('change', { bubbles: true }));
+      password.dispatchEvent(new Event('change', { bubbles: true }));
+
+      HTMLFormElement.prototype.submit.call(form);
+    })();
+  "
+  )
+}
+
 testthat::test_that("authenticated flips FALSE after reauth_after_seconds in real browser", {
   # Skip if Keycloak isn't reachable
   issuer <- "http://localhost:8080/realms/shinyoauth"
@@ -125,17 +160,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
   drv$click("login_btn")
 
-  # Wait for KeyCloak login page (use longer timeout for slower CI environments)
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
-
-  # Login
-  drv$run_js(
-    "
-    document.querySelector('#username').value = 'alice';
-    document.querySelector('#password').value = 'alice';
-    document.querySelector('#kc-login').click();
-  "
-  )
+  .submit_keycloak_login(drv)
 
   # Wait for authenticated state with more robust polling
   max_wait <- 30
@@ -311,17 +336,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
   drv$click("login_btn")
 
-  # Wait for KeyCloak login page (use longer timeout for slower CI environments)
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
-
-  # Login
-  drv$run_js(
-    "
-    document.querySelector('#username').value = 'alice';
-    document.querySelector('#password').value = 'alice';
-    document.querySelector('#kc-login').click();
-  "
-  )
+  .submit_keycloak_login(drv)
 
   # Wait for authenticated state with robust polling
   max_wait <- 30
