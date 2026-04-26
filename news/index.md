@@ -96,15 +96,15 @@
   issuer rules, and `consumers` now validates against the stable
   consumer tenant issuer.
 
-- OIDC clients now carry the same effective requested scopes through the
-  whole login flow. If `openid` is auto-added to the authorization
-  request, the sealed state payload and later scope validation now use
-  that same effective scope set.
-
 - OIDC discovery now fails fast when metadata advertises PKCE methods
   but omits `S256`. shinyOAuth keeps `S256` as the default and only
   allows a downgrade to `plain` when you pass `pkce_method = "plain"`
   explicitly.
+
+- OIDC clients now carry the same effective requested scopes through the
+  whole login flow. If `openid` is auto-added to the authorization
+  request, the sealed state payload and later scope validation now use
+  that same effective scope set.
 
 - Scope validation now treats an omitted `scope` in the initial token
   response as unchanged from the requested scope, matching RFC 6749
