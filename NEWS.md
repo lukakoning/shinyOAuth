@@ -1,19 +1,5 @@
 # shinyOAuth (development version)
 
-* Documentation now explicitly notes that `oauth_module_server()`'s
-`logout()` helper makes best-effort token revocation requests before it
-clears local auth state, including possible refresh-token revocation.
-
-* OIDC discovery endpoint validation now rejects non-scalar endpoint metadata
-values with a package configuration error instead of leaking raw R length/type
-errors.
-
-* Missing `expires_in` values now default to a finite 3600-second fallback
-rather than an effectively indefinite session. Override this with
-`options(shinyOAuth.default_expires_in = <seconds>)`, and use
-`oauth_module_server(reauth_after_seconds = ...)` when you need a stricter
-session-age cap.
-
 * Added DPoP token support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
@@ -98,18 +84,27 @@ issuer.
 discovery document omits `jwks_uri`, surfacing a configuration error during
 provider setup instead of a later JWKS fetch failure.
 
-* OIDC clients now carry the same effective requested scopes through the whole
-login flow. If `openid` is auto-added to the authorization request, the sealed
-state payload and later scope validation now use that same effective scope set.
+* OIDC discovery endpoint validation now rejects non-scalar endpoint metadata
+values with a configuration error.
 
 * `oauth_provider_oidc()` now trims trailing slashes from `base_url` before
 deriving endpoint URLs and the configured `issuer`, avoiding valid ID tokens
 being rejected on a strict OIDC `iss` comparison when the helper was configured
 with a URL like `https://issuer.example/`.
 
+* OIDC clients now carry the same effective requested scopes through the whole
+login flow. If `openid` is auto-added to the authorization request, the sealed
+state payload and later scope validation now use that same effective scope set.
+
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
 of rejecting otherwise compliant authorization servers by default.
+
+* Missing `expires_in` values now default to a finite 3600-second fallback
+rather than an effectively indefinite session. Override this with
+`options(shinyOAuth.default_expires_in = <seconds>)`, and use
+`oauth_module_server(reauth_after_seconds = ...)` when you need a stricter
+session-age cap.
 
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
