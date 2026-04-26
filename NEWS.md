@@ -1,7 +1,5 @@
 # shinyOAuth (development version)
 
-* Guard oversized HTTP error bodies inside `err_http()` before hashing or JSON parsing, so large chunked or misleading error responses now trip the existing body-size limit consistently.
-
 * Added DPoP token support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
@@ -43,12 +41,9 @@ session is already authenticated.
 
 * `oauth_client()` now supports `require_callback_issuer = TRUE` to require
 the RFC 9207 `iss` callback parameter for shared-redirect multi-issuer
-deployments. `oauth_module_server()` and `handle_callback()` now read this
-mix-up-defense policy from the client instead of carrying separate settings.
-
-* `handle_callback()` now accepts `iss`, so advanced callers building around
-`prepare_call()` can supply the callback issuer and get the same client-level
-RFC 9207 check before token exchange.
+deployments. Relatedly, `handle_callback()` now accepts `iss`, so advanced
+callers building around `prepare_call()` can supply the callback issuer and
+get the same client-level RFC 9207 check before token exchange.
 
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
@@ -111,6 +106,10 @@ rather than an effectively indefinite session. Override this with
 `options(shinyOAuth.default_expires_in = <seconds>)`, and use
 `oauth_module_server(reauth_after_seconds = ...)` when you need a stricter
 session-age cap.
+
+* `err_http()` now guards against oversized HTTP error bodies before hashing
+or JSON parsing, so large chunked or misleading error responses now trip the 
+existing body-size limit consistently.
 
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
