@@ -26,6 +26,26 @@
       }
     },
     {
+      "clientId": "shiny-dpop-public",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "dpop.bound.access.tokens": "true"
+      }
+    },
+    {
       "clientId": "shiny-confidential",
       "protocol": "openid-connect",
       "publicClient": false,
@@ -105,6 +125,27 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "5"
+      }
+    },
+    {
+      "clientId": "shiny-dpop-shortlived",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "5",
+        "dpop.bound.access.tokens": "true"
       }
     },
     {

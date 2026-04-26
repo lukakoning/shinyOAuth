@@ -65,10 +65,16 @@ get_userinfo <- function(
         resp <- with_otel_span(
           "shinyOAuth.userinfo.http",
           {
-            resp <- req_with_retry(
-              req,
-              idempotent = !is_dpop_token_type(token_type %||% NA_character_)
-            )
+            if (is_dpop_token_type(token_type %||% NA_character_)) {
+              resp <- req_with_dpop_retry(
+                req,
+                oauth_client,
+                access_token = access_token,
+                idempotent = FALSE
+              )
+            } else {
+              resp <- req_with_retry(req, idempotent = TRUE)
+            }
             otel_record_http_result(resp)
             resp
           },

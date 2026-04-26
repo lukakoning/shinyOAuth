@@ -8,16 +8,64 @@ get_issuer <- function() {
   "http://localhost:8080/realms/shinyoauth"
 }
 
+keycloak_cache <- local({
+  env <- new.env(parent = emptyenv())
+  env$discovery <- NULL
+  env$jwks <- NULL
+  env
+})
+
+get_discovery_document <- function(force = FALSE) {
+  if (!isTRUE(force) && !is.null(keycloak_cache$discovery)) {
+    return(keycloak_cache$discovery)
+  }
+
+  disc_url <- paste0(get_issuer(), "/.well-known/openid-configuration")
+  resp <- httr2::request(disc_url) |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_perform()
+
+  if (httr2::resp_is_error(resp)) {
+    stop("Keycloak discovery request failed", call. = FALSE)
+  }
+
+  keycloak_cache$discovery <- httr2::resp_body_json(
+    resp,
+    simplifyVector = TRUE
+  )
+  keycloak_cache$discovery
+}
+
+get_jwks <- function(force = FALSE) {
+  if (!isTRUE(force) && !is.null(keycloak_cache$jwks)) {
+    return(keycloak_cache$jwks)
+  }
+
+  disc <- get_discovery_document(force = force)
+  jwks_url <- disc$jwks_uri %||% NA_character_
+  stopifnot(
+    is.character(jwks_url) && length(jwks_url) == 1L && nzchar(jwks_url)
+  )
+
+  resp <- httr2::request(jwks_url) |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_perform()
+
+  if (httr2::resp_is_error(resp)) {
+    stop("Keycloak JWKS request failed", call. = FALSE)
+  }
+
+  keycloak_cache$jwks <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  keycloak_cache$jwks
+}
+
 keycloak_reachable <- function() {
-  issuer <- get_issuer()
-  disc <- paste0(issuer, "/.well-known/openid-configuration")
   ok <- tryCatch(
     {
-      resp <- httr2::request(disc) |>
-        httr2::req_error(is_error = function(resp) FALSE) |>
-        httr2::req_headers(Accept = "application/json") |>
-        httr2::req_perform()
-      !httr2::resp_is_error(resp)
+      disc <- get_discovery_document(force = TRUE)
+      is.list(disc) && identical(disc$issuer %||% NA_character_, get_issuer())
     },
     error = function(...) FALSE
   )
@@ -120,20 +168,109 @@ to_abs <- function(base, path) {
 
 ## ---------- Factory functions ----------
 
-make_provider <- function() {
-  shinyOAuth::oauth_provider_keycloak(
-    base_url = "http://localhost:8080",
-    realm = "shinyoauth"
+make_provider <- function(
+  token_auth_style = "body",
+  allowed_token_types = c("Bearer"),
+  ...
+) {
+  shinyOAuth::oauth_provider_oidc_discover(
+    issuer = get_issuer(),
+    token_auth_style = token_auth_style,
+    allowed_token_types = allowed_token_types,
+    ...
   )
 }
 
-make_public_client <- function(prov) {
+make_dpop_private_key <- function() {
+  openssl::rsa_keygen()
+}
+
+make_public_client <- function(
+  prov,
+  client_id = "shiny-public",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = FALSE
+) {
   shinyOAuth::oauth_client(
     provider = prov,
-    client_id = "shiny-public",
+    client_id = client_id,
     client_secret = "",
-    redirect_uri = "http://localhost:3000/callback",
-    scopes = c("openid")
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid,
+    dpop_signing_alg = dpop_signing_alg,
+    dpop_require_access_token = dpop_require_access_token
+  )
+}
+
+make_shortlived_public_client <- function(
+  prov,
+  client_id = "shiny-shortlived",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = FALSE
+) {
+  make_public_client(
+    prov = prov,
+    client_id = client_id,
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid,
+    dpop_signing_alg = dpop_signing_alg,
+    dpop_require_access_token = dpop_require_access_token
+  )
+}
+
+make_dpop_public_client <- function(
+  prov,
+  client_id = "shiny-dpop-public",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  dpop_private_key = make_dpop_private_key(),
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = TRUE
+) {
+  make_public_client(
+    prov = prov,
+    client_id = client_id,
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid,
+    dpop_signing_alg = dpop_signing_alg,
+    dpop_require_access_token = dpop_require_access_token
+  )
+}
+
+make_dpop_shortlived_public_client <- function(
+  prov,
+  client_id = "shiny-dpop-shortlived",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  dpop_private_key = make_dpop_private_key(),
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = TRUE
+) {
+  make_shortlived_public_client(
+    prov = prov,
+    client_id = client_id,
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid,
+    dpop_signing_alg = dpop_signing_alg,
+    dpop_require_access_token = dpop_require_access_token
   )
 }
 
@@ -244,13 +381,24 @@ set_state_store_entry <- function(client, key, new_entry) {
   client@state_store$set(key = key, value = new_entry)
 }
 
+decode_compact_jwt_payload <- function(jwt) {
+  shinyOAuth:::parse_jwt_payload(jwt)
+}
+
+access_token_cnf_jkt <- function(access_token) {
+  payload <- decode_compact_jwt_payload(access_token)
+  cnf <- payload$cnf %||% list()
+  cnf$jkt %||% NA_character_
+}
+
 ## ---------- Standard testServer args ----------
 
-default_module_args <- function(client) {
+default_module_args <- function(client, ...) {
   list(
     id = "auth",
     client = client,
     auto_redirect = FALSE,
-    indefinite_session = TRUE
+    indefinite_session = TRUE,
+    ...
   )
 }
