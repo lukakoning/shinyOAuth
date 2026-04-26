@@ -29,8 +29,7 @@ oauth_module_server(
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None"),
-  require_callback_issuer = FALSE
+  browser_cookie_samesite = c("Strict", "Lax", "None")
 )
 ```
 
@@ -162,15 +161,6 @@ oauth_module_server(
   on non-HTTPS origins because browsers reject `SameSite=None` cookies
   without the `Secure` attribute
 
-- require_callback_issuer:
-
-  If TRUE, require the authorization response to include an RFC 9207
-  `iss` parameter and reject the callback unless it exactly matches
-  `client@provider@issuer`. This fails closed before any token exchange
-  and is recommended when one Shiny app can interact with more than one
-  authorization server using the same callback URL. Requires the
-  provider to have a configured `issuer`. Default is FALSE.
-
 ## Value
 
 A reactiveValues object with `token`, `error`, `error_description`,
@@ -213,8 +203,8 @@ The returned reactiveValues contains the following fields:
 - `browser_token`: internal opaque browser cookie value; used for state
   double-submit protection; NULL if not yet set
 
-- `pending_callback`: internal list(code, state); used to defer token
-  exchange until `browser_token` is available; NULL otherwise.
+- `pending_callback`: internal list(code, state, iss); used to defer
+  token exchange until `browser_token` is available; NULL otherwise.
 
 - `pending_login`: internal logical; TRUE when a login was requested but
   must wait for `browser_token` to be set, FALSE otherwise.
@@ -331,14 +321,6 @@ It also contains the following helper functions, mainly useful when
   Separately, the state payload `issued_at` freshness window is
   controlled by the client's `state_payload_max_age` (default 300
   seconds).
-
-- Multi-issuer deployments: when one Shiny app can interact with more
-  than one authorization server and those flows share a callback URL,
-  RFC 9700 requires a mix-up defense. For issuer-configured OIDC
-  clients, set `require_callback_issuer = TRUE` to require the RFC 9207
-  `iss` callback parameter before any token exchange occurs. If your
-  provider does not send `iss`, register distinct `redirect_uri` values
-  per issuer instead.
 
 ## See also
 

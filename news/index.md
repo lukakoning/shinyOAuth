@@ -51,12 +51,20 @@
   now explicitly ignores new login requests while a session is already
   authenticated.
 
-- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  now supports `require_callback_issuer = TRUE` to reject
-  issuer-configured callbacks that omit the RFC 9207 `iss` parameter.
-  Use this strict mode when one Shiny app can talk to multiple
-  authorization servers through the same callback URL; otherwise use
-  distinct redirect URIs per issuer.
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  now supports `require_callback_issuer = TRUE` to require the RFC 9207
+  `iss` callback parameter for shared-redirect multi-issuer deployments.
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  and
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  now read this mix-up-defense policy from the client instead of
+  carrying separate settings.
+
+- [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  now accepts `iss`, so advanced callers building around
+  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+  can supply the callback issuer and get the same client-level RFC 9207
+  check before token exchange.
 
 - `validate_id_token()` now properly rejects `auth_time` claims set in
   the future (beyond leeway). Previously, a future `auth_time` produced

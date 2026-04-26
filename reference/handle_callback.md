@@ -11,7 +11,8 @@ handle_callback(
   code,
   payload,
   browser_token,
-  shiny_session = NULL
+  shiny_session = NULL,
+  iss = NULL
 )
 ```
 
@@ -48,6 +49,15 @@ handle_callback(
   `capture_shiny_session_context()`) to include in audit events. Used
   when calling from async workers that lack access to the reactive
   domain.
+
+- iss:
+
+  Optional RFC 9207 callback issuer (`iss`) from the authorization
+  response. Pass this when one callback URL can receive responses from
+  more than one authorization server. If
+  `oauth_client@require_callback_issuer` is `TRUE`, this parameter is
+  required and must match the configured provider issuer before any
+  token exchange occurs.
 
 ## Value
 

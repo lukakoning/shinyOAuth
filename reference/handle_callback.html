@@ -52,7 +52,8 @@
 <span>  <span class="va">code</span>,</span>
 <span>  <span class="va">payload</span>,</span>
 <span>  <span class="va">browser_token</span>,</span>
-<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  iss <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -82,6 +83,14 @@ by <code><a href="oauth_module_server.html">oauth_module_server()</a></code> and
 <dd><p>Optional pre-captured Shiny session context (from
 <code>capture_shiny_session_context()</code>) to include in audit events. Used when
 calling from async workers that lack access to the reactive domain.</p></dd>
+
+
+<dt id="arg-iss">iss<a class="anchor" aria-label="anchor" href="#arg-iss"></a></dt>
+<dd><p>Optional RFC 9207 callback issuer (<code>iss</code>) from the authorization
+response. Pass this when one callback URL can receive responses from more
+than one authorization server. If <code>oauth_client@require_callback_issuer</code>
+is <code>TRUE</code>, this parameter is required and must match the configured
+provider issuer before any token exchange occurs.</p></dd>
 
 </dl></div>
     <div class="section level2">

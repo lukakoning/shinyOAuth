@@ -11,6 +11,7 @@ oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
+  require_callback_issuer = FALSE,
   scopes = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -68,6 +69,15 @@ oauth_client(
 - redirect_uri:
 
   Redirect URI registered with provider
+
+- require_callback_issuer:
+
+  Logical. When `TRUE`, require authorization responses handled through
+  this client to include an RFC 9207 `iss` parameter and reject
+  callbacks unless it exactly matches `provider@issuer`. This is
+  recommended when one callback URL can receive responses from more than
+  one authorization server. Requires the provider to have a configured
+  `issuer`. Default is `FALSE`.
 
 - scopes:
 
