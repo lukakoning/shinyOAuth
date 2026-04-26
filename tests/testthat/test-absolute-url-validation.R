@@ -97,3 +97,28 @@ testthat::test_that("OIDC discovery issuer must be absolute", {
     class = "shinyOAuth_input_error"
   )
 })
+
+testthat::test_that("validate_endpoint rejects non-scalar endpoint values", {
+  f <- shinyOAuth:::validate_endpoint
+
+  testthat::expect_error(
+    f(
+      c("https://example.com/auth", "https://example.com/token"),
+      "example.com"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "Endpoint must be an absolute URL"
+  )
+
+  testthat::expect_error(
+    f(
+      list("https://example.com/auth", "https://example.com/token"),
+      "example.com"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "Endpoint must be an absolute URL"
+  )
+
+  testthat::expect_no_error(f(NA_character_, "example.com"))
+  testthat::expect_no_error(f("", "example.com"))
+})

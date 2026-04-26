@@ -1,5 +1,13 @@
 # shinyOAuth (development version)
 
+* Documentation now explicitly notes that `oauth_module_server()`'s
+`logout()` helper makes best-effort token revocation requests before it
+clears local auth state, including possible refresh-token revocation.
+
+* OIDC discovery endpoint validation now rejects non-scalar endpoint metadata
+values with a package configuration error instead of leaking raw R length/type
+errors.
+
 * Missing `expires_in` values now default to a finite 3600-second fallback
 rather than an effectively indefinite session. Override this with
 `options(shinyOAuth.default_expires_in = <seconds>)`, and use

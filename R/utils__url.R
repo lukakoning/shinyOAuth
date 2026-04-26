@@ -528,9 +528,24 @@ validate_discovery_issuer <- function(
 #' @keywords internal
 #' @noRd
 validate_endpoint <- function(u, allowed_hosts_vec) {
+  is_scalar_string <- is.character(u) && length(u) == 1
+
   # Allow NA/empty to pass silently (callers may treat missing endpoints as optional)
-  if (is.na(u) || !nzchar(u)) {
+  if (is_scalar_string && (is.na(u) || !nzchar(u))) {
     return(invisible(TRUE))
+  }
+
+  if (!(is_scalar_string && !is.na(u) && nzchar(u))) {
+    err_config(
+      c(
+        "x" = "Endpoint must be an absolute URL",
+        "i" = paste0(
+          "Got invalid URL: ",
+          paste(as.character(u), collapse = ", ")
+        )
+      ),
+      context = list(endpoint = u)
+    )
   }
 
   p <- try(httr2::url_parse(u), silent = TRUE)
