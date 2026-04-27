@@ -294,14 +294,15 @@ the ID token contains an <code>at_hash</code> claim, the access token
 binding is verified. When <code>id_token_at_hash_required = TRUE</code>
 on the provider, the ID token must contain this claim or login
 fails</li>
-<li>Essential claims (OIDC Core §5.5): if the client requested specific
+<li>Requested claims (OIDC Core §5.5): if the client requested specific
 claims via the <code>claims</code> parameter with
-<code>essential = TRUE</code>, and <code>claims_validation</code> is
+<code>essential = TRUE</code>, <code>value</code>, or
+<code>values</code>, and <code>claims_validation</code> is
 <code>"warn"</code> or <code>"strict"</code>, the decoded ID token
-payload is checked for the presence of those essential claims. Missing
-essential claims trigger a warning or error depending on the mode. This
-is skipped when <code>claims_validation = "none"</code> (the
-default)</li>
+payload is checked for missing essential claims and unsatisfied
+requested claim values. These trigger a warning or error depending on
+the mode. This is skipped when <code>claims_validation = "none"</code>
+(the default)</li>
 <li>ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
 with <code>required_acr_values</code>, the ID token’s <code>acr</code>
 claim must be present and match one of the specified values. This
@@ -334,12 +335,13 @@ aborted.</p>
 <code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
 checked that <code>sub</code> in userinfo equals <code>sub</code> in the
 ID token</li>
-<li>Essential claims (OIDC Core §5.5): if the client requested specific
+<li>Requested claims (OIDC Core §5.5): if the client requested specific
 userinfo claims via the <code>claims</code> parameter with
-<code>essential = TRUE</code>, and <code>claims_validation</code> is
+<code>essential = TRUE</code>, <code>value</code>, or
+<code>values</code>, and <code>claims_validation</code> is
 <code>"warn"</code> or <code>"strict"</code>, the userinfo response is
-checked for those claims. Missing essential claims trigger a warning or
-error depending on the mode</li>
+checked for missing essential claims and unsatisfied requested claim
+values. These trigger a warning or error depending on the mode</li>
 </ul>
 </div>
 <div class="section level3">

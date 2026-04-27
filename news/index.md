@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- `claims_validation = "warn"` / `"strict"` now also enforces OIDC claim
+  request `value` and `values` constraints, not just presence of
+  `essential = TRUE` claims.
+
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token

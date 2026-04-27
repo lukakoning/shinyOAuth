@@ -278,21 +278,24 @@ oauth_client(
 
 - claims_validation:
 
-  Controls validation of essential claims requested via the `claims`
+  Controls validation of requested claims supplied via the `claims`
   parameter (OIDC Core §5.5). When `claims` includes entries with
-  `essential = TRUE` for `id_token` or `userinfo`, this setting
-  determines what happens if those essential claims are missing from the
-  returned ID token or userinfo response.
+  `essential = TRUE` for `id_token` or `userinfo`, or explicit `value` /
+  `values` constraints for individual claims, this setting determines
+  what happens if the returned ID token or userinfo response does not
+  satisfy those requests.
 
   - `"none"` (default): Skips claims validation entirely. This is the
     default because providers are expected to fulfil essential claims
     requests or return an error.
 
-  - `"warn"`: Emits a warning but continues authentication if essential
-    claims are missing.
+  - `"warn"`: Emits a warning but continues authentication if requested
+    essential claims are missing or requested claim values are not
+    satisfied.
 
   - `"strict"`: Throws an error if any requested essential claims are
-    missing from the response.
+    missing or requested claim `value` / `values` constraints are not
+    satisfied by the response.
 
 - required_acr_values:
 

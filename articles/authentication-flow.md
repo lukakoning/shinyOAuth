@@ -194,12 +194,13 @@ cryptographic validation occurs prior to making external calls:
   contains an `at_hash` claim, the access token binding is verified.
   When `id_token_at_hash_required = TRUE` on the provider, the ID token
   must contain this claim or login fails
-- Essential claims (OIDC Core §5.5): if the client requested specific
-  claims via the `claims` parameter with `essential = TRUE`, and
-  `claims_validation` is `"warn"` or `"strict"`, the decoded ID token
-  payload is checked for the presence of those essential claims. Missing
-  essential claims trigger a warning or error depending on the mode.
-  This is skipped when `claims_validation = "none"` (the default)
+- Requested claims (OIDC Core §5.5): if the client requested specific
+  claims via the `claims` parameter with `essential = TRUE`, `value`, or
+  `values`, and `claims_validation` is `"warn"` or `"strict"`, the
+  decoded ID token payload is checked for missing essential claims and
+  unsatisfied requested claim values. These trigger a warning or error
+  depending on the mode. This is skipped when
+  `claims_validation = "none"` (the default)
 - ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
   with `required_acr_values`, the ID token’s `acr` claim must be present
   and match one of the specified values. This ensures the provider
@@ -226,11 +227,12 @@ return `application/jwt` or the flow is aborted.
 
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token
-- Essential claims (OIDC Core §5.5): if the client requested specific
+- Requested claims (OIDC Core §5.5): if the client requested specific
   userinfo claims via the `claims` parameter with `essential = TRUE`,
-  and `claims_validation` is `"warn"` or `"strict"`, the userinfo
-  response is checked for those claims. Missing essential claims trigger
-  a warning or error depending on the mode
+  `value`, or `values`, and `claims_validation` is `"warn"` or
+  `"strict"`, the userinfo response is checked for missing essential
+  claims and unsatisfied requested claim values. These trigger a warning
+  or error depending on the mode
 
 ### 11. Token introspection (optional)
 
