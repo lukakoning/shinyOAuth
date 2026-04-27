@@ -23,6 +23,14 @@
 #'   When configured, authorization request parameters are pushed directly to the
 #'   authorization server and the browser is redirected with the returned
 #'   `request_uri` instead of the full request payload.
+#' @param request_object_signing_alg_values_supported Optional vector of JWS
+#'   algorithms that the provider advertises for RFC 9101 Request Objects.
+#'   When populated, this metadata is used for early validation of
+#'   `OAuthClient` configurations that set
+#'   `authorization_request_mode = "request"`.
+#' @param require_signed_request_object Logical. Whether the provider requires
+#'   signed Request Objects for authorization requests. When `TRUE`, clients
+#'   should opt into `authorization_request_mode = "request"`.
 #'
 #' @param issuer OIDC issuer URL (optional; required for ID token validation).
 #' This is the base URL that identifies the OpenID Provider (OP). It is used
@@ -238,6 +246,14 @@ OAuthProvider <- S7::new_class(
     par_url = S7::new_property(
       S7::class_character,
       default = NA_character_
+    ),
+    request_object_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    require_signed_request_object = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
@@ -692,6 +708,73 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    request_object_algs <- self@request_object_signing_alg_values_supported
+    if (length(request_object_algs) > 0) {
+      if (!is.character(request_object_algs)) {
+        return(
+          paste(
+            "OAuthProvider: request_object_signing_alg_values_supported",
+            "must be a character vector"
+          )
+        )
+      }
+      if (anyNA(request_object_algs) || !all(nzchar(request_object_algs))) {
+        return(
+          paste(
+            "OAuthProvider: request_object_signing_alg_values_supported",
+            "must contain only non-empty strings"
+          )
+        )
+      }
+
+      supported_request_object_algs <- c(
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EDDSA",
+        "HS256",
+        "HS384",
+        "HS512",
+        "NONE"
+      )
+      ro_algs <- toupper(request_object_algs)
+      bad <- setdiff(ro_algs, supported_request_object_algs)
+      if (length(bad) > 0) {
+        return(paste0(
+          "OAuthProvider: request_object_signing_alg_values_supported contains unsupported entries: ",
+          paste(bad, collapse = ", ")
+        ))
+      }
+    }
+
+    if (
+      !(is.logical(self@require_signed_request_object) &&
+        length(self@require_signed_request_object) == 1L &&
+        !is.na(self@require_signed_request_object))
+    ) {
+      return(
+        "OAuthProvider: require_signed_request_object must be a single non-NA logical"
+      )
+    }
+    if (
+      isTRUE(self@require_signed_request_object) &&
+        length(self@request_object_signing_alg_values_supported) > 0 &&
+        !any(toupper(self@request_object_signing_alg_values_supported) != "NONE")
+    ) {
+      return(
+        paste(
+          "OAuthProvider: require_signed_request_object = TRUE is inconsistent",
+          "with request_object_signing_alg_values_supported = 'none' only"
+        )
+      )
+    }
+
     # Fail fast: cannot enable nonce without a configured issuer
     if (isTRUE(self@use_nonce)) {
       if (!is_valid_string(self@issuer)) {
@@ -855,6 +938,8 @@ oauth_provider <- function(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   par_url = NA_character_,
+  request_object_signing_alg_values_supported = character(),
+  require_signed_request_object = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -920,6 +1005,13 @@ oauth_provider <- function(
   introspection_url <- normalize_url(introspection_url)
   revocation_url <- normalize_url(revocation_url)
   par_url <- normalize_url(par_url)
+
+  if (is.null(request_object_signing_alg_values_supported)) {
+    request_object_signing_alg_values_supported <- character()
+  }
+  request_object_signing_alg_values_supported <- toupper(as.character(
+    unlist(request_object_signing_alg_values_supported, use.names = FALSE)
+  ))
 
   if (is.null(jwks_cache)) {
     jwks_cache <- cachem::cache_mem(max_age = 3600)
@@ -1047,6 +1139,9 @@ oauth_provider <- function(
     introspection_url = introspection_url,
     revocation_url = revocation_url,
     par_url = par_url,
+    request_object_signing_alg_values_supported =
+      request_object_signing_alg_values_supported,
+    require_signed_request_object = isTRUE(require_signed_request_object),
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,

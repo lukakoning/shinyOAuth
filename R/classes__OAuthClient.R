@@ -605,6 +605,17 @@ OAuthClient <- S7::new_class(
         "OAuthClient: authorization_request_mode must be one of 'parameters' or 'request'"
       )
     }
+    if (
+      !identical(arm, "request") &&
+        isTRUE(self@provider@require_signed_request_object)
+    ) {
+      return(
+        paste(
+          "OAuthClient: provider requires signed request objects;",
+          "set authorization_request_mode = 'request'"
+        )
+      )
+    }
 
     arsa <- self@authorization_request_signing_alg %||% NA_character_
     if (!is.character(arsa) || length(arsa) != 1L) {
@@ -691,6 +702,43 @@ OAuthClient <- S7::new_class(
           alg,
           "' is incompatible with signed authorization requests"
         ))
+      }
+
+      provider_request_algs <- toupper(as.character(
+        self@provider@request_object_signing_alg_values_supported %||%
+          character(0)
+      ))
+      if (length(provider_request_algs) > 0) {
+        resolved_alg <- if (!is.na(alg) && nzchar(alg)) {
+          alg
+        } else if (isTRUE(has_private_key)) {
+          inferred_alg <- try(
+            {
+              key0 <- normalize_private_key_input(self@client_private_key)
+              choose_default_alg_for_private_key(key0)
+            },
+            silent = TRUE
+          )
+          if (inherits(inferred_alg, "try-error")) {
+            return(
+              paste(
+                "OAuthClient: could not determine a compatible default",
+                "authorization_request_signing_alg from client_private_key"
+              )
+            )
+          }
+          toupper(as.character(inferred_alg))
+        } else {
+          "HS256"
+        }
+
+        if (!(resolved_alg %in% provider_request_algs)) {
+          return(paste0(
+            "OAuthClient: authorization_request_signing_alg '",
+            resolved_alg,
+            "' is not supported by provider request_object_signing_alg_values_supported"
+          ))
+        }
       }
     }
 

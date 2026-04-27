@@ -102,6 +102,11 @@ discovery-advertised set.
 \item PAR metadata: when the discovery document advertises
 \code{pushed_authorization_request_endpoint}, the resulting provider uses that
 URL so authorization requests can use RFC 9126 PAR.
+\item Request Object metadata: when the discovery document advertises
+\code{request_object_signing_alg_values_supported} or
+\code{require_signed_request_object}, the resulting provider stores that
+metadata so \code{OAuthClient} can fail fast when a request-object algorithm is
+unsupported or when the provider requires signed Request Objects.
 \item PKCE method discovery: this helper keeps \code{S256} as the default and does not
 silently downgrade to \code{plain}. If discovery metadata explicitly omits
 \code{S256}, discovery fails with a configuration error unless you explicitly

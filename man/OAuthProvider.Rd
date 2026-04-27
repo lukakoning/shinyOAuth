@@ -12,6 +12,8 @@ OAuthProvider(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   par_url = NA_character_,
+  request_object_signing_alg_values_supported = character(0),
+  require_signed_request_object = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -57,6 +59,16 @@ only; used in logging and audit events}
 When configured, authorization request parameters are pushed directly to the
 authorization server and the browser is redirected with the returned
 \code{request_uri} instead of the full request payload.}
+
+\item{request_object_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for RFC 9101 Request Objects.
+When populated, this metadata is used for early validation of
+\code{OAuthClient} configurations that set
+\code{authorization_request_mode = "request"}.}
+
+\item{require_signed_request_object}{Logical. Whether the provider requires
+signed Request Objects for authorization requests. When \code{TRUE}, clients
+should opt into \code{authorization_request_mode = "request"}.}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used

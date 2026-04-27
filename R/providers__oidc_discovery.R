@@ -27,6 +27,12 @@
 #'   `pushed_authorization_request_endpoint`, the resulting provider uses that
 #'   URL so authorization requests can use RFC 9126 PAR.
 #'
+#' - Request Object metadata: when the discovery document advertises
+#'   `request_object_signing_alg_values_supported` or
+#'   `require_signed_request_object`, the resulting provider stores that
+#'   metadata so `OAuthClient` can fail fast when a request-object algorithm is
+#'   unsupported or when the provider requires signed Request Objects.
+#'
 #' - PKCE method discovery: this helper keeps `S256` as the default and does not
 #'   silently downgrade to `plain`. If discovery metadata explicitly omits
 #'   `S256`, discovery fails with a configuration error unless you explicitly
@@ -184,6 +190,15 @@ oauth_provider_oidc_discover <- function(
 
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
+  request_object_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      disc[["request_object_signing_alg_values_supported"]] %||% character(0),
+      use.names = FALSE
+    )
+  ))
+  require_signed_request_object <- isTRUE(
+    disc[["require_signed_request_object"]]
+  )
 
   # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
   #      Note: userinfo_signing_alg_values_supported in discovery indicates
@@ -208,6 +223,9 @@ oauth_provider_oidc_discover <- function(
         introspection_url = endpoints$introspection_url,
         revocation_url = endpoints$revocation_url,
         par_url = endpoints$par_url,
+        request_object_signing_alg_values_supported =
+          request_object_signing_alg_values_supported,
+        require_signed_request_object = require_signed_request_object,
         issuer = iss,
         issuer_match = issuer_match,
         use_nonce = use_nonce,
