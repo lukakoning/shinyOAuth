@@ -39,6 +39,11 @@ information.
 * `oauth_module_server()` now explicitly ignores new login requests while a 
 session is already authenticated.
 
+* `oauth_module_server()` now applies the browser-token double-submit check to
+OAuth error callbacks too, deferring `?error=...` handling until the browser
+token is available and treating browser-token mismatches as `invalid_state`
+instead of surfacing provider-controlled error text.
+
 * `oauth_client()` now supports `require_callback_issuer = TRUE` to require
 the RFC 9207 `iss` callback parameter for shared-redirect multi-issuer
 deployments. Relatedly, `handle_callback()` now accepts `iss`, so advanced

@@ -81,7 +81,7 @@ testthat::test_that("unsolicited error response without state is rejected as inv
   )
 })
 
-testthat::test_that("error response with state is validated even before browser_token is available", {
+testthat::test_that("error response with state waits for browser_token before validation", {
   # Do NOT skip browser token for this test
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
@@ -98,6 +98,8 @@ testthat::test_that("error response with state is validated even before browser_
       # Initially no browser token
       testthat::expect_null(values$browser_token)
 
+      state_browser_token <- valid_browser_token()
+
       # Manually inject a state into the store for testing
       # (normally build_auth_url would do this, but it requires browser_token)
       state_val <- shinyOAuth:::random_urlsafe(64)
@@ -105,7 +107,7 @@ testthat::test_that("error response with state is validated even before browser_
       cli@state_store$set(
         key,
         list(
-          browser_token = valid_browser_token(),
+          browser_token = state_browser_token,
           pkce_code_verifier = "test",
           nonce = NA_character_
         )
@@ -123,17 +125,115 @@ testthat::test_that("error response with state is validated even before browser_
       enc <- shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key)
 
       # Process error with state but no browser_token
-      values$.process_query(paste0("?error=access_denied&state=", enc))
+      values$.process_query(paste0(
+        "?error=access_denied&error_description=Nope&state=",
+        enc
+      ))
       session$flushReact()
 
-      # Error is surfaced and state is consumed immediately.
-      testthat::expect_identical(values$error, "access_denied")
+      # Error should be deferred until the browser token arrives.
+      testthat::expect_null(values$error)
+      testthat::expect_null(values$error_description)
+      testthat::expect_type(values$pending_callback, "list")
+      testthat::expect_identical(values$pending_callback$type, "error")
       testthat::expect_false(values$authenticated)
 
-      # State should already be consumed from store.
+      # State should remain present until the deferred callback resumes.
+      still_present <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_false(is.null(still_present))
+
+      # Once the browser token arrives, the deferred error should resume.
+      session$setInputs(shinyOAuth_sid = state_browser_token)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
+      testthat::expect_match(values$error_description %||% "", "Nope")
+      testthat::expect_null(values$pending_callback)
+
+      # State should be consumed after successful browser-token validation.
       after <- cli@state_store$get(key, missing = NULL)
       testthat::expect_null(after)
     }
+  )
+})
+
+testthat::test_that("error response with mismatched browser_token is rejected as invalid_state", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      testthat::expect_null(values$browser_token)
+
+      state_browser_token <- valid_browser_token()
+      wrong_browser_token <- paste(rep("cd", 64), collapse = "")
+
+      state_val <- shinyOAuth:::random_urlsafe(64)
+      key <- shinyOAuth:::state_cache_key(state_val)
+      cli@state_store$set(
+        key,
+        list(
+          browser_token = state_browser_token,
+          pkce_code_verifier = "test",
+          nonce = NA_character_
+        )
+      )
+
+      payload <- list(
+        state = state_val,
+        client_id = cli@client_id,
+        redirect_uri = cli@redirect_uri,
+        scopes = cli@scopes,
+        provider = shinyOAuth:::provider_fingerprint(cli@provider),
+        issued_at = as.numeric(Sys.time())
+      )
+      enc <- shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key)
+
+      values$.process_query(paste0("?error=access_denied&state=", enc))
+      session$flushReact()
+
+      testthat::expect_type(values$pending_callback, "list")
+      testthat::expect_identical(values$pending_callback$type, "error")
+
+      still_present <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_false(is.null(still_present))
+
+      session$setInputs(shinyOAuth_sid = wrong_browser_token)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "Browser token mismatch|browser token"
+      )
+      testthat::expect_null(values$error_uri)
+      testthat::expect_null(values$pending_callback)
+      testthat::expect_false(values$authenticated)
+
+      # Error callbacks now follow the code path and consume state before the
+      # browser-token comparison, so the state is single-use even on mismatch.
+      after <- cli@state_store$get(key, missing = NULL)
+      testthat::expect_null(after)
+    }
+  )
+
+  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  testthat::expect_true(
+    "audit_callback_validation_failed" %in% event_types,
+    info = "Expected audit_callback_validation_failed on browser-token mismatch"
   )
 })
 

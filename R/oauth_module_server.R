@@ -160,8 +160,11 @@
 #'    the provider does not include one.
 #'    \item `browser_token`: internal opaque browser cookie value; used for state
 #'    double-submit protection; NULL if not yet set
-#'    \item `pending_callback`: internal list(code, state, iss); used to defer token
-#'    exchange until `browser_token` is available; NULL otherwise.
+#'    \item `pending_callback`: internal deferred callback payload; stores either
+#'    list(type = "code", code, state, iss) for authorization-code callbacks or
+#'    list(type = "error", error, error_description, error_uri, state, iss) for
+#'    provider error callbacks. Used to defer callback handling until
+#'    `browser_token` is available; NULL otherwise.
 #'    \item `pending_login`: internal logical; TRUE when a login was requested but must
 #'    wait for `browser_token` to be set, FALSE otherwise.
 #'    \item `auto_redirected`: internal logical; TRUE once the module has initiated an
@@ -1567,6 +1570,20 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      # Mirror the code-callback path: wait for the browser token before
+      # consuming state or surfacing provider-controlled error text.
+      if (!is_valid_string(values$browser_token)) {
+        values$pending_callback <- list(
+          type = "error",
+          error = error,
+          error_description = error_description,
+          error_uri = error_uri,
+          state = state,
+          iss = iss
+        )
+        return(invisible(NULL))
+      }
+
       # Security: treat provider error callbacks as valid only when state is
       # present and can be successfully validated/consumed.
       state_ok <- tryCatch(
@@ -1576,7 +1593,8 @@ oauth_module_server <- function(
           }
           # strict = TRUE makes validation failures propagate so we can reject
           # the callback instead of surfacing an unbound provider error.
-          .consume_error_state(state, strict = TRUE)
+          consumed_state <- .consume_error_state(state, strict = TRUE)
+          .validate_error_response_browser_token(consumed_state)
           TRUE
         },
         error = function(e) {
@@ -1604,6 +1622,7 @@ oauth_module_server <- function(
     # strict = TRUE propagates failures to caller; strict = FALSE logs best-effort.
     .consume_error_state <- function(state, strict = FALSE) {
       payload <- NULL
+      state_store_values <- NULL
       consumed <- tryCatch(
         {
           # Decrypt and validate the state payload
@@ -1612,7 +1631,7 @@ oauth_module_server <- function(
             payload$trace_id %||% NULL,
             {
               # Consume the state store entry (single-use enforcement)
-              state_store_get_remove(client, payload$state)
+              state_store_values <- state_store_get_remove(client, payload$state)
 
               # Audit success using the logical state digest for correlation.
               try(
@@ -1630,7 +1649,10 @@ oauth_module_server <- function(
             }
           )
 
-          TRUE
+          list(
+            payload = payload,
+            state_store_values = state_store_values
+          )
         },
         error = function(e) {
           event_trace_id <- if (!is.null(payload)) {
@@ -1679,6 +1701,68 @@ oauth_module_server <- function(
       invisible(consumed)
     }
 
+    .validate_error_response_browser_token <- function(consumed_state) {
+      payload <- consumed_state$payload
+      state_store_values <- consumed_state$state_store_values
+
+      validated <- tryCatch(
+        {
+          with_trace_id(
+            payload$trace_id %||% NULL,
+            {
+              tryCatch(
+                validate_browser_token(values$browser_token),
+                error = function(e) {
+                  err_invalid_state(
+                    "Invalid browser token",
+                    context = list(
+                      original_error_class = paste(class(e), collapse = ", ")
+                    )
+                  )
+                }
+              )
+
+              if (
+                !constant_time_compare(
+                  state_store_values$browser_token,
+                  values$browser_token
+                )
+              ) {
+                err_invalid_state("Browser token mismatch")
+              }
+
+              TRUE
+            }
+          )
+        },
+        error = function(e) {
+          try(
+            with_trace_id(
+              payload$trace_id %||% NULL,
+              audit_event(
+                "callback_validation_failed",
+                context = list(
+                  provider = client@provider@name %||% NA_character_,
+                  issuer = client@provider@issuer %||% NA_character_,
+                  client_id_digest = string_digest(client@client_id),
+                  state_digest = string_digest(payload$state %||% NA_character_),
+                  browser_token_digest = string_digest(
+                    values$browser_token %||% NA_character_
+                  ),
+                  error_class = paste(class(e), collapse = ", "),
+                  phase = "browser_token_validation"
+                )
+              )
+            ),
+            silent = TRUE
+          )
+          rethrow_with_context(e)
+        }
+      )
+
+      invisible(validated)
+    }
+
     # Function to handle code & state once received in query string
     .handle_callback <- function(code, state, iss = NULL) {
       callback_parent <- NULL
@@ -1697,7 +1781,12 @@ oauth_module_server <- function(
 
       # If browser token isn't here yet, defer (set as pending) and wait for browser token
       if (!is_valid_string(values$browser_token)) {
-        values$pending_callback <- list(code = code, state = state, iss = iss)
+        values$pending_callback <- list(
+          type = "code",
+          code = code,
+          state = state,
+          iss = iss
+        )
         return(invisible(NULL))
       }
 
@@ -1930,7 +2019,7 @@ oauth_module_server <- function(
                 )
               } else {
                 handle_callback(
-                  client,
+                  oauth_client = client,
                   code = code,
                   payload = state,
                   browser_token = values$browser_token,
@@ -2059,7 +2148,25 @@ oauth_module_server <- function(
         pc <- shiny::isolate(values$pending_callback)
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
-          .handle_callback(pc$code, pc$state, pc$iss %||% NULL)
+          pending_type <- pc$type %||% if (!is.null(pc$code)) {
+            "code"
+          } else if (!is.null(pc$error)) {
+            "error"
+          } else {
+            NULL
+          }
+
+          if (identical(pending_type, "error")) {
+            .handle_error_response(
+              error = pc$error,
+              error_description = pc$error_description,
+              error_uri = pc$error_uri,
+              state = pc$state,
+              iss = pc$iss %||% NULL
+            )
+          } else {
+            .handle_callback(pc$code, pc$state, pc$iss %||% NULL)
+          }
         }
       },
       ignoreInit = FALSE

@@ -143,8 +143,11 @@ information about the error (per RFC 6749 section 4.1.2.1). NULL when
 the provider does not include one.
 \item \code{browser_token}: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set
-\item \code{pending_callback}: internal list(code, state, iss); used to defer token
-exchange until \code{browser_token} is available; NULL otherwise.
+\item \code{pending_callback}: internal deferred callback payload; stores either
+list(type = "code", code, state, iss) for authorization-code callbacks or
+list(type = "error", error, error_description, error_uri, state, iss) for
+provider error callbacks. Used to defer callback handling until
+\code{browser_token} is available; NULL otherwise.
 \item \code{pending_login}: internal logical; TRUE when a login was requested but must
 wait for \code{browser_token} to be set, FALSE otherwise.
 \item \code{auto_redirected}: internal logical; TRUE once the module has initiated an
