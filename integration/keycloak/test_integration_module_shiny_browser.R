@@ -6,6 +6,49 @@
 # Therefore, we read authentication state from the page DOM directly
 # This is suboptimal, but works for E2E testing purposes here
 
+wait_for_login_or_auth_result <- function(drv, timeout = 10000, interval = 0.25) {
+  deadline <- Sys.time() + (timeout / 1000)
+
+  while (Sys.time() < deadline) {
+    state <- drv$get_js(
+      "(function () {
+        if (document.querySelector('#kc-login')) {
+          return 'login';
+        }
+
+        var el = document.querySelector('#auth_state');
+        if (!el) {
+          return '';
+        }
+
+        var text = el.innerText || '';
+        if (text.includes('authenticated: TRUE')) {
+          return 'done';
+        }
+
+        if (
+          (text.includes('error_description:') &&
+            !text.includes('error_description: <none>')) ||
+          (text.includes('error_desc:') &&
+            !text.includes('error_desc: <none>'))
+        ) {
+          return 'done';
+        }
+
+        return '';
+      })()"
+    )
+
+    if (identical(state, "login") || identical(state, "done")) {
+      return(state)
+    }
+
+    Sys.sleep(interval)
+  }
+
+  stop("Timed out waiting for a Keycloak login form or auth result", call. = FALSE)
+}
+
 testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   # Skip if Keycloak isn't reachable
   issuer <- "http://localhost:8080/realms/shinyoauth"
@@ -131,17 +174,17 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   )
   on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
 
-  # Wait for KeyCloak login button to show (after auto-redirect by Shiny app)
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 5000)
+  login_state <- wait_for_login_or_auth_result(drv, timeout = 5000)
 
-  # Fill credentials & submit in one atomic JavaScript block
-  drv$run_js(
+  if (identical(login_state, "login")) {
+    drv$run_js(
+      "
+      document.querySelector('#username').value = 'alice';
+      document.querySelector('#password').value = 'alice';
+      document.querySelector('#kc-login').click();
     "
-    document.querySelector('#username').value = 'alice';
-    document.querySelector('#password').value = 'alice';
-    document.querySelector('#kc-login').click();
-  "
-  )
+    )
+  }
 
   # Wait for a definitive authentication state: success or with error
   drv$wait_for_js(
@@ -329,10 +372,12 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
   )
   on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
 
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 10000)
-  drv$run_js(
-    "document.querySelector('#username').value = 'alice'; document.querySelector('#password').value = 'alice'; document.querySelector('#kc-login').click();"
-  )
+  login_state <- wait_for_login_or_auth_result(drv, timeout = 10000)
+  if (identical(login_state, "login")) {
+    drv$run_js(
+      "document.querySelector('#username').value = 'alice'; document.querySelector('#password').value = 'alice'; document.querySelector('#kc-login').click();"
+    )
+  }
   drv$wait_for_js(
     "(function () { var el = document.querySelector('#auth_state'); if (!el) return false; var t = el.innerText; return t.includes('authenticated: TRUE') || t.includes('error_desc:') && !t.includes('error_desc: <none>'); })();",
     timeout = 20000
