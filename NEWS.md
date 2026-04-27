@@ -130,6 +130,9 @@ refresh tokens may be rotated on each use; retrying after the server has
 already committed the first request would replay an invalidated credential,
 causing `invalid_grant` errors or triggering refresh-token replay detection.
 
+* `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
+previews instead of exposing full credential material in default console output.
+
 # shinyOAuth 0.4.0
 
 * 'mirai' & async backend improvements:
