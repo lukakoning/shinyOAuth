@@ -241,7 +241,7 @@ fetch_jwks <- function(
     )
   }
   check_resp_body_size(jresp, context = "jwks_fetch")
-  jwks <- httr2::resp_body_json(jresp, simplifyVector = TRUE)
+  jwks <- httr2::resp_body_json(jresp, simplifyVector = FALSE)
   # Validate structure and (optionally) pin before caching
   validate_jwks(jwks, pins = pins, pin_mode = pin_mode)
   new_entry <- list(
