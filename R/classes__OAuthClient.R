@@ -48,6 +48,29 @@
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
 #'
+#' @param authorization_request_mode Controls how the authorization request is
+#'   transported to the provider.
+#'
+#'   - `"parameters"` (default): send OAuth parameters directly on the browser
+#'     redirect URL.
+#'   - `"request"`: send a signed JWT-secured authorization request (JAR;
+#'     RFC 9101) via the `request` parameter.
+#'
+#'   Request mode requires signing material on the client. shinyOAuth prefers
+#'   `client_private_key` when present; otherwise it falls back to HMAC signing
+#'   with `client_secret`.
+#'
+#' @param authorization_request_signing_alg Optional JWS algorithm override for
+#'   signed authorization requests when `authorization_request_mode = "request"`.
+#'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
+#'   compatible asymmetric default based on `client_private_key` (for example
+#'   `RS256`, `ES256`, or `EdDSA`).
+#'
+#' @param authorization_request_audience Optional override for the `aud` claim
+#'   used in signed authorization requests. By default, shinyOAuth uses the
+#'   provider issuer when available and otherwise falls back to the authorization
+#'   endpoint URL.
+#'
 #' @param dpop_private_key Optional private key used to generate DPoP proofs
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
 #'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
@@ -264,6 +287,21 @@ OAuthClient <- S7::new_class(
     ),
     # Optional override for the client assertion audience claim.
     client_assertion_audience = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Authorization request transport: direct parameters or signed JAR request.
+    authorization_request_mode = S7::new_property(
+      S7::class_character,
+      default = "parameters"
+    ),
+    # Optional override for the signed authorization request alg.
+    authorization_request_signing_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the signed authorization request aud claim.
+    authorization_request_audience = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
@@ -554,6 +592,106 @@ OAuthClient <- S7::new_class(
       return(
         "OAuthClient: client_assertion_audience must be non-empty when provided (use NULL or NA to omit)"
       )
+    }
+
+    arm <- self@authorization_request_mode %||% "parameters"
+    if (!is.character(arm) || length(arm) != 1L || is.na(arm)) {
+      return(
+        "OAuthClient: authorization_request_mode must be a scalar character string"
+      )
+    }
+    if (!(arm %in% c("parameters", "request"))) {
+      return(
+        "OAuthClient: authorization_request_mode must be one of 'parameters' or 'request'"
+      )
+    }
+
+    arsa <- self@authorization_request_signing_alg %||% NA_character_
+    if (!is.character(arsa) || length(arsa) != 1L) {
+      return(
+        "OAuthClient: authorization_request_signing_alg must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(arsa) && !nzchar(arsa)) {
+      return(
+        "OAuthClient: authorization_request_signing_alg must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    ara <- self@authorization_request_audience %||% NA_character_
+    if (!is.character(ara) || length(ara) != 1L) {
+      return(
+        "OAuthClient: authorization_request_audience must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(ara) && !nzchar(ara)) {
+      return(
+        "OAuthClient: authorization_request_audience must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    if (identical(arm, "request")) {
+      allowed_hmac <- c("HS256", "HS384", "HS512")
+      allowed_asym <- c(
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EDDSA"
+      )
+      alg <- toupper(arsa)
+      has_private_key <- !is.null(self@client_private_key)
+      has_secret <- is_valid_string(self@client_secret)
+
+      if (!is.na(alg) && identical(alg, "NONE")) {
+        return(
+          "OAuthClient: authorization_request_signing_alg = 'none' is not supported"
+        )
+      }
+
+      if (is.na(alg) || !nzchar(alg)) {
+        if (!isTRUE(has_private_key) && !isTRUE(has_secret)) {
+          return(
+            "OAuthClient: authorization_request_mode = 'request' requires client_private_key or client_secret"
+          )
+        }
+        if (
+          !isTRUE(has_private_key) &&
+            nchar(self@client_secret, type = "bytes") < 32
+        ) {
+          return(
+            "OAuthClient: authorization_request_mode = 'request' requires client_secret >= 32 bytes when no client_private_key is configured"
+          )
+        }
+      } else if (alg %in% allowed_hmac) {
+        if (!isTRUE(has_secret)) {
+          return(
+            "OAuthClient: HS* authorization_request_signing_alg requires client_secret"
+          )
+        }
+        if (nchar(self@client_secret, type = "bytes") < 32) {
+          return(
+            "OAuthClient: HS* authorization_request_signing_alg requires client_secret >= 32 bytes"
+          )
+        }
+      } else if (alg %in% allowed_asym) {
+        if (!isTRUE(has_private_key)) {
+          return(
+            "OAuthClient: asymmetric authorization_request_signing_alg requires client_private_key"
+          )
+        }
+      } else {
+        return(paste0(
+          "OAuthClient: authorization_request_signing_alg '",
+          alg,
+          "' is incompatible with signed authorization requests"
+        ))
+      }
     }
 
     # Validate DPoP configuration when provided.
@@ -955,6 +1093,9 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  authorization_request_mode = c("parameters", "request"),
+  authorization_request_signing_alg = NULL,
+  authorization_request_audience = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -997,6 +1138,7 @@ oauth_client <- function(
 
   scope_validation <- match.arg(scope_validation)
   claims_validation <- match.arg(claims_validation)
+  authorization_request_mode <- match.arg(authorization_request_mode)
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees
@@ -1029,6 +1171,11 @@ oauth_client <- function(
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
+    authorization_request_mode = authorization_request_mode,
+    authorization_request_signing_alg = authorization_request_signing_alg %||%
+      NA_character_,
+    authorization_request_audience = authorization_request_audience %||%
+      NA_character_,
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
     dpop_signing_alg = dpop_signing_alg %||% NA_character_,

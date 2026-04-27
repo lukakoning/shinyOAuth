@@ -395,6 +395,45 @@ Note on `allowed_hosts`: patterns support globs (`*`, `?`).
 Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply). 
 Avoid this unless you truly intend to accept any host; prefer pinning to your domain(s), e.g., `c(".example.com")`.
 
+### Signed authorization requests (JAR)
+
+When your provider requires RFC 9101 request objects, set
+`authorization_request_mode = "request"` on `oauth_client()`.
+In this mode, shinyOAuth builds the usual authorization request parameters,
+wraps them in a signed JWT, and sends them via the browser redirect's
+`request` parameter instead of placing raw OAuth parameters on the URL.
+
+```r
+client <- oauth_client(
+  provider = provider,
+  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
+  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "http://127.0.0.1:8100",
+  scopes = c("openid", "profile"),
+  authorization_request_mode = "request"
+)
+```
+
+Request mode requires signing material on the client:
+
+- If `client_private_key` is configured, shinyOAuth signs the Request Object
+  with a compatible asymmetric default (or your explicit
+  `authorization_request_signing_alg`).
+- Otherwise, shinyOAuth falls back to HMAC signing with `client_secret`
+  and defaults to `HS256`.
+
+You may override the Request Object audience with
+`authorization_request_audience` when your provider expects a value other than
+the issuer or authorization endpoint URL.
+
+Current scope notes:
+
+- shinyOAuth currently supports signed Request Objects via `request`.
+- `request_uri` publication is not implemented.
+- If a provider also exposes PAR, `authorization_request_mode = "request"`
+  takes precedence and keeps the browser redirect on the direct `request`
+  path.
+
 ### Extra parameter overrides
 
 By default, shinyOAuth blocks certain security‑critical parameters from being passed 
@@ -407,9 +446,9 @@ you can unblock them using the following options:
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows overriding the specified
   authorization URL parameters. Default blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
   `request_uri`, `request`, `scope`, `code_challenge`, `code_challenge_method`, `nonce`, `claims`
-- `request` stays blocked by default because shinyOAuth does not automatically build RFC 9101
-  Request Object JWTs; leave it reserved unless you are intentionally taking responsibility for
-  a fully custom advanced flow.
+- `request` and `request_uri` stay blocked by default because shinyOAuth manages them internally for
+  PAR and Request Object flows; leave them reserved unless you are intentionally taking responsibility
+  for a fully custom advanced flow.
 - `options(shinyOAuth.unblock_token_params = c(...))` – allows overriding the specified token exchange
   parameters. Default blocked: `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
   `client_secret`, `client_assertion`, `client_assertion_type`

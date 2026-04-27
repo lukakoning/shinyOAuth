@@ -21,6 +21,9 @@ oauth_client(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  authorization_request_mode = c("parameters", "request"),
+  authorization_request_signing_alg = NULL,
+  authorization_request_audience = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -181,6 +184,30 @@ supported by \code{jose::jwt_encode_sig} (e.g., \code{RS256}, \code{PS256}, \cod
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.}
+
+\item{authorization_request_mode}{Controls how the authorization request is
+transported to the provider.
+\itemize{
+\item \code{"parameters"} (default): send OAuth parameters directly on the browser
+redirect URL.
+\item \code{"request"}: send a signed JWT-secured authorization request (JAR;
+RFC 9101) via the \code{request} parameter.
+}
+
+Request mode requires signing material on the client. shinyOAuth prefers
+\code{client_private_key} when present; otherwise it falls back to HMAC signing
+with \code{client_secret}.}
+
+\item{authorization_request_signing_alg}{Optional JWS algorithm override for
+signed authorization requests when \code{authorization_request_mode = "request"}.
+When omitted, shinyOAuth chooses \code{HS256} for HMAC-based signing or a
+compatible asymmetric default based on \code{client_private_key} (for example
+\code{RS256}, \code{ES256}, or \code{EdDSA}).}
+
+\item{authorization_request_audience}{Optional override for the \code{aud} claim
+used in signed authorization requests. By default, shinyOAuth uses the
+provider issuer when available and otherwise falls back to the authorization
+endpoint URL.}
 
 \item{dpop_private_key}{Optional private key used to generate DPoP proofs
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an

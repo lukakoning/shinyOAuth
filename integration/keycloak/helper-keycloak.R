@@ -397,6 +397,26 @@ make_private_key_jwt_client <- function(prov) {
   )
 }
 
+make_private_key_jar_client <- function(prov) {
+  key <- get_pjwt_key()
+  if (is.null(key)) {
+    return(NULL)
+  }
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = "shiny-jar-pjwt",
+    client_secret = "",
+    redirect_uri = "http://localhost:3000/callback",
+    scopes = c("openid"),
+    client_private_key = key,
+    client_private_key_kid = NA_character_,
+    client_assertion_alg = NA_character_,
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "RS256"
+  )
+}
+
 ## ---------- Login form driver ----------
 
 #' Drive the Keycloak login form headlessly
