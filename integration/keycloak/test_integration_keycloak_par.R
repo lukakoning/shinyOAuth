@@ -7,6 +7,23 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
+testthat::test_that("Keycloak discovery keeps local HTTP PAR under the standard host policy", {
+  skip_common()
+  local_test_options()
+
+  prov <- shinyOAuth::oauth_provider_oidc_discover(
+    issuer = get_issuer()
+  )
+  testthat::expect_true(
+    is.character(prov@par_url) &&
+      nzchar(prov@par_url)
+  )
+  testthat::expect_identical(
+    prov@par_url,
+    get_discovery_document()$pushed_authorization_request_endpoint
+  )
+})
+
 testthat::test_that("Keycloak PAR happy path (public client)", {
   skip_common()
   local_test_options()

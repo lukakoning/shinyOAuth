@@ -36,6 +36,11 @@ Key endpoints after startup:
 - Discovery: http://localhost:8080/realms/shinyoauth/.well-known/openid-configuration
 - Admin console: http://localhost:8080/admin (login with admin/admin)
 
+Note on PAR: this local Keycloak setup serves PAR metadata over plain HTTP.
+shinyOAuth accepts that local PAR endpoint through the same non-HTTPS host policy used
+for the other endpoints, so the PAR integration tests work through the regular localhost
+allowlist behavior rather than a PAR-specific override.
+
 To verify OIDC discovery quickly:
 ```bash
 curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configuration | jq '.issuer, .authorization_endpoint, .token_endpoint'
@@ -48,6 +53,8 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
 - `test_integration_module_shiny_browser.R` — end-to-end flow with a real headless browser (Chromium via {shinytest2}/{chromote}): clicks the Login button, completes the Keycloak login form, and verifies redirect back to the app and authenticated state.
  - `test_integration_keycloak_auth_styles.R` — parametric introspection using different token endpoint client auth styles: header (client_secret_basic), body (client_secret_post), client_secret_jwt and private_key_jwt (pre-provisioned in realm).
  - `test_integration_keycloak_auth_styles_unhappy.R` — negative-path coverage: wrong client_secret for CSJWT, mismatched algorithm, wrong private key for PJWT (server rejection), and incompatible alg for the provided key (local config error).
+- `test_integration_keycloak_par.R` — PAR discovery and end-to-end code flow coverage, including the standard localhost HTTP host-policy path used by the local Keycloak setup.
+- `test_integration_keycloak_par_unhappy.R` — PAR unhappy-path coverage against live Keycloak, currently exercising rejection of a bad JWT client-assertion audience at the PAR endpoint.
  - `test_integration_keycloak_pkce.R` — PKCE enforcement for public client `shiny-public`:
    - Happy path: completes S256 PKCE code flow and authenticates
    - Unhappy path (missing verifier): deletes `code_verifier` from the state store before callback → module rejects with a PKCE/code_verifier error before token exchange

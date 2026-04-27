@@ -359,6 +359,37 @@ test_that("provider reserves request_uri and request object parameters", {
   )
 })
 
+test_that("PAR endpoints follow the regular non-https host policy", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    par_url = "http://localhost:9000/par",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+
+  expect_identical(prov@par_url, "http://localhost:9000/par")
+
+  withr::local_options(list(shinyOAuth.allowed_non_https_hosts = character()))
+
+  expect_error(
+    oauth_provider(
+      name = "example",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      par_url = "http://localhost:9000/par",
+      use_nonce = FALSE,
+      use_pkce = TRUE,
+      id_token_required = FALSE,
+      id_token_validation = FALSE
+    ),
+    regexp = "par_url provided but not accepted as a host"
+  )
+})
+
 test_that("OIDC discovery rejects inconsistent required PAR metadata", {
   disc_body <- jsonlite::toJSON(
     list(
@@ -393,6 +424,93 @@ test_that("OIDC discovery rejects inconsistent required PAR metadata", {
   expect_error(
     oauth_provider_oidc_discover("https://issuer.example.com"),
     regexp = "pushed_authorization_request_endpoint"
+  )
+})
+
+test_that("OIDC discovery applies the regular non-https host policy to PAR", {
+  disc_body <- jsonlite::toJSON(
+    list(
+      issuer = "https://issuer.example.com",
+      authorization_endpoint = "https://issuer.example.com/auth",
+      token_endpoint = "https://issuer.example.com/token",
+      jwks_uri = "https://issuer.example.com/jwks",
+      response_types_supported = list("code"),
+      subject_types_supported = list("public"),
+      id_token_signing_alg_values_supported = list("RS256"),
+      token_endpoint_auth_methods_supported = list(
+        "client_secret_basic",
+        "client_secret_post"
+      ),
+      pushed_authorization_request_endpoint = "http://issuer.example.com/par"
+    ),
+    auto_unbox = TRUE
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(disc_body)
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  withr::local_options(list(
+    shinyOAuth.allowed_hosts = "issuer.example.com",
+    shinyOAuth.allowed_non_https_hosts = "issuer.example.com"
+  ))
+
+  prov <- oauth_provider_oidc_discover(
+    "https://issuer.example.com"
+  )
+  expect_identical(
+    prov@par_url,
+    "http://issuer.example.com/par"
+  )
+})
+
+test_that("OIDC discovery rejects PAR when the regular non-https host policy forbids it", {
+  disc_body <- jsonlite::toJSON(
+    list(
+      issuer = "https://issuer.example.com",
+      authorization_endpoint = "https://issuer.example.com/auth",
+      token_endpoint = "https://issuer.example.com/token",
+      jwks_uri = "https://issuer.example.com/jwks",
+      response_types_supported = list("code"),
+      subject_types_supported = list("public"),
+      id_token_signing_alg_values_supported = list("RS256"),
+      token_endpoint_auth_methods_supported = list(
+        "client_secret_basic",
+        "client_secret_post"
+      ),
+      pushed_authorization_request_endpoint = "http://issuer.example.com/par"
+    ),
+    auto_unbox = TRUE
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(disc_body)
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  withr::local_options(list(
+    shinyOAuth.allowed_hosts = "issuer.example.com",
+    shinyOAuth.allowed_non_https_hosts = character()
+  ))
+
+  expect_error(
+    oauth_provider_oidc_discover("https://issuer.example.com"),
+    regexp = "Endpoint host or scheme not allowed"
   )
 })
 
