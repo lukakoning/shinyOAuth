@@ -88,7 +88,7 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 <dt id="arg-iss">iss<a class="anchor" aria-label="anchor" href="#arg-iss"></a></dt>
 <dd><p>Optional RFC 9207 callback issuer (<code>iss</code>) from the authorization
 response. Pass this when one callback URL can receive responses from more
-than one authorization server. If <code>oauth_client@require_callback_issuer</code>
+than one authorization server. If <code>oauth_client@enforce_callback_issuer</code>
 is <code>TRUE</code>, this parameter is required and must match the configured
 provider issuer before any token exchange occurs.</p></dd>
 

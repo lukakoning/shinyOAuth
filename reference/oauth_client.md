@@ -11,7 +11,7 @@ oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
-  require_callback_issuer = FALSE,
+  enforce_callback_issuer = FALSE,
   scopes = character(0),
   resource = character(0),
   claims = NULL,
@@ -71,10 +71,10 @@ oauth_client(
 
   Redirect URI registered with provider
 
-- require_callback_issuer:
+- enforce_callback_issuer:
 
-  Logical. When `TRUE`, require authorization responses handled through
-  this client to include an RFC 9207 `iss` parameter and reject
+  Logical. When `TRUE`, enforce that authorization responses handled
+  through this client include an RFC 9207 `iss` parameter and reject
   callbacks unless it exactly matches `provider@issuer`. This is
   recommended when one callback URL can receive responses from more than
   one authorization server. Requires the provider to have a configured

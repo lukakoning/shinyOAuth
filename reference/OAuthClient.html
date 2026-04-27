@@ -69,7 +69,7 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  dpop_require_access_token <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  require_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -176,10 +176,10 @@ refresh tokens.</p></dd>
 <dd><p>Redirect URI registered with provider</p></dd>
 
 
-<dt id="arg-require-callback-issuer">require_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-require-callback-issuer"></a></dt>
-<dd><p>Logical. When <code>TRUE</code>, require authorization
-responses handled through this client to include an RFC 9207 <code>iss</code>
-parameter and reject callbacks unless it exactly matches
+<dt id="arg-enforce-callback-issuer">enforce_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-enforce-callback-issuer"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, enforce that
+authorization responses handled through this client include an RFC 9207
+<code>iss</code> parameter and reject callbacks unless it exactly matches
 <code>provider@issuer</code>. This is recommended when one callback URL can receive
 responses from more than one authorization server. Requires the provider
 to have a configured <code>issuer</code>. Default is <code>FALSE</code>.</p></dd>

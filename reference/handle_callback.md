@@ -55,7 +55,7 @@ handle_callback(
   Optional RFC 9207 callback issuer (`iss`) from the authorization
   response. Pass this when one callback URL can receive responses from
   more than one authorization server. If
-  `oauth_client@require_callback_issuer` is `TRUE`, this parameter is
+  `oauth_client@enforce_callback_issuer` is `TRUE`, this parameter is
   required and must match the configured provider issuer before any
   token exchange occurs.
 

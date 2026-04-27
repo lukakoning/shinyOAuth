@@ -671,7 +671,7 @@ your app to production:
 - Verify issuer used in your provider is correct
 - If one app can interact with multiple authorization servers, either
   give each issuer a distinct `redirect_uri` or set
-  `require_callback_issuer = TRUE` for issuer-configured clients so
+  `enforce_callback_issuer = TRUE` for issuer-configured clients so
   callbacks without RFC 9207 `iss` are rejected before token exchange
 - In your `OAuthProvider`, set as many of the security options as
   possible; for instance, set

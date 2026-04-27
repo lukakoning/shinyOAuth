@@ -58,7 +58,7 @@
   instead of surfacing provider-controlled error text.
 
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  now supports `require_callback_issuer = TRUE` to require the RFC 9207
+  now supports `enforce_callback_issuer = TRUE` to require the RFC 9207
   `iss` callback parameter for shared-redirect multi-issuer deployments.
   Relatedly,
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
