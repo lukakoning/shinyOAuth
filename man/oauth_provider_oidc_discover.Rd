@@ -99,6 +99,10 @@ discovery-advertised set.
 (header), \code{client_secret_post} (body), public clients using \code{none}
 (with PKCE), as well as JWT-based methods \code{private_key_jwt} and
 \code{client_secret_jwt} per RFC 7523.
+\item PAR metadata: when the discovery document advertises
+\code{pushed_authorization_request_endpoint} and/or
+\code{require_pushed_authorization_requests}, those values are wired into the
+resulting provider so authorization requests can use RFC 9126 PAR.
 \item PKCE method discovery: shinyOAuth keeps \code{S256} as the default and does not
 silently downgrade to \code{plain}. If discovery metadata explicitly omits
 \code{S256}, discovery fails with a configuration error unless you explicitly

@@ -11,6 +11,8 @@ oauth_provider(
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
+  pushed_authorization_request_endpoint = NA_character_,
+  require_pushed_authorization_requests = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -51,6 +53,16 @@ only; used in logging and audit events}
 \item{introspection_url}{Token introspection endpoint URL (optional; RFC 7662)}
 
 \item{revocation_url}{Token revocation endpoint URL (optional; RFC 7009)}
+
+\item{pushed_authorization_request_endpoint}{Pushed Authorization Request (PAR)
+endpoint URL (optional; RFC 9126). When configured, shinyOAuth can push
+authorization request parameters directly to the authorization server and
+redirect the browser with a returned \code{request_uri} instead of the full
+request payload.}
+
+\item{require_pushed_authorization_requests}{Whether authorization requests
+must use PAR. When \code{TRUE}, \code{pushed_authorization_request_endpoint} must be
+configured.}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
