@@ -1631,7 +1631,10 @@ oauth_module_server <- function(
             payload$trace_id %||% NULL,
             {
               # Consume the state store entry (single-use enforcement)
-              state_store_values <- state_store_get_remove(client, payload$state)
+              state_store_values <- state_store_get_remove(
+                client,
+                payload$state
+              )
 
               # Audit success using the logical state digest for correlation.
               try(
@@ -1745,7 +1748,9 @@ oauth_module_server <- function(
                   provider = client@provider@name %||% NA_character_,
                   issuer = client@provider@issuer %||% NA_character_,
                   client_id_digest = string_digest(client@client_id),
-                  state_digest = string_digest(payload$state %||% NA_character_),
+                  state_digest = string_digest(
+                    payload$state %||% NA_character_
+                  ),
                   browser_token_digest = string_digest(
                     values$browser_token %||% NA_character_
                   ),
@@ -2148,13 +2153,14 @@ oauth_module_server <- function(
         pc <- shiny::isolate(values$pending_callback)
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
-          pending_type <- pc$type %||% if (!is.null(pc$code)) {
-            "code"
-          } else if (!is.null(pc$error)) {
-            "error"
-          } else {
-            NULL
-          }
+          pending_type <- pc$type %||%
+            if (!is.null(pc$code)) {
+              "code"
+            } else if (!is.null(pc$error)) {
+              "error"
+            } else {
+              NULL
+            }
 
           if (identical(pending_type, "error")) {
             .handle_error_response(

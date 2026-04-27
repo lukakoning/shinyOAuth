@@ -170,7 +170,9 @@
     entry_names <- entry_names[!is.na(entry_names) & nzchar(entry_names)]
 
     if (length(entry_names) == 0L) {
-      return(if (length(x) == 0L) "list()" else paste0("list [", length(x), "]"))
+      return(
+        if (length(x) == 0L) "list()" else paste0("list [", length(x), "]")
+      )
     }
 
     shown <- utils::head(entry_names, max_items)
