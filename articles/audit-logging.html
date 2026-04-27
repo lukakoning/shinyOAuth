@@ -811,8 +811,13 @@ control flow.</li>
 </h3>
 <p>When the provider returns an error response (e.g.,
 <code>access_denied</code>) but includes the <code>state</code>
-parameter, the module attempts to consume the state to prevent replay
-and clean up the store.</p>
+parameter, the module waits for the browser token, consumes the state to
+prevent replay and clean up the store, and then verifies the
+browser-token binding before surfacing the provider error. Browser-token
+mismatches are reported via
+<code>audit_callback_validation_failed</code> with
+<code>phase = "browser_token_validation"</code>; the events below cover
+the state-consumption portion of that flow.</p>
 <div class="section level4">
 <h4 id="event-audit_error_state_consumed">Event: <code>audit_error_state_consumed</code><a class="anchor" aria-label="anchor" href="#event-audit_error_state_consumed"></a>
 </h4>

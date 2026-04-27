@@ -505,8 +505,13 @@ wrapper prior to extracting the logical state value.
 ### Error response state consumption
 
 When the provider returns an error response (e.g., `access_denied`) but
-includes the `state` parameter, the module attempts to consume the state
-to prevent replay and clean up the store.
+includes the `state` parameter, the module waits for the browser token,
+consumes the state to prevent replay and clean up the store, and then
+verifies the browser-token binding before surfacing the provider error.
+Browser-token mismatches are reported via
+`audit_callback_validation_failed` with
+`phase = "browser_token_validation"`; the events below cover the
+state-consumption portion of that flow.
 
 #### Event: `audit_error_state_consumed`
 

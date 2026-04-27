@@ -51,6 +51,12 @@
   now explicitly ignores new login requests while a session is already
   authenticated.
 
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now applies the browser-token double-submit check to OAuth error
+  callbacks too, deferring `?error=...` handling until the browser token
+  is available and treating browser-token mismatches as `invalid_state`
+  instead of surfacing provider-controlled error text.
+
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   now supports `require_callback_issuer = TRUE` to require the RFC 9207
   `iss` callback parameter for shared-redirect multi-issuer deployments.

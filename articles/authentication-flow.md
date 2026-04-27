@@ -112,10 +112,13 @@ callback. This consists of the following steps:
   authorization-server mix-up attacks (per RFC 9207). A mismatch
   produces an `issuer_mismatch` error and audit event
 - If the callback is an error response (`?error=...`), require a valid
-  `state` parameter; missing/invalid/consumed state is treated as
-  `invalid_state` rather than surfacing the attacker-controlled `?error`
-  value. The `error_uri` from the provider (RFC 6749 section 4.1.2.1) is
-  also surfaced as a reactive field when included
+  `state` parameter and defer surfacing the provider error until
+  sealed-state validation, single-use state consumption, and
+  browser-token binding succeed; missing/invalid/consumed state or a
+  browser-token mismatch is treated as `invalid_state` rather than
+  surfacing the attacker-controlled `?error` value. The `error_uri` from
+  the provider (RFC 6749 section 4.1.2.1) is also surfaced as a reactive
+  field when included
 - Decrypt and verify the sealed state, ensuring integrity, authenticity,
   and freshness (using the `issued_at` window)
 - Check that embedded context matches expected client/provider (defends

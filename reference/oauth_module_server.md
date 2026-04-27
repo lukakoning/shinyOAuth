@@ -203,8 +203,11 @@ The returned reactiveValues contains the following fields:
 - `browser_token`: internal opaque browser cookie value; used for state
   double-submit protection; NULL if not yet set
 
-- `pending_callback`: internal list(code, state, iss); used to defer
-  token exchange until `browser_token` is available; NULL otherwise.
+- `pending_callback`: internal deferred callback payload; stores either
+  list(type = "code", code, state, iss) for authorization-code callbacks
+  or list(type = "error", error, error_description, error_uri, state,
+  iss) for provider error callbacks. Used to defer callback handling
+  until `browser_token` is available; NULL otherwise.
 
 - `pending_login`: internal logical; TRUE when a login was requested but
   must wait for `browser_token` to be set, FALSE otherwise.
