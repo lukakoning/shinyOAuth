@@ -2,10 +2,6 @@
 
 ## shinyOAuth (development version)
 
-- `claims_validation = "warn"` / `"strict"` now also enforces OIDC claim
-  request `value` and `values` constraints, not just presence of
-  `essential = TRUE` claims.
-
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
@@ -95,6 +91,10 @@
   be accepted if `userinfo_id_token_match` was not enabled. The
   signed-JWT path (`validate_signed_userinfo_claims()`) also now checks
   `sub` alongside the existing `iss`/`aud` validation.
+
+- `OAuthClient`’s `claims_validation = "warn"` / `"strict"` now also
+  enforces OIDC claim request `value` and `values` constraints, not just
+  presence of `essential = TRUE` claims.
 
 - `OAuthProvider` now validates custom `jwks_cache$get()` signatures
   without calling the cache during construction, avoiding side effects
