@@ -149,14 +149,42 @@ prepare_call <- function(
 
         # Build authorization URL --------------------------------------------------
 
-        auth_url <- build_auth_url(
-          oauth_client,
-          payload = payload,
-          scopes = effective_scopes,
-          pkce_code_challenge = pkce_code_challenge,
-          pkce_method = pkce_method,
-          nonce = nonce
+        auth_url <- tryCatch(
+          {
+            auth_params <- build_authorization_params(
+              oauth_client,
+              payload = payload,
+              scopes = effective_scopes,
+              pkce_code_challenge = pkce_code_challenge,
+              pkce_method = pkce_method,
+              nonce = nonce
+            )
+
+            par_endpoint <- oauth_client@provider@par_url %||% NA_character_
+
+            if (is_valid_string(par_endpoint)) {
+              par_resp <- push_authorization_request(
+                client = oauth_client,
+                params = auth_params
+              )
+              build_par_auth_url(oauth_client, par_resp$request_uri)
+            } else {
+              url_append_query_params(
+                oauth_client@provider@auth_url,
+                auth_params
+              )
+            }
+          },
+          error = function(e) {
+            try(
+              oauth_client@state_store$remove(state_cache_key(state)),
+              silent = TRUE
+            )
+            stop(e)
+          }
         )
+
+        par_endpoint <- oauth_client@provider@par_url %||% NA_character_
 
         # Audit: redirect issuance (redacted identifiers only)
         try(
@@ -170,6 +198,7 @@ prepare_call <- function(
                 state_digest = string_digest(state),
                 browser_token_digest = string_digest(browser_token),
                 pkce_method = pkce_method %||% NA_character_,
+                par_used = is_valid_string(par_endpoint),
                 nonce_present = isTRUE(oauth_client@provider@use_nonce),
                 scopes_count = length(effective_scopes),
                 redirect_uri = oauth_client@redirect_uri %||% NA_character_
@@ -265,8 +294,8 @@ provider_fingerprint <- function(provider) {
   paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
 }
 
-# Helper: build authorization URL with all params
-build_auth_url <- function(
+# Helper: build authorization request parameters for direct redirects or PAR.
+build_authorization_params <- function(
   oauth_client,
   payload,
   scopes,
@@ -274,11 +303,12 @@ build_auth_url <- function(
   pkce_method,
   nonce
 ) {
-  # Type checks
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   if (!is_valid_string(payload)) {
-    err_invalid_state("build_auth_url: 'payload' must be a valid string")
+    err_invalid_state(
+      "build_authorization_params: 'payload' must be a valid string"
+    )
   }
 
   if (isTRUE(oauth_client@provider@use_pkce)) {
@@ -286,36 +316,40 @@ build_auth_url <- function(
       !is_valid_string(pkce_code_challenge) || !is_valid_string(pkce_method)
     ) {
       err_invalid_state(
-        "build_auth_url: PKCE is enabled but 'pkce_code_challenge' or 'pkce_method' is missing or invalid"
+        paste(
+          "build_authorization_params: PKCE is enabled but",
+          "'pkce_code_challenge' or 'pkce_method' is missing or invalid"
+        )
       )
     }
-  } else {
-    if (!is.null(pkce_code_challenge) || !is.null(pkce_method)) {
-      err_invalid_state(
-        "build_auth_url: PKCE is disabled but 'pkce_code_challenge' or 'pkce_method' was provided"
+  } else if (!is.null(pkce_code_challenge) || !is.null(pkce_method)) {
+    err_invalid_state(
+      paste(
+        "build_authorization_params: PKCE is disabled but",
+        "'pkce_code_challenge' or 'pkce_method' was provided"
       )
-    }
+    )
   }
 
   if (isTRUE(oauth_client@provider@use_nonce)) {
     if (!is_valid_string(nonce)) {
       err_invalid_state(
-        "build_auth_url: Nonce is enabled but 'nonce' is missing or invalid"
+        paste(
+          "build_authorization_params: Nonce is enabled but",
+          "'nonce' is missing or invalid"
+        )
       )
     }
-  } else {
-    if (!is.null(nonce)) {
-      err_invalid_state(
-        "build_auth_url: Nonce is disabled but 'nonce' was provided"
-      )
-    }
+  } else if (!is.null(nonce)) {
+    err_invalid_state(
+      "build_authorization_params: Nonce is disabled but 'nonce' was provided"
+    )
   }
 
   if (missing(scopes)) {
     scopes <- effective_client_scopes(oauth_client)
   }
 
-  # Base params
   params <- list(
     response_type = "code",
     client_id = oauth_client@client_id,
@@ -323,7 +357,6 @@ build_auth_url <- function(
     state = payload
   )
 
-  # Add optional params only when present
   if (isTRUE(oauth_client@provider@use_pkce)) {
     params$code_challenge <- pkce_code_challenge
     params$code_challenge_method <- pkce_method
@@ -340,27 +373,21 @@ build_auth_url <- function(
     params$resource <- oauth_client@resource
   }
 
-  # OIDC claims parameter (OIDC Core §5.5): JSON-encode if a list,
-  # otherwise use as-is
+  # OIDC claims parameter (OIDC Core §5.5): JSON-encode claim lists while
+  # preserving explicit null values used to request claims without parameters.
   if (!is.null(oauth_client@claims)) {
     if (is.list(oauth_client@claims)) {
-      # JSON-encode the list with auto_unbox to avoid wrapping single values
-      # in arrays, and null = "null" to preserve explicit null values which
-      # OIDC uses to request claims without additional parameters
       params$claims <- jsonlite::toJSON(
         oauth_client@claims,
         auto_unbox = TRUE,
         null = "null"
       )
     } else {
-      # Assume pre-encoded JSON string
       params$claims <- oauth_client@claims
     }
   }
 
-  # OIDC acr_values hint (OIDC Core §3.1.2.1): when the client specifies
-  # required_acr_values, automatically include a space-separated acr_values
-  # parameter in the authorization request as a voluntary hint to the provider.
+  # OIDC Core allows acr_values as a voluntary hint to the provider.
   racr <- oauth_client@required_acr_values %||% character(0)
   if (length(racr) > 0) {
     params$acr_values <- paste(racr, collapse = " ")
@@ -377,22 +404,22 @@ build_auth_url <- function(
       extra[[response_mode_info$index]] <- response_mode_info$mode
     }
 
-    # Block parameters that are critical to OAuth security. Allowing these to be
-    # overridden via extra_auth_params would break state binding, redirect_uri
-    # validation, or PKCE integrity and could lead to unsafe configurations.
-    # Users can unblock specific keys via shinyOAuth.unblock_auth_params.
+    # Block overrides for security-critical parameters unless explicitly
+    # unblocked. Allowing callers to replace these can break state binding,
+    # redirect_uri validation, PKCE integrity, or PAR request indirection.
     default_blocked_params <- c(
       "state",
       "redirect_uri",
       "response_type",
       "client_id",
+      "request_uri",
+      "request",
       "scope",
       "nonce",
       "code_challenge",
       "code_challenge_method",
-      "claims" # Managed via oauth_client(..., claims = ...)
+      "claims"
     )
-    # Also block acr_values when auto-generated from required_acr_values
     if (length(racr) > 0) {
       default_blocked_params <- c(default_blocked_params, "acr_values")
     }
@@ -417,8 +444,222 @@ build_auth_url <- function(
     params <- c(params, extra)
   }
 
-  # Critically: drop NULLs so httr2 doesn't choke
-  params <- compact_list(params)
+  # Drop NULLs before building query strings or form bodies.
+  compact_list(params)
+}
+
+apply_direct_client_auth <- function(req, params, client, context) {
+  tas <- client@provider@token_auth_style %||% "header"
+
+  if (identical(tas, "header")) {
+    req <- req |>
+      httr2::req_auth_basic(client@client_id, client@client_secret)
+  } else if (identical(tas, "body")) {
+    params$client_id <- params$client_id %||% client@client_id
+    # Public PKCE clients can use body auth without a client_secret.
+    if (is_valid_string(client@client_secret)) {
+      params$client_secret <- client@client_secret
+    }
+  } else if (
+    identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
+  ) {
+    params$client_id <- params$client_id %||% client@client_id
+    params$client_assertion_type <-
+      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    params$client_assertion <- build_client_assertion(
+      client,
+      aud = resolve_client_assertion_audience(client, req)
+    )
+  } else {
+    err_config(
+      c(
+        paste0("Unsupported token_auth_style for ", context, "."),
+        "i" = paste0(
+          "Got: '",
+          tas,
+          "'. Allowed: 'header', 'body', 'client_secret_jwt', 'private_key_jwt'."
+        )
+      ),
+      context = list(phase = context, style = tas)
+    )
+  }
+
+  list(req = req, params = params)
+}
+
+push_authorization_request <- function(client, params, shiny_session = NULL) {
+  endpoint <- client@provider@par_url %||% NA_character_
+  if (!is_valid_string(endpoint)) {
+    err_config(
+      "Pushed authorization requests require provider@par_url"
+    )
+  }
+
+  if ("request_uri" %in% tolower(trimws(names(params) %||% character(0)))) {
+    err_config(
+      "Pushed authorization request parameters must not include request_uri"
+    )
+  }
+
+  with_otel_span(
+    "shinyOAuth.login.par",
+    {
+      req <- httr2::request(endpoint)
+      prepared <- apply_direct_client_auth(
+        req = req,
+        params = params,
+        client = client,
+        context = "pushed_authorization_request"
+      )
+      req <- prepared$req
+      params <- prepared$params
+
+      req <- add_req_defaults(req)
+      req <- req_no_redirect(req)
+
+      extra_headers <- as.list(client@provider@extra_token_headers)
+      if (length(extra_headers) > 0) {
+        req <- do.call(httr2::req_headers, c(list(req), extra_headers))
+      }
+
+      req <- req_body_form_encoded(req, compact_list(params))
+      req <- httr2::req_method(req, "POST")
+
+      resp <- with_otel_span(
+        "shinyOAuth.login.par.http",
+        {
+          resp <- req_with_retry(req)
+          otel_record_http_result(resp)
+          resp
+        },
+        attributes = otel_http_attributes(
+          method = "POST",
+          url = endpoint,
+          extra = list(oauth.phase = "login.par")
+        ),
+        options = list(kind = "client"),
+        mark_ok = FALSE
+      )
+
+      reject_redirect_response(resp, context = "pushed_authorization_request")
+      if (httr2::resp_is_error(resp)) {
+        err_http(
+          "Pushed authorization request failed",
+          resp,
+          context = list(phase = "pushed_authorization_request")
+        )
+      }
+
+      status <- httr2::resp_status(resp)
+      if (!identical(as.integer(status), 201L)) {
+        err_http(
+          c(
+            "x" = "Pushed authorization request response must use HTTP 201 Created",
+            "i" = "RFC 9126 Section 2.2 requires status code 201 for successful PAR responses."
+          ),
+          resp,
+          context = list(phase = "pushed_authorization_request")
+        )
+      }
+
+      check_resp_body_size(resp, context = "pushed authorization request")
+      content_type <- tolower(httr2::resp_header(resp, "content-type") %||% "")
+      if (!grepl("^application/json(?:\\s*;|$)", content_type, perl = TRUE)) {
+        err_parse(
+          c(
+            "x" = "Pushed authorization request response was not JSON",
+            "i" = paste0("Content-Type: ", content_type %||% "")
+          ),
+          context = list(
+            phase = "pushed_authorization_request",
+            content_type = content_type
+          )
+        )
+      }
+      out <- try(
+        httr2::resp_body_json(resp, simplifyVector = TRUE),
+        silent = TRUE
+      )
+      if (inherits(out, "try-error") || !is.list(out)) {
+        err_parse("Failed to parse pushed authorization request response")
+      }
+
+      request_uri <- out$request_uri %||% NULL
+      expires_in <- out$expires_in %||% NULL
+
+      if (!is_valid_string(request_uri)) {
+        err_token(
+          "Pushed authorization request response missing request_uri"
+        )
+      }
+      if (
+        !is.numeric(expires_in) ||
+          length(expires_in) != 1L ||
+          !is.finite(expires_in) ||
+          expires_in <= 0
+      ) {
+        err_token(
+          "Pushed authorization request response missing valid expires_in"
+        )
+      }
+      if (!isTRUE(expires_in == floor(expires_in))) {
+        err_token(
+          "Pushed authorization request response expires_in must be a positive integer"
+        )
+      }
+
+      list(request_uri = request_uri, expires_in = expires_in)
+    },
+    attributes = otel_client_attributes(
+      client = client,
+      shiny_session = shiny_session,
+      phase = "login.par",
+      extra = list(
+        oauth.client_auth_style = otel_client_auth_style(client),
+        oauth.extra_auth_params_count = otel_count_items(
+          client@provider@extra_auth_params
+        ),
+        oauth.extra_token_headers_count = otel_count_items(
+          client@provider@extra_token_headers
+        )
+      )
+    )
+  )
+}
+
+build_par_auth_url <- function(oauth_client, request_uri) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!is_valid_string(request_uri)) {
+    err_config("build_par_auth_url: 'request_uri' must be a valid string")
+  }
+
+  url_append_query_params(
+    oauth_client@provider@auth_url,
+    list(
+      client_id = oauth_client@client_id,
+      request_uri = request_uri
+    )
+  )
+}
+
+# Helper: build authorization URL with all params
+build_auth_url <- function(
+  oauth_client,
+  payload,
+  scopes,
+  pkce_code_challenge,
+  pkce_method,
+  nonce
+) {
+  params <- build_authorization_params(
+    oauth_client = oauth_client,
+    payload = payload,
+    scopes = scopes,
+    pkce_code_challenge = pkce_code_challenge,
+    pkce_method = pkce_method,
+    nonce = nonce
+  )
 
   url_append_query_params(oauth_client@provider@auth_url, params)
 }
@@ -1504,28 +1745,14 @@ swap_code_for_token_set <- function(
       }
 
       req <- httr2::request(client@provider@token_url)
-
-      tas <- client@provider@token_auth_style %||% "header"
-      if (identical(tas, "header")) {
-        req <- req |>
-          httr2::req_auth_basic(client@client_id, client@client_secret)
-      } else if (identical(tas, "body")) {
-        params$client_id <- client@client_id
-        # Only include client_secret if provided (public clients with PKCE may not have one)
-        if (is_valid_string(client@client_secret)) {
-          params$client_secret <- client@client_secret
-        }
-      } else if (
-        identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
-      ) {
-        params$client_id <- client@client_id
-        params$client_assertion_type <-
-          "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-        params$client_assertion <- build_client_assertion(
-          client,
-          aud = resolve_client_assertion_audience(client, req)
-        )
-      }
+      prepared <- apply_direct_client_auth(
+        req = req,
+        params = params,
+        client = client,
+        context = "token_exchange"
+      )
+      req <- prepared$req
+      params <- prepared$params
 
       # Apply defaults first; disable redirects to prevent leaking secrets
       req <- add_req_defaults(req)

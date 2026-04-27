@@ -11,6 +11,7 @@ oauth_provider(
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
+  par_url = NA_character_,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -52,6 +53,11 @@ only; used in logging and audit events}
 
 \item{revocation_url}{Token revocation endpoint URL (optional; RFC 7009)}
 
+\item{par_url}{Pushed Authorization Request (PAR) URL (optional; RFC 9126).
+When configured, authorization request parameters are pushed directly to the
+authorization server and the browser is redirected with the returned
+\code{request_uri} instead of the full request payload.}
+
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
 during ID token validation to verify the \code{iss} claim in the ID
@@ -60,8 +66,8 @@ JSON Web Key Set (JWKS) for verifying ID token signatures (typically via
 the OIDC discovery document located at \verb{/.well-known/openid-configuration}
 relative to the issuer URL)}
 
-\item{issuer_match}{Character scalar controlling how strictly shinyOAuth
-validates the discovery document's \code{issuer} against \code{issuer} when it later
+\item{issuer_match}{Character scalar controlling how strictly the discovery
+document's \code{issuer} is validated against \code{issuer} when it later
 performs runtime discovery to locate the JWKS URI.
 \itemize{
 \item \code{"url"} (default): require the full issuer URL to match after

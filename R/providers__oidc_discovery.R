@@ -23,7 +23,11 @@
 #'   (with PKCE), as well as JWT-based methods `private_key_jwt` and
 #'   `client_secret_jwt` per RFC 7523.
 #'
-#' - PKCE method discovery: shinyOAuth keeps `S256` as the default and does not
+#' - PAR metadata: when the discovery document advertises
+#'   `pushed_authorization_request_endpoint`, the resulting provider uses that
+#'   URL so authorization requests can use RFC 9126 PAR.
+#'
+#' - PKCE method discovery: this helper keeps `S256` as the default and does not
 #'   silently downgrade to `plain`. If discovery metadata explicitly omits
 #'   `S256`, discovery fails with a configuration error unless you explicitly
 #'   opt into `pkce_method = "plain"`.
@@ -203,6 +207,7 @@ oauth_provider_oidc_discover <- function(
         userinfo_url = endpoints$userinfo_url,
         introspection_url = endpoints$introspection_url,
         revocation_url = endpoints$revocation_url,
+        par_url = endpoints$par_url,
         issuer = iss,
         issuer_match = issuer_match,
         use_nonce = use_nonce,
@@ -358,12 +363,24 @@ oauth_provider_oidc_discover <- function(
 
   revocation_url <- disc[["revocation_endpoint"]] %||% NA_character_
 
+  par_url <- disc[["pushed_authorization_request_endpoint"]] %||% NA_character_
+
+  if (
+    isTRUE(disc[["require_pushed_authorization_requests"]]) &&
+      !is_valid_string(par_url)
+  ) {
+    err_parse(
+      "Discovery requires PAR but is missing pushed_authorization_request_endpoint"
+    )
+  }
+
   list(
     auth_url = auth_url,
     token_url = token_url,
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
-    revocation_url = revocation_url
+    revocation_url = revocation_url,
+    par_url = par_url
   )
 }
 
@@ -400,6 +417,7 @@ oauth_provider_oidc_discover <- function(
   validate_endpoint(endpoints$userinfo_url, allowed_hosts_vec)
   validate_endpoint(endpoints$introspection_url, allowed_hosts_vec)
   validate_endpoint(endpoints$revocation_url, allowed_hosts_vec)
+  validate_endpoint(endpoints$par_url, allowed_hosts_vec)
 
   invisible(TRUE)
 }

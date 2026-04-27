@@ -19,6 +19,10 @@
 #' @param userinfo_url User info endpoint URL (optional)
 #' @param introspection_url Token introspection endpoint URL (optional; RFC 7662)
 #' @param revocation_url Token revocation endpoint URL (optional; RFC 7009)
+#' @param par_url Pushed Authorization Request (PAR) URL (optional; RFC 9126).
+#'   When configured, authorization request parameters are pushed directly to the
+#'   authorization server and the browser is redirected with the returned
+#'   `request_uri` instead of the full request payload.
 #'
 #' @param issuer OIDC issuer URL (optional; required for ID token validation).
 #' This is the base URL that identifies the OpenID Provider (OP). It is used
@@ -27,8 +31,8 @@
 #' JSON Web Key Set (JWKS) for verifying ID token signatures (typically via
 #' the OIDC discovery document located at `/.well-known/openid-configuration`
 #' relative to the issuer URL)
-#' @param issuer_match Character scalar controlling how strictly shinyOAuth
-#' validates the discovery document's `issuer` against `issuer` when it later
+#' @param issuer_match Character scalar controlling how strictly the discovery
+#' document's `issuer` is validated against `issuer` when it later
 #' performs runtime discovery to locate the JWKS URI.
 #'
 #' - `"url"` (default): require the full issuer URL to match after
@@ -231,6 +235,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    par_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
       S7::class_character,
@@ -352,6 +360,10 @@ OAuthProvider <- S7::new_class(
       userinfo_url = list(val = self@userinfo_url, required = FALSE),
       introspection_url = list(val = self@introspection_url, required = FALSE),
       revocation_url = list(val = self@revocation_url, required = FALSE),
+      par_url = list(
+        val = self@par_url,
+        required = FALSE
+      ),
       issuer = list(val = self@issuer, required = FALSE)
     )
     for (nm in names(fields)) {
@@ -455,6 +467,8 @@ OAuthProvider <- S7::new_class(
       "response_type",
       "client_id",
       "redirect_uri",
+      "request_uri",
+      "request",
       "state",
       "scope",
       "code_challenge",
@@ -840,6 +854,7 @@ oauth_provider <- function(
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
+  par_url = NA_character_,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -883,7 +898,8 @@ oauth_provider <- function(
     list("token_url", token_url),
     list("userinfo_url", userinfo_url),
     list("introspection_url", introspection_url),
-    list("revocation_url", revocation_url)
+    list("revocation_url", revocation_url),
+    list("par_url", par_url)
   )) {
     u_val <- url_arg[[2]]
     if (!is.null(u_val) && (!is.character(u_val) || length(u_val) != 1L)) {
@@ -903,6 +919,7 @@ oauth_provider <- function(
   userinfo_url <- normalize_url(userinfo_url)
   introspection_url <- normalize_url(introspection_url)
   revocation_url <- normalize_url(revocation_url)
+  par_url <- normalize_url(par_url)
 
   if (is.null(jwks_cache)) {
     jwks_cache <- cachem::cache_mem(max_age = 3600)
@@ -1029,6 +1046,7 @@ oauth_provider <- function(
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
     revocation_url = revocation_url,
+    par_url = par_url,
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
