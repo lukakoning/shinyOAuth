@@ -336,6 +336,9 @@ build_auth_url <- function(
   if (length(scopes) > 0) {
     params$scope <- paste(scopes, collapse = " ")
   }
+  if (length(oauth_client@resource) > 0) {
+    params$resource <- oauth_client@resource
+  }
 
   # OIDC claims parameter (OIDC Core §5.5): JSON-encode if a list,
   # otherwise use as-is
@@ -415,9 +418,9 @@ build_auth_url <- function(
   }
 
   # Critically: drop NULLs so httr2 doesn't choke
-  params <- params[!vapply(params, is.null, logical(1))]
+  params <- compact_list(params)
 
-  httr2::url_modify(oauth_client@provider@auth_url, query = params)
+  url_append_query_params(oauth_client@provider@auth_url, params)
 }
 
 otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
@@ -1487,6 +1490,9 @@ swap_code_for_token_set <- function(
         redirect_uri = client@redirect_uri,
         code_verifier = code_verifier
       )
+      if (length(client@resource) > 0) {
+        params$resource <- client@resource
+      }
 
       if (length(client@provider@extra_token_params) > 0) {
         params <- c(params, client@provider@extra_token_params)
@@ -1527,10 +1533,10 @@ swap_code_for_token_set <- function(
       }
 
       # Drop NULL entries (e.g., code_verifier when PKCE disabled) before adding form body
-      params <- Filter(function(x) !is.null(x), params)
+      params <- compact_list(params)
 
       # Add form body without using !!! so it works with simple stubs
-      req <- do.call(httr2::req_body_form, c(list(req), params))
+      req <- req_body_form_encoded(req, params)
       req <- httr2::req_method(req, "POST")
 
       resp <- with_otel_span(

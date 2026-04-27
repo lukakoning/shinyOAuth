@@ -11,6 +11,7 @@ oauth_client(
   redirect_uri,
   require_callback_issuer = FALSE,
   scopes = character(0),
+  resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
@@ -66,6 +67,12 @@ to have a configured \code{issuer}. Default is \code{FALSE}.}
 \code{issuer}), shinyOAuth automatically prepends \code{openid} when it is missing;
 that effective scope set is what gets sent in the authorization request
 and used for later state and token-scope validation.}
+
+\item{resource}{Optional RFC 8707 resource indicator(s). Supply a character
+vector of absolute URIs to request audience-restricted tokens for one or
+more protected resources. Each value is sent as a repeated \code{resource}
+parameter on the authorization request, initial token exchange, and token
+refresh requests. Default is \code{character(0)}.}
 
 \item{claims}{OIDC claims request parameter (OIDC Core §5.5). Allows
 requesting specific claims from the UserInfo Endpoint and/or in the ID

@@ -1043,6 +1043,9 @@ refresh_token <- function(
           grant_type = "refresh_token",
           refresh_token = token@refresh_token
         )
+        if (length(oauth_client@resource) > 0) {
+          params$resource <- oauth_client@resource
+        }
         # Allow provider to add custom token params (mirrors login path)
         if (length(oauth_client@provider@extra_token_params) > 0) {
           params <- c(params, oauth_client@provider@extra_token_params)
@@ -1082,7 +1085,7 @@ refresh_token <- function(
         if (length(extra_headers)) {
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
-        req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- req_body_form_encoded(req, compact_list(params))
         req <- httr2::req_method(req, "POST")
         resp <- with_otel_span(
           "shinyOAuth.token.exchange.http",

@@ -112,6 +112,7 @@ make_test_client <- function(
   state_max_age = 600,
   state_payload_max_age = 300,
   scopes = NULL,
+  resource = character(0),
   claims = NULL,
   claims_validation = "none",
   required_acr_values = character(0),
@@ -134,6 +135,7 @@ make_test_client <- function(
     client_secret = "", # public client
     redirect_uri = "http://localhost:8100",
     scopes = scopes,
+    resource = resource,
     claims = claims,
     claims_validation = claims_validation,
     required_acr_values = required_acr_values,

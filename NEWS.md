@@ -50,6 +50,10 @@ deployments. Relatedly, `handle_callback()` now accepts `iss`, so advanced
 callers building around `prepare_call()` can supply the callback issuer and
 get the same client-level RFC 9207 check before token exchange.
 
+* `oauth_client()` now has native RFC 8707 `resource` support, so
+authorization, token exchange, and refresh requests can request
+audience-restricted tokens without dropping down to manual extra params.
+
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.

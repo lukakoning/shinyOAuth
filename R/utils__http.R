@@ -594,6 +594,91 @@ sanitize_http_summary <- function(summary) {
   summary
 }
 
+# Internal: percent-encode form/query params while preserving repeated keys
+encode_www_form_params <- function(params) {
+  if (!is.list(params) || length(params) == 0) {
+    return("")
+  }
+
+  nms <- names(params)
+  if (is.null(nms)) {
+    err_config("Form/query parameters must be supplied as a named list")
+  }
+
+  parts <- unlist(
+    lapply(seq_along(params), function(i) {
+      nm <- nms[[i]]
+      val <- params[[i]]
+
+      if (!is_valid_string(nm)) {
+        err_config("Form/query parameters must be supplied as a named list")
+      }
+      if (is.null(val) || length(val) == 0L) {
+        return(character())
+      }
+      if (is.list(val) && !inherits(val, "AsIs")) {
+        err_config(c(
+          "x" = "Form/query parameter values must be atomic vectors",
+          "i" = paste0(
+            "Parameter ",
+            sQuote(nm),
+            " used an unsupported list value."
+          )
+        ))
+      }
+
+      val_chr <- as.character(val)
+      val_chr <- val_chr[!is.na(val_chr)]
+      if (length(val_chr) == 0L) {
+        return(character())
+      }
+
+      nm_enc <- utils::URLencode(nm, reserved = TRUE)
+      paste0(nm_enc, "=", utils::URLencode(val_chr, reserved = TRUE))
+    }),
+    use.names = FALSE
+  )
+
+  paste(parts, collapse = "&")
+}
+
+# Internal: add a form body while preserving repeated keys for vector values
+req_body_form_encoded <- function(req, params) {
+  params <- compact_list(params)
+  if (!length(params)) {
+    return(req)
+  }
+
+  use_raw <- anyDuplicated(names(params)) > 0L ||
+    any(vapply(
+      params,
+      function(val) {
+        if (is.null(val)) {
+          return(FALSE)
+        }
+        if (is.list(val) && !inherits(val, "AsIs")) {
+          return(TRUE)
+        }
+
+        val_chr <- as.character(val)
+        val_chr <- val_chr[!is.na(val_chr)]
+        length(val_chr) != 1L
+      },
+      logical(1)
+    ))
+
+  if (!use_raw) {
+    return(do.call(httr2::req_body_form, c(list(req), params)))
+  }
+
+  body <- encode_www_form_params(params)
+  httr2::req_body_raw(
+    req,
+    body = charToRaw(enc2utf8(body)),
+    type = "application/x-www-form-urlencoded"
+  )
+}
+
 # Internal: redact sensitive OAuth params from a query string
 # Returns the redacted query string
 redact_query_string <- function(qs) {

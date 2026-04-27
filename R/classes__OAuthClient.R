@@ -83,6 +83,12 @@
 #'   that effective scope set is what gets sent in the authorization request
 #'   and used for later state and token-scope validation.
 #'
+#' @param resource Optional RFC 8707 resource indicator(s). Supply a character
+#'   vector of absolute URIs to request audience-restricted tokens for one or
+#'   more protected resources. Each value is sent as a repeated `resource`
+#'   parameter on the authorization request, initial token exchange, and token
+#'   refresh requests. Default is `character(0)`.
+#'
 #' @param state_store State storage backend. Defaults to `cachem::cache_mem(max_age = 300)`.
 #'    Alternative backends should use [custom_cache()] with an atomic `$take()`
 #'    method for replay-safe single-use state consumption. The backend
@@ -285,6 +291,10 @@ OAuthClient <- S7::new_class(
       default = FALSE
     ),
     scopes = S7::class_character,
+    resource = S7::new_property(
+      S7::class_character,
+      default = character(0)
+    ),
     # Optional OIDC claims request parameter (OIDC Core §5.5):
     # can be NULL (no claims), a list (auto JSON-encoded), or a character
     # string (pre-encoded JSON). When a list, it is JSON-encoded using
@@ -746,6 +756,11 @@ OAuthClient <- S7::new_class(
       return(paste0("OAuthClient: scopes validation error: ", scopes_valid))
     }
 
+    resource_problem <- resource_indicator_problem(self@resource)
+    if (!is.null(resource_problem)) {
+      return(paste0("OAuthClient: ", resource_problem))
+    }
+
     # Validate claims
     if (!is.null(self@claims)) {
       # Must be either a list or a single non-empty character string
@@ -930,6 +945,7 @@ oauth_client <- function(
   redirect_uri,
   require_callback_issuer = FALSE,
   scopes = character(0),
+  resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
@@ -994,6 +1010,7 @@ oauth_client <- function(
     validate_scopes(as.character(scopes_for_validation))
   }
   scopes <- as_scope_tokens(scopes %||% NULL)
+  resource <- resource %||% character(0)
 
   OAuthClient(
     provider = provider,
@@ -1002,6 +1019,7 @@ oauth_client <- function(
     redirect_uri = redirect_uri,
     require_callback_issuer = isTRUE(require_callback_issuer),
     scopes = scopes,
+    resource = resource,
     claims = claims,
     state_store = state_store,
     state_payload_max_age = state_payload_max_age,
