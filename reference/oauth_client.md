@@ -13,6 +13,7 @@ oauth_client(
   redirect_uri,
   require_callback_issuer = FALSE,
   scopes = character(0),
+  resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
@@ -86,6 +87,14 @@ oauth_client(
   missing; that effective scope set is what gets sent in the
   authorization request and used for later state and token-scope
   validation.
+
+- resource:
+
+  Optional RFC 8707 resource indicator(s). Supply a character vector of
+  absolute URIs to request audience-restricted tokens for one or more
+  protected resources. Each value is sent as a repeated `resource`
+  parameter on the authorization request, initial token exchange, and
+  token refresh requests. Default is `character(0)`.
 
 - claims:
 

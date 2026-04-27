@@ -54,6 +54,7 @@
 <span>  <span class="va">redirect_uri</span>,</span>
 <span>  require_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
 <span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
@@ -119,6 +120,14 @@ to have a configured <code>issuer</code>. Default is <code>FALSE</code>.</p></dd
 <code>issuer</code>), shinyOAuth automatically prepends <code>openid</code> when it is missing;
 that effective scope set is what gets sent in the authorization request
 and used for later state and token-scope validation.</p></dd>
+
+
+<dt id="arg-resource">resource<a class="anchor" aria-label="anchor" href="#arg-resource"></a></dt>
+<dd><p>Optional RFC 8707 resource indicator(s). Supply a character
+vector of absolute URIs to request audience-restricted tokens for one or
+more protected resources. Each value is sent as a repeated <code>resource</code>
+parameter on the authorization request, initial token exchange, and token
+refresh requests. Default is <code>character(0)</code>.</p></dd>
 
 
 <dt id="arg-claims">claims<a class="anchor" aria-label="anchor" href="#arg-claims"></a></dt>

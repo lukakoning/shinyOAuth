@@ -2,6 +2,11 @@
 
 ## shinyOAuth (development version)
 
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  now has first-class RFC 8707 `resource` support, so authorization,
+  token exchange, and refresh requests can request audience-restricted
+  tokens without dropping down to manual extra params.
+
 - Added DPoP token support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
