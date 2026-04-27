@@ -162,6 +162,10 @@
   an invalidated credential, causing `invalid_grant` errors or
   triggering refresh-token replay detection.
 
+- `OAuthToken` and `OAuthClient` now print with redacted
+  token/secret/key previews instead of exposing full credential material
+  in default console output.
+
 ## shinyOAuth 0.4.0
 
 CRAN release: 2026-02-14

@@ -75,6 +75,7 @@
 <li><p>Missing <code>expires_in</code> values now default to a finite 3600-second fallback rather than an effectively indefinite session. Override this with <code>options(shinyOAuth.default_expires_in = &lt;seconds&gt;)</code>, and use <code>oauth_module_server(reauth_after_seconds = ...)</code> when you need a stricter session-age cap.</p></li>
 <li><p><code>err_http()</code> now guards against oversized HTTP error bodies before hashing or JSON parsing, so large chunked or misleading error responses now trip the existing body-size limit consistently.</p></li>
 <li><p>Token exchange and refresh requests no longer retry on transport errors or transient HTTP statuses (408/429/5xx). Authorization codes are single-use and refresh tokens may be rotated on each use; retrying after the server has already committed the first request would replay an invalidated credential, causing <code>invalid_grant</code> errors or triggering refresh-token replay detection.</p></li>
+<li><p><code>OAuthToken</code> and <code>OAuthClient</code> now print with redacted token/secret/key previews instead of exposing full credential material in default console output.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="shinyoauth-040">shinyOAuth 0.4.0<a class="anchor" aria-label="anchor" href="#shinyoauth-040"></a></h2><p class="text-muted">CRAN release: 2026-02-14</p>
