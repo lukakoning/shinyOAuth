@@ -1,9 +1,5 @@
 # shinyOAuth (development version)
 
-* `OAuthProvider` now validates custom `jwks_cache$get()` signatures without
-calling the cache during construction, avoiding side effects in duck-typed
-cache backends.
-
 * Added DPoP token support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
@@ -69,7 +65,11 @@ accepted if `userinfo_id_token_match` was not enabled. The signed-JWT path
 (`validate_signed_userinfo_claims()`) also now checks `sub` alongside the
 existing `iss`/`aud` validation.
 
-* `oauth_provider(extra_auth_params = list(response_mode = ...))` now fails
+* `OAuthProvider` now validates custom `jwks_cache$get()` signatures without
+calling the cache during construction, avoiding side effects in duck-typed
+cache backends.
+
+* `OAuthProvider(extra_auth_params = list(response_mode = ...))` now fails
 fast unless `response_mode = "query"`. Plain Shiny callback URLs reject POST
 requests, so `response_mode = "form_post"` was previously allowed but led to a
 broken callback round-trip instead of a clear configuration error.
@@ -86,16 +86,14 @@ so both provider discovery and runtime JWKS fetches apply the same rule:
 `url` for exact issuer URL matching, `host` for scheme-and-host matching,
 or `none` to skip the discovery issuer check.
 
-* OIDC discovery now fails fast when metadata advertises PKCE methods but omits
-`S256`. shinyOAuth keeps `S256` as the default and only allows a downgrade to
-`plain` when you pass `pkce_method = "plain"` explicitly.
-
-* OIDC discovery now fails fast when `id_token_validation = TRUE` but the
-discovery document omits `jwks_uri`, surfacing a configuration error during
-provider setup instead of a later JWKS fetch failure.
-
-* OIDC discovery endpoint validation now rejects non-scalar endpoint metadata
-values with a configuration error.
+* `oauth_provider_oidc_discover()` now:
+  - Fails fast when metadata advertises PKCE methods but omits
+  `S256`. shinyOAuth keeps `S256` as the default and only allows a downgrade to
+  `plain` when you pass `pkce_method = "plain"` explicitly.
+  - Fails fast when `id_token_validation = TRUE` but the
+  discovery document omits `jwks_uri`, surfacing a configuration error during
+  provider setup instead of a later JWKS fetch failure.
+  - Rejects non-scalar endpoint metadata values with a configuration error.
 
 * `oauth_provider_oidc()` now trims trailing slashes from `base_url` before
 deriving endpoint URLs and the configured `issuer`, avoiding valid ID tokens
