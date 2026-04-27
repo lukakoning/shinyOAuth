@@ -191,6 +191,45 @@ test_that("prepare_call preserves repeated resource indicators in PAR body", {
   expect_match(body_text, "resource=urn%3Aexample%3Aledger")
 })
 
+test_that("prepare_call forwards extra auth params into the PAR body", {
+  cli <- make_par_test_client(
+    extra_auth_params = list(
+      prompt = "login",
+      custom_param = "value-1",
+      custom_multi = c("alpha", "beta")
+    )
+  )
+  body_text <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_text <<- request_body_text(req)
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(auth_url, "request_uri=")
+  expect_false(grepl("[?&]prompt=", auth_url))
+  expect_false(grepl("[?&]custom_param=", auth_url))
+  expect_false(grepl("[?&]custom_multi=", auth_url))
+
+  expect_match(body_text, "prompt=login")
+  expect_match(body_text, "custom_param=value-1")
+  expect_identical(count_fixed_matches(body_text, "custom_multi="), 2L)
+  expect_match(body_text, "custom_multi=alpha")
+  expect_match(body_text, "custom_multi=beta")
+})
+
 test_that("PAR response requires request_uri and expires_in", {
   cli <- make_par_test_client()
 

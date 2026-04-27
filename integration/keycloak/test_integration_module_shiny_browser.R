@@ -6,7 +6,11 @@
 # Therefore, we read authentication state from the page DOM directly
 # This is suboptimal, but works for E2E testing purposes here
 
-wait_for_login_or_auth_result <- function(drv, timeout = 10000, interval = 0.25) {
+wait_for_login_or_auth_result <- function(
+  drv,
+  timeout = 10000,
+  interval = 0.25
+) {
   deadline <- Sys.time() + (timeout / 1000)
 
   while (Sys.time() < deadline) {
@@ -46,7 +50,10 @@ wait_for_login_or_auth_result <- function(drv, timeout = 10000, interval = 0.25)
     Sys.sleep(interval)
   }
 
-  stop("Timed out waiting for a Keycloak login form or auth result", call. = FALSE)
+  stop(
+    "Timed out waiting for a Keycloak login form or auth result",
+    call. = FALSE
+  )
 }
 
 testthat::test_that("Shiny module E2E in headless browser against Keycloak", {

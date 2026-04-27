@@ -24,6 +24,75 @@ testthat::test_that("Keycloak discovery keeps local HTTP PAR under the standard 
   )
 })
 
+testthat::test_that("Keycloak PAR keeps login_hint extra auth params", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(
+    use_par = TRUE,
+    extra_auth_params = list(
+      prompt = "login",
+      login_hint = "bob"
+    )
+  )
+  client <- make_public_client(prov)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      inspect_auth_url <- values$build_auth_url()
+
+      testthat::expect_match(inspect_auth_url, "[?&]request_uri=")
+      testthat::expect_false(grepl("[?&]prompt=", inspect_auth_url))
+      testthat::expect_false(grepl("[?&]login_hint=", inspect_auth_url))
+
+      login_resp <- httr2::request(inspect_auth_url) |>
+        httr2::req_headers(Accept = "text/html") |>
+        httr2::req_perform()
+
+      doc <- xml2::read_html(httr2::resp_body_string(login_resp))
+      username_input <- rvest::html_element(doc, "input[name='username']")
+      username_value <- rvest::html_attr(username_input, "value")
+      if (
+        !is.character(username_value) ||
+          length(username_value) != 1L ||
+          is.na(username_value)
+      ) {
+        username_value <- ""
+      }
+
+      testthat::expect_identical(username_value, "bob")
+
+      auth_url <- values$build_auth_url()
+
+      res <- perform_login_form_as(
+        auth_url,
+        username = "bob",
+        password = "bob",
+        redirect_uri = client@redirect_uri
+      )
+
+      values$.process_query(paste0(
+        "?code=",
+        utils::URLencode(res$code),
+        "&state=",
+        utils::URLencode(res$state_payload)
+      ))
+      session$flushReact()
+
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_false(is.null(values$token))
+      testthat::expect_true(nzchar(values$token@access_token))
+      testthat::expect_identical(
+        values$token@userinfo$preferred_username,
+        "bob"
+      )
+    }
+  )
+})
+
 testthat::test_that("Keycloak PAR happy path (public client)", {
   skip_common()
   local_test_options()
