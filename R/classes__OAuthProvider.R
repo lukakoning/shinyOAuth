@@ -570,20 +570,20 @@ OAuthProvider <- S7::new_class(
         )
       )
     }
-    # Probe/inspect signatures for robustness
-    # - $get must accept a named `missing` argument (or `...`); probe-call
-    jget_probe <- try(
-      self@jwks_cache$get(
-        key = "__jwks_sig_probe__",
-        missing = NULL
-      ),
-      silent = TRUE
-    )
-    if (inherits(jget_probe, "try-error")) {
-      return(paste0(
-        "OAuthProvider: jwks_cache$get must accept argument 'missing' (expected signature get(key, missing = NULL)); got error: ",
-        as.character(jget_probe)
-      ))
+    # Robustness: verify method signatures/compatibility.
+    # - $get must accept a named `missing` argument (or `...`).
+    #   Validated via formals inspection (no probe-call) to avoid triggering
+    #   side-effects in stateful backends or test wrappers.
+    jget_formals <- try(formals(self@jwks_cache$get), silent = TRUE)
+    jget_args <- if (!inherits(jget_formals, "try-error")) {
+      names(jget_formals)
+    } else {
+      character()
+    }
+    if (!("..." %in% jget_args || "missing" %in% jget_args)) {
+      return(
+        "OAuthProvider: jwks_cache$get must accept argument 'missing' (expected signature get(key, missing = NULL))"
+      )
     }
     # - $set must accept (key, value) or have ...
     jset_formals <- try(formals(self@jwks_cache$set), silent = TRUE)

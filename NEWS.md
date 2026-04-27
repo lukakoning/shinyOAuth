@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `OAuthProvider` now validates custom `jwks_cache$get()` signatures without
+calling the cache during construction, avoiding side effects in duck-typed
+cache backends.
+
 * Added DPoP token support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
