@@ -1060,7 +1060,7 @@ handle_callback_internal <- function(
           )
         }
 
-        # Validate essential claims in userinfo (OIDC Core §5.5)
+        # Validate requested claims in userinfo (OIDC Core §5.5)
         validate_essential_claims(oauth_client, userinfo, "userinfo")
       }
 
@@ -1960,11 +1960,12 @@ verify_token_set <- function(
         }
       }
 
-      # Validate essential claims in ID token (OIDC Core §5.5) ---------------------
+      # Validate requested claims in ID token (OIDC Core §5.5) ---------------------
 
-      # When claims_validation is enabled and the client requested essential claims
-      # for id_token, verify they are present in the decoded ID token payload.
-      # This applies to both initial login and refresh (if a new ID token is returned).
+      # When claims_validation is enabled and the client requested essential
+      # claims or explicit claim values for id_token, verify the decoded ID token
+      # payload satisfies those requests. This applies to both initial login and
+      # refresh (if a new ID token is returned).
       if (isTRUE(id_token_present)) {
         id_payload <- tryCatch(
           parse_jwt_payload(token_set[["id_token"]]),
@@ -2152,32 +2153,46 @@ verify_token_type_allowlist <- function(client, token_set) {
 
 # Claims validation (OIDC Core §5.5) ------------------------------------------
 
-# Extract essential claim names from a claims specification for a given target
-# (either "id_token" or "userinfo"). Returns a character vector of claim names
-# that have essential = TRUE, or character(0) if none.
-extract_essential_claims <- function(claims_spec, target) {
+# Parse a client claims specification supplied as a list or JSON string.
+parse_claims_spec <- function(claims_spec) {
   if (is.null(claims_spec)) {
-    return(character(0))
+    return(NULL)
   }
 
-  # If claims_spec is a JSON string, parse it
   if (is.character(claims_spec)) {
-    parsed <- tryCatch(
-      jsonlite::fromJSON(claims_spec, simplifyVector = FALSE),
-      error = function(e) NULL
+    return(
+      tryCatch(
+        jsonlite::fromJSON(claims_spec, simplifyVector = FALSE),
+        error = function(e) NULL
+      )
     )
-    if (is.null(parsed)) {
-      return(character(0))
-    }
-    claims_spec <- parsed
   }
+
+  claims_spec
+}
+
+# Extract claim entries for a given target (either "id_token" or "userinfo").
+extract_target_claims <- function(claims_spec, target) {
+  claims_spec <- parse_claims_spec(claims_spec)
 
   if (!is.list(claims_spec)) {
-    return(character(0))
+    return(list())
   }
 
   target_claims <- claims_spec[[target]]
   if (!is.list(target_claims) || length(target_claims) == 0) {
+    return(list())
+  }
+
+  target_claims
+}
+
+# Extract essential claim names from a claims specification for a given target
+# (either "id_token" or "userinfo"). Returns a character vector of claim names
+# that have essential = TRUE, or character(0) if none.
+extract_essential_claims <- function(claims_spec, target) {
+  target_claims <- extract_target_claims(claims_spec, target)
+  if (length(target_claims) == 0) {
     return(character(0))
   }
 
@@ -2194,7 +2209,86 @@ extract_essential_claims <- function(claims_spec, target) {
   essential_names
 }
 
-# Validate that essential claims are present in the response.
+extract_requested_claim_values <- function(entry) {
+  if (!is.list(entry) || length(entry) == 0) {
+    return(list())
+  }
+
+  requested <- list()
+
+  if ("value" %in% names(entry)) {
+    requested <- c(requested, list(entry$value))
+  }
+
+  if ("values" %in% names(entry) && !is.null(entry$values)) {
+    values <- entry$values
+    if (is.list(values)) {
+      value_names <- names(values)
+      if (!is.null(value_names) && any(nzchar(value_names))) {
+        requested <- c(requested, list(values))
+      } else {
+        requested <- c(requested, unname(values))
+      }
+    } else if (length(values) > 0) {
+      requested <- c(requested, as.list(unname(values)))
+    }
+  }
+
+  requested
+}
+
+extract_claim_value_constraints <- function(claims_spec, target) {
+  target_claims <- extract_target_claims(claims_spec, target)
+  if (length(target_claims) == 0) {
+    return(list())
+  }
+
+  constraints <- list()
+  for (nm in names(target_claims)) {
+    requested <- extract_requested_claim_values(target_claims[[nm]])
+    if (length(requested) > 0) {
+      constraints[[nm]] <- requested
+    }
+  }
+
+  constraints
+}
+
+canonicalize_claim_value <- function(value) {
+  encoded <- tryCatch(
+    jsonlite::toJSON(
+      value,
+      auto_unbox = TRUE,
+      null = "null",
+      na = "null",
+      digits = NA
+    ),
+    error = function(e) NULL
+  )
+
+  if (!is.null(encoded)) {
+    return(as.character(encoded))
+  }
+
+  paste(capture.output(str(value, give.attr = FALSE)), collapse = " ")
+}
+
+claim_matches_requested_values <- function(actual, requested) {
+  actual_value <- canonicalize_claim_value(actual)
+  requested_values <- vapply(requested, canonicalize_claim_value, character(1))
+  actual_value %in% requested_values
+}
+
+format_claim_value_expectation <- function(requested) {
+  rendered <- vapply(requested, canonicalize_claim_value, character(1))
+  if (length(rendered) == 1) {
+    return(rendered[[1]])
+  }
+
+  paste0("one of ", paste(rendered, collapse = ", "))
+}
+
+# Validate that requested claims are satisfied in the response.
 # @param client OAuthClient
 # @param claims_present Named list (decoded ID token payload or userinfo response)
 # @param target "id_token" or "userinfo"
@@ -2205,41 +2299,99 @@ validate_essential_claims <- function(client, claims_present, target) {
   }
 
   essential <- extract_essential_claims(client@claims, target)
-  if (length(essential) == 0) {
+  value_constraints <- extract_claim_value_constraints(client@claims, target)
+  if (length(essential) == 0 && length(value_constraints) == 0) {
     return(invisible(NULL))
   }
 
-  # claims_present must be a named list
   if (!is.list(claims_present) || length(claims_present) == 0) {
-    # No claims at all - all essential claims are missing
-    missing_claims <- essential
+    present_names <- character(0)
   } else {
-    present_names <- names(claims_present)
-    missing_claims <- setdiff(essential, present_names)
+    present_names <- names(claims_present) %||% character(0)
   }
 
-  if (length(missing_claims) == 0) {
+  missing_claims <- setdiff(essential, present_names)
+
+  value_mismatches <- character(0)
+  if (length(value_constraints) > 0) {
+    for (claim_name in names(value_constraints)) {
+      expected_values <- value_constraints[[claim_name]]
+
+      if (!claim_name %in% present_names) {
+        if (!claim_name %in% missing_claims) {
+          value_mismatches <- c(
+            value_mismatches,
+            paste0(
+              claim_name,
+              " is missing (expected ",
+              format_claim_value_expectation(expected_values),
+              ")"
+            )
+          )
+        }
+        next
+      }
+
+      actual_value <- claims_present[[claim_name]]
+      if (!claim_matches_requested_values(actual_value, expected_values)) {
+        value_mismatches <- c(
+          value_mismatches,
+          paste0(
+            claim_name,
+            " expected ",
+            format_claim_value_expectation(expected_values),
+            " but got ",
+            canonicalize_claim_value(actual_value)
+          )
+        )
+      }
+    }
+  }
+
+  if (length(missing_claims) == 0 && length(value_mismatches) == 0) {
     return(invisible(NULL))
   }
 
   target_label <- if (identical(target, "id_token")) "ID token" else "userinfo"
-  msg <- paste0(
-    "Essential claims missing from ",
-    target_label,
-    " response (OIDC Core \u00a75.5): ",
-    paste(missing_claims, collapse = ", ")
+  msg_parts <- character(0)
+  if (length(missing_claims) > 0) {
+    msg_parts <- c(
+      msg_parts,
+      paste0(
+        "Essential claims missing from ",
+        target_label,
+        " response (OIDC Core \u00a75.5): ",
+        paste(missing_claims, collapse = ", ")
+      )
+    )
+  }
+  if (length(value_mismatches) > 0) {
+    msg_parts <- c(
+      msg_parts,
+      paste0(
+        "Requested claim values not satisfied in ",
+        target_label,
+        " response (OIDC Core \u00a75.5): ",
+        paste(value_mismatches, collapse = "; ")
+      )
+    )
+  }
+  msg <- paste(msg_parts, collapse = ". ")
+
+  guidance <- paste(
+    "Set claims_validation = 'warn' or 'none' to allow unsatisfied claim requests"
   )
 
   if (identical(mode, "strict")) {
     if (identical(target, "id_token")) {
       err_id_token(c(
         "x" = msg,
-        "i" = "Set claims_validation = 'warn' or 'none' to allow missing essential claims"
+        "i" = guidance
       ))
     } else {
       err_userinfo(c(
         "x" = msg,
-        "i" = "Set claims_validation = 'warn' or 'none' to allow missing essential claims"
+        "i" = guidance
       ))
     }
   } else if (identical(mode, "warn")) {

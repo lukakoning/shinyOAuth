@@ -1,5 +1,5 @@
 # Test claims_validation modes: "strict", "warn", "none"
-# Validates that essential claims requested via the OIDC claims parameter
+# Validates that requested claims supplied via the OIDC claims parameter
 # (OIDC Core §5.5) are checked against returned ID token / userinfo.
 
 # --- Unit tests for extract_essential_claims() --------------------------------
@@ -223,18 +223,18 @@ test_that("validate_essential_claims: 'warn' mode does not error", {
   )
 })
 
-test_that("validate_essential_claims: skips when no essential claims in spec", {
+test_that("validate_essential_claims: skips when no enforceable claim requirements in spec", {
   cli <- make_test_client(
     claims = list(
       id_token = list(
         email = NULL,
-        acr = list(values = c("something"))
+        profile = list(locale = "nl-BE")
       )
     ),
     claims_validation = "strict"
   )
 
-  # No essential claims requested -> should not error even in strict mode
+  # No essential or value/value claim constraints -> nothing to validate
   expect_no_error(
     shinyOAuth:::validate_essential_claims(cli, list(sub = "user1"), "id_token")
   )
@@ -299,6 +299,92 @@ test_that("validate_essential_claims: partially present essential claims", {
   )
 })
 
+test_that("validate_essential_claims: 'strict' mode errors on mismatched requested claim value", {
+  cli <- make_test_client(
+    claims = list(
+      id_token = list(
+        acr = list(values = c("urn:example:gold", "urn:example:silver"))
+      )
+    ),
+    claims_validation = "strict"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_essential_claims(
+      cli,
+      list(sub = "user1", acr = "urn:example:bronze"),
+      "id_token"
+    ),
+    regexp = "Requested claim values not satisfied"
+  )
+})
+
+test_that("validate_essential_claims: 'strict' mode errors when value-constrained claim is missing", {
+  cli <- make_test_client(
+    claims = list(
+      userinfo = list(
+        zoneinfo = list(value = "Europe/Brussels")
+      )
+    ),
+    claims_validation = "strict"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_essential_claims(
+      cli,
+      list(sub = "user1"),
+      "userinfo"
+    ),
+    regexp = "zoneinfo is missing"
+  )
+})
+
+test_that("validate_essential_claims: 'warn' mode warns on mismatched requested claim value", {
+  cli <- make_test_client(
+    claims = list(
+      id_token = list(
+        email_verified = list(value = TRUE)
+      )
+    ),
+    claims_validation = "warn"
+  )
+
+  rlang::reset_warning_verbosity("claims-validation-missing-id_token")
+
+  expect_warning(
+    shinyOAuth:::validate_essential_claims(
+      cli,
+      list(sub = "user1", email_verified = FALSE),
+      "id_token"
+    ),
+    regexp = "Requested claim values not satisfied"
+  )
+})
+
+test_that("validate_essential_claims: accepts matching requested claim values", {
+  cli <- make_test_client(
+    claims = list(
+      id_token = list(
+        acr = list(values = c("urn:example:gold", "urn:example:silver")),
+        email_verified = list(value = TRUE)
+      )
+    ),
+    claims_validation = "strict"
+  )
+
+  expect_no_error(
+    shinyOAuth:::validate_essential_claims(
+      cli,
+      list(
+        sub = "user1",
+        acr = "urn:example:silver",
+        email_verified = TRUE
+      ),
+      "id_token"
+    )
+  )
+})
+
 # --- Integration tests via handle_callback() ----------------------------------
 
 test_that("claims_validation = 'strict' errors during handle_callback for missing ID token essential claims", {
@@ -335,6 +421,68 @@ test_that("claims_validation = 'strict' errors during handle_callback for missin
           sub = "user1",
           iss = "https://example.com",
           aud = "abc",
+          exp = as.numeric(Sys.time()) + 3600,
+          iat = as.numeric(Sys.time())
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  )
+  fake_jwt <- paste(header, payload, "", sep = ".")
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(
+          access_token = "t",
+          token_type = "Bearer",
+          id_token = fake_jwt,
+          expires_in = 3600
+        )
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
+      )
+    ),
+    class = "shinyOAuth_id_token_error"
+  )
+})
+
+test_that("claims_validation = 'strict' errors during handle_callback for mismatched ID token claim values", {
+  cli <- make_test_client(
+    claims = list(
+      id_token = list(
+        acr = list(values = c("urn:example:gold", "urn:example:silver"))
+      )
+    ),
+    claims_validation = "strict"
+  )
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  header <- gsub(
+    "\n",
+    "",
+    jsonlite::base64url_enc(
+      jsonlite::toJSON(list(alg = "none", typ = "JWT"), auto_unbox = TRUE)
+    )
+  )
+  payload <- gsub(
+    "\n",
+    "",
+    jsonlite::base64url_enc(
+      jsonlite::toJSON(
+        list(
+          sub = "user1",
+          iss = "https://example.com",
+          aud = "abc",
+          acr = "urn:example:bronze",
           exp = as.numeric(Sys.time()) + 3600,
           iat = as.numeric(Sys.time())
         ),

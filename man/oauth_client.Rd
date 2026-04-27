@@ -211,19 +211,22 @@ missing.
 \item \code{"none"}: Skips scope validation entirely.
 }}
 
-\item{claims_validation}{Controls validation of essential claims requested
-via the \code{claims} parameter (OIDC Core §5.5). When \code{claims} includes
-entries with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, this setting
-determines what happens if those essential claims are missing from the
-returned ID token or userinfo response.
+\item{claims_validation}{Controls validation of requested claims supplied via
+the \code{claims} parameter (OIDC Core §5.5). When \code{claims} includes entries
+with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, or explicit \code{value}
+/ \code{values} constraints for individual claims, this setting determines what
+happens if the returned ID token or userinfo response does not satisfy
+those requests.
 \itemize{
 \item \code{"none"} (default): Skips claims validation entirely. This is the
 default because providers are expected to fulfil essential claims
 requests or return an error.
-\item \code{"warn"}: Emits a warning but continues authentication if essential
-claims are missing.
+\item \code{"warn"}: Emits a warning but continues authentication if requested
+essential claims are missing or requested claim values are not
+satisfied.
 \item \code{"strict"}: Throws an error if any requested essential claims are
-missing from the response.
+missing or requested claim \code{value} / \code{values} constraints are not
+satisfied by the response.
 }}
 
 \item{required_acr_values}{Optional character vector of acceptable
