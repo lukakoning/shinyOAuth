@@ -30,7 +30,7 @@ calling from async workers that lack access to the reactive domain.}
 
 \item{iss}{Optional RFC 9207 callback issuer (\code{iss}) from the authorization
 response. Pass this when one callback URL can receive responses from more
-than one authorization server. If \code{oauth_client@require_callback_issuer}
+than one authorization server. If \code{oauth_client@enforce_callback_issuer}
 is \code{TRUE}, this parameter is required and must match the configured
 provider issuer before any token exchange occurs.}
 }

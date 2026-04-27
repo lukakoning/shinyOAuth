@@ -6,7 +6,7 @@
 # Helper: build provider + client for callback iss tests
 make_iss_test_client <- function(
   issuer = "https://issuer.example.com",
-  require_callback_issuer = FALSE
+  enforce_callback_issuer = FALSE
 ) {
   prov <- oauth_provider(
     name = "oidc-iss-test",
@@ -24,7 +24,7 @@ make_iss_test_client <- function(
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
-    require_callback_issuer = require_callback_issuer,
+    enforce_callback_issuer = enforce_callback_issuer,
     scopes = c("openid"),
     scope_validation = "none",
     state_store = cachem::cache_mem(max_age = 600),
@@ -35,16 +35,16 @@ make_iss_test_client <- function(
   )
 }
 
-test_that("callback issuer strictness is configured on OAuthClient", {
+test_that("callback issuer enforcement is configured on OAuthClient", {
   expect_true(
-    "require_callback_issuer" %in% names(formals(shinyOAuth::oauth_client))
+    "enforce_callback_issuer" %in% names(formals(shinyOAuth::oauth_client))
   )
   expect_false(
-    "require_callback_issuer" %in%
+    "enforce_callback_issuer" %in%
       names(formals(shinyOAuth::oauth_module_server))
   )
   expect_false(
-    "require_callback_issuer" %in% names(formals(shinyOAuth::handle_callback))
+    "enforce_callback_issuer" %in% names(formals(shinyOAuth::handle_callback))
   )
 })
 
@@ -91,7 +91,7 @@ test_that("callback iss matching expected issuer is accepted", {
 
 test_that("callback iss matching expected issuer is accepted in strict mode", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client(require_callback_issuer = TRUE)
+  cli <- make_iss_test_client(enforce_callback_issuer = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -207,7 +207,7 @@ test_that("callback without iss parameter retains current behavior", {
 
 test_that("callback without iss parameter is rejected in strict mode", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client(require_callback_issuer = TRUE)
+  cli <- make_iss_test_client(enforce_callback_issuer = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -240,7 +240,7 @@ test_that("callback without iss parameter is rejected in strict mode", {
   )
 })
 
-test_that("strict callback issuer mode requires a configured provider issuer", {
+test_that("callback issuer enforcement requires a configured provider issuer", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   testthat::expect_error(
@@ -258,7 +258,7 @@ test_that("strict callback issuer mode requires a configured provider issuer", {
       client_id = "abc",
       client_secret = "",
       redirect_uri = "http://localhost:8100",
-      require_callback_issuer = TRUE,
+      enforce_callback_issuer = TRUE,
       scopes = character(0),
       scope_validation = "none",
       state_store = cachem::cache_mem(max_age = 600),
@@ -267,7 +267,7 @@ test_that("strict callback issuer mode requires a configured provider issuer", {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       )
     ),
-    "require_callback_issuer"
+    "enforce_callback_issuer"
   )
 })
 
@@ -463,7 +463,7 @@ test_that("handle_callback rejects mismatched callback iss before token exchange
 })
 
 test_that("handle_callback rejects missing iss in strict mode before token exchange", {
-  cli <- make_iss_test_client(require_callback_issuer = TRUE)
+  cli <- make_iss_test_client(enforce_callback_issuer = TRUE)
   browser_token <- valid_browser_token()
   url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
   enc <- parse_query_param(url, "state")
@@ -490,7 +490,7 @@ test_that("handle_callback rejects missing iss in strict mode before token excha
   )
 })
 
-test_that("handle_callback strict issuer mode requires a configured provider issuer", {
+test_that("handle_callback issuer enforcement requires a configured provider issuer", {
   testthat::expect_error(
     oauth_client(
       provider = oauth_provider(
@@ -506,7 +506,7 @@ test_that("handle_callback strict issuer mode requires a configured provider iss
       client_id = "abc",
       client_secret = "",
       redirect_uri = "http://localhost:8100",
-      require_callback_issuer = TRUE,
+      enforce_callback_issuer = TRUE,
       scopes = character(0),
       scope_validation = "none",
       state_store = cachem::cache_mem(max_age = 600),
@@ -516,6 +516,6 @@ test_that("handle_callback strict issuer mode requires a configured provider iss
       )
     ),
     class = "shinyOAuth_config_error",
-    regexp = "require_callback_issuer"
+    regexp = "enforce_callback_issuer"
   )
 })

@@ -1511,10 +1511,10 @@ oauth_module_server <- function(
       return(invisible(NULL))
     }
 
-    .validate_callback_issuer_or_set_error <- function(iss = NULL) {
+    .enforce_callback_issuer_or_set_error <- function(iss = NULL) {
       tryCatch(
         {
-          validate_callback_issuer(
+          enforce_callback_issuer(
             oauth_client = client,
             iss = iss
           )
@@ -1566,7 +1566,7 @@ oauth_module_server <- function(
       state,
       iss = NULL
     ) {
-      if (!isTRUE(.validate_callback_issuer_or_set_error(iss))) {
+      if (!isTRUE(.enforce_callback_issuer_or_set_error(iss))) {
         return(invisible(NULL))
       }
 
@@ -1780,7 +1780,7 @@ oauth_module_server <- function(
         add = TRUE
       )
 
-      if (!isTRUE(.validate_callback_issuer_or_set_error(iss))) {
+      if (!isTRUE(.enforce_callback_issuer_or_set_error(iss))) {
         return(invisible(NULL))
       }
 

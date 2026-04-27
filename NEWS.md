@@ -44,7 +44,7 @@ OAuth error callbacks too, deferring `?error=...` handling until the browser
 token is available and treating browser-token mismatches as `invalid_state`
 instead of surfacing provider-controlled error text.
 
-* `oauth_client()` now supports `require_callback_issuer = TRUE` to require
+* `oauth_client()` now supports `enforce_callback_issuer = TRUE` to require
 the RFC 9207 `iss` callback parameter for shared-redirect multi-issuer
 deployments. Relatedly, `handle_callback()` now accepts `iss`, so advanced
 callers building around `prepare_call()` can supply the callback issuer and

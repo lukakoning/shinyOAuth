@@ -71,9 +71,9 @@
 #'   refresh tokens.
 #'
 #' @param redirect_uri Redirect URI registered with provider
-#' @param require_callback_issuer Logical. When `TRUE`, require authorization
-#'   responses handled through this client to include an RFC 9207 `iss`
-#'   parameter and reject callbacks unless it exactly matches
+#' @param enforce_callback_issuer Logical. When `TRUE`, enforce that
+#'   authorization responses handled through this client include an RFC 9207
+#'   `iss` parameter and reject callbacks unless it exactly matches
 #'   `provider@issuer`. This is recommended when one callback URL can receive
 #'   responses from more than one authorization server. Requires the provider
 #'   to have a configured `issuer`. Default is `FALSE`.
@@ -286,7 +286,7 @@ OAuthClient <- S7::new_class(
       default = FALSE
     ),
     redirect_uri = S7::class_character,
-    require_callback_issuer = S7::new_property(
+    enforce_callback_issuer = S7::new_property(
       S7::class_logical,
       default = FALSE
     ),
@@ -374,20 +374,20 @@ OAuthClient <- S7::new_class(
     }
 
     if (
-      !(is.logical(self@require_callback_issuer) &&
-        length(self@require_callback_issuer) == 1L &&
-        !is.na(self@require_callback_issuer))
+      !(is.logical(self@enforce_callback_issuer) &&
+        length(self@enforce_callback_issuer) == 1L &&
+        !is.na(self@enforce_callback_issuer))
     ) {
       return(
-        "OAuthClient: require_callback_issuer must be a single non-NA logical"
+        "OAuthClient: enforce_callback_issuer must be a single non-NA logical"
       )
     }
     if (
-      isTRUE(self@require_callback_issuer) &&
+      isTRUE(self@enforce_callback_issuer) &&
         !is_valid_string(self@provider@issuer %||% NA_character_)
     ) {
       return(
-        "OAuthClient: require_callback_issuer = TRUE requires the provider to have an issuer configured"
+        "OAuthClient: enforce_callback_issuer = TRUE requires the provider to have an issuer configured"
       )
     }
 
@@ -943,7 +943,7 @@ oauth_client <- function(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
-  require_callback_issuer = FALSE,
+  enforce_callback_issuer = FALSE,
   scopes = character(0),
   resource = character(0),
   claims = NULL,
@@ -970,27 +970,27 @@ oauth_client <- function(
   )
 
   if (
-    !(is.logical(require_callback_issuer) &&
-      length(require_callback_issuer) == 1 &&
-      !is.na(require_callback_issuer))
+    !(is.logical(enforce_callback_issuer) &&
+      length(enforce_callback_issuer) == 1 &&
+      !is.na(enforce_callback_issuer))
   ) {
-    err_input("{.arg require_callback_issuer} must be a single non-NA logical.")
+    err_input("{.arg enforce_callback_issuer} must be a single non-NA logical.")
   }
   if (
-    isTRUE(require_callback_issuer) &&
+    isTRUE(enforce_callback_issuer) &&
       S7::S7_inherits(provider, OAuthProvider) &&
       !is_valid_string(provider@issuer %||% NA_character_)
   ) {
     provider_name <- provider@name %||% "(unnamed)"
     err_config(
       c(
-        "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
         "x" = paste0(
           "Provider {.val ",
           provider_name,
           "} does not expose a stable issuer identifier."
         ),
-        "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
       )
     )
   }
@@ -1017,7 +1017,7 @@ oauth_client <- function(
     client_id = client_id,
     client_secret = client_secret,
     redirect_uri = redirect_uri,
-    require_callback_issuer = isTRUE(require_callback_issuer),
+    enforce_callback_issuer = isTRUE(enforce_callback_issuer),
     scopes = scopes,
     resource = resource,
     claims = claims,

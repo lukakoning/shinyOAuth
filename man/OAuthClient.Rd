@@ -17,7 +17,7 @@ OAuthClient(
   dpop_signing_alg = NA_character_,
   dpop_require_access_token = FALSE,
   redirect_uri = character(0),
-  require_callback_issuer = FALSE,
+  enforce_callback_issuer = FALSE,
   scopes = character(0),
   resource = character(0),
   claims = NULL,
@@ -101,9 +101,9 @@ refresh tokens.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 
-\item{require_callback_issuer}{Logical. When \code{TRUE}, require authorization
-responses handled through this client to include an RFC 9207 \code{iss}
-parameter and reject callbacks unless it exactly matches
+\item{enforce_callback_issuer}{Logical. When \code{TRUE}, enforce that
+authorization responses handled through this client include an RFC 9207
+\code{iss} parameter and reject callbacks unless it exactly matches
 \code{provider@issuer}. This is recommended when one callback URL can receive
 responses from more than one authorization server. Requires the provider
 to have a configured \code{issuer}. Default is \code{FALSE}.}

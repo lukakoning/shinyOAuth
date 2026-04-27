@@ -270,7 +270,7 @@ method(format, OAuthClient) <- function(x, ...) {
       dpop_signing_alg = x@dpop_signing_alg,
       dpop_require_access_token = x@dpop_require_access_token,
       redirect_uri = x@redirect_uri,
-      require_callback_issuer = x@require_callback_issuer,
+      enforce_callback_issuer = x@enforce_callback_issuer,
       scopes = x@scopes,
       claims = x@claims,
       state_store = x@state_store,

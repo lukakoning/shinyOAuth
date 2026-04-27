@@ -487,7 +487,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 # Handle callback ---------------------------------------------------------
 
-validate_callback_issuer <- function(
+enforce_callback_issuer <- function(
   oauth_client,
   iss = NULL
 ) {
@@ -497,24 +497,29 @@ validate_callback_issuer <- function(
     err_input("{.arg iss} must be NULL or a non-empty string.")
   }
 
-  require_callback_issuer <- isTRUE(oauth_client@require_callback_issuer)
+  should_enforce_callback_issuer <- isTRUE(
+    oauth_client@enforce_callback_issuer
+  )
   expected_issuer <- oauth_client@provider@issuer %||% NA_character_
-  if (isTRUE(require_callback_issuer) && !is_valid_string(expected_issuer)) {
+  if (
+    isTRUE(should_enforce_callback_issuer) &&
+      !is_valid_string(expected_issuer)
+  ) {
     provider_name <- oauth_client@provider@name %||% "(unnamed)"
     err_config(
       c(
-        "{.arg require_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
         "x" = paste0(
           "Provider {.val ",
           provider_name,
           "} does not expose a stable issuer identifier."
         ),
-        "i" = "Disable {.arg require_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
       )
     )
   }
 
-  if (isTRUE(require_callback_issuer) && is.null(iss)) {
+  if (isTRUE(should_enforce_callback_issuer) && is.null(iss)) {
     err_invalid_state(
       "Callback missing required iss parameter (RFC 9207)",
       context = list(
@@ -555,7 +560,7 @@ validate_callback_issuer <- function(
 #'   calling from async workers that lack access to the reactive domain.
 #' @param iss Optional RFC 9207 callback issuer (`iss`) from the authorization
 #'   response. Pass this when one callback URL can receive responses from more
-#'   than one authorization server. If `oauth_client@require_callback_issuer`
+#'   than one authorization server. If `oauth_client@enforce_callback_issuer`
 #'   is `TRUE`, this parameter is required and must match the configured
 #'   provider issuer before any token exchange occurs.
 #'
@@ -622,7 +627,7 @@ handle_callback <- function(
     with_otel_span(
       "shinyOAuth.callback",
       {
-        validate_callback_issuer(
+        enforce_callback_issuer(
           oauth_client = oauth_client,
           iss = iss
         )
