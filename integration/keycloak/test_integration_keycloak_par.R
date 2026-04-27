@@ -11,7 +11,7 @@ testthat::test_that("Keycloak PAR happy path (public client)", {
   skip_common()
   local_test_options()
 
-  prov <- make_provider()
+  prov <- make_provider(use_par = TRUE)
   client <- make_public_client(prov)
 
   testthat::expect_true(
@@ -68,7 +68,7 @@ testthat::test_that("Keycloak PAR happy path (confidential client with header au
   skip_common()
   local_test_options()
 
-  prov <- make_provider(token_auth_style = "header")
+  prov <- make_provider(token_auth_style = "header", use_par = TRUE)
   client <- make_confidential_client(prov)
 
   testthat::expect_true(
@@ -121,7 +121,7 @@ testthat::test_that("Keycloak PAR happy path (client_secret_jwt)", {
   skip_common()
   local_test_options()
 
-  prov <- make_provider(token_auth_style = "client_secret_jwt")
+  prov <- make_provider(token_auth_style = "client_secret_jwt", use_par = TRUE)
   client <- make_client_secret_jwt_client(prov)
 
   testthat::expect_true(
@@ -167,7 +167,7 @@ testthat::test_that("Keycloak PAR happy path (private_key_jwt)", {
   skip_common()
   local_test_options()
 
-  prov <- make_provider(token_auth_style = "private_key_jwt")
+  prov <- make_provider(token_auth_style = "private_key_jwt", use_par = TRUE)
   client <- make_private_key_jwt_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
 

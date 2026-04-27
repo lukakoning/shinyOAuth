@@ -20,10 +20,12 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 make_provider <- function() {
-  shinyOAuth::oauth_provider_keycloak(
+  prov <- shinyOAuth::oauth_provider_keycloak(
     base_url = "http://localhost:8080",
     realm = "shinyoauth"
   )
+  prov@par_url <- NA_character_
+  prov
 }
 
 testthat::test_that("Keycloak PKCE happy path (public client)", {

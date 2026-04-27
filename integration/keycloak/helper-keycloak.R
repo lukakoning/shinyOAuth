@@ -230,14 +230,19 @@ to_abs <- function(base, path) {
 make_provider <- function(
   token_auth_style = "body",
   allowed_token_types = c("Bearer"),
+  use_par = FALSE,
   ...
 ) {
-  shinyOAuth::oauth_provider_oidc_discover(
+  prov <- shinyOAuth::oauth_provider_oidc_discover(
     issuer = get_issuer(),
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
     ...
   )
+  if (!isTRUE(use_par)) {
+    prov@par_url <- NA_character_
+  }
+  prov
 }
 
 make_dpop_private_key <- function() {

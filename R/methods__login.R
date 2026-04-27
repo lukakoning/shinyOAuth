@@ -149,26 +149,42 @@ prepare_call <- function(
 
         # Build authorization URL --------------------------------------------------
 
-        auth_params <- build_authorization_params(
-          oauth_client,
-          payload = payload,
-          scopes = effective_scopes,
-          pkce_code_challenge = pkce_code_challenge,
-          pkce_method = pkce_method,
-          nonce = nonce
+        auth_url <- tryCatch(
+          {
+            auth_params <- build_authorization_params(
+              oauth_client,
+              payload = payload,
+              scopes = effective_scopes,
+              pkce_code_challenge = pkce_code_challenge,
+              pkce_method = pkce_method,
+              nonce = nonce
+            )
+
+            par_endpoint <- oauth_client@provider@par_url %||% NA_character_
+
+            if (is_valid_string(par_endpoint)) {
+              par_resp <- push_authorization_request(
+                client = oauth_client,
+                params = auth_params
+              )
+              build_par_auth_url(oauth_client, par_resp$request_uri)
+            } else {
+              url_append_query_params(
+                oauth_client@provider@auth_url,
+                auth_params
+              )
+            }
+          },
+          error = function(e) {
+            try(
+              oauth_client@state_store$remove(state_cache_key(state)),
+              silent = TRUE
+            )
+            stop(e)
+          }
         )
 
         par_endpoint <- oauth_client@provider@par_url %||% NA_character_
-
-        auth_url <- if (is_valid_string(par_endpoint)) {
-          par_resp <- push_authorization_request(
-            client = oauth_client,
-            params = auth_params
-          )
-          build_par_auth_url(oauth_client, par_resp$request_uri)
-        } else {
-          url_append_query_params(oauth_client@provider@auth_url, auth_params)
-        }
 
         # Audit: redirect issuance (redacted identifiers only)
         try(
@@ -397,6 +413,7 @@ build_authorization_params <- function(
       "response_type",
       "client_id",
       "request_uri",
+      "request",
       "scope",
       "nonce",
       "code_challenge",
@@ -533,7 +550,32 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
         )
       }
 
+      status <- httr2::resp_status(resp)
+      if (!identical(as.integer(status), 201L)) {
+        err_http(
+          c(
+            "x" = "Pushed authorization request response must use HTTP 201 Created",
+            "i" = "RFC 9126 Section 2.2 requires status code 201 for successful PAR responses."
+          ),
+          resp,
+          context = list(phase = "pushed_authorization_request")
+        )
+      }
+
       check_resp_body_size(resp, context = "pushed authorization request")
+      content_type <- tolower(httr2::resp_header(resp, "content-type") %||% "")
+      if (!grepl("^application/json(?:\\s*;|$)", content_type, perl = TRUE)) {
+        err_parse(
+          c(
+            "x" = "Pushed authorization request response was not JSON",
+            "i" = paste0("Content-Type: ", content_type %||% "")
+          ),
+          context = list(
+            phase = "pushed_authorization_request",
+            content_type = content_type
+          )
+        )
+      }
       out <- try(
         httr2::resp_body_json(resp, simplifyVector = TRUE),
         silent = TRUE
@@ -543,7 +585,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       }
 
       request_uri <- out$request_uri %||% NULL
-      expires_in <- coerce_expires_in(out$expires_in %||% NULL)
+      expires_in <- out$expires_in %||% NULL
 
       if (!is_valid_string(request_uri)) {
         err_token(
@@ -558,6 +600,11 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       ) {
         err_token(
           "Pushed authorization request response missing valid expires_in"
+        )
+      }
+      if (!isTRUE(expires_in == floor(expires_in))) {
+        err_token(
+          "Pushed authorization request response expires_in must be a positive integer"
         )
       }
 

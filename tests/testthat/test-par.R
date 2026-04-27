@@ -134,6 +134,7 @@ test_that("PAR HTTP failures surface as PAR-specific errors", {
     shinyOAuth:::prepare_call(cli, valid_browser_token()),
     regexp = "Pushed authorization request failed|PAR rejected|invalid_request"
   )
+  expect_length(cli@state_store$keys(), 0L)
 })
 
 test_that("PAR rejects redirect responses", {
@@ -155,6 +156,7 @@ test_that("PAR rejects redirect responses", {
     shinyOAuth:::prepare_call(cli, valid_browser_token()),
     regexp = "Unexpected redirect response during pushed_authorization_request"
   )
+  expect_length(cli@state_store$keys(), 0L)
 })
 
 test_that("prepare_call preserves repeated resource indicators in PAR body", {
@@ -208,6 +210,7 @@ test_that("PAR response requires request_uri and expires_in", {
     shinyOAuth:::prepare_call(cli, valid_browser_token()),
     regexp = "request_uri"
   )
+  expect_length(cli@state_store$keys(), 0L)
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
@@ -227,9 +230,97 @@ test_that("PAR response requires request_uri and expires_in", {
     shinyOAuth:::prepare_call(cli, valid_browser_token()),
     regexp = "expires_in"
   )
+  expect_length(cli@state_store$keys(), 0L)
 })
 
-test_that("provider reserves request_uri", {
+test_that("PAR response requires 201 JSON with integer expires_in", {
+  cli <- make_par_test_client()
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "HTTP 201 Created|Status 200"
+  )
+  expect_length(cli@state_store$keys(), 0L)
+
+  cli <- make_par_test_client()
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "text/plain"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "not JSON|Content-Type"
+  )
+  expect_length(cli@state_store$keys(), 0L)
+
+  cli <- make_par_test_client()
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":"90"}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "expires_in"
+  )
+  expect_length(cli@state_store$keys(), 0L)
+
+  cli <- make_par_test_client()
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90.5}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "positive integer"
+  )
+  expect_length(cli@state_store$keys(), 0L)
+})
+
+test_that("provider reserves request_uri and request object parameters", {
   expect_error(
     oauth_provider(
       name = "example",
@@ -242,6 +333,20 @@ test_that("provider reserves request_uri", {
       extra_auth_params = list(request_uri = "urn:example:test")
     ),
     regexp = "request_uri"
+  )
+
+  expect_error(
+    oauth_provider(
+      name = "example",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      use_nonce = FALSE,
+      use_pkce = TRUE,
+      id_token_required = FALSE,
+      id_token_validation = FALSE,
+      extra_auth_params = list(request = "signed-request-object")
+    ),
+    regexp = "request"
   )
 
   cli <- make_par_test_client()

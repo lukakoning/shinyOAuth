@@ -468,6 +468,7 @@ OAuthProvider <- S7::new_class(
       "client_id",
       "redirect_uri",
       "request_uri",
+      "request",
       "state",
       "scope",
       "code_challenge",
