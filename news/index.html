@@ -43,6 +43,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
 <ul><li><p>Added DPoP token support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh/revocation/introspection requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
+<li><p>Added Pushed Authorization Request (‘PAR’, RFC 9126) support. Providers can now configure <code>par_url</code> directly or pick it up from OIDC discovery, and login flows will push the authorization request and redirect with the returned <code>request_uri</code>.</p></li>
 <li><p>Added OpenTelemetry (OTel) support (using the ‘otel’ package). ‘shinyOAuth’ now emits OTel logs from existing audit events and traces key OAuth operations such as module initialization, login/callback handling, token exchange/refresh, userinfo/introspection/revocation, and session-end cleanup. See <code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more information.</p></li>
 <li>
 <p>Observability and audit logging improvements:</p>

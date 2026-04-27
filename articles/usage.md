@@ -465,7 +465,12 @@ options:
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows
   overriding the specified authorization URL parameters. Default
   blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
-  `scope`, `code_challenge`, `code_challenge_method`, `nonce`, `claims`
+  `request_uri`, `request`, `scope`, `code_challenge`,
+  `code_challenge_method`, `nonce`, `claims`
+- `request` stays blocked by default because shinyOAuth does not
+  automatically build RFC 9101 Request Object JWTs; leave it reserved
+  unless you are intentionally taking responsibility for a fully custom
+  advanced flow.
 - `options(shinyOAuth.unblock_token_params = c(...))` – allows
   overriding the specified token exchange parameters. Default blocked:
   `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,

@@ -9,6 +9,11 @@
   proofs with nonce retry, and downstream helpers now preserve and use
   `token_type = "DPoP"` when the server returns it.
 
+- Added Pushed Authorization Request (‘PAR’, RFC 9126) support.
+  Providers can now configure `par_url` directly or pick it up from OIDC
+  discovery, and login flows will push the authorization request and
+  redirect with the returned `request_uri`.
+
 - Added OpenTelemetry (OTel) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback

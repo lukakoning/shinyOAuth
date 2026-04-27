@@ -169,7 +169,10 @@ discovery-advertised set.</p></li>
 (header), <code>client_secret_post</code> (body), public clients using <code>none</code>
 (with PKCE), as well as JWT-based methods <code>private_key_jwt</code> and
 <code>client_secret_jwt</code> per RFC 7523.</p></li>
-<li><p>PKCE method discovery: shinyOAuth keeps <code>S256</code> as the default and does not
+<li><p>PAR metadata: when the discovery document advertises
+<code>pushed_authorization_request_endpoint</code>, the resulting provider uses that
+URL so authorization requests can use RFC 9126 PAR.</p></li>
+<li><p>PKCE method discovery: this helper keeps <code>S256</code> as the default and does not
 silently downgrade to <code>plain</code>. If discovery metadata explicitly omits
 <code>S256</code>, discovery fails with a configuration error unless you explicitly
 opt into <code>pkce_method = "plain"</code>.</p>

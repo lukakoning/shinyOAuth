@@ -15,6 +15,7 @@ oauth_provider(
   userinfo_url = NA_character_,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
+  par_url = NA_character_,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -70,6 +71,13 @@ oauth_provider(
 
   Token revocation endpoint URL (optional; RFC 7009)
 
+- par_url:
+
+  Pushed Authorization Request (PAR) URL (optional; RFC 9126). When
+  configured, authorization request parameters are pushed directly to
+  the authorization server and the browser is redirected with the
+  returned `request_uri` instead of the full request payload.
+
 - issuer:
 
   OIDC issuer URL (optional; required for ID token validation). This is
@@ -82,9 +90,9 @@ oauth_provider(
 
 - issuer_match:
 
-  Character scalar controlling how strictly shinyOAuth validates the
-  discovery document's `issuer` against `issuer` when it later performs
-  runtime discovery to locate the JWKS URI.
+  Character scalar controlling how strictly the discovery document's
+  `issuer` is validated against `issuer` when it later performs runtime
+  discovery to locate the JWKS URI.
 
   - `"url"` (default): require the full issuer URL to match after
     trailing-slash normalization.

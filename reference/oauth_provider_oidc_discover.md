@@ -133,10 +133,14 @@ object configured from discovery
   (with PKCE), as well as JWT-based methods `private_key_jwt` and
   `client_secret_jwt` per RFC 7523.
 
-- PKCE method discovery: shinyOAuth keeps `S256` as the default and does
-  not silently downgrade to `plain`. If discovery metadata explicitly
-  omits `S256`, discovery fails with a configuration error unless you
-  explicitly opt into `pkce_method = "plain"`.
+- PAR metadata: when the discovery document advertises
+  `pushed_authorization_request_endpoint`, the resulting provider uses
+  that URL so authorization requests can use RFC 9126 PAR.
+
+- PKCE method discovery: this helper keeps `S256` as the default and
+  does not silently downgrade to `plain`. If discovery metadata
+  explicitly omits `S256`, discovery fails with a configuration error
+  unless you explicitly opt into `pkce_method = "plain"`.
 
   Important: discovery metadata lists methods supported across the
   provider, not per-client provisioning. This helper does not

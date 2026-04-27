@@ -75,15 +75,36 @@ with the following data:
 All this data will be used for validation during the callback
 processing.
 
+If the provider has a `par_url` configured, the module uses Pushed
+Authorization Requests (PAR, RFC 9126) before redirecting the browser.
+The same authorization request parameters are first sent
+server-to-server to the provider’s PAR endpoint as a form-encoded POST.
+Client authentication for that POST follows the provider’s configured
+token authentication style: HTTP Basic, body client secret,
+`client_secret_jwt`, or `private_key_jwt`.
+
+For PAR, the provider must return a successful JSON response with HTTP
+`201 Created`, including a `request_uri` and a positive integer
+`expires_in`. The browser redirect is then built from only `client_id`
+and that `request_uri`; the sealed `state`, `redirect_uri`, PKCE values,
+nonce, scopes, claims, resources, and other authorization parameters
+stay in the back-channel pushed request instead of appearing in the
+browser URL. If the PAR request fails, the just-created state-store
+entry is removed before the error is surfaced.
+
 ### 4. App redirects to the provider
 
-The browser of the app user will be redirected to the provider’s
-authorization endpoint with the following parameters:
+Without PAR, the browser of the app user will be redirected to the
+provider’s authorization endpoint with the following parameters:
 `response_type=code`, `client_id`, `redirect_uri`,
 `state=<sealed state>`, PKCE parameters, `nonce` (OIDC), `scope`,
 `claims` (OIDC, when configured via `oauth_client(claims = ...)`),
 `acr_values` (OIDC, when `required_acr_values` is set on the client),
 plus any configured extra parameters.
+
+With PAR enabled, the browser is still redirected to the provider’s
+authorization endpoint, but the front-channel URL contains only the PAR
+handle: `client_id` and `request_uri`.
 
 Note: when the provider has an `issuer` set (indicating OIDC) and
 `openid` is missing from the client’s scopes, it is automatically
