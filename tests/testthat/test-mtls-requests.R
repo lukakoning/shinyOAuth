@@ -481,6 +481,7 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
     use_pkce = TRUE,
     id_token_required = FALSE,
     id_token_validation = FALSE,
+    token_auth_style = "body",
     tls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       userinfo_endpoint = "https://example.com/mtls/userinfo"
@@ -522,6 +523,62 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
   expect_identical(captured_req$url, "https://example.com/mtls/userinfo")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(userinfo$sub, "user-123")
+})
+
+test_that("userinfo ignores mTLS alias when only provider metadata is present", {
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      userinfo_endpoint = "https://example.com/mtls/userinfo"
+    )
+  )
+  client <- oauth_client(
+    provider = provider,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0)
+  )
+  token <- OAuthToken(
+    access_token = "at",
+    token_type = "Bearer",
+    userinfo = list()
+  )
+
+  captured_req <- NULL
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"sub":"user-123"}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  userinfo <- shinyOAuth::get_userinfo(client, token)
+
+  req_options <- captured_req$options
+  if (is.null(req_options)) {
+    req_options <- list()
+  }
+
+  expect_identical(captured_req$url, "https://example.com/userinfo")
+  expect_false("sslcert" %in% names(req_options))
+  expect_false("sslkey" %in% names(req_options))
   expect_identical(userinfo$sub, "user-123")
 })
 

@@ -67,6 +67,78 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
   expect_identical(tok@cnf$`x5t#S256`, "thumbprint")
 })
 
+test_that("certificate-bound sender constraint requires token binding or an mTLS client", {
+  cert_file <- tempfile(fileext = ".pem")
+  key_file <- tempfile(fileext = ".pem")
+  ca_file <- tempfile(fileext = ".pem")
+  on.exit(unlink(c(cert_file, key_file, ca_file), force = TRUE), add = TRUE)
+
+  write_fake_pem(cert_file, "CERTIFICATE")
+  write_fake_pem(key_file, "PRIVATE KEY")
+  write_fake_pem(ca_file, "CERTIFICATE")
+
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE
+  )
+
+  public_client <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0)
+  )
+  mtls_client <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0),
+    tls_client_cert_file = cert_file,
+    tls_client_key_file = key_file,
+    tls_client_ca_file = ca_file
+  )
+  plain_token <- OAuthToken(
+    access_token = "at",
+    token_type = "Bearer",
+    userinfo = list()
+  )
+  bound_token <- OAuthToken(
+    access_token = "at",
+    token_type = "Bearer",
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "thumbprint")
+  )
+
+  expect_false(
+    shinyOAuth:::token_requires_mtls_sender_constraint(
+      plain_token,
+      public_client
+    )
+  )
+  expect_true(
+    shinyOAuth:::token_requires_mtls_sender_constraint(
+      plain_token,
+      mtls_client
+    )
+  )
+  expect_true(
+    shinyOAuth:::token_requires_mtls_sender_constraint(
+      bound_token,
+      public_client
+    )
+  )
+})
+
 test_that("mTLS token auth styles require certificate and key files", {
   cert_file <- tempfile(fileext = ".pem")
   key_file <- tempfile(fileext = ".pem")

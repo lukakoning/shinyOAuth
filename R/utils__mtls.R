@@ -198,13 +198,8 @@ token_requires_mtls_sender_constraint <- function(
     return(TRUE)
   }
 
-  if (
-    !is.null(oauth_client) &&
-      S7::S7_inherits(oauth_client, class = OAuthClient)
-  ) {
-    return(isTRUE(
-      oauth_client@provider@tls_client_certificate_bound_access_tokens
-    ))
+  if (client_requests_certificate_bound_tokens(oauth_client)) {
+    return(TRUE)
   }
 
   FALSE
