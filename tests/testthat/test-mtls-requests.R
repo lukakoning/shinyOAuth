@@ -502,9 +502,8 @@ test_that("refresh uses token cnf to choose mTLS alias without provider metadata
 
   captured_req <- NULL
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
-      expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+    tls_client_cert_thumbprint_s256 = function(...) {
+      stop("thumbprint check should not run for token endpoint calls")
     },
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
@@ -526,6 +525,181 @@ test_that("refresh uses token cnf to choose mTLS alias without provider metadata
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(refreshed@access_token, "new-at")
+})
+
+test_that("revoke uses token cnf to choose mTLS alias without local thumbprint validation", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    revocation_url = "https://example.com/revoke",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    mtls_endpoint_aliases = list(
+      revocation_endpoint = "https://example.com/mtls/revoke"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "thumbprint")
+  )
+
+  captured_req <- NULL
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(...) {
+      stop("thumbprint check should not run for revocation")
+    },
+    req_with_dpop_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  revoked <- shinyOAuth::revoke_token(
+    client,
+    token,
+    which = "access",
+    async = FALSE
+  )
+
+  expect_identical(captured_req$url, "https://example.com/mtls/revoke")
+  expect_identical(captured_req$options$sslcert, files$cert_file)
+  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_true(isTRUE(revoked$revoked))
+  expect_identical(revoked$status, "ok")
+})
+
+test_that("introspect uses token cnf to choose mTLS alias without local thumbprint validation", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    introspection_url = "https://example.com/introspect",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    mtls_endpoint_aliases = list(
+      introspection_endpoint = "https://example.com/mtls/introspect"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "thumbprint")
+  )
+
+  captured_req <- NULL
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(...) {
+      stop("thumbprint check should not run for introspection")
+    },
+    req_with_dpop_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  inspected <- shinyOAuth::introspect_token(
+    client,
+    token,
+    which = "access",
+    async = FALSE
+  )
+
+  expect_identical(captured_req$url, "https://example.com/mtls/introspect")
+  expect_identical(captured_req$options$sslcert, files$cert_file)
+  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_true(isTRUE(inspected$active))
+  expect_identical(inspected$status, "ok")
+})
+
+test_that("client bearer requests still enforce certificate thumbprint binding", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body"
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  token <- OAuthToken(
+    access_token = "at",
+    token_type = "Bearer",
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "old-thumbprint")
+  )
+
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(cert_file) {
+      expect_identical(cert_file, files$cert_file)
+      "new-thumbprint"
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    shinyOAuth::client_bearer_req(
+      token,
+      url = "https://example.com/resource",
+      oauth_client = client
+    ),
+    regexp = "token cnf x5t#S256 thumbprint",
+    class = "shinyOAuth_input_error"
+  )
 })
 
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {

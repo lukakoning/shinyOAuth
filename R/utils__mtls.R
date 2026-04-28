@@ -95,18 +95,18 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
   do.call(httr2::req_options, c(list(req), options))
 }
 
-req_apply_oauth_mtls <- function(req, oauth_client, token = NULL) {
+req_apply_authorization_server_mtls <- function(
+  req,
+  oauth_client,
+  token = NULL
+) {
   if (!client_uses_mtls_endpoint(oauth_client, token = token)) {
     return(req)
   }
 
-  if (
-    !is.null(token) &&
-      token_requires_mtls_sender_constraint(token, oauth_client)
-  ) {
-    validate_token_certificate_binding(token, oauth_client)
-  }
-
+  # RFC 8705 applies the certificate-thumbprint check when a certificate-bound
+  # access token is presented to a protected resource, not when calling AS
+  # endpoints such as token, revocation, or introspection.
   req_apply_mtls_client_certificate(req, oauth_client)
 }
 

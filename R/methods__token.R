@@ -247,7 +247,7 @@ revoke_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        req <- req_apply_oauth_mtls(
+        req <- req_apply_authorization_server_mtls(
           req,
           oauth_client,
           token = oauth_token
@@ -664,7 +664,7 @@ introspect_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        req <- req_apply_oauth_mtls(
+        req <- req_apply_authorization_server_mtls(
           req,
           oauth_client,
           token = oauth_token
@@ -1039,7 +1039,11 @@ refresh_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        req <- req_apply_oauth_mtls(req, oauth_client, token = token)
+        req <- req_apply_authorization_server_mtls(
+          req,
+          oauth_client,
+          token = token
+        )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
