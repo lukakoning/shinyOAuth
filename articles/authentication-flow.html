@@ -298,6 +298,38 @@ setting)</li>
 <code>token_type</code> and its value must be one of the allowed types
 (case-insensitive, e.g., <code>Bearer</code>)</li>
 </ul>
+<div class="section level4">
+<h4 id="what-changes-when-mtls-is-enabled-rfc-8705">What changes when mTLS is enabled (RFC 8705)<a class="anchor" aria-label="anchor" href="#what-changes-when-mtls-is-enabled-rfc-8705"></a>
+</h4>
+<p>When the provider uses mutual TLS
+(<code>token_auth_style = "tls_client_auth"</code> or
+<code>"self_signed_tls_client_auth"</code>) or advertises
+<code>tls_client_certificate_bound_access_tokens = TRUE</code>,
+shinyOAuth changes both which endpoints it prefers and how it treats the
+resulting tokens:</p>
+<ul>
+<li>For authorization-server requests such as PAR, authorization-code
+exchange, refresh, introspection, and revocation, shinyOAuth attaches
+the configured client certificate on the TLS connection and prefers any
+discovered <code>mtls_endpoint_aliases</code> when present.</li>
+<li>These authorization-server calls are not locally rejected just
+because an existing access token’s <code>cnf.x5t#S256</code> thumbprint
+differs from the currently configured certificate. RFC 8705 expects
+certificate rotation to be recovered by obtaining a new access token
+from the authorization server, typically via a refresh token.</li>
+<li>For protected-resource requests such as
+<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> calls to downstream APIs, and for
+userinfo when it is acting as a certificate-bound resource, shinyOAuth
+treats <code>cnf.x5t#S256</code> as a proof-of-possession check. The
+package attaches the client certificate and verifies that the configured
+certificate matches the token’s binding before sending the request.</li>
+<li>If the client certificate has rotated, existing certificate-bound
+access tokens are expected to fail at the protected resource. The
+recovery path is to refresh or re-authenticate, obtain a new access
+token bound to the new certificate, and then retry the
+protected-resource request.</li>
+</ul>
+</div>
 </div>
 <div class="section level3">
 <h3 id="validate-id-token-oidc-only">9. Validate ID token (OIDC only)<a class="anchor" aria-label="anchor" href="#validate-id-token-oidc-only"></a>
@@ -372,6 +404,12 @@ the userinfo endpoint with the access token and stores returned claims.
 This happens <strong>after</strong> ID token validation to ensure
 cryptographic checks pass before making external calls. If this request
 fails, the flow aborts with an error.</p>
+<p>When the access token is certificate-bound, shinyOAuth treats the
+userinfo call as protected-resource access: it uses the mTLS alias for
+<code>userinfo_endpoint</code> when configured, sends the client
+certificate on the TLS connection, and requires the token’s
+<code>cnf.x5t#S256</code> thumbprint to match that certificate before
+making the request.</p>
 <p>The userinfo endpoint may return either a standard JSON response or a
 JWT-encoded response (per OIDC Core, section 5.3.2). When the endpoint
 returns <code>Content-Type: application/jwt</code>, the body is decoded
@@ -406,6 +444,12 @@ response to indicate <code>active = TRUE</code>. If introspection is
 unsupported by the provider or the introspection request fails, the
 login is aborted and <code>$authenticated</code> is not set to
 <code>TRUE</code>.</p>
+<p>Even for certificate-bound access tokens, introspection is still
+treated as an authorization-server call rather than a protected-resource
+proof-of-possession check: shinyOAuth uses mTLS for the introspection
+request when configured, but does not locally reject the call just
+because the token’s stored thumbprint and the current client certificate
+differ.</p>
 <p>You can optionally enforce additional provider-dependent fields via
 <code>oauth_client(introspect_elements = ...)</code>:</p>
 <ul>

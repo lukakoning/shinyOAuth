@@ -64,6 +64,10 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  client_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  client_assertion_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  tls_client_cert_file <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  tls_client_key_file <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  tls_client_key_password <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  tls_client_ca_file <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  authorization_request_mode <span class="op">=</span> <span class="st">"parameters"</span>,</span>
 <span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  authorization_request_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -145,6 +149,33 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.</p></dd>
+
+
+<dt id="arg-tls-client-cert-file">tls_client_cert_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-cert-file"></a></dt>
+<dd><p>Optional path to the PEM-encoded client
+certificate (or certificate chain) used for RFC 8705 mutual TLS client
+authentication and certificate-bound protected-resource requests. Required
+when <code>provider@token_auth_style</code> is <code>"tls_client_auth"</code> or
+<code>"self_signed_tls_client_auth"</code>.</p></dd>
+
+
+<dt id="arg-tls-client-key-file">tls_client_key_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-key-file"></a></dt>
+<dd><p>Optional path to the PEM-encoded private key used
+with <code>tls_client_cert_file</code>. Must be supplied together with
+<code>tls_client_cert_file</code>, and is required for RFC 8705 mTLS client
+authentication.</p></dd>
+
+
+<dt id="arg-tls-client-key-password">tls_client_key_password<a class="anchor" aria-label="anchor" href="#arg-tls-client-key-password"></a></dt>
+<dd><p>Optional password used to decrypt an encrypted
+PEM private key referenced by <code>tls_client_key_file</code>.</p></dd>
+
+
+<dt id="arg-tls-client-ca-file">tls_client_ca_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-ca-file"></a></dt>
+<dd><p>Optional path to a PEM CA bundle used to validate
+the remote HTTPS server certificate when making mTLS requests. This is
+mainly useful for local or test environments that use self-signed server
+certificates.</p></dd>
 
 
 <dt id="arg-authorization-request-mode">authorization_request_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-mode"></a></dt>

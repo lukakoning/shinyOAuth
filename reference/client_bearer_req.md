@@ -77,7 +77,12 @@ client_bearer_req(
   Optional
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
   Required when the effective token type is `DPoP`, because the client
-  carries the configured DPoP proof key.
+  carries the configured DPoP proof key, and also when using
+  sender-constrained mTLS / certificate-bound tokens so shinyOAuth can
+  attach the configured client certificate and validate any `cnf`
+  thumbprint from an
+  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+  or raw JWT access token string.
 
 - token_type:
 

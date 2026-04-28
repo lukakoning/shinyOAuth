@@ -23,6 +23,10 @@ oauth_client(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  tls_client_cert_file = NULL,
+  tls_client_key_file = NULL,
+  tls_client_key_password = NULL,
+  tls_client_ca_file = NULL,
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
@@ -243,6 +247,33 @@ oauth_client(
   shinyOAuth uses the exact token endpoint request URL. Some identity
   providers require a different audience value; set this to the exact
   value your IdP expects.
+
+- tls_client_cert_file:
+
+  Optional path to the PEM-encoded client certificate (or certificate
+  chain) used for RFC 8705 mutual TLS client authentication and
+  certificate-bound protected-resource requests. Required when
+  `provider@token_auth_style` is `"tls_client_auth"` or
+  `"self_signed_tls_client_auth"`.
+
+- tls_client_key_file:
+
+  Optional path to the PEM-encoded private key used with
+  `tls_client_cert_file`. Must be supplied together with
+  `tls_client_cert_file`, and is required for RFC 8705 mTLS client
+  authentication.
+
+- tls_client_key_password:
+
+  Optional password used to decrypt an encrypted PEM private key
+  referenced by `tls_client_key_file`.
+
+- tls_client_ca_file:
+
+  Optional path to a PEM CA bundle used to validate the remote HTTPS
+  server certificate when making mTLS requests. This is mainly useful
+  for local or test environments that use self-signed server
+  certificates.
 
 - authorization_request_mode:
 

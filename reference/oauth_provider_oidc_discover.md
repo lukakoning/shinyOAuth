@@ -131,7 +131,10 @@ object configured from discovery
 - Token endpoint authentication methods: supports `client_secret_basic`
   (header), `client_secret_post` (body), public clients using `none`
   (with PKCE), as well as JWT-based methods `private_key_jwt` and
-  `client_secret_jwt` per RFC 7523.
+  `client_secret_jwt` per RFC 7523. Discovery also preserves RFC 8705
+  mTLS metadata (`mtls_endpoint_aliases` and
+  `tls_client_certificate_bound_access_tokens`) and supports explicit
+  `tls_client_auth` / `self_signed_tls_client_auth` selection.
 
 - PAR metadata: when the discovery document advertises
   `pushed_authorization_request_endpoint` or

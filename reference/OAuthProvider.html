@@ -95,6 +95,8 @@ presence of an issuer and available endpoints.</p>
 <span>  extra_auth_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  tls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
 <span>  jwks_cache <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">3600</span><span class="op">)</span>,</span>
 <span>  jwks_pins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -309,9 +311,32 @@ section 3.2.2.9.</p></dd>
 <dd><p>Extra headers for token exchange requests (named character vector)</p></dd>
 
 
+<dt id="arg-mtls-endpoint-aliases">mtls_endpoint_aliases<a class="anchor" aria-label="anchor" href="#arg-mtls-endpoint-aliases"></a></dt>
+<dd><p>Optional named list of RFC 8705 mTLS endpoint
+aliases. Names should follow the metadata keys such as <code>token_endpoint</code>,
+<code>userinfo_endpoint</code>, <code>introspection_endpoint</code>, or <code>revocation_endpoint</code>,
+and values must be absolute URLs.</p></dd>
+
+
+<dt id="arg-tls-client-certificate-bound-access-tokens">tls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-tls-client-certificate-bound-access-tokens"></a></dt>
+<dd><p>Logical. Whether the
+authorization server advertises RFC 8705 capability to issue
+certificate-bound access tokens. This metadata expresses server
+capability; the client's intent to use certificate-bound tokens is
+configured separately by using mTLS with a client certificate. When
+<code>TRUE</code>, token responses may include a <code>cnf</code> claim with an <code>x5t#S256</code>
+thumbprint that protected-resource requests must present with the same
+certificate.</p></dd>
+
+
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
 <dd><p>How to authenticate when exchanging tokens. One of:</p><ul><li><p>"header": HTTP Basic (client_secret_basic)</p></li>
 <li><p>"body": Form body (client_secret_post)</p></li>
+<li><p>"tls_client_auth": RFC 8705 mutual TLS client authentication using a
+client certificate chained to a trusted CA</p></li>
+<li><p>"self_signed_tls_client_auth": RFC 8705 mutual TLS client
+authentication using a self-signed client certificate registered out of
+band with the provider</p></li>
 <li><p>"client_secret_jwt": JWT client assertion signed with HMAC using client_secret
 (RFC 7523)</p></li>
 <li><p>"private_key_jwt": JWT client assertion signed with an asymmetric key

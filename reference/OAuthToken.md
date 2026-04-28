@@ -12,6 +12,7 @@ OAuthToken(
   id_token = NA_character_,
   expires_at = Inf,
   userinfo = list(),
+  cnf = list(),
   id_token_validated = FALSE
 )
 ```
@@ -43,6 +44,13 @@ OAuthToken(
 
   List containing user information fetched from the provider's userinfo
   endpoint (if fetched)
+
+- cnf:
+
+  Optional confirmation claim set returned alongside a
+  sender-constrained access token. For RFC 8705 certificate-bound
+  tokens, this may contain `x5t#S256` with the SHA-256 thumbprint of the
+  client certificate that must accompany later requests.
 
 - id_token_validated:
 

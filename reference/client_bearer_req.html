@@ -119,7 +119,10 @@ the security implications.</p></dd>
 <dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
 <dd><p>Optional <a href="OAuthClient.html">OAuthClient</a>. Required when the effective
 token type is <code>DPoP</code>, because the client carries the configured DPoP proof
-key.</p></dd>
+key, and also when using sender-constrained mTLS / certificate-bound
+tokens so shinyOAuth can attach the configured client certificate and
+validate any <code>cnf</code> thumbprint from an <a href="OAuthToken.html">OAuthToken</a> or raw JWT access
+token string.</p></dd>
 
 
 <dt id="arg-token-type">token_type<a class="anchor" aria-label="anchor" href="#arg-token-type"></a></dt>
