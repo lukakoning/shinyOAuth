@@ -68,6 +68,17 @@ testthat::test_that("Keycloak HTTPS discovery wires mTLS metadata into make_mtls
   )
 })
 
+testthat::test_that("Keycloak HTTPS discovery rejects unsupported self_signed_tls_client_auth", {
+  skip_mtls_common()
+  local_test_options()
+
+  testthat::expect_error(
+    make_mtls_provider(token_auth_style = "self_signed_tls_client_auth"),
+    class = "shinyOAuth_config_error",
+    regexp = "Requested token_auth_style is not advertised|self_signed_tls_client_auth"
+  )
+})
+
 testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects userinfo", {
   skip_mtls_common()
   local_test_options()
@@ -112,6 +123,61 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
     ),
     class = "httr2_failure",
     regexp = "certificate unknown|unknown ca|tls alert"
+  )
+})
+
+testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered endpoints", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(
+    token_auth_style = "tls_client_auth",
+    use_par = TRUE
+  )
+  client <- make_mtls_confidential_client(prov)
+
+  testthat::expect_true(is.character(prov@par_url) && nzchar(prov@par_url))
+  testthat::expect_identical(
+    prov@par_url,
+    get_https_discovery_document(
+      force = TRUE
+    )$pushed_authorization_request_endpoint
+  )
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+
+      testthat::expect_match(auth_url, "[?&]request_uri=")
+      testthat::expect_match(auth_url, "[?&]client_id=shiny-mtls-confidential")
+      testthat::expect_false(grepl("[?&]state=", auth_url))
+      testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
+      testthat::expect_false(grepl("[?&]code_challenge=", auth_url))
+
+      login <- perform_login_form_as(
+        auth_url,
+        redirect_uri = client@redirect_uri
+      )
+
+      values$.process_query(paste0(
+        "?code=",
+        utils::URLencode(login$code),
+        "&state=",
+        utils::URLencode(login$state_payload)
+      ))
+      session$flushReact()
+
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_false(is.null(values$token))
+      testthat::expect_true(nzchar(values$token@access_token %||% ""))
+      testthat::expect_identical(
+        access_token_cnf_x5t_s256(values$token@access_token),
+        tls_client_thumbprint("valid")
+      )
+    }
   )
 })
 
