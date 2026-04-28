@@ -33,6 +33,14 @@ make_mtls_test_files <- function() {
   list(cert_file = cert_file, key_file = key_file, ca_file = ca_file)
 }
 
+keycloak_tls_fixture <- function(filename) {
+  normalizePath(
+    testthat::test_path("..", "..", "integration", "keycloak", "tls", filename),
+    winslash = "/",
+    mustWork = TRUE
+  )
+}
+
 make_mtls_test_client <- function(
   provider,
   cert_file,
@@ -684,7 +692,7 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
   )
 
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "new-thumbprint"
     },
@@ -728,7 +736,7 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
   ))
 
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
@@ -781,7 +789,7 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
 
   captured_req <- NULL
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
@@ -904,7 +912,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
         token_type = "Bearer"
       )
     },
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
@@ -989,7 +997,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
         ))
       )
     },
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
@@ -1138,7 +1146,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   captured_urls <- character(0)
   captured_reqs <- list()
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(cert_file) {
+    tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
@@ -1189,4 +1197,56 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   )
   expect_identical(captured_reqs[[1]]$options$sslcert, files$cert_file)
   expect_identical(captured_reqs[[2]]$options$sslcert, files$cert_file)
+})
+
+test_that("certificate binding uses the key-matched certificate from PEM bundles", {
+  cert_file <- keycloak_tls_fixture("client-cert.pem")
+  key_file <- keycloak_tls_fixture("client-key.pem")
+  ca_file <- keycloak_tls_fixture("ca-cert.pem")
+  bundle_file <- tempfile(fileext = ".pem")
+  on.exit(unlink(bundle_file, force = TRUE), add = TRUE)
+
+  writeLines(c(readLines(ca_file), readLines(cert_file)), bundle_file)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE
+  )
+  client <- oauth_client(
+    provider = provider,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0),
+    tls_client_cert_file = bundle_file,
+    tls_client_key_file = key_file,
+    tls_client_ca_file = ca_file
+  )
+  token <- OAuthToken(
+    access_token = "at",
+    token_type = "Bearer",
+    userinfo = list(),
+    cnf = list(
+      `x5t#S256` = shinyOAuth:::tls_client_cert_thumbprint_s256(cert_file)
+    )
+  )
+
+  expect_identical(
+    shinyOAuth:::tls_client_cert_thumbprint_s256(
+      bundle_file,
+      key_file = key_file
+    ),
+    shinyOAuth:::tls_client_cert_thumbprint_s256(cert_file)
+  )
+  expect_invisible(shinyOAuth:::validate_token_certificate_binding(
+    token,
+    client
+  ))
 })

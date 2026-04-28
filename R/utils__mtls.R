@@ -213,15 +213,15 @@ token_requires_mtls_sender_constraint <- function(
   FALSE
 }
 
-read_first_client_certificate <- function(cert_file) {
+read_client_certificates <- function(cert_file) {
   certs <- try(openssl::read_cert_bundle(cert_file), silent = TRUE)
   if (!inherits(certs, "try-error") && length(certs) > 0) {
-    return(certs[[1]])
+    return(certs)
   }
 
   cert <- try(openssl::read_cert(cert_file), silent = TRUE)
   if (!inherits(cert, "try-error")) {
-    return(cert)
+    return(list(cert))
   }
 
   err_config(
@@ -230,8 +230,70 @@ read_first_client_certificate <- function(cert_file) {
   )
 }
 
-tls_client_cert_thumbprint_s256 <- function(cert_file) {
-  cert <- read_first_client_certificate(cert_file)
+read_client_private_key <- function(key_file, key_password = NULL) {
+  key <- try(
+    openssl::read_key(
+      key_file,
+      password = if (is_valid_string(key_password)) key_password else NULL
+    ),
+    silent = TRUE
+  )
+  if (!inherits(key, "try-error")) {
+    return(key)
+  }
+
+  err_config(
+    "Failed to parse tls_client_key_file as a PEM private key",
+    context = list(tls_client_key_file = key_file)
+  )
+}
+
+read_keyed_client_certificate <- function(
+  cert_file,
+  key_file = NULL,
+  key_password = NULL
+) {
+  certs <- read_client_certificates(cert_file)
+  if (!is_valid_string(key_file)) {
+    return(certs[[1]])
+  }
+
+  key <- read_client_private_key(key_file, key_password = key_password)
+  key_fingerprint <- as.list(key)$pubkey$fingerprint %||% NULL
+
+  for (cert in certs) {
+    cert_fingerprint <- as.list(cert)$pubkey$fingerprint %||% NULL
+    if (
+      !is.null(cert_fingerprint) && identical(cert_fingerprint, key_fingerprint)
+    ) {
+      return(cert)
+    }
+  }
+
+  err_config(
+    paste(
+      "tls_client_cert_file does not contain a certificate matching",
+      "tls_client_key_file"
+    ),
+    context = list(
+      tls_client_cert_file = cert_file,
+      tls_client_key_file = key_file
+    )
+  )
+}
+
+tls_client_cert_thumbprint_s256 <- function(
+  cert_file,
+  key_file = NULL,
+  key_password = NULL
+) {
+  # PEM bundles may contain a full chain; hash the certificate bound to the
+  # configured private key instead of assuming bundle order.
+  cert <- read_keyed_client_certificate(
+    cert_file,
+    key_file = key_file,
+    key_password = key_password
+  )
   der <- try(openssl::write_der(cert), silent = TRUE)
   if (inherits(der, "try-error")) {
     err_config(
@@ -268,7 +330,9 @@ validate_token_certificate_binding <- function(token, oauth_client) {
   }
 
   actual_thumbprint <- tls_client_cert_thumbprint_s256(
-    oauth_client@tls_client_cert_file
+    oauth_client@tls_client_cert_file,
+    key_file = oauth_client@tls_client_key_file,
+    key_password = oauth_client@tls_client_key_password
   )
   if (!identical(actual_thumbprint, expected_thumbprint)) {
     err_input(
