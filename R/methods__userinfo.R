@@ -44,6 +44,12 @@ get_userinfo <- function(
     err_config("provider userinfo_url is not configured")
   }
 
+  userinfo_url <- resolve_provider_endpoint_url(
+    oauth_client@provider,
+    "userinfo_endpoint",
+    prefer_mtls = token_requires_mtls_sender_constraint(token, oauth_client)
+  )
+
   with_trace_id(
     NULL,
     with_otel_span(
@@ -53,8 +59,8 @@ get_userinfo <- function(
 
         # Define request; disable redirects to prevent leaking the access token.
         req <- client_bearer_req(
-          token = access_token,
-          url = oauth_client@provider@userinfo_url,
+          token = token,
+          url = userinfo_url,
           oauth_client = oauth_client,
           token_type = token_type
         )
@@ -80,7 +86,7 @@ get_userinfo <- function(
           },
           attributes = otel_http_attributes(
             method = "GET",
-            url = oauth_client@provider@userinfo_url,
+            url = userinfo_url,
             extra = list(oauth.phase = "userinfo")
           ),
           options = list(kind = "client"),

@@ -53,6 +53,8 @@ client_bearer_req <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
+  original_token <- token
+
   # Resolve token to string ----------------------------------------------------
   access_token <- token
   effective_token_type <- token_type %||% NA_character_
@@ -128,6 +130,12 @@ client_bearer_req <- function(
   if (is_valid_string(method)) {
     req <- httr2::req_method(req, toupper(method))
   }
+
+  req <- req_apply_sender_constrained_mtls(
+    req,
+    token = original_token,
+    oauth_client = oauth_client
+  )
 
   if (is_dpop_token_type(effective_token_type)) {
     req <- req |>

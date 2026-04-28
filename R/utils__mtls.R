@@ -1,0 +1,181 @@
+mtls_token_auth_styles <- function() {
+  c("tls_client_auth", "self_signed_tls_client_auth")
+}
+
+client_uses_mtls_auth <- function(oauth_client) {
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    return(FALSE)
+  }
+
+  token_auth_style <- oauth_client@provider@token_auth_style %||% "header"
+  token_auth_style %in% mtls_token_auth_styles()
+}
+
+resolve_provider_endpoint_url <- function(
+  provider,
+  endpoint,
+  prefer_mtls = FALSE
+) {
+  base_url <- switch(
+    endpoint,
+    token_endpoint = provider@token_url,
+    userinfo_endpoint = provider@userinfo_url,
+    introspection_endpoint = provider@introspection_url,
+    revocation_endpoint = provider@revocation_url,
+    par_endpoint = provider@par_url,
+    err_input(paste0("Unsupported provider endpoint: ", endpoint))
+  )
+
+  if (!isTRUE(prefer_mtls)) {
+    return(base_url)
+  }
+
+  alias_url <- provider@mtls_endpoint_aliases[[endpoint]] %||% NA_character_
+  if (is_valid_string(alias_url)) {
+    return(alias_url)
+  }
+
+  base_url
+}
+
+req_apply_mtls_client_certificate <- function(req, oauth_client) {
+  if (!inherits(req, "httr2_request")) {
+    return(req)
+  }
+
+  cert_file <- oauth_client@tls_client_cert_file %||% NA_character_
+  key_file <- oauth_client@tls_client_key_file %||% NA_character_
+  key_password <- oauth_client@tls_client_key_password %||% NA_character_
+  ca_file <- oauth_client@tls_client_ca_file %||% NA_character_
+
+  if (!(is_valid_string(cert_file) && is_valid_string(key_file))) {
+    return(req)
+  }
+
+  options <- compact_list(list(
+    sslcert = cert_file,
+    sslkey = key_file,
+    keypasswd = if (is_valid_string(key_password)) key_password else NULL,
+    cainfo = if (is_valid_string(ca_file)) ca_file else NULL
+  ))
+
+  do.call(httr2::req_options, c(list(req), options))
+}
+
+token_cnf_x5t_s256 <- function(token) {
+  if (!S7::S7_inherits(token, class = OAuthToken) || !is.list(token@cnf)) {
+    return(NA_character_)
+  }
+
+  thumbprint <- token@cnf[["x5t#S256"]] %||% NA_character_
+  if (!is_valid_string(thumbprint)) {
+    return(NA_character_)
+  }
+
+  thumbprint
+}
+
+token_requires_mtls_sender_constraint <- function(
+  token = NULL,
+  oauth_client = NULL
+) {
+  if (is_valid_string(token_cnf_x5t_s256(token))) {
+    return(TRUE)
+  }
+
+  if (
+    !is.null(oauth_client) &&
+      S7::S7_inherits(oauth_client, class = OAuthClient)
+  ) {
+    return(isTRUE(
+      oauth_client@provider@tls_client_certificate_bound_access_tokens
+    ))
+  }
+
+  FALSE
+}
+
+read_first_client_certificate <- function(cert_file) {
+  certs <- try(openssl::read_cert_bundle(cert_file), silent = TRUE)
+  if (!inherits(certs, "try-error") && length(certs) > 0) {
+    return(certs[[1]])
+  }
+
+  cert <- try(openssl::read_cert(cert_file), silent = TRUE)
+  if (!inherits(cert, "try-error")) {
+    return(cert)
+  }
+
+  err_config(
+    "Failed to parse tls_client_cert_file as a PEM certificate",
+    context = list(tls_client_cert_file = cert_file)
+  )
+}
+
+tls_client_cert_thumbprint_s256 <- function(cert_file) {
+  cert <- read_first_client_certificate(cert_file)
+  der <- try(openssl::write_der(cert), silent = TRUE)
+  if (inherits(der, "try-error")) {
+    err_config(
+      "Failed to serialize tls_client_cert_file for thumbprint calculation",
+      context = list(tls_client_cert_file = cert_file)
+    )
+  }
+
+  base64url_encode(openssl::sha256(der))
+}
+
+validate_token_certificate_binding <- function(token, oauth_client) {
+  expected_thumbprint <- token_cnf_x5t_s256(token)
+  if (!is_valid_string(expected_thumbprint)) {
+    return(invisible(TRUE))
+  }
+
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    err_input(
+      "oauth_client must be an OAuthClient when using certificate-bound access tokens"
+    )
+  }
+
+  if (
+    !(is_valid_string(oauth_client@tls_client_cert_file) &&
+      is_valid_string(oauth_client@tls_client_key_file))
+  ) {
+    err_input(
+      paste(
+        "oauth_client must include tls_client_cert_file and tls_client_key_file",
+        "when using certificate-bound access tokens"
+      )
+    )
+  }
+
+  actual_thumbprint <- tls_client_cert_thumbprint_s256(
+    oauth_client@tls_client_cert_file
+  )
+  if (!identical(actual_thumbprint, expected_thumbprint)) {
+    err_input(
+      "oauth_client TLS certificate does not match token cnf x5t#S256 thumbprint"
+    )
+  }
+
+  invisible(TRUE)
+}
+
+req_apply_sender_constrained_mtls <- function(
+  req,
+  token = NULL,
+  oauth_client = NULL
+) {
+  if (!token_requires_mtls_sender_constraint(token, oauth_client)) {
+    return(req)
+  }
+
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    err_input(
+      "oauth_client must be an OAuthClient when using certificate-bound access tokens"
+    )
+  }
+
+  validate_token_certificate_binding(token, oauth_client)
+  req_apply_mtls_client_certificate(req, oauth_client)
+}

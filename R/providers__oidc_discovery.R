@@ -21,7 +21,10 @@
 #' - Token endpoint authentication methods: supports `client_secret_basic`
 #'   (header), `client_secret_post` (body), public clients using `none`
 #'   (with PKCE), as well as JWT-based methods `private_key_jwt` and
-#'   `client_secret_jwt` per RFC 7523.
+#'   `client_secret_jwt` per RFC 7523. Discovery also preserves RFC 8705 mTLS
+#'   metadata (`mtls_endpoint_aliases` and
+#'   `tls_client_certificate_bound_access_tokens`) and supports explicit
+#'   `tls_client_auth` / `self_signed_tls_client_auth` selection.
 #'
 #' - PAR metadata: when the discovery document advertises
 #'   `pushed_authorization_request_endpoint` or
@@ -216,6 +219,11 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
+  mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
+  .discover_validate_endpoint_aliases(mtls_endpoint_aliases, allowed_hosts_vec)
+  tls_client_certificate_bound_access_tokens <- isTRUE(
+    disc[["tls_client_certificate_bound_access_tokens"]]
+  )
 
   # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
   #      Note: userinfo_signing_alg_values_supported in discovery indicates
@@ -242,6 +250,8 @@ oauth_provider_oidc_discover <- function(
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = require_signed_request_object,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    mtls_endpoint_aliases = mtls_endpoint_aliases,
+    tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,
     issuer = iss,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -559,12 +569,18 @@ oauth_provider_oidc_discover <- function(
   iss,
   token_url
 ) {
-  if (!is.null(token_auth_style)) {
-    return(token_auth_style)
-  }
-
   methods <- disc[["token_endpoint_auth_methods_supported"]] %||% character(0)
   methods <- tolower(as.character(methods))
+
+  if (!is.null(token_auth_style)) {
+    return(.discover_validate_requested_token_auth_style(
+      token_auth_style = token_auth_style,
+      methods = methods,
+      use_pkce = use_pkce,
+      iss = iss,
+      token_url = token_url
+    ))
+  }
 
   # Conservative default: prefer confidential auth methods first so that
 
@@ -597,6 +613,27 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
+  # If only mTLS methods are advertised, do not auto-select them because the
+  # client certificate is provisioned per app registration. Require explicit
+  # opt-in just like JWT-based methods.
+  if (any(mtls_token_auth_styles() %in% methods)) {
+    err_config(
+      c(
+        "x" = "OIDC discovery advertises only mutual TLS client authentication methods",
+        "i" = paste(
+          "Set `token_auth_style = 'tls_client_auth'` or",
+          "`token_auth_style = 'self_signed_tls_client_auth'` explicitly"
+        ),
+        "i" = "Configure tls_client_cert_file and tls_client_key_file on your OAuthClient"
+      ),
+      context = list(
+        issuer = iss,
+        token_endpoint = token_url,
+        methods = methods
+      )
+    )
+  }
+
   # If only JWT-based methods are advertised, do not auto-select them because
   # per-client credentials may not be provisioned. Require explicit opt-in.
   if (any(c("private_key_jwt", "client_secret_jwt") %in% methods)) {
@@ -616,6 +653,106 @@ oauth_provider_oidc_discover <- function(
 
   # When methods are not advertised, fall back to historic default: header.
   "header"
+}
+
+.discover_validate_requested_token_auth_style <- function(
+  token_auth_style,
+  methods,
+  use_pkce,
+  iss,
+  token_url
+) {
+  if (length(methods) == 0L) {
+    return(token_auth_style)
+  }
+
+  is_supported <- switch(
+    token_auth_style,
+    header = "client_secret_basic" %in% methods,
+    body = ("client_secret_post" %in% methods) ||
+      ("none" %in% methods && isTRUE(use_pkce)),
+    client_secret_jwt = "client_secret_jwt" %in% methods,
+    private_key_jwt = "private_key_jwt" %in% methods,
+    tls_client_auth = "tls_client_auth" %in% methods,
+    self_signed_tls_client_auth = "self_signed_tls_client_auth" %in% methods,
+    FALSE
+  )
+
+  if (isTRUE(is_supported)) {
+    return(token_auth_style)
+  }
+
+  err_config(
+    c(
+      "x" = "Requested token_auth_style is not advertised by OIDC discovery",
+      "i" = paste0("Requested: ", token_auth_style),
+      "i" = paste0("Advertised methods: ", paste(methods, collapse = ", "))
+    ),
+    context = list(
+      issuer = iss,
+      token_endpoint = token_url,
+      requested_token_auth_style = token_auth_style,
+      methods = methods
+    )
+  )
+}
+
+.discover_extract_mtls_endpoint_aliases <- function(disc) {
+  aliases <- disc[["mtls_endpoint_aliases"]] %||% list()
+  if (is.null(aliases)) {
+    return(list())
+  }
+  if (is.data.frame(aliases)) {
+    aliases <- as.list(aliases)
+  }
+  if (!is.list(aliases)) {
+    err_parse("Discovery mtls_endpoint_aliases must be a JSON object")
+  }
+
+  known_aliases <- c(
+    "token_endpoint",
+    "userinfo_endpoint",
+    "introspection_endpoint",
+    "revocation_endpoint",
+    "device_authorization_endpoint"
+  )
+  alias_names <- intersect(names(aliases) %||% character(0), known_aliases)
+  if (length(alias_names) == 0L) {
+    return(list())
+  }
+
+  out <- aliases[alias_names]
+  for (name in alias_names) {
+    value <- aliases[[name]]
+    if (is.null(value)) {
+      out[[name]] <- NULL
+      next
+    }
+
+    if (!is.character(value) || length(value) != 1L || is.na(value)) {
+      err_parse(
+        paste0("Discovery mtls_endpoint_aliases$", name, " must be a string")
+      )
+    }
+    out[[name]] <- as.character(value)
+  }
+
+  out[!vapply(out, is.null, logical(1))]
+}
+
+.discover_validate_endpoint_aliases <- function(
+  mtls_endpoint_aliases,
+  allowed_hosts_vec
+) {
+  if (!length(mtls_endpoint_aliases)) {
+    return(invisible(TRUE))
+  }
+
+  for (alias_url in unname(mtls_endpoint_aliases)) {
+    validate_endpoint(alias_url, allowed_hosts_vec)
+  }
+
+  invisible(TRUE)
 }
 
 #' Internal: resolve PKCE method against discovery metadata

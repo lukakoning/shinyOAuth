@@ -11,6 +11,10 @@
 #'  token expires. `Inf` for non-expiring tokens
 #' @param userinfo List containing user information fetched from the provider's
 #'  userinfo endpoint (if fetched)
+#' @param cnf Optional confirmation claim set returned alongside a
+#'   sender-constrained access token. For RFC 8705 certificate-bound tokens,
+#'   this may contain `x5t#S256` with the SHA-256 thumbprint of the client
+#'   certificate that must accompany later requests.
 #' @param id_token_validated Logical flag indicating whether the ID token was
 #'  cryptographically validated (signature verified and standard claims checked)
 #'  during the OAuth flow. Defaults to `FALSE`.
@@ -52,6 +56,11 @@ OAuthToken <- S7::new_class(
     expires_at = S7::new_property(S7::class_numeric, default = Inf),
 
     userinfo = S7::class_list,
+
+    cnf = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
 
     id_token_validated = S7::new_property(
       S7::class_logical,

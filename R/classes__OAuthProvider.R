@@ -40,6 +40,14 @@
 #'   endpoint. When populated, this metadata is used for early validation of
 #'   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
 #'   defaults.
+#' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
+#'   aliases. Names should follow the metadata keys such as `token_endpoint`,
+#'   `userinfo_endpoint`, `introspection_endpoint`, or `revocation_endpoint`,
+#'   and values must be absolute URLs.
+#' @param tls_client_certificate_bound_access_tokens Logical. Whether the
+#'   provider issues RFC 8705 certificate-bound access and refresh tokens. When
+#'   `TRUE`, token responses may include a `cnf` claim with an `x5t#S256`
+#'   thumbprint that later requests must present with the same certificate.
 #'
 #' @param issuer OIDC issuer URL (optional; required for ID token validation).
 #' This is the base URL that identifies the OpenID Provider (OP). It is used
@@ -157,6 +165,11 @@
 #' @param token_auth_style How to authenticate when exchanging tokens. One of:
 #'   - "header": HTTP Basic (client_secret_basic)
 #'   - "body": Form body (client_secret_post)
+#'   - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+#'     client certificate chained to a trusted CA
+#'   - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+#'     authentication using a self-signed client certificate registered out of
+#'     band with the provider
 #'   - "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
 #'     (RFC 7523)
 #'   - "private_key_jwt": JWT client assertion signed with an asymmetric key
@@ -304,6 +317,14 @@ OAuthProvider <- S7::new_class(
     extra_token_headers = S7::new_property(
       S7::class_character,
       default = character()
+    ),
+    mtls_endpoint_aliases = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
+    tls_client_certificate_bound_access_tokens = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     token_auth_style = S7::new_property(
       S7::class_character,
@@ -475,6 +496,51 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    if (length(self@mtls_endpoint_aliases) > 0) {
+      aliases <- self@mtls_endpoint_aliases
+      if (!is.list(aliases)) {
+        return("OAuthProvider: mtls_endpoint_aliases must be a named list")
+      }
+      alias_names <- names(aliases)
+      if (is.null(alias_names) || !all(nzchar(alias_names))) {
+        return(
+          "OAuthProvider: mtls_endpoint_aliases must have non-empty names for all aliases"
+        )
+      }
+
+      for (alias_name in alias_names) {
+        alias_value <- aliases[[alias_name]]
+        if (!is_valid_string(alias_value)) {
+          return(sprintf(
+            "OAuthProvider: mtls_endpoint_aliases$%s must be a non-empty string",
+            alias_name
+          ))
+        }
+
+        msg <- .check_host_field(
+          alias_value,
+          paste0("mtls_endpoint_aliases$", alias_name),
+          required = TRUE
+        )
+        if (!is.null(msg)) {
+          return(msg)
+        }
+      }
+    }
+
+    if (
+      !(is.logical(self@tls_client_certificate_bound_access_tokens) &&
+        length(self@tls_client_certificate_bound_access_tokens) == 1L &&
+        !is.na(self@tls_client_certificate_bound_access_tokens))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: tls_client_certificate_bound_access_tokens",
+          "must be a single non-NA logical"
+        )
+      )
+    }
+
     # Validate extra_auth_params: must be a named list if non-empty.
     # Unnamed elements would cause httr2::url_modify() to fail with an unhelpful
     # error, so we catch this early with a clearer message.
@@ -585,6 +651,8 @@ OAuthProvider <- S7::new_class(
           c(
             "header",
             "body",
+            "tls_client_auth",
+            "self_signed_tls_client_auth",
             "client_secret_jwt",
             "private_key_jwt"
           )
@@ -592,6 +660,7 @@ OAuthProvider <- S7::new_class(
     ) {
       return(paste0(
         "OAuthProvider: token_auth_style must be one of 'header', 'body', ",
+        "'tls_client_auth', 'self_signed_tls_client_auth', ",
         "'client_secret_jwt', or 'private_key_jwt'"
       ))
     }
@@ -984,6 +1053,8 @@ oauth_provider <- function(
   request_object_signing_alg_values_supported = character(),
   require_signed_request_object = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -1065,6 +1136,25 @@ oauth_provider <- function(
       use.names = FALSE
     )
   ))
+  if (is.null(mtls_endpoint_aliases)) {
+    mtls_endpoint_aliases <- list()
+  }
+  if (!is.list(mtls_endpoint_aliases)) {
+    mtls_endpoint_aliases <- as.list(mtls_endpoint_aliases)
+  }
+  if (length(mtls_endpoint_aliases) > 0) {
+    mtls_endpoint_aliases <- lapply(mtls_endpoint_aliases, function(value) {
+      if (
+        is.character(value) &&
+          length(value) == 1L &&
+          !is.na(value) &&
+          nzchar(value)
+      ) {
+        return(normalize_url(value))
+      }
+      value
+    })
+  }
 
   if (is.null(jwks_cache)) {
     jwks_cache <- cachem::cache_mem(max_age = 3600)
@@ -1212,6 +1302,10 @@ oauth_provider <- function(
     extra_auth_params = extra_auth_params,
     extra_token_params = extra_token_params,
     extra_token_headers = extra_token_headers,
+    mtls_endpoint_aliases = mtls_endpoint_aliases,
+    tls_client_certificate_bound_access_tokens = isTRUE(
+      tls_client_certificate_bound_access_tokens
+    ),
     token_auth_style = token_auth_style,
     jwks_cache = jwks_cache,
     jwks_pins = jwks_pins,

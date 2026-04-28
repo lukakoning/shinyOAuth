@@ -8,9 +8,122 @@ get_issuer <- function() {
   "http://localhost:8080/realms/shinyoauth"
 }
 
+get_https_issuer <- function() {
+  "https://localhost:8443/realms/shinyoauth"
+}
+
+normalize_existing_path <- function(path) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
+    return(NA_character_)
+  }
+  if (!file.exists(path)) {
+    return(NA_character_)
+  }
+  normalizePath(path, winslash = "/", mustWork = TRUE)
+}
+
+get_keycloak_tls_path <- function(envvar, filename) {
+  env_path <- normalize_existing_path(Sys.getenv(envvar, unset = ""))
+  if (nzchar(env_path %||% "")) {
+    return(env_path)
+  }
+
+  normalize_existing_path(file.path("integration", "keycloak", "tls", filename))
+}
+
+get_keycloak_tls_ca_file <- function() {
+  get_keycloak_tls_path("SHINYOAUTH_KEYCLOAK_CA_FILE", "ca-cert.pem")
+}
+
+get_keycloak_tls_client_cert_file <- function(
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+
+  switch(
+    cert_variant,
+    valid = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_CLIENT_CERT_FILE",
+      "client-cert.pem"
+    ),
+    wrong = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_ATTACKER_CERT_FILE",
+      "attacker-cert.pem"
+    ),
+    rogue = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_ROGUE_CLIENT_CERT_FILE",
+      "rogue-client-cert.pem"
+    )
+  )
+}
+
+get_keycloak_tls_client_key_file <- function(
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+
+  switch(
+    cert_variant,
+    valid = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_CLIENT_KEY_FILE",
+      "client-key.pem"
+    ),
+    wrong = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_ATTACKER_KEY_FILE",
+      "attacker-key.pem"
+    ),
+    rogue = get_keycloak_tls_path(
+      "SHINYOAUTH_KEYCLOAK_ROGUE_CLIENT_KEY_FILE",
+      "rogue-client-key.pem"
+    )
+  )
+}
+
+req_apply_keycloak_ca <- function(req) {
+  url <- req$url %||% NA_character_
+  ca_file <- get_keycloak_tls_ca_file()
+
+  if (
+    is.character(url) &&
+      length(url) == 1L &&
+      !is.na(url) &&
+      nzchar(url) &&
+      grepl("^https://", url) &&
+      is.character(ca_file) &&
+      length(ca_file) == 1L &&
+      !is.na(ca_file) &&
+      nzchar(ca_file)
+  ) {
+    req <- httr2::req_options(req, cainfo = ca_file)
+  }
+
+  req
+}
+
+req_apply_keycloak_client_certificate <- function(
+  req,
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+
+  httr2::req_options(
+    req_apply_keycloak_ca(req),
+    sslcert = get_keycloak_tls_client_cert_file(cert_variant),
+    sslkey = get_keycloak_tls_client_key_file(cert_variant)
+  )
+}
+
+tls_client_thumbprint <- function(cert_variant = c("valid", "wrong", "rogue")) {
+  cert_variant <- match.arg(cert_variant)
+  shinyOAuth:::tls_client_cert_thumbprint_s256(
+    get_keycloak_tls_client_cert_file(cert_variant)
+  )
+}
+
 keycloak_cache <- local({
   env <- new.env(parent = emptyenv())
   env$discovery <- NULL
+  env$https_discovery <- NULL
   env$jwks <- NULL
   env
 })
@@ -22,6 +135,7 @@ get_discovery_document <- function(force = FALSE) {
 
   disc_url <- paste0(get_issuer(), "/.well-known/openid-configuration")
   resp <- httr2::request(disc_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "application/json") |>
     httr2::req_perform()
@@ -37,6 +151,29 @@ get_discovery_document <- function(force = FALSE) {
   keycloak_cache$discovery
 }
 
+get_https_discovery_document <- function(force = FALSE) {
+  if (!isTRUE(force) && !is.null(keycloak_cache$https_discovery)) {
+    return(keycloak_cache$https_discovery)
+  }
+
+  disc_url <- paste0(get_https_issuer(), "/.well-known/openid-configuration")
+  resp <- httr2::request(disc_url) |>
+    req_apply_keycloak_ca() |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_perform()
+
+  if (httr2::resp_is_error(resp)) {
+    stop("Keycloak HTTPS discovery request failed", call. = FALSE)
+  }
+
+  keycloak_cache$https_discovery <- httr2::resp_body_json(
+    resp,
+    simplifyVector = TRUE
+  )
+  keycloak_cache$https_discovery
+}
+
 get_jwks <- function(force = FALSE) {
   if (!isTRUE(force) && !is.null(keycloak_cache$jwks)) {
     return(keycloak_cache$jwks)
@@ -49,6 +186,7 @@ get_jwks <- function(force = FALSE) {
   )
 
   resp <- httr2::request(jwks_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "application/json") |>
     httr2::req_perform()
@@ -72,6 +210,20 @@ keycloak_reachable <- function() {
   isTRUE(ok)
 }
 
+keycloak_https_reachable <- function() {
+  ok <- tryCatch(
+    {
+      disc <- get_https_discovery_document(force = TRUE)
+      is.list(disc) && identical(
+        disc$issuer %||% NA_character_,
+        get_https_issuer()
+      )
+    },
+    error = function(...) FALSE
+  )
+  isTRUE(ok)
+}
+
 maybe_skip_keycloak <- function() {
   testthat::skip_if_not(
     keycloak_reachable(),
@@ -79,8 +231,17 @@ maybe_skip_keycloak <- function() {
   )
 }
 
+maybe_skip_keycloak_https <- function() {
+  testthat::skip_if_not(
+    keycloak_https_reachable(),
+    "Keycloak HTTPS not reachable at localhost:8443"
+  )
+}
+
 ## Standard local_options for testServer-based tests
 local_test_options <- function(.local_envir = parent.frame()) {
+  ca_file <- get_keycloak_tls_ca_file()
+
   withr::local_options(
     list(
       shinyOAuth.skip_browser_token = TRUE,
@@ -88,6 +249,13 @@ local_test_options <- function(.local_envir = parent.frame()) {
     ),
     .local_envir = .local_envir
   )
+
+  if (is.character(ca_file) && length(ca_file) == 1L && nzchar(ca_file)) {
+    withr::local_envvar(
+      c(CURL_CA_BUNDLE = ca_file),
+      .local_envir = .local_envir
+    )
+  }
 }
 
 ## Standard skip checks for testServer tests
@@ -95,6 +263,11 @@ skip_common <- function() {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("xml2")
   testthat::skip_if_not_installed("rvest")
+}
+
+skip_mtls_common <- function() {
+  skip_common()
+  maybe_skip_keycloak_https()
 }
 
 ## ---------- URL / cookie helpers ----------
@@ -200,6 +373,7 @@ follow_once <- function(resp, cookie_hdr) {
   }
   next_url <- to_abs(resp$url %||% loc, loc)
   r <- httr2::request(next_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "text/html", Cookie = cookie_hdr) |>
     httr2::req_options(followlocation = FALSE) |>
@@ -239,6 +413,57 @@ make_provider <- function(
     allowed_token_types = allowed_token_types,
     ...
   )
+  if (!isTRUE(use_par)) {
+    prov@par_url <- NA_character_
+  }
+  prov
+}
+
+make_mtls_provider <- function(
+  token_auth_style = "tls_client_auth",
+  allowed_token_types = c("Bearer"),
+  use_par = FALSE,
+  ...
+) {
+  disc <- get_https_discovery_document(force = TRUE)
+  mtls_endpoint_aliases <- disc$mtls_endpoint_aliases %||% list()
+
+  prov <- shinyOAuth::oauth_provider(
+    name = httr2::url_parse(get_https_issuer())$hostname %||% "keycloak",
+    auth_url = disc$authorization_endpoint,
+    token_url = disc$token_endpoint,
+    userinfo_url = disc$userinfo_endpoint %||% NA_character_,
+    introspection_url = disc$introspection_endpoint %||% NA_character_,
+    revocation_url = disc$revocation_endpoint %||% NA_character_,
+    par_url = disc$pushed_authorization_request_endpoint %||% NA_character_,
+    require_pushed_authorization_requests = isTRUE(
+      disc$require_pushed_authorization_requests
+    ),
+    request_object_signing_alg_values_supported = as.character(unlist(
+      disc$request_object_signing_alg_values_supported %||% character(0),
+      use.names = FALSE
+    )),
+    require_signed_request_object = isTRUE(disc$require_signed_request_object),
+    token_endpoint_auth_signing_alg_values_supported = as.character(unlist(
+      disc$token_endpoint_auth_signing_alg_values_supported %||% character(0),
+      use.names = FALSE
+    )),
+    mtls_endpoint_aliases = mtls_endpoint_aliases,
+    tls_client_certificate_bound_access_tokens = isTRUE(
+      disc$tls_client_certificate_bound_access_tokens
+    ),
+    issuer = disc$issuer %||% get_https_issuer(),
+    issuer_match = "url",
+    use_nonce = TRUE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = token_auth_style,
+    allowed_token_types = allowed_token_types,
+    ...
+  )
+
   if (!isTRUE(use_par)) {
     prov@par_url <- NA_character_
   }
@@ -368,6 +593,48 @@ make_confidential_client <- function(prov) {
   )
 }
 
+make_mtls_confidential_client <- function(
+  prov,
+  client_id = "shiny-mtls-confidential",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = client_id,
+    client_secret = "",
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    tls_client_ca_file = get_keycloak_tls_ca_file()
+  )
+}
+
+make_mtls_service_client <- function(
+  prov,
+  client_id = "shiny-mtls-service",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = client_id,
+    client_secret = "",
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    tls_client_ca_file = get_keycloak_tls_ca_file()
+  )
+}
+
 make_client_secret_jwt_client <- function(prov) {
   shinyOAuth::oauth_client(
     provider = prov,
@@ -463,6 +730,7 @@ perform_login_form_as <- function(
   }
 
   resp1 <- httr2::request(auth_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "text/html") |>
     httr2::req_options(followlocation = FALSE) |>
@@ -516,6 +784,7 @@ perform_login_form_as <- function(
   data[["password"]] <- password
   post_url <- to_abs(current_url, action)
   req_post <- httr2::request(post_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "text/html", Cookie = cookie_hdr) |>
     httr2::req_options(followlocation = FALSE)
@@ -613,6 +882,12 @@ access_token_cnf_jkt <- function(access_token) {
   payload <- decode_compact_jwt_payload(access_token)
   cnf <- payload$cnf %||% list()
   cnf$jkt %||% NA_character_
+}
+
+access_token_cnf_x5t_s256 <- function(access_token) {
+  payload <- decode_compact_jwt_payload(access_token)
+  cnf <- payload$cnf %||% list()
+  cnf[["x5t#S256"]] %||% NA_character_
 }
 
 ## ---------- Standard testServer args ----------
