@@ -816,15 +816,14 @@ expect_mtls_invalid_client <- function(resp) {
 }
 
 expect_mtls_sender_constraint_rejection <- function(resp) {
-  testthat::expect_true(httr2::resp_status(resp) %in% c(400L, 401L, 403L))
+  testthat::expect_identical(httr2::resp_status(resp), 401L)
+
   body <- safe_resp_body_json(resp)
   challenge <- httr2::resp_header(resp, "www-authenticate") %||% ""
-  combo <- paste(body$error %||% "", body$error_description %||% "", challenge)
-  testthat::expect_match(
-    combo,
-    "invalid_token|certificate|cnf|mtls|tls|unauthorized",
-    ignore.case = TRUE
-  )
+  combo <- paste(body$error %||% "", challenge)
+
+  testthat::expect_match(challenge, "Bearer", ignore.case = TRUE)
+  testthat::expect_match(combo, "invalid_token", fixed = TRUE)
   invisible(resp)
 }
 
