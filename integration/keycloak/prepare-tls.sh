@@ -56,6 +56,8 @@ generate_ca() {
     -keyout "$key_path" \
     -out "$cert_path" \
     -subj "$subject" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign" \
     >/dev/null 2>&1
 }
 

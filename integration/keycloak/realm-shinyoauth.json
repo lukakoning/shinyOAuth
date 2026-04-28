@@ -65,8 +65,52 @@
       "attributes": {
         "request.object.signature.alg": "HS256"
       }
-    }
-    ,
+    },
+    {
+      "clientId": "shiny-mtls-confidential",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-x509",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "x509.subjectdn": "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,L=Local,ST=NA,C=US",
+        "x509.allow.regex.pattern.comparison": "false",
+        "tls.client.certificate.bound.access.tokens": "true"
+      }
+    },
+    {
+      "clientId": "shiny-mtls-service",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-x509",
+      "attributes": {
+        "x509.subjectdn": "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,L=Local,ST=NA,C=US",
+        "x509.allow.regex.pattern.comparison": "false",
+        "tls.client.certificate.bound.access.tokens": "true"
+      }
+    },
     {
       "clientId": "shiny-jar-hmac",
       "protocol": "openid-connect",

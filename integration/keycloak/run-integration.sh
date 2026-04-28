@@ -106,6 +106,7 @@ echo "[run-integration] Running integration tests (SHINYOAUTH_INT=1) ..." >&2
   export SHINYOAUTH_KEYCLOAK_ROGUE_CLIENT_CERT_FILE="$(to_host_path "$ROGUE_CLIENT_CERT")"
   export SHINYOAUTH_KEYCLOAK_ROGUE_CLIENT_KEY_FILE="$(to_host_path "$ROGUE_CLIENT_KEY")"
   export CURL_CA_BUNDLE="$SHINYOAUTH_KEYCLOAK_CA_FILE"
+  export CURL_SSL_BACKEND="${CURL_SSL_BACKEND:-openssl}"
   Rscript -e "pkgload::load_all('.') ; testthat::test_dir('integration/keycloak')"
 )
 TEST_RC=$?

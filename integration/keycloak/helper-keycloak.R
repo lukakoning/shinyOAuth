@@ -4,6 +4,22 @@
 ## Provides: connectivity checks, query parsing, cookie handling,
 ## login-form driving, and factory functions for providers/clients.
 
+keycloak_configure_curl_ssl_backend <- function() {
+  if (!identical(.Platform$OS.type, "windows")) {
+    return(invisible(FALSE))
+  }
+  if (nzchar(Sys.getenv("CURL_SSL_BACKEND", unset = ""))) {
+    return(invisible(FALSE))
+  }
+
+  # R's Windows libcurl build can default to Schannel, which ignores local
+  # PEM CA bundles in this harness. Prefer OpenSSL before curl is initialized.
+  Sys.setenv(CURL_SSL_BACKEND = "openssl")
+  invisible(TRUE)
+}
+
+keycloak_configure_curl_ssl_backend()
+
 get_issuer <- function() {
   "http://localhost:8080/realms/shinyoauth"
 }
@@ -13,7 +29,9 @@ get_https_issuer <- function() {
 }
 
 normalize_existing_path <- function(path) {
-  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
+  if (
+    !is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)
+  ) {
     return(NA_character_)
   }
   if (!file.exists(path)) {
@@ -22,13 +40,33 @@ normalize_existing_path <- function(path) {
   normalizePath(path, winslash = "/", mustWork = TRUE)
 }
 
+is_existing_path_string <- function(path) {
+  is.character(path) &&
+    length(path) == 1L &&
+    !is.na(path) &&
+    nzchar(path) &&
+    file.exists(path)
+}
+
 get_keycloak_tls_path <- function(envvar, filename) {
   env_path <- normalize_existing_path(Sys.getenv(envvar, unset = ""))
-  if (nzchar(env_path %||% "")) {
+  if (is_existing_path_string(env_path)) {
     return(env_path)
   }
 
-  normalize_existing_path(file.path("integration", "keycloak", "tls", filename))
+  candidates <- c(
+    file.path("integration", "keycloak", "tls", filename),
+    file.path("tls", filename)
+  )
+
+  for (candidate in candidates) {
+    resolved <- normalize_existing_path(candidate)
+    if (is_existing_path_string(resolved)) {
+      return(resolved)
+    }
+  }
+
+  NA_character_
 }
 
 get_keycloak_tls_ca_file <- function() {
@@ -95,6 +133,9 @@ req_apply_keycloak_ca <- function(req) {
       nzchar(ca_file)
   ) {
     req <- httr2::req_options(req, cainfo = ca_file)
+    if (identical(.Platform$OS.type, "windows")) {
+      req <- httr2::req_options(req, ssl_options = 2L)
+    }
   }
 
   req
@@ -214,10 +255,11 @@ keycloak_https_reachable <- function() {
   ok <- tryCatch(
     {
       disc <- get_https_discovery_document(force = TRUE)
-      is.list(disc) && identical(
-        disc$issuer %||% NA_character_,
-        get_https_issuer()
-      )
+      is.list(disc) &&
+        identical(
+          disc$issuer %||% NA_character_,
+          get_https_issuer()
+        )
     },
     error = function(...) FALSE
   )
@@ -633,6 +675,187 @@ make_mtls_service_client <- function(
     tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
     tls_client_ca_file = get_keycloak_tls_ca_file()
   )
+}
+
+get_mtls_endpoint_url <- function(provider, endpoint) {
+  aliases <- provider@mtls_endpoint_aliases %||% list()
+  alias <- aliases[[endpoint]] %||% NA_character_
+  if (
+    is.character(alias) &&
+      length(alias) == 1L &&
+      !is.na(alias) &&
+      nzchar(alias)
+  ) {
+    return(alias)
+  }
+
+  switch(
+    endpoint,
+    token_endpoint = provider@token_url,
+    userinfo_endpoint = provider@userinfo_url,
+    introspection_endpoint = provider@introspection_url,
+    revocation_endpoint = provider@revocation_url,
+    stop("Unsupported mTLS endpoint: ", endpoint, call. = FALSE)
+  )
+}
+
+perform_mtls_code_login <- function(
+  client,
+  username = "alice",
+  password = username
+) {
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = "__SKIPPED__"
+  )
+  login <- perform_login_form_as(
+    auth_url,
+    username = username,
+    password = password,
+    redirect_uri = client@redirect_uri
+  )
+  state <- get_state_store_entry(client, auth_url)
+
+  list(
+    auth_url = auth_url,
+    code = login$code,
+    state_payload = login$state_payload,
+    state = state,
+    code_verifier = state$entry$pkce_code_verifier,
+    browser_token = state$entry$browser_token
+  )
+}
+
+raw_mtls_token_request <- function(
+  provider,
+  params,
+  cert_variant = c("valid", "wrong", "rogue", "none"),
+  token_url = NULL
+) {
+  cert_variant <- match.arg(cert_variant)
+  token_url <- token_url %||% get_mtls_endpoint_url(provider, "token_endpoint")
+
+  req <- httr2::request(token_url) |>
+    req_apply_keycloak_ca() |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_method("POST")
+
+  if (!identical(cert_variant, "none")) {
+    req <- req_apply_keycloak_client_certificate(req, cert_variant)
+  }
+
+  req <- do.call(httr2::req_body_form, c(list(req), params))
+  req |> httr2::req_perform()
+}
+
+raw_mtls_auth_code_exchange <- function(
+  client,
+  code_login,
+  cert_variant = c("valid", "wrong", "rogue", "none"),
+  client_id = client@client_id
+) {
+  cert_variant <- match.arg(cert_variant)
+  params <- list(
+    grant_type = "authorization_code",
+    code = code_login$code,
+    redirect_uri = client@redirect_uri,
+    code_verifier = code_login$code_verifier,
+    client_id = client_id
+  )
+
+  raw_mtls_token_request(
+    provider = client@provider,
+    params = params,
+    cert_variant = cert_variant
+  )
+}
+
+raw_mtls_client_credentials_request <- function(
+  client,
+  cert_variant = c("valid", "wrong", "rogue", "none"),
+  scope = NULL,
+  client_id = client@client_id
+) {
+  cert_variant <- match.arg(cert_variant)
+  params <- list(
+    grant_type = "client_credentials",
+    client_id = client_id
+  )
+  if (is.character(scope) && length(scope) > 0L && any(nzchar(scope))) {
+    params$scope <- paste(scope, collapse = " ")
+  }
+
+  raw_mtls_token_request(
+    provider = client@provider,
+    params = params,
+    cert_variant = cert_variant
+  )
+}
+
+raw_mtls_userinfo_request <- function(
+  client,
+  access_token,
+  token_type = "Bearer",
+  cert_variant = c("valid", "wrong", "rogue", "none")
+) {
+  cert_variant <- match.arg(cert_variant)
+  provider <- if (S7::S7_inherits(client, shinyOAuth::OAuthClient)) {
+    client@provider
+  } else {
+    client
+  }
+  userinfo_url <- get_mtls_endpoint_url(provider, "userinfo_endpoint")
+
+  req <- httr2::request(userinfo_url) |>
+    req_apply_keycloak_ca() |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(
+      Accept = "application/json",
+      Authorization = paste(token_type, access_token)
+    )
+
+  if (!identical(cert_variant, "none")) {
+    req <- req_apply_keycloak_client_certificate(req, cert_variant)
+  }
+
+  req |> httr2::req_perform()
+}
+
+safe_resp_body_json <- function(resp) {
+  parsed <- try(
+    httr2::resp_body_json(resp, simplifyVector = TRUE),
+    silent = TRUE
+  )
+  if (inherits(parsed, "try-error") || !is.list(parsed)) {
+    return(list())
+  }
+  parsed
+}
+
+expect_mtls_invalid_client <- function(resp) {
+  testthat::expect_true(httr2::resp_status(resp) %in% c(400L, 401L))
+  body <- safe_resp_body_json(resp)
+  combo <- paste(body$error %||% "", body$error_description %||% "")
+  testthat::expect_match(
+    combo,
+    "invalid_client|unauthorized_client|invalid_client_credentials",
+    ignore.case = TRUE
+  )
+  invisible(resp)
+}
+
+expect_mtls_sender_constraint_rejection <- function(resp) {
+  testthat::expect_true(httr2::resp_status(resp) %in% c(400L, 401L, 403L))
+  body <- safe_resp_body_json(resp)
+  challenge <- httr2::resp_header(resp, "www-authenticate") %||% ""
+  combo <- paste(body$error %||% "", body$error_description %||% "", challenge)
+  testthat::expect_match(
+    combo,
+    "invalid_token|certificate|cnf|mtls|tls|unauthorized",
+    ignore.case = TRUE
+  )
+  invisible(resp)
 }
 
 make_client_secret_jwt_client <- function(prov) {

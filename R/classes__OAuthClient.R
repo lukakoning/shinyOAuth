@@ -945,12 +945,16 @@ OAuthClient <- S7::new_class(
 
     has_tls_client_cert <- is_valid_string(tls_client_cert_file)
     has_tls_client_key <- is_valid_string(tls_client_key_file)
-    requires_tls_client_cert <- tok_style %in% c(
-      "tls_client_auth",
-      "self_signed_tls_client_auth"
-    )
+    requires_tls_client_cert <- tok_style %in%
+      c(
+        "tls_client_auth",
+        "self_signed_tls_client_auth"
+      )
 
-    if (isTRUE(requires_tls_client_cert) && !(has_tls_client_cert && has_tls_client_key)) {
+    if (
+      isTRUE(requires_tls_client_cert) &&
+        !(has_tls_client_cert && has_tls_client_key)
+    ) {
       return(paste0(
         "OAuthClient: tls_client_cert_file and tls_client_key_file are required when token_auth_style = '",
         tok_style,

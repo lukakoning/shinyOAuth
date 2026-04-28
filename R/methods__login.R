@@ -503,7 +503,8 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
     client@provider,
     "par_endpoint",
     prefer_mtls = client_uses_mtls_auth(client)
-  ) %||% NA_character_
+  ) %||%
+    NA_character_
   if (!is_valid_string(endpoint)) {
     err_config(
       "Pushed authorization requests require provider@par_url"

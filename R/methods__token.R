@@ -172,7 +172,8 @@ revoke_token <- function(
           oauth_client@provider,
           "revocation_endpoint",
           prefer_mtls = client_uses_mtls_auth(oauth_client)
-        ) %||% NA_character_
+        ) %||%
+          NA_character_
         if (!is_valid_string(url)) {
           try(
             audit_event(
@@ -610,7 +611,8 @@ introspect_token <- function(
           oauth_client@provider,
           "introspection_endpoint",
           prefer_mtls = client_uses_mtls_auth(oauth_client)
-        ) %||% NA_character_
+        ) %||%
+          NA_character_
         if (!is_valid_string(url)) {
           result <- list(
             supported = FALSE,
