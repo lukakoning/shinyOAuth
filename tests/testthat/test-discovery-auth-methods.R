@@ -408,3 +408,42 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
     "https://127.0.0.1/mtls/par"
   )
 })
+
+
+testthat::test_that("discovery rejects malformed tls_client_certificate_bound_access_tokens", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  expect_malformed_boolean <- function(bad_value) {
+    app <- webfakes::new_app()
+    app$get("/.well-known/openid-configuration", function(req, res) {
+      issuer_url <- paste0("http://", req$get_header("host"))
+      res$set_status(200)$set_type("application/json")$send(
+        jsonlite::toJSON(
+          list(
+            issuer = issuer_url,
+            authorization_endpoint = paste0(issuer_url, "/auth"),
+            token_endpoint = paste0(issuer_url, "/token"),
+            jwks_uri = paste0(issuer_url, "/jwks"),
+            token_endpoint_auth_methods_supported = list("tls_client_auth"),
+            tls_client_certificate_bound_access_tokens = bad_value
+          ),
+          auto_unbox = TRUE
+        )
+      )
+    })
+    srv <- webfakes::local_app_process(app)
+
+    testthat::expect_error(
+      oauth_provider_oidc_discover(
+        issuer = srv$url(),
+        token_auth_style = "tls_client_auth"
+      ),
+      class = "shinyOAuth_parse_error",
+      regexp = "tls_client_certificate_bound_access_tokens"
+    )
+  }
+
+  expect_malformed_boolean("true")
+  expect_malformed_boolean(1)
+})

@@ -200,8 +200,9 @@ oauth_provider_oidc_discover <- function(
 
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
-  require_pushed_authorization_requests <- isTRUE(
-    disc[["require_pushed_authorization_requests"]]
+  require_pushed_authorization_requests <- .discover_parse_optional_boolean(
+    disc,
+    "require_pushed_authorization_requests"
   )
   request_object_signing_alg_values_supported <- toupper(as.character(
     unlist(
@@ -209,8 +210,9 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
-  require_signed_request_object <- isTRUE(
-    disc[["require_signed_request_object"]]
+  require_signed_request_object <- .discover_parse_optional_boolean(
+    disc,
+    "require_signed_request_object"
   )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
@@ -224,9 +226,11 @@ oauth_provider_oidc_discover <- function(
     mtls_endpoint_aliases,
     .discover_compute_alias_allowed_hosts()
   )
-  tls_client_certificate_bound_access_tokens <- isTRUE(
-    disc[["tls_client_certificate_bound_access_tokens"]]
-  )
+  tls_client_certificate_bound_access_tokens <-
+    .discover_parse_optional_boolean(
+      disc,
+      "tls_client_certificate_bound_access_tokens"
+    )
 
   # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
   #      Note: userinfo_signing_alg_values_supported in discovery indicates
@@ -265,7 +269,6 @@ oauth_provider_oidc_discover <- function(
     allowed_token_types = allowed_token_types,
     jwks_host_issuer_match = jwks_host_issuer_match
   )
-
   duplicate_dot_names <- intersect(
     names(provider_args),
     names(dots) %||% character(0)
@@ -419,10 +422,12 @@ oauth_provider_oidc_discover <- function(
 
   par_url <- disc[["pushed_authorization_request_endpoint"]] %||% NA_character_
 
-  if (
-    isTRUE(disc[["require_pushed_authorization_requests"]]) &&
-      !is_valid_string(par_url)
-  ) {
+  require_pushed_authorization_requests <- .discover_parse_optional_boolean(
+    disc,
+    "require_pushed_authorization_requests"
+  )
+
+  if (require_pushed_authorization_requests && !is_valid_string(par_url)) {
     err_parse(
       "Discovery requires PAR but is missing pushed_authorization_request_endpoint"
     )
@@ -760,6 +765,18 @@ oauth_provider_oidc_discover <- function(
   }
 
   out[!vapply(out, is.null, logical(1))]
+}
+
+.discover_parse_optional_boolean <- function(disc, field) {
+  value <- disc[[field]]
+  if (is.null(value)) {
+    return(FALSE)
+  }
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    err_parse(sprintf("Discovery %s must be a JSON boolean", field))
+  }
+
+  value
 }
 
 .discover_validate_endpoint_aliases <- function(
