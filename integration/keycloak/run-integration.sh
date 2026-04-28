@@ -74,9 +74,12 @@ echo "[run-integration] Starting Keycloak via docker compose..." >&2
 echo "[run-integration] Waiting for discovery at ${DISCOVERY_URL} ..." >&2
 start_ts=$(date +%s)
 while true; do
+  # The outer polling loop already retries discovery until readiness, so keep
+  # the inner curl invocation portable across older builds by avoiding
+  # --retry-all-errors (which is unavailable on some versions and does nothing
+  # here unless paired with --retry).
   if curl \
     "${CURL_TLS_FLAGS[@]}" \
-    --retry-all-errors \
     -fsS "$DISCOVERY_URL" >/dev/null 2>&1; then
     echo "[run-integration] Discovery is reachable." >&2
     break
