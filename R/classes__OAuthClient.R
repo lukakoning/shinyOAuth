@@ -49,6 +49,21 @@
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
+#' @param tls_client_cert_file Optional path to the PEM-encoded client
+#'   certificate (or certificate chain) used for RFC 8705 mutual TLS client
+#'   authentication and certificate-bound protected-resource requests. Required
+#'   when `provider@token_auth_style` is `"tls_client_auth"` or
+#'   `"self_signed_tls_client_auth"`.
+#' @param tls_client_key_file Optional path to the PEM-encoded private key used
+#'   with `tls_client_cert_file`. Must be supplied together with
+#'   `tls_client_cert_file`, and is required for RFC 8705 mTLS client
+#'   authentication.
+#' @param tls_client_key_password Optional password used to decrypt an encrypted
+#'   PEM private key referenced by `tls_client_key_file`.
+#' @param tls_client_ca_file Optional path to a PEM CA bundle used to validate
+#'   the remote HTTPS server certificate when making mTLS requests. This is
+#'   mainly useful for local or test environments that use self-signed server
+#'   certificates.
 #'
 #' @param authorization_request_mode Controls how the authorization request is
 #'   transported to the provider.
@@ -289,6 +304,22 @@ OAuthClient <- S7::new_class(
     ),
     # Optional override for the client assertion audience claim.
     client_assertion_audience = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    tls_client_cert_file = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    tls_client_key_file = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    tls_client_key_password = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    tls_client_ca_file = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
@@ -895,6 +926,75 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    check_file_field <- function(value, name) {
+      if (!is_valid_string(value)) {
+        return(NULL)
+      }
+      if (!file.exists(value)) {
+        return(
+          paste0("OAuthClient: ", name, " must point to an existing file")
+        )
+      }
+      NULL
+    }
+
+    tls_client_cert_file <- self@tls_client_cert_file %||% NA_character_
+    tls_client_key_file <- self@tls_client_key_file %||% NA_character_
+    tls_client_ca_file <- self@tls_client_ca_file %||% NA_character_
+    tls_client_key_password <- self@tls_client_key_password %||% NA_character_
+
+    has_tls_client_cert <- is_valid_string(tls_client_cert_file)
+    has_tls_client_key <- is_valid_string(tls_client_key_file)
+    requires_tls_client_cert <- tok_style %in%
+      c(
+        "tls_client_auth",
+        "self_signed_tls_client_auth"
+      )
+
+    if (
+      isTRUE(requires_tls_client_cert) &&
+        !(has_tls_client_cert && has_tls_client_key)
+    ) {
+      return(paste0(
+        "OAuthClient: tls_client_cert_file and tls_client_key_file are required when token_auth_style = '",
+        tok_style,
+        "'"
+      ))
+    }
+    if (xor(has_tls_client_cert, has_tls_client_key)) {
+      return(
+        paste(
+          "OAuthClient: tls_client_cert_file and tls_client_key_file",
+          "must be supplied together"
+        )
+      )
+    }
+
+    for (field in list(
+      list(name = "tls_client_cert_file", value = tls_client_cert_file),
+      list(name = "tls_client_key_file", value = tls_client_key_file),
+      list(name = "tls_client_ca_file", value = tls_client_ca_file)
+    )) {
+      msg <- check_file_field(field$value, field$name)
+      if (!is.null(msg)) {
+        return(msg)
+      }
+    }
+
+    if (
+      !is.character(tls_client_key_password) ||
+        length(tls_client_key_password) != 1L
+    ) {
+      return(
+        "OAuthClient: tls_client_key_password must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(tls_client_key_password) && !nzchar(tls_client_key_password)) {
+      return(
+        "OAuthClient: tls_client_key_password must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
     # Validate state_entropy: must be a finite length-1 numeric integer in [22, 128]
     ent <- self@state_entropy
     if (is.null(ent) || length(ent) != 1L || is.na(ent)) {
@@ -1210,6 +1310,10 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  tls_client_cert_file = NULL,
+  tls_client_key_file = NULL,
+  tls_client_key_password = NULL,
+  tls_client_ca_file = NULL,
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
@@ -1288,6 +1392,10 @@ oauth_client <- function(
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
+    tls_client_cert_file = tls_client_cert_file %||% NA_character_,
+    tls_client_key_file = tls_client_key_file %||% NA_character_,
+    tls_client_key_password = tls_client_key_password %||% NA_character_,
+    tls_client_ca_file = tls_client_ca_file %||% NA_character_,
     authorization_request_mode = authorization_request_mode,
     authorization_request_signing_alg = authorization_request_signing_alg %||%
       NA_character_,

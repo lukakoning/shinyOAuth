@@ -13,7 +13,11 @@ test_that("NA optional fields yield clean validator errors", {
       oauth_provider,
       c(prov_base, list(token_auth_style = NA_character_))
     ),
-    regexp = "token_auth_style must be one of 'header', 'body', 'client_secret_jwt', or 'private_key_jwt'"
+    regexp = paste(
+      "token_auth_style must be one of 'header', 'body',",
+      "'tls_client_auth', 'self_signed_tls_client_auth',",
+      "'client_secret_jwt', or 'private_key_jwt'"
+    )
   )
 
   # jwks_pin_mode = NA -> targeted error

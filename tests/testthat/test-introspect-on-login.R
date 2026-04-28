@@ -235,6 +235,48 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
   )
 })
 
+test_that("handle_callback with introspect=TRUE backfills cnf from introspection", {
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "opaque-access-token",
+        expires_in = 3600,
+        token_type = "Bearer"
+      )
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"active":true,"cnf":{"x5t#S256":"intro-thumbprint"}}'
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      tok_obj <- shinyOAuth:::handle_callback(
+        cli,
+        code = "abc",
+        payload = enc,
+        browser_token = tok
+      )
+
+      testthat::expect_identical(
+        tok_obj@cnf$`x5t#S256`,
+        "intro-thumbprint"
+      )
+    }
+  )
+})
+
 test_that("introspect_elements can require sub match (id_token)", {
   cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@introspect_elements <- "sub"

@@ -193,6 +193,39 @@ testthat::test_that("JWT-only advertisement requires explicit token_auth_style",
 })
 
 
+testthat::test_that("mTLS-only advertisement requires explicit token_auth_style", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
+          token_endpoint_auth_methods_supported = list("tls_client_auth")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  testthat::expect_error(
+    oauth_provider_oidc_discover(issuer = issuer),
+    class = "shinyOAuth_config_error"
+  )
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = issuer,
+    token_auth_style = "tls_client_auth"
+  )
+  testthat::expect_identical(prov@token_auth_style, "tls_client_auth")
+})
+
+
 testthat::test_that("mixed none + client_secret_basic prefers confidential auth", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
@@ -326,4 +359,91 @@ testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
     prov@token_endpoint_auth_signing_alg_values_supported,
     c("PS256", "RS256")
   )
+})
+
+testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          userinfo_endpoint = paste0(issuer_url, "/userinfo"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          token_endpoint_auth_methods_supported = list("tls_client_auth"),
+          tls_client_certificate_bound_access_tokens = TRUE,
+          mtls_endpoint_aliases = list(
+            token_endpoint = "https://127.0.0.1/mtls/token",
+            userinfo_endpoint = "https://127.0.0.1/mtls/userinfo",
+            pushed_authorization_request_endpoint = "https://127.0.0.1/mtls/par"
+          )
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = srv$url(),
+    token_auth_style = "tls_client_auth"
+  )
+
+  testthat::expect_true(isTRUE(prov@tls_client_certificate_bound_access_tokens))
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$token_endpoint,
+    "https://127.0.0.1/mtls/token"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$userinfo_endpoint,
+    "https://127.0.0.1/mtls/userinfo"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$par_endpoint,
+    "https://127.0.0.1/mtls/par"
+  )
+})
+
+
+testthat::test_that("discovery rejects malformed tls_client_certificate_bound_access_tokens", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  expect_malformed_boolean <- function(bad_value) {
+    app <- webfakes::new_app()
+    app$get("/.well-known/openid-configuration", function(req, res) {
+      issuer_url <- paste0("http://", req$get_header("host"))
+      res$set_status(200)$set_type("application/json")$send(
+        jsonlite::toJSON(
+          list(
+            issuer = issuer_url,
+            authorization_endpoint = paste0(issuer_url, "/auth"),
+            token_endpoint = paste0(issuer_url, "/token"),
+            jwks_uri = paste0(issuer_url, "/jwks"),
+            token_endpoint_auth_methods_supported = list("tls_client_auth"),
+            tls_client_certificate_bound_access_tokens = bad_value
+          ),
+          auto_unbox = TRUE
+        )
+      )
+    })
+    srv <- webfakes::local_app_process(app)
+
+    testthat::expect_error(
+      oauth_provider_oidc_discover(
+        issuer = srv$url(),
+        token_auth_style = "tls_client_auth"
+      ),
+      class = "shinyOAuth_parse_error",
+      regexp = "tls_client_certificate_bound_access_tokens"
+    )
+  }
+
+  expect_malformed_boolean("true")
+  expect_malformed_boolean(1)
 })

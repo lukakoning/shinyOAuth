@@ -5,8 +5,20 @@ services:
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
-    command: ["start-dev", "--http-host=0.0.0.0", "--import-realm"]
+    command:
+      [
+        "start-dev",
+        "--http-enabled=true",
+        "--http-host=0.0.0.0",
+        "--https-certificate-file=/opt/keycloak/conf/tls/server-cert.pem",
+        "--https-certificate-key-file=/opt/keycloak/conf/tls/server-key.pem",
+        "--https-client-auth=request",
+        "--truststore-paths=/opt/keycloak/conf/tls/ca-cert.pem",
+        "--import-realm"
+      ]
     ports:
       - "8080:8080"
+      - "8443:8443"
     volumes:
       - ./realm-shinyoauth.json:/opt/keycloak/data/import/realm-shinyoauth.json:ro
+      - ./tls:/opt/keycloak/conf/tls:ro

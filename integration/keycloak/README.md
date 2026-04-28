@@ -2,13 +2,15 @@
 
 This folder provides a minimal Keycloak setup to run local integration tests against shinyOAuth.
 
-- Image: `quay.io/keycloak/keycloak:24.0.5`
+- Image: `quay.io/keycloak/keycloak:26.6.1`
 - Admin credentials: `admin` / `admin`
 - Realm: `shinyoauth`
 - Test user: `alice` / `alice`
 - Clients:
   - `shiny-public` (public; PKCE S256; standard authorization-code flow)
   - `shiny-confidential` (confidential; client secret `secret`; standard code flow; service accounts enabled for client_credentials)
+  - `shiny-mtls-confidential` (confidential; X.509 client auth; certificate-bound authorization-code tokens)
+  - `shiny-mtls-service` (confidential; X.509 client auth; certificate-bound client_credentials tokens)
   - `shiny-jar-hmac` (confidential; 32-byte client secret; HS256-signed Request Objects for JAR integration coverage)
 
 ## Run integration tests
@@ -56,6 +58,7 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
  - `test_integration_keycloak_auth_styles_unhappy.R` — negative-path coverage: wrong client_secret for CSJWT, mismatched algorithm, wrong private key for PJWT (server rejection), and incompatible alg for the provided key (local config error).
 - `test_integration_keycloak_par.R` — PAR discovery and end-to-end code flow coverage, including the standard localhost HTTP host-policy path used by the local Keycloak setup.
 - `test_integration_keycloak_par_unhappy.R` — PAR unhappy-path coverage against live Keycloak, currently exercising rejection of a bad JWT client-assertion audience at the PAR endpoint.
+- `test_integration_keycloak_mtls.R` — RFC 8705 mTLS coverage for authorization-code and client_credentials flows, including wrong/missing client certificate rejection, certificate-bound userinfo protection, and refresh/introspection/revocation regressions that must reach the AS even when token cnf data is mismatched locally.
  - `test_integration_keycloak_pkce.R` — PKCE enforcement for public client `shiny-public`:
    - Happy path: completes S256 PKCE code flow and authenticates
    - Unhappy path (missing verifier): deletes `code_verifier` from the state store before callback → module rejects with a PKCE/code_verifier error before token exchange

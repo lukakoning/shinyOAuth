@@ -168,7 +168,15 @@ revoke_token <- function(
           result
         }
 
-        url <- oauth_client@provider@revocation_url %||% NA_character_
+        url <- resolve_provider_endpoint_url(
+          oauth_client@provider,
+          "revocation_endpoint",
+          prefer_mtls = client_uses_mtls_endpoint(
+            oauth_client,
+            token = oauth_token
+          )
+        ) %||%
+          NA_character_
         if (!is_valid_string(url)) {
           try(
             audit_event(
@@ -231,42 +239,19 @@ revoke_token <- function(
         }
 
         req <- httr2::request(url)
-        tas <- oauth_client@provider@token_auth_style %||% "header"
-        if (identical(tas, "header")) {
-          req <- req |>
-            httr2::req_auth_basic(
-              oauth_client@client_id,
-              oauth_client@client_secret
-            )
-        } else if (identical(tas, "body")) {
-          params$client_id <- oauth_client@client_id
-          if (is_valid_string(oauth_client@client_secret)) {
-            params$client_secret <- oauth_client@client_secret
-          }
-        } else if (
-          identical(tas, "client_secret_jwt") ||
-            identical(tas, "private_key_jwt")
-        ) {
-          params$client_id <- oauth_client@client_id
-          params$client_assertion_type <-
-            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-          params$client_assertion <- build_client_assertion(
-            oauth_client,
-            aud = resolve_client_assertion_audience(oauth_client, req)
-          )
-        } else {
-          err_config(
-            c(
-              "x" = "Unsupported token_auth_style for revocation.",
-              "i" = paste0(
-                "Got: '",
-                tas,
-                "'. Allowed: 'header', 'body', 'client_secret_jwt', 'private_key_jwt'."
-              )
-            ),
-            context = list(phase = "revoke_token", style = tas)
-          )
-        }
+        prepared <- apply_direct_client_auth(
+          req = req,
+          params = params,
+          client = oauth_client,
+          context = "revoke_token"
+        )
+        req <- prepared$req
+        params <- prepared$params
+        req <- req_apply_authorization_server_mtls(
+          req,
+          oauth_client,
+          token = oauth_token
+        )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
@@ -627,7 +612,15 @@ introspect_token <- function(
           result
         }
 
-        url <- oauth_client@provider@introspection_url %||% NA_character_
+        url <- resolve_provider_endpoint_url(
+          oauth_client@provider,
+          "introspection_endpoint",
+          prefer_mtls = client_uses_mtls_endpoint(
+            oauth_client,
+            token = oauth_token
+          )
+        ) %||%
+          NA_character_
         if (!is_valid_string(url)) {
           result <- list(
             supported = FALSE,
@@ -663,42 +656,19 @@ introspect_token <- function(
         }
 
         req <- httr2::request(url)
-        tas <- oauth_client@provider@token_auth_style %||% "header"
-        if (identical(tas, "header")) {
-          req <- req |>
-            httr2::req_auth_basic(
-              oauth_client@client_id,
-              oauth_client@client_secret
-            )
-        } else if (identical(tas, "body")) {
-          params$client_id <- oauth_client@client_id
-          if (is_valid_string(oauth_client@client_secret)) {
-            params$client_secret <- oauth_client@client_secret
-          }
-        } else if (
-          identical(tas, "client_secret_jwt") ||
-            identical(tas, "private_key_jwt")
-        ) {
-          params$client_id <- oauth_client@client_id
-          params$client_assertion_type <-
-            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-          params$client_assertion <- build_client_assertion(
-            oauth_client,
-            aud = resolve_client_assertion_audience(oauth_client, req)
-          )
-        } else {
-          err_config(
-            c(
-              "x" = "Unsupported token_auth_style for introspection.",
-              "i" = paste0(
-                "Got: '",
-                tas,
-                "'. Allowed: 'header', 'body', 'client_secret_jwt', 'private_key_jwt'."
-              )
-            ),
-            context = list(phase = "introspect_token", style = tas)
-          )
-        }
+        prepared <- apply_direct_client_auth(
+          req = req,
+          params = params,
+          client = oauth_client,
+          context = "introspect_token"
+        )
+        req <- prepared$req
+        params <- prepared$params
+        req <- req_apply_authorization_server_mtls(
+          req,
+          oauth_client,
+          token = oauth_token
+        )
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
         extra_headers <- as.list(oauth_client@provider@extra_token_headers)
@@ -1051,32 +1021,29 @@ refresh_token <- function(
           params <- c(params, oauth_client@provider@extra_token_params)
         }
 
-        req <- httr2::request(oauth_client@provider@token_url)
-
-        tas <- oauth_client@provider@token_auth_style %||% "header"
-        if (identical(tas, "header")) {
-          req <- req |>
-            httr2::req_auth_basic(
-              oauth_client@client_id,
-              oauth_client@client_secret
-            )
-        } else if (identical(tas, "body")) {
-          params$client_id <- oauth_client@client_id
-          if (is_valid_string(oauth_client@client_secret)) {
-            params$client_secret <- oauth_client@client_secret
-          }
-        } else if (
-          identical(tas, "client_secret_jwt") ||
-            identical(tas, "private_key_jwt")
-        ) {
-          params$client_id <- oauth_client@client_id
-          params$client_assertion_type <-
-            "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-          params$client_assertion <- build_client_assertion(
+        token_url <- resolve_provider_endpoint_url(
+          oauth_client@provider,
+          "token_endpoint",
+          prefer_mtls = client_uses_mtls_endpoint(
             oauth_client,
-            aud = resolve_client_assertion_audience(oauth_client, req)
+            token = token
           )
-        }
+        )
+
+        req <- httr2::request(token_url)
+        prepared <- apply_direct_client_auth(
+          req = req,
+          params = params,
+          client = oauth_client,
+          context = "refresh_token"
+        )
+        req <- prepared$req
+        params <- prepared$params
+        req <- req_apply_authorization_server_mtls(
+          req,
+          oauth_client,
+          token = token
+        )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
@@ -1097,7 +1064,7 @@ refresh_token <- function(
           },
           attributes = otel_http_attributes(
             method = "POST",
-            url = oauth_client@provider@token_url,
+            url = token_url,
             extra = list(oauth.phase = "refresh")
           ),
           options = list(kind = "client"),
@@ -1163,6 +1130,7 @@ refresh_token <- function(
           token_type = tok$token_type,
           refresh_token = tok$refresh_token,
           id_token = tok$id_token,
+          cnf = tok$cnf,
           userinfo = NULL,
           expires_in = tok$expires_in,
           scope = tok$scope
@@ -1177,11 +1145,19 @@ refresh_token <- function(
         )
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {
+          userinfo_token <- OAuthToken(
+            access_token = token_set$access_token,
+            token_type = token_set$token_type %||% NA_character_,
+            userinfo = list(),
+            cnf = resolve_token_cnf(
+              cnf = token_set$cnf,
+              access_token = token_set$access_token
+            )
+          )
           ui <- call_with_optional_shiny_session(
             get_userinfo,
             oauth_client = oauth_client,
-            token = tok$access_token,
-            token_type = tok$token_type %||% NA_character_,
+            token = userinfo_token,
             shiny_session = shiny_session
           )
 
@@ -1233,13 +1209,17 @@ refresh_token <- function(
           token@id_token <- token_set$id_token
           token@id_token_validated <- isTRUE(token_set[[".id_token_validated"]])
         }
+        token@cnf <- resolve_token_cnf(
+          cnf = token_set$cnf,
+          access_token = token_set$access_token
+        )
 
         if (!is.null(token_set$userinfo)) {
           token@userinfo <- token_set$userinfo
         }
 
         if (isTRUE(introspect)) {
-          try(
+          intro_res <- try(
             introspect_token(
               oauth_client,
               token,
@@ -1249,6 +1229,13 @@ refresh_token <- function(
             ),
             silent = TRUE
           )
+          if (!inherits(intro_res, "try-error")) {
+            token@cnf <- resolve_token_cnf(
+              cnf = token@cnf,
+              access_token = token@access_token,
+              introspection_result = intro_res
+            )
+          }
         }
 
         audit_event(

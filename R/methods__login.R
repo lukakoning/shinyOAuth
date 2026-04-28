@@ -469,6 +469,8 @@ apply_direct_client_auth <- function(req, params, client, context) {
     if (is_valid_string(client@client_secret)) {
       params$client_secret <- client@client_secret
     }
+  } else if (tas %in% mtls_token_auth_styles()) {
+    params$client_id <- params$client_id %||% client@client_id
   } else if (
     identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
   ) {
@@ -486,7 +488,7 @@ apply_direct_client_auth <- function(req, params, client, context) {
         "i" = paste0(
           "Got: '",
           tas,
-          "'. Allowed: 'header', 'body', 'client_secret_jwt', 'private_key_jwt'."
+          "'. Allowed: 'header', 'body', 'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', 'private_key_jwt'."
         )
       ),
       context = list(phase = context, style = tas)
@@ -497,7 +499,12 @@ apply_direct_client_auth <- function(req, params, client, context) {
 }
 
 push_authorization_request <- function(client, params, shiny_session = NULL) {
-  endpoint <- client@provider@par_url %||% NA_character_
+  endpoint <- resolve_provider_endpoint_url(
+    client@provider,
+    "par_endpoint",
+    prefer_mtls = client_uses_mtls_endpoint(client)
+  ) %||%
+    NA_character_
   if (!is_valid_string(endpoint)) {
     err_config(
       "Pushed authorization requests require provider@par_url"
@@ -522,6 +529,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       )
       req <- prepared$req
       params <- prepared$params
+      req <- req_apply_authorization_server_mtls(req, client)
 
       req <- add_req_defaults(req)
       req <- req_no_redirect(req)
@@ -1329,11 +1337,19 @@ handle_callback_internal <- function(
       # make external calls after cryptographic validation passes.
 
       if (isTRUE(oauth_client@provider@userinfo_required)) {
+        userinfo_token <- OAuthToken(
+          access_token = token_set[["access_token"]],
+          token_type = token_set$token_type %||% NA_character_,
+          userinfo = list(),
+          cnf = resolve_token_cnf(
+            cnf = token_set$cnf,
+            access_token = token_set[["access_token"]]
+          )
+        )
         userinfo <- call_with_optional_shiny_session(
           get_userinfo,
           oauth_client = oauth_client,
-          token = token_set[["access_token"]],
-          token_type = token_set$token_type %||% NA_character_,
+          token = userinfo_token,
           shiny_session = shiny_session
         )
         token_set[["userinfo"]] <- userinfo
@@ -1370,6 +1386,10 @@ handle_callback_internal <- function(
           resolve_missing_expires_in(phase = "exchange_code")
         },
         id_token = token_set$id_token %||% NA_character_,
+        cnf = resolve_token_cnf(
+          cnf = token_set$cnf,
+          access_token = token_set[["access_token"]]
+        ),
         id_token_validated = isTRUE(token_set[[".id_token_validated"]])
       )
       # Set userinfo separately for compatibility with some S7 dispatchers
@@ -1406,6 +1426,12 @@ handle_callback_internal <- function(
             )
           ))
         }
+
+        token@cnf <- resolve_token_cnf(
+          cnf = token@cnf,
+          access_token = token@access_token,
+          introspection_result = intro_res
+        )
 
         ## Extra requirements for token introspection ------------------------------
 
@@ -1784,7 +1810,13 @@ swap_code_for_token_set <- function(
         params <- c(params, client@provider@extra_token_params)
       }
 
-      req <- httr2::request(client@provider@token_url)
+      token_url <- resolve_provider_endpoint_url(
+        client@provider,
+        "token_endpoint",
+        prefer_mtls = client_uses_mtls_endpoint(client)
+      )
+
+      req <- httr2::request(token_url)
       prepared <- apply_direct_client_auth(
         req = req,
         params = params,
@@ -1793,6 +1825,7 @@ swap_code_for_token_set <- function(
       )
       req <- prepared$req
       params <- prepared$params
+      req <- req_apply_authorization_server_mtls(req, client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
       req <- add_req_defaults(req)
@@ -1823,7 +1856,7 @@ swap_code_for_token_set <- function(
         },
         attributes = otel_http_attributes(
           method = "POST",
-          url = client@provider@token_url,
+          url = token_url,
           extra = list(oauth.phase = "token.exchange")
         ),
         options = list(kind = "client"),
