@@ -58,6 +58,7 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
 
   access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
+  testthat::expect_identical(login$token@cnf$`x5t#S256`, access_x5t)
 
   userinfo <- shinyOAuth::get_userinfo(client, login$token)
   testthat::expect_true(is.list(userinfo))

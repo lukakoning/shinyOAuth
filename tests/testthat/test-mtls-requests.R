@@ -9,6 +9,18 @@ write_fake_mtls_pem <- function(path, label) {
   )
 }
 
+build_mtls_access_jwt <- function(payload) {
+  header <- shinyOAuth:::base64url_encode(
+    charToRaw('{"alg":"none","typ":"JWT"}')
+  )
+  body <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
+    payload,
+    auto_unbox = TRUE
+  )))
+
+  paste0(header, ".", body, ".")
+}
+
 make_mtls_test_files <- function() {
   cert_file <- tempfile(fileext = ".pem")
   key_file <- tempfile(fileext = ".pem")
@@ -170,6 +182,64 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
   expect_identical(refreshed@cnf$`x5t#S256`, "thumbprint-2")
 })
 
+test_that("refresh token derives confirmation claims from JWT access tokens", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "self_signed_tls_client_auth",
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list()
+  )
+  jwt_access_token <- build_mtls_access_jwt(list(
+    cnf = list(`x5t#S256` = "jwt-thumbprint")
+  ))
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, ...) {
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(
+          list(
+            access_token = jwt_access_token,
+            refresh_token = "new-rt",
+            expires_in = 3600,
+            token_type = "Bearer"
+          ),
+          auto_unbox = TRUE
+        ))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  refreshed <- shinyOAuth::refresh_token(client, token)
+
+  expect_identical(refreshed@cnf$`x5t#S256`, "jwt-thumbprint")
+})
+
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
@@ -252,6 +322,49 @@ test_that("client_bearer_req rejects certificate-bound tokens when thumbprint mi
     token_type = "Bearer",
     userinfo = list(),
     cnf = list(`x5t#S256` = "expected-thumbprint")
+  )
+
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(...) "different-thumbprint",
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth::client_bearer_req(
+      token = token,
+      url = "https://resource.example.com/api",
+      oauth_client = client
+    ),
+    regexp = "does not match token cnf x5t#S256"
+  )
+})
+
+test_that("client_bearer_req enforces certificate binding from JWT cnf", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    tls_client_certificate_bound_access_tokens = TRUE
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file
+  )
+  token <- OAuthToken(
+    access_token = build_mtls_access_jwt(list(
+      cnf = list(`x5t#S256` = "expected-thumbprint")
+    )),
+    token_type = "Bearer",
+    userinfo = list()
   )
 
   testthat::local_mocked_bindings(

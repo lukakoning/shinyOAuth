@@ -1186,14 +1186,17 @@ refresh_token <- function(
           token@id_token <- token_set$id_token
           token@id_token_validated <- isTRUE(token_set[[".id_token_validated"]])
         }
-        token@cnf <- token_set$cnf %||% list()
+        token@cnf <- resolve_token_cnf(
+          cnf = token_set$cnf,
+          access_token = token_set$access_token
+        )
 
         if (!is.null(token_set$userinfo)) {
           token@userinfo <- token_set$userinfo
         }
 
         if (isTRUE(introspect)) {
-          try(
+          intro_res <- try(
             introspect_token(
               oauth_client,
               token,
@@ -1203,6 +1206,13 @@ refresh_token <- function(
             ),
             silent = TRUE
           )
+          if (!inherits(intro_res, "try-error")) {
+            token@cnf <- resolve_token_cnf(
+              cnf = token@cnf,
+              access_token = token@access_token,
+              introspection_result = intro_res
+            )
+          }
         }
 
         audit_event(

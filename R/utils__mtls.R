@@ -63,16 +63,83 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
 }
 
 token_cnf_x5t_s256 <- function(token) {
-  if (!S7::S7_inherits(token, class = OAuthToken) || !is.list(token@cnf)) {
+  if (!S7::S7_inherits(token, class = OAuthToken)) {
     return(NA_character_)
   }
 
-  thumbprint <- token@cnf[["x5t#S256"]] %||% NA_character_
+  cnf <- resolve_token_cnf(
+    cnf = token@cnf,
+    access_token = token@access_token
+  )
+  thumbprint <- cnf[["x5t#S256"]] %||% NA_character_
   if (!is_valid_string(thumbprint)) {
     return(NA_character_)
   }
 
   thumbprint
+}
+
+normalize_token_cnf <- function(cnf) {
+  if (is.data.frame(cnf)) {
+    cnf <- as.list(cnf)
+  }
+  if (!is.list(cnf)) {
+    return(list())
+  }
+
+  thumbprint <- cnf[["x5t#S256"]] %||% NA_character_
+  if (!is_valid_string(thumbprint)) {
+    return(list())
+  }
+
+  list(`x5t#S256` = thumbprint)
+}
+
+token_cnf_from_access_token <- function(access_token) {
+  if (!is_valid_string(access_token)) {
+    return(list())
+  }
+
+  payload <- try(parse_jwt_payload(access_token), silent = TRUE)
+  if (inherits(payload, "try-error") || !is.list(payload)) {
+    return(list())
+  }
+
+  normalize_token_cnf(payload$cnf %||% NULL)
+}
+
+token_cnf_from_introspection <- function(introspection_result) {
+  if (!is.list(introspection_result)) {
+    return(list())
+  }
+
+  raw <- introspection_result$raw %||% introspection_result
+  if (is.data.frame(raw)) {
+    raw <- as.list(raw)
+  }
+  if (!is.list(raw)) {
+    return(list())
+  }
+
+  normalize_token_cnf(raw$cnf %||% NULL)
+}
+
+resolve_token_cnf <- function(
+  cnf = NULL,
+  access_token = NULL,
+  introspection_result = NULL
+) {
+  normalized <- normalize_token_cnf(cnf)
+  if (length(normalized) > 0) {
+    return(normalized)
+  }
+
+  jwt_cnf <- token_cnf_from_access_token(access_token)
+  if (length(jwt_cnf) > 0) {
+    return(jwt_cnf)
+  }
+
+  token_cnf_from_introspection(introspection_result)
 }
 
 token_requires_mtls_sender_constraint <- function(

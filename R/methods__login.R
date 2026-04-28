@@ -1380,7 +1380,10 @@ handle_callback_internal <- function(
           resolve_missing_expires_in(phase = "exchange_code")
         },
         id_token = token_set$id_token %||% NA_character_,
-        cnf = token_set$cnf %||% list(),
+        cnf = resolve_token_cnf(
+          cnf = token_set$cnf,
+          access_token = token_set[["access_token"]]
+        ),
         id_token_validated = isTRUE(token_set[[".id_token_validated"]])
       )
       # Set userinfo separately for compatibility with some S7 dispatchers
@@ -1417,6 +1420,12 @@ handle_callback_internal <- function(
             )
           ))
         }
+
+        token@cnf <- resolve_token_cnf(
+          cnf = token@cnf,
+          access_token = token@access_token,
+          introspection_result = intro_res
+        )
 
         ## Extra requirements for token introspection ------------------------------
 
