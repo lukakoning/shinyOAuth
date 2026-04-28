@@ -468,6 +468,66 @@ test_that("certificate-bound refresh uses mTLS token alias without mTLS auth sty
   expect_identical(refreshed@access_token, "new-at")
 })
 
+test_that("refresh uses token cnf to choose mTLS alias without provider metadata", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "thumbprint")
+  )
+
+  captured_req <- NULL
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(cert_file) {
+      expect_identical(cert_file, files$cert_file)
+      "thumbprint"
+    },
+    req_with_dpop_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  refreshed <- shinyOAuth::refresh_token(client, token)
+
+  expect_identical(captured_req$url, "https://example.com/mtls/token")
+  expect_identical(captured_req$options$sslcert, files$cert_file)
+  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(refreshed@access_token, "new-at")
+})
+
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)

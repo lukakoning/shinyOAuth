@@ -1024,7 +1024,10 @@ refresh_token <- function(
         token_url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "token_endpoint",
-          prefer_mtls = client_uses_mtls_endpoint(oauth_client)
+          prefer_mtls = client_uses_mtls_endpoint(
+            oauth_client,
+            token = token
+          )
         )
 
         req <- httr2::request(token_url)
@@ -1036,7 +1039,7 @@ refresh_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        req <- req_apply_oauth_mtls(req, oauth_client)
+        req <- req_apply_oauth_mtls(req, oauth_client, token = token)
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
