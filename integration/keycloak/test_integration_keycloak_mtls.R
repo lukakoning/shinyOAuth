@@ -89,6 +89,50 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
   )
 })
 
+testthat::test_that("Keycloak mTLS auth-code flow surfaces wrong certificate errors through oauth_module_server", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
+  wrong_client <- make_mtls_confidential_client(prov, cert_variant = "wrong")
+
+  login <- perform_mtls_module_login(wrong_client)
+
+  testthat::expect_false(isTRUE(login$authenticated))
+  testthat::expect_true(is.null(login$token))
+  testthat::expect_identical(login$error, "token_exchange_error")
+  combo <- paste(login$error_description %||% "")
+  testthat::expect_match(
+    combo,
+    "Transport failure|invalid_client|invalid_client_credentials|certificate|tls alert|No HTTP response",
+    ignore.case = TRUE
+  )
+})
+
+testthat::test_that("Keycloak mTLS userinfo surfaces wrong certificate errors through get_userinfo", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
+  client <- make_mtls_confidential_client(prov)
+  wrong_client <- make_mtls_confidential_client(prov, cert_variant = "wrong")
+
+  login <- perform_mtls_module_login(client)
+  testthat::expect_true(isTRUE(login$authenticated))
+
+  err <- rlang::catch_cnd(
+    shinyOAuth::get_userinfo(wrong_client, login$token),
+    classes = "error"
+  )
+
+  testthat::expect_s3_class(err, "shinyOAuth_input_error")
+  testthat::expect_match(
+    conditionMessage(err),
+    "certificate does not match token cnf|x5t#S256|Invalid input",
+    ignore.case = TRUE
+  )
+})
+
 testthat::test_that("Keycloak mTLS auth-code token exchange requires the registered certificate", {
   skip_mtls_common()
   local_test_options()
