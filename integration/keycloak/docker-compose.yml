@@ -13,7 +13,7 @@ services:
         "--https-certificate-file=/opt/keycloak/conf/tls/server-cert.pem",
         "--https-certificate-key-file=/opt/keycloak/conf/tls/server-key.pem",
         "--https-client-auth=request",
-        "--https-trust-store-file=/opt/keycloak/conf/tls/ca-cert.pem",
+        "--truststore-paths=/opt/keycloak/conf/tls/ca-cert.pem",
         "--import-realm"
       ]
     ports:
