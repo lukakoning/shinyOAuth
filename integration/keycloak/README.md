@@ -9,6 +9,7 @@ This folder provides a minimal Keycloak setup to run local integration tests aga
 - Clients:
   - `shiny-public` (public; PKCE S256; standard authorization-code flow)
   - `shiny-confidential` (confidential; client secret `secret`; standard code flow; service accounts enabled for client_credentials)
+  - `shiny-jar-hmac` (confidential; 32-byte client secret; HS256-signed Request Objects for JAR integration coverage)
 
 ## Run integration tests
 

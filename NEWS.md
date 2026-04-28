@@ -10,6 +10,12 @@ Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
 
+* Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
+`oauth_client()` can now send signed Request Objects via
+`authorization_request_mode = "request"`, using either
+`client_private_key` or `client_secret` signing depending on client
+configuration.
+
 * Added OpenTelemetry (OTel) support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
 key OAuth operations such as module initialization, login/callback handling, 

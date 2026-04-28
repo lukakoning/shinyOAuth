@@ -35,6 +35,25 @@ test_that("OAuthClient state_entropy fails fast on NA and non-scalar", {
   )
 })
 
+test_that("OAuthProvider accepts advertised JWS algorithm supersets", {
+  p <- oauth_provider(
+    name = "t",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    request_object_signing_alg_values_supported = c("RS256", "ES256K"),
+    token_endpoint_auth_signing_alg_values_supported = c("RS256", "ES256K")
+  )
+
+  expect_identical(
+    p@request_object_signing_alg_values_supported,
+    c("RS256", "ES256K")
+  )
+  expect_identical(
+    p@token_endpoint_auth_signing_alg_values_supported,
+    c("RS256", "ES256K")
+  )
+})
+
 test_that("OAuthProvider default jwks_host_issuer_match is FALSE", {
   p <- OAuthProvider(
     name = "t",

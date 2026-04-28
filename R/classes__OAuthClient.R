@@ -39,7 +39,9 @@
 #'   compatible default is selected based on the private key type/curve (e.g., `RS256` for RSA,
 #'   `ES256`/`ES384`/`ES512` for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
 #'   value is provided but incompatible with the key, validation fails early with a configuration
-#'   error.
+#'   error. When the provider advertises
+#'   `token_endpoint_auth_signing_alg_values_supported`, both explicit values and
+#'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
 #'   supported by `jose::jwt_encode_sig` (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
 #'
@@ -47,6 +49,29 @@
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
+#'
+#' @param authorization_request_mode Controls how the authorization request is
+#'   transported to the provider.
+#'
+#'   - `"parameters"` (default): send OAuth parameters directly on the browser
+#'     redirect URL.
+#'   - `"request"`: send a signed JWT-secured authorization request (JAR;
+#'     RFC 9101) via the `request` parameter.
+#'
+#'   Request mode requires signing material on the client. shinyOAuth prefers
+#'   `client_private_key` when present; otherwise it falls back to HMAC signing
+#'   with `client_secret`.
+#'
+#' @param authorization_request_signing_alg Optional JWS algorithm override for
+#'   signed authorization requests when `authorization_request_mode = "request"`.
+#'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
+#'   compatible asymmetric default based on `client_private_key` (for example
+#'   `RS256`, `ES256`, or `EdDSA`).
+#'
+#' @param authorization_request_audience Optional override for the `aud` claim
+#'   used in signed authorization requests. By default, shinyOAuth uses the
+#'   provider issuer when available and otherwise falls back to the authorization
+#'   endpoint URL.
 #'
 #' @param dpop_private_key Optional private key used to generate DPoP proofs
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
@@ -264,6 +289,21 @@ OAuthClient <- S7::new_class(
     ),
     # Optional override for the client assertion audience claim.
     client_assertion_audience = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Authorization request transport: direct parameters or signed JAR request.
+    authorization_request_mode = S7::new_property(
+      S7::class_character,
+      default = "parameters"
+    ),
+    # Optional override for the signed authorization request alg.
+    authorization_request_signing_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the signed authorization request aud claim.
+    authorization_request_audience = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
@@ -492,6 +532,7 @@ OAuthClient <- S7::new_class(
     # If an explicit client_assertion_alg is provided, validate compatibility
     # with the configured token authentication style so we fail fast with a
     # clear input error rather than later inside JWT signing.
+    client_assertion_alg <- NA_character_
     if (!is.null(self@client_assertion_alg)) {
       caa_raw <- self@client_assertion_alg
       if (!is.character(caa_raw) || length(caa_raw) != 1L) {
@@ -501,7 +542,7 @@ OAuthClient <- S7::new_class(
       }
       alg_chr <- caa_raw
       if (!is.na(alg_chr) && nzchar(alg_chr)) {
-        alg <- toupper(alg_chr)
+        client_assertion_alg <- toupper(alg_chr)
         allowed_hmac <- c("HS256", "HS384", "HS512")
         allowed_asym <- c(
           # RSA-PKCS1 v1.5
@@ -519,27 +560,74 @@ OAuthClient <- S7::new_class(
           "EDDSA"
         )
         if (
-          identical(tok_style, "client_secret_jwt") && !(alg %in% allowed_hmac)
+          identical(tok_style, "client_secret_jwt") &&
+            !(client_assertion_alg %in% allowed_hmac)
         ) {
           return(paste0(
             "OAuthClient: client_assertion_alg '",
-            alg,
+            client_assertion_alg,
             "' is incompatible with token_auth_style = 'client_secret_jwt' (expected one of: ",
             paste(allowed_hmac, collapse = ", "),
             ")"
           ))
         }
         if (
-          identical(tok_style, "private_key_jwt") && !(alg %in% allowed_asym)
+          identical(tok_style, "private_key_jwt") &&
+            !(client_assertion_alg %in% allowed_asym)
         ) {
           return(paste0(
             "OAuthClient: client_assertion_alg '",
-            alg,
+            client_assertion_alg,
             "' is incompatible with token_auth_style = 'private_key_jwt' (expected one of: ",
             paste(allowed_asym, collapse = ", "),
             ")"
           ))
         }
+      }
+    }
+
+    provider_client_assertion_algs <- toupper(as.character(
+      self@provider@token_endpoint_auth_signing_alg_values_supported %||%
+        character(0)
+    ))
+    if (
+      length(provider_client_assertion_algs) > 0 &&
+        (identical(tok_style, "client_secret_jwt") ||
+          identical(tok_style, "private_key_jwt"))
+    ) {
+      resolved_client_assertion_alg <- if (
+        !is.na(client_assertion_alg) && nzchar(client_assertion_alg)
+      ) {
+        client_assertion_alg
+      } else if (identical(tok_style, "client_secret_jwt")) {
+        "HS256"
+      } else {
+        inferred_alg <- try(
+          {
+            key0 <- normalize_private_key_input(self@client_private_key)
+            choose_default_alg_for_private_key(key0)
+          },
+          silent = TRUE
+        )
+        if (inherits(inferred_alg, "try-error")) {
+          return(
+            paste(
+              "OAuthClient: could not determine a compatible default",
+              "client_assertion_alg from client_private_key"
+            )
+          )
+        }
+        toupper(as.character(inferred_alg))
+      }
+
+      if (
+        !(resolved_client_assertion_alg %in% provider_client_assertion_algs)
+      ) {
+        return(paste0(
+          "OAuthClient: client_assertion_alg '",
+          resolved_client_assertion_alg,
+          "' is not supported by provider token_endpoint_auth_signing_alg_values_supported"
+        ))
       }
     }
 
@@ -554,6 +642,173 @@ OAuthClient <- S7::new_class(
       return(
         "OAuthClient: client_assertion_audience must be non-empty when provided (use NULL or NA to omit)"
       )
+    }
+
+    arm <- self@authorization_request_mode %||% "parameters"
+    if (!is.character(arm) || length(arm) != 1L || is.na(arm)) {
+      return(
+        "OAuthClient: authorization_request_mode must be a scalar character string"
+      )
+    }
+    if (!(arm %in% c("parameters", "request"))) {
+      return(
+        "OAuthClient: authorization_request_mode must be one of 'parameters' or 'request'"
+      )
+    }
+    if (
+      !identical(arm, "request") &&
+        isTRUE(self@provider@require_signed_request_object)
+    ) {
+      return(
+        paste(
+          "OAuthClient: provider requires signed request objects;",
+          "set authorization_request_mode = 'request'"
+        )
+      )
+    }
+
+    arsa <- self@authorization_request_signing_alg %||% NA_character_
+    if (!is.character(arsa) || length(arsa) != 1L) {
+      return(
+        "OAuthClient: authorization_request_signing_alg must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(arsa) && !nzchar(arsa)) {
+      return(
+        "OAuthClient: authorization_request_signing_alg must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    ara <- self@authorization_request_audience %||% NA_character_
+    if (!is.character(ara) || length(ara) != 1L) {
+      return(
+        "OAuthClient: authorization_request_audience must be a scalar character string (or NULL/NA to omit)"
+      )
+    }
+    if (!is.na(ara) && !nzchar(ara)) {
+      return(
+        "OAuthClient: authorization_request_audience must be non-empty when provided (use NULL or NA to omit)"
+      )
+    }
+
+    if (identical(arm, "request")) {
+      allowed_hmac <- c("HS256", "HS384", "HS512")
+      allowed_asym <- c(
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EdDSA"
+      )
+      alg <- canonicalize_jws_alg(arsa)
+      has_private_key <- !is.null(self@client_private_key)
+      has_secret <- is_valid_string(self@client_secret)
+
+      if (nzchar(alg) && identical(toupper(alg), "NONE")) {
+        return(
+          "OAuthClient: authorization_request_signing_alg = 'none' is not supported"
+        )
+      }
+
+      if (!nzchar(alg)) {
+        if (!isTRUE(has_private_key) && !isTRUE(has_secret)) {
+          return(
+            "OAuthClient: authorization_request_mode = 'request' requires client_private_key or client_secret"
+          )
+        }
+        if (
+          !isTRUE(has_private_key) &&
+            nchar(self@client_secret, type = "bytes") < 32
+        ) {
+          return(
+            "OAuthClient: authorization_request_mode = 'request' requires client_secret >= 32 bytes when no client_private_key is configured"
+          )
+        }
+      } else if (alg %in% allowed_hmac) {
+        if (!isTRUE(has_secret)) {
+          return(
+            "OAuthClient: HS* authorization_request_signing_alg requires client_secret"
+          )
+        }
+        if (nchar(self@client_secret, type = "bytes") < 32) {
+          return(
+            "OAuthClient: HS* authorization_request_signing_alg requires client_secret >= 32 bytes"
+          )
+        }
+      } else if (alg %in% allowed_asym) {
+        if (!isTRUE(has_private_key)) {
+          return(
+            "OAuthClient: asymmetric authorization_request_signing_alg requires client_private_key"
+          )
+        }
+
+        key0 <- try(
+          normalize_private_key_input(self@client_private_key),
+          silent = TRUE
+        )
+        if (inherits(key0, "try-error")) {
+          return(
+            "OAuthClient: client_private_key could not be parsed for authorization_request_signing_alg validation"
+          )
+        }
+        if (
+          !private_key_can_sign_jws_alg(key0, alg, typ = "oauth-authz-req+jwt")
+        ) {
+          return(paste0(
+            "OAuthClient: authorization_request_signing_alg '",
+            alg,
+            "' is incompatible with the provided private key"
+          ))
+        }
+      } else {
+        return(paste0(
+          "OAuthClient: authorization_request_signing_alg '",
+          alg,
+          "' is incompatible with signed authorization requests"
+        ))
+      }
+
+      provider_request_algs <- toupper(as.character(
+        self@provider@request_object_signing_alg_values_supported %||%
+          character(0)
+      ))
+      if (length(provider_request_algs) > 0) {
+        resolved_alg <- if (!is.na(alg) && nzchar(alg)) {
+          alg
+        } else if (isTRUE(has_private_key)) {
+          inferred_alg <- try(
+            {
+              key0 <- normalize_private_key_input(self@client_private_key)
+              choose_default_alg_for_private_key(key0)
+            },
+            silent = TRUE
+          )
+          if (inherits(inferred_alg, "try-error")) {
+            return(
+              paste(
+                "OAuthClient: could not determine a compatible default",
+                "authorization_request_signing_alg from client_private_key"
+              )
+            )
+          }
+          as.character(inferred_alg)
+        } else {
+          "HS256"
+        }
+
+        if (!(toupper(resolved_alg) %in% provider_request_algs)) {
+          return(paste0(
+            "OAuthClient: authorization_request_signing_alg '",
+            resolved_alg,
+            "' is not supported by provider request_object_signing_alg_values_supported"
+          ))
+        }
+      }
     }
 
     # Validate DPoP configuration when provided.
@@ -955,6 +1210,9 @@ oauth_client <- function(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  authorization_request_mode = c("parameters", "request"),
+  authorization_request_signing_alg = NULL,
+  authorization_request_audience = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -997,6 +1255,7 @@ oauth_client <- function(
 
   scope_validation <- match.arg(scope_validation)
   claims_validation <- match.arg(claims_validation)
+  authorization_request_mode <- match.arg(authorization_request_mode)
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees
@@ -1029,6 +1288,11 @@ oauth_client <- function(
     client_private_key_kid = client_private_key_kid %||% NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
+    authorization_request_mode = authorization_request_mode,
+    authorization_request_signing_alg = authorization_request_signing_alg %||%
+      NA_character_,
+    authorization_request_audience = authorization_request_audience %||%
+      NA_character_,
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
     dpop_signing_alg = dpop_signing_alg %||% NA_character_,

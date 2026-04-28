@@ -24,8 +24,21 @@
 #'   `client_secret_jwt` per RFC 7523.
 #'
 #' - PAR metadata: when the discovery document advertises
-#'   `pushed_authorization_request_endpoint`, the resulting provider uses that
-#'   URL so authorization requests can use RFC 9126 PAR.
+#'   `pushed_authorization_request_endpoint` or
+#'   `require_pushed_authorization_requests`, the resulting provider stores that
+#'   PAR capability and policy metadata so authorization requests can use RFC
+#'   9126 PAR and fail fast on PAR-only provider policies.
+#'
+#' - Request Object metadata: when the discovery document advertises
+#'   `request_object_signing_alg_values_supported` or
+#'   `require_signed_request_object`, the resulting provider stores that
+#'   metadata so `OAuthClient` can fail fast when a request-object algorithm is
+#'   unsupported or when the provider requires signed Request Objects.
+#'
+#' - Token endpoint JWT auth metadata: when the discovery document advertises
+#'   `token_endpoint_auth_signing_alg_values_supported`, the resulting provider
+#'   stores that metadata so `OAuthClient` can fail fast when a JWT client
+#'   assertion algorithm is unsupported.
 #'
 #' - PKCE method discovery: this helper keeps `S256` as the default and does not
 #'   silently downgrade to `plain`. If discovery metadata explicitly omits
@@ -184,6 +197,25 @@ oauth_provider_oidc_discover <- function(
 
   # 10) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
+  require_pushed_authorization_requests <- isTRUE(
+    disc[["require_pushed_authorization_requests"]]
+  )
+  request_object_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      disc[["request_object_signing_alg_values_supported"]] %||% character(0),
+      use.names = FALSE
+    )
+  ))
+  require_signed_request_object <- isTRUE(
+    disc[["require_signed_request_object"]]
+  )
+  token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  ))
 
   # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
   #      Note: userinfo_signing_alg_values_supported in discovery indicates
@@ -196,31 +228,40 @@ oauth_provider_oidc_discover <- function(
   # 11) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
 
-  # 12) Construct provider
-  do.call(
-    oauth_provider,
-    c(
-      list(
-        name = name,
-        auth_url = endpoints$auth_url,
-        token_url = endpoints$token_url,
-        userinfo_url = endpoints$userinfo_url,
-        introspection_url = endpoints$introspection_url,
-        revocation_url = endpoints$revocation_url,
-        par_url = endpoints$par_url,
-        issuer = iss,
-        issuer_match = issuer_match,
-        use_nonce = use_nonce,
-        id_token_validation = id_token_validation,
-        use_pkce = use_pkce,
-        token_auth_style = token_auth_style,
-        allowed_algs = allowed_algs,
-        allowed_token_types = allowed_token_types,
-        jwks_host_issuer_match = jwks_host_issuer_match
-      ),
-      dots
-    )
+  # 12) Construct provider. Allow explicit caller overrides in ... to replace
+  # discovered defaults without passing duplicate named formals through do.call().
+  provider_args <- list(
+    name = name,
+    auth_url = endpoints$auth_url,
+    token_url = endpoints$token_url,
+    userinfo_url = endpoints$userinfo_url,
+    introspection_url = endpoints$introspection_url,
+    revocation_url = endpoints$revocation_url,
+    par_url = endpoints$par_url,
+    require_pushed_authorization_requests = require_pushed_authorization_requests,
+    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
+    require_signed_request_object = require_signed_request_object,
+    token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    issuer = iss,
+    issuer_match = issuer_match,
+    use_nonce = use_nonce,
+    id_token_validation = id_token_validation,
+    use_pkce = use_pkce,
+    token_auth_style = token_auth_style,
+    allowed_algs = allowed_algs,
+    allowed_token_types = allowed_token_types,
+    jwks_host_issuer_match = jwks_host_issuer_match
   )
+
+  duplicate_dot_names <- intersect(
+    names(provider_args),
+    names(dots) %||% character(0)
+  )
+  if (length(duplicate_dot_names) > 0) {
+    provider_args[duplicate_dot_names] <- NULL
+  }
+
+  do.call(oauth_provider, c(provider_args, dots))
 }
 
 # Helpers -----------------------------------------------------------------

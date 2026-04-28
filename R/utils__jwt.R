@@ -852,6 +852,339 @@ resolve_client_assertion_audience <- function(client, req) {
   client@provider@token_url
 }
 
+#' Resolve the signing algorithm for a signed authorization request.
+#'
+#' @keywords internal
+#' @noRd
+resolve_authorization_request_signing_alg <- function(client) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  alg_cfg <- client@authorization_request_signing_alg %||% NA_character_
+  if (!is.character(alg_cfg) || length(alg_cfg) != 1L) {
+    alg_cfg <- NA_character_
+  }
+  alg <- canonicalize_jws_alg(alg_cfg)
+
+  allowed_hmac <- c("HS256", "HS384", "HS512")
+  allowed_asym <- c(
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA"
+  )
+
+  if (!nzchar(alg)) {
+    if (!is.null(client@client_private_key)) {
+      key0 <- normalize_private_key_input(client@client_private_key)
+      return(choose_default_alg_for_private_key(key0))
+    }
+    if (!is_valid_string(client@client_secret)) {
+      err_config(
+        "authorization_request_mode = 'request' requires client_private_key or client_secret"
+      )
+    }
+    if (nchar(client@client_secret, type = "bytes") < 32) {
+      err_config(
+        paste(
+          "authorization_request_mode = 'request' requires client_secret >= 32 bytes",
+          "when no client_private_key is configured"
+        )
+      )
+    }
+    return("HS256")
+  }
+
+  if (identical(toupper(alg), "NONE")) {
+    err_config("authorization_request_signing_alg = 'none' is not supported")
+  }
+
+  if (alg %in% allowed_hmac) {
+    if (!is_valid_string(client@client_secret)) {
+      err_config("HS* authorization_request_signing_alg requires client_secret")
+    }
+    if (nchar(client@client_secret, type = "bytes") < 32) {
+      err_config(
+        "HS* authorization_request_signing_alg requires client_secret >= 32 bytes"
+      )
+    }
+    return(alg)
+  }
+
+  if (alg %in% allowed_asym) {
+    if (is.null(client@client_private_key)) {
+      err_config(
+        "asymmetric authorization_request_signing_alg requires client_private_key"
+      )
+    }
+    return(alg)
+  }
+
+  err_config(paste0(
+    "Unsupported authorization_request_signing_alg: ",
+    as.character(alg)
+  ))
+}
+
+#' Resolve the audience (`aud`) value for a signed authorization request.
+#'
+#' @keywords internal
+#' @noRd
+resolve_authorization_request_audience <- function(client) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  override <- client@authorization_request_audience %||% NA_character_
+  if (!is.character(override) || length(override) != 1L) {
+    override <- NA_character_
+  }
+  override_chr <- as.character(override)
+  if (!is.na(override_chr) && nzchar(override_chr)) {
+    return(override_chr)
+  }
+
+  provider_issuer <- client@provider@issuer %||% NA_character_
+  if (is_valid_string(provider_issuer)) {
+    return(provider_issuer)
+  }
+
+  auth_url <- client@provider@auth_url %||% NA_character_
+  if (is_valid_string(auth_url)) {
+    return(auth_url)
+  }
+
+  err_config(
+    "Could not resolve an audience for the signed authorization request"
+  )
+}
+
+#' Canonicalize a JWS alg name for JOSE headers.
+#'
+#' @keywords internal
+#' @noRd
+canonicalize_jws_alg <- function(alg) {
+  if (!is.character(alg) || length(alg) != 1L) {
+    return("")
+  }
+
+  alg_chr <- trimws(as.character(alg)[[1]])
+  if (is.na(alg_chr) || !nzchar(alg_chr)) {
+    return("")
+  }
+
+  alg_upper <- toupper(alg_chr)
+  if (identical(alg_upper, "EDDSA")) {
+    return("EdDSA")
+  }
+
+  alg_upper
+}
+
+#' Check whether a private key can sign a JWT with a given alg.
+#'
+#' @keywords internal
+#' @noRd
+private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
+  alg <- canonicalize_jws_alg(alg)
+
+  if (inherits(key, "rsa")) {
+    return(alg %in% c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512"))
+  }
+
+  if (inherits(key, "ecdsa")) {
+    jwk <- try(
+      jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE),
+      silent = TRUE
+    )
+    if (!inherits(jwk, "try-error") && is.list(jwk)) {
+      crv <- jwk$crv %||% NA_character_
+      if (identical(crv, "P-256")) {
+        return(identical(alg, "ES256"))
+      }
+      if (identical(crv, "P-384")) {
+        return(identical(alg, "ES384"))
+      }
+      if (identical(crv, "P-521")) {
+        return(identical(alg, "ES512"))
+      }
+    }
+
+    return(alg %in% c("ES256", "ES384", "ES512"))
+  }
+
+  if (inherits(key, "ed25519") || inherits(key, "ed448")) {
+    return(FALSE)
+  }
+
+  clm <- jose::jwt_claim(jti = "compatibility-check", iat = 1L)
+  hdr <- list(typ = typ, alg = alg)
+  sig_try <- try(
+    jose::jwt_encode_sig(clm, key = key, header = hdr),
+    silent = TRUE
+  )
+
+  !inherits(sig_try, "try-error")
+}
+
+#' Encode a compact HMAC JWS while preserving a custom JOSE header.
+#'
+#' @keywords internal
+#' @noRd
+encode_hmac_jwt_with_header <- function(claims, secret, header, size) {
+  if (!is.list(claims) || !length(claims)) {
+    err_config("encode_hmac_jwt_with_header requires a non-empty claims list")
+  }
+  if (!is_valid_string(secret)) {
+    err_config("encode_hmac_jwt_with_header requires a non-empty secret")
+  }
+  if (!is.list(header) || !length(header)) {
+    err_config("encode_hmac_jwt_with_header requires a non-empty header list")
+  }
+
+  header_json <- jsonlite::toJSON(
+    header,
+    auto_unbox = TRUE,
+    null = "null",
+    digits = NA
+  )
+  payload_json <- jsonlite::toJSON(
+    claims,
+    auto_unbox = TRUE,
+    null = "null",
+    digits = NA
+  )
+
+  encoded_header <- base64url_encode(charToRaw(enc2utf8(header_json)))
+  encoded_payload <- base64url_encode(charToRaw(enc2utf8(payload_json)))
+  signing_input <- paste0(encoded_header, ".", encoded_payload)
+  key_raw <- charToRaw(enc2utf8(secret))
+
+  signature_raw <- switch(
+    as.character(size),
+    `256` = openssl::sha256(charToRaw(signing_input), key = key_raw),
+    `384` = openssl::sha384(charToRaw(signing_input), key = key_raw),
+    `512` = openssl::sha512(charToRaw(signing_input), key = key_raw),
+    err_config(paste0(
+      "Unsupported HMAC signing size for encode_hmac_jwt_with_header: ",
+      as.character(size)
+    ))
+  )
+
+  paste0(signing_input, ".", base64url_encode(signature_raw))
+}
+
+#' Build and sign a JWT-secured authorization request (RFC 9101).
+#'
+#' @keywords internal
+#' @noRd
+build_authorization_request_object <- function(client, params) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  if (!is.list(params) || !length(params)) {
+    err_config(
+      "build_authorization_request_object requires a non-empty params list"
+    )
+  }
+
+  param_names <- tolower(trimws(names(params) %||% character(0)))
+  if (any(param_names %in% c("request", "request_uri"))) {
+    err_config(
+      "Authorization request parameters must not already include request or request_uri"
+    )
+  }
+
+  alg <- resolve_authorization_request_signing_alg(client)
+  aud <- resolve_authorization_request_audience(client)
+  now <- floor(as.numeric(Sys.time()))
+  ttl <- 120L
+
+  claims_param <- params$claims %||% NULL
+  if (
+    is.character(claims_param) &&
+      length(claims_param) == 1L &&
+      nzchar(claims_param)
+  ) {
+    parsed_claims <- tryCatch(
+      jsonlite::fromJSON(claims_param, simplifyVector = FALSE),
+      error = function(...) NULL
+    )
+    if (is.list(parsed_claims)) {
+      params$claims <- parsed_claims
+    }
+  }
+
+  params[intersect(
+    names(params) %||% character(0),
+    c("iss", "aud", "iat", "exp", "jti")
+  )] <- NULL
+
+  claims <- compact_list(c(
+    params,
+    list(
+      iss = client@client_id,
+      aud = aud,
+      iat = now,
+      exp = now + ttl,
+      jti = random_urlsafe(32)
+    )
+  ))
+
+  header <- list(
+    typ = "oauth-authz-req+jwt",
+    alg = alg
+  )
+
+  if (!(alg %in% c("HS256", "HS384", "HS512"))) {
+    kid <- client@client_private_key_kid %||% NA_character_
+    if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
+      header$kid <- kid
+    }
+  }
+
+  clm <- do.call(jose::jwt_claim, claims)
+
+  if (alg %in% c("HS256", "HS384", "HS512")) {
+    size <- switch(
+      alg,
+      HS256 = 256,
+      HS384 = 384,
+      HS512 = 512,
+      err_config(paste0(
+        "Unsupported HMAC authorization_request_signing_alg: ",
+        alg
+      ))
+    )
+
+    return(encode_hmac_jwt_with_header(
+      claims = claims,
+      secret = client@client_secret,
+      header = header,
+      size = size
+    ))
+  }
+
+  key <- normalize_private_key_input(client@client_private_key)
+  jwt <- try(
+    jose::jwt_encode_sig(clm, key = key, header = header),
+    silent = TRUE
+  )
+  if (inherits(jwt, "try-error")) {
+    err_config(
+      c(
+        "x" = "Failed to sign authorization request object",
+        "i" = paste0("Tried alg '", alg, "' with the configured private key")
+      ),
+      context = list(alg = alg)
+    )
+  }
+
+  jwt
+}
+
 #' Normalize a client private key input to an openssl::key
 #'
 #' Accepts either an openssl::key-like object or a PEM string. Password-protected

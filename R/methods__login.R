@@ -151,29 +151,14 @@ prepare_call <- function(
 
         auth_url <- tryCatch(
           {
-            auth_params <- build_authorization_params(
-              oauth_client,
+            build_auth_url(
+              oauth_client = oauth_client,
               payload = payload,
               scopes = effective_scopes,
               pkce_code_challenge = pkce_code_challenge,
               pkce_method = pkce_method,
               nonce = nonce
             )
-
-            par_endpoint <- oauth_client@provider@par_url %||% NA_character_
-
-            if (is_valid_string(par_endpoint)) {
-              par_resp <- push_authorization_request(
-                client = oauth_client,
-                params = auth_params
-              )
-              build_par_auth_url(oauth_client, par_resp$request_uri)
-            } else {
-              url_append_query_params(
-                oauth_client@provider@auth_url,
-                auth_params
-              )
-            }
           },
           error = function(e) {
             try(
@@ -184,7 +169,8 @@ prepare_call <- function(
           }
         )
 
-        par_endpoint <- oauth_client@provider@par_url %||% NA_character_
+        par_used <- uses_pushed_authorization_request(oauth_client)
+        request_object_used <- uses_authorization_request_object(oauth_client)
 
         # Audit: redirect issuance (redacted identifiers only)
         try(
@@ -198,7 +184,8 @@ prepare_call <- function(
                 state_digest = string_digest(state),
                 browser_token_digest = string_digest(browser_token),
                 pkce_method = pkce_method %||% NA_character_,
-                par_used = is_valid_string(par_endpoint),
+                par_used = isTRUE(par_used),
+                request_object_used = isTRUE(request_object_used),
                 nonce_present = isTRUE(oauth_client@provider@use_nonce),
                 scopes_count = length(effective_scopes),
                 redirect_uri = oauth_client@redirect_uri %||% NA_character_
@@ -229,6 +216,9 @@ prepare_call <- function(
           oauth.max_age.requested = otel_requested_max_age(
             oauth_client@provider
           ),
+          oauth.request_object_used = uses_authorization_request_object(
+            oauth_client
+          ),
           oauth.extra_auth_params_count = otel_count_items(
             oauth_client@provider@extra_auth_params
           )
@@ -237,6 +227,25 @@ prepare_call <- function(
       parent = NA
     )
   )
+}
+
+authorization_request_mode <- function(oauth_client) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  mode <- oauth_client@authorization_request_mode %||% "parameters"
+  if (!is.character(mode) || length(mode) != 1L || is.na(mode)) {
+    return("parameters")
+  }
+
+  mode
+}
+
+uses_authorization_request_object <- function(oauth_client) {
+  identical(authorization_request_mode(oauth_client), "request")
+}
+
+uses_pushed_authorization_request <- function(oauth_client) {
+  is_valid_string(oauth_client@provider@par_url %||% NA_character_)
 }
 
 # Helper: turn key provider properties into a stable fingerprint string
@@ -660,6 +669,37 @@ build_auth_url <- function(
     pkce_method = pkce_method,
     nonce = nonce
   )
+
+  if (isTRUE(uses_authorization_request_object(oauth_client))) {
+    request_object <- build_authorization_request_object(
+      oauth_client,
+      params
+    )
+
+    if (isTRUE(uses_pushed_authorization_request(oauth_client))) {
+      par_resp <- push_authorization_request(
+        client = oauth_client,
+        params = list(request = request_object)
+      )
+      return(build_par_auth_url(oauth_client, par_resp$request_uri))
+    }
+
+    return(url_append_query_params(
+      oauth_client@provider@auth_url,
+      list(
+        client_id = oauth_client@client_id,
+        request = request_object
+      )
+    ))
+  }
+
+  if (isTRUE(uses_pushed_authorization_request(oauth_client))) {
+    par_resp <- push_authorization_request(
+      client = oauth_client,
+      params = params
+    )
+    return(build_par_auth_url(oauth_client, par_resp$request_uri))
+  }
 
   url_append_query_params(oauth_client@provider@auth_url, params)
 }
