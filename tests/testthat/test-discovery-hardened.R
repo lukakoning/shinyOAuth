@@ -157,6 +157,87 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
   testthat::expect_true(grepl("^https://api.example.com/token", prov@token_url))
 })
 
+testthat::test_that("discovery allows RFC 8705 separate-host mTLS aliases by default", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          token_endpoint_auth_methods_supported = list("tls_client_auth"),
+          mtls_endpoint_aliases = list(
+            token_endpoint = "https://mtls.example.com/token",
+            introspection_endpoint = "https://mtls.example.com/introspect",
+            revocation_endpoint = "https://mtls.example.com/revoke"
+          )
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+
+  srv <- webfakes::local_app_process(app)
+  prov <- oauth_provider_oidc_discover(
+    issuer = srv$url(),
+    token_auth_style = "tls_client_auth"
+  )
+
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$token_endpoint,
+    "https://mtls.example.com/token"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$introspection_endpoint,
+    "https://mtls.example.com/introspect"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$revocation_endpoint,
+    "https://mtls.example.com/revoke"
+  )
+})
+
+testthat::test_that("explicit allowed_hosts still constrains discovered mTLS aliases", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          token_endpoint_auth_methods_supported = list("tls_client_auth"),
+          mtls_endpoint_aliases = list(
+            token_endpoint = "https://mtls.example.com/token"
+          )
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+
+  srv <- webfakes::local_app_process(app)
+  withr::local_options(list(shinyOAuth.allowed_hosts = "127.0.0.1"))
+
+  testthat::expect_error(
+    oauth_provider_oidc_discover(
+      issuer = srv$url(),
+      token_auth_style = "tls_client_auth"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "Allowed hosts"
+  )
+})
+
 testthat::test_that("discovery rejects non-JSON content-type", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

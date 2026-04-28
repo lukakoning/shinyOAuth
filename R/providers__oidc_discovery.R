@@ -220,7 +220,10 @@ oauth_provider_oidc_discover <- function(
     )
   ))
   mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
-  .discover_validate_endpoint_aliases(mtls_endpoint_aliases, allowed_hosts_vec)
+  .discover_validate_endpoint_aliases(
+    mtls_endpoint_aliases,
+    .discover_compute_alias_allowed_hosts()
+  )
   tls_client_certificate_bound_access_tokens <- isTRUE(
     disc[["tls_client_certificate_bound_access_tokens"]]
   )
@@ -456,6 +459,20 @@ oauth_provider_oidc_discover <- function(
   }
 
   c(iss_host)
+}
+
+#' Internal: compute allowed hosts vector for RFC 8705 mTLS aliases
+#'
+#' @keywords internal
+#' @noRd
+.discover_compute_alias_allowed_hosts <- function() {
+  opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
+
+  if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
+    return(opt_allowed)
+  }
+
+  NULL
 }
 
 #' Internal: validate all endpoints against host policy
@@ -753,6 +770,9 @@ oauth_provider_oidc_discover <- function(
     return(invisible(TRUE))
   }
 
+  # RFC 8705 permits mTLS endpoint aliases on a different host. Keep honoring
+  # an explicit user allowlist when set, but otherwise validate aliases as
+  # absolute/safe URLs without issuer-host pinning.
   for (alias_url in unname(mtls_endpoint_aliases)) {
     validate_endpoint(alias_url, allowed_hosts_vec)
   }
