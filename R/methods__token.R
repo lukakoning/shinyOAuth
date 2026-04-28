@@ -1138,11 +1138,19 @@ refresh_token <- function(
         )
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {
+          userinfo_token <- OAuthToken(
+            access_token = token_set$access_token,
+            token_type = token_set$token_type %||% NA_character_,
+            userinfo = list(),
+            cnf = resolve_token_cnf(
+              cnf = token_set$cnf,
+              access_token = token_set$access_token
+            )
+          )
           ui <- call_with_optional_shiny_session(
             get_userinfo,
             oauth_client = oauth_client,
-            token = tok$access_token,
-            token_type = tok$token_type %||% NA_character_,
+            token = userinfo_token,
             shiny_session = shiny_session
           )
 
