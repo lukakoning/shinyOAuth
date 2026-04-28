@@ -863,8 +863,7 @@ resolve_authorization_request_signing_alg <- function(client) {
   if (!is.character(alg_cfg) || length(alg_cfg) != 1L) {
     alg_cfg <- NA_character_
   }
-  alg_chr <- as.character(alg_cfg)
-  alg <- toupper(ifelse(is.na(alg_chr), "", alg_chr))
+  alg <- canonicalize_jws_alg(alg_cfg)
 
   allowed_hmac <- c("HS256", "HS384", "HS512")
   allowed_asym <- c(
@@ -877,7 +876,7 @@ resolve_authorization_request_signing_alg <- function(client) {
     "ES256",
     "ES384",
     "ES512",
-    "EDDSA"
+    "EdDSA"
   )
 
   if (!nzchar(alg)) {
@@ -901,7 +900,7 @@ resolve_authorization_request_signing_alg <- function(client) {
     return("HS256")
   }
 
-  if (identical(alg, "NONE")) {
+  if (identical(toupper(alg), "NONE")) {
     err_config("authorization_request_signing_alg = 'none' is not supported")
   }
 
@@ -921,29 +920,6 @@ resolve_authorization_request_signing_alg <- function(client) {
     if (is.null(client@client_private_key)) {
       err_config(
         "asymmetric authorization_request_signing_alg requires client_private_key"
-      )
-    }
-    key <- normalize_private_key_input(client@client_private_key)
-    clm <- jose::jwt_claim(
-      jti = random_urlsafe(16),
-      iat = as.integer(Sys.time())
-    )
-    hdr <- list(typ = "oauth-authz-req+jwt", alg = alg)
-    sig_try <- try(
-      jose::jwt_encode_sig(clm, key = key, header = hdr),
-      silent = TRUE
-    )
-    if (inherits(sig_try, "try-error")) {
-      err_config(
-        c(
-          "x" = "authorization_request_signing_alg is incompatible with the provided private key",
-          "i" = paste0(
-            "Tried alg '",
-            alg,
-            "' with your key but signing failed; choose a compatible algorithm"
-          )
-        ),
-        context = list(alg = alg)
       )
     }
     return(alg)
@@ -984,6 +960,74 @@ resolve_authorization_request_audience <- function(client) {
   err_config(
     "Could not resolve an audience for the signed authorization request"
   )
+}
+
+#' Canonicalize a JWS alg name for JOSE headers.
+#'
+#' @keywords internal
+#' @noRd
+canonicalize_jws_alg <- function(alg) {
+  if (!is.character(alg) || length(alg) != 1L) {
+    return("")
+  }
+
+  alg_chr <- trimws(as.character(alg)[[1]])
+  if (is.na(alg_chr) || !nzchar(alg_chr)) {
+    return("")
+  }
+
+  alg_upper <- toupper(alg_chr)
+  if (identical(alg_upper, "EDDSA")) {
+    return("EdDSA")
+  }
+
+  alg_upper
+}
+
+#' Check whether a private key can sign a JWT with a given alg.
+#'
+#' @keywords internal
+#' @noRd
+private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
+  alg <- canonicalize_jws_alg(alg)
+
+  if (inherits(key, "rsa")) {
+    return(alg %in% c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512"))
+  }
+
+  if (inherits(key, "ecdsa")) {
+    jwk <- try(
+      jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE),
+      silent = TRUE
+    )
+    if (!inherits(jwk, "try-error") && is.list(jwk)) {
+      crv <- jwk$crv %||% NA_character_
+      if (identical(crv, "P-256")) {
+        return(identical(alg, "ES256"))
+      }
+      if (identical(crv, "P-384")) {
+        return(identical(alg, "ES384"))
+      }
+      if (identical(crv, "P-521")) {
+        return(identical(alg, "ES512"))
+      }
+    }
+
+    return(alg %in% c("ES256", "ES384", "ES512"))
+  }
+
+  if (inherits(key, "ed25519") || inherits(key, "ed448")) {
+    return(FALSE)
+  }
+
+  clm <- jose::jwt_claim(jti = "compatibility-check", iat = 1L)
+  hdr <- list(typ = typ, alg = alg)
+  sig_try <- try(
+    jose::jwt_encode_sig(clm, key = key, header = hdr),
+    silent = TRUE
+  )
+
+  !inherits(sig_try, "try-error")
 }
 
 #' Encode a compact HMAC JWS while preserving a custom JOSE header.

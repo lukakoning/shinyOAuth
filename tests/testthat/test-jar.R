@@ -550,6 +550,33 @@ test_that("request mode rejects incompatible explicit signing alg combinations",
     make_jar_test_client(authorization_request_signing_alg = "none"),
     regexp = "authorization_request_signing_alg = 'none' is not supported"
   )
+
+  expect_error(
+    make_jar_test_client(
+      client_private_key = openssl::rsa_keygen(),
+      authorization_request_signing_alg = "EdDSA"
+    ),
+    regexp = paste(
+      "authorization_request_signing_alg 'EdDSA' is incompatible",
+      "with the provided private key"
+    )
+  )
+
+  expect_error(
+    make_jar_test_client(
+      client_private_key = openssl::ec_keygen(curve = "P-256"),
+      authorization_request_signing_alg = "ES512"
+    ),
+    regexp = paste(
+      "authorization_request_signing_alg 'ES512' is incompatible",
+      "with the provided private key"
+    )
+  )
+})
+
+test_that("canonicalize_jws_alg preserves EdDSA casing", {
+  expect_identical(shinyOAuth:::canonicalize_jws_alg("eddsa"), "EdDSA")
+  expect_identical(shinyOAuth:::canonicalize_jws_alg("EDDSA"), "EdDSA")
 })
 
 test_that("request mode rejects provider-disallowed request object algs", {

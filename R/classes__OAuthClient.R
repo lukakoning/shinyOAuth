@@ -703,19 +703,19 @@ OAuthClient <- S7::new_class(
         "ES256",
         "ES384",
         "ES512",
-        "EDDSA"
+        "EdDSA"
       )
-      alg <- toupper(arsa)
+      alg <- canonicalize_jws_alg(arsa)
       has_private_key <- !is.null(self@client_private_key)
       has_secret <- is_valid_string(self@client_secret)
 
-      if (!is.na(alg) && identical(alg, "NONE")) {
+      if (nzchar(alg) && identical(toupper(alg), "NONE")) {
         return(
           "OAuthClient: authorization_request_signing_alg = 'none' is not supported"
         )
       }
 
-      if (is.na(alg) || !nzchar(alg)) {
+      if (!nzchar(alg)) {
         if (!isTRUE(has_private_key) && !isTRUE(has_secret)) {
           return(
             "OAuthClient: authorization_request_mode = 'request' requires client_private_key or client_secret"
@@ -745,6 +745,25 @@ OAuthClient <- S7::new_class(
           return(
             "OAuthClient: asymmetric authorization_request_signing_alg requires client_private_key"
           )
+        }
+
+        key0 <- try(
+          normalize_private_key_input(self@client_private_key),
+          silent = TRUE
+        )
+        if (inherits(key0, "try-error")) {
+          return(
+            "OAuthClient: client_private_key could not be parsed for authorization_request_signing_alg validation"
+          )
+        }
+        if (
+          !private_key_can_sign_jws_alg(key0, alg, typ = "oauth-authz-req+jwt")
+        ) {
+          return(paste0(
+            "OAuthClient: authorization_request_signing_alg '",
+            alg,
+            "' is incompatible with the provided private key"
+          ))
         }
       } else {
         return(paste0(
@@ -777,12 +796,12 @@ OAuthClient <- S7::new_class(
               )
             )
           }
-          toupper(as.character(inferred_alg))
+          as.character(inferred_alg)
         } else {
           "HS256"
         }
 
-        if (!(resolved_alg %in% provider_request_algs)) {
+        if (!(toupper(resolved_alg) %in% provider_request_algs)) {
           return(paste0(
             "OAuthClient: authorization_request_signing_alg '",
             resolved_alg,
