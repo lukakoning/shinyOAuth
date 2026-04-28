@@ -2,6 +2,15 @@ mtls_token_auth_styles <- function() {
   c("tls_client_auth", "self_signed_tls_client_auth")
 }
 
+client_has_mtls_certificate <- function(oauth_client) {
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    return(FALSE)
+  }
+
+  is_valid_string(oauth_client@tls_client_cert_file) &&
+    is_valid_string(oauth_client@tls_client_key_file)
+}
+
 client_uses_mtls_auth <- function(oauth_client) {
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(FALSE)
@@ -9,6 +18,22 @@ client_uses_mtls_auth <- function(oauth_client) {
 
   token_auth_style <- oauth_client@provider@token_auth_style %||% "header"
   token_auth_style %in% mtls_token_auth_styles()
+}
+
+client_requests_certificate_bound_tokens <- function(oauth_client) {
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    return(FALSE)
+  }
+
+  isTRUE(oauth_client@provider@tls_client_certificate_bound_access_tokens) &&
+    client_has_mtls_certificate(oauth_client)
+}
+
+client_uses_mtls_endpoint <- function(oauth_client, token = NULL) {
+  client_uses_mtls_auth(oauth_client) ||
+    client_requests_certificate_bound_tokens(oauth_client) ||
+    (!is.null(token) &&
+      token_requires_mtls_sender_constraint(token, oauth_client))
 }
 
 resolve_provider_endpoint_url <- function(
@@ -60,6 +85,21 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
   ))
 
   do.call(httr2::req_options, c(list(req), options))
+}
+
+req_apply_oauth_mtls <- function(req, oauth_client, token = NULL) {
+  if (!client_uses_mtls_endpoint(oauth_client, token = token)) {
+    return(req)
+  }
+
+  if (
+    !is.null(token) &&
+      token_requires_mtls_sender_constraint(token, oauth_client)
+  ) {
+    validate_token_certificate_binding(token, oauth_client)
+  }
+
+  req_apply_mtls_client_certificate(req, oauth_client)
 }
 
 token_cnf_x5t_s256 <- function(token) {

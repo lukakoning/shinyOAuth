@@ -502,7 +502,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
   endpoint <- resolve_provider_endpoint_url(
     client@provider,
     "par_endpoint",
-    prefer_mtls = client_uses_mtls_auth(client)
+    prefer_mtls = client_uses_mtls_endpoint(client)
   ) %||%
     NA_character_
   if (!is_valid_string(endpoint)) {
@@ -529,9 +529,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       )
       req <- prepared$req
       params <- prepared$params
-      if (client_uses_mtls_auth(client)) {
-        req <- req_apply_mtls_client_certificate(req, client)
-      }
+      req <- req_apply_oauth_mtls(req, client)
 
       req <- add_req_defaults(req)
       req <- req_no_redirect(req)
@@ -1807,7 +1805,7 @@ swap_code_for_token_set <- function(
       token_url <- resolve_provider_endpoint_url(
         client@provider,
         "token_endpoint",
-        prefer_mtls = client_uses_mtls_auth(client)
+        prefer_mtls = client_uses_mtls_endpoint(client)
       )
 
       req <- httr2::request(token_url)
@@ -1819,9 +1817,7 @@ swap_code_for_token_set <- function(
       )
       req <- prepared$req
       params <- prepared$params
-      if (client_uses_mtls_auth(client)) {
-        req <- req_apply_mtls_client_certificate(req, client)
-      }
+      req <- req_apply_oauth_mtls(req, client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
       req <- add_req_defaults(req)

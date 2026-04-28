@@ -171,7 +171,10 @@ revoke_token <- function(
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "revocation_endpoint",
-          prefer_mtls = client_uses_mtls_auth(oauth_client)
+          prefer_mtls = client_uses_mtls_endpoint(
+            oauth_client,
+            token = oauth_token
+          )
         ) %||%
           NA_character_
         if (!is_valid_string(url)) {
@@ -244,9 +247,11 @@ revoke_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        if (client_uses_mtls_auth(oauth_client)) {
-          req <- req_apply_mtls_client_certificate(req, oauth_client)
-        }
+        req <- req_apply_oauth_mtls(
+          req,
+          oauth_client,
+          token = oauth_token
+        )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
@@ -610,7 +615,10 @@ introspect_token <- function(
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "introspection_endpoint",
-          prefer_mtls = client_uses_mtls_auth(oauth_client)
+          prefer_mtls = client_uses_mtls_endpoint(
+            oauth_client,
+            token = oauth_token
+          )
         ) %||%
           NA_character_
         if (!is_valid_string(url)) {
@@ -656,9 +664,11 @@ introspect_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        if (client_uses_mtls_auth(oauth_client)) {
-          req <- req_apply_mtls_client_certificate(req, oauth_client)
-        }
+        req <- req_apply_oauth_mtls(
+          req,
+          oauth_client,
+          token = oauth_token
+        )
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
         extra_headers <- as.list(oauth_client@provider@extra_token_headers)
@@ -1014,7 +1024,7 @@ refresh_token <- function(
         token_url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "token_endpoint",
-          prefer_mtls = client_uses_mtls_auth(oauth_client)
+          prefer_mtls = client_uses_mtls_endpoint(oauth_client)
         )
 
         req <- httr2::request(token_url)
@@ -1026,9 +1036,7 @@ refresh_token <- function(
         )
         req <- prepared$req
         params <- prepared$params
-        if (client_uses_mtls_auth(oauth_client)) {
-          req <- req_apply_mtls_client_certificate(req, oauth_client)
-        }
+        req <- req_apply_oauth_mtls(req, oauth_client)
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
