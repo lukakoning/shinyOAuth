@@ -2,14 +2,14 @@
 
 ## shinyOAuth (development version)
 
-- Added DPoP token support:
+- Added DPoP token (RFC 9449) support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
   exchange/refresh/revocation/introspection requests can attach DPoP
   proofs with nonce retry, and downstream helpers now preserve and use
   `token_type = "DPoP"` when the server returns it.
 
-- Added mutual-TLS (mTLS, RFC 8705) support, including mTLS client
+- Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client
   authentication, certificate-bound access tokens, and mTLS endpoint
   aliases.
 
@@ -25,7 +25,7 @@
   `client_private_key` or `client_secret` signing depending on client
   configuration.
 
-- Added OpenTelemetry (OTel) support (using the ‘otel’ package).
+- Added OpenTelemetry (‘OTel’) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback
   handling, token exchange/refresh, userinfo/introspection/revocation,
@@ -64,82 +64,48 @@
     fallbacks.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  now explicitly ignores new login requests while a session is already
-  authenticated.
+  now:
 
-- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  now applies the browser-token double-submit check to OAuth error
-  callbacks too, deferring `?error=...` handling until the browser token
-  is available and treating browser-token mismatches as `invalid_state`
-  instead of surfacing provider-controlled error text.
-
-- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  now supports `enforce_callback_issuer = TRUE` to require the RFC 9207
-  `iss` callback parameter for shared-redirect multi-issuer deployments.
-  Relatedly,
-  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  now accepts `iss`, so advanced callers building around
-  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
-  can supply the callback issuer and get the same client-level RFC 9207
-  check before token exchange.
+  - Explicitly ignores new login requests while a session is already
+    authenticated.
+  - Applies the browser-token double-submit check to OAuth error
+    callbacks too, deferring `?error=...` handling until the browser
+    token is available and treating browser-token mismatches as
+    `invalid_state` instead of surfacing provider-controlled error text.
 
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  now has native RFC 8707 `resource` support, so authorization, token
-  exchange, and refresh requests can request audience-restricted tokens
-  without dropping down to manual extra params.
+  (`OAuthClient`) now:
 
-- `validate_id_token()` now properly rejects `auth_time` claims set in
-  the future (beyond leeway). Previously, a future `auth_time` produced
-  a negative elapsed value that always passed the `max_age` freshness
-  check.
+  - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207
+    `iss` callback parameter for shared-redirect multi-issuer
+    deployments. Relatedly,
+    [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+    now accepts `iss`, so advanced callers building around
+    [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+    can supply the callback issuer and get the same client-level RFC
+    9207 check before token exchange.
+  - Has native RFC 8707 `resource` support, so authorization, token
+    exchange, and refresh requests can request audience-restricted
+    tokens without dropping down to manual extra params.
+  - Also enforces OIDC claim request `value` and `values` constraints
+    when `claims_validation` is enabled, not just presence of
+    `essential = TRUE` claims.
+  - Carries the same effective requested scopes through the whole login
+    flow. If `openid` is auto-added to the authorization request, the
+    sealed state payload, token-response scope validation, and
+    introspection scope validation now use that same effective scope
+    set.
 
-- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
-  now refuses to update userinfo unless it can verify the refreshed
-  identity against a new or preserved ID token subject, preventing
-  identity confusion when providers omit `id_token` from refresh
-  responses.
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  (`OAuthProvider`) now:
 
-- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  now applies the same hard JWK `alg` compatibility checks to signed
-  UserInfo JWT verification as ID token verification, rejecting JWKS
-  keys that advertise a different algorithm even if signature
-  verification would otherwise succeed.
-
-- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  now always requires a non-empty `sub` claim in userinfo responses from
-  OIDC providers (those with an `issuer` configured), per OIDC Core
-  section 5.3. Previously, a non-compliant response without `sub` could
-  be accepted if `userinfo_id_token_match` was not enabled. The
-  signed-JWT path (`validate_signed_userinfo_claims()`) also now checks
-  `sub` alongside the existing `iss`/`aud` validation.
-
-- `OAuthClient`’s `claims_validation = "warn"` / `"strict"` now also
-  enforces OIDC claim request `value` and `values` constraints, not just
-  presence of `essential = TRUE` claims.
-
-- `OAuthProvider` now validates custom `jwks_cache$get()` signatures
-  without calling the cache during construction, avoiding side effects
-  in duck-typed cache backends.
-
-- `OAuthProvider(extra_auth_params = list(response_mode = ...))` now
-  fails fast unless `response_mode = "query"`. Plain Shiny callback URLs
-  reject POST requests, so `response_mode = "form_post"` was previously
-  allowed but led to a broken callback round-trip instead of a clear
-  configuration error.
-
-- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
-  no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
-  identity by default. `common` and `organizations` now validate ID
-  tokens using Microsoft’s tenant-independent issuer and signing-key
-  issuer rules, and `consumers` now validates against the stable
-  consumer tenant issuer.
-
-- Hardened runtime JWKS discovery by validating the discovery issuer
-  before trusting `jwks_uri`. This policy is now stored on
-  `OAuthProvider` via `issuer_match`, so both provider discovery and
-  runtime JWKS fetches apply the same rule: `url` for exact issuer URL
-  matching, `host` for scheme-and-host matching, or `none` to skip the
-  discovery issuer check.
+  - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs
+    reject POST requests, so `response_mode = "form_post"` was
+    previously allowed but led to abroken callback round-trip instead of
+    a clear configuration error.
+  - Validates custom `jwks_cache$get()` signatures without calling the
+    cache during construction, avoiding side effects in duck-typed cache
+    backends.
 
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   now:
@@ -159,11 +125,44 @@
   rejected on a strict OIDC `iss` comparison when the helper was
   configured with a URL like `https://issuer.example/`.
 
-- OIDC clients now carry the same effective requested scopes through the
-  whole login flow. If `openid` is auto-added to the authorization
-  request, the sealed state payload, token-response scope validation,
-  and introspection scope validation now use that same effective scope
-  set.
+- [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
+  no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo
+  identity by default. `common` and `organizations` now validate ID
+  tokens using Microsoft’s tenant-independent issuer and signing-key
+  issuer rules, and `consumers` now validates against the stable
+  consumer tenant issuer.
+
+- `validate_id_token()` now properly rejects `auth_time` claims set in
+  the future (beyond leeway). Previously, a future `auth_time` produced
+  a negative elapsed value that always passed the `max_age` freshness
+  check.
+
+- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  now refuses to update userinfo unless it can verify the refreshed
+  identity against a new or preserved ID token subject, preventing
+  identity confusion when providers omit `id_token` from refresh
+  responses.
+
+- [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  now:
+
+  - Applies the same hard JWK `alg` compatibility checks to signed
+    UserInfo JWT verification as ID token verification, rejecting JWKS
+    keys that advertise a different algorithm even if signature
+    verification would otherwise succeed.
+  - Always requires a non-empty `sub` claim in userinfo responses from
+    OIDC providers (those with an `issuer` configured), per OIDC Core
+    section 5.3. Previously, a non-compliant response without `sub`
+    could be accepted if `userinfo_id_token_match` was not enabled. The
+    signed-JWT path (`validate_signed_userinfo_claims()`) also now
+    checks `sub` alongside the existing `iss`/`aud` validation.
+
+- Hardened runtime JWKS discovery by validating the discovery issuer
+  before trusting `jwks_uri`. This policy is now stored on
+  `OAuthProvider` via `issuer_match`, so both provider discovery and
+  runtime JWKS fetches apply the same rule: `url` for exact issuer URL
+  matching, `host` for scheme-and-host matching, or `none` to skip the
+  discovery issuer check.
 
 - Scope validation now treats an omitted `scope` in the initial token
   response as unchanged from the requested scope, matching RFC 6749
