@@ -83,6 +83,45 @@ testthat::test_that("discovery with 'none' requires PKCE and uses body when enab
   )
 })
 
+test_that("oidc discovery accepts advertised signing algorithm supersets", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          token_endpoint_auth_signing_alg_values_supported = list(
+            "RS256",
+            "ES256K"
+          ),
+          request_object_signing_alg_values_supported = list(
+            "RS256",
+            "ES256K"
+          )
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+
+  testthat::expect_identical(
+    prov@request_object_signing_alg_values_supported,
+    c("RS256", "ES256K")
+  )
+  testthat::expect_identical(
+    prov@token_endpoint_auth_signing_alg_values_supported,
+    c("RS256", "ES256K")
+  )
+})
 
 testthat::test_that("JWT-only advertisement requires explicit token_auth_style", {
   testthat::skip_if_not_installed("webfakes")

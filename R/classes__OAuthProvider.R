@@ -767,31 +767,6 @@ OAuthProvider <- S7::new_class(
           )
         )
       }
-
-      supported_request_object_algs <- c(
-        "RS256",
-        "RS384",
-        "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
-        "ES256",
-        "ES384",
-        "ES512",
-        "EDDSA",
-        "HS256",
-        "HS384",
-        "HS512",
-        "NONE"
-      )
-      ro_algs <- toupper(request_object_algs)
-      bad <- setdiff(ro_algs, supported_request_object_algs)
-      if (length(bad) > 0) {
-        return(paste0(
-          "OAuthProvider: request_object_signing_alg_values_supported contains unsupported entries: ",
-          paste(bad, collapse = ", ")
-        ))
-      }
     }
 
     if (
@@ -848,30 +823,6 @@ OAuthProvider <- S7::new_class(
             "must contain only non-empty strings"
           )
         )
-      }
-
-      supported_token_endpoint_auth_signing_algs <- c(
-        "RS256",
-        "RS384",
-        "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
-        "ES256",
-        "ES384",
-        "ES512",
-        "EDDSA",
-        "HS256",
-        "HS384",
-        "HS512"
-      )
-      tea_algs <- toupper(token_endpoint_auth_signing_algs)
-      bad <- setdiff(tea_algs, supported_token_endpoint_auth_signing_algs)
-      if (length(bad) > 0) {
-        return(paste0(
-          "OAuthProvider: token_endpoint_auth_signing_alg_values_supported contains unsupported entries: ",
-          paste(bad, collapse = ", ")
-        ))
       }
     }
 
