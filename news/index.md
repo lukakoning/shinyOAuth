@@ -73,6 +73,10 @@
     token is available and treating browser-token mismatches as
     `invalid_state` instead of surfacing provider-controlled error text.
 
+- `OAuthToken` and `OAuthClient` now print with redacted
+  token/secret/key previews instead of exposing full credential material
+  in default console output.
+
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   (`OAuthClient`) now:
 
@@ -157,6 +161,13 @@
     signed-JWT path (`validate_signed_userinfo_claims()`) also now
     checks `sub` alongside the existing `iss`/`aud` validation.
 
+- Token exchange and refresh requests no longer retry on transport
+  errors or transient HTTP statuses (408/429/5xx). Authorization codes
+  are single-use and refresh tokens may be rotated on each use; retrying
+  after the server has already committed the first request would replay
+  an invalidated credential, causing `invalid_grant` errors or
+  triggering refresh-token replay detection.
+
 - Hardened runtime JWKS discovery by validating the discovery issuer
   before trusting `jwks_uri`. This policy is now stored on
   `OAuthProvider` via `issuer_match`, so both provider discovery and
@@ -178,17 +189,6 @@
 - `err_http()` now guards against oversized HTTP error bodies before
   hashing or JSON parsing, so large chunked or misleading error
   responses now trip the existing body-size limit consistently.
-
-- Token exchange and refresh requests no longer retry on transport
-  errors or transient HTTP statuses (408/429/5xx). Authorization codes
-  are single-use and refresh tokens may be rotated on each use; retrying
-  after the server has already committed the first request would replay
-  an invalidated credential, causing `invalid_grant` errors or
-  triggering refresh-token replay detection.
-
-- `OAuthToken` and `OAuthClient` now print with redacted
-  token/secret/key previews instead of exposing full credential material
-  in default console output.
 
 ## shinyOAuth 0.4.0
 
