@@ -420,8 +420,8 @@ make_private_key_jar_client <- function(prov) {
 make_hmac_jar_client <- function(prov) {
   shinyOAuth::oauth_client(
     provider = prov,
-    client_id = "shiny-confidential",
-    client_secret = "secret",
+    client_id = "shiny-jar-hmac",
+    client_secret = "hs256-request-object-secret-32b!",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     authorization_request_mode = "request",

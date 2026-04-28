@@ -68,6 +68,28 @@
     }
     ,
     {
+      "clientId": "shiny-jar-hmac",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "hs256-request-object-secret-32b!",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "attributes": {
+        "request.object.signature.alg": "HS256"
+      }
+    }
+    ,
+    {
       "clientId": "shiny-csjwt",
       "protocol": "openid-connect",
       "publicClient": false,

@@ -101,7 +101,10 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
         query_param_names(auth_url),
         c("client_id", "request")
       )
-      testthat::expect_match(auth_url, "[?&]client_id=shiny-confidential")
+      testthat::expect_identical(
+        parse_query_param(auth_url, "client_id"),
+        client@client_id
+      )
       testthat::expect_false(grepl("[?&]request_uri=", auth_url))
       testthat::expect_false(grepl("[?&]state=", auth_url))
       testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
@@ -113,9 +116,9 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
 
       testthat::expect_identical(header$typ, "oauth-authz-req+jwt")
       testthat::expect_identical(header$alg, "HS256")
-      testthat::expect_identical(payload$iss, "shiny-confidential")
+      testthat::expect_identical(payload$iss, client@client_id)
       testthat::expect_identical(payload$aud, get_issuer())
-      testthat::expect_identical(payload$client_id, "shiny-confidential")
+      testthat::expect_identical(payload$client_id, client@client_id)
       testthat::expect_false("sub" %in% names(payload))
       testthat::expect_identical(
         payload$redirect_uri,
