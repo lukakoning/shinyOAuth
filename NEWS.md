@@ -5,6 +5,9 @@ now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
 preserve and use `token_type = "DPoP"` when the server returns it.
 
+* Added mutual-TLS (mTLS, RFC 8705) support, including mTLS client
+authentication, certificate-bound access tokens, and mTLS endpoint aliases.
+
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
 Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
