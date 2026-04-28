@@ -23,6 +23,9 @@ oauth_client(
   client_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
+  authorization_request_mode = c("parameters", "request"),
+  authorization_request_signing_alg = NULL,
+  authorization_request_audience = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -225,9 +228,11 @@ oauth_client(
   private key type/curve (e.g., `RS256` for RSA, `ES256`/`ES384`/`ES512`
   for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
   value is provided but incompatible with the key, validation fails
-  early with a configuration error. Supported values are `HS256`,
-  `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
-  supported by
+  early with a configuration error. When the provider advertises
+  `token_endpoint_auth_signing_alg_values_supported`, both explicit
+  values and inferred defaults must be included in that set. Supported
+  values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
+  asymmetric algorithms supported by
   [`jose::jwt_encode_sig`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html)
   (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
 
@@ -238,6 +243,34 @@ oauth_client(
   shinyOAuth uses the exact token endpoint request URL. Some identity
   providers require a different audience value; set this to the exact
   value your IdP expects.
+
+- authorization_request_mode:
+
+  Controls how the authorization request is transported to the provider.
+
+  - `"parameters"` (default): send OAuth parameters directly on the
+    browser redirect URL.
+
+  - `"request"`: send a signed JWT-secured authorization request (JAR;
+    RFC 9101) via the `request` parameter.
+
+  Request mode requires signing material on the client. shinyOAuth
+  prefers `client_private_key` when present; otherwise it falls back to
+  HMAC signing with `client_secret`.
+
+- authorization_request_signing_alg:
+
+  Optional JWS algorithm override for signed authorization requests when
+  `authorization_request_mode = "request"`. When omitted, shinyOAuth
+  chooses `HS256` for HMAC-based signing or a compatible asymmetric
+  default based on `client_private_key` (for example `RS256`, `ES256`,
+  or `EdDSA`).
+
+- authorization_request_audience:
+
+  Optional override for the `aud` claim used in signed authorization
+  requests. By default, shinyOAuth uses the provider issuer when
+  available and otherwise falls back to the authorization endpoint URL.
 
 - dpop_private_key:
 

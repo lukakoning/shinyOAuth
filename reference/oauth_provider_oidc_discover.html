@@ -170,8 +170,19 @@ discovery-advertised set.</p></li>
 (with PKCE), as well as JWT-based methods <code>private_key_jwt</code> and
 <code>client_secret_jwt</code> per RFC 7523.</p></li>
 <li><p>PAR metadata: when the discovery document advertises
-<code>pushed_authorization_request_endpoint</code>, the resulting provider uses that
-URL so authorization requests can use RFC 9126 PAR.</p></li>
+<code>pushed_authorization_request_endpoint</code> or
+<code>require_pushed_authorization_requests</code>, the resulting provider stores that
+PAR capability and policy metadata so authorization requests can use RFC
+9126 PAR and fail fast on PAR-only provider policies.</p></li>
+<li><p>Request Object metadata: when the discovery document advertises
+<code>request_object_signing_alg_values_supported</code> or
+<code>require_signed_request_object</code>, the resulting provider stores that
+metadata so <code>OAuthClient</code> can fail fast when a request-object algorithm is
+unsupported or when the provider requires signed Request Objects.</p></li>
+<li><p>Token endpoint JWT auth metadata: when the discovery document advertises
+<code>token_endpoint_auth_signing_alg_values_supported</code>, the resulting provider
+stores that metadata so <code>OAuthClient</code> can fail fast when a JWT client
+assertion algorithm is unsupported.</p></li>
 <li><p>PKCE method discovery: this helper keeps <code>S256</code> as the default and does not
 silently downgrade to <code>plain</code>. If discovery metadata explicitly omits
 <code>S256</code>, discovery fails with a configuration error unless you explicitly

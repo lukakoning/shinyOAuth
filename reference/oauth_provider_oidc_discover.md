@@ -134,8 +134,22 @@ object configured from discovery
   `client_secret_jwt` per RFC 7523.
 
 - PAR metadata: when the discovery document advertises
-  `pushed_authorization_request_endpoint`, the resulting provider uses
-  that URL so authorization requests can use RFC 9126 PAR.
+  `pushed_authorization_request_endpoint` or
+  `require_pushed_authorization_requests`, the resulting provider stores
+  that PAR capability and policy metadata so authorization requests can
+  use RFC 9126 PAR and fail fast on PAR-only provider policies.
+
+- Request Object metadata: when the discovery document advertises
+  `request_object_signing_alg_values_supported` or
+  `require_signed_request_object`, the resulting provider stores that
+  metadata so `OAuthClient` can fail fast when a request-object
+  algorithm is unsupported or when the provider requires signed Request
+  Objects.
+
+- Token endpoint JWT auth metadata: when the discovery document
+  advertises `token_endpoint_auth_signing_alg_values_supported`, the
+  resulting provider stores that metadata so `OAuthClient` can fail fast
+  when a JWT client assertion algorithm is unsupported.
 
 - PKCE method discovery: this helper keeps `S256` as the default and
   does not silently downgrade to `plain`. If discovery metadata

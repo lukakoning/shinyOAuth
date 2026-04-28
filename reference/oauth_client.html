@@ -64,6 +64,9 @@
 <span>  client_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span><span class="op">)</span>,</span>
+<span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -235,7 +238,9 @@ When omitted, defaults to <code>HS256</code> for <code>client_secret_jwt</code>.
 compatible default is selected based on the private key type/curve (e.g., <code>RS256</code> for RSA,
 <code>ES256</code>/<code>ES384</code>/<code>ES512</code> for EC P-256/384/521, or <code>EdDSA</code> for Ed25519/Ed448). If an explicit
 value is provided but incompatible with the key, validation fails early with a configuration
-error.
+error. When the provider advertises
+<code>token_endpoint_auth_signing_alg_values_supported</code>, both explicit values and
+inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
 supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_encode_sig</a></code> (e.g., <code>RS256</code>, <code>PS256</code>, <code>ES256</code>, <code>EdDSA</code>) for private keys.</p></dd>
 
@@ -245,6 +250,32 @@ supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_enco
 JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.</p></dd>
+
+
+<dt id="arg-authorization-request-mode">authorization_request_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-mode"></a></dt>
+<dd><p>Controls how the authorization request is
+transported to the provider.</p><ul><li><p><code>"parameters"</code> (default): send OAuth parameters directly on the browser
+redirect URL.</p></li>
+<li><p><code>"request"</code>: send a signed JWT-secured authorization request (JAR;
+RFC 9101) via the <code>request</code> parameter.</p></li>
+</ul><p>Request mode requires signing material on the client. shinyOAuth prefers
+<code>client_private_key</code> when present; otherwise it falls back to HMAC signing
+with <code>client_secret</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>
+<dd><p>Optional JWS algorithm override for
+signed authorization requests when <code>authorization_request_mode = "request"</code>.
+When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
+compatible asymmetric default based on <code>client_private_key</code> (for example
+<code>RS256</code>, <code>ES256</code>, or <code>EdDSA</code>).</p></dd>
+
+
+<dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
+<dd><p>Optional override for the <code>aud</code> claim
+used in signed authorization requests. By default, shinyOAuth uses the
+provider issuer when available and otherwise falls back to the authorization
+endpoint URL.</p></dd>
 
 
 <dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>

@@ -16,6 +16,10 @@ oauth_provider(
   introspection_url = NA_character_,
   revocation_url = NA_character_,
   par_url = NA_character_,
+  require_pushed_authorization_requests = FALSE,
+  request_object_signing_alg_values_supported = character(),
+  require_signed_request_object = FALSE,
+  token_endpoint_auth_signing_alg_values_supported = character(),
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -77,6 +81,33 @@ oauth_provider(
   configured, authorization request parameters are pushed directly to
   the authorization server and the browser is redirected with the
   returned `request_uri` instead of the full request payload.
+
+- require_pushed_authorization_requests:
+
+  Logical. Whether the provider requires authorization request data to
+  be sent via PAR. When `TRUE`, `par_url` must be configured.
+
+- request_object_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for RFC
+  9101 Request Objects. When populated, this metadata is used for early
+  validation of `OAuthClient` configurations that set
+  `authorization_request_mode = "request"`.
+
+- require_signed_request_object:
+
+  Logical. Whether the provider requires signed Request Objects for
+  authorization requests. When `TRUE`, clients should opt into
+  `authorization_request_mode = "request"`.
+
+- token_endpoint_auth_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  JWT-based client authentication (`client_secret_jwt` /
+  `private_key_jwt`) at the token endpoint. When populated, this
+  metadata is used for early validation of
+  `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
+  defaults.
 
 - issuer:
 

@@ -75,6 +75,23 @@ with the following data:
 All this data will be used for validation during the callback
 processing.
 
+If the client has `authorization_request_mode = "request"`, shinyOAuth
+switches from plain front-channel query parameters to a JWT-secured
+authorization request (JAR, RFC 9101). In that mode, the package builds
+a Request Object JWT whose payload contains the OAuth authorization
+parameters that would otherwise have been placed directly on the browser
+URL: `response_type`, `client_id`, `redirect_uri`, sealed `state`, PKCE
+values, `nonce`, `scope`, `claims`, `acr_values`, `resource`, and safe
+extra authorization parameters.
+
+That Request Object is then signed before the redirect. shinyOAuth uses
+the client’s `client_private_key` when present; otherwise it signs with
+HMAC using the `client_secret`. The JOSE header includes
+`typ = "oauth-authz-req+jwt"` and the selected signing algorithm. The
+Request Object also carries managed JWT claims such as `iss`, `aud`,
+`iat`, `exp`, and `jti`. These are controlled by shinyOAuth rather than
+by `extra_auth_params`.
+
 If the provider has a `par_url` configured, the module uses Pushed
 Authorization Requests (PAR, RFC 9126) before redirecting the browser.
 The same authorization request parameters are first sent
@@ -94,17 +111,27 @@ entry is removed before the error is surfaced.
 
 ### 4. App redirects to the provider
 
-Without PAR, the browser of the app user will be redirected to the
-provider’s authorization endpoint with the following parameters:
-`response_type=code`, `client_id`, `redirect_uri`,
+Without JAR and without PAR, the browser of the app user is redirected
+to the provider’s authorization endpoint with the usual OAuth query
+parameters: `response_type=code`, `client_id`, `redirect_uri`,
 `state=<sealed state>`, PKCE parameters, `nonce` (OIDC), `scope`,
 `claims` (OIDC, when configured via `oauth_client(claims = ...)`),
 `acr_values` (OIDC, when `required_acr_values` is set on the client),
 plus any configured extra parameters.
 
+With JAR enabled but without PAR, the browser is still redirected to the
+provider’s authorization endpoint, but the front-channel URL now carries
+the signed Request Object instead of the raw authorization parameters.
+In practice, the redirect contains `client_id` plus
+`request=<signed JWT>`. The raw authorization parameters remain inside
+that JWT payload rather than appearing as separate browser-visible query
+parameters.
+
 With PAR enabled, the browser is still redirected to the provider’s
 authorization endpoint, but the front-channel URL contains only the PAR
-handle: `client_id` and `request_uri`.
+handle: `client_id` and `request_uri`. If JAR is also enabled, the
+signed Request Object is what gets pushed to the PAR endpoint, and the
+browser still sees only `client_id` plus `request_uri`.
 
 Note: when the provider has an `issuer` set (indicating OIDC) and
 `openid` is missing from the client’s scopes, it is automatically
