@@ -31,6 +31,8 @@ OAuthProvider(
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(0),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE,
   token_auth_style = "header",
   jwks_cache = cachem::cache_mem(max_age = 3600),
   jwks_pins = character(0),
@@ -202,10 +204,25 @@ section 3.2.2.9.}
 
 \item{extra_token_headers}{Extra headers for token exchange requests (named character vector)}
 
+\item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
+aliases. Names should follow the metadata keys such as \code{token_endpoint},
+\code{userinfo_endpoint}, \code{introspection_endpoint}, or \code{revocation_endpoint},
+and values must be absolute URLs.}
+
+\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
+provider issues RFC 8705 certificate-bound access and refresh tokens. When
+\code{TRUE}, token responses may include a \code{cnf} claim with an \code{x5t#S256}
+thumbprint that later requests must present with the same certificate.}
+
 \item{token_auth_style}{How to authenticate when exchanging tokens. One of:
 \itemize{
 \item "header": HTTP Basic (client_secret_basic)
 \item "body": Form body (client_secret_post)
+\item "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+client certificate chained to a trusted CA
+\item "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+authentication using a self-signed client certificate registered out of
+band with the provider
 \item "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
 (RFC 7523)
 \item "private_key_jwt": JWT client assertion signed with an asymmetric key

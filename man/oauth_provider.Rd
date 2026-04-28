@@ -16,6 +16,8 @@ oauth_provider(
   request_object_signing_alg_values_supported = character(),
   require_signed_request_object = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = NULL,
@@ -82,6 +84,16 @@ authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
 endpoint. When populated, this metadata is used for early validation of
 \code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
 defaults.}
+
+\item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
+aliases. Names should follow the metadata keys such as \code{token_endpoint},
+\code{userinfo_endpoint}, \code{introspection_endpoint}, or \code{revocation_endpoint},
+and values must be absolute URLs.}
+
+\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
+provider issues RFC 8705 certificate-bound access and refresh tokens. When
+\code{TRUE}, token responses may include a \code{cnf} claim with an \code{x5t#S256}
+thumbprint that later requests must present with the same certificate.}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
@@ -199,6 +211,11 @@ is provided or when OIDC is used.}
 \itemize{
 \item "header": HTTP Basic (client_secret_basic)
 \item "body": Form body (client_secret_post)
+\item "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+client certificate chained to a trusted CA
+\item "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+authentication using a self-signed client certificate registered out of
+band with the provider
 \item "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
 (RFC 7523)
 \item "private_key_jwt": JWT client assertion signed with an asymmetric key

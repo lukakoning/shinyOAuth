@@ -98,7 +98,10 @@ discovery-advertised set.
 \item Token endpoint authentication methods: supports \code{client_secret_basic}
 (header), \code{client_secret_post} (body), public clients using \code{none}
 (with PKCE), as well as JWT-based methods \code{private_key_jwt} and
-\code{client_secret_jwt} per RFC 7523.
+\code{client_secret_jwt} per RFC 7523. Discovery also preserves RFC 8705 mTLS
+metadata (\code{mtls_endpoint_aliases} and
+\code{tls_client_certificate_bound_access_tokens}) and supports explicit
+\code{tls_client_auth} / \code{self_signed_tls_client_auth} selection.
 \item PAR metadata: when the discovery document advertises
 \code{pushed_authorization_request_endpoint} or
 \code{require_pushed_authorization_requests}, the resulting provider stores that
