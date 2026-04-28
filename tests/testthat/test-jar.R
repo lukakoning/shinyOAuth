@@ -466,6 +466,22 @@ test_that("request object preserves safe provider extra auth params", {
   expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
 })
 
+test_that("request mode rejects registered JWT claim names in request objects", {
+  for (claim_name in c("iss", "sub", "aud", "exp", "nbf", "iat", "jti")) {
+    cli <- make_jar_test_client(
+      provider = make_jar_test_provider(
+        extra_auth_params = stats::setNames(list("blocked"), claim_name)
+      )
+    )
+
+    expect_error(
+      shinyOAuth:::prepare_call(cli, valid_browser_token()),
+      regexp = claim_name,
+      info = claim_name
+    )
+  }
+})
+
 test_that("request mode rejects incompatible explicit signing alg combinations", {
   expect_error(
     make_jar_test_client(authorization_request_signing_alg = "RS256"),
