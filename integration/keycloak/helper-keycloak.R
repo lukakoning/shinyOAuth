@@ -417,6 +417,18 @@ make_private_key_jar_client <- function(prov) {
   )
 }
 
+make_hmac_jar_client <- function(prov) {
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = "shiny-confidential",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:3000/callback",
+    scopes = c("openid"),
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "HS256"
+  )
+}
+
 ## ---------- Login form driver ----------
 
 #' Drive the Keycloak login form headlessly

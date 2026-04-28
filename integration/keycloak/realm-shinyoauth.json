@@ -61,7 +61,10 @@
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": false,
-      "clientAuthenticatorType": "client-secret"
+      "clientAuthenticatorType": "client-secret",
+      "attributes": {
+        "request.object.signature.alg": "HS256"
+      }
     }
     ,
     {

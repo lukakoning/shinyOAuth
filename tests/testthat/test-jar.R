@@ -482,6 +482,39 @@ test_that("request mode rejects registered JWT claim names in request objects", 
   }
 })
 
+test_that("HMAC request objects use the expected signature bytes", {
+  hmac_signers <- list(
+    HS256 = openssl::sha256,
+    HS384 = openssl::sha384,
+    HS512 = openssl::sha512
+  )
+
+  for (alg in names(hmac_signers)) {
+    cli <- make_jar_test_client(
+      authorization_request_signing_alg = alg
+    )
+
+    auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+    request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+    parts <- strsplit(request_jwt, ".", fixed = TRUE)[[1]]
+    signing_input <- paste(parts[1], parts[2], sep = ".")
+    expected_signature <- shinyOAuth:::base64url_encode(
+      hmac_signers[[alg]](
+        charToRaw(signing_input),
+        key = charToRaw(enc2utf8(cli@client_secret))
+      )
+    )
+
+    expect_identical(length(parts), 3L, info = alg)
+    expect_identical(
+      shinyOAuth:::parse_jwt_header(request_jwt)$alg,
+      alg,
+      info = alg
+    )
+    expect_identical(parts[3], expected_signature, info = alg)
+  }
+})
+
 test_that("request mode rejects incompatible explicit signing alg combinations", {
   expect_error(
     make_jar_test_client(authorization_request_signing_alg = "RS256"),
