@@ -1,11 +1,11 @@
 # shinyOAuth (development version)
 
-* Added DPoP token support: `oauth_client()` can
+* Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
 preserve and use `token_type = "DPoP"` when the server returns it.
 
-* Added mutual-TLS (mTLS, RFC 8705) support, including mTLS client
+* Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
@@ -19,7 +19,7 @@ with the returned `request_uri`.
 `client_private_key` or `client_secret` signing depending on client
 configuration.
 
-* Added OpenTelemetry (OTel) support (using the 'otel' package). 
+* Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
 key OAuth operations such as module initialization, login/callback handling, 
 token exchange/refresh, userinfo/introspection/revocation, and session-end 
@@ -50,68 +50,40 @@ information.
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
 
-* `oauth_module_server()` now explicitly ignores new login requests while a 
-session is already authenticated.
+* `oauth_module_server()` now:
+  - Explicitly ignores new login requests while a 
+  session is already authenticated.
+  - Applies the browser-token double-submit check to
+  OAuth error callbacks too, deferring `?error=...` handling until the browser
+  token is available and treating browser-token mismatches as `invalid_state`
+  instead of surfacing provider-controlled error text.
 
-* `oauth_module_server()` now applies the browser-token double-submit check to
-OAuth error callbacks too, deferring `?error=...` handling until the browser
-token is available and treating browser-token mismatches as `invalid_state`
-instead of surfacing provider-controlled error text.
+* `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
+previews instead of exposing full credential material in default console output.
 
-* `oauth_client()` now supports `enforce_callback_issuer = TRUE` to require
-the RFC 9207 `iss` callback parameter for shared-redirect multi-issuer
-deployments. Relatedly, `handle_callback()` now accepts `iss`, so advanced
-callers building around `prepare_call()` can supply the callback issuer and
-get the same client-level RFC 9207 check before token exchange.
-
-* `oauth_client()` now has native RFC 8707 `resource` support, so
-authorization, token exchange, and refresh requests can request
-audience-restricted tokens without dropping down to manual extra params.
-
-* `validate_id_token()` now properly rejects `auth_time` claims set in the
-future (beyond leeway). Previously, a future `auth_time` produced a negative 
-elapsed value that always passed the `max_age` freshness check.
-
-* `refresh_token()` now refuses to update userinfo unless it can verify the 
-refreshed identity against a new or preserved ID token subject, preventing
-identity confusion when providers omit `id_token` from refresh responses.
-
-* `get_userinfo()` now applies the same hard JWK `alg` compatibility checks to
-signed UserInfo JWT verification as ID token verification, rejecting JWKS keys
-that advertise a different algorithm even if signature verification would
-otherwise succeed.
-
-* `get_userinfo()` now always requires a non-empty `sub` claim in userinfo
-responses from OIDC providers (those with an `issuer` configured), per OIDC Core 
-section 5.3. Previously, a non-compliant response without `sub` could be 
-accepted if `userinfo_id_token_match` was not enabled. The signed-JWT path
-(`validate_signed_userinfo_claims()`) also now checks `sub` alongside the
-existing `iss`/`aud` validation.
-
-* `OAuthClient`'s `claims_validation = "warn"` / `"strict"` now also enforces
-OIDC claim request `value` and `values` constraints, not just presence of
-`essential = TRUE` claims.
-
-* `OAuthProvider` now validates custom `jwks_cache$get()` signatures without
-calling the cache during construction, avoiding side effects in duck-typed
-cache backends.
-
-* `OAuthProvider(extra_auth_params = list(response_mode = ...))` now fails
-fast unless `response_mode = "query"`. Plain Shiny callback URLs reject POST
-requests, so `response_mode = "form_post"` was previously allowed but led to a
-broken callback round-trip instead of a clear configuration error.
-
-* `oauth_provider_microsoft()` no longer drops the Microsoft alias tenants to
-OAuth 2.0 plus userinfo identity by default. `common` and `organizations` now
-validate ID tokens using Microsoft's tenant-independent issuer and signing-key
-issuer rules, and `consumers` now validates against the stable consumer tenant
-issuer.
-
-- Hardened runtime JWKS discovery by validating the discovery issuer before 
-trusting `jwks_uri`. This policy is now stored on `OAuthProvider` via `issuer_match`,
-so both provider discovery and runtime JWKS fetches apply the same rule: 
-`url` for exact issuer URL matching, `host` for scheme-and-host matching,
-or `none` to skip the discovery issuer check.
+* `oauth_client()` (`OAuthClient`) now:
+  - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207 `iss` 
+  callback parameter for shared-redirect multi-issuer deployments. Relatedly, 
+  `handle_callback()` now accepts `iss`, so advanced callers building around 
+  `prepare_call()` can supply the callback issuer and get the same client-level
+  RFC 9207 check before token exchange.
+  - Has native RFC 8707 `resource` support, so authorization, token exchange, 
+  and refresh requests can request audience-restricted tokens without dropping 
+  down to manual extra params.
+  * Also enforces OIDC claim request `value` and `values` constraints when 
+  `claims_validation` is enabled, not just presence of `essential = TRUE` 
+  claims.
+  * Carries the same effective requested scopes through the whole login flow. If
+  `openid` is auto-added to the authorization request, the sealed state payload, 
+  token-response scope validation, and introspection scope validation now use
+  that same effective scope set.
+  
+* `oauth_provider()` (`OAuthProvider`) now:
+  - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs 
+  reject POST requests, so `response_mode = "form_post"` was previously allowed 
+  but led to abroken callback round-trip instead of a clear configuration error.
+  - Validates custom `jwks_cache$get()` signatures without calling the cache 
+  during construction, avoiding side effects in duck-typed cache backends.
 
 * `oauth_provider_oidc_discover()` now:
   - Fails fast when metadata advertises PKCE methods but omits
@@ -127,10 +99,42 @@ deriving endpoint URLs and the configured `issuer`, avoiding valid ID tokens
 being rejected on a strict OIDC `iss` comparison when the helper was configured
 with a URL like `https://issuer.example/`.
 
-* OIDC clients now carry the same effective requested scopes through the whole
-login flow. If `openid` is auto-added to the authorization request, the sealed
-state payload, token-response scope validation, and introspection scope
-validation now use that same effective scope set.
+* `oauth_provider_microsoft()` no longer drops the Microsoft alias tenants to
+OAuth 2.0 plus userinfo identity by default. `common` and `organizations` now
+validate ID tokens using Microsoft's tenant-independent issuer and signing-key
+issuer rules, and `consumers` now validates against the stable consumer tenant
+issuer.
+
+* `validate_id_token()` now properly rejects `auth_time` claims set in the
+future (beyond leeway). Previously, a future `auth_time` produced a negative 
+elapsed value that always passed the `max_age` freshness check.
+
+* `refresh_token()` now refuses to update userinfo unless it can verify the 
+refreshed identity against a new or preserved ID token subject, preventing
+identity confusion when providers omit `id_token` from refresh responses.
+
+* `get_userinfo()` now:
+  - Applies the same hard JWK `alg` compatibility checks to signed UserInfo JWT 
+  verification as ID token verification, rejecting JWKS keys that advertise a 
+  different algorithm even if signature verification would otherwise succeed.
+  - Always requires a non-empty `sub` claim in userinfo responses from OIDC 
+  providers (those with an `issuer` configured), per OIDC Core section 5.3. 
+  Previously, a non-compliant response without `sub` could be accepted if 
+  `userinfo_id_token_match` was not enabled. The signed-JWT path 
+  (`validate_signed_userinfo_claims()`) also now checks `sub` alongside the
+  existing `iss`/`aud` validation.
+  
+* Token exchange and refresh requests no longer retry on transport errors or
+transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
+refresh tokens may be rotated on each use; retrying after the server has
+already committed the first request would replay an invalidated credential,
+causing `invalid_grant` errors or triggering refresh-token replay detection.
+
+- Hardened runtime JWKS discovery by validating the discovery issuer before 
+trusting `jwks_uri`. This policy is now stored on `OAuthProvider` via 
+`issuer_match`, so both provider discovery and runtime JWKS fetches apply the 
+same rule: `url` for exact issuer URL matching, `host` for scheme-and-host 
+matching, or `none` to skip the discovery issuer check.
 
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
@@ -145,15 +149,6 @@ session-age cap.
 * `err_http()` now guards against oversized HTTP error bodies before hashing
 or JSON parsing, so large chunked or misleading error responses now trip the 
 existing body-size limit consistently.
-
-* Token exchange and refresh requests no longer retry on transport errors or
-transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
-refresh tokens may be rotated on each use; retrying after the server has
-already committed the first request would replay an invalidated credential,
-causing `invalid_grant` errors or triggering refresh-token replay detection.
-
-* `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
-previews instead of exposing full credential material in default console output.
 
 # shinyOAuth 0.4.0
 
