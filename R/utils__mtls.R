@@ -55,9 +55,17 @@ resolve_provider_endpoint_url <- function(
     return(base_url)
   }
 
-  alias_url <- provider@mtls_endpoint_aliases[[endpoint]] %||% NA_character_
-  if (is_valid_string(alias_url)) {
-    return(alias_url)
+  alias_names <- switch(
+    endpoint,
+    par_endpoint = c("par_endpoint", "pushed_authorization_request_endpoint"),
+    endpoint
+  )
+
+  for (alias_name in alias_names) {
+    alias_url <- provider@mtls_endpoint_aliases[[alias_name]] %||% NA_character_
+    if (is_valid_string(alias_url)) {
+      return(alias_url)
+    }
   }
 
   base_url

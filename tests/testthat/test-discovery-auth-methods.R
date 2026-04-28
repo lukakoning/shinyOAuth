@@ -379,7 +379,8 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
           tls_client_certificate_bound_access_tokens = TRUE,
           mtls_endpoint_aliases = list(
             token_endpoint = "https://127.0.0.1/mtls/token",
-            userinfo_endpoint = "https://127.0.0.1/mtls/userinfo"
+            userinfo_endpoint = "https://127.0.0.1/mtls/userinfo",
+            pushed_authorization_request_endpoint = "https://127.0.0.1/mtls/par"
           )
         ),
         auto_unbox = TRUE
@@ -401,5 +402,9 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
   testthat::expect_identical(
     prov@mtls_endpoint_aliases$userinfo_endpoint,
     "https://127.0.0.1/mtls/userinfo"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$par_endpoint,
+    "https://127.0.0.1/mtls/par"
   )
 })

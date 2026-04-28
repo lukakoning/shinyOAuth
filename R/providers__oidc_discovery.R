@@ -709,23 +709,28 @@ oauth_provider_oidc_discover <- function(
     err_parse("Discovery mtls_endpoint_aliases must be a JSON object")
   }
 
-  known_aliases <- c(
-    "token_endpoint",
-    "userinfo_endpoint",
-    "introspection_endpoint",
-    "revocation_endpoint",
-    "device_authorization_endpoint"
+  alias_name_map <- c(
+    token_endpoint = "token_endpoint",
+    userinfo_endpoint = "userinfo_endpoint",
+    introspection_endpoint = "introspection_endpoint",
+    revocation_endpoint = "revocation_endpoint",
+    pushed_authorization_request_endpoint = "par_endpoint",
+    device_authorization_endpoint = "device_authorization_endpoint"
   )
-  alias_names <- intersect(names(aliases) %||% character(0), known_aliases)
+  alias_names <- intersect(
+    names(aliases) %||% character(0),
+    names(alias_name_map)
+  )
   if (length(alias_names) == 0L) {
     return(list())
   }
 
-  out <- aliases[alias_names]
+  out <- list()
   for (name in alias_names) {
     value <- aliases[[name]]
+    target_name <- alias_name_map[[name]]
     if (is.null(value)) {
-      out[[name]] <- NULL
+      out[[target_name]] <- NULL
       next
     }
 
@@ -734,7 +739,7 @@ oauth_provider_oidc_discover <- function(
         paste0("Discovery mtls_endpoint_aliases$", name, " must be a string")
       )
     }
-    out[[name]] <- as.character(value)
+    out[[target_name]] <- as.character(value)
   }
 
   out[!vapply(out, is.null, logical(1))]
