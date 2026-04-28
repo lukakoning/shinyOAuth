@@ -702,6 +702,51 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
   )
 })
 
+test_that("client bearer requests honor cnf in raw JWT access tokens", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body"
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  raw_token <- build_mtls_access_jwt(list(
+    cnf = list(`x5t#S256` = "thumbprint")
+  ))
+
+  testthat::local_mocked_bindings(
+    tls_client_cert_thumbprint_s256 = function(cert_file) {
+      expect_identical(cert_file, files$cert_file)
+      "thumbprint"
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- shinyOAuth::client_bearer_req(
+    raw_token,
+    url = "https://example.com/resource",
+    oauth_client = client
+  )
+
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+  expect_identical(req$options$sslcert, files$cert_file)
+  expect_identical(req$options$sslkey, files$key_file)
+  expect_identical(dry$headers$authorization, paste("Bearer", raw_token))
+})
+
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)

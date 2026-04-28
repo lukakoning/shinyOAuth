@@ -111,13 +111,21 @@ req_apply_authorization_server_mtls <- function(
 }
 
 token_cnf_x5t_s256 <- function(token) {
-  if (!S7::S7_inherits(token, class = OAuthToken)) {
+  cnf <- NULL
+  access_token <- NA_character_
+
+  if (S7::S7_inherits(token, class = OAuthToken)) {
+    cnf <- token@cnf
+    access_token <- token@access_token
+  } else if (is_valid_string(token)) {
+    access_token <- token
+  } else {
     return(NA_character_)
   }
 
   cnf <- resolve_token_cnf(
-    cnf = token@cnf,
-    access_token = token@access_token
+    cnf = cnf,
+    access_token = access_token
   )
   thumbprint <- cnf[["x5t#S256"]] %||% NA_character_
   if (!is_valid_string(thumbprint)) {
