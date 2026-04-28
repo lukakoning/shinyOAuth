@@ -311,6 +311,67 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
   expect_identical(assertion_payload$aud, cli@provider@par_url)
 })
 
+test_that("request mode through PAR supports private_key_jwt client auth", {
+  key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      token_auth_style = "private_key_jwt"
+    ),
+    client_secret = "",
+    client_private_key = key,
+    client_private_key_kid = "kid-123"
+  )
+  body_data <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_data <<- req$body$data %||% list()
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_value <- utils::URLdecode(as.character(body_data$request)[[1]])
+  assertion_value <- utils::URLdecode(as.character(body_data$client_assertion)[[
+    1
+  ]])
+  assertion_type <- utils::URLdecode(
+    as.character(body_data$client_assertion_type)[[1]]
+  )
+  request_header <- shinyOAuth:::parse_jwt_header(request_value)
+  request_payload <- shinyOAuth:::parse_jwt_payload(request_value)
+  assertion_header <- shinyOAuth:::parse_jwt_header(assertion_value)
+  assertion_payload <- shinyOAuth:::parse_jwt_payload(assertion_value)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_true("request" %in% names(body_data))
+  expect_identical(
+    assertion_type,
+    "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+  )
+  expect_false("client_secret" %in% names(body_data))
+  expect_false("response_type" %in% names(body_data))
+  expect_false("redirect_uri" %in% names(body_data))
+  expect_identical(request_header$typ, "oauth-authz-req+jwt")
+  expect_identical(request_header$kid, "kid-123")
+  expect_identical(request_payload$client_id, "abc")
+  expect_identical(assertion_header$typ, "JWT")
+  expect_identical(assertion_header$kid, "kid-123")
+  expect_identical(assertion_payload$iss, "abc")
+  expect_identical(assertion_payload$sub, "abc")
+  expect_identical(assertion_payload$aud, cli@provider@par_url)
+})
+
 test_that("request object preserves repeated resource indicators", {
   cli <- make_jar_test_client(
     resource = c(
