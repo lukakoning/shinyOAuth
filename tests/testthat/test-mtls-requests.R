@@ -33,9 +33,9 @@ make_mtls_test_files <- function() {
   list(cert_file = cert_file, key_file = key_file, ca_file = ca_file)
 }
 
-keycloak_tls_fixture <- function(filename) {
+mtls_pem_fixture <- function(filename) {
   normalizePath(
-    testthat::test_path("..", "..", "integration", "keycloak", "tls", filename),
+    testthat::test_path("fixtures", "mtls", filename),
     winslash = "/",
     mustWork = TRUE
   )
@@ -1200,9 +1200,9 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
 })
 
 test_that("certificate binding uses the key-matched certificate from PEM bundles", {
-  cert_file <- keycloak_tls_fixture("client-cert.pem")
-  key_file <- keycloak_tls_fixture("client-key.pem")
-  ca_file <- keycloak_tls_fixture("ca-cert.pem")
+  cert_file <- mtls_pem_fixture("client-cert.pem")
+  key_file <- mtls_pem_fixture("client-key.pem")
+  ca_file <- mtls_pem_fixture("ca-cert.pem")
   bundle_file <- tempfile(fileext = ".pem")
   on.exit(unlink(bundle_file, force = TRUE), add = TRUE)
 
