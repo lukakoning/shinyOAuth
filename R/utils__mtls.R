@@ -2,6 +2,58 @@ mtls_token_auth_styles <- function() {
   c("tls_client_auth", "self_signed_tls_client_auth")
 }
 
+mtls_thumbprint_cache_env <- new.env(parent = emptyenv())
+
+mtls_thumbprint_cache_file_signature <- function(path) {
+  if (!is_valid_string(path)) {
+    return(NA_character_)
+  }
+
+  normalized <- normalizePath(path, winslash = "/", mustWork = TRUE)
+  info <- file.info(normalized)
+
+  paste(
+    normalized,
+    as.character(info$size[[1]]),
+    as.character(as.numeric(info$mtime[[1]])),
+    as.character(as.numeric(info$ctime[[1]])),
+    sep = "::"
+  )
+}
+
+mtls_thumbprint_cache_key <- function(
+  cert_file,
+  key_file = NULL,
+  key_password = NULL
+) {
+  paste(
+    mtls_thumbprint_cache_file_signature(cert_file),
+    mtls_thumbprint_cache_file_signature(key_file),
+    string_digest(key_password %||% NA_character_, key = NULL),
+    sep = "::"
+  )
+}
+
+mtls_thumbprint_cache_get <- function(cache_key) {
+  if (!is_valid_string(cache_key)) {
+    return(NULL)
+  }
+  if (!exists(cache_key, envir = mtls_thumbprint_cache_env, inherits = FALSE)) {
+    return(NULL)
+  }
+
+  get(cache_key, envir = mtls_thumbprint_cache_env, inherits = FALSE)
+}
+
+mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
+  if (!(is_valid_string(cache_key) && is_valid_string(thumbprint))) {
+    return(invisible(thumbprint))
+  }
+
+  assign(cache_key, thumbprint, envir = mtls_thumbprint_cache_env)
+  invisible(thumbprint)
+}
+
 client_has_mtls_certificate <- function(oauth_client) {
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(FALSE)
@@ -287,6 +339,21 @@ tls_client_cert_thumbprint_s256 <- function(
   key_file = NULL,
   key_password = NULL
 ) {
+  cache_key <- try(
+    mtls_thumbprint_cache_key(
+      cert_file,
+      key_file = key_file,
+      key_password = key_password
+    ),
+    silent = TRUE
+  )
+  if (!inherits(cache_key, "try-error")) {
+    cached_thumbprint <- mtls_thumbprint_cache_get(cache_key)
+    if (is_valid_string(cached_thumbprint)) {
+      return(cached_thumbprint)
+    }
+  }
+
   # PEM bundles may contain a full chain; hash the certificate bound to the
   # configured private key instead of assuming bundle order.
   cert <- read_keyed_client_certificate(
@@ -302,7 +369,12 @@ tls_client_cert_thumbprint_s256 <- function(
     )
   }
 
-  base64url_encode(openssl::sha256(der))
+  thumbprint <- base64url_encode(openssl::sha256(der))
+  if (!inherits(cache_key, "try-error")) {
+    mtls_thumbprint_cache_set(cache_key, thumbprint)
+  }
+
+  thumbprint
 }
 
 validate_token_certificate_binding <- function(token, oauth_client) {

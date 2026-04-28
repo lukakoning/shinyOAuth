@@ -1250,3 +1250,43 @@ test_that("certificate binding uses the key-matched certificate from PEM bundles
     client
   ))
 })
+
+test_that("certificate thumbprints are cached for repeated PEM lookups", {
+  cert_file <- mtls_pem_fixture("client-cert.pem")
+  key_file <- mtls_pem_fixture("client-key.pem")
+  ca_file <- mtls_pem_fixture("ca-cert.pem")
+  bundle_a <- tempfile(fileext = ".pem")
+  bundle_b <- tempfile(fileext = ".pem")
+  on.exit(unlink(c(bundle_a, bundle_b), force = TRUE), add = TRUE)
+
+  writeLines(c(readLines(ca_file), readLines(cert_file)), bundle_a)
+  writeLines(readLines(cert_file), bundle_b)
+
+  original_read_keyed_client_certificate <-
+    shinyOAuth:::read_keyed_client_certificate
+  parse_count <- 0L
+  testthat::local_mocked_bindings(
+    read_keyed_client_certificate = function(...) {
+      parse_count <<- parse_count + 1L
+      original_read_keyed_client_certificate(...)
+    },
+    .package = "shinyOAuth"
+  )
+
+  thumbprint_a <- shinyOAuth:::tls_client_cert_thumbprint_s256(
+    bundle_a,
+    key_file = key_file
+  )
+  thumbprint_a_cached <- shinyOAuth:::tls_client_cert_thumbprint_s256(
+    bundle_a,
+    key_file = key_file
+  )
+  thumbprint_b <- shinyOAuth:::tls_client_cert_thumbprint_s256(
+    bundle_b,
+    key_file = key_file
+  )
+
+  expect_identical(thumbprint_a_cached, thumbprint_a)
+  expect_identical(thumbprint_b, thumbprint_a)
+  expect_identical(parse_count, 2L)
+})
