@@ -1,14 +1,3 @@
-write_fake_pem <- function(path, label) {
-  writeLines(
-    c(
-      paste0("-----BEGIN ", label, "-----"),
-      "test",
-      paste0("-----END ", label, "-----")
-    ),
-    path
-  )
-}
-
 test_that("mTLS token auth styles accept certificate-backed clients", {
   cert_file <- tempfile(fileext = ".pem")
   key_file <- tempfile(fileext = ".pem")
