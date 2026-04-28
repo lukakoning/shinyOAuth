@@ -133,6 +133,64 @@ testthat::test_that("Keycloak mTLS userinfo surfaces wrong certificate errors th
   )
 })
 
+testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on refresh, introspection, and revocation", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
+  prov@userinfo_required <- FALSE
+  client <- make_mtls_confidential_client(prov)
+
+  login <- perform_mtls_module_login(client)
+
+  testthat::expect_true(isTRUE(login$authenticated))
+  testthat::expect_false(is.null(login$token))
+  testthat::expect_true(nzchar(login$token@access_token %||% ""))
+  testthat::expect_true(nzchar(login$token@refresh_token %||% ""))
+
+  access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
+  testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
+
+  tampered_refresh_token <- login$token
+  tampered_refresh_token@cnf <- list(`x5t#S256` = "mismatched-thumbprint")
+
+  refreshed <- shinyOAuth::refresh_token(
+    client,
+    tampered_refresh_token,
+    introspect = FALSE
+  )
+
+  testthat::expect_true(S7::S7_inherits(refreshed, shinyOAuth::OAuthToken))
+  testthat::expect_true(nzchar(refreshed@access_token %||% ""))
+  testthat::expect_identical(
+    access_token_cnf_x5t_s256(refreshed@access_token),
+    tls_client_thumbprint("valid")
+  )
+
+  tampered_access_token <- login$token
+  tampered_access_token@cnf <- list(`x5t#S256` = "mismatched-thumbprint")
+
+  introspection <- shinyOAuth::introspect_token(
+    client,
+    tampered_access_token,
+    which = "access",
+    async = FALSE
+  )
+  testthat::expect_true(isTRUE(introspection$supported))
+  testthat::expect_true(isTRUE(introspection$active))
+  testthat::expect_identical(introspection$status, "ok")
+
+  revocation <- shinyOAuth::revoke_token(
+    client,
+    tampered_access_token,
+    which = "access",
+    async = FALSE
+  )
+  testthat::expect_true(isTRUE(revocation$supported))
+  testthat::expect_true(isTRUE(revocation$revoked))
+  testthat::expect_identical(revocation$status, "ok")
+})
+
 testthat::test_that("Keycloak mTLS auth-code token exchange requires the registered certificate", {
   skip_mtls_common()
   local_test_options()
