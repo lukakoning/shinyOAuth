@@ -395,46 +395,6 @@ Note on `allowed_hosts`: patterns support globs (`*`, `?`).
 Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply). 
 Avoid this unless you truly intend to accept any host; prefer pinning to your domain(s), e.g., `c(".example.com")`.
 
-### Signed authorization requests (JAR)
-
-When your provider requires RFC 9101 request objects, set
-`authorization_request_mode = "request"` on `oauth_client()`.
-In this mode, shinyOAuth builds the usual authorization request parameters,
-wraps them in a signed JWT, and sends that Request Object either via the
-browser redirect's `request` parameter or through PAR when available,
-instead of placing raw OAuth parameters on the browser URL.
-
-```r
-client <- oauth_client(
-  provider = provider,
-  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
-  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
-  redirect_uri = "http://127.0.0.1:8100",
-  scopes = c("openid", "profile"),
-  authorization_request_mode = "request"
-)
-```
-
-Request mode requires signing material on the client:
-
-- If `client_private_key` is configured, shinyOAuth signs the Request Object
-  with a compatible asymmetric default (or your explicit
-  `authorization_request_signing_alg`).
-- Otherwise, shinyOAuth falls back to HMAC signing with `client_secret`
-  and defaults to `HS256`.
-
-You may override the Request Object audience with
-`authorization_request_audience` when your provider expects a value other than
-the issuer or authorization endpoint URL.
-
-Current scope notes:
-
-- shinyOAuth currently supports signed Request Objects via `request`.
-- `request_uri` publication is not implemented.
-- If a provider also exposes PAR, `authorization_request_mode = "request"`
-  pushes the signed Request Object through PAR and the browser is redirected
-  with the returned `request_uri`.
-
 ### Extra parameter overrides
 
 By default, shinyOAuth blocks certain security‑critical parameters from being passed 
