@@ -4,6 +4,51 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TLS_DIR="${SCRIPT_DIR}/tls"
 
+CA_CERT="${TLS_DIR}/ca-cert.pem"
+CA_KEY="${TLS_DIR}/ca-key.pem"
+SERVER_CERT="${TLS_DIR}/server-cert.pem"
+SERVER_KEY="${TLS_DIR}/server-key.pem"
+CLIENT_CERT="${TLS_DIR}/client-cert.pem"
+CLIENT_KEY="${TLS_DIR}/client-key.pem"
+ATTACKER_CERT="${TLS_DIR}/attacker-cert.pem"
+ATTACKER_KEY="${TLS_DIR}/attacker-key.pem"
+ROGUE_CA_CERT="${TLS_DIR}/rogue-ca-cert.pem"
+ROGUE_CA_KEY="${TLS_DIR}/rogue-ca-key.pem"
+ROGUE_CLIENT_CERT="${TLS_DIR}/rogue-client-cert.pem"
+ROGUE_CLIENT_KEY="${TLS_DIR}/rogue-client-key.pem"
+SERIAL_FILE="${TLS_DIR}/ca-cert.srl"
+ROGUE_SERIAL_FILE="${TLS_DIR}/rogue-ca-cert.srl"
+
+required_files=(
+  "$CA_CERT"
+  "$CA_KEY"
+  "$SERVER_CERT"
+  "$SERVER_KEY"
+  "$CLIENT_CERT"
+  "$CLIENT_KEY"
+  "$ATTACKER_CERT"
+  "$ATTACKER_KEY"
+  "$ROGUE_CA_CERT"
+  "$ROGUE_CA_KEY"
+  "$ROGUE_CLIENT_CERT"
+  "$ROGUE_CLIENT_KEY"
+  "$SERIAL_FILE"
+  "$ROGUE_SERIAL_FILE"
+)
+
+all_tls_files_exist=true
+for tls_file in "${required_files[@]}"; do
+  if [[ ! -f "$tls_file" ]]; then
+    all_tls_files_exist=false
+    break
+  fi
+done
+
+if [[ "$all_tls_files_exist" == true ]]; then
+  echo "[prepare-tls] Using existing TLS materials in ${TLS_DIR}" >&2
+  exit 0
+fi
+
 run_openssl() {
   MSYS_NO_PATHCONV=1 openssl "$@"
 }
