@@ -208,10 +208,9 @@ testthat::test_that("Keycloak mTLS client-credentials flow issues certificate-bo
     which = "access",
     async = FALSE
   )
-  testthat::expect_true(isTRUE(introspection$supported))
-  testthat::expect_true(
-    isTRUE(introspection$active) || is.na(introspection$active)
-  )
+  testthat::expect_identical(introspection$supported, TRUE)
+  testthat::expect_identical(introspection$status, "ok")
+  testthat::expect_identical(introspection$active, TRUE)
 
   no_cert_resp <- raw_mtls_client_credentials_request(
     client,
