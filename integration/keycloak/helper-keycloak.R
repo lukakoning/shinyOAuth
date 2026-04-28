@@ -467,42 +467,12 @@ make_mtls_provider <- function(
   use_par = FALSE,
   ...
 ) {
-  disc <- get_https_discovery_document(force = TRUE)
-  mtls_endpoint_aliases <- disc$mtls_endpoint_aliases %||% list()
-
-  prov <- shinyOAuth::oauth_provider(
-    name = httr2::url_parse(get_https_issuer())$hostname %||% "keycloak",
-    auth_url = disc$authorization_endpoint,
-    token_url = disc$token_endpoint,
-    userinfo_url = disc$userinfo_endpoint %||% NA_character_,
-    introspection_url = disc$introspection_endpoint %||% NA_character_,
-    revocation_url = disc$revocation_endpoint %||% NA_character_,
-    par_url = disc$pushed_authorization_request_endpoint %||% NA_character_,
-    require_pushed_authorization_requests = isTRUE(
-      disc$require_pushed_authorization_requests
-    ),
-    request_object_signing_alg_values_supported = as.character(unlist(
-      disc$request_object_signing_alg_values_supported %||% character(0),
-      use.names = FALSE
-    )),
-    require_signed_request_object = isTRUE(disc$require_signed_request_object),
-    token_endpoint_auth_signing_alg_values_supported = as.character(unlist(
-      disc$token_endpoint_auth_signing_alg_values_supported %||% character(0),
-      use.names = FALSE
-    )),
-    mtls_endpoint_aliases = mtls_endpoint_aliases,
-    tls_client_certificate_bound_access_tokens = isTRUE(
-      disc$tls_client_certificate_bound_access_tokens
-    ),
-    issuer = disc$issuer %||% get_https_issuer(),
-    issuer_match = "url",
-    use_nonce = TRUE,
-    use_pkce = TRUE,
-    pkce_method = "S256",
-    id_token_required = FALSE,
-    id_token_validation = FALSE,
+  prov <- shinyOAuth::oauth_provider_oidc_discover(
+    issuer = get_https_issuer(),
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
     ...
   )
 

@@ -42,6 +42,32 @@ perform_mtls_module_login <- function(
   result
 }
 
+testthat::test_that("Keycloak HTTPS discovery wires mTLS metadata into make_mtls_provider", {
+  skip_mtls_common()
+  local_test_options()
+
+  disc <- get_https_discovery_document(force = TRUE)
+  prov <- make_mtls_provider(
+    token_auth_style = "tls_client_auth",
+    use_par = TRUE
+  )
+
+  testthat::expect_true(isTRUE(prov@tls_client_certificate_bound_access_tokens))
+  testthat::expect_identical(prov@issuer, disc$issuer)
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$token_endpoint,
+    disc$mtls_endpoint_aliases$token_endpoint
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$userinfo_endpoint,
+    disc$mtls_endpoint_aliases$userinfo_endpoint
+  )
+  testthat::expect_identical(
+    prov@par_url,
+    disc$pushed_authorization_request_endpoint
+  )
+})
+
 testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects userinfo", {
   skip_mtls_common()
   local_test_options()
