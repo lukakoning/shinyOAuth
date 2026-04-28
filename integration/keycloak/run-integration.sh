@@ -63,7 +63,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "[run-integration] Preparing TLS materials..." >&2
-"$TLS_PREPARE_SCRIPT"
+# Invoke via bash so this works even when the executable bit is not preserved.
+"${BASH:-bash}" "$TLS_PREPARE_SCRIPT"
 
 # Start services
 echo "[run-integration] Starting Keycloak via docker compose..." >&2
