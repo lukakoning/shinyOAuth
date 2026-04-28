@@ -77,6 +77,16 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
     cert_variant = "wrong"
   )
   expect_mtls_sender_constraint_rejection(wrong_cert_resp)
+
+  testthat::expect_error(
+    raw_mtls_userinfo_request(
+      client,
+      login$token@access_token,
+      cert_variant = "rogue"
+    ),
+    class = "httr2_failure",
+    regexp = "certificate unknown|unknown ca|tls alert"
+  )
 })
 
 testthat::test_that("Keycloak mTLS auth-code token exchange requires the registered certificate", {
@@ -115,6 +125,17 @@ testthat::test_that("Keycloak mTLS auth-code token exchange requires the registe
     cert_variant = "wrong"
   )
   expect_mtls_invalid_client(wrong_cert_resp)
+
+  rogue_cert_login <- perform_mtls_code_login(client)
+  testthat::expect_error(
+    raw_mtls_auth_code_exchange(
+      client,
+      rogue_cert_login,
+      cert_variant = "rogue"
+    ),
+    class = "httr2_failure",
+    regexp = "certificate unknown|unknown ca|tls alert"
+  )
 })
 
 testthat::test_that("Keycloak mTLS client-credentials flow issues certificate-bound tokens", {
@@ -159,4 +180,13 @@ testthat::test_that("Keycloak mTLS client-credentials flow issues certificate-bo
     cert_variant = "wrong"
   )
   expect_mtls_invalid_client(wrong_cert_resp)
+
+  testthat::expect_error(
+    raw_mtls_client_credentials_request(
+      client,
+      cert_variant = "rogue"
+    ),
+    class = "httr2_failure",
+    regexp = "certificate unknown|unknown ca|tls alert"
+  )
 })

@@ -146,7 +146,7 @@ generate_leaf \
   "$ROGUE_CLIENT_CERT" \
   "$ROGUE_CLIENT_KEY" \
   "rogue-client.csr" \
-  "/C=US/ST=NA/L=Local/O=shinyOAuth/OU=Tests/CN=shiny-mtls-rogue" \
+  "/C=US/ST=NA/L=Local/O=shinyOAuth/OU=Tests/CN=shiny-mtls-client" \
   "$ROGUE_CA_CERT" \
   "$ROGUE_CA_KEY" \
   "$ROGUE_SERIAL_FILE" \
