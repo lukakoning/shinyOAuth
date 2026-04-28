@@ -406,14 +406,14 @@ test_that("request object preserves JSON-encoded claims requests", {
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
-  claims_parsed <- jsonlite::fromJSON(pl$claims)
 
-  expect_true("userinfo" %in% names(claims_parsed))
-  expect_true("id_token" %in% names(claims_parsed))
-  expect_true("email" %in% names(claims_parsed$userinfo))
-  expect_true("given_name" %in% names(claims_parsed$userinfo))
-  expect_identical(claims_parsed$userinfo$given_name$essential, TRUE)
-  expect_identical(claims_parsed$id_token$auth_time$essential, TRUE)
+  expect_type(pl$claims, "list")
+  expect_true("userinfo" %in% names(pl$claims))
+  expect_true("id_token" %in% names(pl$claims))
+  expect_true("email" %in% names(pl$claims$userinfo))
+  expect_true("given_name" %in% names(pl$claims$userinfo))
+  expect_identical(pl$claims$userinfo$given_name$essential, TRUE)
+  expect_identical(pl$claims$id_token$auth_time$essential, TRUE)
 })
 
 test_that("request object preserves acr_values hints", {

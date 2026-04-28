@@ -1058,6 +1058,21 @@ build_authorization_request_object <- function(client, params) {
   now <- floor(as.numeric(Sys.time()))
   ttl <- 120L
 
+  claims_param <- params$claims %||% NULL
+  if (
+    is.character(claims_param) &&
+      length(claims_param) == 1L &&
+      nzchar(claims_param)
+  ) {
+    parsed_claims <- tryCatch(
+      jsonlite::fromJSON(claims_param, simplifyVector = FALSE),
+      error = function(...) NULL
+    )
+    if (is.list(parsed_claims)) {
+      params$claims <- parsed_claims
+    }
+  }
+
   claims <- compact_list(c(
     params,
     list(
