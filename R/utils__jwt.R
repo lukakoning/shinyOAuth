@@ -1053,27 +1053,6 @@ build_authorization_request_object <- function(client, params) {
     )
   }
 
-  registered_jwt_claim_names <- c(
-    "iss",
-    "sub",
-    "aud",
-    "exp",
-    "nbf",
-    "iat",
-    "jti"
-  )
-  jwt_claim_conflicts <- intersect(param_names, registered_jwt_claim_names)
-  if (length(jwt_claim_conflicts) > 0) {
-    err_config(c(
-      paste0(
-        "Authorization request parameters must not include registered JWT claim names inside request objects: ",
-        paste(jwt_claim_conflicts, collapse = ", ")
-      ),
-      "i" = "Use OAuthClient@authorization_request_audience to control aud; iss, iat, exp, and jti are managed internally.",
-      "i" = "For security, sub is not supported in request objects."
-    ))
-  }
-
   alg <- resolve_authorization_request_signing_alg(client)
   aud <- resolve_authorization_request_audience(client)
   now <- floor(as.numeric(Sys.time()))
@@ -1093,6 +1072,11 @@ build_authorization_request_object <- function(client, params) {
       params$claims <- parsed_claims
     }
   }
+
+  params[intersect(
+    names(params) %||% character(0),
+    c("iss", "aud", "iat", "exp", "jti")
+  )] <- NULL
 
   claims <- compact_list(c(
     params,

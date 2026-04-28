@@ -81,8 +81,7 @@ client's `client_private_key` when present; otherwise it signs with HMAC using
 the `client_secret`. The JOSE header includes
 `typ = "oauth-authz-req+jwt"` and the selected signing algorithm. The Request
 Object also carries managed JWT claims such as `iss`, `aud`, `iat`, `exp`, and
-`jti`. These are controlled by shinyOAuth rather than by `extra_auth_params`,
-and shinyOAuth intentionally does not include `sub` in the Request Object.
+`jti`. These are controlled by shinyOAuth rather than by `extra_auth_params`.
 
 If the provider has a `par_url` configured, the module uses Pushed Authorization Requests
 (PAR, RFC 9126) before redirecting the browser. The same authorization request parameters

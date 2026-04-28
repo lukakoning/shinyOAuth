@@ -466,20 +466,37 @@ test_that("request object preserves safe provider extra auth params", {
   expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
 })
 
-test_that("request mode rejects registered JWT claim names in request objects", {
-  for (claim_name in c("iss", "sub", "aud", "exp", "nbf", "iat", "jti")) {
-    cli <- make_jar_test_client(
-      provider = make_jar_test_provider(
-        extra_auth_params = stats::setNames(list("blocked"), claim_name)
+test_that("request mode preserves sub while overriding managed JWT claims", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      extra_auth_params = list(
+        iss = "user-supplied-iss",
+        sub = "248289761001",
+        aud = "user-supplied-aud",
+        exp = 1,
+        nbf = 2,
+        iat = 3,
+        jti = "user-supplied-jti"
       )
     )
+  )
 
-    expect_error(
-      shinyOAuth:::prepare_call(cli, valid_browser_token()),
-      regexp = claim_name,
-      info = claim_name
-    )
-  }
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+
+  expect_identical(pl$sub, "248289761001")
+  expect_identical(pl$nbf, 2L)
+  expect_identical(pl$iss, cli@client_id)
+  expect_identical(
+    pl$aud,
+    shinyOAuth:::resolve_authorization_request_audience(cli)
+  )
+  expect_true(is.numeric(pl$iat) && pl$iat != 3)
+  expect_true(is.numeric(pl$exp) && pl$exp != 1)
+  expect_true(
+    is.character(pl$jti) && nzchar(pl$jti) && pl$jti != "user-supplied-jti"
+  )
 })
 
 test_that("HMAC request objects use the expected signature bytes", {
