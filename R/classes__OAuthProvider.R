@@ -765,7 +765,9 @@ OAuthProvider <- S7::new_class(
     if (
       isTRUE(self@require_signed_request_object) &&
         length(self@request_object_signing_alg_values_supported) > 0 &&
-        !any(toupper(self@request_object_signing_alg_values_supported) != "NONE")
+        !any(
+          toupper(self@request_object_signing_alg_values_supported) != "NONE"
+        )
     ) {
       return(
         paste(
@@ -1139,8 +1141,7 @@ oauth_provider <- function(
     introspection_url = introspection_url,
     revocation_url = revocation_url,
     par_url = par_url,
-    request_object_signing_alg_values_supported =
-      request_object_signing_alg_values_supported,
+    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = isTRUE(require_signed_request_object),
     issuer = issuer,
     issuer_match = issuer_match,

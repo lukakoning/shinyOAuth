@@ -223,8 +223,7 @@ oauth_provider_oidc_discover <- function(
         introspection_url = endpoints$introspection_url,
         revocation_url = endpoints$revocation_url,
         par_url = endpoints$par_url,
-        request_object_signing_alg_values_supported =
-          request_object_signing_alg_values_supported,
+        request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
         require_signed_request_object = require_signed_request_object,
         issuer = iss,
         issuer_match = issuer_match,

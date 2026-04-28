@@ -245,8 +245,7 @@ uses_authorization_request_object <- function(oauth_client) {
 }
 
 uses_pushed_authorization_request <- function(oauth_client) {
-  !isTRUE(uses_authorization_request_object(oauth_client)) &&
-    is_valid_string(oauth_client@provider@par_url %||% NA_character_)
+  is_valid_string(oauth_client@provider@par_url %||% NA_character_)
 }
 
 # Helper: turn key provider properties into a stable fingerprint string
@@ -676,6 +675,15 @@ build_auth_url <- function(
       oauth_client,
       params
     )
+
+    if (isTRUE(uses_pushed_authorization_request(oauth_client))) {
+      par_resp <- push_authorization_request(
+        client = oauth_client,
+        params = list(request = request_object)
+      )
+      return(build_par_auth_url(oauth_client, par_resp$request_uri))
+    }
+
     return(url_append_query_params(
       oauth_client@provider@auth_url,
       list(

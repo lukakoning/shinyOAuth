@@ -9,9 +9,41 @@ query_param_names <- function(url) {
   unique(vapply(kv, function(p) utils::URLdecode(p[1]), ""))
 }
 
+request_body_text <- function(req) {
+  body <- req$body %||% NULL
+  if (is.null(body)) {
+    return(NA_character_)
+  }
+  if (identical(body$type, "raw")) {
+    return(rawToChar(body$data))
+  }
+  if (identical(body$type, "form")) {
+    data <- body$data %||% list()
+    if (!length(data)) {
+      return("")
+    }
+
+    parts <- unlist(
+      lapply(seq_along(data), function(i) {
+        nm <- names(data)[[i]]
+        paste0(
+          nm,
+          "=",
+          utils::URLencode(as.character(data[[i]])[[1]], reserved = TRUE)
+        )
+      }),
+      use.names = FALSE
+    )
+    return(paste(parts, collapse = "&"))
+  }
+
+  NA_character_
+}
+
 make_jar_test_provider <- function(
   issuer = "https://issuer.example.com",
   par_url = NA_character_,
+  token_auth_style = "body",
   use_nonce = FALSE,
   extra_auth_params = list(),
   id_token_validation = FALSE,
@@ -24,12 +56,11 @@ make_jar_test_provider <- function(
     token_url = "https://example.com/token",
     issuer = issuer,
     par_url = par_url,
-    request_object_signing_alg_values_supported =
-      request_object_signing_alg_values_supported,
+    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = require_signed_request_object,
     use_nonce = use_nonce,
     use_pkce = TRUE,
-    token_auth_style = "body",
+    token_auth_style = token_auth_style,
     id_token_required = FALSE,
     id_token_validation = id_token_validation,
     extra_auth_params = extra_auth_params,
@@ -144,15 +175,22 @@ test_that("request mode requires signing material", {
   )
 })
 
-test_that("request mode takes precedence over PAR", {
+test_that("request mode pushes signed request objects through PAR when available", {
   cli <- make_jar_test_client(
     provider = make_jar_test_provider(par_url = "https://example.com/par")
   )
+  body_text <- NULL
 
   testthat::local_mocked_bindings(
-    req_with_retry = function(...) {
-      stop(
-        "PAR should not be called when authorization_request_mode = 'request'"
+    req_with_retry = function(req, ...) {
+      body_text <<- request_body_text(req)
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
       )
     },
     .package = "shinyOAuth"
@@ -160,8 +198,117 @@ test_that("request mode takes precedence over PAR", {
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request"))
-  expect_false(grepl("[?&]request_uri=", auth_url))
+  request_param <- sub("^.*(?:^|[?&])request=([^&]+).*$", "\\1", body_text)
+  request_param <- utils::URLdecode(request_param)
+  pl <- shinyOAuth:::parse_jwt_payload(request_param)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_match(
+    auth_url,
+    "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
+  )
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_match(body_text, "client_id=abc")
+  expect_match(body_text, "request=")
+  expect_false(grepl("response_type=code", body_text, fixed = TRUE))
+  expect_identical(pl$client_id, "abc")
+  expect_identical(pl$redirect_uri, "http://localhost:8100")
+  expect_true(is.character(pl$state) && nzchar(pl$state))
+})
+
+test_that("request mode through PAR keeps extra auth params inside the request object", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      extra_auth_params = list(
+        prompt = "login",
+        login_hint = "alice",
+        custom_multi = c("alpha", "beta")
+      )
+    )
+  )
+  body_data <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_data <<- req$body$data %||% list()
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  pl <- shinyOAuth:::parse_jwt_payload(body_data$request)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]prompt=", auth_url))
+  expect_false(grepl("[?&]login_hint=", auth_url))
+  expect_false("prompt" %in% names(body_data))
+  expect_false("login_hint" %in% names(body_data))
+  expect_false("response_type" %in% names(body_data))
+  expect_false("redirect_uri" %in% names(body_data))
+  expect_identical(pl$prompt, "login")
+  expect_identical(pl$login_hint, "alice")
+  expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
+})
+
+test_that("request mode through PAR supports client_secret_jwt client auth", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      token_auth_style = "client_secret_jwt"
+    )
+  )
+  body_data <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_data <<- req$body$data %||% list()
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_value <- utils::URLdecode(as.character(body_data$request)[[1]])
+  assertion_value <- utils::URLdecode(as.character(body_data$client_assertion)[[
+    1
+  ]])
+  assertion_type <- utils::URLdecode(
+    as.character(body_data$client_assertion_type)[[1]]
+  )
+  request_payload <- shinyOAuth:::parse_jwt_payload(request_value)
+  assertion_payload <- shinyOAuth:::parse_jwt_payload(assertion_value)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_true("request" %in% names(body_data))
+  expect_identical(
+    assertion_type,
+    "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+  )
+  expect_true(
+    is.character(assertion_value) && nzchar(assertion_value)
+  )
+  expect_false("client_secret" %in% names(body_data))
+  expect_false("response_type" %in% names(body_data))
+  expect_false("redirect_uri" %in% names(body_data))
+  expect_identical(request_payload$client_id, "abc")
+  expect_identical(assertion_payload$aud, cli@provider@par_url)
 })
 
 test_that("request object preserves repeated resource indicators", {

@@ -400,8 +400,9 @@ Avoid this unless you truly intend to accept any host; prefer pinning to your do
 When your provider requires RFC 9101 request objects, set
 `authorization_request_mode = "request"` on `oauth_client()`.
 In this mode, shinyOAuth builds the usual authorization request parameters,
-wraps them in a signed JWT, and sends them via the browser redirect's
-`request` parameter instead of placing raw OAuth parameters on the URL.
+wraps them in a signed JWT, and sends that Request Object either via the
+browser redirect's `request` parameter or through PAR when available,
+instead of placing raw OAuth parameters on the browser URL.
 
 ```r
 client <- oauth_client(
@@ -431,8 +432,8 @@ Current scope notes:
 - shinyOAuth currently supports signed Request Objects via `request`.
 - `request_uri` publication is not implemented.
 - If a provider also exposes PAR, `authorization_request_mode = "request"`
-  takes precedence and keeps the browser redirect on the direct `request`
-  path.
+  pushes the signed Request Object through PAR and the browser is redirected
+  with the returned `request_uri`.
 
 ### Extra parameter overrides
 
