@@ -123,6 +123,65 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
   expect_true(is.character(pl$jti) && nzchar(pl$jti))
 })
 
+test_that("provider metadata rejects unsupported JWT client assertion algs", {
+  prov_private <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "private_key_jwt",
+    token_endpoint_auth_signing_alg_values_supported = c("PS256"),
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  key <- openssl::rsa_keygen()
+
+  expect_error(
+    oauth_client(
+      provider = prov_private,
+      client_id = "abc",
+      client_secret = "",
+      client_private_key = key,
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid")
+    ),
+    regexp = paste(
+      "client_assertion_alg 'RS256' is not supported by",
+      "provider token_endpoint_auth_signing_alg_values_supported"
+    )
+  )
+
+  prov_secret <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "client_secret_jwt",
+    token_endpoint_auth_signing_alg_values_supported = c("HS512"),
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov_secret,
+      client_id = "abc",
+      client_secret = paste(rep("s", 32), collapse = ""),
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid"),
+      client_assertion_alg = "HS256"
+    ),
+    regexp = paste(
+      "client_assertion_alg 'HS256' is not supported by",
+      "provider token_endpoint_auth_signing_alg_values_supported"
+    )
+  )
+})
+
 test_that("client_assertion_audience overrides aud for token endpoint assertions", {
   prov <- oauth_provider(
     name = "example",

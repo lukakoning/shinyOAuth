@@ -39,7 +39,9 @@
 #'   compatible default is selected based on the private key type/curve (e.g., `RS256` for RSA,
 #'   `ES256`/`ES384`/`ES512` for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
 #'   value is provided but incompatible with the key, validation fails early with a configuration
-#'   error.
+#'   error. When the provider advertises
+#'   `token_endpoint_auth_signing_alg_values_supported`, both explicit values and
+#'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
 #'   supported by `jose::jwt_encode_sig` (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
 #'
@@ -530,6 +532,7 @@ OAuthClient <- S7::new_class(
     # If an explicit client_assertion_alg is provided, validate compatibility
     # with the configured token authentication style so we fail fast with a
     # clear input error rather than later inside JWT signing.
+    client_assertion_alg <- NA_character_
     if (!is.null(self@client_assertion_alg)) {
       caa_raw <- self@client_assertion_alg
       if (!is.character(caa_raw) || length(caa_raw) != 1L) {
@@ -539,7 +542,7 @@ OAuthClient <- S7::new_class(
       }
       alg_chr <- caa_raw
       if (!is.na(alg_chr) && nzchar(alg_chr)) {
-        alg <- toupper(alg_chr)
+        client_assertion_alg <- toupper(alg_chr)
         allowed_hmac <- c("HS256", "HS384", "HS512")
         allowed_asym <- c(
           # RSA-PKCS1 v1.5
@@ -557,27 +560,74 @@ OAuthClient <- S7::new_class(
           "EDDSA"
         )
         if (
-          identical(tok_style, "client_secret_jwt") && !(alg %in% allowed_hmac)
+          identical(tok_style, "client_secret_jwt") &&
+            !(client_assertion_alg %in% allowed_hmac)
         ) {
           return(paste0(
             "OAuthClient: client_assertion_alg '",
-            alg,
+            client_assertion_alg,
             "' is incompatible with token_auth_style = 'client_secret_jwt' (expected one of: ",
             paste(allowed_hmac, collapse = ", "),
             ")"
           ))
         }
         if (
-          identical(tok_style, "private_key_jwt") && !(alg %in% allowed_asym)
+          identical(tok_style, "private_key_jwt") &&
+            !(client_assertion_alg %in% allowed_asym)
         ) {
           return(paste0(
             "OAuthClient: client_assertion_alg '",
-            alg,
+            client_assertion_alg,
             "' is incompatible with token_auth_style = 'private_key_jwt' (expected one of: ",
             paste(allowed_asym, collapse = ", "),
             ")"
           ))
         }
+      }
+    }
+
+    provider_client_assertion_algs <- toupper(as.character(
+      self@provider@token_endpoint_auth_signing_alg_values_supported %||%
+        character(0)
+    ))
+    if (
+      length(provider_client_assertion_algs) > 0 &&
+        (identical(tok_style, "client_secret_jwt") ||
+          identical(tok_style, "private_key_jwt"))
+    ) {
+      resolved_client_assertion_alg <- if (
+        !is.na(client_assertion_alg) && nzchar(client_assertion_alg)
+      ) {
+        client_assertion_alg
+      } else if (identical(tok_style, "client_secret_jwt")) {
+        "HS256"
+      } else {
+        inferred_alg <- try(
+          {
+            key0 <- normalize_private_key_input(self@client_private_key)
+            choose_default_alg_for_private_key(key0)
+          },
+          silent = TRUE
+        )
+        if (inherits(inferred_alg, "try-error")) {
+          return(
+            paste(
+              "OAuthClient: could not determine a compatible default",
+              "client_assertion_alg from client_private_key"
+            )
+          )
+        }
+        toupper(as.character(inferred_alg))
+      }
+
+      if (
+        !(resolved_client_assertion_alg %in% provider_client_assertion_algs)
+      ) {
+        return(paste0(
+          "OAuthClient: client_assertion_alg '",
+          resolved_client_assertion_alg,
+          "' is not supported by provider token_endpoint_auth_signing_alg_values_supported"
+        ))
       }
     }
 

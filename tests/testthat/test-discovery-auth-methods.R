@@ -206,7 +206,7 @@ testthat::test_that("when methods are not advertised, fall back to header (histo
   testthat::expect_identical(prov@token_auth_style, "header")
 })
 
-testthat::test_that("discovery stores request object metadata for early JAR validation", {
+testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
@@ -218,7 +218,13 @@ testthat::test_that("discovery stores request object metadata for early JAR vali
           issuer = issuer_url,
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
+          pushed_authorization_request_endpoint = paste0(issuer_url, "/par"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          require_pushed_authorization_requests = TRUE,
+          token_endpoint_auth_signing_alg_values_supported = list(
+            "PS256",
+            "RS256"
+          ),
           request_object_signing_alg_values_supported = list(
             "PS256",
             "RS256"
@@ -234,9 +240,16 @@ testthat::test_that("discovery stores request object metadata for early JAR vali
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
 
+  expected_issuer <- sub("/$", "", issuer)
+  testthat::expect_identical(prov@par_url, paste0(expected_issuer, "/par"))
+  testthat::expect_true(isTRUE(prov@require_pushed_authorization_requests))
   testthat::expect_identical(
     prov@request_object_signing_alg_values_supported,
     c("PS256", "RS256")
   )
   testthat::expect_true(isTRUE(prov@require_signed_request_object))
+  testthat::expect_identical(
+    prov@token_endpoint_auth_signing_alg_values_supported,
+    c("PS256", "RS256")
+  )
 })

@@ -176,7 +176,9 @@ When omitted, defaults to \code{HS256} for \code{client_secret_jwt}. For \code{p
 compatible default is selected based on the private key type/curve (e.g., \code{RS256} for RSA,
 \code{ES256}/\code{ES384}/\code{ES512} for EC P-256/384/521, or \code{EdDSA} for Ed25519/Ed448). If an explicit
 value is provided but incompatible with the key, validation fails early with a configuration
-error.
+error. When the provider advertises
+\code{token_endpoint_auth_signing_alg_values_supported}, both explicit values and
+inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
 supported by \code{jose::jwt_encode_sig} (e.g., \code{RS256}, \code{PS256}, \code{ES256}, \code{EdDSA}) for private keys.}
 
