@@ -45,7 +45,10 @@ the security implications.}
 
 \item{oauth_client}{Optional \link{OAuthClient}. Required when the effective
 token type is \code{DPoP}, because the client carries the configured DPoP proof
-key.}
+key, and also when using sender-constrained mTLS / certificate-bound
+tokens so shinyOAuth can attach the configured client certificate and
+validate any \code{cnf} thumbprint from an \link{OAuthToken} or raw JWT access
+token string.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.}

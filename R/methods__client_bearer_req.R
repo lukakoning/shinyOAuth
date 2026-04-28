@@ -28,7 +28,10 @@
 #'   the security implications.
 #' @param oauth_client Optional [OAuthClient]. Required when the effective
 #'   token type is `DPoP`, because the client carries the configured DPoP proof
-#'   key.
+#'   key, and also when using sender-constrained mTLS / certificate-bound
+#'   tokens so shinyOAuth can attach the configured client certificate and
+#'   validate any `cnf` thumbprint from an [OAuthToken] or raw JWT access
+#'   token string.
 #' @param token_type Optional override for the access token type when `token`
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
 #' @param dpop_nonce Optional DPoP nonce to embed in the proof for this

@@ -91,9 +91,13 @@ aliases. Names should follow the metadata keys such as \code{token_endpoint},
 and values must be absolute URLs.}
 
 \item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
-provider issues RFC 8705 certificate-bound access and refresh tokens. When
+authorization server advertises RFC 8705 capability to issue
+certificate-bound access tokens. This metadata expresses server
+capability; the client's intent to use certificate-bound tokens is
+configured separately by using mTLS with a client certificate. When
 \code{TRUE}, token responses may include a \code{cnf} claim with an \code{x5t#S256}
-thumbprint that later requests must present with the same certificate.}
+thumbprint that protected-resource requests must present with the same
+certificate.}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
