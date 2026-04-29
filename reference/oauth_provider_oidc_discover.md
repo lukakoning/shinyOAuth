@@ -154,6 +154,13 @@ object configured from discovery
   resulting provider stores that metadata so `OAuthClient` can fail fast
   when a JWT client assertion algorithm is unsupported.
 
+- RFC 9207 callback issuer metadata: when the discovery document
+  advertises `authorization_response_iss_parameter_supported = true`,
+  the resulting provider stores that metadata so
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  can auto-enable callback issuer enforcement unless you explicitly opt
+  out.
+
 - PKCE method discovery: this helper keeps `S256` as the default and
   does not silently downgrade to `plain`. If discovery metadata
   explicitly omits `S256`, discovery fails with a configuration error

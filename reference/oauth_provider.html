@@ -65,6 +65,7 @@ some settings based on the provided parameters.</p>
 <span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  require_signed_request_object <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  tls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -158,6 +159,15 @@ authentication (<code>client_secret_jwt</code> / <code>private_key_jwt</code>) a
 endpoint. When populated, this metadata is used for early validation of
 <code>OAuthClient@client_assertion_alg</code> and inferred JWT client-assertion
 defaults.</p></dd>
+
+
+<dt id="arg-authorization-response-iss-parameter-supported">authorization_response_iss_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-authorization-response-iss-parameter-supported"></a></dt>
+<dd><p>Logical. Whether the
+provider advertises RFC 9207 support for returning an <code>iss</code> parameter on
+the authorization response. When <code>TRUE</code>, the <code><a href="oauth_client.html">oauth_client()</a></code> helper can
+auto-enable callback issuer enforcement when the caller leaves
+<code>enforce_callback_issuer</code> unset and the provider also has a configured
+<code>issuer</code>.</p></dd>
 
 
 <dt id="arg-mtls-endpoint-aliases">mtls_endpoint_aliases<a class="anchor" aria-label="anchor" href="#arg-mtls-endpoint-aliases"></a></dt>

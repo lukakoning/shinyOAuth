@@ -64,6 +64,7 @@
 <li>
 <p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> (<code>OAuthClient</code>) now:</p>
 <ul><li>Supports <code>enforce_callback_issuer = TRUE</code> to require the RFC 9207 <code>iss</code> callback parameter for shared-redirect multi-issuer deployments. Relatedly, <code><a href="../reference/handle_callback.html">handle_callback()</a></code> now accepts <code>iss</code>, so advanced callers building around <code><a href="../reference/prepare_call.html">prepare_call()</a></code> can supply the callback issuer and get the same client-level RFC 9207 check before token exchange.</li>
+<li>Auto-enables RFC 9207 callback issuer enforcement when the caller leaves <code>enforce_callback_issuer</code> unset and the provider advertises <code>authorization_response_iss_parameter_supported = TRUE</code>.</li>
 <li>Has native RFC 8707 <code>resource</code> support, so authorization, token exchange, and refresh requests can request audience-restricted tokens without dropping down to manual extra params.</li>
 <li>Rejects impossible JOSE alg/private-key combinations for JWT client assertions and DPoP proofs before emitting invalid JOSE headers.</li>
 <li>Also enforces OIDC claim request <code>value</code> and <code>values</code> constraints when <code>claims_validation</code> is enabled, not just presence of <code>essential = TRUE</code> claims.</li>

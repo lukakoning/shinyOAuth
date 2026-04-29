@@ -214,12 +214,19 @@ OAuthClient(
 
 - enforce_callback_issuer:
 
-  Logical. When `TRUE`, enforce that authorization responses handled
-  through this client include an RFC 9207 `iss` parameter and reject
-  callbacks unless it exactly matches `provider@issuer`. This is
+  Logical or `NULL`. When `TRUE`, enforce that authorization responses
+  handled through this client include an RFC 9207 `iss` parameter and
+  reject callbacks unless it exactly matches `provider@issuer`. This is
   recommended when one callback URL can receive responses from more than
   one authorization server. Requires the provider to have a configured
-  `issuer`. Default is `FALSE`.
+  `issuer`.
+
+  When `NULL` (the
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  helper default), shinyOAuth auto-enables this check for providers that
+  advertise `authorization_response_iss_parameter_supported = TRUE` and
+  have a configured `issuer`, such as OIDC discovery providers that
+  expose RFC 9207 support. Set `FALSE` to opt out explicitly.
 
 - scopes:
 

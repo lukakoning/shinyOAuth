@@ -29,6 +29,7 @@ OAuthProvider(
   request_object_signing_alg_values_supported = character(0),
   require_signed_request_object = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(0),
+  authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -119,6 +120,16 @@ OAuthProvider(
   metadata is used for early validation of
   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
   defaults.
+
+- authorization_response_iss_parameter_supported:
+
+  Logical. Whether the provider advertises RFC 9207 support for
+  returning an `iss` parameter on the authorization response. When
+  `TRUE`, the
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  helper can auto-enable callback issuer enforcement when the caller
+  leaves `enforce_callback_issuer` unset and the provider also has a
+  configured `issuer`.
 
 - issuer:
 

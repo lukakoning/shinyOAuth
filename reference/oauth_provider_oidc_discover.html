@@ -186,6 +186,10 @@ unsupported or when the provider requires signed Request Objects.</p></li>
 <code>token_endpoint_auth_signing_alg_values_supported</code>, the resulting provider
 stores that metadata so <code>OAuthClient</code> can fail fast when a JWT client
 assertion algorithm is unsupported.</p></li>
+<li><p>RFC 9207 callback issuer metadata: when the discovery document advertises
+<code>authorization_response_iss_parameter_supported = true</code>, the resulting
+provider stores that metadata so <code><a href="oauth_client.html">oauth_client()</a></code> can auto-enable callback
+issuer enforcement unless you explicitly opt out.</p></li>
 <li><p>PKCE method discovery: this helper keeps <code>S256</code> as the default and does not
 silently downgrade to <code>plain</code>. If discovery metadata explicitly omits
 <code>S256</code>, discovery fails with a configuration error unless you explicitly
