@@ -100,6 +100,111 @@ testthat::test_that("login fails when introspection validation fails", {
   )
 })
 
+testthat::test_that("sync callback state failures surface invalid_state", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$browser_token <- paste(rep("cd", 64), collapse = "")
+
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          testthat::fail("token exchange should not run after invalid_state")
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=bad&state=", enc))
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_true(
+        is.character(values$error_description) &&
+          grepl(
+            "browser token mismatch",
+            values$error_description,
+            ignore.case = TRUE
+          )
+      )
+      testthat::expect_null(values$token)
+    }
+  )
+})
+
+testthat::test_that("async callback state failures surface invalid_state", {
+  testthat::skip_if_not_installed("later")
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  async_state_error <- tryCatch(
+    shinyOAuth:::err_invalid_state("Async browser token mismatch"),
+    error = function(e) e
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = TRUE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      testthat::with_mocked_bindings(
+        prepare_client_for_worker = function(client) client,
+        async_dispatch = function(...) {
+          promises::promise_reject(async_state_error)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=bad&state=", enc))
+
+          deadline <- Sys.time() + 2
+          while (is.null(values$error) && Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+            Sys.sleep(0.01)
+          }
+        }
+      )
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_true(
+        is.character(values$error_description) &&
+          grepl(
+            "async browser token mismatch",
+            values$error_description,
+            ignore.case = TRUE
+          )
+      )
+      testthat::expect_null(values$token)
+    }
+  )
+})
+
 testthat::test_that("auto_redirect triggers when unauthenticated and cookie present", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

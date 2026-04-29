@@ -680,6 +680,31 @@ oauth_module_server <- function(
       values$error_uri <- NULL
     }
 
+    .condition_inherits <- function(e, class_name) {
+      cur <- e
+
+      while (!is.null(cur)) {
+        if (inherits(cur, class_name)) {
+          return(TRUE)
+        }
+
+        cur <- tryCatch(
+          cur[["parent", exact = TRUE]],
+          error = function(...) NULL
+        )
+      }
+
+      FALSE
+    }
+
+    .callback_failure_error_code <- function(e) {
+      if (.condition_inherits(e, "shinyOAuth_state_error")) {
+        return("invalid_state")
+      }
+
+      "token_exchange_error"
+    }
+
     # Client-side actions (CSP-friendly via custom messages) ------------------
 
     # These helpers communicate with handlers defined in inst/www/shinyOAuth.js,
@@ -1874,7 +1899,7 @@ oauth_module_server <- function(
                       ),
                       error = function(e) {
                         .set_error(
-                          "token_exchange_error",
+                          .callback_failure_error_code(e),
                           e,
                           phase = "async_payload_validation"
                         )
@@ -1918,7 +1943,7 @@ oauth_module_server <- function(
                           ),
                           error = function(e) {
                             .set_error(
-                              "token_exchange_error",
+                              .callback_failure_error_code(e),
                               e,
                               phase = "async_state_store_lookup"
                             )
@@ -2070,7 +2095,7 @@ oauth_module_server <- function(
                       )
                     }
                     .set_error(
-                      "token_exchange_error",
+                      .callback_failure_error_code(e),
                       e,
                       phase = failure_phase
                     )
@@ -2123,7 +2148,11 @@ oauth_module_server <- function(
           if (!is.null(callback_parent)) {
             otel_end_async_parent(callback_parent, status = "error", error = e)
           }
-          .set_error("token_exchange_error", e, phase = failure_phase)
+          .set_error(
+            .callback_failure_error_code(e),
+            e,
+            phase = failure_phase
+          )
           try(
             audit_event(
               "login_failed",

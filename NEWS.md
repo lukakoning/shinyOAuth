@@ -15,6 +15,10 @@ present via `userinfo_jwt_required_temporal_claims`.
 proactive refresh path, so refreshed access tokens follow the same
 introspection policy as the initial login.
 
+* `oauth_module_server()` now preserves `invalid_state` in its callback error
+state for CSRF/state/browser-token validation failures instead of flattening
+those paths into `token_exchange_error`.
+
 * Clarified the `allow_redirect` warning/docs and the `error_on_softened()`
 option framing so they match the current explicit opt-in behavior and the
 intentional undocumented `trace_hook` compatibility alias.
