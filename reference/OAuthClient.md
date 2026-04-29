@@ -85,6 +85,9 @@ OAuthClient(
   the token endpoint. Can be an `openssl::key` or a PEM string
   containing a private key. Required when the provider's
   `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
+  Current outbound private-key JWT signing supports RSA and EC private
+  keys; Ed25519/Ed448 keys are not currently supported for client-side
+  signing.
 
 - client_private_key_kid:
 
@@ -97,16 +100,17 @@ OAuthClient(
   Optional JWT signing algorithm to use for client assertions. When
   omitted, defaults to `HS256` for `client_secret_jwt`. For
   `private_key_jwt`, a compatible default is selected based on the
-  private key type/curve (e.g., `RS256` for RSA, `ES256`/`ES384`/`ES512`
-  for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
-  value is provided but incompatible with the key, validation fails
-  early with a configuration error. When the provider advertises
+  private key type/curve (e.g., `RS256` for RSA or
+  `ES256`/`ES384`/`ES512` for EC P-256/384/521). If an explicit value is
+  provided but incompatible with the key, validation fails early with a
+  configuration error. When the provider advertises
   `token_endpoint_auth_signing_alg_values_supported`, both explicit
   values and inferred defaults must be included in that set. Supported
   values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
-  asymmetric algorithms supported by
-  [`jose::jwt_encode_sig`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html)
-  (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
+  asymmetric algorithms supported for outbound signing (for example
+  `RS256`, `PS256`, `ES256`, `ES384`, `ES512`) for private keys. EdDSA
+  remains supported for inbound ID token verification, not outbound
+  client assertions.
 
 - client_assertion_audience:
 
@@ -163,7 +167,8 @@ OAuthClient(
   `authorization_request_mode = "request"`. When omitted, shinyOAuth
   chooses `HS256` for HMAC-based signing or a compatible asymmetric
   default based on `client_private_key` (for example `RS256`, `ES256`,
-  or `EdDSA`).
+  `ES384`, or `ES512`). EdDSA is not currently supported for outbound
+  signed authorization requests.
 
 - authorization_request_audience:
 
@@ -177,7 +182,9 @@ OAuthClient(
   an `openssl::key` or a PEM string containing an asymmetric private
   key. When provided, shinyOAuth can attach `DPoP` proofs to token
   endpoint requests and use DPoP-bound access tokens in downstream
-  request helpers.
+  request helpers. Current outbound DPoP signing supports RSA and EC
+  private keys; Ed25519/Ed448 keys are not currently supported for
+  client-side signing.
 
 - dpop_private_key_kid:
 
@@ -189,7 +196,8 @@ OAuthClient(
 
   Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
   compatible asymmetric default is selected based on the private key
-  type/curve (for example `RS256`, `ES256`, or `EdDSA`). If an explicit
+  type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`). EdDSA
+  is not currently supported for outbound DPoP proofs. If an explicit
   value is provided but incompatible with the key, validation fails
   early with a configuration error.
 

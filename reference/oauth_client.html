@@ -227,7 +227,9 @@ human‑memorable passphrases. See also <code><a href="../articles/usage.html">v
 <dd><p>Optional private key for <code>private_key_jwt</code> client authentication
 at the token endpoint. Can be an <code>openssl::key</code> or a PEM string containing a
 private key. Required when the provider's <code>token_auth_style = 'private_key_jwt'</code>.
-Ignored for other auth styles.</p></dd>
+Ignored for other auth styles. Current outbound private-key JWT signing
+supports RSA and EC private keys; Ed25519/Ed448 keys are not currently
+supported for client-side signing.</p></dd>
 
 
 <dt id="arg-client-private-key-kid">client_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-private-key-kid"></a></dt>
@@ -239,14 +241,16 @@ select the correct verification key.</p></dd>
 <dt id="arg-client-assertion-alg">client_assertion_alg<a class="anchor" aria-label="anchor" href="#arg-client-assertion-alg"></a></dt>
 <dd><p>Optional JWT signing algorithm to use for client assertions.
 When omitted, defaults to <code>HS256</code> for <code>client_secret_jwt</code>. For <code>private_key_jwt</code>, a
-compatible default is selected based on the private key type/curve (e.g., <code>RS256</code> for RSA,
-<code>ES256</code>/<code>ES384</code>/<code>ES512</code> for EC P-256/384/521, or <code>EdDSA</code> for Ed25519/Ed448). If an explicit
+compatible default is selected based on the private key type/curve (e.g., <code>RS256</code> for RSA
+or <code>ES256</code>/<code>ES384</code>/<code>ES512</code> for EC P-256/384/521). If an explicit
 value is provided but incompatible with the key, validation fails early with a configuration
 error. When the provider advertises
 <code>token_endpoint_auth_signing_alg_values_supported</code>, both explicit values and
 inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
-supported by <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_encode_sig</a></code> (e.g., <code>RS256</code>, <code>PS256</code>, <code>ES256</code>, <code>EdDSA</code>) for private keys.</p></dd>
+supported for outbound signing (for example <code>RS256</code>, <code>PS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>) for
+private keys. EdDSA remains supported for inbound ID token verification, not outbound client
+assertions.</p></dd>
 
 
 <dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
@@ -299,7 +303,8 @@ with <code>client_secret</code>.</p></dd>
 signed authorization requests when <code>authorization_request_mode = "request"</code>.
 When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
 compatible asymmetric default based on <code>client_private_key</code> (for example
-<code>RS256</code>, <code>ES256</code>, or <code>EdDSA</code>).</p></dd>
+<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or <code>ES512</code>). EdDSA is not currently supported
+for outbound signed authorization requests.</p></dd>
 
 
 <dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
@@ -314,7 +319,9 @@ endpoint URL.</p></dd>
 (RFC 9449). Can be an <code>openssl::key</code> or a PEM string containing an
 asymmetric private key. When provided, shinyOAuth can attach <code>DPoP</code>
 proofs to token endpoint requests and use DPoP-bound access tokens in
-downstream request helpers.</p></dd>
+downstream request helpers. Current outbound DPoP signing supports RSA and
+EC private keys; Ed25519/Ed448 keys are not currently supported for
+client-side signing.</p></dd>
 
 
 <dt id="arg-dpop-private-key-kid">dpop_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key-kid"></a></dt>
@@ -326,7 +333,8 @@ server expects a stable key identifier alongside the embedded public JWK.</p></d
 <dt id="arg-dpop-signing-alg">dpop_signing_alg<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg"></a></dt>
 <dd><p>Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
-the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, or <code>EdDSA</code>). If
+the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or
+<code>ES512</code>). EdDSA is not currently supported for outbound DPoP proofs. If
 an explicit value is provided but incompatible with the key, validation
 fails early with a configuration error.</p></dd>
 
