@@ -541,6 +541,9 @@ for instance, set `jwks_host_issuer_match`/`jwks_host_allow_only` (if your provi
 - Have your `OAuthClient` request the minimum scopes necessary; give
 your app registration only the permissions it needs
 - Do not show `$error_description` to your users; never expose tokens in UI or logs
+- Treat `$error_uri` as untrusted navigation input. `shinyOAuth` only surfaces
+  absolute HTTPS values here; if you render it as a link or pass it to
+  `browseURL()`, keep it optional and consider your own allowlist.
 - Keep secrets safe in environment variables (e.g., `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`)
 - Sanitize user inputs before rendering them in the UI (e.g., using `htmltools::htmlEscape()`)
 - Make use of audit logging (see `vignette("audit-logging", package = "shinyOAuth")`) and

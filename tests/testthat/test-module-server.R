@@ -662,6 +662,72 @@ testthat::test_that("error_uri from provider error callback is surfaced", {
   )
 })
 
+testthat::test_that("non-https error_uri from provider error callback is dropped", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$.process_query(paste0(
+        "?error=access_denied",
+        "&error_uri=javascript%3Aalert(1)",
+        "&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
+      testthat::expect_null(values$error_uri)
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("http error_uri from provider error callback is dropped", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$.process_query(paste0(
+        "?error=access_denied",
+        "&error_uri=http%3A%2F%2Fprovider.example%2Fhelp%2Faccess_denied",
+        "&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
+      testthat::expect_null(values$error_uri)
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
 testthat::test_that("error_uri is NULL when provider omits it", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

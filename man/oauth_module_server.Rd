@@ -139,8 +139,10 @@ contain sensitive information which could aid an attacker.
 Be extra careful with exposing this directly to users, as it may
 contain even more sensitive information which could aid an attacker.
 \item \code{error_uri}: URI identifying a human-readable web page with
-information about the error (per RFC 6749 section 4.1.2.1). NULL when
-the provider does not include one.
+information about the error (per RFC 6749 section 4.1.2.1). Treat this
+as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
+values here and returns NULL when the provider omits or sends an unsafe
+value.
 \item \code{browser_token}: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set
 \item \code{pending_callback}: internal deferred callback payload; stores either

@@ -203,6 +203,34 @@ is_absolute_uri <- function(x) {
   TRUE
 }
 
+#' Internal: sanitize provider callback error_uri values
+#'
+#' Provider-supplied `error_uri` values are untrusted navigation inputs. Only
+#' absolute HTTPS URLs are surfaced; anything else is dropped.
+#'
+#' @keywords internal
+#' @noRd
+sanitize_callback_error_uri <- function(x) {
+  if (!is_valid_string(x)) {
+    return(NULL)
+  }
+
+  x <- trimws(x)
+  parsed <- try(httr2::url_parse(x), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(NULL)
+  }
+
+  scheme <- tolower(parsed$scheme %||% "")
+  host <- trimws(parsed$hostname %||% "")
+
+  if (!identical(scheme, "https") || !nzchar(host)) {
+    return(NULL)
+  }
+
+  x
+}
+
 #' Internal: validate RFC 8707 resource indicators
 #'
 #' @keywords internal
