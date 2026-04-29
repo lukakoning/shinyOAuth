@@ -64,15 +64,10 @@ an error is thrown to prevent accidental use in production environments.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>It checks for the following options:</p><ul><li><p><code>shinyOAuth.skip_browser_token</code>: Skips browser cookie presence check</p></li>
 <li><p><code>shinyOAuth.skip_id_sig</code>: Skips ID token signature verification</p></li>
-<li><p><code>shinyOAuth.print_errors</code>: Enables printing of error messages</p></li>
-<li><p><code>shinyOAuth.print_traceback</code>: Enables printing of tracebacks (opt-in only; default FALSE)</p></li>
 <li><p><code>shinyOAuth.expose_error_body</code>: Exposes HTTP response bodies</p></li>
 <li><p><code>shinyOAuth.allow_unsigned_userinfo_jwt</code>: Accepts unsigned (<code>alg=none</code>) UserInfo JWTs</p></li>
-<li><p><code>shinyOAuth.allow_redirect</code>: Disables anti-redirect protections for sensitive HTTP flows</p></li>
-</ul><p>Note: Tracebacks are only treated as a "softened" behavior when the
-<code>shinyOAuth.print_traceback</code> option is explicitly set to <code>TRUE</code>.
-The default is <code>FALSE</code>, even in interactive or test sessions.</p>
-    </div>
+<li><p><code>shinyOAuth.allow_redirect</code>: Disables anti-redirect protections for sensitive HTTP flows in test/interactive mode only</p></li>
+</ul></div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

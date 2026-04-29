@@ -24,22 +24,13 @@ It checks for the following options:
 
 - `shinyOAuth.skip_id_sig`: Skips ID token signature verification
 
-- `shinyOAuth.print_errors`: Enables printing of error messages
-
-- `shinyOAuth.print_traceback`: Enables printing of tracebacks (opt-in
-  only; default FALSE)
-
 - `shinyOAuth.expose_error_body`: Exposes HTTP response bodies
 
 - `shinyOAuth.allow_unsigned_userinfo_jwt`: Accepts unsigned
   (`alg=none`) UserInfo JWTs
 
 - `shinyOAuth.allow_redirect`: Disables anti-redirect protections for
-  sensitive HTTP flows
-
-Note: Tracebacks are only treated as a "softened" behavior when the
-`shinyOAuth.print_traceback` option is explicitly set to `TRUE`. The
-default is `FALSE`, even in interactive or test sessions.
+  sensitive HTTP flows in test/interactive mode only
 
 ## Examples
 

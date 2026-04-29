@@ -42,7 +42,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p><code>shinyOAuth.client_assertion_ttl</code> now clamps finite values below 60 seconds to a 60-second minimum instead of silently resetting them to the 120-second default.</p></li>
+<ul><li><p><code><a href="../reference/error_on_softened.html">error_on_softened()</a></code> no longer treats the removed <code>shinyOAuth.print_errors</code> / <code>shinyOAuth.print_traceback</code> options as active softeners, and the <code>allow_redirect</code> docs now clarify that redirect following is limited to testthat or interactive sessions.</p></li>
+<li><p><code>shinyOAuth.client_assertion_ttl</code> now clamps finite values below 60 seconds to a 60-second minimum instead of silently resetting them to the 120-second default.</p></li>
 <li><p>Added DPoP token (RFC 9449) support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh/revocation/introspection requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
 <li><p>Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client authentication, certificate-bound access tokens, and mTLS endpoint aliases.</p></li>
 <li><p>Added Pushed Authorization Request (‘PAR’, RFC 9126) support. Providers can now configure <code>par_url</code> directly or pick it up from OIDC discovery, and login flows will push the authorization request and redirect with the returned <code>request_uri</code>.</p></li>

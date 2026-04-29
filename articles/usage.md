@@ -529,8 +529,10 @@ options:
   all sensitive HTTP requests (token exchange, refresh, introspection,
   revocation, userinfo, OIDC discovery, JWKS) refuse to follow redirects
   and reject 3xx responses. This prevents authorization codes, tokens,
-  and PKCE verifiers from leaking to redirect targets. Only set to
-  `TRUE` if your provider legitimately requires redirect-following
+  and PKCE verifiers from leaking to redirect targets. If set to `TRUE`,
+  shinyOAuth only honors it in testthat or interactive sessions for
+  local debugging; in non-interactive production sessions it raises a
+  configuration error instead of following redirects
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body
   size (bytes, default 1 MiB) accepted from OAuth endpoints (token,
   introspection, userinfo, discovery, JWKS). Curl aborts the transfer
