@@ -57,12 +57,7 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
       # Complete the login — Keycloak will embed the ORIGINAL nonce in the ID token
       res <- perform_login_form(url)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       # Must fail: ID token nonce (original) != stored nonce (fake)
@@ -110,12 +105,7 @@ testthat::test_that("Nonce tamper: removed nonce from state store", {
 
       res <- perform_login_form(url)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       # Must fail: ID token has a nonce claim but no expected nonce to compare against
@@ -155,12 +145,7 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
 
       # Complete flow 1 normally
       res1 <- perform_login_form(url1)
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res1$code),
-        "&state=",
-        utils::URLencode(res1$state_payload)
-      ))
+      values$.process_query(callback_query(res1))
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
     }
@@ -191,12 +176,7 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
 
       res2 <- perform_login_form(url2)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res2$code),
-        "&state=",
-        utils::URLencode(res2$state_payload)
-      ))
+      values$.process_query(callback_query(res2))
       session$flushReact()
 
       # Must fail: ID token nonce (flow 2's) != stored nonce (flow 1's)

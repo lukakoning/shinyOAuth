@@ -61,12 +61,7 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -133,12 +128,7 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -180,12 +170,7 @@ testthat::test_that("Keycloak request-object happy path through PAR (private_key
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))

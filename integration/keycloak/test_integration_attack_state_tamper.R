@@ -34,12 +34,7 @@ run_tampered_state_test <- function(
       res <- perform_login_form(url)
 
       # Callback with valid code but TAMPERED state
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(tampered)
-      ))
+      values$.process_query(callback_query(res, state = tampered))
       session$flushReact()
 
       testthat::expect_false(isTRUE(values$authenticated))
@@ -106,11 +101,7 @@ testthat::test_that("State tamper: empty state parameter", {
       res <- perform_login_form(url)
 
       # Callback with empty state
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state="
-      ))
+      values$.process_query(callback_query(res, state = ""))
       session$flushReact()
 
       testthat::expect_false(isTRUE(values$authenticated))
@@ -164,17 +155,14 @@ testthat::test_that("State tamper: state encrypted with different key", {
     state_key = "key-foxtrot-golf-hotel-india-juliet"
   )
 
-  captured_state <- NULL
-  captured_code <- NULL
+  captured_login <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
       url <- values$build_auth_url()
-      res <- perform_login_form(url)
-      captured_state <<- res$state_payload
-      captured_code <<- res$code
+      captured_login <<- perform_login_form(url)
     }
   )
 
@@ -183,12 +171,7 @@ testthat::test_that("State tamper: state encrypted with different key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_b),
     expr = {
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(captured_code),
-        "&state=",
-        utils::URLencode(captured_state)
-      ))
+      values$.process_query(callback_query(captured_login))
       session$flushReact()
 
       testthat::expect_false(isTRUE(values$authenticated))

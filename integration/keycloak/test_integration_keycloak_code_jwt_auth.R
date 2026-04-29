@@ -49,12 +49,7 @@ for (case in cases) {
             is.character(res$state_payload) && nzchar(res$state_payload)
           )
 
-          values$.process_query(paste0(
-            "?code=",
-            utils::URLencode(res$code),
-            "&state=",
-            utils::URLencode(res$state_payload)
-          ))
+          values$.process_query(callback_query(res))
           session$flushReact()
 
           testthat::expect_true(isTRUE(values$authenticated))

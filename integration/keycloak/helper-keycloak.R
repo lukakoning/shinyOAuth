@@ -343,6 +343,68 @@ parse_query_param <- function(url, name, decode = FALSE) {
   }
 }
 
+callback_query <- function(
+  login_result,
+  code = login_result$code %||% NA_character_,
+  state = login_result$state_payload %||% NA_character_,
+  iss = parse_query_param(
+    login_result$callback_url %||% NA_character_,
+    "iss",
+    decode = TRUE
+  )
+) {
+  callback_url <- login_result$callback_url %||% NA_character_
+  if (
+    !is.character(callback_url) ||
+      length(callback_url) != 1L ||
+      is.na(callback_url) ||
+      !nzchar(callback_url) ||
+      !grepl("?", callback_url, fixed = TRUE)
+  ) {
+    stop(
+      "login_result$callback_url must be a non-empty callback URL",
+      call. = FALSE
+    )
+  }
+
+  parts <- shiny::parseQueryString(
+    sub("^\\?", "", sub("^[^?]*", "", callback_url)),
+    nested = FALSE
+  )
+  parts$code <- code
+  parts$state <- state
+  parts$iss <- iss
+
+  keep <- vapply(
+    parts,
+    function(value) {
+      is.character(value) &&
+        length(value) == 1L &&
+        !is.na(value)
+    },
+    logical(1)
+  )
+  parts <- parts[keep]
+
+  paste0(
+    "?",
+    paste(
+      vapply(
+        names(parts),
+        function(name) {
+          paste0(
+            utils::URLencode(name, reserved = TRUE),
+            "=",
+            utils::URLencode(parts[[name]], reserved = TRUE)
+          )
+        },
+        ""
+      ),
+      collapse = "&"
+    )
+  )
+}
+
 get_cookies <- function(resp) {
   sc <- httr2::resp_headers(resp)[
     tolower(names(httr2::resp_headers(resp))) == "set-cookie"

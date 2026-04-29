@@ -26,12 +26,7 @@ testthat::test_that("Code replay: second callback with same code+state is reject
       # Complete a successful flow
       url <- values$build_auth_url()
       res <- perform_login_form(url)
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
 
@@ -45,12 +40,7 @@ testthat::test_that("Code replay: second callback with same code+state is reject
       values$browser_token <- "__SKIPPED__"
       testthat::expect_false(isTRUE(values$authenticated))
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       # Must NOT be authenticated after replay
@@ -87,12 +77,7 @@ testthat::test_that("Code replay: Keycloak rejects already-exchanged code at tok
       orig <- client@state_store$get(si$key, missing = NULL)
       code_verifier <- orig$pkce_code_verifier
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
 

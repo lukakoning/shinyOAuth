@@ -73,12 +73,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
         is.character(res$state_payload) && nzchar(res$state_payload)
       )
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
 
       # Allow promise handlers to run for async token exchange
       # Wait for both token AND authenticated to be set (async may take time)

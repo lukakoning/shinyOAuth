@@ -30,12 +30,7 @@ testthat::test_that("State replay: consumed state rejected on new code", {
       res1 <- perform_login_form(url1)
       old_state <<- res1$state_payload
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res1$code),
-        "&state=",
-        utils::URLencode(res1$state_payload)
-      ))
+      values$.process_query(callback_query(res1))
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
 
@@ -48,12 +43,7 @@ testthat::test_that("State replay: consumed state rejected on new code", {
       res2 <- perform_login_form(url2)
 
       # Attack: inject the OLD consumed state with the NEW code
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res2$code),
-        "&state=",
-        utils::URLencode(old_state)
-      ))
+      values$.process_query(callback_query(res2, state = old_state))
       session$flushReact()
 
       # Must fail — old state was already consumed from the store
@@ -71,17 +61,14 @@ testthat::test_that("State from different session rejected (cross-session CSRF)"
 
   # Session A: build auth URL and capture state
   client_a <- make_public_client(prov)
-  state_a <- NULL
-  code_a <- NULL
+  login_a <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
       url_a <- values$build_auth_url()
-      res_a <- perform_login_form(url_a)
-      state_a <<- res_a$state_payload
-      code_a <<- res_a$code
+      login_a <<- perform_login_form(url_a)
     }
   )
 
@@ -93,12 +80,7 @@ testthat::test_that("State from different session rejected (cross-session CSRF)"
     args = default_module_args(client_b),
     expr = {
       # Attacker tries to use session A's code + state in session B
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(code_a),
-        "&state=",
-        utils::URLencode(state_a)
-      ))
+      values$.process_query(callback_query(login_a))
       session$flushReact()
 
       # Must fail — state_a is in client_a's store, not client_b's store
@@ -140,17 +122,14 @@ testthat::test_that("State from different state_key rejected", {
     state_key = "zzzz-yyyy-xxxx-wwww-vvvv-uuuu-9999-8888"
   )
 
-  state_from_a <- NULL
-  code_from_a <- NULL
+  login_a <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
       url_a <- values$build_auth_url()
-      res_a <- perform_login_form(url_a)
-      state_from_a <<- res_a$state_payload
-      code_from_a <<- res_a$code
+      login_a <<- perform_login_form(url_a)
     }
   )
 
@@ -160,12 +139,7 @@ testthat::test_that("State from different state_key rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_b),
     expr = {
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(code_from_a),
-        "&state=",
-        utils::URLencode(state_from_a)
-      ))
+      values$.process_query(callback_query(login_a))
       session$flushReact()
 
       testthat::expect_false(isTRUE(values$authenticated))

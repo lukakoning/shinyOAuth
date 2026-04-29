@@ -73,12 +73,7 @@ testthat::test_that("Keycloak PAR keeps login_hint extra auth params", {
         redirect_uri = client@redirect_uri
       )
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -130,12 +125,7 @@ testthat::test_that("Keycloak PAR happy path (public client)", {
         is.character(res$state_payload) && nzchar(res$state_payload)
       )
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -183,12 +173,7 @@ testthat::test_that("Keycloak PAR happy path (confidential client with header au
         is.character(res$state_payload) && nzchar(res$state_payload)
       )
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -229,12 +214,7 @@ testthat::test_that("Keycloak PAR happy path (client_secret_jwt)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -276,12 +256,7 @@ testthat::test_that("Keycloak PAR happy path (private_key_jwt)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))

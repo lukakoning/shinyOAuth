@@ -21,12 +21,7 @@ perform_dpop_login <- function(
         username = username,
         password = password
       )
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(login$code),
-        "&state=",
-        utils::URLencode(login$state_payload)
-      ))
+      values$.process_query(callback_query(login))
       session$flushReact()
 
       result <<- list(

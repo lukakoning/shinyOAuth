@@ -107,17 +107,14 @@ testthat::test_that("Cross-client via module: state from client A fails in clien
 
   # Client A (public) builds auth URL and logs in
   client_a <- make_public_client(prov)
-  state_a <- NULL
-  code_a <- NULL
+  login_a <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
       url <- values$build_auth_url()
-      res <- perform_login_form(url)
-      state_a <<- res$state_payload
-      code_a <<- res$code
+      login_a <<- perform_login_form(url)
     }
   )
 
@@ -131,12 +128,7 @@ testthat::test_that("Cross-client via module: state from client A fails in clien
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_b),
     expr = {
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(code_a),
-        "&state=",
-        utils::URLencode(state_a)
-      ))
+      values$.process_query(callback_query(login_a))
       session$flushReact()
 
       # Either state decryption fails (different state_key) or client binding

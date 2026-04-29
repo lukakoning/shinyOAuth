@@ -44,12 +44,7 @@ testthat::test_that("Code injection: bob's code with alice's state succeeds but 
       )
 
       # Process the callback in Alice's module session
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res_bob$code),
-        "&state=",
-        utils::URLencode(res_bob$state_payload)
-      ))
+      values$.process_query(callback_query(res_bob))
       session$flushReact()
 
       # The flow succeeds because PKCE verifier matches (alice's session owns
@@ -72,17 +67,14 @@ testthat::test_that("Code injection: bob's independent code+state rejected in al
 
   # Bob completes an INDEPENDENT flow in his own session
   client_bob <- make_public_client(prov)
-  bob_code <- NULL
-  bob_state <- NULL
+  bob_login <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_bob),
     expr = {
       url_bob <- values$build_auth_url()
-      res_bob <- perform_login_form_as(url_bob, "bob", "bob")
-      bob_code <<- res_bob$code
-      bob_state <<- res_bob$state_payload
+      bob_login <<- perform_login_form_as(url_bob, "bob", "bob")
     }
   )
 
@@ -94,12 +86,7 @@ testthat::test_that("Code injection: bob's independent code+state rejected in al
     args = default_module_args(client_alice),
     expr = {
       # Attacker injects bob's code + bob's state into alice's session
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(bob_code),
-        "&state=",
-        utils::URLencode(bob_state)
-      ))
+      values$.process_query(callback_query(bob_login))
       session$flushReact()
 
       # Must fail: bob's state is not in alice's state store

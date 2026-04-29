@@ -40,12 +40,7 @@ testthat::test_that("Keycloak PKCE happy path (public client)", {
       url <- values$build_auth_url()
       testthat::expect_true(is.character(url) && nzchar(url))
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
       # Assertions
       testthat::expect_true(isTRUE(values$authenticated))
@@ -79,12 +74,7 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
@@ -132,12 +122,7 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))

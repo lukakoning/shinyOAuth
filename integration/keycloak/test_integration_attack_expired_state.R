@@ -41,12 +41,7 @@ testthat::test_that("Expired state: state exceeding max_age is rejected", {
       Sys.sleep(3)
 
       # Now try to process the callback — the state payload is stale
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       # Must fail due to state freshness check
@@ -78,12 +73,7 @@ testthat::test_that("Fresh state: state within max_age is accepted", {
       res <- perform_login_form(url)
 
       # No delay — process immediately
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))
@@ -116,12 +106,7 @@ testthat::test_that("Delayed callback: longer-lived state with deliberate pause"
       # Wait 3 seconds (within 5s window)
       Sys.sleep(3)
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(res$code),
-        "&state=",
-        utils::URLencode(res$state_payload)
-      ))
+      values$.process_query(callback_query(res))
       session$flushReact()
 
       # Should still succeed — 3s < 5s max_age

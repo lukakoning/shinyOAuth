@@ -22,12 +22,7 @@ perform_mtls_module_login <- function(
         password = password,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(login$code),
-        "&state=",
-        utils::URLencode(login$state_payload)
-      ))
+      values$.process_query(callback_query(login))
       session$flushReact()
 
       result <<- list(
@@ -161,12 +156,7 @@ testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered en
         redirect_uri = client@redirect_uri
       )
 
-      values$.process_query(paste0(
-        "?code=",
-        utils::URLencode(login$code),
-        "&state=",
-        utils::URLencode(login$state_payload)
-      ))
+      values$.process_query(callback_query(login))
       session$flushReact()
 
       testthat::expect_true(isTRUE(values$authenticated))

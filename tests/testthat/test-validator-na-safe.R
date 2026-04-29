@@ -15,8 +15,10 @@ test_that("NA optional fields yield clean validator errors", {
     ),
     regexp = paste(
       "token_auth_style must be one of 'header', 'body',",
+      "'public',",
       "'tls_client_auth', 'self_signed_tls_client_auth',",
-      "'client_secret_jwt', or 'private_key_jwt'"
+      "'client_secret_jwt', or 'private_key_jwt'",
+      "\\('none' is accepted as an alias for 'public'\\)"
     )
   )
 
