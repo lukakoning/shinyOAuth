@@ -117,14 +117,14 @@
 #'   an explicit value is provided but incompatible with the key, validation
 #'   fails early with a configuration error.
 #'
-#' @param dpop_require_access_token Logical. When `TRUE` and `dpop_private_key`
-#'   is configured, shinyOAuth requires the authorization server to return
-#'   `token_type = "DPoP"` for access tokens and fails fast otherwise. Leave at
-#'   the default `FALSE` only when you intentionally want to allow Bearer
+#' @param dpop_require_access_token Logical or `NULL`. When `TRUE` and
+#'   `dpop_private_key` is configured, shinyOAuth requires the authorization
+#'   server to return `token_type = "DPoP"` for access tokens and fails fast
+#'   otherwise. In [oauth_client()], the default `NULL` resolves to `TRUE`
+#'   when `dpop_private_key` is configured and to `FALSE` otherwise. Set
+#'   `FALSE` explicitly only when you intentionally want to allow Bearer
 #'   access tokens, such as deployments where DPoP is used only to bind refresh
-#'   tokens. When `dpop_private_key` is configured and this argument is left at
-#'   its default, [oauth_client()] warns because configured DPoP does not by
-#'   itself guarantee sender-constrained access tokens.
+#'   tokens.
 #'
 #' @param redirect_uri Redirect URI registered with provider
 #' @param enforce_callback_issuer Logical or `NULL`. When `TRUE`, enforce that
@@ -1586,7 +1586,7 @@ oauth_client <- function(
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
-  dpop_require_access_token = FALSE,
+  dpop_require_access_token = NULL,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
   userinfo_jwt_required_temporal_claims = character(0),
@@ -1594,7 +1594,8 @@ oauth_client <- function(
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
-  dpop_require_access_token_missing <- missing(dpop_require_access_token)
+  dpop_require_access_token_missing <-
+    missing(dpop_require_access_token) || is.null(dpop_require_access_token)
   claims_validation_missing <- missing(claims_validation)
 
   warn_about_oauth_client_created_in_shiny(
@@ -1646,6 +1647,17 @@ oauth_client <- function(
   claims_validation <- match.arg(claims_validation)
   authorization_request_mode <- match.arg(authorization_request_mode)
 
+  if (
+    !isTRUE(dpop_require_access_token_missing) &&
+      !(is.logical(dpop_require_access_token) &&
+        length(dpop_require_access_token) == 1L &&
+        !is.na(dpop_require_access_token))
+  ) {
+    err_input(
+      "{.arg dpop_require_access_token} must be NULL or a single non-NA logical."
+    )
+  }
+
   warn_about_unenforced_claim_requests(
     claims = claims,
     claims_validation = claims_validation,
@@ -1668,6 +1680,10 @@ oauth_client <- function(
   userinfo_jwt_required_temporal_claims <- unique(tolower(
     userinfo_jwt_required_temporal_claims %||% character(0)
   ))
+
+  if (isTRUE(dpop_require_access_token_missing)) {
+    dpop_require_access_token <- !is.null(dpop_private_key)
+  }
 
   client <- OAuthClient(
     provider = provider,

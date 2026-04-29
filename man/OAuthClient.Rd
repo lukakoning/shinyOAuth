@@ -159,14 +159,14 @@ the private key type/curve (for example \code{RS256}, \code{ES256}, \code{ES384}
 an explicit value is provided but incompatible with the key, validation
 fails early with a configuration error.}
 
-\item{dpop_require_access_token}{Logical. When \code{TRUE} and \code{dpop_private_key}
-is configured, shinyOAuth requires the authorization server to return
-\code{token_type = "DPoP"} for access tokens and fails fast otherwise. Leave at
-the default \code{FALSE} only when you intentionally want to allow Bearer
+\item{dpop_require_access_token}{Logical or \code{NULL}. When \code{TRUE} and
+\code{dpop_private_key} is configured, shinyOAuth requires the authorization
+server to return \code{token_type = "DPoP"} for access tokens and fails fast
+otherwise. In \code{\link[=oauth_client]{oauth_client()}}, the default \code{NULL} resolves to \code{TRUE}
+when \code{dpop_private_key} is configured and to \code{FALSE} otherwise. Set
+\code{FALSE} explicitly only when you intentionally want to allow Bearer
 access tokens, such as deployments where DPoP is used only to bind refresh
-tokens. When \code{dpop_private_key} is configured and this argument is left at
-its default, \code{\link[=oauth_client]{oauth_client()}} warns because configured DPoP does not by
-itself guarantee sender-constrained access tokens.}
+tokens.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 

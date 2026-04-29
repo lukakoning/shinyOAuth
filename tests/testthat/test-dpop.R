@@ -1,11 +1,11 @@
 make_dpop_test_client <- function(
   provider,
-  dpop_require_access_token = FALSE,
+  dpop_require_access_token = NULL,
   dpop_private_key = openssl::rsa_keygen(),
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL
 ) {
-  oauth_client(
+  args <- list(
     provider = provider,
     client_id = "abc",
     client_secret = "",
@@ -18,15 +18,14 @@ make_dpop_test_client <- function(
     ),
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid,
-    dpop_signing_alg = dpop_signing_alg,
-    dpop_require_access_token = dpop_require_access_token
+    dpop_signing_alg = dpop_signing_alg
   )
-}
 
-reset_dpop_access_token_warning <- function() {
-  rlang::reset_warning_verbosity(
-    "shinyOAuth_dpop_require_access_token_default_false"
-  )
+  if (!is.null(dpop_require_access_token)) {
+    args$dpop_require_access_token <- dpop_require_access_token
+  }
+
+  do.call(oauth_client, args)
 }
 
 decode_dpop_header <- function(proof) {
@@ -118,12 +117,10 @@ test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   )
 })
 
-test_that("oauth_client warns when DPoP is configured but Bearer fallback stays implicit", {
-  reset_dpop_access_token_warning()
-
+test_that("oauth_client defaults to strict access-token enforcement for DPoP", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
 
-  expect_warning(
+  cli <- expect_no_warning(
     oauth_client(
       provider = prov,
       client_id = "abc",
@@ -136,17 +133,16 @@ test_that("oauth_client warns when DPoP is configured but Bearer fallback stays 
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       ),
       dpop_private_key = openssl::rsa_keygen()
-    ),
-    regexp = "dpop_require_access_token|Bearer"
+    )
   )
+
+  expect_true(isTRUE(cli@dpop_require_access_token))
 })
 
 test_that("oauth_client does not warn when Bearer fallback is explicit for DPoP", {
-  reset_dpop_access_token_warning()
-
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
 
-  expect_no_warning(
+  cli <- expect_no_warning(
     oauth_client(
       provider = prov,
       client_id = "abc",
@@ -162,6 +158,8 @@ test_that("oauth_client does not warn when Bearer fallback is explicit for DPoP"
       dpop_require_access_token = FALSE
     )
   )
+
+  expect_false(isTRUE(cli@dpop_require_access_token))
 })
 
 test_that("client_bearer_req ignores custom Authorization and DPoP headers", {
@@ -391,6 +389,41 @@ test_that("verify_token_type_allowlist enforces DPoP client requirements", {
   cli_strict <- make_dpop_test_client(
     prov,
     dpop_require_access_token = TRUE
+  )
+
+  cli_default <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen()
+  )
+
+  cli_optional <- make_dpop_test_client(
+    prov,
+    dpop_require_access_token = FALSE
+  )
+
+  expect_error(
+    shinyOAuth:::verify_token_type_allowlist(
+      cli_default,
+      list(access_token = "t", token_type = "Bearer")
+    ),
+    regexp = "Expected token_type = DPoP",
+    class = "shinyOAuth_token_error"
+  )
+
+  expect_silent(
+    shinyOAuth:::verify_token_type_allowlist(
+      cli_optional,
+      list(access_token = "t", token_type = "Bearer")
+    )
   )
 
   expect_error(

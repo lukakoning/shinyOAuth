@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `oauth_client()` now defaults `dpop_require_access_token` to `TRUE` when a
+`dpop_private_key` is configured, so Bearer access tokens are rejected unless
+you explicitly opt out with `dpop_require_access_token = FALSE`.
+
 * `oauth_module_server()` now rejects unsafe `browser_cookie_path` values that
 could rewrite cookie attributes. Explicit cookie paths must start with `/`
 and cannot contain semicolons or control characters.
