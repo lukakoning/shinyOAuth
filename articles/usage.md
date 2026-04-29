@@ -685,6 +685,10 @@ your app to production:
   your app registration only the permissions it needs
 - Do not show `$error_description` to your users; never expose tokens in
   UI or logs
+- Treat `$error_uri` as untrusted navigation input. `shinyOAuth` only
+  surfaces absolute HTTPS values here; if you render it as a link or
+  pass it to [`browseURL()`](https://rdrr.io/r/utils/browseURL.html),
+  keep it optional and consider your own allowlist.
 - Keep secrets safe in environment variables (e.g., `OAUTH_CLIENT_ID`,
   `OAUTH_CLIENT_SECRET`)
 - Sanitize user inputs before rendering them in the UI (e.g., using

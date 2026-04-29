@@ -2,6 +2,11 @@
 
 ## shinyOAuth (development version)
 
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now drops provider `error_uri` values unless they are absolute HTTPS
+  URLs, so unsafe schemes like `javascript:` are no longer surfaced
+  through `values$error_uri`.
+
 - Deprecated
   [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md).
   It remains a narrow guard for a few dev/debug softeners, but the docs

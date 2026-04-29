@@ -164,9 +164,10 @@ callback. This consists of the following steps:
   sealed-state validation, single-use state consumption, and
   browser-token binding succeed; missing/invalid/consumed state or a
   browser-token mismatch is treated as `invalid_state` rather than
-  surfacing the attacker-controlled `?error` value. The `error_uri` from
-  the provider (RFC 6749 section 4.1.2.1) is also surfaced as a reactive
-  field when included
+  surfacing the attacker-controlled `?error` value. The provider’s
+  `error_uri` (RFC 6749 section 4.1.2.1) is treated as untrusted
+  navigation input and is only surfaced as a reactive field when it is
+  an absolute HTTPS URL
 - Decrypt and verify the sealed state, ensuring integrity, authenticity,
   and freshness (using the `issued_at` window)
 - Check that embedded context matches expected client/provider (defends

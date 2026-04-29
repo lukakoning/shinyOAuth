@@ -244,9 +244,9 @@ provider error until sealed-state validation, single-use state
 consumption, and browser-token binding succeed; missing/invalid/consumed
 state or a browser-token mismatch is treated as
 <code>invalid_state</code> rather than surfacing the attacker-controlled
-<code>?error</code> value. The <code>error_uri</code> from the provider
-(RFC 6749 section 4.1.2.1) is also surfaced as a reactive field when
-included</li>
+<code>?error</code> value. The provider’s <code>error_uri</code> (RFC
+6749 section 4.1.2.1) is treated as untrusted navigation input and is
+only surfaced as a reactive field when it is an absolute HTTPS URL</li>
 <li>Decrypt and verify the sealed state, ensuring integrity,
 authenticity, and freshness (using the <code>issued_at</code>
 window)</li>

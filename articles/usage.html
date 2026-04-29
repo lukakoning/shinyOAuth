@@ -847,6 +847,10 @@ options as possible; for instance, set
 necessary; give your app registration only the permissions it needs</li>
 <li>Do not show <code>$error_description</code> to your users; never
 expose tokens in UI or logs</li>
+<li>Treat <code>$error_uri</code> as untrusted navigation input.
+<code>shinyOAuth</code> only surfaces absolute HTTPS values here; if you
+render it as a link or pass it to <code><a href="https://rdrr.io/r/utils/browseURL.html" class="external-link">browseURL()</a></code>, keep it
+optional and consider your own allowlist.</li>
 <li>Keep secrets safe in environment variables (e.g.,
 <code>OAUTH_CLIENT_ID</code>, <code>OAUTH_CLIENT_SECRET</code>)</li>
 <li>Sanitize user inputs before rendering them in the UI (e.g., using
