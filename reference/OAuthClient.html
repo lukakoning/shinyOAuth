@@ -241,14 +241,14 @@ fails early with a configuration error.</p></dd>
 
 
 <dt id="arg-dpop-require-access-token">dpop_require_access_token<a class="anchor" aria-label="anchor" href="#arg-dpop-require-access-token"></a></dt>
-<dd><p>Logical. When <code>TRUE</code> and <code>dpop_private_key</code>
-is configured, shinyOAuth requires the authorization server to return
-<code>token_type = "DPoP"</code> for access tokens and fails fast otherwise. Leave at
-the default <code>FALSE</code> only when you intentionally want to allow Bearer
+<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
+<code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
+server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
+otherwise. In <code><a href="oauth_client.html">oauth_client()</a></code>, the default <code>NULL</code> resolves to <code>TRUE</code>
+when <code>dpop_private_key</code> is configured and to <code>FALSE</code> otherwise. Set
+<code>FALSE</code> explicitly only when you intentionally want to allow Bearer
 access tokens, such as deployments where DPoP is used only to bind refresh
-tokens. When <code>dpop_private_key</code> is configured and this argument is left at
-its default, <code><a href="oauth_client.html">oauth_client()</a></code> warns because configured DPoP does not by
-itself guarantee sender-constrained access tokens.</p></dd>
+tokens.</p></dd>
 
 
 <dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>

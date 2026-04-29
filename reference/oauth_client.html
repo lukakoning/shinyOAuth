@@ -74,7 +74,7 @@
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  dpop_require_access_token <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  dpop_require_access_token <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strict"</span>, <span class="st">"warn"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  claims_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"warn"</span>, <span class="st">"strict"</span><span class="op">)</span>,</span>
 <span>  userinfo_jwt_required_temporal_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -351,14 +351,14 @@ fails early with a configuration error.</p></dd>
 
 
 <dt id="arg-dpop-require-access-token">dpop_require_access_token<a class="anchor" aria-label="anchor" href="#arg-dpop-require-access-token"></a></dt>
-<dd><p>Logical. When <code>TRUE</code> and <code>dpop_private_key</code>
-is configured, shinyOAuth requires the authorization server to return
-<code>token_type = "DPoP"</code> for access tokens and fails fast otherwise. Leave at
-the default <code>FALSE</code> only when you intentionally want to allow Bearer
+<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
+<code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
+server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
+otherwise. In <code>oauth_client()</code>, the default <code>NULL</code> resolves to <code>TRUE</code>
+when <code>dpop_private_key</code> is configured and to <code>FALSE</code> otherwise. Set
+<code>FALSE</code> explicitly only when you intentionally want to allow Bearer
 access tokens, such as deployments where DPoP is used only to bind refresh
-tokens. When <code>dpop_private_key</code> is configured and this argument is left at
-its default, <code>oauth_client()</code> warns because configured DPoP does not by
-itself guarantee sender-constrained access tokens.</p></dd>
+tokens.</p></dd>
 
 
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>

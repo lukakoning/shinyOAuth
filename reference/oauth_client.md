@@ -33,7 +33,7 @@ oauth_client(
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
-  dpop_require_access_token = FALSE,
+  dpop_require_access_token = NULL,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
   userinfo_jwt_required_temporal_claims = character(0),
@@ -348,14 +348,14 @@ oauth_client(
 
 - dpop_require_access_token:
 
-  Logical. When `TRUE` and `dpop_private_key` is configured, shinyOAuth
-  requires the authorization server to return `token_type = "DPoP"` for
-  access tokens and fails fast otherwise. Leave at the default `FALSE`
-  only when you intentionally want to allow Bearer access tokens, such
-  as deployments where DPoP is used only to bind refresh tokens. When
-  `dpop_private_key` is configured and this argument is left at its
-  default, `oauth_client()` warns because configured DPoP does not by
-  itself guarantee sender-constrained access tokens.
+  Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
+  shinyOAuth requires the authorization server to return
+  `token_type = "DPoP"` for access tokens and fails fast otherwise. In
+  `oauth_client()`, the default `NULL` resolves to `TRUE` when
+  `dpop_private_key` is configured and to `FALSE` otherwise. Set `FALSE`
+  explicitly only when you intentionally want to allow Bearer access
+  tokens, such as deployments where DPoP is used only to bind refresh
+  tokens.
 
 - scope_validation:
 
