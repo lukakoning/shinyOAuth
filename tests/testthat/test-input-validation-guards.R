@@ -204,6 +204,11 @@ test_that("oauth_provider rejects vector revocation_url", {
 
 # ── JWT helpers: defense-in-depth ────────────────────────────────────────────
 
+decode_jwt_payload <- function(jwt) {
+  parts <- strsplit(jwt, ".", fixed = TRUE)[[1]]
+  jsonlite::fromJSON(shinyOAuth:::base64url_decode(parts[[2]]))
+}
+
 test_that("build_client_assertion handles zero-length client_assertion_alg gracefully", {
   prov <- oauth_provider(
     name = "test",
@@ -225,6 +230,56 @@ test_that("build_client_assertion handles zero-length client_assertion_alg grace
   jwt <- shinyOAuth:::build_client_assertion(cli, "https://example.com/token")
   expect_type(jwt, "character")
   expect_true(nzchar(jwt))
+})
+
+test_that("build_client_assertion clamps sub-60 TTL values to 60 seconds", {
+  withr::local_options(list(shinyOAuth.client_assertion_ttl = 30L))
+
+  prov <- oauth_provider(
+    name = "test",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    token_auth_style = "client_secret_jwt",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = paste(rep("s", 32), collapse = ""),
+    redirect_uri = "http://localhost:8100"
+  )
+
+  payload <- decode_jwt_payload(
+    shinyOAuth:::build_client_assertion(cli, prov@token_url)
+  )
+
+  expect_identical(as.integer(payload$exp - payload$iat), 60L)
+})
+
+test_that("build_client_assertion falls back to the default TTL for invalid values", {
+  withr::local_options(list(shinyOAuth.client_assertion_ttl = NA_real_))
+
+  prov <- oauth_provider(
+    name = "test",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    token_auth_style = "client_secret_jwt",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = paste(rep("s", 32), collapse = ""),
+    redirect_uri = "http://localhost:8100"
+  )
+
+  payload <- decode_jwt_payload(
+    shinyOAuth:::build_client_assertion(cli, prov@token_url)
+  )
+
+  expect_identical(as.integer(payload$exp - payload$iat), 120L)
 })
 
 test_that("resolve_client_assertion_audience handles NA sentinel without crash", {

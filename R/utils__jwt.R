@@ -726,8 +726,10 @@ build_client_assertion <- function(client, aud) {
     "shinyOAuth.client_assertion_ttl",
     120L
   )))
-  if (!is.finite(ttl) || is.na(ttl) || ttl < 60L) {
+  if (!is.finite(ttl) || is.na(ttl)) {
     ttl <- 120L
+  } else if (ttl < 60L) {
+    ttl <- 60L
   }
   now <- floor(as.numeric(Sys.time()))
   claims <- list(
