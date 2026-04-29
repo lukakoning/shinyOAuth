@@ -13,6 +13,10 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
+callback_iss <- function(login_result) {
+  parse_query_param(login_result$callback_url, "iss", decode = TRUE)
+}
+
 testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
   skip_common()
   # Use skip_browser_token=TRUE so the module can build auth URLs in testServer,
@@ -52,7 +56,8 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
           oauth_client = client,
           code = res$code,
           payload = res$state_payload,
-          browser_token = attacker_bt
+          browser_token = attacker_bt,
+          iss = callback_iss(res)
         ),
         regexp = "browser.token|Browser token|state|mismatch",
         ignore.case = TRUE
@@ -82,7 +87,8 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
           oauth_client = client,
           code = res$code,
           payload = res$state_payload,
-          browser_token = NULL
+          browser_token = NULL,
+          iss = callback_iss(res)
         ),
         regexp = "browser.token|Browser token|invalid|state",
         ignore.case = TRUE
@@ -115,7 +121,8 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
           oauth_client = client,
           code = res$code,
           payload = res$state_payload,
-          browser_token = short_token
+          browser_token = short_token,
+          iss = callback_iss(res)
         ),
         regexp = "browser.token|length|hex|invalid|state",
         ignore.case = TRUE
@@ -131,7 +138,8 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
           oauth_client = client,
           code = res$code,
           payload = res$state_payload,
-          browser_token = bad_chars_token
+          browser_token = bad_chars_token,
+          iss = callback_iss(res)
         ),
         regexp = "browser.token|hex|invalid|state",
         ignore.case = TRUE
@@ -165,7 +173,8 @@ testthat::test_that("Browser token: skip_browser_token=TRUE allows __SKIPPED__ s
         oauth_client = client,
         code = res$code,
         payload = res$state_payload,
-        browser_token = "__SKIPPED__"
+        browser_token = "__SKIPPED__",
+        iss = callback_iss(res)
       )
       testthat::expect_true(!is.null(result))
       testthat::expect_true(S7::S7_inherits(
