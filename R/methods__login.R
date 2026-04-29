@@ -550,7 +550,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       resp <- with_otel_span(
         "shinyOAuth.login.par.http",
         {
-          resp <- req_with_retry(req)
+          resp <- req_with_retry(req, idempotent = FALSE)
           otel_record_http_result(resp)
           resp
         },

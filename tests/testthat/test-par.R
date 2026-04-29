@@ -113,6 +113,35 @@ test_that("prepare_call pushes authorization params and redirects with request_u
   expect_match(body_text, "code_challenge_method=S256")
 })
 
+test_that("PAR requests disable retries as non-idempotent POSTs", {
+  cli <- make_par_test_client()
+  retry_idempotent <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      retry_args <- list(...)
+      retry_idempotent <<- retry_args$idempotent %||% NULL
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(
+    auth_url,
+    "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
+  )
+  expect_identical(retry_idempotent, FALSE)
+})
+
 test_that("PAR HTTP failures surface as PAR-specific errors", {
   cli <- make_par_test_client()
 
