@@ -747,7 +747,7 @@ build_client_assertion <- function(client, aud) {
   )
   if (identical(style, "private_key_jwt")) {
     kid <- client@client_private_key_kid %||% NA_character_
-    if (is.character(kid) && length(kid) == 1L && nzchar(kid)) {
+    if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
       header$kid <- kid
     }
   }

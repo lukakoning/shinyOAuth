@@ -60,9 +60,16 @@ testthat::test_that("private_key_jwt picks EC-compatible default alg", {
     )
     testthat::expect_equal(ts$access_token, "at", info = curve)
     assertion <- captured$client_assertion
+    header_json <- shinyOAuth:::base64url_decode(
+      strsplit(assertion, ".", fixed = TRUE)[[1]][1]
+    )
     hdr <- shinyOAuth:::parse_jwt_header(assertion)
     testthat::expect_identical(toupper(hdr$typ), "JWT", info = curve)
     testthat::expect_identical(toupper(hdr$alg), curves[[curve]], info = curve)
+    testthat::expect_false(
+      grepl('"kid"', header_json, fixed = TRUE),
+      info = curve
+    )
   }
 
   if (!ran_curve) {
