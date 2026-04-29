@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- Enforced RFC 7518 HMAC key-size minimums for `HS256` / `HS384` /
+  `HS512` across `client_secret_jwt`, signed request objects, and HS ID
+  token validation.
+
 - Restricted outbound RSA JWT signing to `RS256` and removed unsupported
   `PS*` algorithms from default inbound allowlists until the JOSE
   backend can correctly sign and verify RSA-PSS tokens.
