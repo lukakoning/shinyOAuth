@@ -11,24 +11,19 @@ Invisible TRUE if no safety checks are disabled; otherwise, an error is thrown.
 }
 \description{
 This function checks if any safety checks have been disabled via options
-intended for local development use only. If any such options are detected,
-an error is thrown to prevent accidental use in production environments.
+that relax shinyOAuth's default safety protections. If any such options are
+detected, an error is thrown so callers can fail fast in deployments that
+expect the default hardening.
 }
 \details{
 It checks for the following options:
 \itemize{
 \item \code{shinyOAuth.skip_browser_token}: Skips browser cookie presence check
 \item \code{shinyOAuth.skip_id_sig}: Skips ID token signature verification
-\item \code{shinyOAuth.print_errors}: Enables printing of error messages
-\item \code{shinyOAuth.print_traceback}: Enables printing of tracebacks (opt-in only; default FALSE)
 \item \code{shinyOAuth.expose_error_body}: Exposes HTTP response bodies
 \item \code{shinyOAuth.allow_unsigned_userinfo_jwt}: Accepts unsigned (\code{alg=none}) UserInfo JWTs
-\item \code{shinyOAuth.allow_redirect}: Disables anti-redirect protections for sensitive HTTP flows
+\item \code{shinyOAuth.allow_redirect}: Allows sensitive HTTP flows to follow redirects
 }
-
-Note: Tracebacks are only treated as a "softened" behavior when the
-\code{shinyOAuth.print_traceback} option is explicitly set to \code{TRUE}.
-The default is \code{FALSE}, even in interactive or test sessions.
 }
 \examples{
 # Throw an error if any developer-only softening options are enabled

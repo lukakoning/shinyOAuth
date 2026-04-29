@@ -41,9 +41,6 @@
 
 devtools::load_all()
 
-options(shinyOAuth.print_errors = TRUE)
-options(shinyOAuth.print_traceback = TRUE)
-
 library(shiny)
 
 # ---------- Config ----------

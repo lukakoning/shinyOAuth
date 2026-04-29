@@ -1,8 +1,6 @@
 devtools::load_all()
 
 options(shinyOAuth.allow_insecure_urls = TRUE)
-options(shinyOAuth.print_errors = TRUE)
-options(shinyOAuth.print_traceback = TRUE)
 
 library(shiny)
 

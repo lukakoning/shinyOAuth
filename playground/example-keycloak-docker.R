@@ -2,9 +2,6 @@
 #   cd integration/keycloak && docker compose up -d
 # This app will use the realm 'shinyoauth' and client 'shiny-public'.
 
-options(shinyOAuth.print_errors = TRUE)
-options(shinyOAuth.print_traceback = TRUE)
-
 library(shiny)
 library(shinyOAuth)
 

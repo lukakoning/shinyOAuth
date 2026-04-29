@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* `error_on_softened()` no longer treats the removed
+`shinyOAuth.print_errors` / `shinyOAuth.print_traceback` options as active
+softeners, and `shinyOAuth.allow_redirect` is again honored as an explicit
+redirect-following opt-in outside testthat or interactive sessions.
+
 * `shinyOAuth.client_assertion_ttl` now clamps finite values below 60 seconds
 to a 60-second minimum instead of silently resetting them to the 120-second
 default.

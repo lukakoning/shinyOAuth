@@ -7,9 +7,7 @@ library(otelsdk)
 
 options(
   shinyOAuth.otel_tracing_enabled = TRUE,
-  shinyOAuth.otel_logging_enabled = TRUE,
-  shinyOAuth.print_errors = TRUE,
-  shinyOAuth.print_traceback = TRUE
+  shinyOAuth.otel_logging_enabled = TRUE
 )
 
 setup_otel_tui <- function(

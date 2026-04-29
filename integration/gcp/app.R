@@ -7,11 +7,6 @@
 library(shiny)
 library(shinyOAuth)
 
-# Helpful diagnostics in container logs (only when SHINYOAUTH_DEBUG is set)
-debug_enabled <- tolower(Sys.getenv("SHINYOAUTH_DEBUG", "false")) == "true"
-options(shinyOAuth.print_errors = debug_enabled)
-options(shinyOAuth.print_traceback = debug_enabled)
-
 # Provider and client configured via env vars.
 #
 # Cloud Run will fail the deployment if the process exits during startup.
