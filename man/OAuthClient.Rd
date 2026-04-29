@@ -338,8 +338,10 @@ an \code{issuer} configured.  Default is \code{character(0)} (no enforcement).}
 introspection endpoint (RFC 7662) to validate the access token. The login
 is not considered complete unless introspection succeeds and returns
 \code{active = TRUE}; otherwise the login fails and \code{authenticated} remains
-FALSE. Default is FALSE. Requires the provider to have an
-\code{introspection_url} configured.}
+FALSE. When \code{\link[=oauth_module_server]{oauth_module_server()}} later performs proactive refresh, it
+also forwards this setting so refreshed access tokens are introspected
+through the same client policy. Default is FALSE. Requires the provider to
+have an \code{introspection_url} configured.}
 
 \item{introspect_elements}{Optional character vector of additional
 requirements to enforce on the introspection response when

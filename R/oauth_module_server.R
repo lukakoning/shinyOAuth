@@ -2258,6 +2258,7 @@ oauth_module_server <- function(
                       client,
                       tok,
                       async = async,
+                      introspect = isTRUE(client@introspect),
                       shiny_session = captured_shiny_session_refresh
                     )
 

@@ -291,8 +291,10 @@
 #'   introspection endpoint (RFC 7662) to validate the access token. The login
 #'   is not considered complete unless introspection succeeds and returns
 #'   `active = TRUE`; otherwise the login fails and `authenticated` remains
-#'   FALSE. Default is FALSE. Requires the provider to have an
-#'   `introspection_url` configured.
+#'   FALSE. When [oauth_module_server()] later performs proactive refresh, it
+#'   also forwards this setting so refreshed access tokens are introspected
+#'   through the same client policy. Default is FALSE. Requires the provider to
+#'   have an `introspection_url` configured.
 #'
 #' @param introspect_elements Optional character vector of additional
 #'   requirements to enforce on the introspection response when

@@ -1118,3 +1118,101 @@ testthat::test_that("oauth_module_server clears token and sets error when proact
     }
   )
 })
+
+testthat::test_that("oauth_module_server proactive refresh forwards introspection policy", {
+  testthat::skip_if_not_installed("later")
+
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@introspection_url <- "https://example.com/introspect"
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    introspect = TRUE,
+    introspect_elements = c("sub", "client_id"),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  calls <- new.env(parent = emptyenv())
+  calls$token <- 0L
+  calls$introspection <- 0L
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = FALSE,
+      indefinite_session = FALSE,
+      refresh_proactively = TRUE,
+      refresh_lead_seconds = 4000,
+      refresh_check_interval = 100
+    ),
+    expr = {
+      testthat::with_mocked_bindings(
+        req_with_retry = function(req, ...) {
+          url <- as.character(req$url)
+          if (grepl("/token", url, fixed = TRUE)) {
+            calls$token <- calls$token + 1L
+            return(httr2::response(
+              url = url,
+              status = 200,
+              headers = list("content-type" = "application/json"),
+              body = charToRaw(
+                '{"access_token":"new_at","expires_in":7200}'
+              )
+            ))
+          }
+
+          if (grepl("/introspect", url, fixed = TRUE)) {
+            calls$introspection <- calls$introspection + 1L
+            return(httr2::response(
+              url = url,
+              status = 200,
+              headers = list("content-type" = "application/json"),
+              body = charToRaw('{"active":true,"client_id":"abc"}')
+            ))
+          }
+
+          httr2::response(url = url, status = 200)
+        },
+        .package = "shinyOAuth",
+        {
+          t <- OAuthToken(
+            access_token = "old_at",
+            refresh_token = "rt",
+            expires_at = as.numeric(Sys.time()) + 3600,
+            id_token = NA_character_
+          )
+          values$token <- t
+          values$auth_started_at <- as.numeric(Sys.time())
+          values$error <- NULL
+          values$error_description <- NULL
+          session$flushReact()
+
+          deadline <- Sys.time() + 2
+          while (calls$introspection < 1L && Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+            Sys.sleep(0.01)
+          }
+        }
+      )
+
+      testthat::expect_gte(calls$token, 1L)
+      testthat::expect_gte(calls$introspection, 1L)
+      testthat::expect_identical(values$token@access_token, "new_at")
+      testthat::expect_false(isTRUE(values$refresh_in_progress))
+    }
+  )
+})
