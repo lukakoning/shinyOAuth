@@ -381,9 +381,10 @@ the <code>claims</code> parameter (OIDC Core §5.5). When <code>claims</code> in
 with <code>essential = TRUE</code> for <code>id_token</code> or <code>userinfo</code>, or explicit <code>value</code>
 / <code>values</code> constraints for individual claims, this setting determines what
 happens if the returned ID token or userinfo response does not satisfy
-those requests.</p><ul><li><p><code>"none"</code> (default): Skips claims validation entirely. This is the
-default because providers are expected to fulfil essential claims
-requests or return an error.</p></li>
+those requests.</p><ul><li><p><code>"none"</code> (default): Skips claims validation entirely. If you leave this
+default while requesting <code>essential</code>, <code>value</code>, or <code>values</code>
+constraints, <code><a href="oauth_client.html">oauth_client()</a></code> warns because providers may still
+complete login without satisfying those claim requests.</p></li>
 <li><p><code>"warn"</code>: Emits a warning but continues authentication if requested
 essential claims are missing or requested claim values are not
 satisfied.</p></li>

@@ -378,9 +378,12 @@ OAuthClient(
   what happens if the returned ID token or userinfo response does not
   satisfy those requests.
 
-  - `"none"` (default): Skips claims validation entirely. This is the
-    default because providers are expected to fulfil essential claims
-    requests or return an error.
+  - `"none"` (default): Skips claims validation entirely. If you leave
+    this default while requesting `essential`, `value`, or `values`
+    constraints,
+    [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+    warns because providers may still complete login without satisfying
+    those claim requests.
 
   - `"warn"`: Emits a warning but continues authentication if requested
     essential claims are missing or requested claim values are not
