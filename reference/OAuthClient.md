@@ -41,6 +41,7 @@ OAuthClient(
   state_key = random_urlsafe(n = 128),
   scope_validation = "strict",
   claims_validation = "none",
+  userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
@@ -400,6 +401,18 @@ OAuthClient(
   - `"strict"`: Throws an error if any requested essential claims are
     missing or requested claim `value` / `values` constraints are not
     satisfied by the response.
+
+- userinfo_jwt_required_temporal_claims:
+
+  Optional character vector of temporal JWT claims that must be present
+  when the UserInfo response is a signed JWT (`application/jwt`).
+  Allowed values are `"exp"`, `"iat"`, and `"nbf"`.
+
+  Default is `character(0)`, which means these claims are validated only
+  when present. Set, for example,
+  `userinfo_jwt_required_temporal_claims = "exp"` to require an expiry
+  on signed UserInfo JWTs, or pass multiple values to require additional
+  temporal claims.
 
 - required_acr_values:
 

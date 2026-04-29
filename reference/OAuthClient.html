@@ -86,6 +86,7 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span>,</span>
 <span>  scope_validation <span class="op">=</span> <span class="st">"strict"</span>,</span>
 <span>  claims_validation <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  userinfo_jwt_required_temporal_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
@@ -397,6 +398,17 @@ satisfied.</p></li>
 missing or requested claim <code>value</code> / <code>values</code> constraints are not
 satisfied by the response.</p></li>
 </ul></dd>
+
+
+<dt id="arg-userinfo-jwt-required-temporal-claims">userinfo_jwt_required_temporal_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-temporal-claims"></a></dt>
+<dd><p>Optional character vector of
+temporal JWT claims that must be present when the UserInfo response is a
+signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
+<code>"nbf"</code>.</p>
+<p>Default is <code>character(0)</code>, which means these claims are validated only when
+present. Set, for example, <code>userinfo_jwt_required_temporal_claims = "exp"</code>
+to require an expiry on signed UserInfo JWTs, or pass multiple values to
+require additional temporal claims.</p></dd>
 
 
 <dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>

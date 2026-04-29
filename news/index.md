@@ -11,6 +11,14 @@
   / [`utils::str()`](https://rdrr.io/r/utils/str.html) in claim
   canonicalization.
 
+- Signed UserInfo JWT validation now enforces `exp`, `iat`, and `nbf`
+  when those temporal claims are present, rejecting expired or
+  not-yet-valid UserInfo JWT responses instead of accepting them based
+  only on signature/issuer/audience.
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  can also require specific UserInfo JWT temporal claims to be present
+  via `userinfo_jwt_required_temporal_claims`.
+
 - Clarified the `allow_redirect` warning/docs and the
   [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
   option framing so they match the current explicit opt-in behavior and
