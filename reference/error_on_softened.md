@@ -1,9 +1,9 @@
 # Throw an error if any safety checks have been disabled
 
 This function checks if any safety checks have been disabled via options
-intended for local development use only. If any such options are
-detected, an error is thrown to prevent accidental use in production
-environments.
+that relax shinyOAuth's default safety protections. If any such options
+are detected, an error is thrown so callers can fail fast in deployments
+that expect the default hardening.
 
 ## Usage
 
@@ -29,8 +29,8 @@ It checks for the following options:
 - `shinyOAuth.allow_unsigned_userinfo_jwt`: Accepts unsigned
   (`alg=none`) UserInfo JWTs
 
-- `shinyOAuth.allow_redirect`: Disables anti-redirect protections for
-  sensitive HTTP flows in test/interactive mode only
+- `shinyOAuth.allow_redirect`: Allows sensitive HTTP flows to follow
+  redirects
 
 ## Examples
 
