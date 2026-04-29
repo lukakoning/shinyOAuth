@@ -416,8 +416,14 @@ validate_id_token <- function(
         err_input("HS* validation requires client_secret")
       }
 
-      if (nchar(client_secret, type = "bytes") < 32) {
-        err_input("HS* algorithms require client_secret >= 32 bytes")
+      min_secret_bytes <- min_hmac_key_bytes(alg)
+      if (nchar(client_secret, type = "bytes") < min_secret_bytes) {
+        err_input(paste0(
+          alg,
+          " requires client_secret >= ",
+          min_secret_bytes,
+          " bytes"
+        ))
       }
 
       # jose::jwt_decode_hmac autodetects HS256/384/512 from header
@@ -751,27 +757,21 @@ build_client_assertion <- function(client, aud) {
   }
 
   if (identical(style, "client_secret_jwt")) {
-    # Map HS* to jose size parameter
-    size <- switch(
-      alg,
-      HS256 = 256,
-      HS384 = 384,
-      HS512 = 512,
-      err_config(
-        c(
-          "x" = "Unsupported HMAC alg for client_secret_jwt",
-          "!" = paste0("Got alg: ", as.character(alg)),
-          "i" = "Supported values are HS256, HS384, HS512"
-        ),
-        context = list(
-          phase = "build_client_assertion",
-          style = "client_secret_jwt",
-          alg = as.character(alg)
-        )
-      )
-    )
+    min_secret_bytes <- min_hmac_key_bytes(alg)
+    size <- min_secret_bytes * 8L
     secret <- client@client_secret %||%
       err_config("client_secret missing for client_secret_jwt")
+    if (nchar(secret, type = "bytes") < min_secret_bytes) {
+      err_config(
+        paste0(
+          "client_secret_jwt with client_assertion_alg '",
+          alg,
+          "' requires client_secret >= ",
+          min_secret_bytes,
+          " bytes"
+        )
+      )
+    }
     # Build a proper jwt_claim from named list via do.call
     clm <- do.call(jose::jwt_claim, claims)
     # jose will set alg based on size, but we also pass header to include typ
@@ -992,6 +992,22 @@ canonicalize_jws_alg <- function(alg) {
   alg_upper
 }
 
+#' Return the minimum HMAC key length in bytes for a JWS alg.
+#'
+#' @keywords internal
+#' @noRd
+min_hmac_key_bytes <- function(alg) {
+  alg <- canonicalize_jws_alg(alg)
+
+  switch(
+    alg,
+    HS256 = 32L,
+    HS384 = 48L,
+    HS512 = 64L,
+    err_config(paste0("Unsupported HMAC alg for key length check: ", alg))
+  )
+}
+
 #' Check whether a private key can sign a JWT with a given alg.
 #'
 #' @keywords internal
@@ -1042,7 +1058,13 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
 #'
 #' @keywords internal
 #' @noRd
-encode_hmac_jwt_with_header <- function(claims, secret, header, size) {
+encode_hmac_jwt_with_header <- function(
+  claims,
+  secret,
+  header,
+  size,
+  alg = NULL
+) {
   if (!is.list(claims) || !length(claims)) {
     err_config("encode_hmac_jwt_with_header requires a non-empty claims list")
   }
@@ -1051,6 +1073,30 @@ encode_hmac_jwt_with_header <- function(claims, secret, header, size) {
   }
   if (!is.list(header) || !length(header)) {
     err_config("encode_hmac_jwt_with_header requires a non-empty header list")
+  }
+
+  alg <- canonicalize_jws_alg(alg)
+  if (!nzchar(alg)) {
+    alg <- switch(
+      as.character(size),
+      `256` = "HS256",
+      `384` = "HS384",
+      `512` = "HS512",
+      err_config(paste0(
+        "Unsupported HMAC signing size for encode_hmac_jwt_with_header: ",
+        as.character(size)
+      ))
+    )
+  }
+
+  min_secret_bytes <- min_hmac_key_bytes(alg)
+  if (nchar(secret, type = "bytes") < min_secret_bytes) {
+    err_config(paste0(
+      alg,
+      " requires client_secret >= ",
+      min_secret_bytes,
+      " bytes"
+    ))
   }
 
   header_json <- jsonlite::toJSON(
@@ -1156,22 +1202,14 @@ build_authorization_request_object <- function(client, params) {
   clm <- do.call(jose::jwt_claim, claims)
 
   if (alg %in% c("HS256", "HS384", "HS512")) {
-    size <- switch(
-      alg,
-      HS256 = 256,
-      HS384 = 384,
-      HS512 = 512,
-      err_config(paste0(
-        "Unsupported HMAC authorization_request_signing_alg: ",
-        alg
-      ))
-    )
+    size <- min_hmac_key_bytes(alg) * 8L
 
     return(encode_hmac_jwt_with_header(
       claims = claims,
       secret = client@client_secret,
       header = header,
-      size = size
+      size = size,
+      alg = alg
     ))
   }
 

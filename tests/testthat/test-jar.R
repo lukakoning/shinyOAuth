@@ -508,6 +508,7 @@ test_that("HMAC request objects use the expected signature bytes", {
 
   for (alg in names(hmac_signers)) {
     cli <- make_jar_test_client(
+      client_secret = strrep("s", 64L),
       authorization_request_signing_alg = alg
     )
 
@@ -530,6 +531,38 @@ test_that("HMAC request objects use the expected signature bytes", {
     )
     expect_identical(parts[3], expected_signature, info = alg)
   }
+})
+
+test_that("HMAC request objects enforce RFC 7518 HMAC secret lengths", {
+  cases <- c(HS384 = 48L, HS512 = 64L)
+
+  for (alg in names(cases)) {
+    expect_error(
+      make_jar_test_client(
+        client_secret = strrep("s", cases[[alg]] - 1L),
+        authorization_request_signing_alg = alg
+      ),
+      regexp = paste0(
+        "authorization_request_signing_alg '",
+        alg,
+        "'.*>= ",
+        cases[[alg]],
+        " bytes"
+      ),
+      info = alg
+    )
+  }
+
+  expect_error(
+    shinyOAuth:::encode_hmac_jwt_with_header(
+      claims = list(iss = "abc"),
+      secret = strrep("s", 63L),
+      header = list(alg = "HS512", typ = "oauth-authz-req+jwt"),
+      size = 512L,
+      alg = "HS512"
+    ),
+    regexp = "HS512 requires client_secret >= 64 bytes"
+  )
 })
 
 test_that("request mode rejects incompatible explicit signing alg combinations", {

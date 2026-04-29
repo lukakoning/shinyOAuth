@@ -106,3 +106,27 @@ test_that("HS* requires opt-in and client_secret", {
     )
   })
 })
+
+test_that("HS* configuration enforces RFC 7518 HMAC secret lengths by alg", {
+  withr::with_options(list(shinyOAuth.allow_hs = TRUE), {
+    prov <- shinyOAuth::oauth_provider(
+      name = "test",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      issuer = "https://issuer.example.com",
+      id_token_validation = TRUE,
+      id_token_required = TRUE,
+      allowed_algs = c("HS512")
+    )
+
+    expect_error(
+      shinyOAuth::oauth_client(
+        prov,
+        client_id = "client-hs512",
+        client_secret = strrep("a", 63L),
+        redirect_uri = "http://localhost:8100"
+      ),
+      regexp = "64 bytes"
+    )
+  })
+})

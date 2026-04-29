@@ -59,6 +59,54 @@ test_that("client_secret_jwt composes client_assertion and omits secret in body"
   expect_false("client_secret" %in% names(captured))
 })
 
+test_that("client_secret_jwt enforces RFC 7518 HMAC secret lengths", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "client_secret_jwt",
+    token_endpoint_auth_signing_alg_values_supported = c("HS384", "HS512"),
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+
+  cases <- c(HS384 = 48L, HS512 = 64L)
+  for (alg in names(cases)) {
+    expect_error(
+      oauth_client(
+        provider = prov,
+        client_id = "abc",
+        client_secret = strrep("s", cases[[alg]] - 1L),
+        redirect_uri = "http://localhost:8100",
+        scopes = c("openid"),
+        client_assertion_alg = alg
+      ),
+      regexp = paste0(
+        "client_assertion_alg '",
+        alg,
+        "'.*>= ",
+        cases[[alg]],
+        " bytes"
+      ),
+      info = alg
+    )
+  }
+
+  expect_silent(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = strrep("s", 64L),
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid"),
+      client_assertion_alg = "HS512"
+    )
+  )
+})
+
 test_that("private_key_jwt composes client_assertion with kid and claims", {
   prov <- oauth_provider(
     name = "example",

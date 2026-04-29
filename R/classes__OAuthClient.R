@@ -537,20 +537,6 @@ OAuthClient <- S7::new_class(
           "OAuthClient: client_secret is required when token_auth_style = 'client_secret_jwt'"
         )
       }
-      # Soft guardrail: warn when secret is short (< 32 bytes)
-      if (
-        !.is_test() &&
-          nchar(self@client_secret, type = "bytes") < 32
-      ) {
-        rlang::warn(
-          c(
-            "!" = "client_secret appears short for HMAC (recommended >= 32 bytes)",
-            "i" = "Consider using a longer, randomly generated secret for JWT client authentication"
-          ),
-          .frequency = "once",
-          .frequency_id = "jwt-client-hmac-secret-short"
-        )
-      }
     } else if (identical(tok_style, "private_key_jwt")) {
       # Asymmetric client assertion requires a private key
       if (is.null(self@client_private_key)) {
@@ -587,18 +573,28 @@ OAuthClient <- S7::new_class(
     # will later error when client_secret is missing/too short.
     aa <- toupper(as.character(self@provider@allowed_algs %||% character(0)))
     hs_algs <- c("HS256", "HS384", "HS512")
+    hs_algs_enabled <- intersect(hs_algs, aa)
     should_validate_id_token <-
       isTRUE(self@provider@id_token_validation) ||
       isTRUE(self@provider@use_nonce)
-    if (any(aa %in% hs_algs) && isTRUE(should_validate_id_token)) {
+    if (length(hs_algs_enabled) > 0 && isTRUE(should_validate_id_token)) {
       if (!is_valid_string(self@client_secret)) {
         return(
           "OAuthClient: client_secret is required for HS* ID token validation when id_token_validation or use_nonce is enabled"
         )
       }
-      if (nchar(self@client_secret, type = "bytes") < 32) {
+      required_hs_bytes <- max(vapply(
+        hs_algs_enabled,
+        min_hmac_key_bytes,
+        integer(1)
+      ))
+      if (nchar(self@client_secret, type = "bytes") < required_hs_bytes) {
         return(
-          "OAuthClient: HS* ID token validation requires client_secret >= 32 bytes"
+          paste0(
+            "OAuthClient: HS* ID token validation requires client_secret >= ",
+            required_hs_bytes,
+            " bytes for the configured allowed_algs"
+          )
         )
       }
     }
@@ -702,6 +698,18 @@ OAuthClient <- S7::new_class(
       }
     }
 
+    resolved_client_assertion_alg <- if (
+      identical(tok_style, "client_secret_jwt")
+    ) {
+      if (!is.na(client_assertion_alg) && nzchar(client_assertion_alg)) {
+        client_assertion_alg
+      } else {
+        "HS256"
+      }
+    } else {
+      NA_character_
+    }
+
     provider_client_assertion_algs <- toupper(as.character(
       self@provider@token_endpoint_auth_signing_alg_values_supported %||%
         character(0)
@@ -712,11 +720,10 @@ OAuthClient <- S7::new_class(
           identical(tok_style, "private_key_jwt"))
     ) {
       resolved_client_assertion_alg <- if (
-        !is.na(client_assertion_alg) && nzchar(client_assertion_alg)
+        !is.na(resolved_client_assertion_alg) &&
+          nzchar(resolved_client_assertion_alg)
       ) {
-        client_assertion_alg
-      } else if (identical(tok_style, "client_secret_jwt")) {
-        "HS256"
+        resolved_client_assertion_alg
       } else {
         inferred_alg <- try(
           {
@@ -744,6 +751,19 @@ OAuthClient <- S7::new_class(
           "OAuthClient: client_assertion_alg '",
           resolved_client_assertion_alg,
           "' is not supported by provider token_endpoint_auth_signing_alg_values_supported"
+        ))
+      }
+    }
+
+    if (identical(tok_style, "client_secret_jwt")) {
+      min_secret_bytes <- min_hmac_key_bytes(resolved_client_assertion_alg)
+      if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+        return(paste0(
+          "OAuthClient: client_secret_jwt with client_assertion_alg '",
+          resolved_client_assertion_alg,
+          "' requires client_secret >= ",
+          min_secret_bytes,
+          " bytes"
         ))
       }
     }
@@ -857,7 +877,8 @@ OAuthClient <- S7::new_class(
         }
         if (
           !isTRUE(has_private_key) &&
-            nchar(self@client_secret, type = "bytes") < 32
+            nchar(self@client_secret, type = "bytes") <
+              min_hmac_key_bytes("HS256")
         ) {
           return(
             "OAuthClient: authorization_request_mode = 'request' requires client_secret >= 32 bytes when no client_private_key is configured"
@@ -869,10 +890,15 @@ OAuthClient <- S7::new_class(
             "OAuthClient: HS* authorization_request_signing_alg requires client_secret"
           )
         }
-        if (nchar(self@client_secret, type = "bytes") < 32) {
-          return(
-            "OAuthClient: HS* authorization_request_signing_alg requires client_secret >= 32 bytes"
-          )
+        min_secret_bytes <- min_hmac_key_bytes(alg)
+        if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+          return(paste0(
+            "OAuthClient: authorization_request_signing_alg '",
+            alg,
+            "' requires client_secret >= ",
+            min_secret_bytes,
+            " bytes"
+          ))
         }
       } else if (alg %in% allowed_asym) {
         if (!isTRUE(has_private_key)) {
