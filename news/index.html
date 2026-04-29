@@ -71,6 +71,7 @@
 <li>Auto-enables RFC 9207 callback issuer enforcement when the caller leaves <code>enforce_callback_issuer</code> unset and the provider advertises <code>authorization_response_iss_parameter_supported = TRUE</code>.</li>
 <li>Has native RFC 8707 <code>resource</code> support, so authorization, token exchange, and refresh requests can request audience-restricted tokens without dropping down to manual extra params.</li>
 <li>Rejects impossible JOSE alg/private-key combinations for JWT client assertions and DPoP proofs before emitting invalid JOSE headers.</li>
+<li>Warns when callers configure <code>dpop_private_key</code> but leave <code>dpop_require_access_token</code> at its implicit default <code>FALSE</code>, since that still allows Bearer access-token responses.</li>
 <li>Also enforces OIDC claim request <code>value</code> and <code>values</code> constraints when <code>claims_validation</code> is enabled, not just presence of <code>essential = TRUE</code> claims.</li>
 <li>Warns when callers request <code>essential</code> or value-constrained OIDC claims but leave <code>claims_validation</code> at its default <code>"none"</code>, since those claim requests are otherwise not checked client-side.</li>
 <li>Carries the same effective requested scopes through the whole login flow. If <code>openid</code> is auto-added to the authorization request, the sealed state payload, token-response scope validation, and introspection scope validation now use that same effective scope set.</li>

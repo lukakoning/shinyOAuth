@@ -324,9 +324,11 @@ endpoint URL.</p></dd>
 (RFC 9449). Can be an <code>openssl::key</code> or a PEM string containing an
 asymmetric private key. When provided, shinyOAuth can attach <code>DPoP</code>
 proofs to token endpoint requests and use DPoP-bound access tokens in
-downstream request helpers. Current outbound DPoP signing supports RSA and
-EC private keys; Ed25519/Ed448 keys are not currently supported for
-client-side signing.</p></dd>
+downstream request helpers. Configuring this key alone does not require
+DPoP-bound access tokens; set <code>dpop_require_access_token = TRUE</code> if token
+responses must reject <code>token_type = "Bearer"</code>. Current outbound DPoP
+signing supports RSA and EC private keys; Ed25519/Ed448 keys are not
+currently supported for client-side signing.</p></dd>
 
 
 <dt id="arg-dpop-private-key-kid">dpop_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key-kid"></a></dt>
@@ -348,8 +350,11 @@ fails early with a configuration error.</p></dd>
 <dd><p>Logical. When <code>TRUE</code> and <code>dpop_private_key</code>
 is configured, shinyOAuth requires the authorization server to return
 <code>token_type = "DPoP"</code> for access tokens and fails fast otherwise. Leave at
-the default <code>FALSE</code> to allow deployments where DPoP is only used to bind
-refresh tokens.</p></dd>
+the default <code>FALSE</code> only when you intentionally want to allow Bearer
+access tokens, such as deployments where DPoP is used only to bind refresh
+tokens. When <code>dpop_private_key</code> is configured and this argument is left at
+its default, <code>oauth_client()</code> warns because configured DPoP does not by
+itself guarantee sender-constrained access tokens.</p></dd>
 
 
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>

@@ -182,9 +182,11 @@ OAuthClient(
   an `openssl::key` or a PEM string containing an asymmetric private
   key. When provided, shinyOAuth can attach `DPoP` proofs to token
   endpoint requests and use DPoP-bound access tokens in downstream
-  request helpers. Current outbound DPoP signing supports RSA and EC
-  private keys; Ed25519/Ed448 keys are not currently supported for
-  client-side signing.
+  request helpers. Configuring this key alone does not require
+  DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if
+  token responses must reject `token_type = "Bearer"`. Current outbound
+  DPoP signing supports RSA and EC private keys; Ed25519/Ed448 keys are
+  not currently supported for client-side signing.
 
 - dpop_private_key_kid:
 
@@ -206,7 +208,13 @@ OAuthClient(
   Logical. When `TRUE` and `dpop_private_key` is configured, shinyOAuth
   requires the authorization server to return `token_type = "DPoP"` for
   access tokens and fails fast otherwise. Leave at the default `FALSE`
-  to allow deployments where DPoP is only used to bind refresh tokens.
+  only when you intentionally want to allow Bearer access tokens, such
+  as deployments where DPoP is used only to bind refresh tokens. When
+  `dpop_private_key` is configured and this argument is left at its
+  default,
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  warns because configured DPoP does not by itself guarantee
+  sender-constrained access tokens.
 
 - redirect_uri:
 

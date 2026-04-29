@@ -120,6 +120,9 @@
     tokens without dropping down to manual extra params.
   - Rejects impossible JOSE alg/private-key combinations for JWT client
     assertions and DPoP proofs before emitting invalid JOSE headers.
+  - Warns when callers configure `dpop_private_key` but leave
+    `dpop_require_access_token` at its implicit default `FALSE`, since
+    that still allows Bearer access-token responses.
   - Also enforces OIDC claim request `value` and `values` constraints
     when `claims_validation` is enabled, not just presence of
     `essential = TRUE` claims.
