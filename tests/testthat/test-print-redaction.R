@@ -47,22 +47,8 @@ test_that("OAuthClient printing redacts secrets and private keys", {
     "state-key-secret-",
     "abcdefghijklmnopqrstuvwxyz0123456789"
   )
-  client_private_key <- paste(
-    c(
-      "-----BEGIN PRIVATE KEY-----",
-      "client-private-secret-ABCDEF1234567890",
-      "-----END PRIVATE KEY-----"
-    ),
-    collapse = "\n"
-  )
-  dpop_private_key <- paste(
-    c(
-      "-----BEGIN ENCRYPTED PRIVATE KEY-----",
-      "dpop-private-secret-ZYXWV9876543210",
-      "-----END ENCRYPTED PRIVATE KEY-----"
-    ),
-    collapse = "\n"
-  )
+  client_private_key <- openssl::write_pem(openssl::rsa_keygen())
+  dpop_private_key <- openssl::write_pem(openssl::rsa_keygen())
 
   prov <- oauth_provider(
     name = "example",
@@ -96,17 +82,29 @@ test_that("OAuthClient printing redacts secrets and private keys", {
     expect_match(output, "clie...0XYZ", fixed = TRUE)
     expect_match(output, "stat...6789", fixed = TRUE)
     expect_match(output, "<redacted PRIVATE KEY>", fixed = TRUE)
-    expect_match(output, "<redacted ENCRYPTED PRIVATE KEY>", fixed = TRUE)
     expect_no_secret_material(
       output,
       c(
         client_secret,
         state_key,
         client_private_key,
-        dpop_private_key,
-        "client-private-secret-ABCDEF1234567890",
-        "dpop-private-secret-ZYXWV9876543210"
+        dpop_private_key
       )
     )
   }
+})
+
+test_that("OAuthClient formatter redacts encrypted PEM strings", {
+  encrypted_private_key <- openssl::write_pem(
+    openssl::rsa_keygen(),
+    password = "test-password"
+  )
+
+  rendered <- shinyOAuth:::.shinyoauth_format_field(
+    encrypted_private_key,
+    secret = TRUE
+  )
+
+  expect_identical(rendered, "<redacted ENCRYPTED PRIVATE KEY>")
+  expect_false(grepl(encrypted_private_key, rendered, fixed = TRUE))
 })

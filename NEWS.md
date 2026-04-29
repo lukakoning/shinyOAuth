@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Fixed PEM-string private key parsing for `oauth_client()` validation so
+`client_private_key` / `dpop_private_key` can be supplied as PEM text again,
+and cleaned up a check note by fully qualifying `utils::capture.output()` /
+`utils::str()` in claim canonicalization.
+
 * Clarified the `allow_redirect` warning/docs and the `error_on_softened()`
 option framing so they match the current explicit opt-in behavior and the
 intentional undocumented `trace_hook` compatibility alias.

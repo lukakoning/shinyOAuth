@@ -1216,7 +1216,7 @@ normalize_private_key_input <- function(key, arg_name = "client_private_key") {
   }
   if (is.character(key) && length(key) >= 1L) {
     pem <- paste(key, collapse = "\n")
-    k <- try(openssl::read_key(text = pem), silent = TRUE)
+    k <- try(openssl::read_key(pem), silent = TRUE)
     if (inherits(k, "try-error")) {
       err_config(paste0("Failed to parse ", arg_name, " PEM"))
     }

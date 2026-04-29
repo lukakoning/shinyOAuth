@@ -2581,7 +2581,10 @@ canonicalize_claim_value <- function(value) {
     return(as.character(encoded))
   }
 
-  paste(capture.output(str(value, give.attr = FALSE)), collapse = " ")
+  paste(
+    utils::capture.output(utils::str(value, give.attr = FALSE)),
+    collapse = " "
+  )
 }
 
 claim_matches_requested_values <- function(actual, requested) {
