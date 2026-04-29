@@ -124,7 +124,10 @@ allow_redirect <- function() {
         c(
           "HTTP redirect following is enabled for sensitive OAuth flows",
           "x" = "`options(shinyOAuth.allow_redirect = TRUE)` is active",
-          "!" = "This disables anti-redirect protections and is intended only for local testing"
+          "!" = paste(
+            "This disables anti-redirect protections;",
+            "only enable it when you deliberately accept that risk"
+          )
         )
       )
     }

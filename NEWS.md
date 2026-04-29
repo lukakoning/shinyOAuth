@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Clarified the `allow_redirect` warning/docs and the `error_on_softened()`
+option framing so they match the current explicit opt-in behavior and the
+intentional undocumented `trace_hook` compatibility alias.
+
 * `error_on_softened()` no longer treats the removed
 `shinyOAuth.print_errors` / `shinyOAuth.print_traceback` options as active
 softeners, and `shinyOAuth.allow_redirect` is again honored as an explicit
