@@ -53,3 +53,37 @@ testthat::test_that("browser cookie path can be set explicitly", {
     }
   )
 })
+
+testthat::test_that("browser cookie path rejects unsafe configured values", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  invalid_paths <- c(
+    "foo",
+    "/app; SameSite=None; Secure",
+    paste0("/app", "\r", "\n", "Secure"),
+    paste0("/app", intToUtf8(1L))
+  )
+
+  for (bad_path in invalid_paths) {
+    testthat::expect_error(
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = cli,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE,
+          browser_cookie_path = bad_path
+        ),
+        expr = {}
+      ),
+      regexp = "browser_cookie_path",
+      fixed = TRUE,
+      info = paste(
+        "Expected invalid browser_cookie_path to be rejected:",
+        bad_path
+      )
+    )
+  }
+})

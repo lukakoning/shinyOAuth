@@ -26,6 +26,25 @@ is_valid_string <- function(x, min_char = 1) {
     nchar(x) >= min_char
 }
 
+#' Internal: validate cookie Path attribute input
+#'
+#' Accepts only RFC 6265-safe path values for explicit cookie Path attributes:
+#' must start with `/` and must not contain semicolons or control characters.
+#'
+#' @keywords internal
+#' @noRd
+is_valid_cookie_path <- function(x) {
+  if (!is_valid_string(x)) {
+    return(FALSE)
+  }
+
+  starts_with_slash <- startsWith(x, "/")
+  has_semicolon <- grepl(";", x, fixed = TRUE)
+  has_ctl <- grepl("[[:cntrl:]]", x)
+
+  isTRUE(starts_with_slash) && !isTRUE(has_semicolon) && !isTRUE(has_ctl)
+}
+
 #' Internal: normalize token endpoint auth style names
 #'
 #' Canonical runtime spelling uses `public` for secretless public-client token

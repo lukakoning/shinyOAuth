@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `oauth_module_server()` now rejects unsafe `browser_cookie_path` values that
+could rewrite cookie attributes. Explicit cookie paths must start with `/`
+and cannot contain semicolons or control characters.
+
 * OIDC discovery now maps `token_endpoint_auth_methods_supported = ["none"]`
 to a distinct public token auth style that never sends `client_secret`, even
 when `oauth_client()` picks one up from `OAUTH_CLIENT_SECRET`.

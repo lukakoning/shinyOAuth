@@ -91,7 +91,9 @@ precedence over \code{tab_title_cleaning}}
 \item{browser_cookie_path}{Optional cookie Path to scope the browser token
 cookie. By default (\code{NULL}), the path is fixed to "/" for reliable
 clearing across route changes. Provide an explicit path (e.g., "/app")
-to narrow the cookie's scope to a sub-route. Note: when the path is "/"
+to narrow the cookie's scope to a sub-route. Explicit values must start
+with \code{/} and must not contain semicolons or control characters. Note:
+when the path is "/"
 and the page is served over HTTPS, the cookie name uses the \verb{__Host-}
 prefix (Secure, Path=/) for additional hardening; when the path is not
 "/", a regular cookie name is used.

@@ -110,7 +110,9 @@
 #' @param browser_cookie_path Optional cookie Path to scope the browser token
 #'   cookie. By default (`NULL`), the path is fixed to "/" for reliable
 #'   clearing across route changes. Provide an explicit path (e.g., "/app")
-#'   to narrow the cookie's scope to a sub-route. Note: when the path is "/"
+#'   to narrow the cookie's scope to a sub-route. Explicit values must start
+#'   with `/` and must not contain semicolons or control characters. Note:
+#'   when the path is "/"
 #'   and the page is served over HTTPS, the cookie name uses the `__Host-`
 #'   prefix (Secure, Path=/) for additional hardening; when the path is not
 #'   "/", a regular cookie name is used.
@@ -331,9 +333,14 @@ oauth_module_server <- function(
   }
   if (
     !(is.null(browser_cookie_path) ||
-      is_valid_string(browser_cookie_path))
+      is_valid_cookie_path(browser_cookie_path))
   ) {
-    err_input("{.arg browser_cookie_path} must be NULL or a non-empty string.")
+    err_input(
+      paste(
+        "{.arg browser_cookie_path} must be NULL or a cookie path that starts",
+        "with '/' and contains no semicolons or control characters."
+      )
+    )
   }
   if (
     !(is.logical(revoke_on_session_end) &&
