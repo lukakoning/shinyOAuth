@@ -384,7 +384,7 @@ lifetimes on the provider side for defense in depth.
 ## Global options
 
 The package provides several global options to customize behavior. Below
-is a list of all available options.
+is a list of the documented public options.
 
 ### Observability/logging
 

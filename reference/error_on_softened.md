@@ -35,7 +35,8 @@ It checks for the following options:
 ## Examples
 
 ``` r
-# Throw an error if any developer-only softening options are enabled
+# Throw an error if any softening options that relax default safety
+# protections are enabled
 # Below call does not error if run with default options:
 error_on_softened()
 

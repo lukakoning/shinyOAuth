@@ -74,7 +74,8 @@ expect the default hardening.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Throw an error if any developer-only softening options are enabled</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Throw an error if any softening options that relax default safety</span></span></span>
+<span class="r-in"><span><span class="co"># protections are enabled</span></span></span>
 <span class="r-in"><span><span class="co"># Below call does not error if run with default options:</span></span></span>
 <span class="r-in"><span><span class="fu">error_on_softened</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
