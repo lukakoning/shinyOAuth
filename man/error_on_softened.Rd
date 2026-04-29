@@ -2,7 +2,7 @@
 % Please edit documentation in R/softeners.R
 \name{error_on_softened}
 \alias{error_on_softened}
-\title{Throw an error if any safety checks have been disabled}
+\title{Throw an error if specific dev/debug softeners are enabled}
 \usage{
 error_on_softened()
 }
@@ -10,13 +10,14 @@ error_on_softened()
 Invisible TRUE if no safety checks are disabled; otherwise, an error is thrown.
 }
 \description{
-This function checks if any safety checks have been disabled via options
-that relax shinyOAuth's default safety protections. If any such options are
-detected, an error is thrown so callers can fail fast in deployments that
-expect the default hardening.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+This helper is deprecated because it only checks a narrow subset of
+shinyOAuth's security-relaxing opt-ins. Use explicit startup checks for the
+exact options your deployment permits or forbids instead.
 }
 \details{
-It checks for the following options:
+It only checks the following options:
 \itemize{
 \item \code{shinyOAuth.skip_browser_token}: Skips browser cookie presence check
 \item \code{shinyOAuth.skip_id_sig}: Skips ID token signature verification
@@ -26,6 +27,9 @@ It checks for the following options:
 }
 }
 \examples{
+# Note: error_on_softened() is deprecated because it only checks a narrow subset
+# of shinyOAuth's security-relaxing options
+
 # Throw an error if any softening options that relax default safety
 # protections are enabled
 # Below call does not error if run with default options:
@@ -37,3 +41,4 @@ options(shinyOAuth.skip_id_sig = TRUE)
 error_on_softened()
 }
 }
+\keyword{internal}

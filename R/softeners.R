@@ -3,15 +3,16 @@
 #   testing or interactive sessions; a few explicit opt-ins (for example,
 #   allow_redirect) are honored in all sessions.
 
-#' Throw an error if any safety checks have been disabled
+#' Throw an error if specific dev/debug softeners are enabled
 #'
 #' @description
-#' This function checks if any safety checks have been disabled via options
-#' that relax shinyOAuth's default safety protections. If any such options are
-#' detected, an error is thrown so callers can fail fast in deployments that
-#' expect the default hardening.
+#' `r lifecycle::badge("deprecated")`
 #'
-#' @details It checks for the following options:
+#' This helper is deprecated because it only checks a narrow subset of
+#' shinyOAuth's security-relaxing opt-ins. Use explicit startup checks for the
+#' exact options your deployment permits or forbids instead.
+#'
+#' @details It only checks the following options:
 #' \itemize{
 #'  \item `shinyOAuth.skip_browser_token`: Skips browser cookie presence check
 #'  \item `shinyOAuth.skip_id_sig`: Skips ID token signature verification
@@ -23,8 +24,25 @@
 #' @return Invisible TRUE if no safety checks are disabled; otherwise, an error is thrown.
 #'
 #' @example inst/examples/error_on_softened.R
+#' @keywords internal
 #' @export
 error_on_softened <- function() {
+  lifecycle::deprecate_warn(
+    when = "0.4.0.9000",
+    what = "error_on_softened()",
+    details = c(
+      x = paste(
+        "This helper only checks a small subset of shinyOAuth's",
+        "security-relaxing options."
+      ),
+      i = paste(
+        "Use explicit startup checks for options like",
+        "`shinyOAuth.allow_non_atomic_state_store` and",
+        "`shinyOAuth.unblock_auth_params` when they matter to your deployment."
+      )
+    )
+  )
+
   if (
     any(
       allow_skip_browser_token(),

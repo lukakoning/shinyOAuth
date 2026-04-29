@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Deprecated `error_on_softened()`. It remains a narrow guard for a few
+dev/debug softeners, but the docs now stop presenting it as a comprehensive
+deployment-hardening check and show explicit option checks instead.
+
 * Updated `refresh_token()` documentation to match runtime behavior: missing
 `expires_in` now documents the configured fallback expiry, and refresh-time
 introspection may backfill `token@cnf`.

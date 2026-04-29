@@ -1,4 +1,6 @@
 test_that("error_on_softened ignores removed print options", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
   old <- options(
     shinyOAuth.skip_browser_token = FALSE,
     shinyOAuth.skip_id_sig = FALSE,
@@ -14,6 +16,8 @@ test_that("error_on_softened ignores removed print options", {
 })
 
 test_that("error_on_softened only errors when explicitly opted-in", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
   # Ensure defaults (no opt-in)
   old <- options(
     shinyOAuth.skip_browser_token = FALSE,
@@ -37,6 +41,8 @@ test_that("error_on_softened only errors when explicitly opted-in", {
 })
 
 test_that("error_on_softened catches allow_unsigned_userinfo_jwt", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
   old <- options(
     shinyOAuth.skip_browser_token = FALSE,
     shinyOAuth.skip_id_sig = FALSE,
@@ -49,6 +55,32 @@ test_that("error_on_softened catches allow_unsigned_userinfo_jwt", {
     shinyOAuth::error_on_softened(),
     "One or more safety settings have been disabled",
     fixed = TRUE
+  )
+})
+
+test_that("error_on_softened does not cover broader hardening opt-ins", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
+  old <- options(
+    shinyOAuth.skip_browser_token = FALSE,
+    shinyOAuth.skip_id_sig = FALSE,
+    shinyOAuth.expose_error_body = FALSE,
+    shinyOAuth.allow_unsigned_userinfo_jwt = FALSE,
+    shinyOAuth.allow_redirect = FALSE,
+    shinyOAuth.allow_non_atomic_state_store = TRUE,
+    shinyOAuth.unblock_auth_params = "state"
+  )
+  on.exit(options(old), add = TRUE)
+
+  expect_invisible(shinyOAuth::error_on_softened())
+})
+
+test_that("error_on_softened is deprecated", {
+  withr::local_options(lifecycle_verbosity = "warning")
+
+  expect_warning(
+    shinyOAuth::error_on_softened(),
+    class = "lifecycle_warning_deprecated"
   )
 })
 
@@ -95,6 +127,8 @@ test_that("allow_unsigned_userinfo_jwt returns TRUE in test mode when option set
 # ── allow_redirect softener tests ──────────────────────────────────────────
 
 test_that("error_on_softened catches allow_redirect", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+
   old <- options(
     shinyOAuth.skip_browser_token = FALSE,
     shinyOAuth.skip_id_sig = FALSE,

@@ -478,7 +478,6 @@ cap than token expiry alone. A warning is emitted in either case
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token exchange
 
 Don't enable these in production. They disable key security checks or alter error behavior, and are intended for local testing/debugging only.
-Use `error_on_softened()` at startup to fail fast if softening flags are enabled in an environment where they should not be.
 
 ### Size caps
 
