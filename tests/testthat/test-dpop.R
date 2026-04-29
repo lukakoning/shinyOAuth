@@ -492,6 +492,91 @@ test_that("req_with_dpop_retry retries a nonce challenge only once", {
   expect_identical(body$proof_nonce, "nonce-1")
 })
 
+test_that("req_with_dpop_retry preserves the caller idempotency setting", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    introspection_url = NA_character_,
+    revocation_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    token_auth_style = "body"
+  )
+  cli <- make_dpop_test_client(prov)
+  req <- httr2::request(prov@userinfo_url) |>
+    httr2::req_method("GET")
+
+  run_case <- function(idempotent) {
+    state <- new.env(parent = emptyenv())
+    state$count <- 0L
+    state$idempotent <- logical()
+    state$nonces <- character()
+
+    testthat::local_mocked_bindings(
+      req_add_dpop_proof = function(
+        req,
+        client,
+        access_token = NULL,
+        nonce = NULL
+      ) {
+        state$nonces <- c(
+          state$nonces,
+          if (is.null(nonce)) "" else as.character(nonce)
+        )
+        req
+      },
+      req_with_retry = function(req, idempotent = TRUE) {
+        state$count <- state$count + 1L
+        state$idempotent <- c(state$idempotent, idempotent)
+
+        if (state$count == 1L) {
+          return(httr2::response(
+            url = as.character(req$url),
+            status = 401,
+            headers = list(
+              "content-type" = "application/json",
+              "www-authenticate" = 'DPoP error="use_dpop_nonce"',
+              "dpop-nonce" = "nonce-1"
+            ),
+            body = charToRaw('{"error":"use_dpop_nonce"}')
+          ))
+        }
+
+        httr2::response(
+          url = as.character(req$url),
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        )
+      },
+      .package = "shinyOAuth"
+    )
+
+    shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = idempotent)
+
+    list(
+      idempotent = state$idempotent,
+      nonces = state$nonces
+    )
+  }
+
+  idempotent_case <- run_case(TRUE)
+  expect_identical(idempotent_case$idempotent, c(TRUE, TRUE))
+  expect_identical(idempotent_case$nonces, c("", "nonce-1"))
+
+  non_idempotent_case <- run_case(FALSE)
+  expect_identical(non_idempotent_case$idempotent, c(FALSE, FALSE))
+  expect_identical(non_idempotent_case$nonces, c("", "nonce-1"))
+})
+
 test_that("handle_callback enforces strict DPoP token_type after exchange", {
   testthat::skip_if_not_installed("webfakes")
 
@@ -839,4 +924,53 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
   expect_identical(userinfo$request_count, 2L)
   expect_false(isTRUE(userinfo$first_has_nonce))
   expect_identical(userinfo$second_nonce, "resource-nonce-1")
+})
+
+test_that("get_userinfo keeps DPoP resource requests idempotent", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    introspection_url = NA_character_,
+    revocation_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    token_auth_style = "body"
+  )
+  cli <- make_dpop_test_client(prov)
+  seen <- new.env(parent = emptyenv())
+  seen$idempotent <- NA
+  seen$access_token <- NA_character_
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(
+      req,
+      client,
+      access_token = NULL,
+      idempotent = TRUE
+    ) {
+      seen$idempotent <- idempotent
+      seen$access_token <- access_token %||% NA_character_
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"sub":"user-1"}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  userinfo <- get_userinfo(cli, token = "at-1", token_type = "DPoP")
+
+  expect_true(isTRUE(seen$idempotent))
+  expect_identical(seen$access_token, "at-1")
+  expect_identical(userinfo$sub, "user-1")
 })

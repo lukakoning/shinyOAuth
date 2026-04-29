@@ -76,7 +76,7 @@ get_userinfo <- function(
                 req,
                 oauth_client,
                 access_token = access_token,
-                idempotent = FALSE
+                idempotent = TRUE
               )
             } else {
               resp <- req_with_retry(req, idempotent = TRUE)

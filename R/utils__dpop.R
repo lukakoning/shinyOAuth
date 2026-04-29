@@ -268,7 +268,7 @@ req_with_dpop_retry <- function(
 
   resp <- req_with_retry(
     req_add_dpop_proof(req, client, access_token = access_token),
-    idempotent = FALSE
+    idempotent = idempotent
   )
 
   if (!resp_is_dpop_nonce_challenge(resp)) {
@@ -287,6 +287,6 @@ req_with_dpop_retry <- function(
       access_token = access_token,
       nonce = nonce
     ),
-    idempotent = FALSE
+    idempotent = idempotent
   )
 }
