@@ -2,6 +2,15 @@
 
 ## shinyOAuth (development version)
 
+- Fixed PEM-string private key parsing for
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  validation so `client_private_key` / `dpop_private_key` can be
+  supplied as PEM text again, and cleaned up a check note by fully
+  qualifying
+  [`utils::capture.output()`](https://rdrr.io/r/utils/capture.output.html)
+  / [`utils::str()`](https://rdrr.io/r/utils/str.html) in claim
+  canonicalization.
+
 - Clarified the `allow_redirect` warning/docs and the
   [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
   option framing so they match the current explicit opt-in behavior and
