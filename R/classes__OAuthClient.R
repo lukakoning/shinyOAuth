@@ -97,9 +97,11 @@
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
 #'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
 #'   proofs to token endpoint requests and use DPoP-bound access tokens in
-#'   downstream request helpers. Current outbound DPoP signing supports RSA and
-#'   EC private keys; Ed25519/Ed448 keys are not currently supported for
-#'   client-side signing.
+#'   downstream request helpers. Configuring this key alone does not require
+#'   DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if token
+#'   responses must reject `token_type = "Bearer"`. Current outbound DPoP
+#'   signing supports RSA and EC private keys; Ed25519/Ed448 keys are not
+#'   currently supported for client-side signing.
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
 #'   the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -115,8 +117,11 @@
 #' @param dpop_require_access_token Logical. When `TRUE` and `dpop_private_key`
 #'   is configured, shinyOAuth requires the authorization server to return
 #'   `token_type = "DPoP"` for access tokens and fails fast otherwise. Leave at
-#'   the default `FALSE` to allow deployments where DPoP is only used to bind
-#'   refresh tokens.
+#'   the default `FALSE` only when you intentionally want to allow Bearer
+#'   access tokens, such as deployments where DPoP is used only to bind refresh
+#'   tokens. When `dpop_private_key` is configured and this argument is left at
+#'   its default, [oauth_client()] warns because configured DPoP does not by
+#'   itself guarantee sender-constrained access tokens.
 #'
 #' @param redirect_uri Redirect URI registered with provider
 #' @param enforce_callback_issuer Logical or `NULL`. When `TRUE`, enforce that
@@ -1454,6 +1459,39 @@ warn_about_unenforced_claim_requests <- function(
   invisible(TRUE)
 }
 
+warn_about_optional_dpop_access_tokens <- function(
+  client,
+  dpop_require_access_token_missing = FALSE
+) {
+  if (!isTRUE(dpop_require_access_token_missing)) {
+    return(invisible(FALSE))
+  }
+
+  if (
+    is.null(client@dpop_private_key) || isTRUE(client@dpop_require_access_token)
+  ) {
+    return(invisible(FALSE))
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Configured DPoP does not require DPoP access tokens}",
+      "!" = paste(
+        "This client has {.arg dpop_private_key} configured, but {.arg dpop_require_access_token} was left at its default {.val FALSE},",
+        "so shinyOAuth will still accept {.code token_type = \"Bearer\"} responses."
+      ),
+      "i" = paste(
+        "Set {.arg dpop_require_access_token} = {.val TRUE} to reject non-DPoP access tokens.",
+        "Set it explicitly to {.val FALSE} if you intentionally want refresh-token-only or opportunistic DPoP behavior."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_dpop_require_access_token_default_false"
+  )
+
+  invisible(TRUE)
+}
+
 #' Create generic [OAuthClient]
 #'
 #' @inheritParams OAuthClient
@@ -1497,6 +1535,7 @@ oauth_client <- function(
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
+  dpop_require_access_token_missing <- missing(dpop_require_access_token)
   claims_validation_missing <- missing(claims_validation)
 
   warn_about_oauth_client_created_in_shiny(
@@ -1568,7 +1607,7 @@ oauth_client <- function(
   scopes <- as_scope_tokens(scopes %||% NULL)
   resource <- resource %||% character(0)
 
-  OAuthClient(
+  client <- OAuthClient(
     provider = provider,
     client_id = client_id,
     client_secret = client_secret,
@@ -1604,4 +1643,11 @@ oauth_client <- function(
     introspect = introspect,
     introspect_elements = introspect_elements
   )
+
+  warn_about_optional_dpop_access_tokens(
+    client = client,
+    dpop_require_access_token_missing = dpop_require_access_token_missing
+  )
+
+  client
 }

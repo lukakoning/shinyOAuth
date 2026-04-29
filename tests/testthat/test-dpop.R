@@ -23,6 +23,12 @@ make_dpop_test_client <- function(
   )
 }
 
+reset_dpop_access_token_warning <- function() {
+  rlang::reset_warning_verbosity(
+    "shinyOAuth_dpop_require_access_token_default_false"
+  )
+}
+
 decode_dpop_header <- function(proof) {
   parts <- strsplit(proof, ".", fixed = TRUE)[[1]]
   jsonlite::fromJSON(shinyOAuth:::base64url_decode(parts[[1]]))
@@ -109,6 +115,52 @@ test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
     ),
     regexp = "dpop_private_key",
     class = "shinyOAuth_input_error"
+  )
+})
+
+test_that("oauth_client warns when DPoP is configured but Bearer fallback stays implicit", {
+  reset_dpop_access_token_warning()
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_warning(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = character(0),
+      state_store = cachem::cache_mem(max_age = 600),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      dpop_private_key = openssl::rsa_keygen()
+    ),
+    regexp = "dpop_require_access_token|Bearer"
+  )
+})
+
+test_that("oauth_client does not warn when Bearer fallback is explicit for DPoP", {
+  reset_dpop_access_token_warning()
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_no_warning(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = character(0),
+      state_store = cachem::cache_mem(max_age = 600),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      dpop_private_key = openssl::rsa_keygen(),
+      dpop_require_access_token = FALSE
+    )
   )
 })
 

@@ -138,9 +138,11 @@ endpoint URL.}
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
 asymmetric private key. When provided, shinyOAuth can attach \code{DPoP}
 proofs to token endpoint requests and use DPoP-bound access tokens in
-downstream request helpers. Current outbound DPoP signing supports RSA and
-EC private keys; Ed25519/Ed448 keys are not currently supported for
-client-side signing.}
+downstream request helpers. Configuring this key alone does not require
+DPoP-bound access tokens; set \code{dpop_require_access_token = TRUE} if token
+responses must reject \code{token_type = "Bearer"}. Current outbound DPoP
+signing supports RSA and EC private keys; Ed25519/Ed448 keys are not
+currently supported for client-side signing.}
 
 \item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
 the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -156,8 +158,11 @@ fails early with a configuration error.}
 \item{dpop_require_access_token}{Logical. When \code{TRUE} and \code{dpop_private_key}
 is configured, shinyOAuth requires the authorization server to return
 \code{token_type = "DPoP"} for access tokens and fails fast otherwise. Leave at
-the default \code{FALSE} to allow deployments where DPoP is only used to bind
-refresh tokens.}
+the default \code{FALSE} only when you intentionally want to allow Bearer
+access tokens, such as deployments where DPoP is used only to bind refresh
+tokens. When \code{dpop_private_key} is configured and this argument is left at
+its default, \code{\link[=oauth_client]{oauth_client()}} warns because configured DPoP does not by
+itself guarantee sender-constrained access tokens.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 
