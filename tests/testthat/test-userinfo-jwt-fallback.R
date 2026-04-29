@@ -115,8 +115,8 @@ test_that("unsupported alg (HS256) is rejected even when require_signed = FALSE"
 })
 
 test_that("unsupported alg (PS384 not in allowed_algs) is rejected", {
-  # PS384 IS an asymmetric alg but NOT in this provider's allowed_algs
-  # (RS256, ES256). Always rejected.
+  # PS384 is not supported by the current verifier and is not in this
+  # provider's allowed_algs (RS256, ES256). Always rejected.
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"

@@ -201,9 +201,6 @@ validate_id_token <- function(
         "RS256",
         "RS384",
         "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
         "ES256",
         "ES384",
         "ES512",
@@ -296,9 +293,6 @@ validate_id_token <- function(
           "RS256",
           "RS384",
           "RS512",
-          "PS256",
-          "PS384",
-          "PS512",
           "ES256",
           "ES384",
           "ES512",
@@ -650,7 +644,7 @@ validate_id_token <- function(
 #' using the hash algorithm from the JWT alg header, then base64url-encodes it.
 #'
 #' @param access_token The access token string.
-#' @param alg The JWT algorithm (e.g., "RS256", "ES384", "PS512").
+#' @param alg The JWT algorithm (e.g., "RS256", "ES384", "RS512").
 #' @return A base64url-encoded string representing the at_hash.
 #' @keywords internal
 #' @noRd
@@ -888,15 +882,9 @@ resolve_authorization_request_signing_alg <- function(client) {
   allowed_hmac <- c("HS256", "HS384", "HS512")
   allowed_asym <- c(
     "RS256",
-    "RS384",
-    "RS512",
-    "PS256",
-    "PS384",
-    "PS512",
     "ES256",
     "ES384",
-    "ES512",
-    "EdDSA"
+    "ES512"
   )
 
   if (!nzchar(alg)) {
@@ -1012,7 +1000,7 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
   alg <- canonicalize_jws_alg(alg)
 
   if (inherits(key, "rsa")) {
-    return(alg %in% c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512"))
+    return(identical(alg, "RS256"))
   }
 
   if (inherits(key, "ecdsa")) {
@@ -1188,6 +1176,18 @@ build_authorization_request_object <- function(client, params) {
   }
 
   key <- normalize_private_key_input(client@client_private_key)
+  if (!private_key_can_sign_jws_alg(key, alg, typ = "oauth-authz-req+jwt")) {
+    err_config(
+      c(
+        "x" = paste0(
+          "authorization_request_signing_alg '",
+          alg,
+          "' is incompatible with the provided private key"
+        )
+      ),
+      context = list(alg = alg)
+    )
+  }
   jwt <- try(
     jose::jwt_encode_sig(clm, key = key, header = header),
     silent = TRUE
@@ -1249,7 +1249,7 @@ choose_default_alg_for_private_key <- function(key) {
 
   # Unknown key classes still go through the same compatibility guard so we do
   # not infer defaults from jose::jwt_encode_sig() accepting impossible pairs.
-  for (alg in c("RS256", "PS256", "ES256", "ES384", "ES512")) {
+  for (alg in c("RS256", "ES256", "ES384", "ES512")) {
     if (private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
       return(canonicalize_jws_alg(alg))
     }

@@ -230,13 +230,13 @@
 #'
 #' @param allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
-#'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `PS256`, `PS384`,
-#'   `PS512`, `ES256`, `ES384`, `ES512`, and `EdDSA` (Ed25519/Ed448 via OKP).
+#'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
+#'   `ES384`, `ES512`, and `EdDSA` (Ed25519/Ed448 via OKP).
 #'   Symmetric HMAC algorithms `HS256`, `HS384`, `HS512` are also supported but
 #'   require that you supply a `client_secret` and explicitly enable HMAC
 #'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
-#'   Defaults to `c("RS256","RS384","RS512","PS256","PS384","PS512",
-#'   "ES256","ES384","ES512","EdDSA")`, which intentionally excludes HS*.
+#'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")`,
+#'   which intentionally excludes HS*.
 #'   Only include `HS*` if you are certain the `client_secret` is stored strictly
 #'   server-side and is never shipped to, or derivable by, the browser or other
 #'   untrusted environments. Prefer rotating secrets regularly when enabling this.
@@ -369,9 +369,6 @@ OAuthProvider <- S7::new_class(
         "RS256",
         "RS384",
         "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
         "ES256",
         "ES384",
         "ES512",
@@ -778,10 +775,6 @@ OAuthProvider <- S7::new_class(
         "RS256",
         "RS384",
         "RS512",
-        # RSA-PSS
-        "PS256",
-        "PS384",
-        "PS512",
         # ECDSA
         "ES256",
         "ES384",
@@ -1101,9 +1094,6 @@ oauth_provider <- function(
     "RS256",
     "RS384",
     "RS512",
-    "PS256",
-    "PS384",
-    "PS512",
     "ES256",
     "ES384",
     "ES512",
@@ -1209,9 +1199,6 @@ oauth_provider <- function(
       "RS256",
       "RS384",
       "RS512",
-      "PS256",
-      "PS384",
-      "PS512",
       "ES256",
       "ES384",
       "ES512",

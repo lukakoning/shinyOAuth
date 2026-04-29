@@ -192,12 +192,12 @@ test_that("at_hash: valid at_hash with ES384 alg (SHA-384)", {
   })
 })
 
-test_that("at_hash: valid at_hash with PS512 alg (SHA-512)", {
+test_that("at_hash: valid at_hash with RS512 alg (SHA-512)", {
   client <- mk_client()
-  client@provider@allowed_algs <- c("PS512")
+  client@provider@allowed_algs <- c("RS512")
   now <- floor(as.numeric(Sys.time()))
-  access_token <- "ps512-access-token"
-  at_hash <- compute_expected_at_hash(access_token, "PS512")
+  access_token <- "rs512-access-token"
+  at_hash <- compute_expected_at_hash(access_token, "RS512")
 
   claims <- list(
     iss = client@provider@issuer,
@@ -207,7 +207,7 @@ test_that("at_hash: valid at_hash with PS512 alg (SHA-512)", {
     iat = now - 1,
     at_hash = at_hash
   )
-  jwt <- build_jwt(list(alg = "PS512"), claims)
+  jwt <- build_jwt(list(alg = "RS512"), claims)
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     expect_silent(

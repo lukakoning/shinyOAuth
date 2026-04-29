@@ -48,7 +48,7 @@
 #'   `token_endpoint_auth_signing_alg_values_supported`, both explicit values and
 #'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
-#'   supported for outbound signing (for example `RS256`, `PS256`, `ES256`, `ES384`, `ES512`) for
+#'   supported for outbound signing (`RS256`, `ES256`, `ES384`, `ES512`) for
 #'   private keys. EdDSA remains supported for inbound ID token verification, not outbound client
 #'   assertions.
 #'
@@ -619,15 +619,7 @@ OAuthClient <- S7::new_class(
         client_assertion_alg <- canonicalize_jws_alg(alg_chr)
         allowed_hmac <- c("HS256", "HS384", "HS512")
         allowed_asym <- c(
-          # RSA-PKCS1 v1.5
           "RS256",
-          "RS384",
-          "RS512",
-          # RSA-PSS
-          "PS256",
-          "PS384",
-          "PS512",
-          # ECDSA over P-256/384/521
           "ES256",
           "ES384",
           "ES512"
@@ -820,11 +812,6 @@ OAuthClient <- S7::new_class(
       allowed_hmac <- c("HS256", "HS384", "HS512")
       allowed_asym <- c(
         "RS256",
-        "RS384",
-        "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
         "ES256",
         "ES384",
         "ES512"
@@ -1004,11 +991,6 @@ OAuthClient <- S7::new_class(
       dpop_alg <- canonicalize_jws_alg(dpop_alg_raw)
       allowed_dpop_algs <- c(
         "RS256",
-        "RS384",
-        "RS512",
-        "PS256",
-        "PS384",
-        "PS512",
         "ES256",
         "ES384",
         "ES512"

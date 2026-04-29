@@ -11,7 +11,7 @@
 #'
 #' @details
 #' - ID token algorithms: by default this helper accepts common asymmetric
-#'   algorithms RSA (RS*), RSA-PSS (PS*), ECDSA (ES*), and EdDSA. When the
+#'   algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
 #'   provider advertises its supported ID token signing algorithms via
 #'   `id_token_signing_alg_values_supported`, the helper uses the intersection
 #'   with the caller-provided `allowed_algs`. If there is no overlap, discovery
@@ -94,8 +94,8 @@
 #'   `"body"` (client_secret_post). JWT-based methods are not auto-selected
 #'   unless explicitly requested
 #' @param allowed_algs Character vector of allowed ID token signing algorithms.
-#'  Defaults to a broad set of common algorithms, including RSA (RS*), RSA-PSS
-#'  (PS*), ECDSA (ES*), and EdDSA. If the discovery document advertises
+#'  Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
+#'  (ES*), and EdDSA. If the discovery document advertises
 #'  supported algorithms, the intersection of advertised and caller-provided
 #'  algorithms is used to avoid runtime mismatches. If there's no overlap,
 #'  discovery fails with a configuration error (no fallback)
@@ -137,9 +137,6 @@ oauth_provider_oidc_discover <- function(
     "RS256",
     "RS384",
     "RS512",
-    "PS256",
-    "PS384",
-    "PS512",
     "ES256",
     "ES384",
     "ES512",

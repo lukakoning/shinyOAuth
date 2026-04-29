@@ -196,7 +196,7 @@ error. When the provider advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, both explicit values and
 inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
-supported for outbound signing (for example \code{RS256}, \code{PS256}, \code{ES256}, \code{ES384}, \code{ES512}) for
+supported for outbound signing (\code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}) for
 private keys. EdDSA remains supported for inbound ID token verification, not outbound client
 assertions.}
 
