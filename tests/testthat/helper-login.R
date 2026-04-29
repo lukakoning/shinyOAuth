@@ -115,6 +115,7 @@ make_test_client <- function(
   resource = character(0),
   claims = NULL,
   claims_validation = "none",
+  userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
@@ -138,6 +139,7 @@ make_test_client <- function(
     resource = resource,
     claims = claims,
     claims_validation = claims_validation,
+    userinfo_jwt_required_temporal_claims = userinfo_jwt_required_temporal_claims,
     required_acr_values = required_acr_values,
     state_store = cachem::cache_mem(max_age = state_max_age),
     state_payload_max_age = state_payload_max_age,

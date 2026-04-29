@@ -262,6 +262,16 @@
 #'     missing or requested claim `value` / `values` constraints are not
 #'     satisfied by the response.
 #'
+#' @param userinfo_jwt_required_temporal_claims Optional character vector of
+#'   temporal JWT claims that must be present when the UserInfo response is a
+#'   signed JWT (`application/jwt`). Allowed values are `"exp"`, `"iat"`, and
+#'   `"nbf"`.
+#'
+#'   Default is `character(0)`, which means these claims are validated only when
+#'   present. Set, for example, `userinfo_jwt_required_temporal_claims = "exp"`
+#'   to require an expiry on signed UserInfo JWTs, or pass multiple values to
+#'   require additional temporal claims.
+#'
 #' @param required_acr_values Optional character vector of acceptable
 #'   Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
 #'   When non-empty, the ID token returned by the provider must contain an
@@ -412,6 +422,10 @@ OAuthClient <- S7::new_class(
     claims_validation = S7::new_property(
       S7::class_character,
       default = "none"
+    ),
+    userinfo_jwt_required_temporal_claims = S7::new_property(
+      S7::class_character,
+      default = character(0)
     ),
 
     # OIDC acr enforcement (OIDC Core §2, §3.1.2.1): when non-empty, the ID
@@ -1302,6 +1316,41 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    # Validate userinfo_jwt_required_temporal_claims
+    ujrtc <- self@userinfo_jwt_required_temporal_claims
+    if (!is.character(ujrtc)) {
+      return(
+        paste(
+          "OAuthClient: userinfo_jwt_required_temporal_claims must be a character vector"
+        )
+      )
+    }
+    if (anyNA(ujrtc)) {
+      return(
+        paste(
+          "OAuthClient: userinfo_jwt_required_temporal_claims must not contain NA"
+        )
+      )
+    }
+    if (length(ujrtc) > 0 && !all(nzchar(ujrtc))) {
+      return(
+        paste(
+          "OAuthClient: userinfo_jwt_required_temporal_claims must not contain empty strings"
+        )
+      )
+    }
+    invalid_userinfo_temporal_claims <- setdiff(
+      unique(tolower(ujrtc)),
+      c("exp", "iat", "nbf")
+    )
+    if (length(invalid_userinfo_temporal_claims) > 0) {
+      return(paste0(
+        "OAuthClient: invalid userinfo_jwt_required_temporal_claims value(s): ",
+        paste(invalid_userinfo_temporal_claims, collapse = ", "),
+        "; allowed values are: exp, iat, nbf"
+      ))
+    }
+
     # Validate required_acr_values
     racr <- self@required_acr_values
     if (!is.character(racr)) {
@@ -1531,6 +1580,7 @@ oauth_client <- function(
   dpop_require_access_token = FALSE,
   scope_validation = c("strict", "warn", "none"),
   claims_validation = c("none", "warn", "strict"),
+  userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
@@ -1606,6 +1656,9 @@ oauth_client <- function(
   }
   scopes <- as_scope_tokens(scopes %||% NULL)
   resource <- resource %||% character(0)
+  userinfo_jwt_required_temporal_claims <- unique(tolower(
+    userinfo_jwt_required_temporal_claims %||% character(0)
+  ))
 
   client <- OAuthClient(
     provider = provider,
@@ -1639,6 +1692,7 @@ oauth_client <- function(
     dpop_require_access_token = isTRUE(dpop_require_access_token),
     scope_validation = scope_validation,
     claims_validation = claims_validation,
+    userinfo_jwt_required_temporal_claims = userinfo_jwt_required_temporal_claims,
     required_acr_values = required_acr_values,
     introspect = introspect,
     introspect_elements = introspect_elements

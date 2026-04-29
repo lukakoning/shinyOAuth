@@ -582,12 +582,47 @@ decode_userinfo_jwt <- function(
   }
 
   if (length(keys) > 0L) {
+    temporal_decode_error <- NULL
+
     for (jk in keys) {
       pub <- try(jwk_to_pubkey(jk), silent = TRUE)
       if (inherits(pub, "try-error")) {
         next
       }
       decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
+      if (inherits(decoded, "try-error")) {
+        decode_msg <- tryCatch(
+          conditionMessage(attr(decoded, "condition")),
+          error = function(e) as.character(decoded)
+        )
+
+        if (
+          is_valid_string(decode_msg) &&
+            grepl("^Token has expired\\b", decode_msg)
+        ) {
+          temporal_decode_error <- list(
+            status = "userinfo_jwt_expired",
+            bullets = c(
+              "x" = "Signed UserInfo JWT expired",
+              "i" = decode_msg
+            )
+          )
+        } else if (
+          is_valid_string(decode_msg) &&
+            grepl("^Token is not valid before\\b", decode_msg)
+        ) {
+          temporal_decode_error <- list(
+            status = "userinfo_jwt_nbf_future",
+            bullets = c(
+              "x" = "Signed UserInfo JWT not yet valid (nbf)",
+              "i" = decode_msg
+            )
+          )
+        }
+
+        next
+      }
+
       if (!inherits(decoded, "try-error")) {
         claims <- as.list(decoded)
         # §5.3.2 MUST: signed userinfo MUST contain iss matching the
@@ -603,6 +638,16 @@ decode_userinfo_jwt <- function(
         return(claims)
       }
     }
+
+    if (!is.null(temporal_decode_error)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = temporal_decode_error$status,
+        shiny_session = shiny_session
+      )
+      err_userinfo(temporal_decode_error$bullets)
+    }
+
     # Candidate keys existed but none verified the signature —
     # this indicates tampering or serious misconfiguration.
     audit_userinfo_event(
@@ -627,7 +672,7 @@ decode_userinfo_jwt <- function(
   ))
 }
 
-#' Internal: validate iss/aud claims in a signed UserInfo JWT (§5.3.2)
+#' Internal: validate required and temporal claims in a signed UserInfo JWT
 #'
 #' @param claims Named list of JWT claims.
 #' @param expected_issuer The OP's Issuer Identifier URL.
@@ -641,6 +686,31 @@ validate_signed_userinfo_claims <- function(
   oauth_client = NULL,
   shiny_session = NULL
 ) {
+  fail_signed_userinfo_claim_validation <- function(status, bullets) {
+    if (!is.null(oauth_client)) {
+      audit_userinfo_event(
+        oauth_client,
+        status = status,
+        shiny_session = shiny_session
+      )
+    }
+    err_userinfo(bullets)
+  }
+
+  is_single_finite_number <- function(x) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && !is.na(x)
+  }
+
+  now <- floor(as.numeric(Sys.time()))
+  lwe <- if (!is.null(oauth_client)) {
+    as.numeric(oauth_client@provider@leeway %||% 0)
+  } else {
+    0
+  }
+  if (!is.finite(lwe) || is.na(lwe) || length(lwe) != 1L) {
+    lwe <- 0
+  }
+
   # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
   sub <- claims$sub
   if (!is_valid_string(sub)) {
@@ -716,6 +786,122 @@ validate_signed_userinfo_claims <- function(
       "i" = paste0("Expected client_id: ", expected_client_id),
       "i" = paste0("Got aud: ", paste(aud, collapse = ", "))
     ))
+  }
+
+  required_temporal_claims <- if (!is.null(oauth_client)) {
+    unique(tolower(
+      oauth_client@userinfo_jwt_required_temporal_claims %||% character(0)
+    ))
+  } else {
+    character(0)
+  }
+  missing_temporal_claims <- setdiff(
+    required_temporal_claims,
+    names(claims) %||% character(0)
+  )
+  if (length(missing_temporal_claims) > 0) {
+    fail_signed_userinfo_claim_validation(
+      status = "userinfo_jwt_missing_required_temporal_claims",
+      bullets = c(
+        "x" = paste0(
+          "Signed UserInfo JWT missing required temporal claim(s): ",
+          paste(missing_temporal_claims, collapse = ", ")
+        ),
+        "i" = paste(
+          "Configure userinfo_jwt_required_temporal_claims = character(0) to accept signed UserInfo JWTs without those temporal claims."
+        )
+      )
+    )
+  }
+
+  if (!is.null(claims$exp)) {
+    if (!is_single_finite_number(claims$exp)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_invalid_exp",
+        bullets = c(
+          "x" = "Signed UserInfo JWT 'exp' claim must be a single finite number when present"
+        )
+      )
+    }
+
+    exp_val <- as.numeric(claims$exp)
+    if (exp_val < (now - lwe)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_expired",
+        bullets = c(
+          "x" = "Signed UserInfo JWT expired",
+          "i" = paste0(
+            "exp=",
+            exp_val,
+            ", now=",
+            now,
+            ", leeway=",
+            lwe,
+            "s"
+          )
+        )
+      )
+    }
+  }
+
+  if (!is.null(claims$iat)) {
+    if (!is_single_finite_number(claims$iat)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_invalid_iat",
+        bullets = c(
+          "x" = "Signed UserInfo JWT 'iat' claim must be a single finite number when present"
+        )
+      )
+    }
+
+    iat_val <- as.numeric(claims$iat)
+    if (iat_val > (now + lwe)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_iat_future",
+        bullets = c(
+          "x" = "Signed UserInfo JWT issued in the future",
+          "i" = paste0(
+            "iat=",
+            iat_val,
+            ", now=",
+            now,
+            ", leeway=",
+            lwe,
+            "s"
+          )
+        )
+      )
+    }
+  }
+
+  if (!is.null(claims$nbf)) {
+    if (!is_single_finite_number(claims$nbf)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_invalid_nbf",
+        bullets = c(
+          "x" = "Signed UserInfo JWT 'nbf' claim must be a single finite number when present"
+        )
+      )
+    }
+
+    nbf_val <- as.numeric(claims$nbf)
+    if (nbf_val > (now + lwe)) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_nbf_future",
+        bullets = c(
+          "x" = "Signed UserInfo JWT not yet valid (nbf)",
+          "i" = paste0(
+            "nbf=",
+            nbf_val,
+            ", now=",
+            now,
+            ", leeway=",
+            lwe,
+            "s"
+          )
+        )
+      )
+    }
   }
 
   invisible(TRUE)

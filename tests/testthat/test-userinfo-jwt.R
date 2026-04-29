@@ -119,6 +119,286 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   expect_equal(result$name, "Signed User")
 })
 
+test_that("get_userinfo accepts signed JWT with valid temporal claims", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "test-kid-time-valid"
+  jwk$use <- "sig"
+
+  jwks <- list(keys = list(jwk))
+  now <- floor(as.numeric(Sys.time()))
+
+  claims <- list(
+    sub = "user-time-valid",
+    name = "Signed Timely User",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    iat = now - 120,
+    nbf = now - 60,
+    exp = now + 300
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "test-kid-time-valid")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_equal(result$sub, "user-time-valid")
+  expect_equal(result$name, "Signed Timely User")
+})
+
+test_that("get_userinfo can require exp on signed JWT userinfo", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-required-exp"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    sub = "user-required-exp",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    exp = now + 300
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-required-exp")
+
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    userinfo_jwt_required_temporal_claims = "exp"
+  )
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_equal(result$sub, "user-required-exp")
+})
+
+test_that("get_userinfo errors when signed JWT is missing required exp", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-missing-required-exp"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  claims <- list(
+    sub = "user-missing-exp",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-missing-required-exp")
+
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    userinfo_jwt_required_temporal_claims = "exp"
+  )
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "missing required temporal claim\\(s\\): exp"
+  )
+})
+
+test_that("oauth_client rejects invalid required UserInfo JWT temporal claims", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = character(0),
+      state_store = cachem::cache_mem(max_age = 600),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      userinfo_jwt_required_temporal_claims = c("exp", "foo")
+    ),
+    regexp = "invalid userinfo_jwt_required_temporal_claims"
+  )
+})
+
+test_that("get_userinfo errors when signed JWT is expired", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-expired"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    sub = "user-expired",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    exp = now - 3600
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-expired")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "expired"
+  )
+})
+
+test_that("get_userinfo errors when signed JWT has iat in the future", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-iat-future"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    sub = "user-iat-future",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    iat = now + 3600,
+    exp = now + 7200
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-iat-future")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "issued in the future"
+  )
+})
+
+test_that("get_userinfo errors when signed JWT is not yet valid", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-nbf-future"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    sub = "user-nbf-future",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    nbf = now + 3600,
+    exp = now + 7200
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-nbf-future")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "not yet valid"
+  )
+})
+
 test_that("get_userinfo rejects signed JWT when JWK alg mismatches header alg", {
   key <- openssl::rsa_keygen(2048)
 

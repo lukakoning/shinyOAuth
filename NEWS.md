@@ -5,6 +5,12 @@
 and cleaned up a check note by fully qualifying `utils::capture.output()` /
 `utils::str()` in claim canonicalization.
 
+* Signed UserInfo JWT validation now enforces `exp`, `iat`, and `nbf` when
+those temporal claims are present, rejecting expired or not-yet-valid UserInfo
+JWT responses instead of accepting them based only on signature/issuer/audience.
+`oauth_client()` can also require specific UserInfo JWT temporal claims to be
+present via `userinfo_jwt_required_temporal_claims`.
+
 * Clarified the `allow_redirect` warning/docs and the `error_on_softened()`
 option framing so they match the current explicit opt-in behavior and the
 intentional undocumented `trace_hook` compatibility alias.

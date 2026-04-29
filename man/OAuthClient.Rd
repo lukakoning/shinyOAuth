@@ -34,6 +34,7 @@ OAuthClient(
   state_key = random_urlsafe(n = 128),
   scope_validation = "strict",
   claims_validation = "none",
+  userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
   introspect = FALSE,
   introspect_elements = character(0)
@@ -307,6 +308,16 @@ satisfied.
 missing or requested claim \code{value} / \code{values} constraints are not
 satisfied by the response.
 }}
+
+\item{userinfo_jwt_required_temporal_claims}{Optional character vector of
+temporal JWT claims that must be present when the UserInfo response is a
+signed JWT (\code{application/jwt}). Allowed values are \code{"exp"}, \code{"iat"}, and
+\code{"nbf"}.
+
+Default is \code{character(0)}, which means these claims are validated only when
+present. Set, for example, \code{userinfo_jwt_required_temporal_claims = "exp"}
+to require an expiry on signed UserInfo JWTs, or pass multiple values to
+require additional temporal claims.}
 
 \item{required_acr_values}{Optional character vector of acceptable
 Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
