@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Updated `refresh_token()` documentation to match runtime behavior: missing
+`expires_in` now documents the configured fallback expiry, and refresh-time
+introspection may backfill `token@cnf`.
+
 * Fixed PEM-string private key parsing for `oauth_client()` validation so
 `client_private_key` / `dpop_private_key` can be supplied as PEM text again,
 and cleaned up a check note by fully qualifying `utils::capture.output()` /

@@ -27,8 +27,9 @@ used. Non-sequential future plans run off the main R session;
 
 \item{introspect}{Logical, default FALSE. After a successful refresh, if the
 provider exposes an introspection endpoint, perform a best-effort
-introspection of the new access token for audit/diagnostics. The result
-is not stored on the token object.}
+introspection of the new access token for audit/diagnostics. The raw
+introspection result is not stored separately, but a successful
+introspection response may backfill \code{token@cnf}.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when
@@ -40,11 +41,14 @@ An updated \link{OAuthToken} object with refreshed credentials.
 \strong{What changes:}
 \itemize{
 \item \code{access_token}: Always updated to the fresh token
-\item \code{expires_at}: Computed from \code{expires_in} when provided; otherwise \code{Inf}
+\item \code{expires_at}: Computed from \code{expires_in} when provided; otherwise a
+finite fallback expiry from \code{resolve_missing_expires_in()}
 \item \code{refresh_token}: Updated if the provider rotates it; otherwise preserved
 \item \code{id_token}: Updated only if the provider returns one (and it validates);
 otherwise the original from login is preserved
 \item \code{userinfo}: Refreshed if \code{userinfo_required = TRUE}; otherwise preserved
+\item \code{cnf}: Updated from the token response when present, and may be
+backfilled from refresh-time introspection when enabled
 }
 
 \strong{Validation failures cause errors:} If the provider returns a new ID
