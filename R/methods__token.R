@@ -389,6 +389,7 @@ revoke_token <- function(
 #' `token_auth_style`:
 #'  - "header" (default): HTTP Basic with `client_id`/`client_secret`.
 #'  - "body": form fields `client_id` and (when available) `client_secret`.
+#'  - "public": form field `client_id` only; `client_secret` is never sent.
 #'  - "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
 #'    is generated (RFC 7523) and sent via `client_assertion_type` and
 #'    `client_assertion`, with `aud` resolved via

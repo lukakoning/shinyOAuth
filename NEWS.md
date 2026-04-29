@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OIDC discovery now maps `token_endpoint_auth_methods_supported = ["none"]`
+to a distinct public token auth style that never sends `client_secret`, even
+when `oauth_client()` picks one up from `OAUTH_CLIENT_SECRET`.
+
 * `jwks_host_issuer_match = TRUE` now requires an exact issuer-host match for
 `jwks_uri` instead of also trusting issuer subdomains. Providers that publish
 JWKS on a different host should set `jwks_host_allow_only` to that exact host.

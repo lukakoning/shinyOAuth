@@ -331,7 +331,7 @@ otel_client_auth_style <- function(client) {
     return(NULL)
   }
 
-  client@provider@token_auth_style %||% "header"
+  normalize_token_auth_style(client@provider@token_auth_style %||% "header")
 }
 
 otel_browser_cookie_path_root <- function(browser_cookie_path) {

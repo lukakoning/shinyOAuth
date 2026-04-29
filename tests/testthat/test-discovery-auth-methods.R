@@ -52,7 +52,7 @@ testthat::test_that("discovery returns body when only client_secret_post is adve
 })
 
 
-testthat::test_that("discovery with 'none' requires PKCE and uses body when enabled", {
+testthat::test_that("discovery with 'none' requires PKCE and uses public auth when enabled", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
@@ -72,15 +72,66 @@ testthat::test_that("discovery with 'none' requires PKCE and uses body when enab
   srv <- webfakes::local_app_process(app)
   issuer <- srv$url()
 
-  # With PKCE (default TRUE), we accept and use body
+  # With PKCE (default TRUE), we accept and use the dedicated public style
   prov <- oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
-  testthat::expect_identical(prov@token_auth_style, "body")
+  testthat::expect_identical(prov@token_auth_style, "public")
+
+  # Explicit metadata spelling is also accepted and canonicalized.
+  prov_alias <- oauth_provider_oidc_discover(
+    issuer = issuer,
+    use_pkce = TRUE,
+    token_auth_style = "none"
+  )
+  testthat::expect_identical(prov_alias@token_auth_style, "public")
 
   # Without PKCE, configuration error
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer, use_pkce = FALSE),
     class = "shinyOAuth_config_error"
   )
+})
+
+testthat::test_that("public discovery auth does not send env client_secret", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+  withr::local_envvar(c(OAUTH_CLIENT_SECRET = "env-secret-value"))
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
+          token_endpoint_auth_methods_supported = list("none")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  prov <- oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
+  testthat::expect_identical(prov@token_auth_style, "public")
+
+  cl <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0)
+  )
+  testthat::expect_identical(cl@client_secret, "env-secret-value")
+
+  prepared <- shinyOAuth:::apply_direct_client_auth(
+    req = httr2::request("https://127.0.0.1/token"),
+    params = list(grant_type = "authorization_code"),
+    client = cl,
+    context = "token_exchange"
+  )
+  testthat::expect_identical(prepared$params$client_id, "abc")
+  testthat::expect_null(prepared$params$client_secret)
 })
 
 test_that("oidc discovery accepts advertised signing algorithm supersets", {

@@ -52,11 +52,14 @@ Validation rules:
 \item Required (non-empty) when the provider authenticates the client with
 HTTP Basic auth at the token endpoint (\code{token_auth_style = "header"},
 also known as \code{client_secret_basic}).
-\item Optional for public PKCE-only clients when the provider is configured
-with \code{use_pkce = TRUE} and uses form-body client authentication at the
+\item Optional when the provider uses form-body client authentication at the
 token endpoint (\code{token_auth_style = "body"}, also known as
-\code{client_secret_post}). In this case, the secret is omitted from token
-requests.
+\code{client_secret_post}) and \code{use_pkce = TRUE}. In that configuration,
+the secret is omitted only when it is empty.
+\item Ignored for token-endpoint authentication when the provider uses
+\code{token_auth_style = "public"} (or the alias \code{"none"}). Public auth
+sends \code{client_id} only and never sends \code{client_secret}, even if one is
+configured or picked up from \code{OAUTH_CLIENT_SECRET}.
 }
 
 Note: If your provider issues HS256 ID tokens and \code{id_token_validation} is

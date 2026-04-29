@@ -36,10 +36,11 @@ includes "none", PKCE is required unless \code{use_pkce} is explicitly set to FA
 for this provider. Defaults to TRUE}
 
 \item{token_auth_style}{Authentication style for token requests: "header"
-(client_secret_basic) or "body" (client_secret_post). If NULL (default),
-it is inferred conservatively from discovery. When PKCE is enabled and the
-provider advertises support for public clients via \code{none}, a secretless
-flow is preferred (modeled as \code{"body"} without credentials). Otherwise,
+(client_secret_basic), "body" (client_secret_post), or "public"
+(public client; send \code{client_id} only). The alias \code{"none"} is also
+accepted for \code{"public"}. If NULL (default), it is inferred conservatively
+from discovery. When PKCE is enabled and the provider advertises support
+for public clients via \code{none}, discovery selects \code{"public"}. Otherwise,
 the helper prefers \code{"header"} (client_secret_basic) when available, then
 \code{"body"} (client_secret_post). JWT-based methods are not auto-selected
 unless explicitly requested}
@@ -97,7 +98,8 @@ fails with a configuration error. There is no automatic fallback to the
 discovery-advertised set.
 \item Token endpoint authentication methods: supports \code{client_secret_basic}
 (header), \code{client_secret_post} (body), public clients using \code{none}
-(with PKCE), as well as JWT-based methods \code{private_key_jwt} and
+(mapped to \code{token_auth_style = "public"} when PKCE is enabled), as well as
+JWT-based methods \code{private_key_jwt} and
 \code{client_secret_jwt} per RFC 7523. Discovery also preserves RFC 8705 mTLS
 metadata (\code{mtls_endpoint_aliases} and
 \code{tls_client_certificate_bound_access_tokens}) and supports explicit
@@ -129,7 +131,8 @@ Important: discovery metadata lists methods supported across the provider,
 not per-client provisioning. This helper does not automatically select
 JWT-based methods just because they are advertised. By default it prefers
 \code{client_secret_basic} (header) when available, otherwise
-\code{client_secret_post} (body), and only uses public \code{none} for PKCE clients.
+\code{client_secret_post} (body), and maps public \code{none} to
+\code{token_auth_style = "public"} only for PKCE clients.
 If a provider advertises only JWT methods, you must explicitly set
 \code{token_auth_style} and configure the corresponding credentials on your
 \link{OAuthClient} (a private key for \code{private_key_jwt}, or a sufficiently

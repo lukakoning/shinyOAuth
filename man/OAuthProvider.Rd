@@ -230,6 +230,9 @@ certificate.}
 \itemize{
 \item "header": HTTP Basic (client_secret_basic)
 \item "body": Form body (client_secret_post)
+\item "public": Public-client form body (\code{none} in discovery metadata);
+sends \code{client_id} but never \code{client_secret}, even if one is configured.
+The alias \code{"none"} is also accepted.
 \item "tls_client_auth": RFC 8705 mutual TLS client authentication using a
 client certificate chained to a trusted CA
 \item "self_signed_tls_client_auth": RFC 8705 mutual TLS client

@@ -16,11 +16,14 @@
 #'   - Required (non-empty) when the provider authenticates the client with
 #'     HTTP Basic auth at the token endpoint (`token_auth_style = "header"`,
 #'     also known as `client_secret_basic`).
-#'   - Optional for public PKCE-only clients when the provider is configured
-#'     with `use_pkce = TRUE` and uses form-body client authentication at the
+#'   - Optional when the provider uses form-body client authentication at the
 #'     token endpoint (`token_auth_style = "body"`, also known as
-#'     `client_secret_post`). In this case, the secret is omitted from token
-#'     requests.
+#'     `client_secret_post`) and `use_pkce = TRUE`. In that configuration,
+#'     the secret is omitted only when it is empty.
+#'   - Ignored for token-endpoint authentication when the provider uses
+#'     `token_auth_style = "public"` (or the alias `"none"`). Public auth
+#'     sends `client_id` only and never sends `client_secret`, even if one is
+#'     configured or picked up from `OAUTH_CLIENT_SECRET`.
 #'
 #'   Note: If your provider issues HS256 ID tokens and `id_token_validation` is
 #'   enabled, a non-empty `client_secret` is required for signature validation.
@@ -507,7 +510,9 @@ OAuthClient <- S7::new_class(
     }
 
     # Validate client_secret presence based on provider auth style and PKCE
-    tok_style <- self@provider@token_auth_style %||% "header"
+    tok_style <- normalize_token_auth_style(
+      self@provider@token_auth_style %||% "header"
+    )
     uses_pkce <- isTRUE(self@provider@use_pkce)
     if (identical(tok_style, "header")) {
       # For client_secret_basic (header) auth, a non-empty secret is required
@@ -523,6 +528,8 @@ OAuthClient <- S7::new_class(
           "OAuthClient: client_secret is required unless using PKCE with token_auth_style = 'body'"
         )
       }
+    } else if (identical(tok_style, "public")) {
+      # Public clients send only client_id at the token endpoint.
     } else if (identical(tok_style, "client_secret_jwt")) {
       # JWT HMAC client assertion requires a non-empty client_secret
       if (!is_valid_string(self@client_secret)) {
@@ -574,10 +581,10 @@ OAuthClient <- S7::new_class(
     # Fail fast: HS* ID token verification requires a strong client_secret.
     #
     # For PKCE/public clients, client_secret may legitimately be empty for token
-    # exchange (token_auth_style = 'body' with PKCE), but if the provider allows
-    # HS* ID token algs and the flow may validate ID tokens (id_token_validation
-    # or use_nonce), validate_id_token() will later error when client_secret is
-    # missing/too short.
+    # exchange (token_auth_style = 'body' with PKCE or token_auth_style =
+    # 'public'), but if the provider allows HS* ID token algs and the flow may
+    # validate ID tokens (id_token_validation or use_nonce), validate_id_token()
+    # will later error when client_secret is missing/too short.
     aa <- toupper(as.character(self@provider@allowed_algs %||% character(0)))
     hs_algs <- c("HS256", "HS384", "HS512")
     should_validate_id_token <-

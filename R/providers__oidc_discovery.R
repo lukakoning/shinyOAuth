@@ -20,7 +20,8 @@
 #'
 #' - Token endpoint authentication methods: supports `client_secret_basic`
 #'   (header), `client_secret_post` (body), public clients using `none`
-#'   (with PKCE), as well as JWT-based methods `private_key_jwt` and
+#'   (mapped to `token_auth_style = "public"` when PKCE is enabled), as well as
+#'   JWT-based methods `private_key_jwt` and
 #'   `client_secret_jwt` per RFC 7523. Discovery also preserves RFC 8705 mTLS
 #'   metadata (`mtls_endpoint_aliases` and
 #'   `tls_client_certificate_bound_access_tokens`) and supports explicit
@@ -57,7 +58,8 @@
 #'   not per-client provisioning. This helper does not automatically select
 #'   JWT-based methods just because they are advertised. By default it prefers
 #'   `client_secret_basic` (header) when available, otherwise
-#'   `client_secret_post` (body), and only uses public `none` for PKCE clients.
+#'   `client_secret_post` (body), and maps public `none` to
+#'   `token_auth_style = "public"` only for PKCE clients.
 #'   If a provider advertises only JWT methods, you must explicitly set
 #'   `token_auth_style` and configure the corresponding credentials on your
 #'   [OAuthClient] (a private key for `private_key_jwt`, or a sufficiently
@@ -83,10 +85,11 @@
 #' @param id_token_validation Logical, whether to validate ID tokens automatically
 #'   for this provider. Defaults to TRUE
 #' @param token_auth_style Authentication style for token requests: "header"
-#'   (client_secret_basic) or "body" (client_secret_post). If NULL (default),
-#'   it is inferred conservatively from discovery. When PKCE is enabled and the
-#'   provider advertises support for public clients via `none`, a secretless
-#'   flow is preferred (modeled as `"body"` without credentials). Otherwise,
+#'   (client_secret_basic), "body" (client_secret_post), or "public"
+#'   (public client; send `client_id` only). The alias `"none"` is also
+#'   accepted for `"public"`. If NULL (default), it is inferred conservatively
+#'   from discovery. When PKCE is enabled and the provider advertises support
+#'   for public clients via `none`, discovery selects `"public"`. Otherwise,
 #'   the helper prefers `"header"` (client_secret_basic) when available, then
 #'   `"body"` (client_secret_post). JWT-based methods are not auto-selected
 #'   unless explicitly requested
@@ -627,9 +630,9 @@ oauth_provider_oidc_discover <- function(
 
   # Public clients: if discovery only advertises 'none' (no confidential
   # methods matched above) and PKCE is enabled, use secretless token requests.
-  # We model this as 'body' style without credentials (code_verifier only).
+  # Map this to the dedicated public-client auth style.
   if ("none" %in% methods && isTRUE(use_pkce)) {
-    return("body")
+    return("public")
   }
 
   # Public clients: if 'none' is advertised but PKCE is disabled, surface a
@@ -693,6 +696,8 @@ oauth_provider_oidc_discover <- function(
   iss,
   token_url
 ) {
+  token_auth_style <- normalize_token_auth_style(token_auth_style)
+
   if (length(methods) == 0L) {
     return(token_auth_style)
   }
@@ -700,8 +705,8 @@ oauth_provider_oidc_discover <- function(
   is_supported <- switch(
     token_auth_style,
     header = "client_secret_basic" %in% methods,
-    body = ("client_secret_post" %in% methods) ||
-      ("none" %in% methods && isTRUE(use_pkce)),
+    body = "client_secret_post" %in% methods,
+    public = ("none" %in% methods && isTRUE(use_pkce)),
     client_secret_jwt = "client_secret_jwt" %in% methods,
     private_key_jwt = "private_key_jwt" %in% methods,
     tls_client_auth = "tls_client_auth" %in% methods,

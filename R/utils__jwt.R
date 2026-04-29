@@ -701,7 +701,9 @@ build_client_assertion <- function(client, aud) {
   S7::check_is_S7(client, class = OAuthClient)
   stopifnot(is_valid_string(aud))
 
-  style <- client@provider@token_auth_style %||% "header"
+  style <- normalize_token_auth_style(
+    client@provider@token_auth_style %||% "header"
+  )
   alg_cfg <- client@client_assertion_alg %||% NA_character_
   # Defense-in-depth: ensure scalar before indexing (validator should already
   # enforce this, but runtime callers may bypass validation).

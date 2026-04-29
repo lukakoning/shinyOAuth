@@ -68,7 +68,9 @@ client_uses_mtls_auth <- function(oauth_client) {
     return(FALSE)
   }
 
-  token_auth_style <- oauth_client@provider@token_auth_style %||% "header"
+  token_auth_style <- normalize_token_auth_style(
+    oauth_client@provider@token_auth_style %||% "header"
+  )
   token_auth_style %in% mtls_token_auth_styles()
 }
 

@@ -175,6 +175,9 @@
 #' @param token_auth_style How to authenticate when exchanging tokens. One of:
 #'   - "header": HTTP Basic (client_secret_basic)
 #'   - "body": Form body (client_secret_post)
+#'   - "public": Public-client form body (`none` in discovery metadata);
+#'     sends `client_id` but never `client_secret`, even if one is configured.
+#'     The alias `"none"` is also accepted.
 #'   - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
 #'     client certificate chained to a trusted CA
 #'   - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
@@ -654,17 +657,21 @@ OAuthProvider <- S7::new_class(
       }
     }
 
+    tok_style <- normalize_token_auth_style(self@token_auth_style)
+
     # token_auth_style must be one of:
     # - "header" (client_secret_basic)
     # - "body" (client_secret_post)
+    # - "public" / "none" (public client; send client_id only)
     # - "client_secret_jwt" (RFC 7523; HMAC-signed client assertion)
     # - "private_key_jwt" (RFC 7523; asymmetric-signed client assertion)
     if (
       !isTRUE(
-        self@token_auth_style %in%
+        tok_style %in%
           c(
             "header",
             "body",
+            "public",
             "tls_client_auth",
             "self_signed_tls_client_auth",
             "client_secret_jwt",
@@ -673,9 +680,9 @@ OAuthProvider <- S7::new_class(
       )
     ) {
       return(paste0(
-        "OAuthProvider: token_auth_style must be one of 'header', 'body', ",
+        "OAuthProvider: token_auth_style must be one of 'header', 'body', 'public', ",
         "'tls_client_auth', 'self_signed_tls_client_auth', ",
-        "'client_secret_jwt', or 'private_key_jwt'"
+        "'client_secret_jwt', or 'private_key_jwt' ('none' is accepted as an alias for 'public')"
       ))
     }
 
@@ -1194,6 +1201,7 @@ oauth_provider <- function(
     issuer_match,
     choices = c("url", "host", "none")
   )
+  token_auth_style <- normalize_token_auth_style(token_auth_style)
 
   # Normalize and validate allowed_algs
   if (is.null(allowed_algs)) {

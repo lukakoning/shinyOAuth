@@ -26,6 +26,42 @@ is_valid_string <- function(x, min_char = 1) {
     nchar(x) >= min_char
 }
 
+#' Internal: normalize token endpoint auth style names
+#'
+#' Canonical runtime spelling uses `public` for secretless public-client token
+#' requests. `none` is accepted as an alias to mirror OIDC discovery metadata.
+#'
+#' @keywords internal
+#' @noRd
+normalize_token_auth_style <- function(style) {
+  if (!is.character(style) || length(style) != 1L || is.na(style)) {
+    return(style)
+  }
+
+  normalized <- tolower(trimws(style))
+
+  if (identical(normalized, "none")) {
+    return("public")
+  }
+
+  if (
+    normalized %in%
+      c(
+        "header",
+        "body",
+        "public",
+        "tls_client_auth",
+        "self_signed_tls_client_auth",
+        "client_secret_jwt",
+        "private_key_jwt"
+      )
+  ) {
+    return(normalized)
+  }
+
+  style
+}
+
 inspect_auth_response_mode <- function(extra_auth_params) {
   out <- list(index = integer(0), mode = NULL, error = NULL)
 

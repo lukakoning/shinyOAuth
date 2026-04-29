@@ -45,6 +45,7 @@ Authentication to the introspection endpoint mirrors the provider's
 \itemize{
 \item "header" (default): HTTP Basic with \code{client_id}/\code{client_secret}.
 \item "body": form fields \code{client_id} and (when available) \code{client_secret}.
+\item "public": form field \code{client_id} only; \code{client_secret} is never sent.
 \item "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
 is generated (RFC 7523) and sent via \code{client_assertion_type} and
 \code{client_assertion}, with \code{aud} resolved via
