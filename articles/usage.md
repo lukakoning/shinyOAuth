@@ -567,10 +567,6 @@ options:
 
 Don’t enable these in production. They disable key security checks or
 alter error behavior, and are intended for local testing/debugging only.
-Use
-[`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
-at startup to fail fast if softening flags are enabled in an environment
-where they should not be.
 
 ### Size caps
 

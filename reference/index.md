@@ -82,6 +82,7 @@
 - [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   : Check if URL(s) are HTTPS and/or in allowed hosts lists
 - [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
-  : Throw an error if any safety checks have been disabled
+  **\[deprecated\]** : Throw an error if specific dev/debug softeners
+  are enabled
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
   : Create a custom cache backend (cachem-like)

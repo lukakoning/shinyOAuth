@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- Deprecated
+  [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md).
+  It remains a narrow guard for a few dev/debug softeners, but the docs
+  now stop presenting it as a comprehensive deployment-hardening check
+  and show explicit option checks instead.
+
 - Updated
   [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
   documentation to match runtime behavior: missing `expires_in` now
