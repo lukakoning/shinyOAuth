@@ -709,7 +709,7 @@ build_client_assertion <- function(client, aud) {
     alg_cfg <- NA_character_ # nolint
   }
   alg_chr <- as.character(alg_cfg)
-  alg <- toupper(ifelse(is.na(alg_chr), "", alg_chr))
+  alg <- canonicalize_jws_alg(alg_chr)
   # Resolve default algorithm with key-aware logic for private_key_jwt.
   # Previous behavior always fell back to RS256 which breaks EC/OKP keys.
   if (!nzchar(alg)) {
@@ -788,29 +788,45 @@ build_client_assertion <- function(client, aud) {
 
   if (identical(style, "private_key_jwt")) {
     key <- normalize_private_key_input(client@client_private_key)
-    # Validate alg compatibility with key by attempting a dry-run sign if an
-    # explicit alg was provided (or selected by default logic). Surface a
-    # configuration error with context instead of a cryptic jose error.
     clm <- do.call(jose::jwt_claim, claims)
-    sig_try <- try(
+    # Hard-fail impossible alg/key pairs before signing. jose::jwt_encode_sig()
+    # can otherwise emit mismatched JOSE alg headers instead of rejecting them.
+    if (!private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
+      err_config(
+        c(
+          "x" = paste0(
+            "client_assertion_alg '",
+            alg,
+            "' is incompatible with the provided private key"
+          )
+        ),
+        context = list(
+          phase = "build_client_assertion",
+          alg = alg
+        )
+      )
+    }
+    jwt <- try(
       jose::jwt_encode_sig(clm, key = key, header = header),
       silent = TRUE
     )
-    if (inherits(sig_try, "try-error")) {
+    if (inherits(jwt, "try-error")) {
       err_config(
         c(
-          "x" = "client_assertion_alg is incompatible with the provided private key",
+          "x" = "Failed to sign client assertion",
           "i" = paste0(
             "Tried alg '",
-            header$alg,
-            "' with your key but signing failed; ",
-            "choose a compatible algorithm (e.g., RS256 for RSA, ES256/384/512 for EC, EdDSA for Ed25519)"
+            alg,
+            "' with the configured private key"
           )
         ),
-        context = list(alg = header$alg)
+        context = list(
+          phase = "build_client_assertion",
+          alg = alg
+        )
       )
     }
-    return(sig_try)
+    return(jwt)
   }
 
   err_config(
@@ -1216,26 +1232,23 @@ normalize_private_key_input <- function(key, arg_name = "client_private_key") {
 #' @keywords internal
 #' @noRd
 choose_default_alg_for_private_key <- function(key) {
-  # Try to infer from class first; if ambiguous, probe by attempting to sign
-  # a minimal claim with candidate algorithms.
-  candidates <- NULL
   if (inherits(key, "rsa")) {
-    candidates <- c("RS256", "PS256")
-  } else if (inherits(key, "ecdsa")) {
-    candidates <- c("ES256", "ES384", "ES512")
-  } else {
-    # Unknown key class: try EdDSA first (Ed25519/Ed448), then common RSA/EC
-    candidates <- c("EdDSA", "RS256", "ES256", "PS256", "ES384", "ES512")
+    return("RS256")
   }
-  clm <- jose::jwt_claim(jti = random_urlsafe(16), iat = as.integer(Sys.time()))
-  for (alg in candidates) {
-    hdr <- list(typ = "JWT", alg = alg)
-    try_sig <- try(
-      jose::jwt_encode_sig(clm, key = key, header = hdr),
-      silent = TRUE
-    )
-    if (!inherits(try_sig, "try-error")) {
-      return(alg)
+
+  if (inherits(key, "ecdsa")) {
+    for (alg in c("ES256", "ES384", "ES512")) {
+      if (private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
+        return(alg)
+      }
+    }
+  }
+
+  # Unknown key classes still go through the same compatibility guard so we do
+  # not infer defaults from jose::jwt_encode_sig() accepting impossible pairs.
+  for (alg in c("EdDSA", "RS256", "PS256", "ES256", "ES384", "ES512")) {
+    if (private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
+      return(canonicalize_jws_alg(alg))
     }
   }
   err_config(

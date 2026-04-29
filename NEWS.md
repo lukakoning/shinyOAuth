@@ -70,6 +70,8 @@ previews instead of exposing full credential material in default console output.
   - Has native RFC 8707 `resource` support, so authorization, token exchange, 
   and refresh requests can request audience-restricted tokens without dropping 
   down to manual extra params.
+  - Rejects impossible JOSE alg/private-key combinations for JWT client
+  assertions and DPoP proofs before emitting invalid JOSE headers.
   * Also enforces OIDC claim request `value` and `values` constraints when 
   `claims_validation` is enabled, not just presence of `essential = TRUE` 
   claims.

@@ -239,6 +239,62 @@ test_that("build_dpop_proof creates a signed proof with bound claims", {
   expect_lte(abs(as.numeric(Sys.time()) - as.numeric(payload$iat)), 5)
 })
 
+test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_error(
+    make_dpop_test_client(
+      prov,
+      dpop_signing_alg = "eddsa"
+    ),
+    regexp = paste(
+      "dpop_signing_alg 'EdDSA' is incompatible",
+      "with the provided dpop_private_key"
+    )
+  )
+
+  key_ec <- try(openssl::ec_keygen(curve = "P-256"), silent = TRUE)
+  if (inherits(key_ec, "try-error")) {
+    testthat::skip("EC key generation not supported on this platform")
+  }
+
+  expect_error(
+    make_dpop_test_client(
+      prov,
+      dpop_private_key = key_ec,
+      dpop_signing_alg = "ES512"
+    ),
+    regexp = paste(
+      "dpop_signing_alg 'ES512' is incompatible",
+      "with the provided dpop_private_key"
+    )
+  )
+})
+
+test_that("build_dpop_proof rejects incompatible resolved algs", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov)
+
+  testthat::local_mocked_bindings(
+    resolve_dpop_alg = function(client) {
+      "EdDSA"
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::build_dpop_proof(
+      cli,
+      method = "GET",
+      url = "https://resource.example.com/api"
+    ),
+    regexp = paste(
+      "dpop_signing_alg 'EdDSA' is incompatible",
+      "with the configured dpop_private_key"
+    )
+  )
+})
+
 test_that("verify_token_type_allowlist enforces DPoP client requirements", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- c("Bearer", "DPoP")

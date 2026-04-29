@@ -573,7 +573,7 @@ OAuthClient <- S7::new_class(
       }
       alg_chr <- caa_raw
       if (!is.na(alg_chr) && nzchar(alg_chr)) {
-        client_assertion_alg <- toupper(alg_chr)
+        client_assertion_alg <- canonicalize_jws_alg(alg_chr)
         allowed_hmac <- c("HS256", "HS384", "HS512")
         allowed_asym <- c(
           # RSA-PKCS1 v1.5
@@ -588,7 +588,7 @@ OAuthClient <- S7::new_class(
           "ES256",
           "ES384",
           "ES512",
-          "EDDSA"
+          "EdDSA"
         )
         if (
           identical(tok_style, "client_secret_jwt") &&
@@ -613,6 +613,30 @@ OAuthClient <- S7::new_class(
             paste(allowed_asym, collapse = ", "),
             ")"
           ))
+        }
+        if (identical(tok_style, "private_key_jwt")) {
+          key0 <- try(
+            normalize_private_key_input(self@client_private_key),
+            silent = TRUE
+          )
+          if (inherits(key0, "try-error")) {
+            return(
+              "OAuthClient: client_private_key could not be parsed for client_assertion_alg validation"
+            )
+          }
+          if (
+            !private_key_can_sign_jws_alg(
+              key0,
+              client_assertion_alg,
+              typ = "JWT"
+            )
+          ) {
+            return(paste0(
+              "OAuthClient: client_assertion_alg '",
+              client_assertion_alg,
+              "' is incompatible with the provided private key"
+            ))
+          }
         }
       }
     }
@@ -652,7 +676,8 @@ OAuthClient <- S7::new_class(
       }
 
       if (
-        !(resolved_client_assertion_alg %in% provider_client_assertion_algs)
+        !(toupper(resolved_client_assertion_alg) %in%
+          provider_client_assertion_algs)
       ) {
         return(paste0(
           "OAuthClient: client_assertion_alg '",
@@ -885,7 +910,7 @@ OAuthClient <- S7::new_class(
           "OAuthClient: dpop_signing_alg requires dpop_private_key to also be configured"
         )
       }
-      dpop_alg <- toupper(dpop_alg_raw)
+      dpop_alg <- canonicalize_jws_alg(dpop_alg_raw)
       allowed_dpop_algs <- c(
         "RS256",
         "RS384",
@@ -896,7 +921,7 @@ OAuthClient <- S7::new_class(
         "ES256",
         "ES384",
         "ES512",
-        "EDDSA"
+        "EdDSA"
       )
       if (!(dpop_alg %in% allowed_dpop_algs)) {
         return(paste0(
@@ -905,6 +930,25 @@ OAuthClient <- S7::new_class(
           "' is incompatible with DPoP (expected one of: ",
           paste(allowed_dpop_algs, collapse = ", "),
           ")"
+        ))
+      }
+      key0 <- try(
+        normalize_private_key_input(
+          self@dpop_private_key,
+          arg_name = "dpop_private_key"
+        ),
+        silent = TRUE
+      )
+      if (inherits(key0, "try-error")) {
+        return(
+          "OAuthClient: dpop_private_key could not be parsed for dpop_signing_alg validation"
+        )
+      }
+      if (!private_key_can_sign_jws_alg(key0, dpop_alg, typ = "dpop+jwt")) {
+        return(paste0(
+          "OAuthClient: dpop_signing_alg '",
+          dpop_alg,
+          "' is incompatible with the provided dpop_private_key"
         ))
       }
     }

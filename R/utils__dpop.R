@@ -40,9 +40,9 @@ resolve_dpop_alg <- function(client) {
   if (!is.character(alg_cfg) || length(alg_cfg) != 1L) {
     alg_cfg <- NA_character_
   }
-  alg_chr <- as.character(alg_cfg)[1]
-  if (!is.na(alg_chr) && nzchar(alg_chr)) {
-    return(toupper(alg_chr))
+  alg <- canonicalize_jws_alg(alg_cfg)
+  if (nzchar(alg)) {
+    return(alg)
   }
 
   choose_default_alg_for_private_key(resolve_dpop_private_key(client))
@@ -119,6 +119,18 @@ build_dpop_proof <- function(
 
   key <- resolve_dpop_private_key(client)
   alg <- resolve_dpop_alg(client)
+  if (!private_key_can_sign_jws_alg(key, alg, typ = "dpop+jwt")) {
+    err_config(
+      c(
+        "x" = paste0(
+          "dpop_signing_alg '",
+          alg,
+          "' is incompatible with the configured dpop_private_key"
+        )
+      ),
+      context = list(alg = alg)
+    )
+  }
   header <- list(
     typ = "dpop+jwt",
     alg = alg,
