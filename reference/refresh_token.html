@@ -132,8 +132,9 @@ used. Non-sequential future plans run off the main R session;
 <dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
 <dd><p>Logical, default FALSE. After a successful refresh, if the
 provider exposes an introspection endpoint, perform a best-effort
-introspection of the new access token for audit/diagnostics. The result
-is not stored on the token object.</p></dd>
+introspection of the new access token for audit/diagnostics. The raw
+introspection result is not stored separately, but a successful
+introspection response may backfill <code>token@cnf</code>.</p></dd>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
@@ -146,11 +147,14 @@ calling from async workers that lack access to the reactive domain.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An updated <a href="OAuthToken.html">OAuthToken</a> object with refreshed credentials.</p>
 <p><strong>What changes:</strong></p><ul><li><p><code>access_token</code>: Always updated to the fresh token</p></li>
-<li><p><code>expires_at</code>: Computed from <code>expires_in</code> when provided; otherwise <code>Inf</code></p></li>
+<li><p><code>expires_at</code>: Computed from <code>expires_in</code> when provided; otherwise a
+finite fallback expiry from <code>resolve_missing_expires_in()</code></p></li>
 <li><p><code>refresh_token</code>: Updated if the provider rotates it; otherwise preserved</p></li>
 <li><p><code>id_token</code>: Updated only if the provider returns one (and it validates);
 otherwise the original from login is preserved</p></li>
 <li><p><code>userinfo</code>: Refreshed if <code>userinfo_required = TRUE</code>; otherwise preserved</p></li>
+<li><p><code>cnf</code>: Updated from the token response when present, and may be
+backfilled from refresh-time introspection when enabled</p></li>
 </ul><p><strong>Validation failures cause errors:</strong> If the provider returns a new ID
 token that fails validation (wrong issuer, audience, expired, or subject
 mismatch with original), or if userinfo subject doesn't match the new ID

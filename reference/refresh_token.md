@@ -68,8 +68,9 @@ refresh_token(
 
   Logical, default FALSE. After a successful refresh, if the provider
   exposes an introspection endpoint, perform a best-effort introspection
-  of the new access token for audit/diagnostics. The result is not
-  stored on the token object.
+  of the new access token for audit/diagnostics. The raw introspection
+  result is not stored separately, but a successful introspection
+  response may backfill `token@cnf`.
 
 - shiny_session:
 
@@ -88,8 +89,8 @@ object with refreshed credentials.
 
 - `access_token`: Always updated to the fresh token
 
-- `expires_at`: Computed from `expires_in` when provided; otherwise
-  `Inf`
+- `expires_at`: Computed from `expires_in` when provided; otherwise a
+  finite fallback expiry from `resolve_missing_expires_in()`
 
 - `refresh_token`: Updated if the provider rotates it; otherwise
   preserved
@@ -99,6 +100,9 @@ object with refreshed credentials.
 
 - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise
   preserved
+
+- `cnf`: Updated from the token response when present, and may be
+  backfilled from refresh-time introspection when enabled
 
 **Validation failures cause errors:** If the provider returns a new ID
 token that fails validation (wrong issuer, audience, expired, or subject

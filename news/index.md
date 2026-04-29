@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- Updated
+  [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  documentation to match runtime behavior: missing `expires_in` now
+  documents the configured fallback expiry, and refresh-time
+  introspection may backfill `token@cnf`.
+
 - Fixed PEM-string private key parsing for
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   validation so `client_private_key` / `dpop_private_key` can be
@@ -23,6 +29,11 @@
   now forwards `oauth_client(introspect = TRUE)` to its proactive
   refresh path, so refreshed access tokens follow the same introspection
   policy as the initial login.
+
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now preserves `invalid_state` in its callback error state for
+  CSRF/state/browser-token validation failures instead of flattening
+  those paths into `token_exchange_error`.
 
 - Clarified the `allow_redirect` warning/docs and the
   [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
