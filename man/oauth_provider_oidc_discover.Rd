@@ -116,6 +116,10 @@ unsupported or when the provider requires signed Request Objects.
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client
 assertion algorithm is unsupported.
+\item RFC 9207 callback issuer metadata: when the discovery document advertises
+\code{authorization_response_iss_parameter_supported = true}, the resulting
+provider stores that metadata so \code{\link[=oauth_client]{oauth_client()}} can auto-enable callback
+issuer enforcement unless you explicitly opt out.
 \item PKCE method discovery: this helper keeps \code{S256} as the default and does not
 silently downgrade to \code{plain}. If discovery metadata explicitly omits
 \code{S256}, discovery fails with a configuration error unless you explicitly

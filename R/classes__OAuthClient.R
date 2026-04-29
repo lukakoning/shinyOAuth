@@ -119,12 +119,18 @@
 #'   refresh tokens.
 #'
 #' @param redirect_uri Redirect URI registered with provider
-#' @param enforce_callback_issuer Logical. When `TRUE`, enforce that
+#' @param enforce_callback_issuer Logical or `NULL`. When `TRUE`, enforce that
 #'   authorization responses handled through this client include an RFC 9207
 #'   `iss` parameter and reject callbacks unless it exactly matches
 #'   `provider@issuer`. This is recommended when one callback URL can receive
 #'   responses from more than one authorization server. Requires the provider
-#'   to have a configured `issuer`. Default is `FALSE`.
+#'   to have a configured `issuer`.
+#'
+#'   When `NULL` (the [oauth_client()] helper default), shinyOAuth
+#'   auto-enables this check for providers that advertise
+#'   `authorization_response_iss_parameter_supported = TRUE` and have a
+#'   configured `issuer`, such as OIDC discovery providers that expose RFC 9207
+#'   support. Set `FALSE` to opt out explicitly.
 #'
 #' @param scopes Vector of scopes to request. For OIDC providers (those with an
 #'   `issuer`), shinyOAuth automatically prepends `openid` when it is missing;
@@ -1427,7 +1433,7 @@ oauth_client <- function(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
-  enforce_callback_issuer = FALSE,
+  enforce_callback_issuer = NULL,
   scopes = character(0),
   resource = character(0),
   claims = NULL,
@@ -1460,15 +1466,30 @@ oauth_client <- function(
     state_key_missing = missing(state_key)
   )
 
+  auto_enforce_callback_issuer <-
+    missing(enforce_callback_issuer) || is.null(enforce_callback_issuer)
   if (
-    !(is.logical(enforce_callback_issuer) &&
-      length(enforce_callback_issuer) == 1 &&
-      !is.na(enforce_callback_issuer))
+    !auto_enforce_callback_issuer &&
+      !(is.logical(enforce_callback_issuer) &&
+        length(enforce_callback_issuer) == 1 &&
+        !is.na(enforce_callback_issuer))
   ) {
-    err_input("{.arg enforce_callback_issuer} must be a single non-NA logical.")
+    err_input(
+      "{.arg enforce_callback_issuer} must be NULL or a single non-NA logical."
+    )
+  }
+
+  resolved_enforce_callback_issuer <- if (
+    auto_enforce_callback_issuer &&
+      S7::S7_inherits(provider, OAuthProvider)
+  ) {
+    isTRUE(provider@authorization_response_iss_parameter_supported) &&
+      is_valid_string(provider@issuer %||% NA_character_)
+  } else {
+    isTRUE(enforce_callback_issuer)
   }
   if (
-    isTRUE(enforce_callback_issuer) &&
+    isTRUE(resolved_enforce_callback_issuer) &&
       S7::S7_inherits(provider, OAuthProvider) &&
       !is_valid_string(provider@issuer %||% NA_character_)
   ) {
@@ -1509,7 +1530,7 @@ oauth_client <- function(
     client_id = client_id,
     client_secret = client_secret,
     redirect_uri = redirect_uri,
-    enforce_callback_issuer = isTRUE(enforce_callback_issuer),
+    enforce_callback_issuer = isTRUE(resolved_enforce_callback_issuer),
     scopes = scopes,
     resource = resource,
     claims = claims,

@@ -67,6 +67,9 @@ previews instead of exposing full credential material in default console output.
   `handle_callback()` now accepts `iss`, so advanced callers building around 
   `prepare_call()` can supply the callback issuer and get the same client-level
   RFC 9207 check before token exchange.
+  - Auto-enables RFC 9207 callback issuer enforcement when the caller leaves
+  `enforce_callback_issuer` unset and the provider advertises
+  `authorization_response_iss_parameter_supported = TRUE`.
   - Has native RFC 8707 `resource` support, so authorization, token exchange, 
   and refresh requests can request audience-restricted tokens without dropping 
   down to manual extra params.

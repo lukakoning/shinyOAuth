@@ -40,6 +40,12 @@
 #'   endpoint. When populated, this metadata is used for early validation of
 #'   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
 #'   defaults.
+#' @param authorization_response_iss_parameter_supported Logical. Whether the
+#'   provider advertises RFC 9207 support for returning an `iss` parameter on
+#'   the authorization response. When `TRUE`, the [oauth_client()] helper can
+#'   auto-enable callback issuer enforcement when the caller leaves
+#'   `enforce_callback_issuer` unset and the provider also has a configured
+#'   `issuer`.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, or `revocation_endpoint`,
@@ -288,6 +294,10 @@ OAuthProvider <- S7::new_class(
     token_endpoint_auth_signing_alg_values_supported = S7::new_property(
       S7::class_character,
       default = character()
+    ),
+    authorization_response_iss_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
@@ -1057,6 +1067,7 @@ oauth_provider <- function(
   request_object_signing_alg_values_supported = character(),
   require_signed_request_object = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(),
+  authorization_response_iss_parameter_supported = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -1292,6 +1303,9 @@ oauth_provider <- function(
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = isTRUE(require_signed_request_object),
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    authorization_response_iss_parameter_supported = isTRUE(
+      authorization_response_iss_parameter_supported
+    ),
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,

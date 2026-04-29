@@ -123,6 +123,34 @@ test_that("oidc discovery accepts advertised signing algorithm supersets", {
   )
 })
 
+test_that("oidc discovery preserves RFC 9207 callback issuer metadata", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          authorization_response_iss_parameter_supported = TRUE
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+
+  testthat::expect_true(
+    isTRUE(prov@authorization_response_iss_parameter_supported)
+  )
+})
+
 test_that("oidc discovery lets caller override request object signing algs", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()

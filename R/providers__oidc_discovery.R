@@ -43,6 +43,11 @@
 #'   stores that metadata so `OAuthClient` can fail fast when a JWT client
 #'   assertion algorithm is unsupported.
 #'
+#' - RFC 9207 callback issuer metadata: when the discovery document advertises
+#'   `authorization_response_iss_parameter_supported = true`, the resulting
+#'   provider stores that metadata so [oauth_client()] can auto-enable callback
+#'   issuer enforcement unless you explicitly opt out.
+#'
 #' - PKCE method discovery: this helper keeps `S256` as the default and does not
 #'   silently downgrade to `plain`. If discovery metadata explicitly omits
 #'   `S256`, discovery fails with a configuration error unless you explicitly
@@ -221,6 +226,11 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
+  authorization_response_iss_parameter_supported <-
+    .discover_parse_optional_boolean(
+      disc,
+      "authorization_response_iss_parameter_supported"
+    )
   mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
   .discover_validate_endpoint_aliases(
     mtls_endpoint_aliases,
@@ -257,6 +267,7 @@ oauth_provider_oidc_discover <- function(
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = require_signed_request_object,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
     tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,
     issuer = iss,

@@ -9,7 +9,7 @@ oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri,
-  enforce_callback_issuer = FALSE,
+  enforce_callback_issuer = NULL,
   scopes = character(0),
   resource = character(0),
   claims = NULL,
@@ -63,12 +63,18 @@ enabled, a non-empty \code{client_secret} is required for signature validation.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 
-\item{enforce_callback_issuer}{Logical. When \code{TRUE}, enforce that
+\item{enforce_callback_issuer}{Logical or \code{NULL}. When \code{TRUE}, enforce that
 authorization responses handled through this client include an RFC 9207
 \code{iss} parameter and reject callbacks unless it exactly matches
 \code{provider@issuer}. This is recommended when one callback URL can receive
 responses from more than one authorization server. Requires the provider
-to have a configured \code{issuer}. Default is \code{FALSE}.}
+to have a configured \code{issuer}.
+
+When \code{NULL} (the \code{\link[=oauth_client]{oauth_client()}} helper default), shinyOAuth
+auto-enables this check for providers that advertise
+\code{authorization_response_iss_parameter_supported = TRUE} and have a
+configured \code{issuer}, such as OIDC discovery providers that expose RFC 9207
+support. Set \code{FALSE} to opt out explicitly.}
 
 \item{scopes}{Vector of scopes to request. For OIDC providers (those with an
 \code{issuer}), shinyOAuth automatically prepends \code{openid} when it is missing;

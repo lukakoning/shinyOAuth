@@ -6,13 +6,15 @@
 # Helper: build provider + client for callback iss tests
 make_iss_test_client <- function(
   issuer = "https://issuer.example.com",
-  enforce_callback_issuer = FALSE
+  enforce_callback_issuer = NULL,
+  authorization_response_iss_parameter_supported = FALSE
 ) {
   prov <- oauth_provider(
     name = "oidc-iss-test",
     auth_url = paste0(issuer, "/auth"),
     token_url = paste0(issuer, "/token"),
     issuer = issuer,
+    authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     id_token_validation = FALSE,
     id_token_required = FALSE,
     use_nonce = FALSE,
@@ -46,6 +48,19 @@ test_that("callback issuer enforcement is configured on OAuthClient", {
   expect_false(
     "enforce_callback_issuer" %in% names(formals(shinyOAuth::handle_callback))
   )
+})
+
+test_that("oauth_client auto-enables callback issuer enforcement from provider metadata", {
+  cli_auto <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
+  expect_true(isTRUE(cli_auto@enforce_callback_issuer))
+
+  cli_opt_out <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    authorization_response_iss_parameter_supported = TRUE
+  )
+  expect_false(isTRUE(cli_opt_out@enforce_callback_issuer))
 })
 
 test_that("callback iss matching expected issuer is accepted", {
@@ -208,6 +223,43 @@ test_that("callback without iss parameter retains current behavior", {
 test_that("callback without iss parameter is rejected in strict mode", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_iss_test_client(enforce_callback_issuer = TRUE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          testthat::fail("token exchange should not run when iss is required")
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=ok&state=", enc))
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_null(values$token)
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_identical(values$error, "issuer_missing")
+    }
+  )
+})
+
+test_that("callback without iss parameter is rejected when provider advertises RFC 9207 support", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
 
   shiny::testServer(
     app = oauth_module_server,

@@ -16,6 +16,7 @@ OAuthProvider(
   request_object_signing_alg_values_supported = character(0),
   require_signed_request_object = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(0),
+  authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -84,6 +85,13 @@ authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
 endpoint. When populated, this metadata is used for early validation of
 \code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
 defaults.}
+
+\item{authorization_response_iss_parameter_supported}{Logical. Whether the
+provider advertises RFC 9207 support for returning an \code{iss} parameter on
+the authorization response. When \code{TRUE}, the \code{\link[=oauth_client]{oauth_client()}} helper can
+auto-enable callback issuer enforcement when the caller leaves
+\code{enforce_callback_issuer} unset and the provider also has a configured
+\code{issuer}.}
 
 \item{issuer}{OIDC issuer URL (optional; required for ID token validation).
 This is the base URL that identifies the OpenID Provider (OP). It is used
