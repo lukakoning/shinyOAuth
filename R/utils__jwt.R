@@ -1226,9 +1226,8 @@ normalize_private_key_input <- function(key, arg_name = "client_private_key") {
 #' Choose a default JWT alg compatible with a given private key
 #'
 #' For RSA keys, prefer RS256. For EC keys, try ES256/384/512 to match P-256/384/521.
-#' For OKP/Ed25519-like keys, try EdDSA. Falls back to an eager configuration
-#' error when none of the candidates work, prompting the caller to set
-#' client_assertion_alg explicitly.
+#' Other key types are not currently supported for outbound JWT signing and
+#' fall back to a configuration error.
 #' @keywords internal
 #' @noRd
 choose_default_alg_for_private_key <- function(key) {
@@ -1246,15 +1245,19 @@ choose_default_alg_for_private_key <- function(key) {
 
   # Unknown key classes still go through the same compatibility guard so we do
   # not infer defaults from jose::jwt_encode_sig() accepting impossible pairs.
-  for (alg in c("EdDSA", "RS256", "PS256", "ES256", "ES384", "ES512")) {
+  for (alg in c("RS256", "PS256", "ES256", "ES384", "ES512")) {
     if (private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
       return(canonicalize_jws_alg(alg))
     }
   }
   err_config(
     c(
-      "x" = "Could not determine a compatible default client_assertion_alg for the provided private key",
-      "i" = "Set OAuthClient@client_assertion_alg explicitly to a supported value"
+      "x" = "Could not determine a compatible default outbound JWT signing algorithm for the provided private key",
+      "i" = paste(
+        "shinyOAuth currently supports RSA and ECDSA private keys for",
+        "outbound client assertions, request objects, and DPoP proofs"
+      ),
+      "i" = "EdDSA remains supported for inbound ID token verification"
     )
   )
 }

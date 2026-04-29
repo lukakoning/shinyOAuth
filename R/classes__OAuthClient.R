@@ -28,7 +28,9 @@
 #' @param client_private_key Optional private key for `private_key_jwt` client authentication
 #'   at the token endpoint. Can be an `openssl::key` or a PEM string containing a
 #'   private key. Required when the provider's `token_auth_style = 'private_key_jwt'`.
-#'   Ignored for other auth styles.
+#'   Ignored for other auth styles. Current outbound private-key JWT signing
+#'   supports RSA and EC private keys; Ed25519/Ed448 keys are not currently
+#'   supported for client-side signing.
 #'
 #' @param client_private_key_kid Optional key identifier (kid) to include in the JWT header
 #'   for `private_key_jwt` assertions. Useful when the authorization server uses kid to
@@ -36,14 +38,16 @@
 #'
 #' @param client_assertion_alg Optional JWT signing algorithm to use for client assertions.
 #'   When omitted, defaults to `HS256` for `client_secret_jwt`. For `private_key_jwt`, a
-#'   compatible default is selected based on the private key type/curve (e.g., `RS256` for RSA,
-#'   `ES256`/`ES384`/`ES512` for EC P-256/384/521, or `EdDSA` for Ed25519/Ed448). If an explicit
+#'   compatible default is selected based on the private key type/curve (e.g., `RS256` for RSA
+#'   or `ES256`/`ES384`/`ES512` for EC P-256/384/521). If an explicit
 #'   value is provided but incompatible with the key, validation fails early with a configuration
 #'   error. When the provider advertises
 #'   `token_endpoint_auth_signing_alg_values_supported`, both explicit values and
 #'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
-#'   supported by `jose::jwt_encode_sig` (e.g., `RS256`, `PS256`, `ES256`, `EdDSA`) for private keys.
+#'   supported for outbound signing (for example `RS256`, `PS256`, `ES256`, `ES384`, `ES512`) for
+#'   private keys. EdDSA remains supported for inbound ID token verification, not outbound client
+#'   assertions.
 #'
 #' @param client_assertion_audience Optional override for the `aud` claim used when building
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
@@ -81,7 +85,8 @@
 #'   signed authorization requests when `authorization_request_mode = "request"`.
 #'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
 #'   compatible asymmetric default based on `client_private_key` (for example
-#'   `RS256`, `ES256`, or `EdDSA`).
+#'   `RS256`, `ES256`, `ES384`, or `ES512`). EdDSA is not currently supported
+#'   for outbound signed authorization requests.
 #'
 #' @param authorization_request_audience Optional override for the `aud` claim
 #'   used in signed authorization requests. By default, shinyOAuth uses the
@@ -92,7 +97,9 @@
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
 #'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
 #'   proofs to token endpoint requests and use DPoP-bound access tokens in
-#'   downstream request helpers.
+#'   downstream request helpers. Current outbound DPoP signing supports RSA and
+#'   EC private keys; Ed25519/Ed448 keys are not currently supported for
+#'   client-side signing.
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
 #'   the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -100,7 +107,8 @@
 #'
 #' @param dpop_signing_alg Optional JWT signing algorithm to use for DPoP
 #'   proofs. When omitted, a compatible asymmetric default is selected based on
-#'   the private key type/curve (for example `RS256`, `ES256`, or `EdDSA`). If
+#'   the private key type/curve (for example `RS256`, `ES256`, `ES384`, or
+#'   `ES512`). EdDSA is not currently supported for outbound DPoP proofs. If
 #'   an explicit value is provided but incompatible with the key, validation
 #'   fails early with a configuration error.
 #'
@@ -587,8 +595,7 @@ OAuthClient <- S7::new_class(
           # ECDSA over P-256/384/521
           "ES256",
           "ES384",
-          "ES512",
-          "EdDSA"
+          "ES512"
         )
         if (
           identical(tok_style, "client_secret_jwt") &&
@@ -638,6 +645,33 @@ OAuthClient <- S7::new_class(
             ))
           }
         }
+      }
+    }
+
+    if (
+      identical(tok_style, "private_key_jwt") &&
+        (is.na(client_assertion_alg) || !nzchar(client_assertion_alg))
+    ) {
+      key0 <- try(
+        normalize_private_key_input(self@client_private_key),
+        silent = TRUE
+      )
+      if (inherits(key0, "try-error")) {
+        return(
+          "OAuthClient: client_private_key could not be parsed for client_assertion_alg validation"
+        )
+      }
+
+      inferred_alg <- try(
+        choose_default_alg_for_private_key(key0),
+        silent = TRUE
+      )
+      if (inherits(inferred_alg, "try-error")) {
+        return(paste(
+          "OAuthClient: could not determine a compatible default",
+          "client_assertion_alg from client_private_key",
+          "(outbound private-key JWT signing currently supports RSA and ECDSA private keys only)"
+        ))
       }
     }
 
@@ -758,8 +792,7 @@ OAuthClient <- S7::new_class(
         "PS512",
         "ES256",
         "ES384",
-        "ES512",
-        "EdDSA"
+        "ES512"
       )
       alg <- canonicalize_jws_alg(arsa)
       has_private_key <- !is.null(self@client_private_key)
@@ -772,6 +805,29 @@ OAuthClient <- S7::new_class(
       }
 
       if (!nzchar(alg)) {
+        if (isTRUE(has_private_key)) {
+          key0 <- try(
+            normalize_private_key_input(self@client_private_key),
+            silent = TRUE
+          )
+          if (inherits(key0, "try-error")) {
+            return(
+              "OAuthClient: client_private_key could not be parsed for authorization_request_signing_alg validation"
+            )
+          }
+
+          inferred_alg <- try(
+            choose_default_alg_for_private_key(key0),
+            silent = TRUE
+          )
+          if (inherits(inferred_alg, "try-error")) {
+            return(paste(
+              "OAuthClient: could not determine a compatible default",
+              "authorization_request_signing_alg from client_private_key",
+              "(outbound signed authorization requests currently support RSA and ECDSA private keys only)"
+            ))
+          }
+        }
         if (!isTRUE(has_private_key) && !isTRUE(has_secret)) {
           return(
             "OAuthClient: authorization_request_mode = 'request' requires client_private_key or client_secret"
@@ -920,8 +976,7 @@ OAuthClient <- S7::new_class(
         "PS512",
         "ES256",
         "ES384",
-        "ES512",
-        "EdDSA"
+        "ES512"
       )
       if (!(dpop_alg %in% allowed_dpop_algs)) {
         return(paste0(
@@ -949,6 +1004,36 @@ OAuthClient <- S7::new_class(
           "OAuthClient: dpop_signing_alg '",
           dpop_alg,
           "' is incompatible with the provided dpop_private_key"
+        ))
+      }
+    }
+
+    if (
+      !is.null(self@dpop_private_key) &&
+        (!nzchar(dpop_alg_raw) || is.na(dpop_alg_raw))
+    ) {
+      key0 <- try(
+        normalize_private_key_input(
+          self@dpop_private_key,
+          arg_name = "dpop_private_key"
+        ),
+        silent = TRUE
+      )
+      if (inherits(key0, "try-error")) {
+        return(
+          "OAuthClient: dpop_private_key could not be parsed for dpop_signing_alg validation"
+        )
+      }
+
+      inferred_alg <- try(
+        choose_default_alg_for_private_key(key0),
+        silent = TRUE
+      )
+      if (inherits(inferred_alg, "try-error")) {
+        return(paste(
+          "OAuthClient: could not determine a compatible default",
+          "dpop_signing_alg from dpop_private_key",
+          "(outbound DPoP proofs currently support RSA and ECDSA private keys only)"
         ))
       }
     }

@@ -114,7 +114,7 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
   hdr <- shinyOAuth:::parse_jwt_header(assertion)
   pl <- shinyOAuth:::parse_jwt_payload(assertion)
   expect_identical(hdr$typ, "JWT")
-  expect_true(toupper(hdr$alg) %in% c("RS256", "PS256", "ES256", "EDDSA"))
+  expect_identical(hdr$alg, "RS256")
   expect_identical(hdr$kid, "kid-123")
   expect_identical(pl$iss, "abc")
   expect_identical(pl$sub, "abc")

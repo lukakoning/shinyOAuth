@@ -556,9 +556,8 @@ test_that("request mode rejects incompatible explicit signing alg combinations",
       client_private_key = openssl::rsa_keygen(),
       authorization_request_signing_alg = "EdDSA"
     ),
-    regexp = paste(
-      "authorization_request_signing_alg 'EdDSA' is incompatible",
-      "with the provided private key"
+    regexp = paste0(
+      "authorization_request_signing_alg 'EdDSA' is incompatible with signed authorization requests"
     )
   )
 
@@ -570,6 +569,22 @@ test_that("request mode rejects incompatible explicit signing alg combinations",
     regexp = paste(
       "authorization_request_signing_alg 'ES512' is incompatible",
       "with the provided private key"
+    )
+  )
+
+  key_ed <- try(openssl::ed25519_keygen(), silent = TRUE)
+  if (inherits(key_ed, "try-error")) {
+    testthat::skip("Ed25519 key generation not supported on this platform")
+  }
+
+  expect_error(
+    make_jar_test_client(
+      client_secret = "",
+      client_private_key = key_ed
+    ),
+    regexp = paste(
+      "outbound signed authorization requests currently support RSA and ECDSA",
+      "private keys only"
     )
   )
 })

@@ -169,7 +169,9 @@ human‑memorable passphrases. See also \code{vignette("usage", package = "shiny
 \item{client_private_key}{Optional private key for \code{private_key_jwt} client authentication
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a
 private key. Required when the provider's \code{token_auth_style = 'private_key_jwt'}.
-Ignored for other auth styles.}
+Ignored for other auth styles. Current outbound private-key JWT signing
+supports RSA and EC private keys; Ed25519/Ed448 keys are not currently
+supported for client-side signing.}
 
 \item{client_private_key_kid}{Optional key identifier (kid) to include in the JWT header
 for \code{private_key_jwt} assertions. Useful when the authorization server uses kid to
@@ -177,14 +179,16 @@ select the correct verification key.}
 
 \item{client_assertion_alg}{Optional JWT signing algorithm to use for client assertions.
 When omitted, defaults to \code{HS256} for \code{client_secret_jwt}. For \code{private_key_jwt}, a
-compatible default is selected based on the private key type/curve (e.g., \code{RS256} for RSA,
-\code{ES256}/\code{ES384}/\code{ES512} for EC P-256/384/521, or \code{EdDSA} for Ed25519/Ed448). If an explicit
+compatible default is selected based on the private key type/curve (e.g., \code{RS256} for RSA
+or \code{ES256}/\code{ES384}/\code{ES512} for EC P-256/384/521). If an explicit
 value is provided but incompatible with the key, validation fails early with a configuration
 error. When the provider advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, both explicit values and
 inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
-supported by \code{jose::jwt_encode_sig} (e.g., \code{RS256}, \code{PS256}, \code{ES256}, \code{EdDSA}) for private keys.}
+supported for outbound signing (for example \code{RS256}, \code{PS256}, \code{ES256}, \code{ES384}, \code{ES512}) for
+private keys. EdDSA remains supported for inbound ID token verification, not outbound client
+assertions.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
@@ -227,7 +231,8 @@ with \code{client_secret}.}
 signed authorization requests when \code{authorization_request_mode = "request"}.
 When omitted, shinyOAuth chooses \code{HS256} for HMAC-based signing or a
 compatible asymmetric default based on \code{client_private_key} (for example
-\code{RS256}, \code{ES256}, or \code{EdDSA}).}
+\code{RS256}, \code{ES256}, \code{ES384}, or \code{ES512}). EdDSA is not currently supported
+for outbound signed authorization requests.}
 
 \item{authorization_request_audience}{Optional override for the \code{aud} claim
 used in signed authorization requests. By default, shinyOAuth uses the
@@ -238,7 +243,9 @@ endpoint URL.}
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
 asymmetric private key. When provided, shinyOAuth can attach \code{DPoP}
 proofs to token endpoint requests and use DPoP-bound access tokens in
-downstream request helpers.}
+downstream request helpers. Current outbound DPoP signing supports RSA and
+EC private keys; Ed25519/Ed448 keys are not currently supported for
+client-side signing.}
 
 \item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
 the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -246,7 +253,8 @@ server expects a stable key identifier alongside the embedded public JWK.}
 
 \item{dpop_signing_alg}{Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
-the private key type/curve (for example \code{RS256}, \code{ES256}, or \code{EdDSA}). If
+the private key type/curve (for example \code{RS256}, \code{ES256}, \code{ES384}, or
+\code{ES512}). EdDSA is not currently supported for outbound DPoP proofs. If
 an explicit value is provided but incompatible with the key, validation
 fails early with a configuration error.}
 
