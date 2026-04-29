@@ -291,9 +291,10 @@ with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, or explicit
 happens if the returned ID token or userinfo response does not satisfy
 those requests.
 \itemize{
-\item \code{"none"} (default): Skips claims validation entirely. This is the
-default because providers are expected to fulfil essential claims
-requests or return an error.
+\item \code{"none"} (default): Skips claims validation entirely. If you leave this
+default while requesting \code{essential}, \code{value}, or \code{values}
+constraints, \code{\link[=oauth_client]{oauth_client()}} warns because providers may still
+complete login without satisfying those claim requests.
 \item \code{"warn"}: Emits a warning but continues authentication if requested
 essential claims are missing or requested claim values are not
 satisfied.

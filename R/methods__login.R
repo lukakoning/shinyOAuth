@@ -2565,6 +2565,19 @@ extract_claim_value_constraints <- function(claims_spec, target) {
   constraints
 }
 
+claims_request_has_enforceable_requirements <- function(claims_spec) {
+  targets <- c("id_token", "userinfo")
+
+  any(vapply(
+    targets,
+    function(target) {
+      length(extract_essential_claims(claims_spec, target)) > 0 ||
+        length(extract_claim_value_constraints(claims_spec, target)) > 0
+    },
+    logical(1)
+  ))
+}
+
 canonicalize_claim_value <- function(value) {
   encoded <- tryCatch(
     jsonlite::toJSON(

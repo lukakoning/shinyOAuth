@@ -246,9 +246,10 @@
 #'   happens if the returned ID token or userinfo response does not satisfy
 #'   those requests.
 #'
-#'   - `"none"` (default): Skips claims validation entirely. This is the
-#'     default because providers are expected to fulfil essential claims
-#'     requests or return an error.
+#'   - `"none"` (default): Skips claims validation entirely. If you leave this
+#'     default while requesting `essential`, `value`, or `values`
+#'     constraints, [oauth_client()] warns because providers may still
+#'     complete login without satisfying those claim requests.
 #'   - `"warn"`: Emits a warning but continues authentication if requested
 #'     essential claims are missing or requested claim values are not
 #'     satisfied.
@@ -1419,6 +1420,40 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
   invisible(TRUE)
 }
 
+warn_about_unenforced_claim_requests <- function(
+  claims,
+  claims_validation,
+  claims_validation_missing = FALSE
+) {
+  if (
+    !isTRUE(claims_validation_missing) || !identical(claims_validation, "none")
+  ) {
+    return(invisible(FALSE))
+  }
+
+  if (!claims_request_has_enforceable_requirements(claims)) {
+    return(invisible(FALSE))
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Enforceable claim requests are not being validated}",
+      "!" = paste(
+        "The supplied {.arg claims} request includes {.code essential}, {.code value}, or {.code values} constraints,",
+        "but {.arg claims_validation} was left at its default {.val none}, so shinyOAuth will not verify that the returned ID token or userinfo satisfies them."
+      ),
+      "i" = paste(
+        "OIDC providers may still complete login without enforcing those requested claims.",
+        "Set {.arg claims_validation} = {.val warn} to surface mismatches or {.arg claims_validation} = {.val strict} to fail login when requested claims are missing or unsatisfied."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_claims_validation_default_none"
+  )
+
+  invisible(TRUE)
+}
+
 #' Create generic [OAuthClient]
 #'
 #' @inheritParams OAuthClient
@@ -1462,6 +1497,8 @@ oauth_client <- function(
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
+  claims_validation_missing <- missing(claims_validation)
+
   warn_about_oauth_client_created_in_shiny(
     state_key_missing = missing(state_key)
   )
@@ -1510,6 +1547,12 @@ oauth_client <- function(
   scope_validation <- match.arg(scope_validation)
   claims_validation <- match.arg(claims_validation)
   authorization_request_mode <- match.arg(authorization_request_mode)
+
+  warn_about_unenforced_claim_requests(
+    claims = claims,
+    claims_validation = claims_validation,
+    claims_validation_missing = claims_validation_missing
+  )
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees

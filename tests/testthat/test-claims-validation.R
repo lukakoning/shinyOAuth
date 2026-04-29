@@ -2,6 +2,10 @@
 # Validates that requested claims supplied via the OIDC claims parameter
 # (OIDC Core §5.5) are checked against returned ID token / userinfo.
 
+reset_claims_validation_default_warning <- function() {
+  rlang::reset_warning_verbosity("shinyOAuth_claims_validation_default_none")
+}
+
 # --- Unit tests for extract_essential_claims() --------------------------------
 
 test_that("extract_essential_claims: extracts essential id_token claims from list", {
@@ -79,6 +83,48 @@ test_that("extract_essential_claims: essential = FALSE is not essential", {
 
   result <- shinyOAuth:::extract_essential_claims(claims, "id_token")
   expect_equal(result, character(0))
+})
+
+test_that("oauth_client warns when enforceable claims keep default validation", {
+  reset_claims_validation_default_warning()
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = TRUE)
+
+  expect_warning(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = "openid",
+      claims = list(
+        id_token = list(auth_time = list(essential = TRUE)),
+        userinfo = list(email_verified = list(value = TRUE))
+      )
+    ),
+    regexp = "claims_validation|not verify"
+  )
+})
+
+test_that("oauth_client does not warn when enforceable claims opt into validation", {
+  reset_claims_validation_default_warning()
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = TRUE)
+
+  expect_no_warning(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = "openid",
+      claims = list(
+        id_token = list(auth_time = list(essential = TRUE)),
+        userinfo = list(email_verified = list(value = TRUE))
+      ),
+      claims_validation = "warn"
+    )
+  )
 })
 
 # --- Unit tests for validate_essential_claims() -------------------------------

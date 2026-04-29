@@ -96,6 +96,9 @@ previews instead of exposing full credential material in default console output.
   * Also enforces OIDC claim request `value` and `values` constraints when 
   `claims_validation` is enabled, not just presence of `essential = TRUE` 
   claims.
+  * Warns when callers request `essential` or value-constrained OIDC claims
+  but leave `claims_validation` at its default `"none"`, since those claim
+  requests are otherwise not checked client-side.
   * Carries the same effective requested scopes through the whole login flow. If
   `openid` is auto-added to the authorization request, the sealed state payload, 
   token-response scope validation, and introspection scope validation now use
