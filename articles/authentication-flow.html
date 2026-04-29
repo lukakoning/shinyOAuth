@@ -340,8 +340,8 @@ userinfo fetch to ensure cryptographic validation occurs prior to making
 external calls:</p>
 <ul>
 <li>Signature: verified against provider JWKS (with optional pinning)
-for standard asymmetric algorithms (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA).
-HMAC algorithms (HS256/384/512) are only allowed with explicit opt-in
+for supported asymmetric algorithms (RSA-PKCS1, ECDSA, EdDSA). HMAC
+algorithms (HS256/384/512) are only allowed with explicit opt-in
 (<code>options(shinyOAuth.allow_hs = TRUE)</code>) and a sufficiently
 strong server-held secret</li>
 <li>Claims: <code>iss</code> matches expected issuer; <code>aud</code>

@@ -246,8 +246,8 @@ verifications are performed **before** any userinfo fetch to ensure
 cryptographic validation occurs prior to making external calls:
 
 - Signature: verified against provider JWKS (with optional pinning) for
-  standard asymmetric algorithms (RSA-PKCS1, RSA-PSS, ECDSA, EdDSA).
-  HMAC algorithms (HS256/384/512) are only allowed with explicit opt-in
+  supported asymmetric algorithms (RSA-PKCS1, ECDSA, EdDSA). HMAC
+  algorithms (HS256/384/512) are only allowed with explicit opt-in
   (`options(shinyOAuth.allow_hs = TRUE)`) and a sufficiently strong
   server-held secret
 - Claims: `iss` matches expected issuer; `aud` vector contains

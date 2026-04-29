@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- Restricted outbound RSA JWT signing to `RS256` and removed unsupported
+  `PS*` algorithms from default inbound allowlists until the JOSE
+  backend can correctly sign and verify RSA-PSS tokens.
+
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   now defaults `dpop_require_access_token` to `TRUE` when a
   `dpop_private_key` is configured, so Bearer access tokens are rejected

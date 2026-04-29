@@ -250,10 +250,9 @@ oauth_client(
   `token_endpoint_auth_signing_alg_values_supported`, both explicit
   values and inferred defaults must be included in that set. Supported
   values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
-  asymmetric algorithms supported for outbound signing (for example
-  `RS256`, `PS256`, `ES256`, `ES384`, `ES512`) for private keys. EdDSA
-  remains supported for inbound ID token verification, not outbound
-  client assertions.
+  asymmetric algorithms supported for outbound signing (`RS256`,
+  `ES256`, `ES384`, `ES512`) for private keys. EdDSA remains supported
+  for inbound ID token verification, not outbound client assertions.
 
 - client_assertion_audience:
 

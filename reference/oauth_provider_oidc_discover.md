@@ -16,8 +16,7 @@ oauth_provider_oidc_discover(
   use_nonce = TRUE,
   id_token_validation = TRUE,
   token_auth_style = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256",
-    "ES384", "ES512", "EdDSA"),
+  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
@@ -69,12 +68,11 @@ oauth_provider_oidc_discover(
 - allowed_algs:
 
   Character vector of allowed ID token signing algorithms. Defaults to a
-  broad set of common algorithms, including RSA (RS\*), RSA-PSS (PS\*),
-  ECDSA (ES\*), and EdDSA. If the discovery document advertises
-  supported algorithms, the intersection of advertised and
-  caller-provided algorithms is used to avoid runtime mismatches. If
-  there's no overlap, discovery fails with a configuration error (no
-  fallback)
+  broad set of common algorithms, including RSA (RS\*), ECDSA (ES\*),
+  and EdDSA. If the discovery document advertises supported algorithms,
+  the intersection of advertised and caller-provided algorithms is used
+  to avoid runtime mismatches. If there's no overlap, discovery fails
+  with a configuration error (no fallback)
 
 - allowed_token_types:
 
@@ -122,8 +120,8 @@ object configured from discovery
 ## Details
 
 - ID token algorithms: by default this helper accepts common asymmetric
-  algorithms RSA (RS\*), RSA-PSS (PS\*), ECDSA (ES\*), and EdDSA. When
-  the provider advertises its supported ID token signing algorithms via
+  algorithms RSA (RS\*), ECDSA (ES\*), and EdDSA. When the provider
+  advertises its supported ID token signing algorithms via
   `id_token_signing_alg_values_supported`, the helper uses the
   intersection with the caller-provided `allowed_algs`. If there is no
   overlap, discovery fails with a configuration error. There is no

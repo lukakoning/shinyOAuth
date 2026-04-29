@@ -104,8 +104,7 @@ presence of an issuer and available endpoints.</p>
 <span>  jwks_pin_mode <span class="op">=</span> <span class="st">"any"</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"PS256"</span>, <span class="st">"PS384"</span>, <span class="st">"PS512"</span>, <span class="st">"ES256"</span>,</span>
-<span>    <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
+<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -412,12 +411,12 @@ and only the hostname part is used for matching. Takes precedence over
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
 <dd><p>Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supported
-asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>,
-<code>PS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> (Ed25519/Ed448 via OKP).
+asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
+<code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> (Ed25519/Ed448 via OKP).
 Symmetric HMAC algorithms <code>HS256</code>, <code>HS384</code>, <code>HS512</code> are also supported but
 require that you supply a <code>client_secret</code> and explicitly enable HMAC
 verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.
-Defaults to <code>c("RS256","RS384","RS512","PS256","PS384","PS512", "ES256","ES384","ES512","EdDSA")</code>, which intentionally excludes HS*.
+Defaults to <code>c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")</code>, which intentionally excludes HS*.
 Only include <code>HS*</code> if you are certain the <code>client_secret</code> is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments. Prefer rotating secrets regularly when enabling this.</p></dd>

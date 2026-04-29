@@ -63,8 +63,7 @@ for RFC 7662 support.</p>
 <span>  use_nonce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  token_auth_style <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"PS256"</span>, <span class="st">"PS384"</span>, <span class="st">"PS512"</span>, <span class="st">"ES256"</span>,</span>
-<span>    <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
+<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  issuer_match <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"url"</span>, <span class="st">"host"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
@@ -115,8 +114,8 @@ unless explicitly requested</p></dd>
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
 <dd><p>Character vector of allowed ID token signing algorithms.
-Defaults to a broad set of common algorithms, including RSA (RS*), RSA-PSS
-(PS*), ECDSA (ES*), and EdDSA. If the discovery document advertises
+Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
+(ES*), and EdDSA. If the discovery document advertises
 supported algorithms, the intersection of advertised and caller-provided
 algorithms is used to avoid runtime mismatches. If there's no overlap,
 discovery fails with a configuration error (no fallback)</p></dd>
@@ -160,7 +159,7 @@ PKCE support and you intentionally want to allow that downgrade)</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
 <ul><li><p>ID token algorithms: by default this helper accepts common asymmetric
-algorithms RSA (RS*), RSA-PSS (PS*), ECDSA (ES*), and EdDSA. When the
+algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
 provider advertises its supported ID token signing algorithms via
 <code>id_token_signing_alg_values_supported</code>, the helper uses the intersection
 with the caller-provided <code>allowed_algs</code>. If there is no overlap, discovery
