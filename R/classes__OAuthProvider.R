@@ -208,7 +208,7 @@
 #'   "any" (default; at least one key in JWKS must match) or "all" (every
 #'   RSA/EC/OKP public key in JWKS must match one of the configured pins)
 #' @param jwks_host_issuer_match When TRUE, enforce that the discovery `jwks_uri` host
-#'   matches the issuer host (or a subdomain). Defaults to FALSE at the class
+#'   matches the issuer host exactly. Defaults to FALSE at the class
 #'   level, but helper constructors for OIDC (e.g., [oauth_provider_oidc()] and
 #'   [oauth_provider_oidc_discover()]) enable this by default for safer config.
 #'   The generic helper [oauth_provider()] will also automatically set this to

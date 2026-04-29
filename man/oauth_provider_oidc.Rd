@@ -37,7 +37,7 @@ oauth_provider_oidc(
 for this provider. Defaults to TRUE}
 
 \item{jwks_host_issuer_match}{When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host (or a subdomain). For
+discovered from the provider matches the issuer host exactly. For
 providers that serve JWKS from a different host (e.g., Google), set
 \code{jwks_host_allow_only} to the exact hostname instead of disabling this.
 Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via

@@ -96,6 +96,31 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
   )
 })
 
+testthat::test_that("discovery rejects JWKS issuer subdomains by default", {
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://issuer.example.com/auth",
+        token_endpoint = "https://issuer.example.com/token",
+        jwks_uri = "https://sub.issuer.example.com/jwks.json"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    oauth_provider_oidc_discover(
+      issuer = "https://issuer.example.com",
+      jwks_host_issuer_match = TRUE
+    ),
+    class = "shinyOAuth_config_error"
+  )
+})
+
 testthat::test_that("discovery requires jwks_uri when ID token validation is enabled", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

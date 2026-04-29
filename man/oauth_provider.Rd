@@ -260,7 +260,7 @@ Use to reduce key substitution risks by pre-authorizing expected keys}
 RSA/EC/OKP public key in JWKS must match one of the configured pins)}
 
 \item{jwks_host_issuer_match}{When TRUE, enforce that the discovery \code{jwks_uri} host
-matches the issuer host (or a subdomain). Defaults to FALSE at the class
+matches the issuer host exactly. Defaults to FALSE at the class
 level, but helper constructors for OIDC (e.g., \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} and
 \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}) enable this by default for safer config.
 The generic helper \code{\link[=oauth_provider]{oauth_provider()}} will also automatically set this to

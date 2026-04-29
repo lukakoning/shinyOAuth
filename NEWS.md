@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `jwks_host_issuer_match = TRUE` now requires an exact issuer-host match for
+`jwks_uri` instead of also trusting issuer subdomains. Providers that publish
+JWKS on a different host should set `jwks_host_allow_only` to that exact host.
+
 * `oauth_module_server()` now drops provider `error_uri` values unless they
 are absolute HTTPS URLs, so unsafe schemes like `javascript:` are no longer
 surfaced through `values$error_uri`.

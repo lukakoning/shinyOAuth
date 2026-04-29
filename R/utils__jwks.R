@@ -724,7 +724,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
 #' Validates the discovery `jwks_uri` hostname according to the provider's
 #' JWKS policy. When `provider@jwks_host_allow_only` is set, the `jwks_uri` host must equal
 #' that value exactly. Otherwise, when `provider@jwks_host_issuer_match` is TRUE, the
-#' `jwks_uri` host must match the issuer host or one of its subdomains. If both
+#' `jwks_uri` host must match the issuer host exactly. If both
 #' settings are absent/disabled, no host relation is enforced. Prefer
 #' configuring `jwks_host_allow_only` for providers that serve JWKS from a
 #' different host rather than disabling issuer-match entirely.
@@ -780,13 +780,9 @@ validate_jwks_host_matches_issuer <- function(
     return(invisible(TRUE))
   }
 
-  # If strict check requested, require same host or subdomain of issuer
+  # If strict check requested, require the exact issuer host.
   if (isTRUE(check_host)) {
-    host_matches <- identical(jwks_host, issuer_host)
-    if (!host_matches && nzchar(issuer_host)) {
-      host_matches <- endsWith(jwks_host, paste0(".", issuer_host))
-    }
-    if (!host_matches) {
+    if (!identical(jwks_host, issuer_host)) {
       err_config(c(
         "x" = "jwks_uri host does not match issuer",
         "!" = sprintf(

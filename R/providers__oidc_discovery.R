@@ -99,7 +99,7 @@
 #' @param allowed_token_types Character vector of allowed token types for
 #'  access tokens issued by this provider. Defaults to 'Bearer'
 #' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
-#'  discovered from the provider matches the issuer host (or a subdomain). For
+#'  discovered from the provider matches the issuer host exactly. For
 #'  providers that serve JWKS from a different host, set
 #'  `jwks_host_allow_only` to the exact hostname instead of disabling this.
 #'  Disabling (`FALSE`) is not recommended unless you also pin JWKS via
@@ -562,15 +562,13 @@ oauth_provider_oidc_discover <- function(
   jwks_ok <- if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
     is_ok_host(paste0("https://", jwks_host, "/"), allowed_hosts = opt_allowed)
   } else {
-    # Allow exact match or subdomain of issuer host
-    identical(jwks_host, iss_host) ||
-      (nzchar(iss_host) && endsWith(jwks_host, paste0(".", iss_host)))
+    identical(jwks_host, iss_host)
   }
 
   if (!jwks_ok) {
     err_config(
       c(
-        "x" = "JWKS host must match issuer host or subdomain (or allowed host)",
+        "x" = "JWKS host must match issuer host exactly (or allowed host)",
         "i" = paste0("Issuer host: ", iss_host),
         "i" = paste0("JWKS host: ", jwks_host),
         "i" = paste0(

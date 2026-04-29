@@ -41,7 +41,7 @@ test_that("validate_jwks_host_matches_issuer enforces policy only when configure
     issuer = "https://issuer.example.com",
     jwks_uri = "https://evil.example.com/jwks"
   ))
-  # Strict check: must match issuer host or subdomain
+  # Strict check: must match issuer host exactly
   prov_strict <- oauth_provider(
     name = "t",
     auth_url = "https://issuer.example.com/auth",
@@ -54,11 +54,14 @@ test_that("validate_jwks_host_matches_issuer enforces policy only when configure
     jwks_uri = "https://issuer.example.com/.well-known/jwks.json",
     provider = prov_strict
   ))
-  expect_no_error(shinyOAuth:::validate_jwks_host_matches_issuer(
-    issuer = "https://issuer.example.com",
-    jwks_uri = "https://sub.issuer.example.com/jwks",
-    provider = prov_strict
-  ))
+  expect_error(
+    shinyOAuth:::validate_jwks_host_matches_issuer(
+      issuer = "https://issuer.example.com",
+      jwks_uri = "https://sub.issuer.example.com/jwks",
+      provider = prov_strict
+    ),
+    class = "shinyOAuth_config_error"
+  )
   expect_error(
     shinyOAuth:::validate_jwks_host_matches_issuer(
       issuer = "https://issuer.example.com",
