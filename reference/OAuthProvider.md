@@ -328,6 +328,10 @@ OAuthProvider(
 
   - "body": Form body (client_secret_post)
 
+  - "public": Public-client form body (`none` in discovery metadata);
+    sends `client_id` but never `client_secret`, even if one is
+    configured. The alias `"none"` is also accepted.
+
   - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
     client certificate chained to a trusted CA
 
@@ -380,8 +384,8 @@ OAuthProvider(
 - jwks_host_issuer_match:
 
   When TRUE, enforce that the discovery `jwks_uri` host matches the
-  issuer host (or a subdomain). Defaults to FALSE at the class level,
-  but helper constructors for OIDC (e.g.,
+  issuer host exactly. Defaults to FALSE at the class level, but helper
+  constructors for OIDC (e.g.,
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   and
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md))

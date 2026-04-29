@@ -138,10 +138,11 @@ oauth_module_server(
   Optional cookie Path to scope the browser token cookie. By default
   (`NULL`), the path is fixed to "/" for reliable clearing across route
   changes. Provide an explicit path (e.g., "/app") to narrow the
-  cookie's scope to a sub-route. Note: when the path is "/" and the page
-  is served over HTTPS, the cookie name uses the `__Host-` prefix
-  (Secure, Path=/) for additional hardening; when the path is not "/", a
-  regular cookie name is used.
+  cookie's scope to a sub-route. Explicit values must start with `/` and
+  must not contain semicolons or control characters. Note: when the path
+  is "/" and the page is served over HTTPS, the cookie name uses the
+  `__Host-` prefix (Secure, Path=/) for additional hardening; when the
+  path is not "/", a regular cookie name is used.
 
   For apps deployed under nested routes or where the OAuth callback may
   land on a different route than the initial page, keeping the default

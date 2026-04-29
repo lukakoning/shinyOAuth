@@ -840,9 +840,10 @@ give each issuer a distinct <code>redirect_uri</code> or set
 clients so callbacks without RFC 9207 <code>iss</code> are rejected
 before token exchange</li>
 <li>In your <code>OAuthProvider</code>, set as many of the security
-options as possible; for instance, set
-<code>jwks_host_issuer_match</code>/<code>jwks_host_allow_only</code>
-(if your provider uses a different host for JWKS)</li>
+options as possible; for instance, keep
+<code>jwks_host_issuer_match = TRUE</code> and, if your provider serves
+JWKS from a different host, set <code>jwks_host_allow_only</code> to
+that exact host instead of broadening the trust boundary</li>
 <li>Have your <code>OAuthClient</code> request the minimum scopes
 necessary; give your app registration only the permissions it needs</li>
 <li>Do not show <code>$error_description</code> to your users; never

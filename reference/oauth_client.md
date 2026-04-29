@@ -65,11 +65,15 @@ oauth_client(
     (`token_auth_style = "header"`, also known as
     `client_secret_basic`).
 
-  - Optional for public PKCE-only clients when the provider is
-    configured with `use_pkce = TRUE` and uses form-body client
-    authentication at the token endpoint (`token_auth_style = "body"`,
-    also known as `client_secret_post`). In this case, the secret is
-    omitted from token requests.
+  - Optional when the provider uses form-body client authentication at
+    the token endpoint (`token_auth_style = "body"`, also known as
+    `client_secret_post`) and `use_pkce = TRUE`. In that configuration,
+    the secret is omitted only when it is empty.
+
+  - Ignored for token-endpoint authentication when the provider uses
+    `token_auth_style = "public"` (or the alias `"none"`). Public auth
+    sends `client_id` only and never sends `client_secret`, even if one
+    is configured or picked up from `OAUTH_CLIENT_SECRET`.
 
   Note: If your provider issues HS256 ID tokens and
   `id_token_validation` is enabled, a non-empty `client_secret` is

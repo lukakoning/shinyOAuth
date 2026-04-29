@@ -103,10 +103,11 @@ for this provider. Defaults to TRUE</p></dd>
 
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
 <dd><p>Authentication style for token requests: "header"
-(client_secret_basic) or "body" (client_secret_post). If NULL (default),
-it is inferred conservatively from discovery. When PKCE is enabled and the
-provider advertises support for public clients via <code>none</code>, a secretless
-flow is preferred (modeled as <code>"body"</code> without credentials). Otherwise,
+(client_secret_basic), "body" (client_secret_post), or "public"
+(public client; send <code>client_id</code> only). The alias <code>"none"</code> is also
+accepted for <code>"public"</code>. If NULL (default), it is inferred conservatively
+from discovery. When PKCE is enabled and the provider advertises support
+for public clients via <code>none</code>, discovery selects <code>"public"</code>. Otherwise,
 the helper prefers <code>"header"</code> (client_secret_basic) when available, then
 <code>"body"</code> (client_secret_post). JWT-based methods are not auto-selected
 unless explicitly requested</p></dd>
@@ -128,7 +129,7 @@ access tokens issued by this provider. Defaults to 'Bearer'</p></dd>
 
 <dt id="arg-jwks-host-issuer-match">jwks_host_issuer_match<a class="anchor" aria-label="anchor" href="#arg-jwks-host-issuer-match"></a></dt>
 <dd><p>When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host (or a subdomain). For
+discovered from the provider matches the issuer host exactly. For
 providers that serve JWKS from a different host, set
 <code>jwks_host_allow_only</code> to the exact hostname instead of disabling this.
 Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
@@ -167,7 +168,8 @@ fails with a configuration error. There is no automatic fallback to the
 discovery-advertised set.</p></li>
 <li><p>Token endpoint authentication methods: supports <code>client_secret_basic</code>
 (header), <code>client_secret_post</code> (body), public clients using <code>none</code>
-(with PKCE), as well as JWT-based methods <code>private_key_jwt</code> and
+(mapped to <code>token_auth_style = "public"</code> when PKCE is enabled), as well as
+JWT-based methods <code>private_key_jwt</code> and
 <code>client_secret_jwt</code> per RFC 7523. Discovery also preserves RFC 8705 mTLS
 metadata (<code>mtls_endpoint_aliases</code> and
 <code>tls_client_certificate_bound_access_tokens</code>) and supports explicit
@@ -198,7 +200,8 @@ opt into <code>pkce_method = "plain"</code>.</p>
 not per-client provisioning. This helper does not automatically select
 JWT-based methods just because they are advertised. By default it prefers
 <code>client_secret_basic</code> (header) when available, otherwise
-<code>client_secret_post</code> (body), and only uses public <code>none</code> for PKCE clients.
+<code>client_secret_post</code> (body), and maps public <code>none</code> to
+<code>token_auth_style = "public"</code> only for PKCE clients.
 If a provider advertises only JWT methods, you must explicitly set
 <code>token_auth_style</code> and configure the corresponding credentials on your
 <a href="OAuthClient.html">OAuthClient</a> (a private key for <code>private_key_jwt</code>, or a sufficiently

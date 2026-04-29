@@ -110,11 +110,14 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <p>Validation rules:</p><ul><li><p>Required (non-empty) when the provider authenticates the client with
 HTTP Basic auth at the token endpoint (<code>token_auth_style = "header"</code>,
 also known as <code>client_secret_basic</code>).</p></li>
-<li><p>Optional for public PKCE-only clients when the provider is configured
-with <code>use_pkce = TRUE</code> and uses form-body client authentication at the
+<li><p>Optional when the provider uses form-body client authentication at the
 token endpoint (<code>token_auth_style = "body"</code>, also known as
-<code>client_secret_post</code>). In this case, the secret is omitted from token
-requests.</p></li>
+<code>client_secret_post</code>) and <code>use_pkce = TRUE</code>. In that configuration,
+the secret is omitted only when it is empty.</p></li>
+<li><p>Ignored for token-endpoint authentication when the provider uses
+<code>token_auth_style = "public"</code> (or the alias <code>"none"</code>). Public auth
+sends <code>client_id</code> only and never sends <code>client_secret</code>, even if one is
+configured or picked up from <code>OAUTH_CLIENT_SECRET</code>.</p></li>
 </ul><p>Note: If your provider issues HS256 ID tokens and <code>id_token_validation</code> is
 enabled, a non-empty <code>client_secret</code> is required for signature validation.</p></dd>
 

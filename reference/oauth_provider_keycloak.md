@@ -32,12 +32,14 @@ oauth_provider_keycloak(
 - token_auth_style:
 
   Optional override for token endpoint authentication method. One of
-  "header" (client_secret_basic), "body" (client_secret_post),
+  "header" (client_secret_basic), "body" (client_secret_post), "public"
+  (send `client_id` only; `"none"` alias also accepted),
   "private_key_jwt", or "client_secret_jwt". Defaults to "body" for
-  Keycloak, which works for both confidential clients and public PKCE
-  clients (secretless). If you pass `NULL`, discovery will infer the
-  method from the provider's `token_endpoint_auth_methods_supported`
-  metadata.
+  Keycloak, which works for confidential clients and for public PKCE
+  clients when no secret is configured. Use `"public"` if you need to
+  suppress `client_secret` even when it is set in the environment. If
+  you pass `NULL`, discovery will infer the method from the provider's
+  `token_endpoint_auth_methods_supported` metadata.
 
 ## Value
 

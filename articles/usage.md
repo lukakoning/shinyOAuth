@@ -678,9 +678,10 @@ your app to production:
   `enforce_callback_issuer = TRUE` for issuer-configured clients so
   callbacks without RFC 9207 `iss` are rejected before token exchange
 - In your `OAuthProvider`, set as many of the security options as
-  possible; for instance, set
-  `jwks_host_issuer_match`/`jwks_host_allow_only` (if your provider uses
-  a different host for JWKS)
+  possible; for instance, keep `jwks_host_issuer_match = TRUE` and, if
+  your provider serves JWKS from a different host, set
+  `jwks_host_allow_only` to that exact host instead of broadening the
+  trust boundary
 - Have your `OAuthClient` request the minimum scopes necessary; give
   your app registration only the permissions it needs
 - Do not show `$error_description` to your users; never expose tokens in

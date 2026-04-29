@@ -56,11 +56,12 @@ oauth_provider_oidc_discover(
 - token_auth_style:
 
   Authentication style for token requests: "header"
-  (client_secret_basic) or "body" (client_secret_post). If NULL
-  (default), it is inferred conservatively from discovery. When PKCE is
-  enabled and the provider advertises support for public clients via
-  `none`, a secretless flow is preferred (modeled as `"body"` without
-  credentials). Otherwise, the helper prefers `"header"`
+  (client_secret_basic), "body" (client_secret_post), or "public"
+  (public client; send `client_id` only). The alias `"none"` is also
+  accepted for `"public"`. If NULL (default), it is inferred
+  conservatively from discovery. When PKCE is enabled and the provider
+  advertises support for public clients via `none`, discovery selects
+  `"public"`. Otherwise, the helper prefers `"header"`
   (client_secret_basic) when available, then `"body"`
   (client_secret_post). JWT-based methods are not auto-selected unless
   explicitly requested
@@ -83,9 +84,9 @@ oauth_provider_oidc_discover(
 - jwks_host_issuer_match:
 
   When TRUE (default), enforce that the JWKS host discovered from the
-  provider matches the issuer host (or a subdomain). For providers that
-  serve JWKS from a different host, set `jwks_host_allow_only` to the
-  exact hostname instead of disabling this. Disabling (`FALSE`) is not
+  provider matches the issuer host exactly. For providers that serve
+  JWKS from a different host, set `jwks_host_allow_only` to the exact
+  hostname instead of disabling this. Disabling (`FALSE`) is not
   recommended unless you also pin JWKS via `jwks_host_allow_only` or
   `jwks_pins`
 
@@ -130,9 +131,10 @@ object configured from discovery
 
 - Token endpoint authentication methods: supports `client_secret_basic`
   (header), `client_secret_post` (body), public clients using `none`
-  (with PKCE), as well as JWT-based methods `private_key_jwt` and
-  `client_secret_jwt` per RFC 7523. Discovery also preserves RFC 8705
-  mTLS metadata (`mtls_endpoint_aliases` and
+  (mapped to `token_auth_style = "public"` when PKCE is enabled), as
+  well as JWT-based methods `private_key_jwt` and `client_secret_jwt`
+  per RFC 7523. Discovery also preserves RFC 8705 mTLS metadata
+  (`mtls_endpoint_aliases` and
   `tls_client_certificate_bound_access_tokens`) and supports explicit
   `tls_client_auth` / `self_signed_tls_client_auth` selection.
 
@@ -170,10 +172,10 @@ object configured from discovery
   provider, not per-client provisioning. This helper does not
   automatically select JWT-based methods just because they are
   advertised. By default it prefers `client_secret_basic` (header) when
-  available, otherwise `client_secret_post` (body), and only uses public
-  `none` for PKCE clients. If a provider advertises only JWT methods,
-  you must explicitly set `token_auth_style` and configure the
-  corresponding credentials on your
+  available, otherwise `client_secret_post` (body), and maps public
+  `none` to `token_auth_style = "public"` only for PKCE clients. If a
+  provider advertises only JWT methods, you must explicitly set
+  `token_auth_style` and configure the corresponding credentials on your
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
   (a private key for `private_key_jwt`, or a sufficiently strong
   `client_secret` for `client_secret_jwt`).

@@ -318,6 +318,9 @@ is provided or when OIDC is used.</p></dd>
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
 <dd><p>How to authenticate when exchanging tokens. One of:</p><ul><li><p>"header": HTTP Basic (client_secret_basic)</p></li>
 <li><p>"body": Form body (client_secret_post)</p></li>
+<li><p>"public": Public-client form body (<code>none</code> in discovery metadata);
+sends <code>client_id</code> but never <code>client_secret</code>, even if one is configured.
+The alias <code>"none"</code> is also accepted.</p></li>
 <li><p>"tls_client_auth": RFC 8705 mutual TLS client authentication using a
 client certificate chained to a trusted CA</p></li>
 <li><p>"self_signed_tls_client_auth": RFC 8705 mutual TLS client
@@ -361,7 +364,7 @@ RSA/EC/OKP public key in JWKS must match one of the configured pins)</p></dd>
 
 <dt id="arg-jwks-host-issuer-match">jwks_host_issuer_match<a class="anchor" aria-label="anchor" href="#arg-jwks-host-issuer-match"></a></dt>
 <dd><p>When TRUE, enforce that the discovery <code>jwks_uri</code> host
-matches the issuer host (or a subdomain). Defaults to FALSE at the class
+matches the issuer host exactly. Defaults to FALSE at the class
 level, but helper constructors for OIDC (e.g., <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> and
 <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>) enable this by default for safer config.
 The generic helper <code>oauth_provider()</code> will also automatically set this to

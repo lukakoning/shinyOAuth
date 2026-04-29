@@ -101,7 +101,7 @@ for this provider. Defaults to TRUE</p></dd>
 
 <dt id="arg-jwks-host-issuer-match">jwks_host_issuer_match<a class="anchor" aria-label="anchor" href="#arg-jwks-host-issuer-match"></a></dt>
 <dd><p>When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host (or a subdomain). For
+discovered from the provider matches the issuer host exactly. For
 providers that serve JWKS from a different host (e.g., Google), set
 <code>jwks_host_allow_only</code> to the exact hostname instead of disabling this.
 Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via

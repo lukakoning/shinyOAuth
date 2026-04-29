@@ -3,6 +3,22 @@
 ## shinyOAuth (development version)
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now rejects unsafe `browser_cookie_path` values that could rewrite
+  cookie attributes. Explicit cookie paths must start with `/` and
+  cannot contain semicolons or control characters.
+
+- OIDC discovery now maps
+  `token_endpoint_auth_methods_supported = ["none"]` to a distinct
+  public token auth style that never sends `client_secret`, even when
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  picks one up from `OAUTH_CLIENT_SECRET`.
+
+- `jwks_host_issuer_match = TRUE` now requires an exact issuer-host
+  match for `jwks_uri` instead of also trusting issuer subdomains.
+  Providers that publish JWKS on a different host should set
+  `jwks_host_allow_only` to that exact host.
+
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now drops provider `error_uri` values unless they are absolute HTTPS
   URLs, so unsafe schemes like `javascript:` are no longer surfaced
   through `values$error_uri`.
