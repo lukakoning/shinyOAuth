@@ -310,13 +310,15 @@ API, see:
 complete once the callback has been validated and token retrieval plus
 any configured OIDC checks have succeeded.</p>
 <p>If your provider supports RFC 7662 token introspection, you can
-optionally add an extra login-time validation step by enabling
+optionally add an extra validation step by enabling
 <code>introspect = TRUE</code> when creating your
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>.</p>
 <p>When enabled, the module calls the provider introspection endpoint
 during callback processing and requires the response to indicate
-<code>active = TRUE</code>. If introspection is unsupported by the
-provider or the introspection request fails, the login is aborted and
+<code>active = TRUE</code>. If proactive refresh is enabled, refreshed
+access tokens are introspected through the same client policy. If
+introspection is unsupported by the provider or the introspection
+request fails, the login or refresh is aborted and
 <code>$authenticated</code> is not set to <code>TRUE</code>.</p>
 <p>You can optionally request additional checks via
 <code>introspect_elements</code>:</p>

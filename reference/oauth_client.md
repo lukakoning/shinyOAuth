@@ -428,7 +428,11 @@ oauth_client(
   endpoint (RFC 7662) to validate the access token. The login is not
   considered complete unless introspection succeeds and returns
   `active = TRUE`; otherwise the login fails and `authenticated` remains
-  FALSE. Default is FALSE. Requires the provider to have an
+  FALSE. When
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  later performs proactive refresh, it also forwards this setting so
+  refreshed access tokens are introspected through the same client
+  policy. Default is FALSE. Requires the provider to have an
   `introspection_url` configured.
 
 - introspect_elements:

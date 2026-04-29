@@ -19,6 +19,11 @@
   can also require specific UserInfo JWT temporal claims to be present
   via `userinfo_jwt_required_temporal_claims`.
 
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now forwards `oauth_client(introspect = TRUE)` to its proactive
+  refresh path, so refreshed access tokens follow the same introspection
+  policy as the initial login.
+
 - Clarified the `allow_redirect` warning/docs and the
   [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
   option framing so they match the current explicit opt-in behavior and

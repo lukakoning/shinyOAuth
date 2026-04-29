@@ -422,8 +422,10 @@ an <code>issuer</code> configured.  Default is <code>character(0)</code> (no enf
 introspection endpoint (RFC 7662) to validate the access token. The login
 is not considered complete unless introspection succeeds and returns
 <code>active = TRUE</code>; otherwise the login fails and <code>authenticated</code> remains
-FALSE. Default is FALSE. Requires the provider to have an
-<code>introspection_url</code> configured.</p></dd>
+FALSE. When <code><a href="oauth_module_server.html">oauth_module_server()</a></code> later performs proactive refresh, it
+also forwards this setting so refreshed access tokens are introspected
+through the same client policy. Default is FALSE. Requires the provider to
+have an <code>introspection_url</code> configured.</p></dd>
 
 
 <dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>

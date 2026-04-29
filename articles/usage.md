@@ -251,15 +251,16 @@ considers a login complete once the callback has been validated and
 token retrieval plus any configured OIDC checks have succeeded.
 
 If your provider supports RFC 7662 token introspection, you can
-optionally add an extra login-time validation step by enabling
-`introspect = TRUE` when creating your
+optionally add an extra validation step by enabling `introspect = TRUE`
+when creating your
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
 When enabled, the module calls the provider introspection endpoint
 during callback processing and requires the response to indicate
-`active = TRUE`. If introspection is unsupported by the provider or the
-introspection request fails, the login is aborted and `$authenticated`
-is not set to `TRUE`.
+`active = TRUE`. If proactive refresh is enabled, refreshed access
+tokens are introspected through the same client policy. If introspection
+is unsupported by the provider or the introspection request fails, the
+login or refresh is aborted and `$authenticated` is not set to `TRUE`.
 
 You can optionally request additional checks via `introspect_elements`:
 
