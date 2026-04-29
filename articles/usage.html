@@ -519,8 +519,9 @@ server‑side <code>client_secret</code>
 <code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
 lifetime in seconds for JWT client assertions used with
 <code>client_secret_jwt</code> or <code>private_key_jwt</code> token
-endpoint authentication. Values below 60 seconds are coerced up to a
-safe minimum; default is 120 seconds</li>
+endpoint authentication. Finite values below 60 seconds are coerced to
+60 seconds; <code>NA</code> or non-finite values fall back to the
+120-second default</li>
 <li>
 <code>options(shinyOAuth.state_fail_delay_ms = c(10, 30))</code> –
 adds a small randomized delay (in milliseconds) before any state

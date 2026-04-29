@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- `shinyOAuth.client_assertion_ttl` now clamps finite values below 60
+  seconds to a 60-second minimum instead of silently resetting them to
+  the 120-second default.
+
 - Added DPoP token (RFC 9449) support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
