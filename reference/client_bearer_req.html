@@ -67,6 +67,7 @@ the package's standard HTTP defaults (timeout and User-Agent).</p>
 <span>  query <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  follow_redirect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  check_url <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  allowed_hosts <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_nonce <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -109,11 +110,20 @@ understand the security implications.</p></dd>
 
 <dt id="arg-check-url">check_url<a class="anchor" aria-label="anchor" href="#arg-check-url"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (the default), validates <code>url</code> against
-<code><a href="is_ok_host.html">is_ok_host()</a></code> before attaching the access token. This rejects relative
-URLs, plain HTTP to non-loopback hosts, and – when
-<code>options(shinyOAuth.allowed_hosts)</code> is set – hosts outside the allowlist.
+an explicit protected-resource host policy before attaching the access
+token. The policy comes from <code>allowed_hosts</code>, <code>oauth_client@resource</code>, or
+<code>options(shinyOAuth.allowed_hosts)</code>. This rejects relative URLs, plain
+HTTP to non-loopback hosts, and hosts outside the resolved allowlist.
 Set to <code>FALSE</code> only if you have already validated the URL and understand
 the security implications.</p></dd>
+
+
+<dt id="arg-allowed-hosts">allowed_hosts<a class="anchor" aria-label="anchor" href="#arg-allowed-hosts"></a></dt>
+<dd><p>Optional character vector of allowed protected-resource
+hosts/domains for this request. Supports the same glob semantics as
+<code><a href="is_ok_host.html">is_ok_host()</a></code>. When omitted, shinyOAuth derives HTTP(S) hosts from
+<code>oauth_client@resource</code> if possible, then falls back to
+<code>options(shinyOAuth.allowed_hosts)</code>.</p></dd>
 
 
 <dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
@@ -155,7 +165,8 @@ performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html
 <span class="r-in"><span><span class="va">request</span> <span class="op">&lt;-</span> <span class="fu">client_bearer_req</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">token</span>, </span></span>
 <span class="r-in"><span>  <span class="st">"https://api.example.com/resource"</span>, </span></span>
-<span class="r-in"><span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  allowed_hosts <span class="op">=</span> <span class="st">"api.example.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Perform request</span></span></span>

@@ -478,7 +478,11 @@ if (
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
-      req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
+      req <- client_bearer_req(
+        auth$token,
+        "https://api.github.com/user/repos",
+        allowed_hosts = "api.github.com"
+      )
       resp <- httr2::req_perform(req)
 
       if (httr2::resp_is_error(resp)) {

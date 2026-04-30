@@ -22,6 +22,7 @@ client_bearer_req(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
+  allowed_hosts = NULL,
   oauth_client = NULL,
   token_type = NULL,
   dpop_nonce = NULL
@@ -64,13 +65,22 @@ client_bearer_req(
 
 - check_url:
 
-  Logical. If `TRUE` (the default), validates `url` against
-  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  before attaching the access token. This rejects relative URLs, plain
-  HTTP to non-loopback hosts, and – when
-  `options(shinyOAuth.allowed_hosts)` is set – hosts outside the
-  allowlist. Set to `FALSE` only if you have already validated the URL
-  and understand the security implications.
+  Logical. If `TRUE` (the default), validates `url` against an explicit
+  protected-resource host policy before attaching the access token. The
+  policy comes from `allowed_hosts`, `oauth_client@resource`, or
+  `options(shinyOAuth.allowed_hosts)`. This rejects relative URLs, plain
+  HTTP to non-loopback hosts, and hosts outside the resolved allowlist.
+  Set to `FALSE` only if you have already validated the URL and
+  understand the security implications.
+
+- allowed_hosts:
+
+  Optional character vector of allowed protected-resource hosts/domains
+  for this request. Supports the same glob semantics as
+  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md).
+  When omitted, shinyOAuth derives HTTP(S) hosts from
+  `oauth_client@resource` if possible, then falls back to
+  `options(shinyOAuth.allowed_hosts)`.
 
 - oauth_client:
 
@@ -114,7 +124,8 @@ token <- OAuthToken()
 request <- client_bearer_req(
   token, 
   "https://api.example.com/resource", 
-  query = list(limit = 5)
+  query = list(limit = 5),
+  allowed_hosts = "api.example.com"
 )
 
 # Perform request

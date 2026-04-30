@@ -2,6 +2,24 @@
 
 ## shinyOAuth (development version)
 
+- [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  now requires an explicit protected-resource host policy when URL
+  checks are enabled, deriving it from `allowed_hosts`,
+  `oauth_client(resource = ...)`, or `options(shinyOAuth.allowed_hosts)`
+  instead of implicitly trusting any HTTPS host.
+
+- OIDC discovery now pins discovered mTLS endpoint aliases to the issuer
+  host by default; off-issuer aliases require an explicit host
+  allowlist.
+
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  and OIDC discovery now reject invalid `pkce_method` values instead of
+  silently normalizing typos to `"S256"`.
+
+- [`OAuthToken()`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+  now validates token strings, expiry sentinels, and
+  `id_token_validated` consistency at construction time.
+
 - `oauth_client(claims_validation = "warn"/"strict")` now rejects
   enforceable `claims$id_token` requests unless the provider validates
   ID tokens, and
