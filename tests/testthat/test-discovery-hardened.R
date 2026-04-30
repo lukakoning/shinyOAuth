@@ -121,6 +121,32 @@ testthat::test_that("discovery rejects JWKS issuer subdomains by default", {
   )
 })
 
+testthat::test_that("discovery honors jwks_host_allow_only during early JWKS checks", {
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://issuer.example.com/auth",
+        token_endpoint = "https://issuer.example.com/token",
+        jwks_uri = "https://keys.example.com/jwks.json"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = "https://issuer.example.com",
+    jwks_host_issuer_match = TRUE,
+    jwks_host_allow_only = "keys.example.com"
+  )
+
+  testthat::expect_identical(prov@jwks_host_allow_only, "keys.example.com")
+  testthat::expect_identical(prov@jwks_host_issuer_match, TRUE)
+})
+
 testthat::test_that("discovery requires jwks_uri when ID token validation is enabled", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

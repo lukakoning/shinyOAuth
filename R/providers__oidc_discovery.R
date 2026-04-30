@@ -179,12 +179,24 @@ oauth_provider_oidc_discover <- function(
   # 6b) ID token validation requires a JWKS endpoint up front.
   .discover_require_jwks_uri(disc, iss, id_token_validation)
 
-  # 7) Enforce JWKS host pinning if enabled
-  if (isTRUE(jwks_host_issuer_match)) {
-    .discover_enforce_jwks_pinning(disc, iss, iss_host, allowed_hosts_vec)
+  # 7) Read caller overrides before early JWKS validation so explicit host
+  # pins in ... can affect the pre-check.
+  dots <- list(...)
+  jwks_host_allow_only <- dots$jwks_host_allow_only %||% NULL
+
+  # 8) Enforce JWKS host pinning if enabled or explicitly configured.
+  if (isTRUE(jwks_host_issuer_match) || is_valid_string(jwks_host_allow_only)) {
+    .discover_enforce_jwks_pinning(
+      disc = disc,
+      iss = iss,
+      iss_host = iss_host,
+      allowed_hosts_vec = allowed_hosts_vec,
+      jwks_host_allow_only = jwks_host_allow_only,
+      jwks_host_issuer_match = jwks_host_issuer_match
+    )
   }
 
-  # 8) Infer token auth style when not set
+  # 9) Infer token auth style when not set
   token_auth_style <- .discover_infer_token_auth_style(
     token_auth_style,
     disc,
@@ -193,8 +205,7 @@ oauth_provider_oidc_discover <- function(
     endpoints$token_url
   )
 
-  # 9) Resolve PKCE method against discovery metadata
-  dots <- list(...)
+  # 10) Resolve PKCE method against discovery metadata
   pkce_method <- .discover_resolve_pkce_method(
     disc = disc,
     use_pkce = use_pkce,
@@ -203,7 +214,7 @@ oauth_provider_oidc_discover <- function(
     pkce_method = dots$pkce_method %||% NULL
   )
 
-  # 10) Negotiate allowed ID token algs
+  # 11) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
   require_pushed_authorization_requests <- .discover_parse_optional_boolean(
     disc,
@@ -242,7 +253,7 @@ oauth_provider_oidc_discover <- function(
       "tls_client_certificate_bound_access_tokens"
     )
 
-  # 10b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
+  # 11b) Forward caller ... args (e.g. userinfo_signed_jwt_required)
   #      Note: userinfo_signing_alg_values_supported in discovery indicates
   #      provider *capability*, not that every client receives signed JWTs.
   #      Whether the userinfo response is application/jwt depends on per-client
@@ -250,10 +261,10 @@ oauth_provider_oidc_discover <- function(
   #      userinfo_signed_jwt_required from discovery; callers must opt in.
   dots$pkce_method <- pkce_method
 
-  # 11) Default provider name from issuer when needed
+  # 12) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
 
-  # 12) Construct provider. Allow explicit caller overrides in ... to replace
+  # 13) Construct provider. Allow explicit caller overrides in ... to replace
   # discovered defaults without passing duplicate named formals through do.call().
   provider_args <- list(
     name = name,
@@ -549,7 +560,9 @@ oauth_provider_oidc_discover <- function(
   disc,
   iss,
   iss_host,
-  allowed_hosts_vec
+  allowed_hosts_vec,
+  jwks_host_allow_only = NULL,
+  jwks_host_issuer_match = TRUE
 ) {
   jwks_uri <- disc[["jwks_uri"]] %||% ""
   if (!nzchar(jwks_uri)) {
@@ -558,11 +571,46 @@ oauth_provider_oidc_discover <- function(
 
   jwks_host <- parse_url_host(jwks_uri, "jwks_uri")
 
+  if (is_valid_string(jwks_host_allow_only)) {
+    pinned_host <- tolower(trimws(jwks_host_allow_only))
+    if (grepl("://", pinned_host, fixed = TRUE)) {
+      normalized_host <- try(
+        parse_url_host(pinned_host, label = "jwks_host_allow_only"),
+        silent = TRUE
+      )
+      if (!inherits(normalized_host, "try-error")) {
+        pinned_host <- normalized_host
+      }
+    }
+    pinned_host <- sub("\\.$", "", pinned_host)
+
+    if (!identical(jwks_host, pinned_host)) {
+      err_config(
+        c(
+          "x" = "jwks_uri host must equal configured jwks_host_allow_only",
+          "!" = sprintf("Got '%s' but expected '%s'", jwks_host, pinned_host),
+          "i" = "Set `jwks_host_allow_only` to the exact host, or clear it to use issuer-based checks"
+        ),
+        context = list(
+          issuer = iss,
+          jwks_uri = jwks_uri,
+          issuer_host = iss_host,
+          jwks_host = jwks_host,
+          jwks_host_allow_only = pinned_host
+        )
+      )
+    }
+
+    return(invisible(TRUE))
+  }
+
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
   jwks_ok <- if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
     is_ok_host(paste0("https://", jwks_host, "/"), allowed_hosts = opt_allowed)
-  } else {
+  } else if (isTRUE(jwks_host_issuer_match)) {
     identical(jwks_host, iss_host)
+  } else {
+    TRUE
   }
 
   if (!jwks_ok) {

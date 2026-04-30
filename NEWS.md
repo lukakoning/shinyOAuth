@@ -12,6 +12,10 @@ form-encoded parameter names instead of silently accepting ambiguous
 part of a single scope token, matching RFC 6749 instead of splitting
 `scope = "read,write"` into separate `read` and `write` scopes.
 
+* OIDC discovery now honors `jwks_host_allow_only` during its early `jwks_uri`
+host check, so explicitly pinned cross-host JWKS endpoints no longer require
+disabling issuer-host matching.
+
 * OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
 by default; off-issuer aliases require an explicit host allowlist.
 
