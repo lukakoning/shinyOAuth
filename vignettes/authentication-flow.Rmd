@@ -82,6 +82,12 @@ the `client_secret`. The JOSE header includes
 `typ = "oauth-authz-req+jwt"` and the selected signing algorithm. The Request
 Object also carries managed JWT claims such as `iss`, `aud`, `iat`, `exp`, and
 `jti`. These are controlled by shinyOAuth rather than by `extra_auth_params`.
+shinyOAuth currently builds signed Request Objects only; it does not encrypt
+them as JWE. That means the Request Object is integrity-protected, not
+confidential: if it travels through the browser as `request=<signed JWT>`, any
+party that can see that front-channel value can still base64url-decode the JWT
+payload and read the authorization parameters unless you use PAR or a provider
+that supports encrypted Request Objects.
 With RSA private keys, shinyOAuth currently signs outbound JWTs with `RS256`;
 `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not currently
 supported. EC private keys can use `ES256`, `ES384`, or `ES512`.
@@ -115,7 +121,9 @@ provider's authorization endpoint, but the front-channel URL now carries the
 signed Request Object instead of the raw authorization parameters. In practice,
 the redirect contains `client_id` plus `request=<signed JWT>`. The raw
 authorization parameters remain inside that JWT payload rather than appearing as
-separate browser-visible query parameters.
+separate browser-visible query parameters, but they are still readable to
+whoever can inspect the front-channel JWT because signing alone does not hide
+the payload.
 
 With PAR enabled, the browser is still redirected to the provider's authorization endpoint,
 but the front-channel URL contains only the PAR handle: `client_id` and `request_uri`.
