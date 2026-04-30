@@ -63,8 +63,9 @@ present via `userinfo_jwt_required_temporal_claims`.
 
 * Hardened inbound JWT/JWKS validation: HS JWT verification now normalizes
   secrets to UTF-8 and compares MACs in constant time, JWT compact parsing
-  rejects malformed/padded base64url segments, and JWKS validation rejects
-  malformed RSA/EC members plus RSA keys below 2048 bits.
+  rejects malformed/padded base64url segments, ECDSA verification rejects
+  non-canonical JOSE signature widths, and JWKS validation rejects malformed
+  RSA/EC members plus RSA keys below 2048 bits.
 
 * `options(shinyOAuth.skip_id_sig = TRUE)` no longer causes downstream
   `id_token_validated` flags to report skipped-signature ID tokens as

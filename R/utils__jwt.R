@@ -143,11 +143,21 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
       }
 
       if (alg_upper %in% c("ES256", "ES384", "ES512")) {
-        if (length(parts$sig) == 0L || (length(parts$sig) %% 2L) != 0L) {
+        expected_width <- switch(
+          alg_upper,
+          ES256 = 64L,
+          ES384 = 96L,
+          ES512 = 132L,
+          NA_integer_
+        )
+        if (
+          is.na(expected_width) ||
+            length(parts$sig) != expected_width
+        ) {
           return(FALSE)
         }
 
-        bitsize <- length(parts$sig) %/% 2L
+        bitsize <- expected_width %/% 2L
         sig_der <- openssl::ecdsa_write(
           parts$sig[seq_len(bitsize)],
           parts$sig[seq_len(bitsize) + bitsize]

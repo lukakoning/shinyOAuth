@@ -334,6 +334,62 @@ test_that("verify_hmac_jws_signature_no_time accepts valid HS256 and rejects tam
   ))
 })
 
+test_that("verify_jws_signature_no_time enforces exact JOSE ECDSA signature widths", {
+  testthat::skip_if_not_installed("jose")
+
+  alg_cases <- list(
+    list(alg = "ES256", curve = "P-256", width = 64L),
+    list(alg = "ES384", curve = "P-384", width = 96L),
+    list(alg = "ES512", curve = "P-521", width = 132L)
+  )
+  now <- floor(as.numeric(Sys.time()))
+
+  for (case in alg_cases) {
+    key <- try(openssl::ec_keygen(curve = case$curve), silent = TRUE)
+    if (inherits(key, "try-error")) {
+      testthat::skip(paste("EC key generation not supported for", case$curve))
+    }
+
+    jwt <- jose::jwt_encode_sig(
+      jose::jwt_claim(
+        iss = "https://issuer.example.com",
+        aud = "client-es",
+        sub = paste0("user-", tolower(case$alg)),
+        iat = now - 1,
+        exp = now + 60
+      ),
+      key = key,
+      header = list(alg = case$alg, typ = "JWT")
+    )
+
+    expect_true(shinyOAuth:::verify_jws_signature_no_time(
+      jwt,
+      key$pubkey,
+      case$alg
+    ))
+
+    parts <- strsplit(jwt, ".", fixed = TRUE)[[1]]
+    sig <- shinyOAuth:::base64url_decode_raw(parts[3])
+    expect_length(sig, case$width)
+
+    short_sig <- sig[-seq_len(2L)]
+    parts[3] <- shinyOAuth:::base64url_encode(short_sig)
+    expect_false(shinyOAuth:::verify_jws_signature_no_time(
+      paste(parts, collapse = "."),
+      key$pubkey,
+      case$alg
+    ))
+
+    long_sig <- c(sig, as.raw(c(0L, 0L)))
+    parts[3] <- shinyOAuth:::base64url_encode(long_sig)
+    expect_false(shinyOAuth:::verify_jws_signature_no_time(
+      paste(parts, collapse = "."),
+      key$pubkey,
+      case$alg
+    ))
+  }
+})
+
 test_that("validate_id_token accepts HS256 tokens with non-ASCII client_secret", {
   withr::local_options(list(shinyOAuth.allow_hs = TRUE))
 
