@@ -259,6 +259,7 @@ test_that("OAuthProvider rejects reserved keys in extra_token_params", {
   reserved <- c(
     "grant_type",
     "code",
+    "refresh_token",
     "redirect_uri",
     "code_verifier",
     "client_id",
@@ -344,6 +345,7 @@ test_that("OAuthProvider rejects mixed-case reserved keys in extra_token_params"
     "GRANT_TYPE",
     "Grant_Type",
     "CODE",
+    " Refresh_Token ",
     "CLIENT_SECRET",
     "Client_Secret",
     " code_verifier ",

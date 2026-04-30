@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `oauth_provider(extra_token_params = ...)` now reserves `refresh_token`
+alongside the other managed token request fields, preventing duplicate
+refresh-token parameters from being appended during refresh.
+
 * OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
 by default; off-issuer aliases require an explicit host allowlist.
 

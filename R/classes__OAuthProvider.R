@@ -627,6 +627,7 @@ OAuthProvider <- S7::new_class(
     default_reserved_token_keys <- c(
       "grant_type",
       "code",
+      "refresh_token",
       "redirect_uri",
       "code_verifier",
       "client_id",
