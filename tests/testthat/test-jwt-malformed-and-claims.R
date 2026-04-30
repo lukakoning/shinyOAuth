@@ -253,6 +253,42 @@ test_that("signed HS256 exp boundary respects package leeway", {
   )
 })
 
+test_that("verify_hmac_jws_signature_no_time accepts valid HS256 and rejects tampering", {
+  testthat::skip_if_not_installed("jose")
+
+  secret <- paste(rep("s", 32L), collapse = "")
+  now <- floor(as.numeric(Sys.time()))
+  jwt <- jose::jwt_encode_hmac(
+    jose::jwt_claim(
+      iss = "https://issuer.example.com",
+      aud = "client-hs",
+      sub = "u",
+      iat = now - 1,
+      exp = now + 60
+    ),
+    secret,
+    header = list(alg = "HS256", typ = "JWT")
+  )
+
+  expect_true(shinyOAuth:::verify_hmac_jws_signature_no_time(
+    jwt,
+    secret,
+    "HS256"
+  ))
+
+  parts <- strsplit(jwt, ".", fixed = TRUE)[[1]]
+  sig <- shinyOAuth:::base64url_decode_raw(parts[3])
+  sig[1] <- as.raw(bitwXor(as.integer(sig[1]), 1L))
+  parts[3] <- shinyOAuth:::base64url_encode(sig)
+  tampered_jwt <- paste(parts, collapse = ".")
+
+  expect_false(shinyOAuth:::verify_hmac_jws_signature_no_time(
+    tampered_jwt,
+    secret,
+    "HS256"
+  ))
+})
+
 test_that("temporal claims must be single finite numeric", {
   client <- mk_client()
 

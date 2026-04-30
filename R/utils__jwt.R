@@ -147,7 +147,12 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
         size = as.integer(substring(toupper(alg), 3L)),
         key = secret_raw
       )
-      identical(parts$sig, unclass(expected))
+      # Compare HMAC tags via the package timing-safe helper using a stable
+      # base64url encoding of the raw signatures.
+      constant_time_compare(
+        base64url_encode(parts$sig),
+        base64url_encode(unclass(expected))
+      )
     },
     error = function(...) FALSE
   )
