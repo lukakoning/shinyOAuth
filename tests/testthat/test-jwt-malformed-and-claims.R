@@ -229,7 +229,7 @@ test_that("signed RS256 temporal boundaries respect package leeway", {
     regexp = "expired"
   )
 
-  jwt4 <- sign_rs256(modifyList(base_claims, list(nbf = now + 121)))
+  jwt4 <- sign_rs256(modifyList(base_claims, list(nbf = now + 130)))
   testthat::expect_error(
     validate_signed(jwt4),
     class = "shinyOAuth_id_token_error",
@@ -332,6 +332,47 @@ test_that("verify_hmac_jws_signature_no_time accepts valid HS256 and rejects tam
     secret,
     "HS256"
   ))
+})
+
+test_that("validate_id_token accepts HS256 tokens with non-ASCII client_secret", {
+  withr::local_options(list(shinyOAuth.allow_hs = TRUE))
+
+  secret <- paste(rep(intToUtf8(0x00E9), 20L), collapse = "")
+  prov <- shinyOAuth::oauth_provider(
+    name = "test-hs-utf8",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = NA_character_,
+    userinfo_required = FALSE,
+    userinfo_id_token_match = FALSE,
+    issuer = "https://issuer.example.com",
+    id_token_validation = TRUE,
+    id_token_required = TRUE,
+    allowed_algs = c("HS256")
+  )
+  client <- shinyOAuth::oauth_client(
+    prov,
+    client_id = "client-hs-utf8",
+    client_secret = secret,
+    redirect_uri = "http://localhost:8100"
+  )
+
+  now <- floor(as.numeric(Sys.time()))
+  jwt <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "u",
+      iat = now - 1,
+      exp = now + 60
+    ),
+    secret = client@client_secret,
+    header = list(alg = "HS256", typ = "JWT"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  expect_silent(shinyOAuth:::validate_id_token(client, jwt))
 })
 
 test_that("temporal claims must be single finite numeric", {

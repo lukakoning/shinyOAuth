@@ -557,6 +557,29 @@ raw_to_hex_lower <- function(r) {
 #'
 #' @keywords internal
 #' @noRd
+constant_time_compare_raw <- function(a, b) {
+  is_valid <- function(x) is.raw(x) && !is.null(x)
+  if (!is_valid(a) || !is_valid(b)) {
+    # Treat invalid inputs as a mismatch but keep the blinded comparison path.
+    a <- raw()
+    b <- as.raw(0L)
+  }
+
+  ar <- openssl::sha256(a)
+  br <- openssl::sha256(b)
+
+  acc <- as.integer(0L)
+  for (i in seq_len(length(ar))) {
+    ai <- as.integer(ar[[i]])
+    bi <- as.integer(br[[i]])
+    acc <- bitwOr(acc, bitwXor(ai, bi))
+  }
+
+  isTRUE(identical(acc, 0L))
+}
+
+#' @keywords internal
+#' @noRd
 constant_time_compare <- function(a, b) {
   # Normalize to single character scalars; everything else mismatches.
   is_valid <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
@@ -567,18 +590,8 @@ constant_time_compare <- function(a, b) {
     b <- as.character("")
   }
 
-  # Hash both sides to fixed length (32 bytes) to blind original length.
-  # Using openssl keeps consistency with the rest of the package.
-  ar <- openssl::sha256(charToRaw(as.character(a)))
-  br <- openssl::sha256(charToRaw(as.character(b)))
-
-  # Constant-time compare over fixed 32-byte digests.
-  acc <- as.integer(0L)
-  for (i in seq_len(length(ar))) {
-    ai <- as.integer(ar[[i]])
-    bi <- as.integer(br[[i]])
-    acc <- bitwOr(acc, bitwXor(ai, bi))
-  }
-  # Equal iff accumulator is zero
-  isTRUE(identical(acc, 0L))
+  constant_time_compare_raw(
+    charToRaw(as.character(a)),
+    charToRaw(as.character(b))
+  )
 }

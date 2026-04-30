@@ -189,7 +189,7 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
   secret_raw <- tryCatch(
     {
       if (is.character(secret)) {
-        charToRaw(secret)
+        charToRaw(enc2utf8(secret))
       } else {
         secret
       }
@@ -207,11 +207,11 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
         size = as.integer(substring(toupper(alg), 3L)),
         key = secret_raw
       )
-      # Compare HMAC tags via the package timing-safe helper using a stable
-      # base64url encoding of the raw signatures.
-      constant_time_compare(
-        base64url_encode(parts$sig),
-        base64url_encode(unclass(expected))
+      # Compare HMAC tags as raw bytes so verification and signing share the
+      # same UTF-8-normalized secret semantics without extra transcoding.
+      constant_time_compare_raw(
+        parts$sig,
+        as.raw(expected)
       )
     },
     error = function(...) FALSE
