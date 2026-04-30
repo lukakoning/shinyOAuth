@@ -94,9 +94,10 @@
   `id_token_validated` flags to report skipped-signature ID tokens as
   cryptographically validated.
 
-- `at_hash` validation no longer guesses a digest mapping for `EdDSA`;
-  EdDSA ID tokens with `at_hash` now error explicitly until a clear
-  mapping is supported.
+- `at_hash` validation now documents the existing `EdDSA` compatibility
+  fallback explicitly: when `alg = "EdDSA"`, shinyOAuth uses SHA-512
+  because JOSE does not expose the concrete EdDSA curve through the JWT
+  `alg` alone.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now forwards `oauth_client(introspect = TRUE)` to its proactive
