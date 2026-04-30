@@ -127,6 +127,132 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   })
 })
 
+test_that("signed RS256 temporal boundaries respect package leeway", {
+  testthat::skip_if_not_installed("jose")
+
+  client <- mk_client()
+  client@provider@leeway <- 120
+
+  now <- floor(as.numeric(Sys.time()))
+  base_claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = "u",
+    iat = now - 1,
+    exp = now + 60
+  )
+
+  rsa <- openssl::rsa_keygen(bits = 2048)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(rsa), simplifyVector = TRUE)
+  jwks <- list(
+    keys = list(list(
+      kty = jwk$kty,
+      n = jwk$n,
+      e = jwk$e,
+      kid = "k1",
+      use = "sig",
+      alg = "RS256"
+    ))
+  )
+
+  sign_rs256 <- function(claims) {
+    jose::jwt_encode_sig(
+      do.call(jose::jwt_claim, claims),
+      key = rsa,
+      header = list(alg = "RS256", kid = "k1", typ = "JWT")
+    )
+  }
+
+  validate_signed <- function(jwt) {
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) jwks,
+      .package = "shinyOAuth",
+      shinyOAuth:::validate_id_token(client, jwt)
+    )
+  }
+
+  jwt1 <- sign_rs256(modifyList(base_claims, list(exp = now - 61)))
+  testthat::expect_silent(validate_signed(jwt1))
+
+  jwt2 <- sign_rs256(modifyList(base_claims, list(nbf = now + 61)))
+  testthat::expect_silent(validate_signed(jwt2))
+
+  jwt3 <- sign_rs256(modifyList(base_claims, list(exp = now - 121)))
+  testthat::expect_error(
+    validate_signed(jwt3),
+    class = "shinyOAuth_id_token_error",
+    regexp = "expired"
+  )
+
+  jwt4 <- sign_rs256(modifyList(base_claims, list(nbf = now + 121)))
+  testthat::expect_error(
+    validate_signed(jwt4),
+    class = "shinyOAuth_id_token_error",
+    regexp = "not yet valid"
+  )
+
+  jwt5 <- sign_rs256(modifyList(base_claims, list(iat = now + 121)))
+  testthat::expect_error(
+    validate_signed(jwt5),
+    class = "shinyOAuth_id_token_error",
+    regexp = "issued in the future"
+  )
+})
+
+test_that("signed HS256 exp boundary respects package leeway", {
+  testthat::skip_if_not_installed("jose")
+
+  withr::local_options(list(shinyOAuth.allow_hs = TRUE))
+
+  secret <- paste(rep("s", 32), collapse = "")
+  prov <- shinyOAuth::oauth_provider(
+    name = "test-hs",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = NA_character_,
+    userinfo_required = FALSE,
+    userinfo_id_token_match = FALSE,
+    issuer = "https://issuer.example.com",
+    id_token_validation = TRUE,
+    id_token_required = TRUE,
+    allowed_algs = c("HS256"),
+    leeway = 120
+  )
+  client <- shinyOAuth::oauth_client(
+    prov,
+    client_id = "client-hs",
+    client_secret = secret,
+    redirect_uri = "http://localhost:8100"
+  )
+
+  now <- floor(as.numeric(Sys.time()))
+  base_claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = "u",
+    iat = now - 1,
+    exp = now + 60
+  )
+
+  sign_hs256 <- function(claims) {
+    jose::jwt_encode_hmac(
+      do.call(jose::jwt_claim, claims),
+      client@client_secret,
+      header = list(alg = "HS256", typ = "JWT")
+    )
+  }
+
+  jwt1 <- sign_hs256(modifyList(base_claims, list(exp = now - 61)))
+  testthat::expect_silent(shinyOAuth:::validate_id_token(client, jwt1))
+
+  jwt2 <- sign_hs256(modifyList(base_claims, list(exp = now - 121)))
+  testthat::expect_error(
+    shinyOAuth:::validate_id_token(client, jwt2),
+    class = "shinyOAuth_id_token_error",
+    regexp = "expired"
+  )
+})
+
 test_that("temporal claims must be single finite numeric", {
   client <- mk_client()
 

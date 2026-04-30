@@ -48,6 +48,111 @@ parse_jwt_header <- function(jwt) {
   )
 }
 
+jwt_verification_parts <- function(jwt) {
+  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
+  if (n_dots != 2L) {
+    err_parse("Invalid JWT format: expected 3 dot-separated parts")
+  }
+
+  dot_pos <- gregexpr(".", jwt, fixed = TRUE)[[1]]
+  list(
+    data = charToRaw(substr(jwt, 1L, dot_pos[2] - 1L)),
+    sig = base64url_decode_raw(substr(jwt, dot_pos[2] + 1L, nchar(jwt)))
+  )
+}
+
+verify_jws_signature_no_time <- function(jwt, key, alg) {
+  parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
+  if (is.null(parts)) {
+    return(FALSE)
+  }
+
+  alg_upper <- toupper(alg %||% "")
+
+  tryCatch(
+    {
+      if (alg_upper %in% c("RS256", "RS384", "RS512")) {
+        size <- as.integer(substring(alg_upper, 3L))
+        digest <- openssl::sha2(parts$data, size = size)
+        return(isTRUE(openssl::signature_verify(
+          digest,
+          parts$sig,
+          hash = NULL,
+          pubkey = key
+        )))
+      }
+
+      if (alg_upper %in% c("ES256", "ES384", "ES512")) {
+        if (length(parts$sig) == 0L || (length(parts$sig) %% 2L) != 0L) {
+          return(FALSE)
+        }
+
+        bitsize <- length(parts$sig) %/% 2L
+        sig_der <- openssl::ecdsa_write(
+          parts$sig[seq_len(bitsize)],
+          parts$sig[seq_len(bitsize) + bitsize]
+        )
+        digest <- openssl::sha2(
+          parts$data,
+          size = as.integer(substring(alg_upper, 3L))
+        )
+
+        return(isTRUE(openssl::signature_verify(
+          digest,
+          sig_der,
+          hash = NULL,
+          pubkey = key
+        )))
+      }
+
+      if (identical(alg_upper, "EDDSA")) {
+        return(isTRUE(openssl::signature_verify(
+          parts$data,
+          parts$sig,
+          hash = NULL,
+          pubkey = key
+        )))
+      }
+
+      FALSE
+    },
+    error = function(...) FALSE
+  )
+}
+
+verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
+  parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
+  if (is.null(parts)) {
+    return(FALSE)
+  }
+
+  secret_raw <- tryCatch(
+    {
+      if (is.character(secret)) {
+        charToRaw(secret)
+      } else {
+        secret
+      }
+    },
+    error = function(...) NULL
+  )
+  if (is.null(secret_raw) || !is.raw(secret_raw)) {
+    return(FALSE)
+  }
+
+  tryCatch(
+    {
+      expected <- openssl::sha2(
+        parts$data,
+        size = as.integer(substring(toupper(alg), 3L)),
+        key = secret_raw
+      )
+      identical(parts$sig, unclass(expected))
+    },
+    error = function(...) FALSE
+  )
+}
+
 is_guid_like <- function(value) {
   is.character(value) &&
     length(value) == 1L &&
@@ -391,8 +496,7 @@ validate_id_token <- function(
         if (inherits(pub, "try-error")) {
           next
         }
-        dec <- try(jose::jwt_decode_sig(id_token, pub), silent = TRUE)
-        if (!inherits(dec, "try-error")) {
+        if (isTRUE(verify_jws_signature_no_time(id_token, pub, alg))) {
           verified <- TRUE
           break
         }
@@ -426,9 +530,13 @@ validate_id_token <- function(
         ))
       }
 
-      # jose::jwt_decode_hmac autodetects HS256/384/512 from header
-      dec <- try(jose::jwt_decode_hmac(id_token, client_secret), silent = TRUE)
-      if (inherits(dec, "try-error")) {
+      if (
+        !isTRUE(verify_hmac_jws_signature_no_time(
+          id_token,
+          client_secret,
+          alg
+        ))
+      ) {
         err_id_token("ID token HMAC invalid")
       }
     } else {
