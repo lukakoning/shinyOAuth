@@ -1,4 +1,6 @@
-# OIDC generic + discovery -----------------------------------------------------
+# 1 Provider constructors -------------------------------------------------
+
+## 1.1 Generic OIDC construction -----------------------------------------
 
 #' @title
 #' Create a generic OpenID Connect (OIDC) [OAuthProvider]
@@ -66,7 +68,7 @@ oauth_provider_oidc <- function(
   )
 }
 
-# Preconfigured providers ------------------------------------------------------
+## 1.2 Direct-configured provider presets --------------------------------
 
 #' Create a GitHub [OAuthProvider]
 #'
@@ -328,6 +330,9 @@ oauth_provider_spotify <- function(
     id_token_validation = FALSE
   )
 }
+
+
+## 1.3 Discovery-backed provider presets ---------------------------------
 
 #' Create a Slack [OAuthProvider] (via OIDC discovery)
 #'

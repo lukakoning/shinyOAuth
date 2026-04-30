@@ -72,7 +72,7 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
   )
 }
 
-# Warn about non-usage ----------------------------------------------------
+# 1 Warn about non-usage --------------------------------------------------
 
 # Here we track if the dependency has likely been added to UI;
 # if this flag is FALSE, and `oauth_module_server()` is called,

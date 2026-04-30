@@ -254,7 +254,9 @@ oauth_module_server <- function(
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
-  # Validate parameters ------------------------------------------------------
+  # 1 Module setup ---------------------------------------------------------
+
+  ## 1.1 Parameter validation ----------------------------------------------
 
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -349,6 +351,8 @@ oauth_module_server <- function(
   ) {
     err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
   }
+
+  ## 1.2 Browser and async prerequisites -----------------------------------
 
   # Fail fast: revoke_on_session_end requires a revocation URL
 
@@ -464,10 +468,10 @@ oauth_module_server <- function(
     }
   }
 
-  # Shiny module ---------------------------------------------------------------
+  # 2 Shiny module ---------------------------------------------------------
 
   shiny::moduleServer(id, function(input, output, session) {
-    # Reactive values ----------------------------------------------------------
+    ## 2.1 Reactive values --------------------------------------------------
 
     # Set browser token initial value to "__SKIPPED__" in test mode
     browser_token_initial <- NULL
@@ -550,7 +554,7 @@ oauth_module_server <- function(
       parent = NA
     )
 
-    # Session-end hook ---------------------------------------------------------
+    ## 2.2 Session-end hooks ------------------------------------------------
 
     # Capture session context now while we still have it (it won't be
     # available in onSessionEnded callback). Keep separate sync/async variants
@@ -648,7 +652,7 @@ oauth_module_server <- function(
       })
     }
 
-    # Error handling helpers --------------------------------------------------
+    ## 2.3 Error handling helpers -------------------------------------------
 
     # Safe, exact extraction of a trace identifier from an error-like object
     .get_trace_id <- function(e) {
@@ -714,7 +718,7 @@ oauth_module_server <- function(
       "token_exchange_error"
     }
 
-    # Client-side actions (CSP-friendly via custom messages) ------------------
+    ## 2.4 Client-side actions ----------------------------------------------
 
     # These helpers communicate with handlers defined in inst/www/shinyOAuth.js,
     # which you load in UI with `use_shinyOAuth()`
@@ -842,7 +846,7 @@ oauth_module_server <- function(
       )
     }
 
-    # Browser token cookie -----------------------------------------------------
+    ## 2.5 Browser token cookie ---------------------------------------------
 
     # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
     # and mirror its value into input$shinyOAuth_sid. We set it once if missing
@@ -1015,7 +1019,7 @@ oauth_module_server <- function(
       return(FALSE)
     }
 
-    # Track authentication status ----------------------------------------------
+    ## 2.6 Authentication state ---------------------------------------------
 
     # Helper: compute authentication status
     .compute_authenticated <- function() {
@@ -1171,7 +1175,7 @@ oauth_module_server <- function(
       ignoreInit = FALSE
     )
 
-    # Auth URL & redirection helpers -------------------------------------------
+    ## 2.7 Authorization URL and redirection helpers ------------------------
 
     .warn_about_authenticated_login_request <- function(action) {
       rlang::warn(
@@ -1342,7 +1346,7 @@ oauth_module_server <- function(
       )
     }
 
-    # Handle callback + auto-redirect ------------------------------------------
+    ## 2.8 Callback handling and auto-redirect ------------------------------
 
     # Handle OAuth flow by listening to clientData$url_search
     shiny::observeEvent(
@@ -2258,7 +2262,7 @@ oauth_module_server <- function(
     values$.process_query <- .process_query
     values$.strip_oauth_query <- .strip_oauth_query
 
-    # Proactive refresh --------------------------------------------------------
+    ## 2.9 Proactive refresh ------------------------------------------------
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
@@ -2499,7 +2503,7 @@ oauth_module_server <- function(
       })
     }
 
-    # Expiry watch -------------------------------------------------------------
+    ## 2.10 Expiry watch ----------------------------------------------------
 
     # Always-on expiry watcher to clear expired tokens and optionally reauth
     shiny::observe({
@@ -2627,7 +2631,7 @@ oauth_module_server <- function(
       shiny::invalidateLater(wake_ms, session)
     })
 
-    # Return reactive values ---------------------------------------------------
+    ## 2.11 Return reactive values ------------------------------------------
 
     return(values)
   })

@@ -1,4 +1,4 @@
-# State helpers: decrypt/validate payload and fetch/remove store --------------
+# 1 State helpers: decrypt/validate payload and fetch/remove store --------
 
 # State helpers used during callback validation and single-use state
 # consumption.
@@ -215,7 +215,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 }
 
 
-# -- Atomic consume path (store has $take) -----------------------------------
+## 1.1 Atomic consume path ------------------------------------------------
 
 # Internal: consume one state_store entry via atomic `$take(key, missing)`.
 #
@@ -284,7 +284,7 @@ state_store_consume_atomic <- function(
 }
 
 
-# -- Non-atomic fallback path (get + remove + post-check) --------------------
+## 1.2 Non-atomic fallback path -------------------------------------------
 
 # Internal: consume one state_store entry via get + remove + post-check.
 #
@@ -394,7 +394,7 @@ state_store_consume_fallback <- function(
 }
 
 
-# -- Shared validation for state store values --------------------------------
+## 1.3 Shared validation for state store values ----------------------------
 
 #' @noRd
 validate_state_store_value <- function(ssv) {

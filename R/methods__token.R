@@ -1,4 +1,6 @@
-# This file contains methods to introspect and refresh an OAuthToken
+# 1 Token lifecycle -------------------------------------------------------
+
+## 1.1 Revocation ---------------------------------------------------------
 
 #' @title
 #' Revoke an OAuth 2.0 token
@@ -431,6 +433,9 @@ revoke_token <- function(
 #' @example inst/examples/token_methods.R
 #'
 #' @export
+
+## 1.2 Introspection ------------------------------------------------------
+
 introspect_token <- function(
   oauth_client,
   oauth_token,
@@ -894,6 +899,9 @@ introspect_token <- function(
 #' @example inst/examples/token_methods.R
 #'
 #' @export
+
+## 1.3 Refresh ------------------------------------------------------------
+
 refresh_token <- function(
   oauth_client,
   token,
