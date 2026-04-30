@@ -82,5 +82,72 @@ OAuthToken <- S7::new_class(
         )
       }
     )
-  )
+  ),
+  validator = function(self) {
+    validate_optional_token_field <- function(value, field) {
+      if (!is.character(value) || length(value) != 1L) {
+        return(sprintf(
+          "OAuthToken: %s must be a scalar character value",
+          field
+        ))
+      }
+
+      if (!is.na(value) && !nzchar(trimws(value))) {
+        return(sprintf(
+          "OAuthToken: %s must be NA or a non-empty string",
+          field
+        ))
+      }
+
+      NULL
+    }
+
+    if (!(is.character(self@access_token) && length(self@access_token) == 1L)) {
+      return("OAuthToken: access_token must be a scalar character value")
+    }
+    if (is.na(self@access_token) || !nzchar(trimws(self@access_token))) {
+      return("OAuthToken: access_token must be a non-empty string")
+    }
+
+    for (field in c("token_type", "refresh_token", "id_token")) {
+      problem <- validate_optional_token_field(S7::prop(self, field), field)
+      if (!is.null(problem)) {
+        return(problem)
+      }
+    }
+
+    expires_at <- self@expires_at
+    if (!is.numeric(expires_at) || length(expires_at) != 1L) {
+      return(
+        "OAuthToken: expires_at must be a single numeric timestamp, NA, or Inf"
+      )
+    }
+    if (is.nan(expires_at) || identical(expires_at, -Inf)) {
+      return("OAuthToken: expires_at must be a finite timestamp, NA, or Inf")
+    }
+
+    thumbprint <- self@cnf[["x5t#S256"]] %||% NULL
+    if (!is.null(thumbprint) && !is_valid_string(thumbprint)) {
+      return(
+        "OAuthToken: cnf$x5t#S256 must be a non-empty string when supplied"
+      )
+    }
+
+    if (isTRUE(self@id_token_validated)) {
+      if (!(is_valid_string(self@id_token) && nzchar(trimws(self@id_token)))) {
+        return(
+          "OAuthToken: id_token_validated = TRUE requires a non-empty id_token"
+        )
+      }
+
+      parsed_claims <- try(parse_jwt_payload(self@id_token), silent = TRUE)
+      if (inherits(parsed_claims, "try-error") || !is.list(parsed_claims)) {
+        return(
+          "OAuthToken: id_token_validated = TRUE requires id_token to be a parseable JWT"
+        )
+      }
+    }
+
+    NULL
+  }
 )

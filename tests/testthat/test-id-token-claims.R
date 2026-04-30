@@ -6,12 +6,41 @@ test_that("id_token_claims returns empty list when no ID token", {
   expect_identical(tok@id_token_claims, list())
 })
 
-test_that("id_token_claims returns empty list for empty string ID token", {
-  tok <- OAuthToken(
-    access_token = "at",
-    id_token = ""
+test_that("OAuthToken rejects empty string ID token", {
+  expect_error(
+    OAuthToken(
+      access_token = "at",
+      id_token = ""
+    ),
+    "id_token must be NA or a non-empty string"
   )
-  expect_identical(tok@id_token_claims, list())
+})
+
+test_that("OAuthToken rejects empty string access_token", {
+  expect_error(
+    OAuthToken(
+      access_token = ""
+    ),
+    "access_token must be a non-empty string"
+  )
+})
+
+test_that("OAuthToken rejects invalid expires_at values", {
+  expect_error(
+    OAuthToken(
+      access_token = "at",
+      expires_at = NaN
+    ),
+    "expires_at must be a finite timestamp, NA, or Inf"
+  )
+
+  expect_error(
+    OAuthToken(
+      access_token = "at",
+      expires_at = -Inf
+    ),
+    "expires_at must be a finite timestamp, NA, or Inf"
+  )
 })
 
 test_that("id_token_claims returns empty list for malformed JWT", {
@@ -118,15 +147,52 @@ test_that("id_token_validated defaults to FALSE", {
 })
 
 test_that("id_token_validated can be set to TRUE at construction", {
-  tok <- OAuthToken(access_token = "at", id_token_validated = TRUE)
+  jwt <- paste(
+    shinyOAuth:::base64url_encode(charToRaw('{"alg":"none"}')),
+    shinyOAuth:::base64url_encode(charToRaw('{"sub":"user-1"}')),
+    "",
+    sep = "."
+  )
+
+  tok <- OAuthToken(
+    access_token = "at",
+    id_token = jwt,
+    id_token_validated = TRUE
+  )
   expect_true(tok@id_token_validated)
 })
 
 test_that("id_token_validated can be toggled after construction", {
-  tok <- OAuthToken(access_token = "at")
+  jwt <- paste(
+    shinyOAuth:::base64url_encode(charToRaw('{"alg":"none"}')),
+    shinyOAuth:::base64url_encode(charToRaw('{"sub":"user-1"}')),
+    "",
+    sep = "."
+  )
+
+  tok <- OAuthToken(access_token = "at", id_token = jwt)
   expect_false(tok@id_token_validated)
   tok@id_token_validated <- TRUE
   expect_true(tok@id_token_validated)
+})
+
+test_that("OAuthToken rejects id_token_validated without a parseable ID token", {
+  expect_error(
+    OAuthToken(
+      access_token = "at",
+      id_token_validated = TRUE
+    ),
+    "requires a non-empty id_token"
+  )
+
+  expect_error(
+    OAuthToken(
+      access_token = "at",
+      id_token = "not-a-jwt",
+      id_token_validated = TRUE
+    ),
+    "parseable JWT"
+  )
 })
 
 test_that("id_token_validated is FALSE when no id_token present", {
