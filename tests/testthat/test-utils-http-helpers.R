@@ -191,6 +191,51 @@ test_that("parse_token_response signals parse error for invalid json", {
   )
 })
 
+test_that("parse_token_response rejects duplicate JSON token parameters", {
+  dup_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = charToRaw('{"access_token":"abc","access_token":"def"}')
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(dup_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate member name: access_token"
+  )
+})
+
+test_that("parse_token_response rejects duplicate form token parameters", {
+  dup_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/x-www-form-urlencoded"),
+    body = charToRaw("access_token=abc&scope=read&scope=write")
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(dup_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate parameter name: scope"
+  )
+})
+
+test_that("parse_token_response rejects duplicate text/plain form token parameters", {
+  dup_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "text/plain"),
+    body = charToRaw("access_token=abc&access_token=def")
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(dup_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate parameter name: access_token"
+  )
+})
+
 # Tests using webfakes to verify real httr2 semantics ----------------------------
 # Note: webfakes runs the app in a subprocess, so we use shared state
 # via environment stored in the app locals.

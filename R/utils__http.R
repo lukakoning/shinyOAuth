@@ -432,6 +432,7 @@ parse_token_response <- function(resp) {
 
   # Some providers include charset, e.g., application/json; charset=utf-8
   if (grepl("application/json", ct, fixed = TRUE)) {
+    reject_duplicate_json_object_members(body, "Token response JSON")
     out <- try(
       httr2::resp_body_json(resp, simplifyVector = TRUE),
       silent = TRUE
@@ -454,6 +455,7 @@ parse_token_response <- function(resp) {
   # Handle application/x-www-form-urlencoded explicitly
   if (grepl("application/x-www-form-urlencoded", ct, fixed = TRUE)) {
     # httr2::url_query_parse handles form-encoded strings
+    reject_duplicate_form_encoded_members(body, "Token response body")
     return(httr2::url_query_parse(body))
   }
 
@@ -463,6 +465,7 @@ parse_token_response <- function(resp) {
   # then fall back to form parsing.
   if (ct == "" || grepl("text/plain", ct, fixed = TRUE)) {
     # Try JSON first
+    reject_duplicate_json_object_members(body, "Token response JSON")
     out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
     if (!inherits(out, "try-error")) {
       if (is.data.frame(out)) {
@@ -471,6 +474,7 @@ parse_token_response <- function(resp) {
       return(out)
     }
     # Fall back to form parsing
+    reject_duplicate_form_encoded_members(body, "Token response body")
     return(httr2::url_query_parse(body))
   }
 
@@ -485,6 +489,30 @@ parse_token_response <- function(resp) {
     ),
     context = list(content_type = ct)
   )
+}
+
+reject_duplicate_form_encoded_members <- function(form_text, label) {
+  if (is.null(form_text) || !nzchar(form_text)) {
+    return(invisible(NULL))
+  }
+
+  parts <- strsplit(form_text, "&", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) {
+    return(invisible(NULL))
+  }
+
+  seen <- character(0)
+  for (part in parts) {
+    key <- sub("=.*$", "", part)
+    key <- utils::URLdecode(key)
+    if (key %in% seen) {
+      err_parse(paste0(label, " contains duplicate parameter name: ", key))
+    }
+    seen <- c(seen, key)
+  }
+
+  invisible(NULL)
 }
 
 # Internal: derive a compact, JSON-serializable HTTP summary from a request

@@ -4,6 +4,10 @@
 alongside the other managed token request fields, preventing duplicate
 refresh-token parameters from being appended during refresh.
 
+* Token endpoint response parsing now rejects duplicate top-level JSON and
+form-encoded parameter names instead of silently accepting ambiguous
+`access_token`, `scope`, or `id_token` values.
+
 * OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
 by default; off-issuer aliases require an explicit host allowlist.
 
