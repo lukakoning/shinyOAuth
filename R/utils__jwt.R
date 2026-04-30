@@ -455,6 +455,7 @@ validate_id_token <- function(
 
   # Signature verification
   payload <- parsed_payload
+  verified_eddsa_curve <- NULL
   if (!isTRUE(skip_signature)) {
     # All asymmetric algs are verified using the provider JWKS (RSA/EC/OKP)
     if (
@@ -563,6 +564,12 @@ validate_id_token <- function(
         }
         if (isTRUE(verify_jws_signature_no_time(id_token, pub, alg))) {
           verified <- TRUE
+          if (identical(alg, "EDDSA")) {
+            verified_eddsa_curve <- resolve_verified_eddsa_curve(
+              jwk = jk,
+              key = pub
+            )
+          }
           break
         }
       }
@@ -806,7 +813,19 @@ validate_id_token <- function(
         "ID token contains at_hash claim but no access token was provided for validation"
       )
     }
-    computed <- compute_at_hash(expected_access_token, alg)
+    if (identical(alg, "EDDSA") && isTRUE(skip_signature)) {
+      err_id_token(c(
+        "x" = paste(
+          "Cannot validate EdDSA at_hash when signature verification is skipped"
+        ),
+        "i" = "Exact EdDSA at_hash validation requires a verified key or JWK to resolve the concrete curve"
+      ))
+    }
+    computed <- compute_at_hash(
+      expected_access_token,
+      alg,
+      eddsa_curve = verified_eddsa_curve
+    )
     if (!constant_time_compare(computed, payload$at_hash)) {
       err_id_token(
         "at_hash claim does not match the access token (OIDC Core 3.1.3.8)"
@@ -819,35 +838,90 @@ validate_id_token <- function(
   invisible(payload)
 }
 
+canonicalize_eddsa_curve <- function(eddsa_curve) {
+  if (
+    !is.character(eddsa_curve) ||
+      length(eddsa_curve) != 1L ||
+      is.na(eddsa_curve) ||
+      !nzchar(eddsa_curve)
+  ) {
+    return(NULL)
+  }
+
+  curve <- toupper(eddsa_curve)
+  if (identical(curve, "ED25519")) {
+    return("Ed25519")
+  }
+  if (identical(curve, "ED448")) {
+    return("Ed448")
+  }
+
+  NULL
+}
+
+resolve_verified_eddsa_curve <- function(jwk = NULL, key = NULL) {
+  # Prefer the JWK curve because it is explicit and survives key conversion.
+  if (is.list(jwk)) {
+    curve <- canonicalize_eddsa_curve(jwk$crv %||% NULL)
+    if (!is.null(curve)) {
+      return(curve)
+    }
+  }
+
+  if (!is.null(key)) {
+    if (inherits(key, "ed25519")) {
+      return("Ed25519")
+    }
+    if (inherits(key, "ed448")) {
+      return("Ed448")
+    }
+  }
+
+  NULL
+}
+
 #' Compute at_hash value per OIDC Core section 3.1.3.8
 #'
 #' Takes the left-most half of the hash of the access token ASCII octets
 #' using the hash algorithm from the JWT alg header, then base64url-encodes it.
-#' For `EdDSA`, JOSE only exposes the generic algorithm name rather than the
-#' concrete curve (`Ed25519` vs `Ed448`). shinyOAuth therefore keeps a
-#' compatibility fallback to SHA-512 here instead of attempting curve-specific
-#' behavior that would require resolved key metadata and would still be
-#' unavailable when signature verification is intentionally skipped in tests.
+#' For `EdDSA`, the generic JWT alg is not sufficient; callers must provide the
+#' concrete verified curve so the digest policy is explicit.
 #'
 #' @param access_token The access token string.
 #' @param alg The JWT algorithm (e.g., "RS256", "ES384", "RS512").
+#' @param eddsa_curve Optional concrete EdDSA curve (`"Ed25519"` or `"Ed448"`).
 #' @return A base64url-encoded string representing the at_hash.
 #' @keywords internal
 #' @noRd
-compute_at_hash <- function(access_token, alg) {
+compute_at_hash <- function(access_token, alg, eddsa_curve = NULL) {
   stopifnot(is_valid_string(access_token), is_valid_string(alg))
+  alg <- toupper(alg)
+
   # Map JWT alg to hash function per RFC 7518:
   # *256 -> SHA-256, *384 -> SHA-384, *512 -> SHA-512
-  # EdDSA fallback policy: use SHA-512 for compatibility because `alg=EdDSA`
-  # does not identify the concrete EdDSA curve in the JWT header alone.
   hash_fn <- if (grepl("256", alg, fixed = TRUE)) {
     openssl::sha256
   } else if (grepl("384", alg, fixed = TRUE)) {
     openssl::sha384
   } else if (grepl("512", alg, fixed = TRUE)) {
     openssl::sha512
-  } else if (toupper(alg) == "EDDSA") {
-    openssl::sha512
+  } else if (identical(alg, "EDDSA")) {
+    curve <- canonicalize_eddsa_curve(eddsa_curve)
+    if (is.null(curve)) {
+      err_id_token(c(
+        "x" = "Cannot validate EdDSA at_hash without the resolved verified curve",
+        "i" = "Expected Ed25519 or Ed448 from the key or JWK that verified the token"
+      ))
+    }
+
+    if (identical(curve, "Ed25519")) {
+      openssl::sha512
+    } else {
+      err_id_token(c(
+        "x" = "Ed448 at_hash validation is not yet supported",
+        "i" = "This runtime does not expose the SHAKE256 helper needed for exact Ed448 mapping"
+      ))
+    }
   } else {
     err_id_token(paste0(
       "Cannot determine hash algorithm for at_hash from alg: ",

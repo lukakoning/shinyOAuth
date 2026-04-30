@@ -70,9 +70,10 @@ present via `userinfo_jwt_required_temporal_claims`.
   `id_token_validated` flags to report skipped-signature ID tokens as
   cryptographically validated.
 
-* `at_hash` validation now documents the existing `EdDSA` compatibility
-  fallback explicitly: when `alg = "EdDSA"`, shinyOAuth uses SHA-512 because
-  JOSE does not expose the concrete EdDSA curve through the JWT `alg` alone.
+* `at_hash` validation now resolves `EdDSA` from the verified signing key/JWK
+  instead of guessing from `alg` alone: `Ed25519` uses the exact SHA-512
+  mapping, while signature-skipped or currently unsupported `EdDSA` curves
+  fail closed.
 
 * `oauth_module_server()` now forwards `oauth_client(introspect = TRUE)` to its
 proactive refresh path, so refreshed access tokens follow the same

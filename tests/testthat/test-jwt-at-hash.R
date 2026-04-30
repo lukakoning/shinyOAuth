@@ -38,20 +38,63 @@ mk_client <- function() {
 }
 
 # Helper to compute the correct at_hash for a given access_token and alg
-compute_expected_at_hash <- function(access_token, alg) {
+compute_expected_at_hash <- function(access_token, alg, eddsa_curve = NULL) {
+  alg <- toupper(alg)
+
   hash_fn <- if (grepl("256", alg, fixed = TRUE)) {
     openssl::sha256
   } else if (grepl("384", alg, fixed = TRUE)) {
     openssl::sha384
   } else if (grepl("512", alg, fixed = TRUE)) {
     openssl::sha512
+  } else if (identical(alg, "EDDSA")) {
+    if (identical(toupper(eddsa_curve %||% ""), "ED25519")) {
+      openssl::sha512
+    } else {
+      stop("unsupported EdDSA test curve", call. = FALSE)
+    }
   } else {
-    openssl::sha512 # EdDSA compatibility fallback
+    stop("unsupported test alg", call. = FALSE)
   }
   full_hash <- hash_fn(charToRaw(access_token))
   hash_bytes <- as.raw(full_hash)
   left_half <- hash_bytes[seq_len(length(hash_bytes) %/% 2L)]
   shinyOAuth:::base64url_encode(left_half)
+}
+
+make_ed25519_keypair <- function() {
+  testthat::skip_if_not_installed("sodium")
+
+  exports <- getNamespaceExports("sodium")
+  kp <- if ("signature_keygen" %in% exports) {
+    try(sodium::signature_keygen(), silent = TRUE)
+  } else if ("signature_keypair" %in% exports) {
+    try(sodium::signature_keypair(), silent = TRUE)
+  } else {
+    NULL
+  }
+
+  if (inherits(kp, "try-error") || is.null(kp)) {
+    testthat::skip("Ed25519 key generation not supported on this platform")
+  }
+
+  list(
+    pubkey = kp$pubkey,
+    secret = if (!is.null(kp$key)) kp$key else kp$secretkey
+  )
+}
+
+sign_ed25519_jwt <- function(header, claims, secret) {
+  header_json <- jsonlite::toJSON(header, auto_unbox = TRUE, null = "null")
+  claims_json <- jsonlite::toJSON(claims, auto_unbox = TRUE, null = "null")
+  signing_input <- paste0(
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header_json))),
+    ".",
+    shinyOAuth:::base64url_encode(charToRaw(as.character(claims_json)))
+  )
+  sig <- sodium::signature(charToRaw(signing_input), secret)
+
+  paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }
 
 test_that("at_hash: valid at_hash passes silently", {
@@ -233,9 +276,13 @@ test_that("compute_at_hash produces correct hash for known inputs", {
   expect_identical(result, expected)
 })
 
-test_that("compute_at_hash uses SHA-512 fallback for EdDSA", {
+test_that("compute_at_hash uses the Ed25519 mapping for EdDSA", {
   access_token <- "test-access-token"
-  result <- shinyOAuth:::compute_at_hash(access_token, "EdDSA")
+  result <- shinyOAuth:::compute_at_hash(
+    access_token,
+    "EdDSA",
+    eddsa_curve = "Ed25519"
+  )
   full_hash <- openssl::sha512(charToRaw(access_token))
   expected <- shinyOAuth:::base64url_encode(
     as.raw(full_hash)[seq_len(length(full_hash) %/% 2L)]
@@ -244,7 +291,27 @@ test_that("compute_at_hash uses SHA-512 fallback for EdDSA", {
   expect_identical(result, expected)
 })
 
-test_that("at_hash validation accepts EdDSA tokens via SHA-512 fallback", {
+test_that("compute_at_hash requires a resolved EdDSA curve", {
+  expect_error(
+    shinyOAuth:::compute_at_hash("test-access-token", "EdDSA"),
+    class = "shinyOAuth_id_token_error",
+    regexp = "resolved verified curve"
+  )
+})
+
+test_that("compute_at_hash rejects unsupported Ed448 mapping", {
+  expect_error(
+    shinyOAuth:::compute_at_hash(
+      "test-access-token",
+      "EdDSA",
+      eddsa_curve = "Ed448"
+    ),
+    class = "shinyOAuth_id_token_error",
+    regexp = "Ed448"
+  )
+})
+
+test_that("at_hash validation rejects EdDSA tokens when signature verification is skipped", {
   client <- mk_client()
   client@provider@allowed_algs <- c("EdDSA")
   now <- floor(as.numeric(Sys.time()))
@@ -258,19 +325,75 @@ test_that("at_hash validation accepts EdDSA tokens via SHA-512 fallback", {
       sub = "user-1",
       exp = now + 300,
       iat = now - 1,
-      at_hash = compute_expected_at_hash(access_token, "EdDSA")
+      at_hash = compute_expected_at_hash(
+        access_token,
+        "EdDSA",
+        eddsa_curve = "Ed25519"
+      )
     )
   )
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    expect_silent(
+    expect_error(
       shinyOAuth:::validate_id_token(
         client,
         jwt,
         expected_access_token = access_token
-      )
+      ),
+      class = "shinyOAuth_id_token_error",
+      regexp = "signature verification is skipped"
     )
   })
+})
+
+test_that("at_hash validation accepts Ed25519 tokens after verified curve resolution", {
+  keypair <- make_ed25519_keypair()
+  client <- mk_client()
+  client@provider@allowed_algs <- c("EdDSA")
+  now <- floor(as.numeric(Sys.time()))
+  access_token <- "access-token"
+  pub_jwk <- list(
+    kty = "OKP",
+    crv = "Ed25519",
+    x = shinyOAuth:::base64url_encode(keypair$pubkey),
+    kid = "ed25519-at-hash"
+  )
+
+  jwt <- sign_ed25519_jwt(
+    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      at_hash = compute_expected_at_hash(
+        access_token,
+        "EdDSA",
+        eddsa_curve = "Ed25519"
+      )
+    ),
+    secret = keypair$secret
+  )
+
+  expect_silent(testthat::with_mocked_bindings(
+    fetch_jwks = function(
+      issuer,
+      jwks_cache,
+      force_refresh = FALSE,
+      pins = NULL,
+      pin_mode = c("any", "all"),
+      provider = NULL
+    ) {
+      list(keys = list(pub_jwk))
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::validate_id_token(
+      client,
+      jwt,
+      expected_access_token = access_token
+    )
+  ))
 })
 
 # --- id_token_at_hash_required tests -----------------------------------------
