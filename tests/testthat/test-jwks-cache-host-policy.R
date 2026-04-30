@@ -1,3 +1,17 @@
+make_host_policy_rsa_jwk <- local({
+  base_jwk <- NULL
+
+  function(kid = "k1") {
+    if (is.null(base_jwk)) {
+      key <- openssl::rsa_keygen(bits = 2048)
+      jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+      base_jwk <<- list(kty = jwk$kty, n = jwk$n, e = jwk$e)
+    }
+
+    c(base_jwk, list(kid = kid))
+  }
+})
+
 test_that("jwks_cache_key varies with host-policy fields", {
   issuer <- "https://issuer.example.com"
 
@@ -99,7 +113,7 @@ test_that("different host policies produce separate cache entries preventing cro
   issuer <- "https://issuer.example.com"
   cache <- cachem::cache_mem(max_age = 3600)
 
-  rsa_jwk <- list(kty = "RSA", n = "n-test", e = "AQAB", kid = "k1")
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
   jwks <- list(keys = list(rsa_jwk))
 
   # Simulate a relaxed provider storing a JWKS entry
@@ -143,7 +157,7 @@ test_that("fetch_jwks stores jwks_uri_host in cache entry", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
 
-  rsa_jwk <- list(kty = "RSA", n = "n-store", e = "AQAB", kid = "k1")
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
   good_jwks <- list(keys = list(rsa_jwk))
 
   app <- webfakes::new_app()
@@ -181,7 +195,7 @@ test_that("fetch_jwks rejects discovery issuer mismatch by default", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
 
-  rsa_jwk <- list(kty = "RSA", n = "n-mismatch", e = "AQAB", kid = "k1")
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
   good_jwks <- list(keys = list(rsa_jwk))
 
   app <- webfakes::new_app()
@@ -219,7 +233,7 @@ test_that("fetch_jwks honors provider issuer_match policy", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
 
-  rsa_jwk <- list(kty = "RSA", n = "n-host", e = "AQAB", kid = "k1")
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
   good_jwks <- list(keys = list(rsa_jwk))
 
   app <- webfakes::new_app()
@@ -268,7 +282,7 @@ test_that("fetch_jwks evicts cache entry when stored host fails host-policy re-v
   issuer <- "https://issuer.example.com"
   cache <- cachem::cache_mem(max_age = 3600)
 
-  rsa_jwk <- list(kty = "RSA", n = "n-evict", e = "AQAB", kid = "k1")
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
   jwks <- list(keys = list(rsa_jwk))
 
   # Create a strict provider
