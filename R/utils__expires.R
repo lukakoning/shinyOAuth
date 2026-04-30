@@ -122,7 +122,7 @@ client_state_store_max_age <- function(client, default = 300) {
 
 #' Internal: resolve expires_at when expires_in is absent from the token response
 #'
-#' RFC 6749 §5.1 says `expires_in` is RECOMMENDED. When it is absent we check
+#' RFC 6749 \u00a75.1 says `expires_in` is RECOMMENDED. When it is absent we check
 #' `options(shinyOAuth.default_expires_in)` for a configurable fallback (seconds).
 #' If the option is absent or invalid, shinyOAuth falls back to 3600 seconds.
 #' A once-per-phase warning is emitted either way so operators know the value
@@ -179,7 +179,7 @@ resolve_missing_expires_in <- function(phase = NULL) {
       ),
       "i" = fallback_msg,
       "i" = "Set `options(shinyOAuth.default_expires_in = <seconds>)` to override this fallback",
-      "i" = "See RFC 6749 §5.1: expires_in is RECOMMENDED"
+      "i" = "See RFC 6749 \u00a75.1: expires_in is RECOMMENDED"
     ),
     class = "shinyOAuth_missing_expires_in",
     .frequency = "once",

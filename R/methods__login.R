@@ -41,6 +41,15 @@ prepare_call <- function(
 
   flow_trace_id <- gen_trace_id()
   effective_scopes <- effective_client_scopes(oauth_client)
+  request_mode <- oauth_client@authorization_request_mode %||% "parameters"
+  request_object_used <-
+    is.character(request_mode) &&
+    length(request_mode) == 1L &&
+    !is.na(request_mode) &&
+    identical(request_mode, "request")
+  par_used <- is_valid_string(
+    oauth_client@provider@par_url %||% NA_character_
+  )
 
   with_trace_id(
     flow_trace_id,
@@ -48,16 +57,6 @@ prepare_call <- function(
       "shinyOAuth.login.request",
       {
         login_span_headers <- otel_capture_context()
-        request_mode <- oauth_client@authorization_request_mode %||%
-          "parameters"
-        request_object_used <-
-          is.character(request_mode) &&
-          length(request_mode) == 1L &&
-          !is.na(request_mode) &&
-          identical(request_mode, "request")
-        par_used <- is_valid_string(
-          oauth_client@provider@par_url %||% NA_character_
-        )
 
         # State, code_challenge & code_verifier, nonce -----------------------------
 
