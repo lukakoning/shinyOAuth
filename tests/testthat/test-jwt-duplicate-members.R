@@ -2,9 +2,9 @@
 
 make_raw_jwt <- function(header_json, payload_json) {
   paste0(
-    shinyOAuth:::b64url_encode(charToRaw(header_json)),
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(payload_json)),
+    shinyOAuth:::base64url_encode(charToRaw(payload_json)),
     "."
   )
 }

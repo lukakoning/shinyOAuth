@@ -27,19 +27,23 @@ test_that("state_decrypt_gcm enforces size caps and is configurable", {
   )
 
   # 2) Oversized wrapper JSON (inflate by adding large junk field before encoding)
-  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
+  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
+    tok
+  )))
   wrapper$j <- paste(rep("x", 300), collapse = "")
   big_wrapper_raw <- charToRaw(jsonlite::toJSON(wrapper, auto_unbox = TRUE))
-  big_tok <- shinyOAuth:::b64url_encode(big_wrapper_raw)
+  big_tok <- shinyOAuth:::base64url_encode(big_wrapper_raw)
   expect_error(
     shinyOAuth:::state_decrypt_gcm(big_tok, key = key),
     class = "shinyOAuth_state_error"
   )
 
   # 3) Oversized ciphertext base64 length
-  wrapper2 <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
+  wrapper2 <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
+    tok
+  )))
   wrapper2$ct <- paste0(wrapper2$ct, strrep("A", 200))
-  big_ct_b64_tok <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  big_ct_b64_tok <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     wrapper2,
     auto_unbox = TRUE
   )))
@@ -49,11 +53,13 @@ test_that("state_decrypt_gcm enforces size caps and is configurable", {
   )
 
   # 4) Oversized ciphertext raw bytes
-  wrapper3 <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
-  ct_raw <- shinyOAuth:::b64url_decode(wrapper3$ct)
+  wrapper3 <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
+    tok
+  )))
+  ct_raw <- shinyOAuth:::base64url_decode_raw(wrapper3$ct)
   ct_raw <- c(ct_raw, as.raw(rep(0x00, 200)))
-  wrapper3$ct <- shinyOAuth:::b64url_encode(ct_raw)
-  big_ct_raw_tok <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  wrapper3$ct <- shinyOAuth:::base64url_encode(ct_raw)
+  big_ct_raw_tok <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     wrapper3,
     auto_unbox = TRUE
   )))

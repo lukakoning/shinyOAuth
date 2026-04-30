@@ -46,6 +46,16 @@ prepare_call <- function(
       "shinyOAuth.login.request",
       {
         login_span_headers <- otel_capture_context()
+        request_mode <- oauth_client@authorization_request_mode %||%
+          "parameters"
+        request_object_used <-
+          is.character(request_mode) &&
+          length(request_mode) == 1L &&
+          !is.na(request_mode) &&
+          identical(request_mode, "request")
+        par_used <- is_valid_string(
+          oauth_client@provider@par_url %||% NA_character_
+        )
 
         # State, code_challenge & code_verifier, nonce -----------------------------
 
@@ -169,9 +179,6 @@ prepare_call <- function(
           }
         )
 
-        par_used <- uses_pushed_authorization_request(oauth_client)
-        request_object_used <- uses_authorization_request_object(oauth_client)
-
         # Audit: redirect issuance (redacted identifiers only)
         try(
           {
@@ -216,9 +223,7 @@ prepare_call <- function(
           oauth.max_age.requested = otel_requested_max_age(
             oauth_client@provider
           ),
-          oauth.request_object_used = uses_authorization_request_object(
-            oauth_client
-          ),
+          oauth.request_object_used = isTRUE(request_object_used),
           oauth.extra_auth_params_count = otel_count_items(
             oauth_client@provider@extra_auth_params
           )
@@ -229,26 +234,10 @@ prepare_call <- function(
   )
 }
 
-authorization_request_mode <- function(oauth_client) {
-  S7::check_is_S7(oauth_client, class = OAuthClient)
-
-  mode <- oauth_client@authorization_request_mode %||% "parameters"
-  if (!is.character(mode) || length(mode) != 1L || is.na(mode)) {
-    return("parameters")
-  }
-
-  mode
-}
-
-uses_authorization_request_object <- function(oauth_client) {
-  identical(authorization_request_mode(oauth_client), "request")
-}
-
-uses_pushed_authorization_request <- function(oauth_client) {
-  is_valid_string(oauth_client@provider@par_url %||% NA_character_)
-}
-
-# Helper: turn key provider properties into a stable fingerprint string
+# Helper: turn provider endpoint settings into a stable fingerprint string.
+# Used when sealing and later validating login state so the callback can verify
+# it is being completed against the same provider configuration that started
+# the flow. Input: an OAuthProvider. Output: a stable sha256:<digest> string.
 provider_fingerprint <- function(provider) {
   norm_chr <- function(x) {
     if (is.null(x) || length(x) != 1L || is.na(x)) {
@@ -474,7 +463,7 @@ apply_direct_client_auth <- function(req, params, client, context) {
     }
   } else if (identical(tas, "public")) {
     params$client_id <- params$client_id %||% client@client_id
-  } else if (tas %in% mtls_token_auth_styles()) {
+  } else if (tas %in% MTLS_TOKEN_AUTH_STYLES) {
     params$client_id <- params$client_id %||% client@client_id
   } else if (
     identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
@@ -649,23 +638,9 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
   )
 }
 
-build_par_auth_url <- function(oauth_client, request_uri) {
-  S7::check_is_S7(oauth_client, class = OAuthClient)
-
-  if (!is_valid_string(request_uri)) {
-    err_config("build_par_auth_url: 'request_uri' must be a valid string")
-  }
-
-  url_append_query_params(
-    oauth_client@provider@auth_url,
-    list(
-      client_id = oauth_client@client_id,
-      request_uri = request_uri
-    )
-  )
-}
-
-# Helper: build authorization URL with all params
+# Helper: build the final browser redirect URL for the authorization request.
+# Depending on client/provider settings this returns either a plain
+# query-parameter URL, a JAR request-object URL, or a PAR request_uri URL.
 build_auth_url <- function(
   oauth_client,
   payload,
@@ -674,6 +649,14 @@ build_auth_url <- function(
   pkce_method,
   nonce
 ) {
+  request_mode <- oauth_client@authorization_request_mode %||% "parameters"
+  request_object_used <-
+    is.character(request_mode) &&
+    length(request_mode) == 1L &&
+    !is.na(request_mode) &&
+    identical(request_mode, "request")
+  par_used <- is_valid_string(oauth_client@provider@par_url %||% NA_character_)
+
   params <- build_authorization_params(
     oauth_client = oauth_client,
     payload = payload,
@@ -683,18 +666,29 @@ build_auth_url <- function(
     nonce = nonce
   )
 
-  if (isTRUE(uses_authorization_request_object(oauth_client))) {
+  if (isTRUE(request_object_used)) {
     request_object <- build_authorization_request_object(
       oauth_client,
       params
     )
 
-    if (isTRUE(uses_pushed_authorization_request(oauth_client))) {
+    if (isTRUE(par_used)) {
       par_resp <- push_authorization_request(
         client = oauth_client,
         params = list(request = request_object)
       )
-      return(build_par_auth_url(oauth_client, par_resp$request_uri))
+
+      if (!is_valid_string(par_resp$request_uri)) {
+        err_config("build_auth_url: PAR response missing valid request_uri")
+      }
+
+      return(url_append_query_params(
+        oauth_client@provider@auth_url,
+        list(
+          client_id = oauth_client@client_id,
+          request_uri = par_resp$request_uri
+        )
+      ))
     }
 
     return(url_append_query_params(
@@ -706,12 +700,23 @@ build_auth_url <- function(
     ))
   }
 
-  if (isTRUE(uses_pushed_authorization_request(oauth_client))) {
+  if (isTRUE(par_used)) {
     par_resp <- push_authorization_request(
       client = oauth_client,
       params = params
     )
-    return(build_par_auth_url(oauth_client, par_resp$request_uri))
+
+    if (!is_valid_string(par_resp$request_uri)) {
+      err_config("build_auth_url: PAR response missing valid request_uri")
+    }
+
+    return(url_append_query_params(
+      oauth_client@provider@auth_url,
+      list(
+        client_id = oauth_client@client_id,
+        request_uri = par_resp$request_uri
+      )
+    ))
   }
 
   url_append_query_params(oauth_client@provider@auth_url, params)

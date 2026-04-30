@@ -5,14 +5,14 @@ test_that("tampered state payload fails AES-GCM auth during callback", {
   enc <- parse_query_param(url, "state")
 
   # Tamper inside the sealed JSON (flip one base64url char in tg field)
-  raw <- shinyOAuth:::b64url_decode(enc)
+  raw <- shinyOAuth:::base64url_decode_raw(enc)
   obj <- jsonlite::fromJSON(rawToChar(raw), simplifyVector = TRUE)
   tg <- obj$tg
   pos <- if (nchar(tg) >= 1) 1 else stop("unexpected tg")
   ch <- substr(tg, pos, pos)
   substr(tg, pos, pos) <- if (ch == "A") "B" else "A"
   obj$tg <- tg
-  tampered <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  tampered <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     obj,
     auto_unbox = TRUE
   )))
@@ -35,13 +35,13 @@ test_that("state_decrypt_gcm fails safely for malformed tokens", {
     class = "shinyOAuth_state_error"
   )
 
-  not_json <- shinyOAuth:::b64url_encode(charToRaw("not-json"))
+  not_json <- shinyOAuth:::base64url_encode(charToRaw("not-json"))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(not_json, key = key),
     class = "shinyOAuth_state_error"
   )
 
-  missing_fields <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  missing_fields <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     list(v = 1),
     auto_unbox = TRUE
   )))

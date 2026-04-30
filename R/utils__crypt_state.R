@@ -1,6 +1,14 @@
 # Authenticated encrypt/decrypt of the state payload ---------------------------
 
-# Normalize/derive a 32-byte key with basic checks
+#' Internal: normalize or derive a 32-byte state encryption key
+#'
+#' Accepts either a sufficiently long character passphrase or a raw key.
+#' Character inputs are UTF-8 normalized and derived with SHA-256; raw inputs
+#' of exactly 32 bytes are used as-is, and longer raw inputs are hashed to
+#' avoid silent truncation.
+#'
+#' @keywords internal
+#' @noRd
 normalize_key32 <- function(key, min_chars = 32L) {
   if (is.null(key)) {
     err_config("state key is NULL", context = list(phase = "key_derivation"))
@@ -61,6 +69,14 @@ normalize_key32 <- function(key, min_chars = 32L) {
   key
 }
 
+#' Internal: encrypt a state payload into the compact GCM envelope
+#'
+#' Serializes the payload as JSON, encrypts it with AES-GCM, and returns the
+#' package's base64url-wrapped state token format containing version, IV, tag,
+#' and ciphertext.
+#'
+#' @keywords internal
+#' @noRd
 state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
   if (is.null(payload)) {
     err_input(c("x" = "payload is NULL"), context = list(phase = "encrypt"))
@@ -123,13 +139,22 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
 
   token_obj <- list(
     v = as.integer(version),
-    iv = b64url_encode(iv),
-    tg = b64url_encode(tag),
-    ct = b64url_encode(ct)
+    iv = base64url_encode(iv),
+    tg = base64url_encode(tag),
+    ct = base64url_encode(ct)
   )
-  b64url_encode(charToRaw(jsonlite::toJSON(token_obj, auto_unbox = TRUE)))
+  base64url_encode(charToRaw(jsonlite::toJSON(token_obj, auto_unbox = TRUE)))
 }
 
+#' Internal: decrypt and validate the compact state GCM envelope
+#'
+#' Decodes the outer base64url wrapper, validates the version and envelope
+#' members, decrypts the ciphertext with AES-GCM, and returns the parsed JSON
+#' payload. The helper enforces size caps and emits audit events for parse
+#' failures without disclosing plaintext or key material.
+#'
+#' @keywords internal
+#' @noRd
 state_decrypt_gcm <- function(
   token,
   key,
@@ -255,7 +280,7 @@ state_decrypt_gcm <- function(
   }
   key <- normalize_key32(key, min_chars = min_key_chars)
 
-  decoded <- try(b64url_decode(token), silent = TRUE)
+  decoded <- try(base64url_decode_raw(token), silent = TRUE)
   if (inherits(decoded, "try-error")) {
     audit_fail("token_b64_invalid")
     state_fail(
@@ -326,7 +351,7 @@ state_decrypt_gcm <- function(
     audit_fail("iv_missing")
     state_fail("state token missing IV", context = list(phase = "decrypt"))
   }
-  iv <- try(b64url_decode(obj$iv), silent = TRUE)
+  iv <- try(base64url_decode_raw(obj$iv), silent = TRUE)
   if (inherits(iv, "try-error")) {
     audit_fail("iv_b64_invalid")
     state_fail(
@@ -345,7 +370,7 @@ state_decrypt_gcm <- function(
     audit_fail("tag_missing")
     state_fail("state token missing tag", context = list(phase = "decrypt"))
   }
-  tg <- try(b64url_decode(obj$tg), silent = TRUE)
+  tg <- try(base64url_decode_raw(obj$tg), silent = TRUE)
   if (inherits(tg, "try-error")) {
     audit_fail("tag_b64_invalid")
     state_fail(
@@ -383,7 +408,7 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt", where = "ct_b64")
     )
   }
-  ct <- try(b64url_decode(obj$ct), silent = TRUE)
+  ct <- try(base64url_decode_raw(obj$ct), silent = TRUE)
   if (inherits(ct, "try-error")) {
     audit_fail("ciphertext_b64_invalid")
     state_fail(
@@ -522,56 +547,4 @@ state_cache_key <- function(state) {
     )
   }
   raw_to_hex_lower(openssl::sha256(charToRaw(state)))
-}
-
-#' Convert raw vector to lowercase hex string (cachem-safe)
-#'
-#' @keywords internal
-#' @noRd
-raw_to_hex_lower <- function(r) {
-  if (!is.raw(r)) {
-    err_input(
-      "raw_to_hex_lower requires a raw vector",
-      context = list(phase = "cache_key")
-    )
-  }
-  paste0(as.character(r), collapse = "")
-}
-
-# Timing-safe equality --------------------------------------------------------
-
-#' @keywords internal
-#' @noRd
-constant_time_compare <- function(a, b) {
-  normalize_input <- function(x) {
-    if (is.raw(x) && !is.null(x)) {
-      return(x)
-    }
-
-    if (is.character(x) && length(x) == 1L && !is.na(x)) {
-      return(charToRaw(as.character(x)))
-    }
-
-    NULL
-  }
-
-  a_raw <- normalize_input(a)
-  b_raw <- normalize_input(b)
-  if (is.null(a_raw) || is.null(b_raw)) {
-    # Treat invalid inputs as a mismatch but keep the blinded comparison path.
-    a_raw <- raw()
-    b_raw <- as.raw(0L)
-  }
-
-  ar <- openssl::sha256(a_raw)
-  br <- openssl::sha256(b_raw)
-
-  acc <- as.integer(0L)
-  for (i in seq_len(length(ar))) {
-    ai <- as.integer(ar[[i]])
-    bi <- as.integer(br[[i]])
-    acc <- bitwOr(acc, bitwXor(ai, bi))
-  }
-
-  isTRUE(identical(acc, 0L))
 }

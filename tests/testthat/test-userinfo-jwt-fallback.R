@@ -8,9 +8,9 @@ make_unsigned_jwt <- function(payload_list, alg = "none") {
   header <- jsonlite::toJSON(list(alg = alg, typ = "JWT"), auto_unbox = TRUE)
   payload <- jsonlite::toJSON(payload_list, auto_unbox = TRUE)
   paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     "."
   )
 }
@@ -26,8 +26,10 @@ test_that("decode_userinfo_jwt rejects malformed header (fail-closed)", {
 
   claims <- list(sub = "user-badheader", name = "Bad Header")
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
-  bad_header <- shinyOAuth:::b64url_encode(charToRaw("NOT{JSON"))
-  good_payload <- shinyOAuth:::b64url_encode(charToRaw(as.character(payload)))
+  bad_header <- shinyOAuth:::base64url_encode(charToRaw("NOT{JSON"))
+  good_payload <- shinyOAuth:::base64url_encode(charToRaw(as.character(
+    payload
+  )))
   jwt_body <- paste0(bad_header, ".", good_payload, ".")
 
   testthat::local_mocked_bindings(
@@ -60,8 +62,10 @@ test_that("decode_userinfo_jwt errors for malformed header when require_signed =
 
   claims <- list(sub = "user-badheader-req", name = "Bad Header Req")
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
-  bad_header <- shinyOAuth:::b64url_encode(charToRaw("NOT{JSON"))
-  good_payload <- shinyOAuth:::b64url_encode(charToRaw(as.character(payload)))
+  bad_header <- shinyOAuth:::base64url_encode(charToRaw("NOT{JSON"))
+  good_payload <- shinyOAuth:::base64url_encode(charToRaw(as.character(
+    payload
+  )))
   jwt_body <- paste0(bad_header, ".", good_payload, ".")
 
   testthat::local_mocked_bindings(
@@ -187,9 +191,9 @@ test_that("JWT with missing alg field is rejected even when require_signed = FAL
   claims <- list(sub = "user-no-alg", name = "No Alg")
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
   jwt_body <- paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     "."
   )
 
@@ -224,9 +228,9 @@ test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
   claims <- list(sub = "user-no-alg-req")
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
   jwt_body <- paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     "."
   )
 
@@ -267,9 +271,9 @@ test_that("RS256 JWT is rejected when provider has no issuer (fail-closed)", {
   )
   payload <- jsonlite::toJSON(claims, auto_unbox = TRUE)
   jwt_body <- paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     ".",
     "fake-sig"
   )

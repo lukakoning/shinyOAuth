@@ -1,3 +1,10 @@
+# Telemetry helpers used to normalize package events into OTEL-safe scalars,
+# scope strings, and attribute maps before audit/log/span emission.
+#
+# The helpers in this file intentionally sit between package logic and otel so
+# login/token/module code can hand over regular R values without repeating the
+# same coercion and NULL-dropping rules at every call site.
+#
 # Instrumentation scope for otel (auto-detected by otel via topenv())
 otel_tracer_name <- "io.github.lukakoning.shinyOAuth" # nolint
 
@@ -20,13 +27,12 @@ otel_logging_enabled <- function() {
   isTRUE(getOption("shinyOAuth.otel_logging_enabled", TRUE))
 }
 
-otel_runtime_enabled <- function() {
-  (otel_tracing_enabled() && otel::is_tracing_enabled()) ||
-    (otel_logging_enabled() && otel::is_logging_enabled())
-}
-
 warn_about_async_otel_workers <- function() {
-  if (!isTRUE(otel_runtime_enabled())) {
+  otel_active <-
+    (otel_tracing_enabled() && isTRUE(otel::is_tracing_enabled())) ||
+    (otel_logging_enabled() && isTRUE(otel::is_logging_enabled()))
+
+  if (!isTRUE(otel_active)) {
     return(invisible(FALSE))
   }
 
@@ -59,6 +65,12 @@ warn_about_async_otel_workers <- function() {
   invisible(TRUE)
 }
 
+# Internal: coerce one R value into an OTEL attribute scalar.
+#
+# Input: one value that may be character, logical, numeric/integer, POSIXt, or
+# something coercible to a single non-empty string.
+# Output: a single OTEL-safe scalar, or NULL when the value is empty, missing,
+# non-finite, or structurally unsuitable (for example a list).
 otel_scalar_attribute <- function(value) {
   if (is.null(value) || length(value) == 0) {
     return(NULL)
@@ -112,6 +124,11 @@ otel_scalar_attribute <- function(value) {
   out[[1]]
 }
 
+# Internal: convert a named R list into an OTEL attributes object.
+#
+# Input: a named list of candidate attributes from login/token/module code.
+# Output: either NULL (nothing valid left after normalization) or the result of
+# otel::as_attributes() with invalid keys and empty values removed.
 otel_attributes <- function(x) {
   if (is.null(x) || !length(x)) {
     return(NULL)
@@ -194,6 +211,13 @@ otel_join_values <- function(x, sep = " ", sort_values = TRUE) {
   paste(x, collapse = sep)
 }
 
+# Internal: normalize OAuth scope input into distinct scope tokens for
+# telemetry. Used when logging requested/granted scopes from login and token
+# flows.
+#
+# Input: scopes as character/list/vector plus optional provider context.
+# Output: a character vector of unique, trimmed scope tokens, optionally adding
+# `openid` when OIDC telemetry should reflect the implied scope.
 otel_scope_tokens <- function(
   scopes,
   provider = NULL,
@@ -234,6 +258,8 @@ otel_scope_tokens <- function(
   tokens
 }
 
+# Internal: join normalized scope tokens into the string form written to OTEL
+# attributes.
 otel_scope_string <- function(
   scopes,
   provider = NULL,
@@ -252,6 +278,8 @@ otel_scope_string <- function(
   )
 }
 
+# Internal: count normalized scope tokens after the same coercion rules used by
+# otel_scope_string().
 otel_scope_count <- function(
   scopes,
   provider = NULL,

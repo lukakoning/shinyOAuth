@@ -479,81 +479,55 @@ testthat::test_that("otel_token_response_attributes captures response shape", {
 })
 
 # ===========================================================================
-# otel_runtime_enabled
-# ===========================================================================
-
-testthat::test_that("otel_runtime_enabled reflects active tracing or logging", {
-  withr::local_options(list(
-    shinyOAuth.otel_tracing_enabled = TRUE,
-    shinyOAuth.otel_logging_enabled = TRUE
-  ))
-
-  testthat::with_mocked_bindings(
-    is_tracing_enabled = function(...) TRUE,
-    is_logging_enabled = function(...) FALSE,
-    .package = "otel",
-    {
-      testthat::expect_true(shinyOAuth:::otel_runtime_enabled())
-    }
-  )
-
-  testthat::with_mocked_bindings(
-    is_tracing_enabled = function(...) FALSE,
-    is_logging_enabled = function(...) TRUE,
-    .package = "otel",
-    {
-      testthat::expect_true(shinyOAuth:::otel_runtime_enabled())
-    }
-  )
-
-  testthat::with_mocked_bindings(
-    is_tracing_enabled = function(...) FALSE,
-    is_logging_enabled = function(...) FALSE,
-    .package = "otel",
-    {
-      testthat::expect_false(shinyOAuth:::otel_runtime_enabled())
-    }
-  )
-})
-
-testthat::test_that("otel_runtime_enabled respects shinyOAuth option gates", {
-  withr::local_options(list(
-    shinyOAuth.otel_tracing_enabled = FALSE,
-    shinyOAuth.otel_logging_enabled = FALSE
-  ))
-
-  testthat::with_mocked_bindings(
-    is_tracing_enabled = function(...) TRUE,
-    is_logging_enabled = function(...) TRUE,
-    .package = "otel",
-    {
-      testthat::expect_false(shinyOAuth:::otel_runtime_enabled())
-    }
-  )
-})
-
-# ===========================================================================
 # warn_about_async_otel_workers
 # ===========================================================================
 
-testthat::test_that("warn_about_async_otel_workers warns only when otel active", {
+testthat::test_that("warn_about_async_otel_workers only warns when OTEL is active and allowed", {
   testthat::with_mocked_bindings(
-    otel_runtime_enabled = function() TRUE,
-    .package = "shinyOAuth",
+    is_tracing_enabled = function(...) FALSE,
+    is_logging_enabled = function(...) FALSE,
+    .package = "otel",
     {
-      testthat::expect_warning(
-        shinyOAuth:::warn_about_async_otel_workers(),
-        "configured in async workers"
+      withr::local_options(list(
+        shinyOAuth.otel_tracing_enabled = TRUE,
+        shinyOAuth.otel_logging_enabled = TRUE
+      ))
+
+      testthat::expect_no_warning(
+        shinyOAuth:::warn_about_async_otel_workers()
       )
     }
   )
 
   testthat::with_mocked_bindings(
-    otel_runtime_enabled = function() FALSE,
-    .package = "shinyOAuth",
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) TRUE,
+    .package = "otel",
     {
+      withr::local_options(list(
+        shinyOAuth.otel_tracing_enabled = FALSE,
+        shinyOAuth.otel_logging_enabled = FALSE
+      ))
+
       testthat::expect_no_warning(
         shinyOAuth:::warn_about_async_otel_workers()
+      )
+    }
+  )
+
+  testthat::with_mocked_bindings(
+    is_tracing_enabled = function(...) TRUE,
+    is_logging_enabled = function(...) FALSE,
+    .package = "otel",
+    {
+      withr::local_options(list(
+        shinyOAuth.otel_tracing_enabled = TRUE,
+        shinyOAuth.otel_logging_enabled = TRUE
+      ))
+
+      testthat::expect_warning(
+        shinyOAuth:::warn_about_async_otel_workers(),
+        "configured in async workers"
       )
     }
   )

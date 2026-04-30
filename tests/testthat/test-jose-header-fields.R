@@ -9,9 +9,9 @@ make_header_jwt <- function(header_json, claims) {
     na = "null"
   )
   paste0(
-    shinyOAuth:::b64url_encode(charToRaw(header_json)),
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload_json))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json))),
     "."
   )
 }

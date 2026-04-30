@@ -1,6 +1,10 @@
-mtls_token_auth_styles <- function() {
-  c("tls_client_auth", "self_signed_tls_client_auth")
-}
+# Internal: token_auth_style values that mean "authenticate the client with
+# mutual TLS". Treated as constant policy data by discovery and token request
+# code rather than a helper function.
+MTLS_TOKEN_AUTH_STYLES <- c(
+  "tls_client_auth",
+  "self_signed_tls_client_auth"
+)
 
 mtls_thumbprint_cache_env <- new.env(parent = emptyenv())
 
@@ -71,7 +75,7 @@ client_uses_mtls_auth <- function(oauth_client) {
   token_auth_style <- normalize_token_auth_style(
     oauth_client@provider@token_auth_style %||% "header"
   )
-  token_auth_style %in% mtls_token_auth_styles()
+  token_auth_style %in% MTLS_TOKEN_AUTH_STYLES
 }
 
 client_requests_certificate_bound_tokens <- function(oauth_client) {

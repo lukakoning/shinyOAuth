@@ -33,11 +33,11 @@ valid_browser_token <- function() paste(rep("ab", 64), collapse = "")
 
 build_dummy_jwt <- function(payload = list(sub = "user1")) {
   header <- list(alg = "none", typ = "JWT")
-  encoded_header <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  encoded_header <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     header,
     auto_unbox = TRUE
   )))
-  encoded_payload <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  encoded_payload <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     payload,
     auto_unbox = TRUE
   )))

@@ -138,11 +138,11 @@ test_that("OAuthClient validates introspect configuration at construction time",
 .build_dummy_jwt <- function(payload) {
   # Minimal JWT string for parse_jwt_payload(): header.payload.signature
   hdr <- list(alg = "none", typ = "JWT")
-  h <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  h <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     hdr,
     auto_unbox = TRUE
   )))
-  p <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  p <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     payload,
     auto_unbox = TRUE
   )))

@@ -5,9 +5,9 @@ make_unsigned_jwt <- function(payload_list, alg = "none") {
   header <- jsonlite::toJSON(list(alg = alg, typ = "JWT"), auto_unbox = TRUE)
   payload <- jsonlite::toJSON(payload_list, auto_unbox = TRUE)
   paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     "."
   )
 }
@@ -46,14 +46,14 @@ make_eddsa_signed_jwt <- function(
     null = "null"
   )
   signing_input <- paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header_json))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header_json))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload_json)))
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json)))
   )
   secret <- if (!is.null(keypair$key)) keypair$key else keypair$secretkey
   sig <- sodium::signature(charToRaw(signing_input), secret)
 
-  paste0(signing_input, ".", shinyOAuth:::b64url_encode(sig))
+  paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }
 
 test_that("get_userinfo rejects unsigned JWT response (alg=none) by default", {
@@ -171,7 +171,7 @@ test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
     keys = list(list(
       kty = "OKP",
       crv = "Ed25519",
-      x = shinyOAuth:::b64url_encode(keypair$pubkey),
+      x = shinyOAuth:::base64url_encode(keypair$pubkey),
       kid = kid,
       use = "sig"
     ))
@@ -1467,7 +1467,7 @@ test_that("signed JWT required: tampered payload is rejected", {
     ),
     auto_unbox = TRUE
   )
-  parts[2] <- shinyOAuth:::b64url_encode(charToRaw(as.character(
+  parts[2] <- shinyOAuth:::base64url_encode(charToRaw(as.character(
     attacker_claims
   )))
   tampered_jwt <- paste(parts, collapse = ".")

@@ -6,9 +6,9 @@ make_jwt_with_header <- function(header_list, payload_list) {
   header <- jsonlite::toJSON(header_list, auto_unbox = TRUE)
   payload <- jsonlite::toJSON(payload_list, auto_unbox = TRUE)
   paste0(
-    shinyOAuth:::b64url_encode(charToRaw(as.character(header))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(header))),
     ".",
-    shinyOAuth:::b64url_encode(charToRaw(as.character(payload))),
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload))),
     "."
   )
 }

@@ -39,7 +39,9 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   }
 
   tok <- build_valid_token()
-  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
+  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
+    tok
+  )))
 
   # Appending base64url garbage must fail (no truncation acceptance)
   expect_error(
@@ -51,7 +53,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   # Version mismatch
   w <- wrapper
   w$v <- 2L
-  t2 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t2 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -64,7 +66,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   # IV missing/invalid base64/invalid length
   w <- wrapper
   w$iv <- NULL
-  t3 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t3 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -76,7 +78,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
 
   w <- wrapper
   w$iv <- "***"
-  t4 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t4 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -87,8 +89,8 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )
 
   w <- wrapper
-  w$iv <- shinyOAuth:::b64url_encode(as.raw(1:8))
-  t5 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  w$iv <- shinyOAuth:::base64url_encode(as.raw(1:8))
+  t5 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -101,7 +103,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   # Tag missing/invalid base64/invalid length
   w <- wrapper
   w$tg <- NULL
-  t6 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t6 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -113,7 +115,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
 
   w <- wrapper
   w$tg <- "@@@"
-  t7 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t7 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -124,8 +126,8 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )
 
   w <- wrapper
-  w$tg <- shinyOAuth:::b64url_encode(as.raw(1:8))
-  t8 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  w$tg <- shinyOAuth:::base64url_encode(as.raw(1:8))
+  t8 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -138,7 +140,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   # Ciphertext missing/invalid base64/empty
   w <- wrapper
   w$ct <- NULL
-  t9 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t9 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -150,7 +152,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
 
   w <- wrapper
   w$ct <- "??"
-  t10 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  t10 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -161,8 +163,8 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )
 
   w <- wrapper
-  w$ct <- shinyOAuth:::b64url_encode(raw(0))
-  t11 <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  w$ct <- shinyOAuth:::base64url_encode(raw(0))
+  t11 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     w,
     auto_unbox = TRUE
   )))
@@ -174,7 +176,7 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
 
   # Bad UTF-8 in wrapper payload (after base64 decode, before JSON parse)
   bad_utf8 <- as.raw(c(0xff, 0xfe, 0xfd))
-  t_utf8 <- shinyOAuth:::b64url_encode(bad_utf8)
+  t_utf8 <- shinyOAuth:::base64url_encode(bad_utf8)
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t_utf8, key = key),
     "state token payload is not valid JSON",
@@ -195,11 +197,13 @@ test_that("state_encrypt_gcm validates inputs and decrypt fails on tamper", {
   # Happy path roundtrip then tamper tag (flip one byte) -> GCM auth fail
   payload <- list(state = "ok", issued_at = 1)
   tok <- shinyOAuth:::state_encrypt_gcm(payload, key = key)
-  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::b64url_decode(tok)))
-  tg_raw <- shinyOAuth:::b64url_decode(wrapper$tg)
+  wrapper <- jsonlite::fromJSON(rawToChar(shinyOAuth:::base64url_decode_raw(
+    tok
+  )))
+  tg_raw <- shinyOAuth:::base64url_decode_raw(wrapper$tg)
   tg_raw[1] <- as.raw(bitwXor(as.integer(tg_raw[1]), 0x01))
-  wrapper$tg <- shinyOAuth:::b64url_encode(tg_raw)
-  tampered <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+  wrapper$tg <- shinyOAuth:::base64url_encode(tg_raw)
+  tampered <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     wrapper,
     auto_unbox = TRUE
   )))

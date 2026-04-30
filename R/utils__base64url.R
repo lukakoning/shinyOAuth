@@ -1,21 +1,15 @@
-#' Internal base64url helpers (canonical)
+#' Internal base64url helpers
 #'
-#' These helpers provide a single source of truth for base64url encoding/decoding
-#' across the package. They are intentionally small wrappers around openssl's
-#' base64 functions with URL-safe translation and padding handling.
-#'
-#' Provided helpers:
-#' - b64url_encode(raw|character) -> base64url string (no padding)
-#' - b64url_decode(string) -> raw vector
-#' - base64url_encode(raw) -> base64url string (alias for b64url_encode)
-#' - base64url_decode(string) -> character (UTF-8 text)
+#' Canonical helpers used across JWT, JWKS, state encryption, DPoP, and mTLS:
+#' - base64url_encode(raw|character) -> base64url string (no padding)
 #' - base64url_decode_raw(string) -> raw vector
+#' - base64url_decode(string) -> UTF-8 text with embedded-NUL rejection
 #'
 #' @keywords internal
 #' @noRd
-b64url_encode <- function(x) {
+base64url_encode <- function(raw_bytes) {
   # Disable line breaks to avoid embedded newlines in long encodings
-  s <- openssl::base64_encode(x, linebreak = FALSE)
+  s <- openssl::base64_encode(raw_bytes, linebreak = FALSE)
   # Defensive: strip any CR/LF that might slip through from upstream inputs
   s <- gsub("[\r\n]", "", s, perl = TRUE)
   s <- sub("=+$", "", s)
@@ -24,35 +18,23 @@ b64url_encode <- function(x) {
 
 #' @keywords internal
 #' @noRd
-b64url_decode <- function(s) {
-  s <- chartr("-_", "+/", s)
-  pad <- (4 - (nchar(s) %% 4)) %% 4
+base64url_decode_raw <- function(x) {
+  x <- chartr("-_", "+/", x)
+  pad <- (4 - (nchar(x) %% 4)) %% 4
   if (pad > 0L) {
-    s <- paste0(s, strrep("=", pad))
+    x <- paste0(x, strrep("=", pad))
   }
-  openssl::base64_decode(s)
-}
-
-#' @keywords internal
-#' @noRd
-base64url_encode <- function(raw_bytes) {
-  b64url_encode(raw_bytes)
+  openssl::base64_decode(x)
 }
 
 #' @keywords internal
 #' @noRd
 base64url_decode <- function(x) {
-  raw_bytes <- b64url_decode(x)
+  raw_bytes <- base64url_decode_raw(x)
   # Guard against embedded NUL bytes which would cause rawToChar() to silently
   # truncate the output. Mirrors the NUL hardening in utils__crypt.R.
   if (any(raw_bytes == as.raw(0))) {
     err_parse("base64url payload contains embedded NUL byte")
   }
   rawToChar(raw_bytes)
-}
-
-#' @keywords internal
-#' @noRd
-base64url_decode_raw <- function(x) {
-  b64url_decode(x)
 }

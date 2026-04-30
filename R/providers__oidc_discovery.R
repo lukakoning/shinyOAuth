@@ -173,7 +173,7 @@ oauth_provider_oidc_discover <- function(
   )
 
   # 6) Determine allowed hosts and validate endpoints
-  allowed_hosts_vec <- .discover_compute_allowed_hosts(iss_host)
+  allowed_hosts_vec <- .discover_allowed_hosts(iss_host)
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
   # 6b) ID token validation requires a JWKS endpoint up front.
@@ -245,7 +245,7 @@ oauth_provider_oidc_discover <- function(
   mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
   .discover_validate_endpoint_aliases(
     mtls_endpoint_aliases,
-    .discover_compute_alias_allowed_hosts(iss_host)
+    .discover_allowed_hosts(iss_host)
   )
   tls_client_certificate_bound_access_tokens <-
     .discover_parse_optional_boolean(
@@ -475,25 +475,16 @@ oauth_provider_oidc_discover <- function(
   sub("\\.$", "", h)
 }
 
-#' Internal: compute allowed hosts vector for endpoint validation
+#' Internal: compute the host allowlist used during OIDC discovery
+#'
+#' Takes the normalized issuer host and returns the host vector that discovery
+#' should trust for both normal endpoints and RFC 8705 mTLS endpoint aliases.
+#' If the package-level `shinyOAuth.allowed_hosts` option is set, that wins;
+#' otherwise discovery falls back to trusting the issuer host only.
 #'
 #' @keywords internal
 #' @noRd
-.discover_compute_allowed_hosts <- function(iss_host) {
-  opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
-
-  if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
-    return(opt_allowed)
-  }
-
-  c(iss_host)
-}
-
-#' Internal: compute allowed hosts vector for RFC 8705 mTLS aliases
-#'
-#' @keywords internal
-#' @noRd
-.discover_compute_alias_allowed_hosts <- function(iss_host) {
+.discover_allowed_hosts <- function(iss_host) {
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
 
   if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
@@ -696,7 +687,7 @@ oauth_provider_oidc_discover <- function(
   # If only mTLS methods are advertised, do not auto-select them because the
   # client certificate is provisioned per app registration. Require explicit
   # opt-in just like JWT-based methods.
-  if (any(mtls_token_auth_styles() %in% methods)) {
+  if (any(MTLS_TOKEN_AUTH_STYLES %in% methods)) {
     err_config(
       c(
         "x" = "OIDC discovery advertises only mutual TLS client authentication methods",

@@ -16,9 +16,9 @@ test_that("state_decrypt_gcm rejects malformed state wrappers (fuzz)", {
   # Valid minimal-ish wrapper to start from
   good <- list(
     v = 1L,
-    iv = shinyOAuth:::b64url_encode(as.raw(1:12)),
-    tg = shinyOAuth:::b64url_encode(as.raw(1:16)),
-    ct = shinyOAuth:::b64url_encode(as.raw(1:32))
+    iv = shinyOAuth:::base64url_encode(as.raw(1:12)),
+    tg = shinyOAuth:::base64url_encode(as.raw(1:16)),
+    ct = shinyOAuth:::base64url_encode(as.raw(1:32))
   )
 
   # Generator: apply one random mutation to a wrapper object
@@ -64,7 +64,7 @@ test_that("state_decrypt_gcm rejects malformed state wrappers (fuzz)", {
         o$iv <- "***"
       },
       iv_wrong_len = {
-        o$iv <- shinyOAuth:::b64url_encode(as.raw(1:8))
+        o$iv <- shinyOAuth:::base64url_encode(as.raw(1:8))
       },
 
       drop_tg = {
@@ -74,7 +74,7 @@ test_that("state_decrypt_gcm rejects malformed state wrappers (fuzz)", {
         o$tg <- "!@#"
       },
       tg_wrong_len = {
-        o$tg <- shinyOAuth:::b64url_encode(as.raw(1:8))
+        o$tg <- shinyOAuth:::base64url_encode(as.raw(1:8))
       },
 
       drop_ct = {
@@ -84,7 +84,7 @@ test_that("state_decrypt_gcm rejects malformed state wrappers (fuzz)", {
         o$ct <- "??"
       },
       ct_empty = {
-        o$ct <- shinyOAuth:::b64url_encode(raw(0))
+        o$ct <- shinyOAuth:::base64url_encode(raw(0))
       },
 
       junk_field = {
