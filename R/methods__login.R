@@ -2127,8 +2127,90 @@ verify_token_set <- function(
       # a refresh returns an ID token, even if signature/claim validation is
       # disabled (id_token_validation = FALSE).
       expected_sub <- NULL
-      original_iss <- NULL
-      original_aud <- NULL
+      original_payload <- NULL
+      compare_refresh_id_token_continuity <- function(
+        new_payload,
+        original_payload
+      ) {
+        original_iss <- original_payload$iss
+        original_aud <- original_payload$aud
+        original_auth_time <- original_payload$auth_time
+        original_nonce <- original_payload$nonce %||% NULL
+        original_azp <- original_payload$azp %||% NULL
+
+        if (
+          is_valid_string(original_iss) &&
+            !identical(new_payload$iss %||% "", original_iss)
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+          )
+        }
+        if (
+          !is.null(original_aud) &&
+            !identical(
+              sort(as.character(new_payload$aud %||% character())),
+              sort(as.character(original_aud))
+            )
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+          )
+        }
+        if (!is.null(original_auth_time)) {
+          original_auth_time_val <- suppressWarnings(as.numeric(
+            original_auth_time
+          ))
+          if (
+            length(original_auth_time) != 1L ||
+              !is.numeric(original_auth_time_val) ||
+              !is.finite(original_auth_time_val)
+          ) {
+            err_id_token(
+              "Original ID token auth_time claim must be a single finite number to verify refresh continuity (OIDC 12.2)"
+            )
+          }
+          if (is.null(new_payload$auth_time)) {
+            err_id_token(
+              "Refresh returned an ID token missing auth_time from the original authentication (OIDC 12.2)"
+            )
+          }
+
+          new_auth_time_val <- suppressWarnings(as.numeric(
+            new_payload$auth_time
+          ))
+          if (
+            length(new_payload$auth_time) != 1L ||
+              !is.numeric(new_auth_time_val) ||
+              !is.finite(new_auth_time_val)
+          ) {
+            err_id_token(
+              "Refreshed ID token auth_time claim must be a single finite number (OIDC 12.2)"
+            )
+          }
+          if (!identical(new_auth_time_val, original_auth_time_val)) {
+            err_id_token(
+              "Refresh returned an ID token with auth_time that does not match the original (OIDC 12.2)"
+            )
+          }
+        }
+        if (
+          !is.null(new_payload$nonce) &&
+            !identical(new_payload$nonce, original_nonce)
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
+          )
+        }
+        if (
+          (!is.null(original_azp) || !is.null(new_payload$azp)) &&
+            !identical(new_payload$azp %||% NULL, original_azp)
+        ) {
+          err_id_token(
+            "Refresh returned an ID token with azp that does not match the original (OIDC 12.2)"
+          )
+        }
+      }
       should_validate_id_token <- isTRUE(id_token_present) &&
         (isTRUE(client@provider@id_token_validation) ||
           isTRUE(client@provider@use_nonce) ||
@@ -2157,13 +2239,6 @@ verify_token_set <- function(
         }
         expected_sub <- original_payload$sub
 
-        # OIDC Core 12.2: extract original iss and aud for cross-comparison.
-        # The new ID token's iss and aud MUST match the original's actual values,
-        # not just the provider config. This guards against multi-tenant issuers
-        # that rotate issuer URIs or aud arrays that include extra audiences.
-        original_iss <- original_payload$iss
-        original_aud <- original_payload$aud
-
         if (!isTRUE(should_validate_id_token)) {
           # Even when full ID token validation is disabled (id_token_validation = FALSE),
           # we still must enforce OIDC 12.2 subject continuity on refresh when the
@@ -2186,28 +2261,7 @@ verify_token_set <- function(
               "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
             )
           }
-          # OIDC Core 12.2: iss MUST be the same as in the original ID token.
-          # Strict string equality — no trailing-slash normalization.
-          if (
-            is_valid_string(original_iss) &&
-              !identical(new_payload$iss %||% "", original_iss)
-          ) {
-            err_id_token(
-              "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
-            )
-          }
-          # OIDC Core 12.2: aud MUST be the same as in the original ID token.
-          if (
-            !is.null(original_aud) &&
-              !identical(
-                sort(as.character(new_payload$aud %||% character())),
-                sort(as.character(original_aud))
-              )
-          ) {
-            err_id_token(
-              "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
-            )
-          }
+          compare_refresh_id_token_continuity(new_payload, original_payload)
         }
       }
 
@@ -2255,34 +2309,20 @@ verify_token_set <- function(
         # additionally requires exact match against the original token's claims.
         # Parse the new token payload directly (rather than depending on the return
         # value of validate_id_token) so the check is robust regardless of mocking.
-        if (isTRUE(is_refresh) && !is.null(original_iss)) {
-          new_payload_for_iss_aud <- tryCatch(
+        if (isTRUE(is_refresh) && !is.null(original_payload)) {
+          new_payload_for_refresh <- tryCatch(
             parse_jwt_payload(id_token),
             error = function(e) NULL
           )
-          if (!is.null(new_payload_for_iss_aud)) {
-            if (
-              is_valid_string(original_iss) &&
-                !identical(new_payload_for_iss_aud$iss %||% "", original_iss)
-            ) {
-              err_id_token(
-                "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
-              )
-            }
-            if (
-              !is.null(original_aud) &&
-                !identical(
-                  sort(as.character(
-                    new_payload_for_iss_aud$aud %||% character()
-                  )),
-                  sort(as.character(original_aud))
-                )
-            ) {
-              err_id_token(
-                "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
-              )
-            }
+          if (is.null(new_payload_for_refresh)) {
+            err_id_token(
+              "Cannot parse refreshed ID token to verify continuity claims (OIDC 12.2)"
+            )
           }
+          compare_refresh_id_token_continuity(
+            new_payload_for_refresh,
+            original_payload
+          )
         }
       }
 

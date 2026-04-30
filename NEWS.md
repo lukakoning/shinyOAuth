@@ -45,6 +45,10 @@ deployment-hardening check and show explicit option checks instead.
 `expires_in` now documents the configured fallback expiry, and refresh-time
 introspection may backfill `token@cnf`.
 
+* Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
+  refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
+  `aud` checks.
+
 * Fixed PEM-string private key parsing for `oauth_client()` validation so
 `client_private_key` / `dpop_private_key` can be supplied as PEM text again,
 and cleaned up a check note by fully qualifying `utils::capture.output()` /

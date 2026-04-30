@@ -1,6 +1,6 @@
-# Tests for OIDC Core 12.2: iss/aud consistency during token refresh
-# verifies that verify_token_set() rejects refresh ID tokens with
-# mismatched iss or aud relative to the original ID token.
+# Tests for OIDC Core 12.2 continuity during token refresh.
+# verify_token_set() should reject refreshed ID tokens that do not preserve
+# the original token's identity and authentication context.
 
 # Helper: build a fake JWT from a named-list payload
 make_fake_jwt <- function(payload) {
@@ -37,11 +37,40 @@ make_refresh_client <- function(
     client_id = client_id,
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     )
+  )
+}
+
+mock_refresh_response <- function(new_jwt, action) {
+  testthat::with_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body <- sprintf(
+        '{"access_token":"new_at","token_type":"Bearer","expires_in":3600,"id_token":"%s"}',
+        new_jwt
+      )
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(body)
+      )
+    },
+    .package = "shinyOAuth",
+    action()
+  )
+}
+
+make_existing_refresh_token <- function(original_jwt) {
+  OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = original_jwt
   )
 }
 
@@ -457,6 +486,153 @@ test_that("refresh iss comparison rejects trailing slash difference", {
     regexp = "iss.*does not match",
     class = "shinyOAuth_id_token_error"
   )
+})
+
+# --- auth_time / nonce / azp continuity ------------------------------------
+
+test_that("refresh rejects new id_token with mismatched auth_time", {
+  withr::local_options(shinyOAuth.skip_id_sig = TRUE)
+  cli <- make_refresh_client(id_token_validation = TRUE)
+
+  original <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = "abc",
+    auth_time = 1700000000,
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time()) - 60
+  ))
+
+  new_jwt <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = "abc",
+    auth_time = 1700000300,
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  ))
+
+  expect_error(
+    mock_refresh_response(new_jwt, function() {
+      refresh_token(
+        cli,
+        make_existing_refresh_token(original),
+        async = FALSE,
+        introspect = FALSE
+      )
+    }),
+    regexp = "auth_time.*does not match the original",
+    class = "shinyOAuth_id_token_error"
+  )
+})
+
+test_that("refresh rejects refreshed nonce that does not match original", {
+  withr::local_options(shinyOAuth.skip_id_sig = TRUE)
+  cli <- make_refresh_client(id_token_validation = TRUE)
+
+  original <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = "abc",
+    nonce = "original-nonce",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time()) - 60
+  ))
+
+  new_jwt <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = "abc",
+    nonce = "other-nonce",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  ))
+
+  expect_error(
+    mock_refresh_response(new_jwt, function() {
+      refresh_token(
+        cli,
+        make_existing_refresh_token(original),
+        async = FALSE,
+        introspect = FALSE
+      )
+    }),
+    regexp = "nonce.*does not match the original",
+    class = "shinyOAuth_id_token_error"
+  )
+})
+
+test_that("refresh rejects new id_token with mismatched azp", {
+  cli <- make_refresh_client(id_token_validation = FALSE)
+
+  original <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = c("abc", "resource-api"),
+    azp = "abc",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time()) - 60
+  ))
+
+  new_jwt <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = c("abc", "resource-api"),
+    azp = "other-client",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  ))
+
+  expect_error(
+    mock_refresh_response(new_jwt, function() {
+      refresh_token(
+        cli,
+        make_existing_refresh_token(original),
+        async = FALSE,
+        introspect = FALSE
+      )
+    }),
+    regexp = "azp.*does not match the original",
+    class = "shinyOAuth_id_token_error"
+  )
+})
+
+test_that("refresh accepts matching auth_time and azp when nonce is omitted", {
+  withr::local_options(shinyOAuth.skip_id_sig = TRUE)
+  cli <- make_refresh_client(id_token_validation = TRUE)
+
+  original <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = c("abc", "resource-api"),
+    azp = "abc",
+    auth_time = 1700000000,
+    nonce = "original-nonce",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time()) - 60
+  ))
+
+  new_jwt <- make_fake_jwt(list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = c("resource-api", "abc"),
+    azp = "abc",
+    auth_time = 1700000000,
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  ))
+
+  t2 <- mock_refresh_response(new_jwt, function() {
+    refresh_token(
+      cli,
+      make_existing_refresh_token(original),
+      async = FALSE,
+      introspect = FALSE
+    )
+  })
+  expect_true(S7::S7_inherits(t2, OAuthToken))
+  expect_identical(t2@access_token, "new_at")
+  expect_identical(t2@id_token, new_jwt)
 })
 
 # --- verify_token_set directly (unit-level) ----------------------------------
