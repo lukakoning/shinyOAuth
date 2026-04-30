@@ -404,6 +404,27 @@ decode_userinfo_jwt <- function(
     ))
   }
 
+  # Defense-in-depth: if a typ header is present, require it to be exactly
+  # "JWT" per RFC 7519. Many providers omit typ; that's fine.
+  typ <- header$typ %||% NULL
+  if (!is.null(typ)) {
+    if (
+      !(is.character(typ) &&
+        length(typ) == 1L &&
+        identical(toupper(typ), "JWT"))
+    ) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_typ_invalid",
+        shiny_session = shiny_session
+      )
+      err_userinfo(paste0(
+        "JWT typ header invalid: expected 'JWT' when present, got ",
+        paste(as.character(typ), collapse = ", ")
+      ))
+    }
+  }
+
   # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
   # do not support (mirrors the same check in validate_id_token()).
   supported_crit <- character()
@@ -579,70 +600,44 @@ decode_userinfo_jwt <- function(
   }
 
   if (length(keys) > 0L) {
-    temporal_decode_error <- NULL
-
     for (jk in keys) {
       pub <- try(jwk_to_pubkey(jk), silent = TRUE)
       if (inherits(pub, "try-error")) {
         next
       }
-      decoded <- try(jose::jwt_decode_sig(jwt_str, pub), silent = TRUE)
-      if (inherits(decoded, "try-error")) {
-        decode_msg <- tryCatch(
-          conditionMessage(attr(decoded, "condition")),
-          error = function(e) as.character(decoded)
-        )
-
-        if (
-          is_valid_string(decode_msg) &&
-            grepl("^Token has expired\\b", decode_msg)
-        ) {
-          temporal_decode_error <- list(
-            status = "userinfo_jwt_expired",
-            bullets = c(
-              "x" = "Signed UserInfo JWT expired",
-              "i" = decode_msg
-            )
-          )
-        } else if (
-          is_valid_string(decode_msg) &&
-            grepl("^Token is not valid before\\b", decode_msg)
-        ) {
-          temporal_decode_error <- list(
-            status = "userinfo_jwt_nbf_future",
-            bullets = c(
-              "x" = "Signed UserInfo JWT not yet valid (nbf)",
-              "i" = decode_msg
-            )
-          )
-        }
-
+      if (!isTRUE(verify_jws_signature_no_time(jwt_str, pub, alg))) {
         next
       }
 
-      if (!inherits(decoded, "try-error")) {
-        claims <- as.list(decoded)
-        # §5.3.2 MUST: signed userinfo MUST contain iss matching the
-        # OP's Issuer Identifier and aud matching/including the RP's
-        # Client ID.
-        validate_signed_userinfo_claims(
-          claims,
-          expected_issuer = prov@issuer,
-          expected_client_id = oauth_client@client_id,
-          oauth_client = oauth_client,
+      claims <- try(parse_jwt_payload(jwt_str), silent = TRUE)
+      if (inherits(claims, "try-error")) {
+        audit_userinfo_event(
+          oauth_client,
+          status = "userinfo_jwt_payload_parse_failed",
           shiny_session = shiny_session
         )
-        return(claims)
+        err_userinfo(c(
+          "x" = "UserInfo JWT payload could not be parsed",
+          "i" = tryCatch(
+            conditionMessage(attr(claims, "condition")),
+            error = function(e) as.character(claims)
+          )
+        ))
       }
-    }
 
-    if (!is.null(temporal_decode_error)) {
-      audit_userinfo_event(
-        oauth_client,
-        status = temporal_decode_error$status,
+      claims <- as.list(claims)
+      # §5.3.2 MUST: signed userinfo MUST contain iss matching the
+      # OP's Issuer Identifier and aud matching/including the RP's
+      # Client ID. Temporal validation is delegated here so provider leeway
+      # is applied consistently across signed UserInfo JWT verification.
+      validate_signed_userinfo_claims(
+        claims,
+        expected_issuer = prov@issuer,
+        expected_client_id = oauth_client@client_id,
+        oauth_client = oauth_client,
         shiny_session = shiny_session
       )
-      err_userinfo(temporal_decode_error$bullets)
+      return(claims)
     }
 
     # Candidate keys existed but none verified the signature —

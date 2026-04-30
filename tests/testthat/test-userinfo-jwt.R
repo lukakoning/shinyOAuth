@@ -13,13 +13,47 @@ make_unsigned_jwt <- function(payload_list, alg = "none") {
 }
 
 # Helper: build an RSA-signed JWT using jose
-make_signed_jwt <- function(payload_list, key, kid = NULL) {
-  header <- list(typ = "JWT", alg = "RS256")
+make_signed_jwt <- function(
+  payload_list,
+  key,
+  kid = NULL,
+  alg = "RS256",
+  typ = "JWT"
+) {
+  header <- list(typ = typ, alg = alg)
   if (!is.null(kid)) {
     header$kid <- kid
   }
   clm <- do.call(jose::jwt_claim, payload_list)
   jose::jwt_encode_sig(clm, key = key, header = header)
+}
+
+make_eddsa_signed_jwt <- function(
+  payload_list,
+  keypair,
+  kid = NULL,
+  typ = "JWT"
+) {
+  header <- list(alg = "EdDSA", typ = typ)
+  if (!is.null(kid)) {
+    header$kid <- kid
+  }
+
+  header_json <- jsonlite::toJSON(header, auto_unbox = TRUE, null = "null")
+  payload_json <- jsonlite::toJSON(
+    payload_list,
+    auto_unbox = TRUE,
+    null = "null"
+  )
+  signing_input <- paste0(
+    shinyOAuth:::b64url_encode(charToRaw(as.character(header_json))),
+    ".",
+    shinyOAuth:::b64url_encode(charToRaw(as.character(payload_json)))
+  )
+  secret <- if (!is.null(keypair$key)) keypair$key else keypair$secretkey
+  sig <- sodium::signature(charToRaw(signing_input), secret)
+
+  paste0(signing_input, ".", shinyOAuth:::b64url_encode(sig))
 }
 
 test_that("get_userinfo rejects unsigned JWT response (alg=none) by default", {
@@ -119,6 +153,110 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   expect_equal(result$name, "Signed User")
 })
 
+test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
+  testthat::skip_if_not_installed("sodium")
+
+  keypair <- NULL
+  if ("signature_keygen" %in% getNamespaceExports("sodium")) {
+    keypair <- try(sodium::signature_keygen(), silent = TRUE)
+  } else if ("signature_keypair" %in% getNamespaceExports("sodium")) {
+    keypair <- try(sodium::signature_keypair(), silent = TRUE)
+  }
+  if (inherits(keypair, "try-error") || is.null(keypair)) {
+    testthat::skip("Ed25519 key generation not supported on this platform")
+  }
+
+  kid <- "test-ed25519-1"
+  jwks <- list(
+    keys = list(list(
+      kty = "OKP",
+      crv = "Ed25519",
+      x = shinyOAuth:::b64url_encode(keypair$pubkey),
+      kid = kid,
+      use = "sig"
+    ))
+  )
+
+  claims <- list(
+    sub = "user-ed25519",
+    name = "EdDSA User",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_eddsa_signed_jwt(claims, keypair, kid = kid)
+
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    userinfo_signed_jwt_required = TRUE
+  )
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+  cli@provider@allowed_algs <- c("EdDSA")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_equal(result$sub, "user-ed25519")
+  expect_equal(result$name, "EdDSA User")
+})
+
+test_that("get_userinfo rejects signed JWT userinfo with invalid typ header", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-invalid-typ"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  claims <- list(
+    sub = "user-invalid-typ",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_signed_jwt(
+    claims,
+    key,
+    kid = "kid-invalid-typ",
+    typ = "JWE"
+  )
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "typ header invalid"
+  )
+})
+
 test_that("get_userinfo accepts signed JWT with valid temporal claims", {
   key <- openssl::rsa_keygen(2048)
 
@@ -161,6 +299,49 @@ test_that("get_userinfo accepts signed JWT with valid temporal claims", {
   result <- get_userinfo(cli, token = "access-token")
   expect_equal(result$sub, "user-time-valid")
   expect_equal(result$name, "Signed Timely User")
+})
+
+test_that("get_userinfo honors provider leeway above 60 seconds", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-leeway-over-60"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+  now <- floor(as.numeric(Sys.time()))
+
+  claims <- list(
+    sub = "user-leeway-over-60",
+    name = "Leeway User",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    exp = now - 90,
+    iat = now - 300
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-leeway-over-60")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+  cli@provider@leeway <- 120
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_equal(result$sub, "user-leeway-over-60")
+  expect_equal(result$name, "Leeway User")
 })
 
 test_that("get_userinfo can require exp on signed JWT userinfo", {

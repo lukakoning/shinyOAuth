@@ -56,6 +56,11 @@ JWT responses instead of accepting them based only on signature/issuer/audience.
 `oauth_client()` can also require specific UserInfo JWT temporal claims to be
 present via `userinfo_jwt_required_temporal_claims`.
 
+* Signed UserInfo JWT verification now uses shinyOAuth's JWS verifier instead
+  of `jose::jwt_decode_sig()`, so EdDSA UserInfo JWTs can verify correctly,
+  provider `leeway` is honored consistently, and invalid `typ` headers are
+  rejected.
+
 * `oauth_module_server()` now forwards `oauth_client(introspect = TRUE)` to its
 proactive refresh path, so refreshed access tokens follow the same
 introspection policy as the initial login.
