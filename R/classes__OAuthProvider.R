@@ -1186,7 +1186,7 @@ oauth_provider <- function(
   if (is.null(pkce_method) || is.na(pkce_method)) {
     pkce_method <- "S256"
   }
-  pkce_method <- if (tolower(pkce_method) == "plain") "plain" else "S256"
+  pkce_method <- normalize_pkce_method(pkce_method, default = "S256")
   issuer_match <- match.arg(
     issuer_match,
     choices = c("url", "host", "none")

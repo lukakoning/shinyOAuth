@@ -142,6 +142,18 @@ test_that("oauth_provider accepts NA pkce_method (defaults to S256)", {
   expect_identical(p@pkce_method, "S256")
 })
 
+test_that("oauth_provider rejects invalid scalar pkce_method", {
+  expect_error(
+    oauth_provider(
+      name = "test",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      pkce_method = "s512"
+    ),
+    "pkce_method must be 'S256' or 'plain'"
+  )
+})
+
 # ── OAuthProvider: URL inputs ────────────────────────────────────────────────
 
 test_that("oauth_provider rejects vector auth_url", {

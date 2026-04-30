@@ -824,11 +824,23 @@ oauth_provider_oidc_discover <- function(
 
   cc_methods <- disc[["code_challenge_methods_supported"]] %||% character(0)
   cc_methods <- toupper(as.character(cc_methods))
-  pkce_method <- pkce_method %||% NULL
-  if (!is.null(pkce_method) && !is.na(pkce_method)) {
-    pkce_method <- if (tolower(pkce_method) == "plain") "plain" else "S256"
-  } else {
-    pkce_method <- NULL
+  pkce_method <- normalize_pkce_method(pkce_method %||% NULL, default = NULL)
+  if (
+    !is.null(pkce_method) &&
+      !identical(pkce_method, "S256") &&
+      !identical(pkce_method, "plain")
+  ) {
+    err_config(
+      c(
+        "x" = "pkce_method must be 'S256' or 'plain'",
+        "i" = paste0("Received: ", as.character(pkce_method))
+      ),
+      context = list(
+        issuer = iss,
+        issuer_host = iss_host,
+        pkce_method = pkce_method
+      )
+    )
   }
 
   # When the provider does not advertise methods, preserve the historical

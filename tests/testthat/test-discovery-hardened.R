@@ -346,6 +346,37 @@ testthat::test_that("discovery errors when S256 is not advertised and plain is n
   )
 })
 
+testthat::test_that("discovery rejects invalid explicit pkce_method values", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          authorization_endpoint = "https://127.0.0.1/auth",
+          token_endpoint = "https://127.0.0.1/token",
+          jwks_uri = "https://127.0.0.1/jwks",
+          code_challenge_methods_supported = list("S256", "plain")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- srv$url()
+
+  testthat::expect_error(
+    oauth_provider_oidc_discover(
+      issuer = issuer,
+      use_pkce = TRUE,
+      pkce_method = "s512"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "pkce_method must be 'S256' or 'plain'"
+  )
+})
+
 testthat::test_that("discovery allows explicit plain PKCE downgrade when advertised", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

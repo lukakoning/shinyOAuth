@@ -3,6 +3,9 @@
 * OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
 by default; off-issuer aliases require an explicit host allowlist.
 
+* `oauth_provider()` and OIDC discovery now reject invalid `pkce_method`
+values instead of silently normalizing typos to `"S256"`.
+
 * `oauth_client(claims_validation = "warn"/"strict")` now rejects enforceable
   `claims$id_token` requests unless the provider validates ID tokens, and
   `oauth_module_server()` no longer applies ID-token claim or ACR enforcement

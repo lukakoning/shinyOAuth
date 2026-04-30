@@ -81,6 +81,36 @@ normalize_token_auth_style <- function(style) {
   style
 }
 
+#' Internal: normalize PKCE method names without silently accepting typos
+#'
+#' @keywords internal
+#' @noRd
+normalize_pkce_method <- function(pkce_method, default = NULL) {
+  if (is.null(pkce_method)) {
+    return(default)
+  }
+
+  if (
+    is.character(pkce_method) && length(pkce_method) == 1L && is.na(pkce_method)
+  ) {
+    return(default)
+  }
+
+  if (!is.character(pkce_method) || length(pkce_method) != 1L) {
+    return(pkce_method)
+  }
+
+  normalized <- trimws(pkce_method)
+  if (identical(toupper(normalized), "S256")) {
+    return("S256")
+  }
+  if (identical(tolower(normalized), "plain")) {
+    return("plain")
+  }
+
+  pkce_method
+}
+
 inspect_auth_response_mode <- function(extra_auth_params) {
   out <- list(index = integer(0), mode = NULL, error = NULL)
 
