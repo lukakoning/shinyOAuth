@@ -540,33 +540,31 @@ raw_to_hex_lower <- function(r) {
 
 # Timing-safe equality --------------------------------------------------------
 
-#' Constant-time comparison for secrets
-#'
-#' Compare two strings in a way that does not leak information via timing
-#' differences from early exits or character-by-character mismatch. Inputs are
-#' coerced to character(1) with NA/NULL treated as a mismatch.
-#'
-#' To reduce length-dependent timing differences, both inputs are first hashed
-#' with SHA-256 to produce fixed 32-byte digests. The function then performs a
-#' constant-time XOR-accumulate comparison over those digests.
-#'
-#' This helper is intended for comparing short secret values like browser
-#' tokens, nonces, or state-bound identifiers. It operates on raw byte values
-#' and does not perform normalization; callers should ensure the same encoding
-#' is used on both sides (we expect native UTF-8/ASCII for our use cases).
-#'
 #' @keywords internal
 #' @noRd
-constant_time_compare_raw <- function(a, b) {
-  is_valid <- function(x) is.raw(x) && !is.null(x)
-  if (!is_valid(a) || !is_valid(b)) {
-    # Treat invalid inputs as a mismatch but keep the blinded comparison path.
-    a <- raw()
-    b <- as.raw(0L)
+constant_time_compare <- function(a, b) {
+  normalize_input <- function(x) {
+    if (is.raw(x) && !is.null(x)) {
+      return(x)
+    }
+
+    if (is.character(x) && length(x) == 1L && !is.na(x)) {
+      return(charToRaw(as.character(x)))
+    }
+
+    NULL
   }
 
-  ar <- openssl::sha256(a)
-  br <- openssl::sha256(b)
+  a_raw <- normalize_input(a)
+  b_raw <- normalize_input(b)
+  if (is.null(a_raw) || is.null(b_raw)) {
+    # Treat invalid inputs as a mismatch but keep the blinded comparison path.
+    a_raw <- raw()
+    b_raw <- as.raw(0L)
+  }
+
+  ar <- openssl::sha256(a_raw)
+  br <- openssl::sha256(b_raw)
 
   acc <- as.integer(0L)
   for (i in seq_len(length(ar))) {
@@ -576,22 +574,4 @@ constant_time_compare_raw <- function(a, b) {
   }
 
   isTRUE(identical(acc, 0L))
-}
-
-#' @keywords internal
-#' @noRd
-constant_time_compare <- function(a, b) {
-  # Normalize to single character scalars; everything else mismatches.
-  is_valid <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
-  if (!is_valid(a) || !is_valid(b)) {
-    # Treat invalid inputs as non-equal but still run blinded loop to avoid
-    # observable timing differences between invalid and valid shapes.
-    a <- as.character(NA)
-    b <- as.character("")
-  }
-
-  constant_time_compare_raw(
-    charToRaw(as.character(a)),
-    charToRaw(as.character(b))
-  )
 }

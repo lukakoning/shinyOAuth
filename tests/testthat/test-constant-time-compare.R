@@ -44,8 +44,8 @@ test_that("constant_time_compare handles NA/NULL/non-char as mismatch", {
   expect_false(f(TRUE, "TRUE"))
 })
 
-test_that("constant_time_compare_raw handles equality, inequality, and invalid shapes", {
-  f <- shinyOAuth:::constant_time_compare_raw
+test_that("constant_time_compare handles raw inputs too", {
+  f <- shinyOAuth:::constant_time_compare
 
   expect_true(f(charToRaw("abc"), charToRaw("abc")))
   expect_false(f(charToRaw("abc"), charToRaw("abd")))
@@ -53,7 +53,7 @@ test_that("constant_time_compare_raw handles equality, inequality, and invalid s
   expect_true(f(raw(), raw()))
   expect_false(f(NULL, charToRaw("a")))
   expect_false(f(charToRaw("a"), NULL))
-  expect_false(f("a", charToRaw("a")))
+  expect_true(f("a", charToRaw("a")))
 })
 
 test_that("constant_time_compare is insensitive to content length timing (coarse)", {

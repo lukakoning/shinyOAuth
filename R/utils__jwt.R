@@ -217,9 +217,8 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
         size = as.integer(substring(toupper(alg), 3L)),
         key = secret_raw
       )
-      # Compare HMAC tags as raw bytes so verification and signing share the
-      # same UTF-8-normalized secret semantics without extra transcoding.
-      constant_time_compare_raw(
+      # Compare HMAC tags as raw bytes through the shared constant-time helper.
+      constant_time_compare(
         parts$sig,
         as.raw(expected)
       )
