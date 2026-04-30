@@ -85,6 +85,19 @@
   so EdDSA UserInfo JWTs can verify correctly, provider `leeway` is
   honored consistently, and invalid `typ` headers are rejected.
 
+- Hardened inbound JWT/JWKS validation: HS JWT signatures are now
+  compared in constant time, JWT compact parsing rejects
+  malformed/padded base64url segments, and JWKS validation rejects
+  malformed RSA/EC members plus RSA keys below 2048 bits.
+
+- `options(shinyOAuth.skip_id_sig = TRUE)` no longer causes downstream
+  `id_token_validated` flags to report skipped-signature ID tokens as
+  cryptographically validated.
+
+- `at_hash` validation no longer guesses a digest mapping for `EdDSA`;
+  EdDSA ID tokens with `at_hash` now error explicitly until a clear
+  mapping is supported.
+
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now forwards `oauth_client(introspect = TRUE)` to its proactive
   refresh path, so refreshed access tokens follow the same introspection
