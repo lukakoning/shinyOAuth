@@ -171,3 +171,60 @@ test_that("id_token_validated is independent of id_token_claims", {
   expect_true(tok_validated@id_token_validated)
   expect_identical(tok_validated@id_token_claims$sub, "user123")
 })
+
+test_that("verify_token_set keeps id_token_validated FALSE when signature is skipped", {
+  prov <- shinyOAuth::oauth_provider(
+    name = "test-id-flag",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://issuer.example.com",
+    use_nonce = FALSE,
+    id_token_validation = TRUE,
+    id_token_required = TRUE
+  )
+  cli <- shinyOAuth::oauth_client(
+    prov,
+    client_id = "client-xyz",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid"
+  )
+
+  now <- floor(as.numeric(Sys.time()))
+  id_token <- paste(
+    shinyOAuth:::base64url_encode(charToRaw('{"alg":"none"}')),
+    shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
+      list(
+        iss = "https://issuer.example.com",
+        aud = "client-xyz",
+        sub = "user123",
+        iat = now,
+        exp = now + 3600
+      ),
+      auto_unbox = TRUE
+    ))),
+    "",
+    sep = "."
+  )
+
+  token_set <- list(
+    access_token = "at",
+    token_type = "Bearer",
+    id_token = id_token,
+    scope = "openid"
+  )
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    validated <- shinyOAuth:::validate_id_token(cli, id_token)
+    expect_false(attr(validated, "signature_verified", exact = TRUE))
+
+    result <- shinyOAuth:::verify_token_set(
+      cli,
+      token_set = token_set,
+      nonce = NULL,
+      is_refresh = FALSE
+    )
+
+    expect_false(result[[".id_token_validated"]])
+  })
+})

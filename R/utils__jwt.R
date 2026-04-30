@@ -814,6 +814,8 @@ validate_id_token <- function(
     }
   }
 
+  attr(payload, "signature_verified") <- !isTRUE(skip_signature)
+
   invisible(payload)
 }
 

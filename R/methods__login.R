@@ -2232,7 +2232,7 @@ verify_token_set <- function(
             }
           }
         }
-        validate_id_token(
+        id_token_validation_result <- validate_id_token(
           client,
           id_token,
           expected_nonce = nonce,
@@ -2241,9 +2241,13 @@ verify_token_set <- function(
           max_age = requested_max_age
         )
 
-        # If we reach this point, validate_id_token() succeeded —
-        # the ID token's signature and claims were cryptographically verified.
-        id_token_validated <- TRUE
+        # If validate_id_token() returned explicit metadata that signature
+        # verification was skipped (for example via skip_id_sig in test mode),
+        # do not mark the token as cryptographically validated.
+        id_token_validated <- !identical(
+          attr(id_token_validation_result, "signature_verified", exact = TRUE),
+          FALSE
+        )
 
         # OIDC Core 12.2: during refresh, verify iss and aud match the original
         # ID token's actual values (not just the provider config). validate_id_token()
