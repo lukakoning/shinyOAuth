@@ -129,3 +129,56 @@ test_that("JWK selection filters use=sig and prefers alg match", {
     class = "shinyOAuth_id_token_error"
   )
 })
+
+test_that("JWK selection treats malformed key_ops as unusable", {
+  key_template <- list(
+    kty = "RSA",
+    n = "n-test",
+    e = "AQAB",
+    use = "sig"
+  )
+
+  select_one <- function(key) {
+    shinyOAuth:::select_candidate_jwks(list(keys = list(key)))
+  }
+
+  expect_length(
+    select_one(modifyList(key_template, list(kid = "missing-key-ops"))),
+    1L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "verify", key_ops = c("verify"))
+    )),
+    1L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "empty", key_ops = character(0))
+    )),
+    0L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "malformed", key_ops = 1:2)
+    )),
+    0L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "duplicate", key_ops = c("verify", "verify"))
+    )),
+    0L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "missing-verify", key_ops = c("sign", "encrypt"))
+    )),
+    0L
+  )
+})

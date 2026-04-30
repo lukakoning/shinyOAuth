@@ -4,6 +4,12 @@ enc_b64url <- function(x) {
   chartr("+/", "-_", b)
 }
 
+enc_raw_b64url <- function(x) {
+  b <- openssl::base64_encode(x, linebreak = FALSE)
+  b <- gsub("=+$", "", b)
+  chartr("+/", "-_", b)
+}
+
 build_jwt <- function(header, claims, sig = "") {
   paste(
     enc_b64url(jsonlite::toJSON(header, auto_unbox = TRUE)),
@@ -103,6 +109,55 @@ test_that("JWT parsing rejects padded, invalid, and empty compact segments", {
   expect_true(is.raw(parts$data))
   expect_true(is.raw(parts$sig))
   expect_length(parts$sig, 0)
+})
+
+test_that("JWT parsing rejects embedded NUL and invalid UTF-8 JSON text", {
+  valid_header <- enc_b64url('{"alg":"none"}')
+  valid_payload <- enc_b64url('{"sub":"u"}')
+
+  nul_header <- enc_raw_b64url(c(
+    charToRaw('{"alg":"none","x":"'),
+    as.raw(0),
+    charToRaw('"}')
+  ))
+  nul_payload <- enc_raw_b64url(c(
+    charToRaw('{"sub":"'),
+    as.raw(0),
+    charToRaw('"}')
+  ))
+  invalid_header <- enc_raw_b64url(as.raw(c(0xff, 0xfe)))
+  invalid_payload <- enc_raw_b64url(as.raw(c(0xff, 0xfe)))
+
+  expect_error(
+    shinyOAuth:::parse_jwt_header(paste0(nul_header, ".", valid_payload, ".")),
+    class = "shinyOAuth_parse_error",
+    regexp = "embedded NUL"
+  )
+  expect_error(
+    shinyOAuth:::parse_jwt_header(paste0(
+      invalid_header,
+      ".",
+      valid_payload,
+      "."
+    )),
+    class = "shinyOAuth_parse_error",
+    regexp = "valid UTF-8|decode JWT header JSON text"
+  )
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(paste0(valid_header, ".", nul_payload, ".")),
+    class = "shinyOAuth_parse_error",
+    regexp = "embedded NUL"
+  )
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(paste0(
+      valid_header,
+      ".",
+      invalid_payload,
+      "."
+    )),
+    class = "shinyOAuth_parse_error",
+    regexp = "valid UTF-8|decode JWT payload JSON text"
+  )
 })
 
 test_that("exp/iat/nbf boundary conditions respect leeway", {

@@ -76,6 +76,26 @@ test_that("client_bearer_req builds DPoP authorization and proof headers", {
   expect_true(nzchar(payload$ath))
 })
 
+test_that("client_bearer_req rejects non-ASCII DPoP access tokens", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov)
+  tok <- OAuthToken(
+    access_token = "caf\u00e9",
+    token_type = "DPoP",
+    userinfo = list()
+  )
+
+  expect_error(
+    client_bearer_req(
+      token = tok,
+      url = "https://resource.example.com/api",
+      oauth_client = cli
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "ASCII"
+  )
+})
+
 test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(

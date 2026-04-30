@@ -79,13 +79,41 @@ jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
   )
 }
 
+strict_decode_jwt_json_text <- function(segment_raw, field_name) {
+  stopifnot(is.raw(segment_raw))
+
+  if (any(segment_raw == as.raw(0))) {
+    err_parse(paste0(
+      "JWT ",
+      field_name,
+      " segment contains embedded NUL byte"
+    ))
+  }
+
+  text <- tryCatch(rawToChar(segment_raw), error = function(e) {
+    err_parse(c(
+      paste0("Failed to decode JWT ", field_name, " JSON text"),
+      "i" = conditionMessage(e)
+    ))
+  })
+
+  if (!isTRUE(validUTF8(text))) {
+    err_parse(c(
+      paste0("Failed to decode JWT ", field_name, " JSON text"),
+      "i" = "Segment is not valid UTF-8"
+    ))
+  }
+
+  text
+}
+
 parse_jwt_payload <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
-  payload_raw <- rawToChar(parts$payload_raw)
-  reject_duplicate_json_object_members(payload_raw, "JWT payload")
+  payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
+  reject_duplicate_json_object_members(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(payload_raw, simplifyVector = TRUE),
+    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
     error = function(e) {
       err_parse(c(
         "Failed to parse JWT payload JSON",
@@ -101,11 +129,11 @@ parse_jwt_payload <- function(jwt) {
 #' @noRd
 parse_jwt_header <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
-  header_raw <- rawToChar(parts$header_raw)
-  reject_duplicate_json_object_members(header_raw, "JWT header")
+  header_text <- strict_decode_jwt_json_text(parts$header_raw, "header")
+  reject_duplicate_json_object_members(header_text, "JWT header")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(header_raw, simplifyVector = FALSE),
+    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(c(
         "Failed to parse JWT header JSON",

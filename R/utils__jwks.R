@@ -376,15 +376,33 @@ select_candidate_jwks <- function(
   keep_ops <- vapply(
     keys,
     function(k) {
+      valid_key_ops <- c(
+        "sign",
+        "verify",
+        "encrypt",
+        "decrypt",
+        "wrapkey",
+        "unwrapkey",
+        "derivekey",
+        "derivebits"
+      )
       ops <- try(k$key_ops, silent = TRUE)
       if (inherits(ops, "try-error") || is.null(ops)) {
         return(TRUE)
       }
-      if (!is.character(ops) || length(ops) == 0L) {
-        return(TRUE)
+      if (!is.character(ops) || length(ops) == 0L || anyNA(ops)) {
+        return(FALSE)
+      }
+      ops_norm <- tolower(ops)
+      if (
+        !all(nzchar(ops)) ||
+          anyDuplicated(ops_norm) > 0L ||
+          !all(ops_norm %in% valid_key_ops)
+      ) {
+        return(FALSE)
       }
       # For signature verification, the key must support "verify"
-      tolower("verify") %in% tolower(ops)
+      "verify" %in% ops_norm
     },
     logical(1)
   )

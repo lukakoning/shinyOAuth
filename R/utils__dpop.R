@@ -102,8 +102,16 @@ dpop_target_uri <- function(url) {
 #' @keywords internal
 #' @noRd
 dpop_access_token_hash <- function(access_token) {
-  stopifnot(is_valid_string(access_token))
-  base64url_encode(openssl::sha256(charToRaw(enc2utf8(access_token))))
+  if (!is_valid_string(access_token)) {
+    err_input("DPoP access_token must be a non-empty string")
+  }
+
+  token_raw <- charToRaw(enc2utf8(access_token))
+  if (any(token_raw > as.raw(0x7f))) {
+    err_input("DPoP access_token must contain only ASCII characters")
+  }
+
+  base64url_encode(openssl::sha256(token_raw))
 }
 
 #' @keywords internal

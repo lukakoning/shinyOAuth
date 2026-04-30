@@ -82,6 +82,11 @@ present via `userinfo_jwt_required_temporal_claims`.
   non-canonical JOSE signature widths, and JWKS validation rejects malformed
   RSA/EC members plus RSA keys below 2048 bits.
 
+* JWKS/JWT/DPoP hardening: malformed JWK `key_ops` are now treated as unusable,
+  JWT header/payload decoding rejects embedded NUL and invalid UTF-8 text with
+  package parse errors, and DPoP `ath` generation rejects non-ASCII access
+  tokens.
+
 * `options(shinyOAuth.skip_id_sig = TRUE)` no longer causes downstream
   `id_token_validated` flags to report skipped-signature ID tokens as
   cryptographically validated.
