@@ -1,130 +1,5 @@
 # shinyOAuth (development version)
 
-* `oauth_provider(extra_token_params = ...)` now reserves `refresh_token`
-alongside the other managed token request fields, preventing duplicate
-refresh-token parameters from being appended during refresh.
-
-* Token endpoint response parsing now rejects duplicate top-level JSON and
-form-encoded parameter names instead of silently accepting ambiguous
-`access_token`, `scope`, or `id_token` values.
-
-* Strict token-response and introspection scope validation now treats commas as
-part of a single scope token, matching RFC 6749 instead of splitting
-`scope = "read,write"` into separate `read` and `write` scopes.
-
-* OIDC discovery now honors `jwks_host_allow_only` during its early `jwks_uri`
-host check, so explicitly pinned cross-host JWKS endpoints no longer require
-disabling issuer-host matching.
-
-* OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
-by default; off-issuer aliases require an explicit host allowlist.
-
-* `oauth_provider()` and OIDC discovery now reject invalid `pkce_method`
-values instead of silently normalizing typos to `"S256"`.
-
-* `OAuthToken()` now validates token strings, expiry sentinels, and
-`id_token_validated` consistency at construction time.
-
-* `oauth_client(claims_validation = "warn"/"strict")` now rejects enforceable
-  `claims$id_token` requests unless the provider validates ID tokens, and
-  `oauth_module_server()` no longer applies ID-token claim or ACR enforcement
-  to unchecked JWT payloads.
-
-* Enforced RFC 7518 HMAC key-size minimums for `HS256` / `HS384` / `HS512`
-  across `client_secret_jwt`, signed request objects, and HS ID token
-  validation.
-
-* Restricted outbound RSA JWT signing to `RS256` and removed unsupported `PS*`
-  algorithms from default inbound allowlists until the JOSE backend can correctly
-  sign and verify RSA-PSS tokens.
-
-* `oauth_module_server()` now rejects unsafe `browser_cookie_path` values that
-could rewrite cookie attributes. Explicit cookie paths must start with `/`
-and cannot contain semicolons or control characters.
-
-* OIDC discovery now maps `token_endpoint_auth_methods_supported = ["none"]`
-to a distinct public token auth style that never sends `client_secret`, even
-when `oauth_client()` picks one up from `OAUTH_CLIENT_SECRET`.
-
-* `jwks_host_issuer_match = TRUE` now requires an exact issuer-host match for
-`jwks_uri` instead of also trusting issuer subdomains. Providers that publish
-JWKS on a different host should set `jwks_host_allow_only` to that exact host.
-
-* `oauth_module_server()` now drops provider `error_uri` values unless they
-are absolute HTTPS URLs, so unsafe schemes like `javascript:` are no longer
-surfaced through `values$error_uri`.
-
-* Deprecated `error_on_softened()`. It remains a narrow guard for a few
-dev/debug softeners, but the docs now stop presenting it as a comprehensive
-deployment-hardening check and show explicit option checks instead.
-
-* `build_client_assertion()` now caps `options(shinyOAuth.client_assertion_ttl)`
-  at 300 seconds, warning and clamping higher values instead of emitting long-
-  lived JWT client assertions.
-
-* Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
-  refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
-  `aud` checks.
-
-* Signed UserInfo JWT validation now enforces `exp`, `iat`, and `nbf` when
-those temporal claims are present, rejecting expired or not-yet-valid UserInfo
-JWT responses instead of accepting them based only on signature/issuer/audience.
-`oauth_client()` can also require specific UserInfo JWT temporal claims to be
-present via `userinfo_jwt_required_temporal_claims`.
-
-* Signed UserInfo JWT verification now uses shinyOAuth's JWS verifier instead
-  of `jose::jwt_decode_sig()`, so EdDSA UserInfo JWTs can verify correctly,
-  provider `leeway` is honored consistently, and invalid `typ` headers are
-  rejected.
-
-* JWT verification now rejects malformed JOSE header field shapes for `alg`,
-  `kid`, `typ`, and `crit` with package-classed errors in both ID token and
-  UserInfo JWT paths, instead of falling through to base R type failures.
-
-* JWT parsing now rejects duplicate top-level member names in protected headers
-  and claims instead of inheriting `jsonlite`'s last-value-wins behavior.
-
-* Hardened inbound JWT/JWKS validation: HS JWT verification now normalizes
-  secrets to UTF-8 and compares MACs in constant time, JWT compact parsing
-  rejects malformed/padded base64url segments, ECDSA verification rejects
-  non-canonical JOSE signature widths, and JWKS validation rejects malformed
-  RSA/EC members plus RSA keys below 2048 bits.
-
-* JWKS/JWT/DPoP hardening: malformed JWK `key_ops` are now treated as unusable,
-  JWT header/payload decoding rejects embedded NUL and invalid UTF-8 text with
-  package parse errors, and DPoP `ath` generation rejects non-ASCII access
-  tokens.
-
-* `options(shinyOAuth.skip_id_sig = TRUE)` no longer causes downstream
-  `id_token_validated` flags to report skipped-signature ID tokens as
-  cryptographically validated.
-
-* `at_hash` validation now resolves `EdDSA` from the verified signing key/JWK
-  instead of guessing from `alg` alone: `Ed25519` uses the exact SHA-512
-  mapping, while signature-skipped or currently unsupported `EdDSA` curves
-  fail closed.
-
-* `oauth_module_server()` now forwards `oauth_client(introspect = TRUE)` to its
-proactive refresh path, so refreshed access tokens follow the same
-introspection policy as the initial login.
-
-* `oauth_module_server()` now preserves `invalid_state` in its callback error
-state for CSRF/state/browser-token validation failures instead of flattening
-those paths into `token_exchange_error`.
-
-* Clarified the `allow_redirect` warning/docs and the `error_on_softened()`
-option framing so they match the current explicit opt-in behavior and the
-intentional undocumented `trace_hook` compatibility alias.
-
-* `error_on_softened()` no longer treats the removed
-`shinyOAuth.print_errors` / `shinyOAuth.print_traceback` options as active
-softeners, and `shinyOAuth.allow_redirect` is again honored as an explicit
-redirect-following opt-in outside testthat or interactive sessions.
-
-* `shinyOAuth.client_assertion_ttl` now clamps finite values below 60 seconds
-to a 60-second minimum instead of silently resetting them to the 120-second
-default.
-
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
@@ -182,6 +57,15 @@ information.
   OAuth error callbacks too, deferring `?error=...` handling until the browser
   token is available and treating browser-token mismatches as `invalid_state`
   instead of surfacing provider-controlled error text.
+  - Forwards `oauth_client(introspect = TRUE)` to its proactive refresh path, so
+  refreshed access tokens follow the same introspection policy as the initial 
+  login.
+  - Preserves `invalid_state` in its callback error state for 
+  CSRF/state/browser-token validation failures instead of flattening those paths 
+  into `token_exchange_error`.
+  - Drops provider `error_uri` values unless they are absolute HTTPS URLs, so 
+  unsafe schemes like `javascript:` are no longer surfaced through 
+  `values$error_uri`.
 
 * `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
 previews instead of exposing full credential material in default console output.
@@ -220,7 +104,9 @@ previews instead of exposing full credential material in default console output.
   but led to abroken callback round-trip instead of a clear configuration error.
   - Validates custom `jwks_cache$get()` signatures without calling the cache 
   during construction, avoiding side effects in duck-typed cache backends.
-
+  - Reserves the `refresh_token` parameter name in `extra_token_params` to 
+  prevent duplicate refresh-token parameters during token refresh requests.
+  
 * `oauth_provider_oidc_discover()` now:
   - Fails fast when metadata advertises PKCE methods but omits
   `S256`. shinyOAuth keeps `S256` as the default and only allows a downgrade to
@@ -229,6 +115,12 @@ previews instead of exposing full credential material in default console output.
   discovery document omits `jwks_uri`, surfacing a configuration error during
   provider setup instead of a later JWKS fetch failure.
   - Rejects non-scalar endpoint metadata values with a configuration error.
+  - Honors `jwks_host_allow_only` during its early `jwks_uri` host check, so 
+  explicitly pinned cross-host JWKS endpoints no longer require disabling 
+  issuer-host matching.
+  - Maps `token_endpoint_auth_methods_supported = ["none"]` to a distinct public 
+  token auth style that never sends `client_secret`, even when `oauth_client()` 
+  picks one up from `OAUTH_CLIENT_SECRET`.
 
 * `oauth_provider_oidc()` now trims trailing slashes from `base_url` before
 deriving endpoint URLs and the configured `issuer`, avoiding valid ID tokens
@@ -249,6 +141,10 @@ elapsed value that always passed the `max_age` freshness check.
 refreshed identity against a new or preserved ID token subject, preventing
 identity confusion when providers omit `id_token` from refresh responses.
 
+* Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
+refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
+`aud` checks.
+
 * `get_userinfo()` now:
   - Applies the same hard JWK `alg` compatibility checks to signed UserInfo JWT 
   verification as ID token verification, rejecting JWKS keys that advertise a 
@@ -259,6 +155,16 @@ identity confusion when providers omit `id_token` from refresh responses.
   `userinfo_id_token_match` was not enabled. The signed-JWT path 
   (`validate_signed_userinfo_claims()`) also now checks `sub` alongside the
   existing `iss`/`aud` validation.
+
+* Signed UserInfo JWT validation now: 
+  - Enforces `exp`, `iat`, and `nbf` when
+  those temporal claims are present, rejecting expired or not-yet-valid UserInfo
+  JWT responses instead of accepting them based only on 
+  signature/issuer/audience. `oauth_client()` can also require specific UserInfo 
+  JWT temporal claims to be present via `userinfo_jwt_required_temporal_claims`.
+  - Uses internal JWS verifier instead of `jose::jwt_decode_sig()`, so EdDSA 
+  UserInfo JWTs can verify correctly,  provider `leeway` is honored 
+  consistently, and invalid `typ` headers are rejected.
   
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
@@ -276,6 +182,10 @@ matching, or `none` to skip the discovery issuer check.
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
 of rejecting otherwise compliant authorization servers by default.
 
+* Strict token-response and introspection scope validation now treats commas as
+part of a single scope token, matching RFC 6749 instead of splitting
+`scope = "read,write"` into separate `read` and `write` scopes.
+
 * Missing `expires_in` values now default to a finite 3600-second fallback
 rather than an effectively indefinite session. Override this with
 `options(shinyOAuth.default_expires_in = <seconds>)`, and use
@@ -285,6 +195,15 @@ session-age cap.
 * `err_http()` now guards against oversized HTTP error bodies before hashing
 or JSON parsing, so large chunked or misleading error responses now trip the 
 existing body-size limit consistently.
+
+* `at_hash` validation now resolves `EdDSA` from the verified signing key/JWK
+instead of guessing from `alg` alone: `Ed25519` uses the exact SHA-512
+mapping, while signature-skipped or currently unsupported `EdDSA` curves
+fail closed.
+
+* Deprecated `error_on_softened()`. It remains a narrow guard for a few
+dev/debug softeners, but the docs now stop presenting it as a comprehensive
+deployment-hardening check and show explicit option checks instead.
 
 # shinyOAuth 0.4.0
 
