@@ -2,12 +2,6 @@
 
 ## shinyOAuth (development version)
 
-- [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  now requires an explicit protected-resource host policy when URL
-  checks are enabled, deriving it from `allowed_hosts`,
-  `oauth_client(resource = ...)`, or `options(shinyOAuth.allowed_hosts)`
-  instead of implicitly trusting any HTTPS host.
-
 - OIDC discovery now pins discovered mTLS endpoint aliases to the issuer
   host by default; off-issuer aliases require an explicit host
   allowlist.
