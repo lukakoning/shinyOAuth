@@ -162,12 +162,19 @@ JOSE header includes <code>typ = "oauth-authz-req+jwt"</code> and the
 selected signing algorithm. The Request Object also carries managed JWT
 claims such as <code>iss</code>, <code>aud</code>, <code>iat</code>,
 <code>exp</code>, and <code>jti</code>. These are controlled by
-shinyOAuth rather than by <code>extra_auth_params</code>. With RSA
-private keys, shinyOAuth currently signs outbound JWTs with
-<code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS
-(<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) are not
-currently supported. EC private keys can use <code>ES256</code>,
-<code>ES384</code>, or <code>ES512</code>.</p>
+shinyOAuth rather than by <code>extra_auth_params</code>. shinyOAuth
+currently builds signed Request Objects only; it does not encrypt them
+as JWE. That means the Request Object is integrity-protected, not
+confidential: if it travels through the browser as
+<code>request=&lt;signed JWT&gt;</code>, any party that can see that
+front-channel value can still base64url-decode the JWT payload and read
+the authorization parameters unless you use PAR or a provider that
+supports encrypted Request Objects. With RSA private keys, shinyOAuth
+currently signs outbound JWTs with <code>RS256</code>;
+<code>RS384</code>, <code>RS512</code>, and RSA-PSS (<code>PS256</code>,
+<code>PS384</code>, <code>PS512</code>) are not currently supported. EC
+private keys can use <code>ES256</code>, <code>ES384</code>, or
+<code>ES512</code>.</p>
 <p>If the provider has a <code>par_url</code> configured, the module
 uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
 the browser. The same authorization request parameters are first sent
@@ -204,7 +211,9 @@ carries the signed Request Object instead of the raw authorization
 parameters. In practice, the redirect contains <code>client_id</code>
 plus <code>request=&lt;signed JWT&gt;</code>. The raw authorization
 parameters remain inside that JWT payload rather than appearing as
-separate browser-visible query parameters.</p>
+separate browser-visible query parameters, but they are still readable
+to whoever can inspect the front-channel JWT because signing alone does
+not hide the payload.</p>
 <p>With PAR enabled, the browser is still redirected to the provider’s
 authorization endpoint, but the front-channel URL contains only the PAR
 handle: <code>client_id</code> and <code>request_uri</code>. If JAR is

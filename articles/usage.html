@@ -522,8 +522,9 @@ server‑side <code>client_secret</code>
 lifetime in seconds for JWT client assertions used with
 <code>client_secret_jwt</code> or <code>private_key_jwt</code> token
 endpoint authentication. Finite values below 60 seconds are coerced to
-60 seconds; <code>NA</code> or non-finite values fall back to the
-120-second default</li>
+60 seconds, finite values above 300 seconds are clamped to 300 seconds,
+and <code>NA</code> or non-finite values fall back to the 120-second
+default</li>
 <li>
 <code>options(shinyOAuth.state_fail_delay_ms = c(10, 30))</code> –
 adds a small randomized delay (in milliseconds) before any state
@@ -538,11 +539,14 @@ accepts signed JWS tokens with <code>RS256</code>, <code>RS384</code>,
 <code>PS384</code>, <code>PS512</code>) is not currently supported. For
 outbound private-key JWT signing (<code>private_key_jwt</code>, signed
 Request Objects, and DPoP proofs), RSA keys are currently limited to
-<code>RS256</code>; use EC keys when you need <code>ES256</code>,
-<code>ES384</code>, or <code>ES512</code>. shinyOAuth accepts signed JWS
-ID tokens and signed UserInfo JWT responses only. Encrypted JWTs (JWE)
-are not currently supported for those surfaces; configure the provider
-to return signed-only tokens.</p>
+<code>RS256</code>; <code>RS384</code>, <code>RS512</code>,
+<code>PS256</code>, <code>PS384</code>, <code>PS512</code>, and
+<code>EdDSA</code> are not currently supported for outbound signing. Use
+EC keys when you need <code>ES256</code>, <code>ES384</code>, or
+<code>ES512</code>. shinyOAuth accepts signed JWS ID tokens and signed
+UserInfo JWT responses only. Encrypted JWTs (JWE) are not currently
+supported for those surfaces; configure the provider to return
+signed-only tokens.</p>
 <p>Note on <code>allowed_hosts</code>: patterns support globs
 (<code>*</code>, <code>?</code>). Using a catch‑all like
 <code>"*"</code> matches any host and effectively disables endpoint host

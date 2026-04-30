@@ -62,6 +62,15 @@
   documents the configured fallback expiry, and refresh-time
   introspection may backfill `token@cnf`.
 
+- `build_client_assertion()` now caps
+  `options(shinyOAuth.client_assertion_ttl)` at 300 seconds, warning and
+  clamping higher values instead of emitting long- lived JWT client
+  assertions.
+
+- Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
+  refresh-time `nonce`, and `azp` in addition to the existing `iss` /
+  `sub` / `aud` checks.
+
 - Fixed PEM-string private key parsing for
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   validation so `client_private_key` / `dpop_private_key` can be
@@ -84,6 +93,15 @@
   [`jose::jwt_decode_sig()`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html),
   so EdDSA UserInfo JWTs can verify correctly, provider `leeway` is
   honored consistently, and invalid `typ` headers are rejected.
+
+- JWT verification now rejects malformed JOSE header field shapes for
+  `alg`, `kid`, `typ`, and `crit` with package-classed errors in both ID
+  token and UserInfo JWT paths, instead of falling through to base R
+  type failures.
+
+- JWT parsing now rejects duplicate top-level member names in protected
+  headers and claims instead of inheriting `jsonlite`’s last-value-wins
+  behavior.
 
 - Hardened inbound JWT/JWKS validation: HS JWT verification now
   normalizes secrets to UTF-8 and compares MACs in constant time, JWT

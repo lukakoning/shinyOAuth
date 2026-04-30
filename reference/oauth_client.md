@@ -229,8 +229,10 @@ oauth_client(
   containing a private key. Required when the provider's
   `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
   Current outbound private-key JWT signing supports RSA and EC private
-  keys; Ed25519/Ed448 keys are not currently supported for client-side
-  signing.
+  keys. For RSA keys, outbound signing is currently limited to `RS256`;
+  `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
+  supported. Ed25519/Ed448 keys are also not currently supported for
+  client-side signing.
 
 - client_private_key_kid:
 
@@ -251,8 +253,9 @@ oauth_client(
   values and inferred defaults must be included in that set. Supported
   values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
   asymmetric algorithms supported for outbound signing (`RS256`,
-  `ES256`, `ES384`, `ES512`) for private keys. EdDSA remains supported
-  for inbound ID token verification, not outbound client assertions.
+  `ES256`, `ES384`, `ES512`) for private keys. `RS384`, `RS512`,
+  `PS256`, `PS384`, `PS512`, and `EdDSA` are not currently supported for
+  outbound client assertions.
 
 - client_assertion_audience:
 
@@ -309,8 +312,9 @@ oauth_client(
   `authorization_request_mode = "request"`. When omitted, shinyOAuth
   chooses `HS256` for HMAC-based signing or a compatible asymmetric
   default based on `client_private_key` (for example `RS256`, `ES256`,
-  `ES384`, or `ES512`). EdDSA is not currently supported for outbound
-  signed authorization requests.
+  `ES384`, or `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and
+  `EdDSA` are not currently supported for outbound signed authorization
+  requests.
 
 - authorization_request_audience:
 
@@ -327,8 +331,10 @@ oauth_client(
   request helpers. Configuring this key alone does not require
   DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if
   token responses must reject `token_type = "Bearer"`. Current outbound
-  DPoP signing supports RSA and EC private keys; Ed25519/Ed448 keys are
-  not currently supported for client-side signing.
+  DPoP signing supports RSA and EC private keys. For RSA keys, outbound
+  signing is currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS
+  (`PS256`, `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are
+  also not currently supported for client-side signing.
 
 - dpop_private_key_kid:
 
@@ -340,10 +346,11 @@ oauth_client(
 
   Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
   compatible asymmetric default is selected based on the private key
-  type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`). EdDSA
-  is not currently supported for outbound DPoP proofs. If an explicit
-  value is provided but incompatible with the key, validation fails
-  early with a configuration error.
+  type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`).
+  `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are not
+  currently supported for outbound DPoP proofs. If an explicit value is
+  provided but incompatible with the key, validation fails early with a
+  configuration error.
 
 - dpop_require_access_token:
 
