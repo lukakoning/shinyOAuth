@@ -116,14 +116,25 @@ server <- function(input, output, session) {
     auth$request_login()
   })
 
+  observeEvent(list(auth$error, auth$error_description), {
+    if (interactive() && !is.null(auth$error_description)) {
+      rlang::inform(c(
+        "OAuth error details",
+        "i" = paste0("error: ", auth$error),
+        "i" = paste0("error_description: ", auth$error_description)
+      ))
+    }
+  }, ignoreInit = TRUE)
+
   output$oauth_error <- renderUI({
     if (is.null(auth$error)) {
       return(NULL)
     }
 
-    msg <- auth$error
-    if (!is.null(auth$error_description)) {
-      msg <- paste0(msg, ": ", auth$error_description)
+    msg <- if (identical(auth$error, "access_denied")) {
+      "Sign-in was canceled or denied. Please try again."
+    } else {
+      "Authentication failed. Please try again."
     }
 
     div(class = "alert alert-danger", role = "alert", msg)
@@ -134,7 +145,7 @@ server <- function(input, output, session) {
       authenticated = auth$authenticated,
       has_token = !is.null(auth$token),
       error = auth$error,
-      error_description = auth$error_description,
+      has_error_description = !is.null(auth$error_description),
       expires_at = if (!is.null(auth$token)) auth$token@expires_at else NULL
     )
   })
