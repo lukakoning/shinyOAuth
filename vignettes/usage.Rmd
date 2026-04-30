@@ -390,7 +390,8 @@ to this whitelist
 - `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID tokens (HS256/HS384/HS512). Requires a strictly server‑side `client_secret`
 - `options(shinyOAuth.client_assertion_ttl = 120L)` – lifetime in seconds for JWT client assertions used with
   `client_secret_jwt` or `private_key_jwt` token endpoint authentication. Finite values below 60 seconds are coerced to
-  60 seconds; `NA` or non-finite values fall back to the 120-second default
+  60 seconds, finite values above 300 seconds are clamped to 300 seconds, and `NA` or non-finite values fall back to
+  the 120-second default
 - `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small randomized delay (in milliseconds) before any state validation failure (e.g., malformed token, IV/tag/ciphertext issues, or GCM authentication failure). This helps reduce timing side‑channels between different failure modes
 
 Outside that explicit `HS*` opt-in, shinyOAuth currently accepts signed JWS tokens with `RS256`, `RS384`,

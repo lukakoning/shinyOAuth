@@ -45,6 +45,10 @@ deployment-hardening check and show explicit option checks instead.
 `expires_in` now documents the configured fallback expiry, and refresh-time
 introspection may backfill `token@cnf`.
 
+* `build_client_assertion()` now caps `options(shinyOAuth.client_assertion_ttl)`
+  at 300 seconds, warning and clamping higher values instead of emitting long-
+  lived JWT client assertions.
+
 * Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
   refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
   `aud` checks.

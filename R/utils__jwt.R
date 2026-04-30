@@ -1154,6 +1154,16 @@ build_client_assertion <- function(client, aud) {
     ttl <- 120L
   } else if (ttl < 60L) {
     ttl <- 60L
+  } else if (ttl > 300L) {
+    rlang::warn(
+      c(
+        "!" = "shinyOAuth.client_assertion_ttl above 300 seconds is not allowed; clamping to 300 seconds",
+        "i" = paste0("Configured value: ", ttl)
+      ),
+      .frequency = "once",
+      .frequency_id = "client-assertion-ttl-max"
+    )
+    ttl <- 300L
   }
   now <- floor(as.numeric(Sys.time()))
   claims <- list(
