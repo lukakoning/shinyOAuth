@@ -42,7 +42,11 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host by default; off-issuer aliases require an explicit host allowlist.</p></li>
+<ul><li><p><code>oauth_provider(extra_token_params = ...)</code> now reserves <code>refresh_token</code> alongside the other managed token request fields, preventing duplicate refresh-token parameters from being appended during refresh.</p></li>
+<li><p>Token endpoint response parsing now rejects duplicate top-level JSON and form-encoded parameter names instead of silently accepting ambiguous <code>access_token</code>, <code>scope</code>, or <code>id_token</code> values.</p></li>
+<li><p>Strict token-response and introspection scope validation now treats commas as part of a single scope token, matching RFC 6749 instead of splitting <code>scope = "read,write"</code> into separate <code>read</code> and <code>write</code> scopes.</p></li>
+<li><p>OIDC discovery now honors <code>jwks_host_allow_only</code> during its early <code>jwks_uri</code> host check, so explicitly pinned cross-host JWKS endpoints no longer require disabling issuer-host matching.</p></li>
+<li><p>OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host by default; off-issuer aliases require an explicit host allowlist.</p></li>
 <li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> and OIDC discovery now reject invalid <code>pkce_method</code> values instead of silently normalizing typos to <code>"S256"</code>.</p></li>
 <li><p><code><a href="../reference/OAuthToken.html">OAuthToken()</a></code> now validates token strings, expiry sentinels, and <code>id_token_validated</code> consistency at construction time.</p></li>
 <li><p><code>oauth_client(claims_validation = "warn"/"strict")</code> now rejects enforceable <code>claims$id_token</code> requests unless the provider validates ID tokens, and <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> no longer applies ID-token claim or ACR enforcement to unchecked JWT payloads.</p></li>

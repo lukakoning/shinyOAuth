@@ -2,6 +2,24 @@
 
 ## shinyOAuth (development version)
 
+- `oauth_provider(extra_token_params = ...)` now reserves
+  `refresh_token` alongside the other managed token request fields,
+  preventing duplicate refresh-token parameters from being appended
+  during refresh.
+
+- Token endpoint response parsing now rejects duplicate top-level JSON
+  and form-encoded parameter names instead of silently accepting
+  ambiguous `access_token`, `scope`, or `id_token` values.
+
+- Strict token-response and introspection scope validation now treats
+  commas as part of a single scope token, matching RFC 6749 instead of
+  splitting `scope = "read,write"` into separate `read` and `write`
+  scopes.
+
+- OIDC discovery now honors `jwks_host_allow_only` during its early
+  `jwks_uri` host check, so explicitly pinned cross-host JWKS endpoints
+  no longer require disabling issuer-host matching.
+
 - OIDC discovery now pins discovered mTLS endpoint aliases to the issuer
   host by default; off-issuer aliases require an explicit host
   allowlist.
