@@ -103,13 +103,98 @@ parse_jwt_header <- function(jwt) {
   header_raw <- rawToChar(parts$header_raw)
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(header_raw, simplifyVector = TRUE),
+    jsonlite::fromJSON(header_raw, simplifyVector = FALSE),
     error = function(e) {
       err_parse(c(
         "Failed to parse JWT header JSON",
         "i" = conditionMessage(e)
       ))
     }
+  )
+}
+
+validate_jose_header_fields <- function(header, signal_error) {
+  if (!is.list(header) || is.null(names(header))) {
+    signal_error("JWT header must be a JSON object")
+  }
+
+  validate_scalar_string_field <- function(value, field, required = FALSE) {
+    if (is.null(value)) {
+      if (isTRUE(required)) {
+        signal_error(paste0("JWT header missing ", field))
+      }
+      return(NULL)
+    }
+
+    if (
+      !is.character(value) ||
+        length(value) != 1L ||
+        is.na(value) ||
+        !nzchar(value)
+    ) {
+      suffix <- if (isTRUE(required)) "" else " when present"
+      signal_error(paste0(
+        "JWT ",
+        field,
+        " header must be a single non-empty string",
+        suffix
+      ))
+    }
+
+    value
+  }
+
+  validate_crit_field <- function(value) {
+    if (is.null(value)) {
+      return(NULL)
+    }
+
+    crit <- NULL
+    if (is.character(value)) {
+      crit <- value
+    } else if (
+      is.list(value) &&
+        length(value) > 0L &&
+        all(vapply(
+          value,
+          function(item) {
+            is.character(item) && length(item) == 1L
+          },
+          logical(1)
+        ))
+    ) {
+      crit <- vapply(value, identity, character(1), USE.NAMES = FALSE)
+    }
+
+    if (
+      is.null(crit) ||
+        length(crit) == 0L ||
+        anyNA(crit) ||
+        !all(nzchar(crit)) ||
+        anyDuplicated(crit)
+    ) {
+      signal_error(
+        "JWT crit header must be a non-empty character vector of unique extension names"
+      )
+    }
+
+    crit
+  }
+
+  alg <- validate_scalar_string_field(
+    header$alg %||% NULL,
+    "alg",
+    required = TRUE
+  )
+  kid <- validate_scalar_string_field(header$kid %||% NULL, "kid")
+  typ <- validate_scalar_string_field(header$typ %||% NULL, "typ")
+  crit <- validate_crit_field(header$crit %||% NULL)
+
+  list(
+    alg = alg,
+    kid = kid,
+    typ = typ,
+    crit = crit
   )
 }
 
@@ -404,11 +489,13 @@ validate_id_token <- function(
       ))
     }
   )
+  header_fields <- validate_jose_header_fields(header, err_id_token)
+
   # Defense-in-depth: if a typ header is present, require it to be exactly
   # "JWT" per RFC 7519. Many providers omit typ; that's fine. Unknown types
   # (e.g., JWE or vendor-specific values) are rejected to avoid accepting
   # unintended container types.
-  typ <- header$typ %||% NULL
+  typ <- header_fields$typ
   if (!is.null(typ)) {
     if (
       !(is.character(typ) &&
@@ -425,18 +512,8 @@ validate_id_token <- function(
   # do not support.
   # Allowlist of crit values this implementation understands (empty today).
   supported_crit <- character()
-  crit <- header$crit
+  crit <- header_fields$crit
   if (!is.null(crit)) {
-    if (
-      !is.character(crit) ||
-        length(crit) == 0L ||
-        anyNA(crit) ||
-        !all(nzchar(crit))
-    ) {
-      err_id_token(
-        "JWT crit header must be a non-empty character vector of extension names"
-      )
-    }
     unsupported <- setdiff(crit, supported_crit)
     if (length(unsupported) > 0L) {
       err_id_token(paste0(
@@ -445,10 +522,10 @@ validate_id_token <- function(
       ))
     }
   }
-  alg <- toupper(header$alg %||% err_id_token("JWT header missing alg"))
-  kid <- header$kid %||% NULL
+  alg <- toupper(header_fields$alg)
+  kid <- header_fields$kid
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
-    err_id_token(paste0("JWT alg not allowed by provider: ", header$alg))
+    err_id_token(paste0("JWT alg not allowed by provider: ", header_fields$alg))
   }
 
   parsed_payload <- tryCatch(

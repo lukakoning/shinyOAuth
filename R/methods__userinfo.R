@@ -404,9 +404,21 @@ decode_userinfo_jwt <- function(
     ))
   }
 
+  header_fields <- tryCatch(
+    validate_jose_header_fields(header, err_userinfo),
+    shinyOAuth_userinfo_error = function(e) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_header_invalid",
+        shiny_session = shiny_session
+      )
+      stop(e)
+    }
+  )
+
   # Defense-in-depth: if a typ header is present, require it to be exactly
   # "JWT" per RFC 7519. Many providers omit typ; that's fine.
-  typ <- header$typ %||% NULL
+  typ <- header_fields$typ
   if (!is.null(typ)) {
     if (
       !(is.character(typ) &&
@@ -428,18 +440,8 @@ decode_userinfo_jwt <- function(
   # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
   # do not support (mirrors the same check in validate_id_token()).
   supported_crit <- character()
-  crit <- header$crit
+  crit <- header_fields$crit
   if (!is.null(crit)) {
-    if (
-      !is.character(crit) ||
-        length(crit) == 0L ||
-        anyNA(crit) ||
-        !all(nzchar(crit))
-    ) {
-      err_userinfo(
-        "JWT crit header must be a non-empty character vector of extension names"
-      )
-    }
     unsupported <- setdiff(crit, supported_crit)
     if (length(unsupported) > 0L) {
       err_userinfo(paste0(
@@ -449,13 +451,13 @@ decode_userinfo_jwt <- function(
     }
   }
 
-  alg <- toupper(header$alg %||% "")
-  kid <- header$kid %||% NULL
+  alg <- toupper(header_fields$alg)
+  kid <- header_fields$kid
 
   # Always reject alg=none — unsigned JWTs cannot be trusted for userinfo.
 
   # Testing-only escape hatch, gated via allow_unsigned_userinfo_jwt() softener
-  if (alg == "" || alg == "NONE") {
+  if (alg == "NONE") {
     if (allow_unsigned_userinfo_jwt()) {
       payload <- parse_jwt_payload(jwt_str)
       return(as.list(payload))

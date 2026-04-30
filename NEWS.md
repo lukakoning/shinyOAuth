@@ -65,6 +65,10 @@ present via `userinfo_jwt_required_temporal_claims`.
   provider `leeway` is honored consistently, and invalid `typ` headers are
   rejected.
 
+* JWT verification now rejects malformed JOSE header field shapes for `alg`,
+  `kid`, `typ`, and `crit` with package-classed errors in both ID token and
+  UserInfo JWT paths, instead of falling through to base R type failures.
+
 * Hardened inbound JWT/JWKS validation: HS JWT verification now normalizes
   secrets to UTF-8 and compares MACs in constant time, JWT compact parsing
   rejects malformed/padded base64url segments, ECDSA verification rejects

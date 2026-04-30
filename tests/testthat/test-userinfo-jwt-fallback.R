@@ -205,11 +205,11 @@ test_that("JWT with missing alg field is rejected even when require_signed = FAL
     .package = "shinyOAuth"
   )
 
-  # Fail-closed: missing alg is treated as alg=none and rejected
+  # Fail-closed: missing alg is rejected as an invalid JOSE header.
   expect_error(
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
-    regexp = "alg=none.*not allowed"
+    regexp = "header missing alg"
   )
 })
 
@@ -245,7 +245,7 @@ test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
   expect_error(
     get_userinfo(cli, token = "access-token"),
     class = "shinyOAuth_userinfo_error",
-    regexp = "alg=none|unsigned|not allowed"
+    regexp = "header missing alg"
   )
 })
 
