@@ -5,9 +5,11 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
 
   app$get("/.well-known/openid-configuration", function(req, res) {
     # issuer host for this test is 127.0.0.1 (no need to match port; validation uses hostname)
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "http://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks"
@@ -30,9 +32,11 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
   # Relative endpoint should be rejected
   app2 <- webfakes::new_app()
   app2$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "token", # relative -> invalid
           token_endpoint = "token"
         ),
@@ -50,9 +54,11 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
   # Host mismatch should be rejected
   app3 <- webfakes::new_app()
   app3$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://evil.example.com/token"
         ),
@@ -73,9 +79,11 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://evil.example.com/jwks.json"
@@ -152,9 +160,11 @@ testthat::test_that("discovery requires jwks_uri when ID token validation is ena
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token"
         ),
@@ -186,9 +196,11 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://api.example.com/auth",
           token_endpoint = "https://api.example.com/token",
           jwks_uri = "https://api.example.com/jwks"
@@ -350,9 +362,11 @@ testthat::test_that("discovery errors when S256 is not advertised and plain is n
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
@@ -377,9 +391,11 @@ testthat::test_that("discovery rejects invalid explicit pkce_method values", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
@@ -408,9 +424,11 @@ testthat::test_that("discovery allows explicit plain PKCE downgrade when adverti
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
@@ -437,9 +455,11 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
   testthat::skip_on_cran()
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
@@ -464,9 +484,11 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
   testthat::skip_on_cran()
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
@@ -489,9 +511,11 @@ testthat::test_that("discovery does NOT auto-enable when field absent", {
   testthat::skip_on_cran()
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
@@ -513,9 +537,11 @@ testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = 
   testthat::skip_on_cran()
   app <- webfakes::new_app()
   app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
     res$set_status(200)$set_type("application/json")$send(
       jsonlite::toJSON(
         list(
+          issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",

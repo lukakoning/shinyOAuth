@@ -559,7 +559,7 @@ normalize_issuer_url <- function(url, label = "issuer") {
 
 #' Internal: Resolve issuer from discovery with issuer matching policy
 #'
-#' Prefers the discovery issuer when provided.
+#' Requires the discovery issuer to be present and well-formed.
 #'
 #' Matching is controlled by `issuer_match`:
 #' - "url": require full issuer URL match after trailing-slash normalization
@@ -575,13 +575,19 @@ validate_discovery_issuer <- function(
 ) {
   issuer_match <- match.arg(issuer_match)
 
-  # Prefer discovered when available; otherwise fall back to input
-  iss <- issuer_discovered %||% issuer_input
-
-  # Nothing to check if discovery didn't supply an issuer
-  if (!is_valid_string(issuer_discovered)) {
-    return(iss)
+  if (
+    !is.character(issuer_discovered) ||
+      length(issuer_discovered) != 1L ||
+      is.na(issuer_discovered) ||
+      !nzchar(issuer_discovered)
+  ) {
+    err_parse(c(
+      "x" = "Discovery missing required issuer metadata",
+      "i" = "The discovery document must include issuer as a single non-empty string"
+    ))
   }
+
+  iss <- issuer_discovered
 
   if (identical(issuer_match, "none")) {
     return(iss)

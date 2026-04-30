@@ -165,7 +165,10 @@ test_that("fetch_jwks stores jwks_uri_host in cache entry", {
     host <- req$headers$Host %||% req$headers$host
     jwks_url <- paste0("http://", host, "/jwks")
     res$send_json(
-      object = list(jwks_uri = jwks_url),
+      object = list(
+        issuer = paste0("http://", host),
+        jwks_uri = jwks_url
+      ),
       auto_unbox = TRUE
     )
   })

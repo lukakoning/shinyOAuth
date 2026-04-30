@@ -40,6 +40,27 @@ test_that("validate_discovery_issuer can be overridden via arg", {
   )
 })
 
+test_that("validate_discovery_issuer rejects missing discovery issuer", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_error(
+    f("https://login.example.com", NULL),
+    class = "shinyOAuth_parse_error",
+    regexp = "missing required issuer"
+  )
+})
+
+test_that("validate_discovery_issuer rejects non-scalar discovery issuer", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_error(
+    f(
+      "https://login.example.com",
+      c("https://login.example.com", "https://accounts.example.com")
+    ),
+    class = "shinyOAuth_parse_error",
+    regexp = "single non-empty string"
+  )
+})
+
 test_that("validate_discovery_issuer errors on issuer path mismatch by default", {
   f <- shinyOAuth:::validate_discovery_issuer
   expect_error(
