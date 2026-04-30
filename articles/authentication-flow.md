@@ -90,7 +90,10 @@ HMAC using the `client_secret`. The JOSE header includes
 `typ = "oauth-authz-req+jwt"` and the selected signing algorithm. The
 Request Object also carries managed JWT claims such as `iss`, `aud`,
 `iat`, `exp`, and `jti`. These are controlled by shinyOAuth rather than
-by `extra_auth_params`.
+by `extra_auth_params`. With RSA private keys, shinyOAuth currently
+signs outbound JWTs with `RS256`; `RS384`, `RS512`, and RSA-PSS
+(`PS256`, `PS384`, `PS512`) are not currently supported. EC private keys
+can use `ES256`, `ES384`, or `ES512`.
 
 If the provider has a `par_url` configured, the module uses Pushed
 Authorization Requests (PAR, RFC 9126) before redirecting the browser.
@@ -246,10 +249,16 @@ verifications are performed **before** any userinfo fetch to ensure
 cryptographic validation occurs prior to making external calls:
 
 - Signature: verified against provider JWKS (with optional pinning) for
-  supported asymmetric algorithms (RSA-PKCS1, ECDSA, EdDSA). HMAC
-  algorithms (HS256/384/512) are only allowed with explicit opt-in
+  supported asymmetric algorithms (`RS256`, `RS384`, `RS512`, `ES256`,
+  `ES384`, `ES512`, `EdDSA`). HMAC algorithms (`HS256`/`HS384`/`HS512`)
+  are only allowed with explicit opt-in
   (`options(shinyOAuth.allow_hs = TRUE)`) and a sufficiently strong
-  server-held secret
+  server-held secret. RSA-PSS (`PS256`, `PS384`, `PS512`) is not
+  currently supported
+- Container type: shinyOAuth accepts signed JWS ID tokens only.
+  Encrypted ID tokens (JWE) are rejected because the package does not
+  perform JWE decryption; configure the provider to return signed-only
+  ID tokens
 - Claims: `iss` matches expected issuer; `aud` vector contains
   `client_id`; `sub` present; `iat` is required and must be a single
   finite numeric; time-based claims (`exp` is required, `nbf` optional)
@@ -309,9 +318,12 @@ match that certificate before making the request.
 The userinfo endpoint may return either a standard JSON response or a
 JWT-encoded response (per OIDC Core, section 5.3.2). When the endpoint
 returns `Content-Type: application/jwt`, the body is decoded as a JWT
-with signature verification against the provider JWKS. When
-`userinfo_signed_jwt_required = TRUE` on the provider, the endpoint must
-return `application/jwt` or the flow is aborted.
+with signature verification against the provider JWKS. Only signed JWS
+userinfo responses are supported. Encrypted UserInfo JWTs (JWE) are
+rejected; configure the provider to return signed-only JWTs when using
+`application/jwt` responses. When `userinfo_signed_jwt_required = TRUE`
+on the provider, the endpoint must return `application/jwt` or the flow
+is aborted.
 
 - Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
   is checked that `sub` in userinfo equals `sub` in the ID token

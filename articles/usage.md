@@ -447,6 +447,16 @@ usage.
   authentication failure). This helps reduce timing side‑channels
   between different failure modes
 
+Outside that explicit `HS*` opt-in, shinyOAuth currently accepts signed
+JWS tokens with `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`,
+and `EdDSA`. RSA-PSS (`PS256`, `PS384`, `PS512`) is not currently
+supported. For outbound private-key JWT signing (`private_key_jwt`,
+signed Request Objects, and DPoP proofs), RSA keys are currently limited
+to `RS256`; use EC keys when you need `ES256`, `ES384`, or `ES512`.
+shinyOAuth accepts signed JWS ID tokens and signed UserInfo JWT
+responses only. Encrypted JWTs (JWE) are not currently supported for
+those surfaces; configure the provider to return signed-only tokens.
+
 Note on `allowed_hosts`: patterns support globs (`*`, `?`). Using a
 catch‑all like `"*"` matches any host and effectively disables endpoint
 host restrictions (scheme rules still apply). Avoid this unless you
@@ -705,7 +715,9 @@ your app to production:
   prevent downgrade to plain JSON. Without this flag, shinyOAuth
   verifies any JWT it receives, but a misconfigured provider or
   man-in-the-middle could return unsigned JSON claims instead, bypassing
-  signature verification.
+  signature verification. If your provider can also emit encrypted
+  UserInfo JWTs (JWE), configure it to return signed-only JWS instead;
+  shinyOAuth does not decrypt JWE userinfo responses.
 - Use a provider which enforces strong authentication (e.g.,
   multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading

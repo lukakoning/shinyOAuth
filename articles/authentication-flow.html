@@ -162,7 +162,12 @@ JOSE header includes <code>typ = "oauth-authz-req+jwt"</code> and the
 selected signing algorithm. The Request Object also carries managed JWT
 claims such as <code>iss</code>, <code>aud</code>, <code>iat</code>,
 <code>exp</code>, and <code>jti</code>. These are controlled by
-shinyOAuth rather than by <code>extra_auth_params</code>.</p>
+shinyOAuth rather than by <code>extra_auth_params</code>. With RSA
+private keys, shinyOAuth currently signs outbound JWTs with
+<code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS
+(<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) are not
+currently supported. EC private keys can use <code>ES256</code>,
+<code>ES384</code>, or <code>ES512</code>.</p>
 <p>If the provider has a <code>par_url</code> configured, the module
 uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
 the browser. The same authorization request parameters are first sent
@@ -340,10 +345,18 @@ userinfo fetch to ensure cryptographic validation occurs prior to making
 external calls:</p>
 <ul>
 <li>Signature: verified against provider JWKS (with optional pinning)
-for supported asymmetric algorithms (RSA-PKCS1, ECDSA, EdDSA). HMAC
-algorithms (HS256/384/512) are only allowed with explicit opt-in
+for supported asymmetric algorithms (<code>RS256</code>,
+<code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
+<code>ES384</code>, <code>ES512</code>, <code>EdDSA</code>). HMAC
+algorithms (<code>HS256</code>/<code>HS384</code>/<code>HS512</code>)
+are only allowed with explicit opt-in
 (<code>options(shinyOAuth.allow_hs = TRUE)</code>) and a sufficiently
-strong server-held secret</li>
+strong server-held secret. RSA-PSS (<code>PS256</code>,
+<code>PS384</code>, <code>PS512</code>) is not currently supported</li>
+<li>Container type: shinyOAuth accepts signed JWS ID tokens only.
+Encrypted ID tokens (JWE) are rejected because the package does not
+perform JWE decryption; configure the provider to return signed-only ID
+tokens</li>
 <li>Claims: <code>iss</code> matches expected issuer; <code>aud</code>
 vector contains <code>client_id</code>; <code>sub</code> present;
 <code>iat</code> is required and must be a single finite numeric;
@@ -416,7 +429,10 @@ making the request.</p>
 <p>The userinfo endpoint may return either a standard JSON response or a
 JWT-encoded response (per OIDC Core, section 5.3.2). When the endpoint
 returns <code>Content-Type: application/jwt</code>, the body is decoded
-as a JWT with signature verification against the provider JWKS. When
+as a JWT with signature verification against the provider JWKS. Only
+signed JWS userinfo responses are supported. Encrypted UserInfo JWTs
+(JWE) are rejected; configure the provider to return signed-only JWTs
+when using <code>application/jwt</code> responses. When
 <code>userinfo_signed_jwt_required = TRUE</code> on the provider, the
 endpoint must return <code>application/jwt</code> or the flow is
 aborted.</p>
