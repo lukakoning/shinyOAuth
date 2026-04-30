@@ -1,3 +1,11 @@
+# This file contains package-level namespace declarations and roxygen metadata.
+# Use it for imports and package startup declarations that belong to the whole
+# package rather than to one specific OAuth helper.
+
+# 1 Package metadata -------------------------------------------------------
+
+## 1.1 Namespace and imports ----------------------------------------------
+
 #' @keywords internal
 "_PACKAGE"
 

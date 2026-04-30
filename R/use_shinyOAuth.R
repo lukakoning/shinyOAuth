@@ -1,3 +1,7 @@
+# This file contains the UI-side helpers for the browser JavaScript dependency.
+# Use them to load the browser code that can redirect, manage the browser token,
+# and warn when that dependency was forgotten.
+
 #' Add JavaScript dependency to the UI of a Shiny app
 #'
 #' @description
@@ -81,6 +85,9 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
 .watchdog_environment <- new.env(parent = emptyenv())
 assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
 
+# Read one file-local watchdog flag.
+# Used by use_shinyOAuth() and warn_about_missing_js_dependency() to remember whether the UI dependency was loaded.
+# Input: flag name and default value. Output: stored flag value or the default.
 .get_flag <- function(name, default = FALSE) {
   get0(
     name,
@@ -89,11 +96,18 @@ assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
     ifnotfound = default
   )
 }
+
+# Store one file-local watchdog flag.
+# Used by use_shinyOAuth() to record that the UI dependency was added.
+# Input: flag name and new value. Output: invisible TRUE.
 .set_flag <- function(name, value) {
   assign(name, value, envir = .watchdog_environment)
   invisible(TRUE)
 }
 
+# Warn once when the Shiny module is used without loading the browser dependency.
+# Used by oauth_module_server() so missing UI setup is easier to diagnose.
+# Input: no arguments. Output: invisible TRUE when warning, otherwise invisible NULL.
 warn_about_missing_js_dependency <- function() {
   if (.is_test()) {
     return(invisible(NULL))

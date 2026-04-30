@@ -1,9 +1,11 @@
-# Async backend discovery, dispatch, and worker diagnostics.
-#
-# Helper groups in this file:
-# - detect whether mirai or future backends are available
-# - dispatch OAuth work off the main process and replay worker conditions
-# - prepare serialization-safe worker inputs and classify transport failures
+# This file contains the helpers that discover async backends, dispatch work to
+# them, and replay worker-side conditions on the main process.
+# Use them when login, token, or userinfo code should run away from the main
+# Shiny process without losing diagnostics or trace context.
+
+# 1 Async dispatch helpers -------------------------------------------------
+
+## 1.1 Backend discovery and dispatch -------------------------------------
 
 # Internal: check whether mirai daemons are currently active.
 #
@@ -203,6 +205,8 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     class = "shinyOAuth_no_async_backend"
   )
 }
+
+## 1.2 Replay and worker preparation --------------------------------------
 
 # Internal: replay conditions (warnings and messages) captured by
 # async_dispatch() and return the unwrapped result value.

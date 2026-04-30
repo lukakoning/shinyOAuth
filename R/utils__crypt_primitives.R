@@ -1,3 +1,12 @@
+# This file contains small cryptographic utility helpers that other auth and
+# state helpers build on.
+# Use them for safe raw-to-hex conversion and constant-time comparisons in
+# places where token or signature material should not leak through timing.
+
+# 1 Cryptographic primitives -----------------------------------------------
+
+## 1.1 Raw and comparison helpers -----------------------------------------
+
 #' Convert raw vector to lowercase hex string (cachem-safe)
 #'
 #' @keywords internal
@@ -23,6 +32,9 @@ raw_to_hex_lower <- function(r) {
 #' @keywords internal
 #' @noRd
 constant_time_compare <- function(a, b) {
+  # Normalize one input into raw bytes before the blinded comparison path.
+  # Used only by constant_time_compare(). Input: character or raw value.
+  # Output: raw vector or NULL.
   normalize_input <- function(x) {
     if (is.raw(x) && !is.null(x)) {
       return(x)

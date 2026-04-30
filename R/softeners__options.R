@@ -1,3 +1,12 @@
+# This file contains the option checks that soften or relax specific safety
+# protections during tests and interactive debugging.
+# Use them when code needs to know whether a normally strict browser, redirect,
+# signature, or UserInfo safety check has been explicitly softened.
+
+# 1 Safety softeners -------------------------------------------------------
+
+## 1.1 Option-based softening checks --------------------------------------
+
 # Some helpers which determine if certain safety checks can be skipped
 #   based on package options. Most development-only options are hard-gated to
 #   testing or interactive sessions; a few explicit opt-ins (for example,
@@ -64,6 +73,9 @@ error_on_softened <- function() {
   return(invisible(TRUE))
 }
 
+# Check whether browser-token validation is temporarily softened.
+# Used by callback and session helpers. Input: none. Output: TRUE or FALSE,
+# with a warning in interactive development.
 allow_skip_browser_token <- function() {
   if (!getOption("shinyOAuth.skip_browser_token", FALSE)) {
     return(FALSE)
@@ -86,6 +98,9 @@ allow_skip_browser_token <- function() {
   return(FALSE)
 }
 
+# Check whether ID token signature verification is temporarily softened.
+# Used by ID token validation helpers. Input: none. Output: TRUE or FALSE,
+# with a warning in interactive development.
 allow_skip_signature <- function() {
   if (!getOption("shinyOAuth.skip_id_sig", FALSE)) {
     return(FALSE)
@@ -108,6 +123,9 @@ allow_skip_signature <- function() {
   return(FALSE)
 }
 
+# Check whether HTTP error bodies may be exposed in thrown errors.
+# Used by HTTP error helpers. Input: none. Output: TRUE or FALSE, with a
+# warning in interactive development.
 # Allow exposing HTTP error bodies in thrown conditions (development only)
 allow_expose_error_body <- function() {
   if (!isTRUE(getOption("shinyOAuth.expose_error_body", FALSE))) {
@@ -129,6 +147,9 @@ allow_expose_error_body <- function() {
   FALSE
 }
 
+# Check whether redirect following is explicitly allowed for sensitive flows.
+# Used by HTTP request helpers. Input: none. Output: TRUE or FALSE, with a
+# warning when enabled outside tests.
 # Allow HTTP redirects on sensitive OAuth flows when the operator explicitly
 # opts in via shinyOAuth.allow_redirect.
 allow_redirect <- function() {
@@ -154,6 +175,9 @@ allow_redirect <- function() {
   TRUE
 }
 
+# Check whether unsigned UserInfo JWTs are allowed.
+# Used by UserInfo JWT validation. Input: none. Output: TRUE/FALSE or a
+# configuration error outside test or interactive sessions.
 # Allow accepting unsigned (alg=none) UserInfo JWTs (testing only)
 allow_unsigned_userinfo_jwt <- function() {
   if (!isTRUE(getOption("shinyOAuth.allow_unsigned_userinfo_jwt", FALSE))) {

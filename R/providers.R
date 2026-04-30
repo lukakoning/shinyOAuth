@@ -1,3 +1,7 @@
+# This file contains ready-to-use provider constructors.
+# Use them when you want common provider endpoints and defaults filled in for you
+# instead of building an OAuthProvider object field by field.
+
 # 1 Provider constructors -------------------------------------------------
 
 ## 1.1 Generic OIDC construction -----------------------------------------

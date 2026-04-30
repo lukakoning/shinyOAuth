@@ -1,10 +1,15 @@
-# Inbound JWT and ID-token validation helpers.
-#
-# Helper groups in this file:
-# - Microsoft-specific issuer resolution and key filtering
-# - ID-token validation and claim checks
-# - EdDSA and at_hash helpers used by inbound validation
+# This file contains the inbound JWT helpers that apply ID token validation
+# rules on top of the generic JWT parsing and signature helpers.
+# Use them when a returned ID token must be matched to the expected issuer,
+# audience, nonce, access token, or Microsoft tenant-specific rules.
 
+# 1 Inbound ID token helpers ----------------------------------------------
+
+## 1.1 Issuer and key-selection helpers -----------------------------------
+
+# Check whether one value looks like a GUID tenant id.
+# Used by Microsoft-specific issuer validation. Input: scalar value. Output:
+# TRUE or FALSE.
 is_guid_like <- function(value) {
   is.character(value) &&
     length(value) == 1L &&
@@ -15,6 +20,10 @@ is_guid_like <- function(value) {
     )
 }
 
+# Detect whether the configured Microsoft issuer is one of the tenant-
+# independent authorities.
+# Used by Microsoft-specific issuer handling. Input: issuer URL. Output:
+# normalized path or NULL.
 microsoft_tenant_independent_issuer <- function(issuer) {
   if (!is_valid_string(issuer)) {
     return(NULL)
@@ -39,6 +48,9 @@ microsoft_tenant_independent_issuer <- function(issuer) {
   NULL
 }
 
+# Resolve the exact issuer that an incoming ID token is expected to use.
+# Used before issuer comparison. Input: provider issuer and parsed token
+# payload. Output: list with expected issuer and Microsoft-specific flags.
 resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
   if (is.null(microsoft_tenant_independent_issuer(provider_issuer))) {
     return(list(
@@ -68,6 +80,9 @@ resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
   )
 }
 
+# Filter Microsoft JWKS keys to those scoped to the token's tenant issuer.
+# Used only for tenant-independent Microsoft authorities. Input: candidate
+# keys and issuer context. Output: filtered key list.
 filter_microsoft_jwks_for_token_issuer <- function(
   keys,
   provider_issuer,
@@ -107,6 +122,8 @@ filter_microsoft_jwks_for_token_issuer <- function(
 
   keys[keep]
 }
+
+## 1.2 Main ID token validation -------------------------------------------
 
 #' Internal: validate ID token
 #'
@@ -429,6 +446,7 @@ validate_id_token <- function(
     err_id_token("ID token missing exp claim")
   }
   # Validate temporal claims are single, finite numerics before arithmetic
+  # Used only inside validate_id_token() to keep numeric claim checks concise.
   is_single_finite_number <- function(x) {
     is.numeric(x) && length(x) == 1 && is.finite(x) && !is.na(x)
   }
@@ -617,6 +635,11 @@ validate_id_token <- function(
   invisible(payload)
 }
 
+## 1.3 EdDSA and at_hash helpers ------------------------------------------
+
+# Normalize an EdDSA curve label into the spelling used by this file.
+# Used by EdDSA-specific at_hash handling. Input: curve name. Output:
+# normalized curve or NULL.
 canonicalize_eddsa_curve <- function(eddsa_curve) {
   if (
     !is.character(eddsa_curve) ||
@@ -638,6 +661,10 @@ canonicalize_eddsa_curve <- function(eddsa_curve) {
   NULL
 }
 
+# Resolve the verified EdDSA curve from the JWK or openssl key that verified
+# the token.
+# Used by EdDSA at_hash validation. Input: optional JWK and key. Output:
+# normalized curve or NULL.
 resolve_verified_eddsa_curve <- function(jwk = NULL, key = NULL) {
   # Prefer the JWK curve because it is explicit and survives key conversion.
   if (is.list(jwk)) {

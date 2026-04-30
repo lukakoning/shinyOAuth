@@ -1,3 +1,12 @@
+# This file contains small helpers that normalize or inspect OAuth parameter
+# values before they are used in requests or provider validation.
+# Use them to keep token auth style, PKCE, and response-mode handling
+# consistent across constructors and request builders.
+
+# 1 OAuth parameter helpers ------------------------------------------------
+
+## 1.1 Normalize protocol parameters --------------------------------------
+
 #' Internal: normalize token endpoint auth style names
 #'
 #' Canonical runtime spelling uses `public` for secretless public-client token
@@ -64,6 +73,10 @@ normalize_pkce_method <- function(pkce_method, default = NULL) {
   pkce_method
 }
 
+# Inspect the configured authorization response_mode and reject unsupported
+# values early.
+# Used by provider validation and constructors. Input: extra_auth_params list.
+# Output: list with index, resolved mode, and optional error.
 inspect_auth_response_mode <- function(extra_auth_params) {
   out <- list(index = integer(0), mode = NULL, error = NULL)
 

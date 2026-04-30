@@ -1,3 +1,12 @@
+# This file contains the helpers that inspect, decode, and validate individual
+# JWK and JWKS key objects.
+# Use them after a JWKS is fetched, when signature verification needs usable
+# public keys and structural checks on the returned key material.
+
+# 1 JWK and JWKS key helpers ----------------------------------------------
+
+## 1.1 Convert, decode, and validate keys ---------------------------------
+
 #' Internal: Convert JWK (RSA, EC, or OKP) to an openssl public key
 #'
 #' @keywords internal
@@ -67,6 +76,9 @@ compute_jwk_thumbprint <- function(jwk) {
   base64url_encode(digest)
 }
 
+# Strictly decode a base64urlUInt field from a JWK.
+# Used by RSA, EC, and OKP key validation. Input: encoded field value and field
+# name. Output: raw decoded bytes.
 strict_decode_jwk_base64url_uint <- function(value, field_name) {
   if (
     !is.character(value) ||
@@ -89,6 +101,9 @@ strict_decode_jwk_base64url_uint <- function(value, field_name) {
   decoded
 }
 
+# Compute the effective RSA modulus size in bits.
+# Used during JWKS validation to reject weak RSA keys. Input: modulus raw
+# bytes. Output: integer bit length.
 jwk_rsa_modulus_bits <- function(modulus_raw) {
   non_zero_idx <- which(modulus_raw != as.raw(0))
   if (length(non_zero_idx) == 0L) {
@@ -100,6 +115,8 @@ jwk_rsa_modulus_bits <- function(modulus_raw) {
   ((length(trimmed) - 1L) * 8L) + floor(log(first_octet, base = 2)) + 1L
 }
 
+# Return the expected EC coordinate size for one supported curve.
+# Used by EC JWK validation. Input: curve name. Output: byte length or NULL.
 jwk_ec_coordinate_size <- function(curve) {
   switch(
     as.character(curve %||% ""),
@@ -110,6 +127,9 @@ jwk_ec_coordinate_size <- function(curve) {
   )
 }
 
+# Strictly decode and size-check one EC coordinate.
+# Used by EC JWK validation. Input: encoded coordinate, field name, and curve.
+# Output: raw decoded bytes.
 strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
   decoded <- strict_decode_jwk_base64url_uint(value, field_name)
   expected_len <- jwk_ec_coordinate_size(curve)

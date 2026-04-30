@@ -1,6 +1,11 @@
-# Helpers -------------------------------------------------------------------
+# This file contains the event and audit helpers used when shinyOAuth records
+# what happened during login, token, and callback flows.
+# Use them to build one structured event, enrich it with session context, and
+# send it to the configured hooks and OpenTelemetry logging bridge.
 
-## Audit helpers ------------------------------------------------------------
+# 1 Event helpers ----------------------------------------------------------
+
+## 1.1 Audit helpers -------------------------------------------------------
 
 # Audit convenience to emit structured audit events
 # - type: short action name, e.g., "token_exchange", "token_refresh", "userinfo"
@@ -18,6 +23,10 @@
 #   - shiny_session: list with session token and optional HTTP context
 #   - ...: fields from context
 
+# Build and emit one structured audit event.
+# Used across login, token, state, and module code. Input: event type,
+# non-sensitive context, and optional Shiny/trace context. Output: invisible
+# trace id.
 # Broadcast audit events via hooks and OTel logs
 audit_event <- function(
   type,
@@ -44,6 +53,9 @@ audit_event <- function(
   invisible(trace_id)
 }
 
+# Enrich one event and dispatch it to OTEL logging and the configured hook.
+# Used by audit_event() and direct internal event emitters. Input: one event
+# list. Output: invisible NULL.
 # Central event dispatcher: enriches with Shiny context, then fans out to
 # OTel logs and the configured native event hook.
 # trace_hook remains as a backward-compatible alias for audit_hook when the
@@ -88,9 +100,11 @@ emit_trace_event <- function(event) {
   invisible(NULL)
 }
 
+## 1.2 Other helpers -------------------------------------------------------
 
-## Other helpers -----------------------------------------------------------
-
+# Optionally print a concise internal error summary to the console.
+# Used for interactive debugging and explicit tests. Input: condition object,
+# optional context, and flags controlling output. Output: invisible NULL.
 # Optionally print a concise internal error summary to the console.
 # This is an internal debugging aid for interactive development and explicit
 # tests, not a user-configurable package option.

@@ -1,3 +1,12 @@
+# This file contains helpers that turn raw HTTP request data into a safe summary
+# for audit events.
+# Use them when request context should be logged or traced without leaking OAuth
+# codes, tokens, cookies, or proxy details.
+
+# 1 HTTP audit helpers -----------------------------------------------------
+
+## 1.1 Build and sanitize HTTP summaries ----------------------------------
+
 # Internal: derive a compact, JSON-serializable HTTP summary from a request
 #
 # The returned summary is sanitized by default to prevent secret leakage in
@@ -7,6 +16,9 @@
 # Control via: options(shinyOAuth.audit_redact_http = FALSE) to disable.
 #
 # See sanitize_http_summary() for the redaction logic.
+# Build a compact HTTP summary that is safe to include in audit events.
+# Used by Shiny context capture and event helpers. Input: request-like object.
+# Output: sanitized summary list or NULL.
 build_http_summary <- function(req) {
   if (is.null(req)) {
     return(NULL)
@@ -80,6 +92,9 @@ build_http_summary <- function(req) {
   }
 }
 
+# Redact sensitive query and header values in an HTTP summary.
+# Used by build_http_summary(). Input: summary list. Output: sanitized summary
+# list.
 # Internal: redact sensitive data from HTTP summary for safe audit logging
 #
 # This function removes or redacts:
@@ -105,6 +120,9 @@ sanitize_http_summary <- function(summary) {
   summary
 }
 
+# Redact sensitive OAuth parameters from a raw query string.
+# Used by sanitize_http_summary(). Input: query string. Output: redacted query
+# string.
 # Internal: redact sensitive OAuth params from a query string
 # Returns the redacted query string
 redact_query_string <- function(qs) {
@@ -172,6 +190,9 @@ redact_query_string <- function(qs) {
   paste(parts, collapse = "&")
 }
 
+# Remove or redact sensitive headers before audit logging.
+# Used by sanitize_http_summary(). Input: named headers list. Output: sanitized
+# headers list.
 # Internal: redact sensitive headers from a headers list
 # Returns the redacted headers list
 redact_headers <- function(hdrs) {

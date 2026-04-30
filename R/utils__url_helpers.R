@@ -1,3 +1,12 @@
+# This file contains small URL helpers used across provider setup, callback
+# handling, and outbound request building.
+# Use them when the code needs to recognize absolute URIs, normalize paths, or
+# safely append query parameters without disturbing the rest of the URL.
+
+# 1 URL helper functions ---------------------------------------------------
+
+## 1.1 Normalize and inspect URLs -----------------------------------------
+
 #' Internal: check if a string is an absolute URI
 #'
 #' @keywords internal
@@ -69,6 +78,10 @@ resource_indicator_problem <- function(resource) {
   NULL
 }
 
+# Append query parameters to a URL while preserving fragments and repeated
+# parameter names.
+# Used by authorization and request builders. Input: URL string and named
+# params list. Output: updated URL string.
 #' Internal: append query params to a URL while preserving repeated keys
 #'
 #' @keywords internal
@@ -141,6 +154,9 @@ normalize_url <- function(u) {
   paste0(authority, path, query, fragment)
 }
 
+# Remove one trailing slash from a URL when present.
+# Used by issuer and discovery URL builders. Input: URL string. Output:
+# trimmed URL string.
 #' Internal: Right trim single trailing slash from URL
 #'
 #' @keywords internal

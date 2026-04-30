@@ -1,3 +1,12 @@
+# This file contains helpers that choose which JWKs are candidates for JWT
+# signature verification.
+# Use them after JWKS download when only some keys are compatible with the
+# current JWT algorithm, key id, or configured pins.
+
+# 1 JWKS key selection -----------------------------------------------------
+
+## 1.1 Candidate filtering -------------------------------------------------
+
 #' Internal: Select candidate JWKs for signature verification
 #'
 #' Filters keys that declare use != "sig" while retaining keys that omit `use`.
@@ -153,6 +162,9 @@ select_candidate_jwks <- function(
   keys
 }
 
+# Filter candidate JWKs to those compatible with one JWT algorithm.
+# Used after candidate selection and before signature verification. Input: key
+# list plus JWT alg. Output: filtered key list.
 # Filter candidate JWKs to those that are compatible with a JWT alg.
 # This mirrors the stricter ID token behavior: key type/curve must match the
 # JWT alg, and an advertised JWK alg becomes a hard constraint when present.

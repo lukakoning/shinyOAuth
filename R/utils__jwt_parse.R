@@ -1,9 +1,11 @@
-# JWT parsing and generic JWS verification helpers.
-#
-# Helper groups in this file:
-# - strict compact-JWT parsing and JSON decoding
-# - JOSE header validation and duplicate-member rejection
-# - generic JWS signature verification for asymmetric and HMAC algorithms
+# This file contains the low-level helpers that parse compact JWTs and verify
+# generic JWS signatures.
+# Use them when code needs strict JWT segment decoding, JOSE header checks, or
+# algorithm-specific signature verification without yet applying ID-token rules.
+
+# 1 JWT parsing helpers ----------------------------------------------------
+
+## 1.1 Compact JWT parsing and JSON decoding ------------------------------
 
 #' Parse JWT payload (unsigned validation only)
 #'
@@ -53,6 +55,9 @@ strict_decode_jwt_segment <- function(
   decoded
 }
 
+# Split a compact JWT into its three decoded segments and signing input.
+# Used by parse and verification helpers. Input: compact JWT string. Output:
+# list of raw and character parts.
 jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
   if (!is.character(jwt) || length(jwt) != 1L || is.na(jwt)) {
     err_parse(
@@ -86,6 +91,9 @@ jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
   )
 }
 
+# Decode one raw JWT segment into validated JSON text.
+# Used by header and payload parsing. Input: raw segment bytes and field name.
+# Output: JSON text string.
 strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   stopifnot(is.raw(segment_raw))
 
@@ -105,6 +113,9 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   })
 
   if (!isTRUE(validUTF8(text))) {
+    # Parse the payload part of a compact JWT.
+    # Used by ID token and object-format helpers. Input: compact JWT string.
+    # Output: parsed payload object.
     err_parse(c(
       paste0("Failed to decode JWT ", field_name, " JSON text"),
       "i" = "Segment is not valid UTF-8"
@@ -150,12 +161,18 @@ parse_jwt_header <- function(jwt) {
   )
 }
 
+# Reject duplicate top-level JSON object member names.
+# Used before parsing JWT headers and payloads. Input: JSON text and label.
+# Output: invisible NULL or a parse error.
 reject_duplicate_json_object_members <- function(json_text, label) {
   chars <- strsplit(enc2utf8(json_text), "", fixed = TRUE)[[1]]
   if (!length(chars)) {
     return(invisible(NULL))
   }
 
+  # Decode one JSON string token while preserving escape handling.
+  # Used only by reject_duplicate_json_object_members(). Input: token string.
+  # Output: decoded member name.
   decode_json_string_token <- function(token) {
     tryCatch(
       jsonlite::fromJSON(
@@ -229,11 +246,19 @@ reject_duplicate_json_object_members <- function(json_text, label) {
   invisible(NULL)
 }
 
+## 1.2 JOSE header validation ---------------------------------------------
+
+# Validate the JOSE header fields that shinyOAuth understands.
+# Used before JWT signature or claim validation. Input: parsed header object and
+# error-signaling function. Output: normalized header fields list.
 validate_jose_header_fields <- function(header, signal_error) {
   if (!is.list(header) || is.null(names(header))) {
     signal_error("JWT header must be a JSON object")
   }
 
+  # Validate one optional scalar string JOSE header field.
+  # Used only by validate_jose_header_fields(). Input: field value, field name,
+  # and whether it is required. Output: normalized value or NULL.
   validate_scalar_string_field <- function(value, field, required = FALSE) {
     if (is.null(value)) {
       if (isTRUE(required)) {
@@ -260,6 +285,9 @@ validate_jose_header_fields <- function(header, signal_error) {
     value
   }
 
+  # Validate the JOSE crit header and enforce its expected shape.
+  # Used only by validate_jose_header_fields(). Input: crit value. Output:
+  # normalized crit vector or NULL.
   validate_crit_field <- function(value) {
     if (is.null(value)) {
       return(NULL)
@@ -314,6 +342,11 @@ validate_jose_header_fields <- function(header, signal_error) {
   )
 }
 
+## 1.3 Signature verification helpers -------------------------------------
+
+# Extract the raw bytes needed for JWS signature verification.
+# Used by the generic signature verifiers in this file. Input: compact JWT.
+# Output: list with signing input bytes and signature bytes.
 jwt_verification_parts <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   list(
@@ -322,6 +355,9 @@ jwt_verification_parts <- function(jwt) {
   )
 }
 
+# Verify one asymmetric JWS signature without leaking detailed timing errors.
+# Used by inbound JWT validation. Input: compact JWT, public key, and alg.
+# Output: TRUE or FALSE.
 verify_jws_signature_no_time <- function(jwt, key, alg) {
   parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
   if (is.null(parts)) {
@@ -391,6 +427,9 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
   )
 }
 
+# Verify one HMAC JWS signature using a constant-time comparison path.
+# Used by inbound HS* JWT validation. Input: compact JWT, secret, and alg.
+# Output: TRUE or FALSE.
 verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
   parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
   if (is.null(parts)) {

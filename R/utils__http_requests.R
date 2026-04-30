@@ -1,3 +1,12 @@
+# This file contains the shared HTTP request helpers used before talking to
+# providers, discovery endpoints, JWKS endpoints, and downstream APIs.
+# Use them to apply the package's security defaults around redirects, timeouts,
+# body-size limits, and retries.
+
+# 1 HTTP request helpers ---------------------------------------------------
+
+## 1.1 Redirects, defaults, and retries -----------------------------------
+
 #' Internal: Disable HTTP redirect following
 #'
 #' Security-hardened helper that prevents httr2 from automatically following
@@ -310,6 +319,8 @@ req_with_retry <- function(req, idempotent = TRUE) {
     retry_status <- c(408L, 429L, 500:599)
   }
 
+  # Parse a Retry-After header into a numeric delay in seconds.
+  # Used only by req_with_retry(). Input: httr2 response. Output: delay or NA.
   parse_retry_after <- function(resp) {
     ra <- try(httr2::resp_header(resp, "retry-after"), silent = TRUE)
     if (inherits(ra, "try-error") || !is_valid_string(ra)) {
@@ -341,6 +352,8 @@ req_with_retry <- function(req, idempotent = TRUE) {
     NA_real_
   }
 
+  # Compute one exponential-backoff delay with jitter.
+  # Used only by req_with_retry(). Input: attempt number. Output: wait seconds.
   backoff_delay <- function(attempt) {
     # Exponential backoff with full jitter (0..min(cap, base*2^(attempt-1)))
     max_wait <- min(cap, base * (2^(attempt - 1)))

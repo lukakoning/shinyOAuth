@@ -1,3 +1,12 @@
+# This file contains helpers that normalize, validate, and finalize OAuth or
+# OIDC scope values.
+# Use them when scope input may come from user code in a few shapes and the
+# package needs one clean token vector for requests and later validation.
+
+# 1 Scope helpers ----------------------------------------------------------
+
+## 1.1 Normalize and validate scopes --------------------------------------
+
 #' Validate OAuth 2.0 scope strings
 #'
 #' Validates that scope values conform to the RFC 6749 §3.3 scope-token
@@ -93,6 +102,9 @@ as_scope_tokens <- function(scopes) {
   tokens
 }
 
+# Ensure `openid` is present when the provider is using OpenID Connect.
+# Used before authorization requests are built. Input: scope tokens and
+# provider object. Output: scope tokens, possibly with `openid` prepended.
 #' Ensure openid scope for OIDC providers
 #'
 #' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the
@@ -147,6 +159,9 @@ ensure_openid_scope <- function(scopes, provider) {
 #'
 #' @keywords internal
 #' @noRd
+# Resolve the effective requested scopes for one OAuth client.
+# Used when login and validation code need the final scope set. Input: client
+# object. Output: character vector of scope tokens.
 effective_client_scopes <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 

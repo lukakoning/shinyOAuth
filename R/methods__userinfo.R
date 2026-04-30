@@ -1,3 +1,12 @@
+# This file contains the helpers that fetch UserInfo responses and validate
+# signed UserInfo JWTs.
+# Use them when an access token should be turned into profile claims, or when a
+# provider returns `application/jwt` and those claims must be verified first.
+
+# 1 UserInfo methods -------------------------------------------------------
+
+## 1.1 Fetch and parse userinfo -------------------------------------------
+
 #' Get user info from OAuth 2.0 provider
 #'
 #' @description
@@ -303,6 +312,12 @@ get_userinfo <- function(
   )
 }
 
+## 1.2 Audit and signed UserInfo JWT helpers ------------------------------
+
+# Emit the redacted audit event for one UserInfo attempt or result.
+# Used by both plain JSON and signed JWT UserInfo flows. Input: client, status,
+# optional subject, optional shiny_session, and extra context. Output:
+# invisible NULL.
 audit_userinfo_event <- function(
   oauth_client,
   status,
@@ -678,6 +693,8 @@ decode_userinfo_jwt <- function(
   ))
 }
 
+## 1.3 Signed UserInfo claim validation -----------------------------------
+
 #' Internal: validate required and temporal claims in a signed UserInfo JWT
 #'
 #' @param claims Named list of JWT claims.
@@ -692,6 +709,8 @@ validate_signed_userinfo_claims <- function(
   oauth_client = NULL,
   shiny_session = NULL
 ) {
+  # Fail one signed UserInfo claim check with the matching audit status.
+  # Used only inside validate_signed_userinfo_claims().
   fail_signed_userinfo_claim_validation <- function(status, bullets) {
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
@@ -703,6 +722,8 @@ validate_signed_userinfo_claims <- function(
     err_userinfo(bullets)
   }
 
+  # Check that one temporal claim is a single finite numeric value.
+  # Used for exp, iat, and nbf validation inside this function only.
   is_single_finite_number <- function(x) {
     is.numeric(x) && length(x) == 1L && is.finite(x) && !is.na(x)
   }
@@ -913,6 +934,13 @@ validate_signed_userinfo_claims <- function(
   invisible(TRUE)
 }
 
+## 1.4 Subject consistency checks -----------------------------------------
+
+# Verify that the userinfo subject selected by the provider matches the ID
+# token subject.
+# Used after both ID token and UserInfo are available. Input: client, userinfo
+# claim list, and raw id_token string. Output: invisible TRUE or a userinfo
+# error.
 verify_userinfo_id_token_subject_match <- function(
   oauth_client,
   userinfo,

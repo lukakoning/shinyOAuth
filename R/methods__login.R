@@ -1,3 +1,7 @@
+# This file contains the functions that run the login and callback flow.
+# Use them to build the browser redirect, process the provider callback,
+# exchange the returned code for tokens, and validate the returned identity data.
+
 # 1 Authorization request -------------------------------------------------
 
 ## 1.1 Entry point --------------------------------------------------------
@@ -237,10 +241,10 @@ prepare_call <- function(
 
 ## 1.2 Request construction helpers ---------------------------------------
 
-# Helper: turn provider endpoint settings into a stable fingerprint string.
-# Used when sealing and later validating login state so the callback can verify
-# it is being completed against the same provider configuration that started
-# the flow. Input: an OAuthProvider. Output: a stable sha256:<digest> string.
+# Build a stable fingerprint for the provider configuration.
+# Used by prepare_call() and payload_verify_client_binding() so the callback can
+# confirm it is finishing the same login setup that started earlier.
+# Input: an OAuthProvider. Output: one stable sha256:<digest> string.
 provider_fingerprint <- function(provider) {
   norm_chr <- function(x) {
     if (is.null(x) || length(x) != 1L || is.na(x)) {
@@ -295,7 +299,9 @@ provider_fingerprint <- function(provider) {
   paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
 }
 
-# Helper: build authorization request parameters for direct redirects or PAR.
+# Build the parameters sent to the provider's authorization endpoint.
+# Used by build_auth_url() for plain redirects, signed request objects, and PAR.
+# Input: client settings plus sealed state, scopes, PKCE values, and nonce. Output: a named list of request parameters.
 build_authorization_params <- function(
   oauth_client,
   payload,
@@ -449,6 +455,9 @@ build_authorization_params <- function(
   compact_list(params)
 }
 
+# Normalize client credentials into the request shape expected by the provider.
+# Used by push_authorization_request() and swap_code_for_token_set() before the
+# request is sent. Input: request, params, client, and phase label. Output: updated req/params list.
 apply_direct_client_auth <- function(req, params, client, context) {
   tas <- normalize_token_auth_style(
     client@provider@token_auth_style %||% "header"
@@ -495,6 +504,9 @@ apply_direct_client_auth <- function(req, params, client, context) {
   list(req = req, params = params)
 }
 
+# Send a pushed authorization request when the provider requires or supports it.
+# Used by build_auth_url() to replace a long browser URL with a short request_uri.
+# Input: OAuthClient, prepared parameters, and optional Shiny context. Output: list(request_uri, expires_in).
 push_authorization_request <- function(client, params, shiny_session = NULL) {
   endpoint <- resolve_provider_endpoint_url(
     client@provider,
@@ -641,9 +653,9 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
   )
 }
 
-# Helper: build the final browser redirect URL for the authorization request.
-# Depending on client/provider settings this returns either a plain
-# query-parameter URL, a JAR request-object URL, or a PAR request_uri URL.
+# Build the final browser redirect URL for the login step.
+# Used by prepare_call() after state/PKCE values are ready.
+# Input: client plus sealed payload, scopes, PKCE values, and nonce. Output: one URL string for the browser.
 build_auth_url <- function(
   oauth_client,
   payload,
@@ -725,6 +737,9 @@ build_auth_url <- function(
   url_append_query_params(oauth_client@provider@auth_url, params)
 }
 
+# Recover the parent tracing context from the sealed login state.
+# Used by handle_callback() and oauth_module_server() so callback spans link
+# back to the earlier login request. Input: client and encrypted state. Output: list(trace_id, parent).
 otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -791,6 +806,9 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 ## 2.1 Callback context and issuer guards ---------------------------------
 
+# Check whether the callback issuer matches the configured provider issuer.
+# Used by handle_callback() and oauth_module_server() before any token exchange.
+# Input: OAuthClient and optional iss query value. Output: invisible iss on success, otherwise a typed error.
 enforce_callback_issuer <- function(
   oauth_client,
   iss = NULL
@@ -982,9 +1000,10 @@ handle_callback <- function(
   )
 }
 
-# Internal helper that supports pre-validated bypass parameters for async flows.
-# NOT exported: only called by oauth_module_server() when dispatching to async
-# workers where state-store and payload validation must occur on the main thread.
+# Finish a callback using already-validated state inputs when they are available.
+# Used by handle_callback() directly and by oauth_module_server() async flows
+# after the main thread has already decrypted state and consumed the state store.
+# Input: callback values plus optional decrypted payload/state-store values. Output: an OAuthToken or a typed error.
 handle_callback_internal <- function(
   oauth_client,
   code,
@@ -1662,6 +1681,9 @@ handle_callback_internal <- function(
 
 # 3 Token exchange and verification --------------------------------------
 
+# Exchange the authorization code for the first token response.
+# Used by handle_callback_internal() after state and browser checks succeed.
+# Input: client, authorization code, PKCE verifier, and optional Shiny context. Output: parsed token response list.
 swap_code_for_token_set <- function(
   client,
   code,
@@ -1815,6 +1837,9 @@ swap_code_for_token_set <- function(
   )
 }
 
+# Check the returned token response before turning it into an OAuthToken.
+# Used by handle_callback_internal() and refresh_token() to verify scopes,
+# token type, ID token rules, and related claims. Input: client plus token response data. Output: validated token_set list.
 verify_token_set <- function(
   client,
   token_set,
@@ -2325,6 +2350,9 @@ verify_token_set <- function(
   )
 }
 
+# Enforce the provider's allowed token_type policy.
+# Used by verify_token_set() so later code can trust how the access token must be used.
+# Input: client and token response list. Output: invisible TRUE or a token error.
 verify_token_type_allowlist <- function(client, token_set) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -2397,7 +2425,9 @@ verify_token_type_allowlist <- function(client, token_set) {
 
 # 4 Callback validation helpers -------------------------------------------
 
-# Verify payload is not too old
+# Check that the sealed login state is still fresh enough to use.
+# Used by state_payload_decrypt_validate() and otel_callback_parent_hint().
+# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
 payload_verify_issued_at <- function(client, payload) {
   # Freshness backstop for the encrypted state payload (independent of store TTL)
   max_age <- client_state_payload_max_age(client)
@@ -2433,7 +2463,9 @@ payload_verify_issued_at <- function(client, payload) {
   invisible(TRUE)
 }
 
-# Verify match of client_id, redirect_uri, scopes, and provider fingerprint
+# Check that the callback payload still matches the client that started login.
+# Used by state_payload_decrypt_validate() before any token exchange happens.
+# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
 payload_verify_client_binding <- function(client, payload) {
   # Helpers --------------------------------------------------------------------
 
@@ -2529,7 +2561,9 @@ payload_verify_client_binding <- function(client, payload) {
 
 ## 5.1 Claims request parsing and matching --------------------------------
 
-# Parse a client claims specification supplied as a list or JSON string.
+# Normalize the requested claims specification into a list.
+# Used by the claims helpers below so they can treat JSON strings and R lists the same way.
+# Input: client claims setting. Output: parsed list or NULL.
 parse_claims_spec <- function(claims_spec) {
   if (is.null(claims_spec)) {
     return(NULL)
@@ -2547,7 +2581,9 @@ parse_claims_spec <- function(claims_spec) {
   claims_spec
 }
 
-# Extract claim entries for a given target (either "id_token" or "userinfo").
+# Pull the requested claims for one response target.
+# Used by the claims helpers to look only at `id_token` or `userinfo` rules.
+# Input: full claims spec and target name. Output: claim-entry list for that target.
 extract_target_claims <- function(claims_spec, target) {
   claims_spec <- parse_claims_spec(claims_spec)
 
@@ -2563,9 +2599,9 @@ extract_target_claims <- function(claims_spec, target) {
   target_claims
 }
 
-# Extract essential claim names from a claims specification for a given target
-# (either "id_token" or "userinfo"). Returns a character vector of claim names
-# that have essential = TRUE, or character(0) if none.
+# Find which requested claims were marked as essential.
+# Used by validate_essential_claims() to decide which claims must be present.
+# Input: claims spec and target name. Output: character vector of essential claim names.
 extract_essential_claims <- function(claims_spec, target) {
   target_claims <- extract_target_claims(claims_spec, target)
   if (length(target_claims) == 0) {
@@ -2585,6 +2621,9 @@ extract_essential_claims <- function(claims_spec, target) {
   essential_names
 }
 
+# Collect the requested values for one claim entry.
+# Used by extract_claim_value_constraints() when a client requested exact claim values.
+# Input: one claim entry from the claims spec. Output: list of accepted values.
 extract_requested_claim_values <- function(entry) {
   if (!is.list(entry) || length(entry) == 0) {
     return(list())
@@ -2613,6 +2652,9 @@ extract_requested_claim_values <- function(entry) {
   requested
 }
 
+# Build exact-value rules for claims on one target.
+# Used by validate_essential_claims() when the client asked for specific values.
+# Input: claims spec and target name. Output: named list of claim-to-value constraints.
 extract_claim_value_constraints <- function(claims_spec, target) {
   target_claims <- extract_target_claims(claims_spec, target)
   if (length(target_claims) == 0) {
@@ -2630,6 +2672,9 @@ extract_claim_value_constraints <- function(claims_spec, target) {
   constraints
 }
 
+# Check whether any target in the claims request creates enforceable work.
+# Used by verify_token_set() to skip claim checks when nothing strict was requested.
+# Input: full claims spec. Output: TRUE/FALSE.
 claims_request_has_enforceable_requirements <- function(claims_spec) {
   targets <- c("id_token", "userinfo")
 
@@ -2642,6 +2687,9 @@ claims_request_has_enforceable_requirements <- function(claims_spec) {
   ))
 }
 
+# Check whether one target in the claims request has enforceable rules.
+# Used by claims_request_has_enforceable_requirements() and verify_token_set().
+# Input: claims spec and target name. Output: TRUE/FALSE.
 claims_request_target_has_enforceable_requirements <- function(
   claims_spec,
   target
@@ -2650,6 +2698,9 @@ claims_request_target_has_enforceable_requirements <- function(
     length(extract_claim_value_constraints(claims_spec, target)) > 0
 }
 
+# Convert one claim value into a stable comparable string.
+# Used by the value-matching helpers so nested lists, scalars, and arrays can be compared consistently.
+# Input: one claim value. Output: canonical string form.
 canonicalize_claim_value <- function(value) {
   encoded <- tryCatch(
     jsonlite::toJSON(
@@ -2672,12 +2723,18 @@ canonicalize_claim_value <- function(value) {
   )
 }
 
+# Check whether the actual claim value matches one of the requested values.
+# Used by validate_essential_claims() when the client requested exact claim values.
+# Input: actual value plus requested value list. Output: TRUE/FALSE.
 claim_matches_requested_values <- function(actual, requested) {
   actual_value <- canonicalize_claim_value(actual)
   requested_values <- vapply(requested, canonicalize_claim_value, character(1))
   actual_value %in% requested_values
 }
 
+# Render requested claim values into a short human-readable message.
+# Used by validate_essential_claims() when building error text for value mismatches.
+# Input: requested value list. Output: one description string.
 format_claim_value_expectation <- function(requested) {
   rendered <- vapply(requested, canonicalize_claim_value, character(1))
   if (length(rendered) == 1) {
@@ -2689,10 +2746,9 @@ format_claim_value_expectation <- function(requested) {
 
 ## 5.2 Claims enforcement -------------------------------------------------
 
-# Validate that requested claims are satisfied in the response.
-# @param client OAuthClient
-# @param claims_present Named list (decoded ID token payload or userinfo response)
-# @param target "id_token" or "userinfo"
+# Check that the returned claims satisfy what the client asked for.
+# Used by verify_token_set() for ID token claims and by userinfo validation code for userinfo claims.
+# Input: client, decoded claims list, and target name. Output: invisible NULL on success or an error/warning.
 validate_essential_claims <- function(client, claims_present, target) {
   mode <- client@claims_validation %||% "none"
   if (identical(mode, "none")) {

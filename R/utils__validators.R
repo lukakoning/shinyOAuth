@@ -1,3 +1,13 @@
+# This file contains small validation and coercion helpers shared across many
+# other files.
+# Use them for common checks such as string validity, cookie-path safety, and
+# callback query size limits, so higher-level OAuth code stays focused on flow
+# logic instead of repetitive guard clauses.
+
+# 1 Shared validators ------------------------------------------------------
+
+## 1.1 Common list, string, and query checks ------------------------------
+
 #' Internal: drop NULL/NA values from a list (for query building)
 #' @keywords internal
 #' @noRd
@@ -166,6 +176,9 @@ validate_untrusted_query_string <- function(query_string, max_bytes) {
   invisible(NULL)
 }
 
+# Safely coerce one value to a scalar character string or NA.
+# Used by request and Shiny context helpers. Input: any value. Output: scalar
+# character or NA.
 # Internal: safely coerce to scalar character or NA
 .scalar_chr <- function(x) {
   if (is.null(x) || length(x) == 0) {

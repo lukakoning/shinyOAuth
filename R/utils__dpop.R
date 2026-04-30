@@ -1,3 +1,12 @@
+# This file contains the helpers for DPoP proof creation, nonce challenges,
+# and DPoP-aware request retries.
+# Use them when a client is configured with a DPoP key and outbound requests or
+# token responses need the extra proof-of-possession behavior.
+
+# 1 DPoP helpers -----------------------------------------------------------
+
+## 1.1 Client and proof helpers -------------------------------------------
+
 #' Internal DPoP helpers
 #'
 #' @keywords internal
@@ -114,6 +123,8 @@ dpop_access_token_hash <- function(access_token) {
   base64url_encode(openssl::sha256(token_raw))
 }
 
+## 1.2 Proof building and retry helpers -----------------------------------
+
 #' @keywords internal
 #' @noRd
 build_dpop_proof <- function(
@@ -215,6 +226,9 @@ req_add_dpop_proof <- function(
   )
 }
 
+# Read a DPoP nonce from a response header.
+# Used when handling nonce challenges. Input: httr2 response. Output: nonce or
+# NA.
 #' @keywords internal
 #' @noRd
 resp_get_dpop_nonce <- function(resp) {
@@ -225,6 +239,8 @@ resp_get_dpop_nonce <- function(resp) {
   as.character(nonce)[1]
 }
 
+# Detect whether a response is asking for a fresh DPoP nonce.
+# Used by req_with_dpop_retry(). Input: httr2 response. Output: TRUE or FALSE.
 #' @keywords internal
 #' @noRd
 resp_is_dpop_nonce_challenge <- function(resp) {
@@ -262,6 +278,9 @@ resp_is_dpop_nonce_challenge <- function(resp) {
     )
 }
 
+# Retry one DPoP-protected request once with a fresh nonce when challenged.
+# Used by token and API request helpers. Input: request, client, optional access
+# token, and idempotence flag. Output: httr2 response.
 #' @keywords internal
 #' @noRd
 req_with_dpop_retry <- function(

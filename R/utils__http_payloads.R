@@ -1,3 +1,12 @@
+# This file contains helpers that parse and build HTTP payload bodies used by
+# token and related endpoint requests.
+# Use them when form-encoded or JSON payloads need strict parsing rules, input
+# validation, or support for repeated parameter names.
+
+# 1 HTTP payload helpers ---------------------------------------------------
+
+## 1.1 Parse and encode request or response bodies ------------------------
+
 #' Parse token HTTP response by Content-Type
 #'
 #' @description
@@ -78,6 +87,9 @@ parse_token_response <- function(resp) {
   )
 }
 
+# Reject duplicate parameter names in a form-encoded string.
+# Used when parsing token responses. Input: form body text plus label. Output:
+# invisible NULL or a parse error.
 reject_duplicate_form_encoded_members <- function(form_text, label) {
   if (is.null(form_text) || !nzchar(form_text)) {
     return(invisible(NULL))
@@ -102,6 +114,9 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   invisible(NULL)
 }
 
+# Percent-encode named form/query parameters while preserving repeated keys.
+# Used by form-body helpers that cannot rely on httr2's simpler scalar path.
+# Input: named parameter list. Output: encoded body string.
 # Internal: percent-encode form/query params while preserving repeated keys
 encode_www_form_params <- function(params) {
   if (!is.list(params) || length(params) == 0) {
@@ -150,6 +165,9 @@ encode_www_form_params <- function(params) {
   paste(parts, collapse = "&")
 }
 
+# Add a form-encoded body to a request while keeping repeated keys intact.
+# Used by token and related request builders. Input: httr2 request plus named
+# params list. Output: updated request.
 # Internal: add a form body while preserving repeated keys for vector values
 req_body_form_encoded <- function(req, params) {
   params <- compact_list(params)

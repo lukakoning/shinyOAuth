@@ -1,3 +1,12 @@
+# This file contains the helpers that fetch, cache, and policy-check JWKS data
+# from an issuer.
+# Use them when ID token or signed UserInfo validation needs the provider's
+# public keys and the package must enforce issuer, host, and pinning policy.
+
+# 1 JWKS fetch and cache helpers ------------------------------------------
+
+## 1.1 Discovery, caching, and host policy --------------------------------
+
 #' Internal: resolve the effective discovery issuer-match policy
 #'
 #' Reads `provider@issuer_match` when a provider is available and otherwise
@@ -336,6 +345,9 @@ jwks_force_refresh_allowed <- function(
   TRUE
 }
 
+# Build the cache key used for one JWKS entry or throttle record.
+# Used by fetch_jwks() and jwks_force_refresh_allowed(). Input: issuer plus
+# pinning and host-policy settings. Output: cache-safe key string.
 #' Internal: Compute cache key for JWKS entries
 #'
 #' Uses hex SHA-256 of issuer URL concatenated with hex SHA-256 of the
@@ -394,6 +406,10 @@ jwks_cache_key <- function(
   paste0(ih, "x", ch)
 }
 
+# Validate that the fetched JWKS host satisfies the provider's host policy.
+# Used after discovery and again when cached entries are reused. Input: issuer,
+# JWKS URI, and optional provider. Output: invisible TRUE or a configuration
+# error.
 #' Internal: ensure JWKS host aligns with issuer
 #'
 #' Validates the discovery `jwks_uri` hostname according to the provider's

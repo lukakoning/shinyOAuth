@@ -1,3 +1,12 @@
+# This file contains the helper that builds outbound API requests with the
+# current access token already attached.
+# Use it after login when you want an httr2 request that already carries the
+# right Bearer or DPoP authentication and the package's normal HTTP defaults.
+
+# 1 Authenticated request helper ------------------------------------------
+
+## 1.1 Build request with access token ------------------------------------
+
 #' Build an authorized httr2 request with an OAuth access token
 #'
 #' @description

@@ -1,3 +1,15 @@
+# This file contains the helpers that hash sensitive values before they are
+# written to audit logs or telemetry.
+# Use them when an identifier needs to stay stable enough for correlation but
+# should not be logged in plaintext.
+
+# 1 Audit digests ----------------------------------------------------------
+
+## 1.1 Digest helpers ------------------------------------------------------
+
+# Compute a non-reversible digest for a sensitive string.
+# Used by audit and telemetry helpers. Input: one value plus optional key.
+# Output: a hex digest string or NA.
 # Helpers to compute non-reversible digests for sensitive strings (tokens, ids)
 # By default uses HMAC-SHA256 with a per-process key to prevent correlation
 # if audit logs leak. Set shinyOAuth.audit_digest_key = FALSE to disable keying.
@@ -36,6 +48,9 @@ string_digest <- function(x, key = get_audit_digest_key()) {
 # Set to a fixed raw/character value to correlate digests across processes.
 audit_digest_key_env <- new.env(parent = emptyenv())
 
+# Resolve the key used for audit digests.
+# Used by string_digest(). Input: none. Output: raw key bytes or NULL when
+# keying is disabled.
 get_audit_digest_key <- function() {
   opt <- getOption("shinyOAuth.audit_digest_key")
 

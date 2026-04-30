@@ -1,5 +1,17 @@
+# This file contains the error-constructor helpers that turn failures into
+# typed shinyOAuth conditions with trace ids and structured context.
+# Use them when code needs a consistent package-specific error class, formatted
+# message, and event emission rather than a plain `stop()`.
+
+# 1 Error constructors -----------------------------------------------------
+
+## 1.1 Generic constructors and formatting --------------------------------
+
 # Generic -----------------------------------------------------------------
 
+# Build a typed shinyOAuth error, emit its event, and abort with a trace id.
+# Used by all specialized error wrappers. Input: message, class, context, and
+# optional trace id. Output: no return; aborts.
 # Generic error abortor with trace id and structured context
 err_abort <- function(
   msg,
@@ -28,11 +40,16 @@ err_abort <- function(
   )
 }
 
+# Build the standard header line used in shinyOAuth error messages.
+# Used by the error constructors in this file. Input: short description.
+# Output: formatted header string.
 # Standard header for all error messages; has the package name & bold short description
 format_header <- function(short) {
   paste0("[{.pkg shinyOAuth}] - {.strong ", short, "}")
 }
 
+# Map a condition class vector to the short description shown in the header.
+# Used by err_abort(). Input: class vector. Output: short description string.
 # Map primary class to a short description for the header line
 short_desc_for_class <- function(class_vec) {
   known <- c(
@@ -57,6 +74,9 @@ short_desc_for_class <- function(class_vec) {
   if (length(hit)) known[[hit[[1]]]] else "Miscellaneous error"
 }
 
+# Normalize message bullets into the format expected by rlang::abort().
+# Used by the error constructors in this file. Input: message bullets and a
+# default bullet type. Output: named character vector of bullets.
 # Normalize a vector of message bullets to rlang's expected format:
 # - Accepts character vectors with optional names (e.g., c("x" = "bad", "i" = "hint"))
 # - Unnamed elements are assigned the provided default type (e.g., "!")
@@ -89,8 +109,14 @@ normalize_bullets <- function(msg, default_type = "!") {
   stats::setNames(as.character(msg), nm)
 }
 
-# Specialized error constructors (complex) --------------------------------
+# 2 Specialized error constructors ----------------------------------------
 
+## 2.1 HTTP and transport failures ----------------------------------------
+
+# Build a typed HTTP error from an httr2 response and optional body details.
+# Used when a remote endpoint responds but the response is still a failure.
+# Input: message, optional response, context, and trace id. Output: no return;
+# aborts.
 # Compose an http error with structured condition and optional sanitized body
 err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   trace_id <- resolve_trace_id(trace_id)
@@ -243,6 +269,9 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   )
 }
 
+# Build a typed transport error when no HTTP response was received.
+# Used for network failures and timeouts. Input: message, context, parent
+# error, and trace id. Output: no return; aborts.
 # Compose a transport error (no HTTP response available)
 # Includes a trace id and chains the original error via `parent` when provided.
 err_transport <- function(
@@ -272,8 +301,10 @@ err_transport <- function(
   )
 }
 
+## 2.2 Typed wrapper constructors -----------------------------------------
 
-# Specialized error constructors (basic) ---------------------------------------
+# Thin typed wrappers around err_abort() for the package's common error classes.
+# Used throughout login, token, JWT, state, and HTTP helpers.
 
 err_invalid_state <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_state_error", context = context)
@@ -318,9 +349,11 @@ err_parse <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_parse_error", context = context)
 }
 
+## 2.3 Other helpers -------------------------------------------------------
 
-## Other helpers -----------------------------------------------------------
-
+# Sanitize a response body snippet before showing it in an error message.
+# Used by err_http() when body exposure is enabled. Input: body text and max
+# length. Output: shortened safe preview string.
 # Sanitize potentially sensitive response bodies
 sanitize_body <- function(body, max_chars = 200) {
   if (is.null(body) || is.na(body)) {

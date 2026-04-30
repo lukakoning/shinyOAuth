@@ -1,3 +1,7 @@
+# This file contains the token lifecycle functions that run after login succeeds.
+# Use them to revoke tokens, ask a provider whether a token is still active,
+# or refresh a session without sending the user through login again.
+
 # 1 Token lifecycle -------------------------------------------------------
 
 ## 1.1 Revocation ---------------------------------------------------------
@@ -153,6 +157,9 @@ revoke_token <- function(
     with_otel_span(
       "shinyOAuth.token.revoke",
       {
+        # Attach the final revoke result to the active span before returning it.
+        # Used only inside revoke_token() after each success or fallback path.
+        # Input: result list. Output: the same result list after span attributes are updated.
         .return_revoke_result <- function(result) {
           revoked <- result$revoked %||% NA
           otel_set_span_attributes(
@@ -458,6 +465,9 @@ introspect_token <- function(
     isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
 
+  # Write one redacted audit record for the final introspection result.
+  # Used only inside introspect_token() after the provider response has been normalized.
+  # Input: result list. Output: invisible NULL.
   .audit_introspection <- function(result) {
     # Best-effort audit logging for introspection (do not fail the caller).
     # Avoid including raw introspection payloads as they may contain PII.
@@ -601,6 +611,9 @@ introspect_token <- function(
     with_otel_span(
       "shinyOAuth.token.introspect",
       {
+        # Attach the final introspection result to the active span before returning it.
+        # Used only inside introspect_token() after each success or fallback path.
+        # Input: result list. Output: the same result list after span attributes are updated.
         .return_introspection_result <- function(result) {
           active <- result$active %||% NA
           otel_set_span_attributes(
@@ -762,6 +775,9 @@ introspect_token <- function(
           raw <- NULL
         } else {
           raw <- parsed
+          # Normalize the provider's `active` field into TRUE/FALSE/NA.
+          # Used only inside introspect_token() because providers encode this field in different ways.
+          # Input: raw `active` value. Output: logical TRUE/FALSE or NA when it cannot be trusted.
           coerce_active <- function(x) {
             if (is.logical(x)) {
               return(ifelse(length(x) >= 1L, x[[1]], NA))

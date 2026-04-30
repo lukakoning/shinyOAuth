@@ -1,3 +1,12 @@
+# This file contains the host and allowlist helpers that decide whether URLs
+# are acceptable for OAuth redirects, endpoints, and callbacks.
+# Use them when a URL must satisfy the package's HTTPS and allowed-host policy,
+# including wildcard and loopback rules.
+
+# 1 URL host policy helpers -----------------------------------------------
+
+## 1.1 Host allowlist matching --------------------------------------------
+
 #' @title
 #' Check if URL(s) are HTTPS and/or in allowed hosts lists
 #'
@@ -234,6 +243,9 @@ host_normalize_pattern <- function(pat) {
   p
 }
 
+# Convert one glob-style host pattern into a regex.
+# Used by host allowlist matching. Input: host pattern. Output: regex string or
+# NULL.
 #' Internal: convert a glob host pattern to a case-insensitive regex
 #'
 #' Supports '*' and '?' and leading-dot semantics (domain itself or any subdomain)
@@ -280,6 +292,9 @@ host_glob_to_regex <- function(pat) {
 #'
 #' @keywords internal
 #' @noRd
+# Check whether one host matches any entry in an allowlist.
+# Used by is_ok_host() and related validators. Input: host string and patterns.
+# Output: TRUE or FALSE.
 host_matches_any <- function(host, patterns) {
   if (is.null(patterns) || length(patterns) == 0) {
     return(TRUE)

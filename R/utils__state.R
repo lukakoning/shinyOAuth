@@ -1,12 +1,8 @@
-# 1 State helpers: decrypt/validate payload and fetch/remove store --------
+# This file contains helpers for the sealed login state and the state store.
+# Use them during callback handling to decrypt the saved state, confirm it still
+# matches the login that started earlier, and consume the single-use state entry.
 
-# State helpers used during callback validation and single-use state
-# consumption.
-#
-# Helper groups in this file:
-# - decrypt and validate the sealed callback payload
-# - consume the state_store entry exactly once via atomic $take() when possible
-# - fail closed for shared stores that cannot guarantee single-use semantics
+# 1 State helpers: decrypt/validate payload and fetch/remove store --------
 #
 #' Decrypt and validate OAuth state payload
 #'
@@ -217,13 +213,9 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 
 ## 1.1 Atomic consume path ------------------------------------------------
 
-# Internal: consume one state_store entry via atomic `$take(key, missing)`.
-#
-# Input: the store object, computed cache key, logical state string, and client
-# context for auditing.
-# Output: the validated state_store value list, or an audited
-# `err_invalid_state()` when the atomic read/remove fails or returns malformed
-# data.
+# Consume one state-store entry with an atomic read-and-remove operation.
+# Used by state_store_get_remove() when the backend exposes `$take()`.
+# Input: store, computed key, client/state context, and Shiny context. Output: validated state-store value list or a state error.
 
 #' @noRd
 state_store_consume_atomic <- function(
@@ -286,12 +278,9 @@ state_store_consume_atomic <- function(
 
 ## 1.2 Non-atomic fallback path -------------------------------------------
 
-# Internal: consume one state_store entry via get + remove + post-check.
-#
-# This path is only allowed for per-process caches such as cachem::cache_mem().
-# Shared stores must use the atomic path above. Output matches
-# state_store_consume_atomic(): either the validated state_store value list or
-# an `err_invalid_state()` with audit context.
+# Consume one state-store entry with get + remove + a post-check.
+# Used by state_store_get_remove() only for per-process caches that do not offer `$take()`.
+# Input: store, computed key, client/state context, and Shiny context. Output: validated state-store value list or a state error.
 
 #' @noRd
 state_store_consume_fallback <- function(
@@ -396,6 +385,9 @@ state_store_consume_fallback <- function(
 
 ## 1.3 Shared validation for state store values ----------------------------
 
+# Check that a retrieved state-store value has the fields callback handling expects.
+# Used by both state-store consume paths before browser-token and PKCE checks continue.
+# Input: one retrieved state-store value. Output: invisible value or a state error.
 #' @noRd
 validate_state_store_value <- function(ssv) {
   if (is.null(ssv) || !is.list(ssv)) {

@@ -1,3 +1,12 @@
+# This file defines the OAuthClient object used by login, callback, token, and
+# refresh code.
+# Use it to keep provider settings, client credentials, request options, and
+# state-handling rules in one validated object before the OAuth flow starts.
+
+# 1 OAuth client class -----------------------------------------------------
+
+## 1.1 Class definition ----------------------------------------------------
+
 #' OAuthClient S7 class
 #'
 #' @description
@@ -458,6 +467,10 @@ OAuthClient <- S7::new_class(
       default = character(0)
     )
   ),
+  # Validate one client configuration before the rest of the package tries to
+  # build URLs, exchange tokens, or process callbacks.
+  # Used every time an OAuthClient is created. Input: one client object.
+  # Output: NULL on success or one error string describing the first problem.
   validator = function(self) {
     if (!S7::S7_inherits(self@provider, OAuthProvider)) {
       return("OAuthClient: provider must be an OAuthProvider object")
@@ -1108,6 +1121,9 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    # Check that an optional TLS file path points to a real file.
+    # Used only by the validator. Input: one path value and field name.
+    # Output: NULL or an error string.
     check_file_field <- function(value, name) {
       if (!is_valid_string(value)) {
         return(NULL)
@@ -1476,6 +1492,11 @@ OAuthClient <- S7::new_class(
   }
 )
 
+# 2 Constructor warnings ---------------------------------------------------
+
+# Warn when a client is built inside a live Shiny session.
+# Used by oauth_client(). Input: whether state_key was omitted. Output:
+# invisible TRUE/FALSE after an optional warning.
 warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
   if (.is_test()) {
     return(invisible(NULL))
@@ -1521,6 +1542,9 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
   invisible(TRUE)
 }
 
+# Warn when the caller requests claims but leaves claims validation disabled.
+# Used by oauth_client(). Input: the claims request and validation mode flags.
+# Output: invisible TRUE/FALSE after an optional warning.
 warn_about_unenforced_claim_requests <- function(
   claims,
   claims_validation,
@@ -1563,6 +1587,10 @@ warn_about_unenforced_claim_requests <- function(
   invisible(TRUE)
 }
 
+# Warn when DPoP is configured but bearer access tokens are still accepted.
+# Used by oauth_client(). Input: the constructed client and whether the
+# dpop_require_access_token argument was left at its default. Output: invisible
+# TRUE/FALSE after an optional warning.
 warn_about_optional_dpop_access_tokens <- function(
   client,
   dpop_require_access_token_missing = FALSE
@@ -1596,6 +1624,11 @@ warn_about_optional_dpop_access_tokens <- function(
   invisible(TRUE)
 }
 
+# 3 Helper constructor -----------------------------------------------------
+
+# Build a validated OAuthClient from user-supplied settings.
+# Used by app setup code before oauth_module_server(). Input: provider plus
+# client, request, and state settings. Output: an OAuthClient object.
 #' Create generic [OAuthClient]
 #'
 #' @inheritParams OAuthClient

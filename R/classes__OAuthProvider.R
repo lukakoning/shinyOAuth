@@ -1,3 +1,12 @@
+# This file defines the OAuthProvider object that describes the remote OAuth or
+# OpenID Connect server.
+# Use it to keep endpoint URLs, protocol rules, and security checks in one
+# validated object before any login or token requests are sent.
+
+# 1 OAuth provider class ---------------------------------------------------
+
+## 1.1 Class definition ----------------------------------------------------
+
 #' OAuthProvider S7 class
 #'
 #' @description
@@ -387,8 +396,15 @@ OAuthProvider <- S7::new_class(
       ))
     )
   ),
+  # Validate one provider configuration before the rest of the package uses it
+  # to build URLs, fetch JWKS, or exchange tokens.
+  # Used every time an OAuthProvider is created. Input: one provider object.
+  # Output: NULL on success or one error string describing the first problem.
   validator = function(self) {
-    # Small helper to validate a single field
+    # Validate one endpoint-like field that should be an absolute URL on an
+    # accepted host.
+    # Used only by the validator. Input: field value, field name, and whether
+    # the field is required. Output: NULL or an error string.
     .check_host_field <- function(value, name, required = FALSE) {
       if (required && !is_valid_string(value)) {
         return(sprintf(
@@ -1043,6 +1059,13 @@ OAuthProvider <- S7::new_class(
   }
 )
 
+# 2 Helper constructor -----------------------------------------------------
+
+# Build a validated OAuthProvider from user-supplied settings and helper
+# defaults.
+# Used by app setup code and the built-in provider helpers. Input: provider
+# endpoints plus security and validation settings. Output: an OAuthProvider
+# object.
 #' Create generic [OAuthProvider]
 #'
 #' Helper function to create an [OAuthProvider] object.

@@ -1,3 +1,15 @@
+# This file contains helpers that normalize and validate issuer or endpoint
+# URLs before they are trusted in discovery and provider setup.
+# Use them to compare issuer identifiers consistently and to enforce host and
+# scheme rules on discovered endpoints.
+
+# 1 URL validation helpers -------------------------------------------------
+
+## 1.1 Normalize and validate issuer or endpoint URLs ---------------------
+
+# Normalize an issuer URL into a stable form for comparisons.
+# Used by discovery issuer validation. Input: URL string plus label for error
+# messages. Output: normalized issuer URL string.
 normalize_issuer_url <- function(url, label = "issuer") {
   parsed <- try(httr2::url_parse(url), silent = TRUE)
 
@@ -120,6 +132,9 @@ validate_discovery_issuer <- function(
   iss
 }
 
+# Validate one absolute endpoint URL against the allowed host policy.
+# Used by discovery and provider endpoint checks. Input: endpoint URL and
+# allowed hosts vector. Output: invisible TRUE or a configuration error.
 #' Internal: validate absolute URL against allowed hosts
 #'
 #' Ensures the provided URL is absolute (has scheme and hostname) and that it

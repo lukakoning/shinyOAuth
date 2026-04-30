@@ -1,9 +1,11 @@
-# Async option and OpenTelemetry propagation helpers.
-#
-# Helper groups in this file:
-# - capture shinyOAuth options and OTEL gates on the main process
-# - replay that configuration inside reused async workers
-# - restore worker-local state after the async task finishes
+# This file contains the helpers that propagate shinyOAuth and OpenTelemetry
+# configuration into reused async workers.
+# Use them when async work should see the same package options, digest keys,
+# and OTEL exporter setup as the main Shiny process.
+
+# 1 Async option and OTEL propagation -------------------------------------
+
+## 1.1 Capture and apply configuration ------------------------------------
 
 # Internal: capture shinyOAuth-specific options from the main process for
 # propagation to async workers. Call this on the main thread before spawning
@@ -87,6 +89,8 @@ capture_async_otel_envvars <- function() {
   }
   Sys.getenv(otel_names, unset = NA_character_)
 }
+
+## 1.2 OTEL cache reset warnings and env restoration ----------------------
 
 # Internal: apply captured OTEL env vars in the current process and rebuild
 # cached providers whenever the effective OTEL configuration changes.
@@ -274,6 +278,8 @@ restore_async_otel_envvars <- function(old_envvars) {
 
   invisible(NULL)
 }
+
+## 1.3 Run worker code with captured options ------------------------------
 
 # Internal: run worker code with the main process' shinyOAuth options and OTEL
 # environment temporarily restored. Used inside async_dispatch() worker

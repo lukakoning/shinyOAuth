@@ -1,10 +1,11 @@
-# Outbound JWT signing helpers used for client assertions and signed
-# authorization requests.
-#
-# Helper groups in this file:
-# - client assertion construction and audience resolution
-# - signing algorithm and private-key compatibility helpers
-# - authorization request object signing and compact HMAC JWT encoding
+# This file contains the outbound JWT signing helpers used for client
+# assertions, signed authorization requests, and related signing decisions.
+# Use them when shinyOAuth must create a JWT, choose a compatible signing
+# algorithm, or normalize private-key input before signing.
+
+# 1 Outbound JWT signing helpers ------------------------------------------
+
+## 1.1 Client assertions ---------------------------------------------------
 
 #' Build and sign OAuth client assertion (RFC 7523)
 #'
@@ -202,6 +203,8 @@ resolve_client_assertion_audience <- function(client, req) {
   client@provider@token_url
 }
 
+## 1.2 Signed authorization requests --------------------------------------
+
 #' Resolve the signing algorithm for a signed authorization request.
 #'
 #' @keywords internal
@@ -305,6 +308,8 @@ resolve_authorization_request_audience <- function(client) {
     "Could not resolve an audience for the signed authorization request"
   )
 }
+
+## 1.3 Signing algorithm and key helpers ----------------------------------
 
 #' Canonicalize a JWS alg name for JOSE headers.
 #'
@@ -467,6 +472,8 @@ encode_hmac_jwt_with_header <- function(
   paste0(signing_input, ".", base64url_encode(signature_raw))
 }
 
+## 1.4 Authorization request object signing -------------------------------
+
 #' Build and sign a JWT-secured authorization request (RFC 9101).
 #'
 #' @keywords internal
@@ -578,6 +585,8 @@ build_authorization_request_object <- function(client, params) {
 
   jwt
 }
+
+## 1.5 Private key normalization ------------------------------------------
 
 #' Normalize a client private key input to an openssl::key
 #'

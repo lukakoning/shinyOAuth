@@ -1,3 +1,12 @@
+# This file contains the authenticated encryption helpers for the sealed OAuth
+# state payload.
+# Use them to turn state metadata into an encrypted compact token and to safely
+# decrypt, validate, and normalize that token again during callback handling.
+
+# 1 State encryption helpers -----------------------------------------------
+
+## 1.1 Encrypt and decrypt sealed state -----------------------------------
+
 # Authenticated encrypt/decrypt of the state payload ---------------------------
 
 #' Internal: normalize or derive a 32-byte state encryption key
@@ -161,6 +170,9 @@ state_decrypt_gcm <- function(
   expected_version = 1L,
   min_key_chars = 32L
 ) {
+  # Read one numeric defensive limit from option or environment fallback.
+  # Used only by state_decrypt_gcm(). Input: option name, env name, default.
+  # Output: positive numeric limit.
   # Configurable defensive limits (options or env var fallback)
   # Defaults chosen to comfortably exceed real-world usage yet block DoS-size inputs.
   get_limit <- function(opt_name, env_name, default) {
@@ -206,6 +218,10 @@ state_decrypt_gcm <- function(
     8192
   )
 
+  # Emit a best-effort audit event for one parse or decrypt failure without
+  # leaking plaintext or key material.
+  # Used only by state_decrypt_gcm(). Input: reason code and extra details.
+  # Output: invisible NULL.
   # Local helper: emit a non-sensitive audit event for parse failures
   audit_fail <- function(reason_code, details = list()) {
     ctx <- c(
@@ -221,6 +237,9 @@ state_decrypt_gcm <- function(
     invisible(NULL)
   }
 
+  # Add a tiny randomized delay before failing to reduce timing differences
+  # between failure paths.
+  # Used only by state_decrypt_gcm(). Input: none. Output: invisible NULL.
   # Local helper: introduce tiny randomized delay before failing
   # Goal: reduce timing side-channels between different failure modes
   # Tuning: options(shinyOAuth.state_fail_delay_ms = c(min_ms, max_ms))
@@ -253,6 +272,9 @@ state_decrypt_gcm <- function(
     invisible(NULL)
   }
 
+  # Raise a normalized invalid-state error after the optional delay.
+  # Used only by state_decrypt_gcm(). Input: message and context. Output: no
+  # return; aborts.
   # Wrapper to normalize all state failures from this function
   state_fail <- function(msg, context = list()) {
     delay_before_fail()
@@ -515,9 +537,11 @@ state_decrypt_gcm <- function(
   parsed
 }
 
+# 2 State cache keys -------------------------------------------------------
 
-# Helpers for cache-safe keys -------------------------------------------------
-
+# Derive a cache-safe key from the original state value.
+# Used by state-store helpers that cannot use mixed-case base64url directly as
+# a cache key. Input: state string. Output: lowercase hex cache key.
 #' Derive a cache key for an OAuth state value
 #'
 #' cachem only allows lowercase letters and digits in keys. We preserve the

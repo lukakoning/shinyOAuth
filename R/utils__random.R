@@ -1,3 +1,12 @@
+# This file contains helpers for generating and validating random protocol
+# values such as state, nonce, PKCE verifiers, and browser tokens.
+# Use them anywhere the OAuth flow needs high-entropy values or needs to check
+# that returned browser or callback values match the expected format.
+
+# 1 Random and token validation helpers -----------------------------------
+
+## 1.1 Generate and validate protocol randomness --------------------------
+
 #' Generate a cryptographically secure URL-safe random string
 #'
 #' @description
@@ -36,6 +45,9 @@ gen_oidc_nonce <- function(length = 32) {
   random_urlsafe(length)
 }
 
+# Validate an OIDC nonce string.
+# Used when nonce values return from the provider. Input: nonce string plus
+# optional size bounds. Output: invisible TRUE or an error.
 #' Validate OAuth/OIDC nonce
 #'
 #' A nonce should be a high-entropy, URL-safe string. We accept the RFC 3986
@@ -90,6 +102,9 @@ gen_code_verifier <- function(n = 64) {
   v
 }
 
+# Validate a PKCE code verifier string.
+# Used before or after PKCE values are used in requests. Input: verifier
+# string. Output: invisible TRUE or an error.
 #' Validate PKCE code verifier per RFC 7636
 #'
 #' A code_verifier is a high-entropy cryptographic random string using the
@@ -128,6 +143,10 @@ validate_code_verifier <- function(verifier) {
 #' @param expected_bytes Expected number of random bytes before hex-encoding.
 #'   Defaults to 64 to match the JS `randomHex(64)` call.
 #'
+# Validate the browser session token created by the JavaScript helper.
+# Used when callbacks and session state are tied to one browser instance.
+# Input: token string plus expected entropy size. Output: invisible TRUE or an
+# error.
 #' @keywords internal
 #' @noRd
 validate_browser_token <- function(token, expected_bytes = 64L) {
@@ -181,6 +200,9 @@ validate_browser_token <- function(token, expected_bytes = 64L) {
 #' @param strict_base64url If TRUE, restrict to base64url charset only
 #'   (`[A-Za-z0-9_-]`) rather than the full RFC 3986 unreserved set.
 #'
+# Validate an OAuth state value.
+# Used before state is stored or after it returns in a callback. Input: state
+# string and validation options. Output: invisible TRUE or an error.
 #' @keywords internal
 #' @noRd
 validate_state <- function(

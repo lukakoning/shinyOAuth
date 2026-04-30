@@ -1,5 +1,11 @@
+# This file contains small helpers for expiry and timeout numbers.
+# Use them when provider responses or package options omit expiry values or
+# return them in awkward formats that still need safe numeric handling.
+
 #' Internal: read a positive numeric scalar option
 #'
+#' Used throughout the package when reading numeric limits from options.
+#' Input: option name and fallback default. Output: one positive numeric value.
 #' Returns `default` when the option is unset or invalid.
 #'
 #' @keywords internal
@@ -21,6 +27,9 @@ get_option_positive_number <- function(name, default) {
 }
 
 #' Internal: coerce expires_in to numeric more tolerantly
+#'
+#' Used by token parsing helpers before they validate provider expiry values.
+#' Input: raw `expires_in` value. Output: numeric when it can be trusted, otherwise the original value.
 #'
 #' Some providers return `expires_in` as a quoted string (e.g., in
 #' form-encoded responses) and may include leading zeros ("0003600") or a
@@ -54,6 +63,9 @@ coerce_expires_in <- function(x) {
 }
 
 #' Internal: normalize client state cache max_age to a positive scalar
+#'
+#' Used by [oauth_module_server()] when setting the browser-token cookie lifetime.
+#' Input: [OAuthClient] and fallback seconds. Output: positive max-age number.
 #'
 #' Falls back to 5 minutes (300s) when the cache backend does not expose a
 #' finite `max_age` via `$info()`.
@@ -121,6 +133,9 @@ client_state_store_max_age <- function(client, default = 300) {
 }
 
 #' Internal: resolve expires_at when expires_in is absent from the token response
+#'
+#' Used by token exchange and refresh code when a provider omits `expires_in`.
+#' Input: optional phase label. Output: computed `expires_at` timestamp.
 #'
 #' RFC 6749 \u00a75.1 says `expires_in` is RECOMMENDED. When it is absent we check
 #' `options(shinyOAuth.default_expires_in)` for a configurable fallback (seconds).
@@ -193,6 +208,9 @@ resolve_missing_expires_in <- function(phase = NULL) {
 }
 
 #' Internal: warn when expires_in is non-positive
+#'
+#' Used by token exchange and refresh validation to flag tokens that are already expired.
+#' Input: numeric `expires_in` and optional phase label. Output: invisible TRUE/FALSE.
 #'
 #' `expires_in <= 0` is technically valid (meaning "expires now"), but is often
 #' surprising and can indicate a provider/configuration issue.

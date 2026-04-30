@@ -1,11 +1,11 @@
-# Shiny session and context helpers used by oauth_module_server(), audit
-# logging, and async worker handoff.
-#
-# Helper groups in this file:
-# - read the current Shiny session/request on the main thread
-# - capture and normalize session context so worker-side events can still be
-#   tied back to the originating browser session
-# - forward optional shiny_session context through helper calls
+# This file contains the helpers that read, capture, normalize, and forward
+# Shiny session context.
+# Use them when login, audit, telemetry, or async worker code needs to keep a
+# connection back to the originating browser session.
+
+# 1 Shiny session context helpers -----------------------------------------
+
+## 1.1 Read current Shiny session state -----------------------------------
 
 # Environment to store fallback session context for async workers
 # This allows errors thrown in async workers to include session context
@@ -58,6 +58,8 @@ current_audit_http_summary <- function() {
 }
 
 # Internal: capture the current browser/session context before leaving the main
+
+## 1.2 Capture and normalize async session context ------------------------
 # Shiny process. Used by oauth_module_server() and the async login/token flows
 # so audit events emitted later in a worker still know which Shiny session they
 # belong to.
@@ -195,6 +197,8 @@ with_async_session_context <- function(ctx, code) {
   }
   force(code)
 }
+
+## 1.3 Attach and forward context -----------------------------------------
 
 # Internal: augment any event list with Shiny context when available.
 # Priority order:

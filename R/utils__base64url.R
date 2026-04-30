@@ -1,3 +1,12 @@
+# This file contains the low-level base64url helpers used by JWT, JWKS, DPoP,
+# and sealed state code.
+# Use them when binary data needs the URL-safe base64 encoding required by many
+# OAuth and OpenID Connect specs.
+
+# 1 Base64url helpers ------------------------------------------------------
+
+## 1.1 Encode and decode ---------------------------------------------------
+
 #' Internal base64url helpers
 #'
 #' Canonical helpers used across JWT, JWKS, state encryption, DPoP, and mTLS:
@@ -16,6 +25,9 @@ base64url_encode <- function(raw_bytes) {
   chartr("+/", "-_", s)
 }
 
+# Decode a base64url string into raw bytes.
+# Used by JWT, JWKS, and cryptographic helpers. Input: base64url string.
+# Output: raw vector.
 #' @keywords internal
 #' @noRd
 base64url_decode_raw <- function(x) {
@@ -27,6 +39,9 @@ base64url_decode_raw <- function(x) {
   openssl::base64_decode(x)
 }
 
+# Decode a base64url string into text while rejecting embedded NUL bytes.
+# Used when base64url content should become UTF-8-like text. Input: base64url
+# string. Output: character string.
 #' @keywords internal
 #' @noRd
 base64url_decode <- function(x) {

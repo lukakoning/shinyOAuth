@@ -1,3 +1,12 @@
+# This file defines the OAuthToken object returned after login, refresh, or
+# other token operations.
+# Use it to keep the access token, optional refresh or ID tokens, expiry time,
+# and fetched user info together in one validated result object.
+
+# 1 OAuth token class ------------------------------------------------------
+
+## 1.1 Class definition ----------------------------------------------------
+
 #' OAuthToken S7 class
 #'
 #' @description
@@ -83,7 +92,14 @@ OAuthToken <- S7::new_class(
       }
     )
   ),
+  # Validate one token bundle before the rest of the package reads token
+  # fields, expiry times, or decoded ID token claims.
+  # Used every time an OAuthToken is created. Input: one token object.
+  # Output: NULL on success or one error string describing the first problem.
   validator = function(self) {
+    # Validate one optional token field that may be NA or a non-empty string.
+    # Used only by the validator. Input: field value and field name. Output:
+    # NULL or an error string.
     validate_optional_token_field <- function(value, field) {
       if (!is.character(value) || length(value) != 1L) {
         return(sprintf(
