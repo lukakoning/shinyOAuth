@@ -5,6 +5,13 @@ get_issuer <- function() {
   "http://localhost:8080/realms/shinyoauth"
 }
 
+client_secret_jwt_secret <-
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+wrong_client_secret_jwt_secret <- paste0(
+  "1",
+  substr(client_secret_jwt_secret, 2L, nchar(client_secret_jwt_secret))
+)
+
 keycloak_reachable <- function() {
   issuer <- get_issuer()
   disc <- paste0(issuer, "/.well-known/openid-configuration")
@@ -88,7 +95,7 @@ testthat::test_that("client_secret_jwt: wrong client_secret is rejected (http_ e
   client <- shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
-    client_secret = "secretjwt-INCORRECT",
+    client_secret = wrong_client_secret_jwt_secret,
     redirect_uri = "http://localhost:3000/callback",
     scopes = character(),
     client_assertion_alg = "HS256"
@@ -117,7 +124,7 @@ testthat::test_that("client_secret_jwt: mismatched alg is rejected by server", {
   client <- shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
-    client_secret = "secretjwt",
+    client_secret = client_secret_jwt_secret,
     redirect_uri = "http://localhost:3000/callback",
     scopes = character(),
     client_assertion_alg = "HS384"

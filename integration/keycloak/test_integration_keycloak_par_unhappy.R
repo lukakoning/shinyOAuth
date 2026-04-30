@@ -12,7 +12,7 @@ testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", 
   client <- shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
-    client_secret = "secretjwt",
+    client_secret = get_client_secret_jwt_secret(),
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     client_assertion_alg = "HS256",

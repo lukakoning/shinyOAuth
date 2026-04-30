@@ -137,7 +137,7 @@
       "clientId": "shiny-csjwt",
       "protocol": "openid-connect",
       "publicClient": false,
-      "secret": "secretjwt",
+      "secret": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_",
       "redirectUris": [
         "http://localhost:3000/*",
         "http://127.0.0.1:3000/*",

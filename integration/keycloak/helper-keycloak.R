@@ -889,11 +889,15 @@ expect_mtls_sender_constraint_rejection <- function(resp) {
   invisible(resp)
 }
 
+get_client_secret_jwt_secret <- function() {
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+}
+
 make_client_secret_jwt_client <- function(prov) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
-    client_secret = "secretjwt",
+    client_secret = get_client_secret_jwt_secret(),
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     client_assertion_alg = "HS256"

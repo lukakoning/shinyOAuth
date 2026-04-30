@@ -10,9 +10,12 @@
 # - body (client_secret_post)
 #
 # Also exercises JWT styles using clients provisioned in the realm import:
-# - client_secret_jwt: client "shiny-csjwt" with secret "secretjwt"
+# - client_secret_jwt: client "shiny-csjwt" with a 64-byte shared secret
 # - private_key_jwt: client "shiny-pjwt" with embedded RSA public key; tests use
 #   the matching private key from integration/keycloak/keys/test_rsa
+
+client_secret_jwt_secret <-
+  "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
 
 get_issuer <- function() {
   "http://localhost:8080/realms/shinyoauth"
@@ -129,7 +132,7 @@ cases <- list(
       shinyOAuth::oauth_client(
         provider = prov,
         client_id = "shiny-csjwt",
-        client_secret = "secretjwt",
+        client_secret = client_secret_jwt_secret,
         redirect_uri = "http://localhost:3000/callback",
         scopes = character(),
         client_assertion_alg = "HS256"
