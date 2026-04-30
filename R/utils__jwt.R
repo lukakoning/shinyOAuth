@@ -2,15 +2,86 @@
 #'
 #' @keywords internal
 #' @noRd
-parse_jwt_payload <- function(jwt) {
-  # Count dots to enforce exactly 3 JWS segments (RFC 7515).
-  # strsplit drops trailing empty strings, so we count separators instead.
-  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
-  if (n_dots != 2L) {
+strict_decode_jwt_segment <- function(
+  segment,
+  field_name,
+  allow_empty = FALSE
+) {
+  if (
+    !is.character(segment) ||
+      length(segment) != 1L ||
+      is.na(segment)
+  ) {
+    err_parse(paste0("JWT ", field_name, " segment invalid"))
+  }
+
+  if (!nzchar(segment)) {
+    if (isTRUE(allow_empty)) {
+      return(raw())
+    }
+    err_parse(paste0("JWT ", field_name, " segment must not be empty"))
+  }
+
+  if (!grepl("^[A-Za-z0-9_-]+$", segment)) {
+    err_parse(paste0(
+      "JWT ",
+      field_name,
+      " segment must use strict base64url alphabet without padding"
+    ))
+  }
+
+  if ((nchar(segment) %% 4L) == 1L) {
+    err_parse(paste0(
+      "JWT ",
+      field_name,
+      " segment has invalid base64url length"
+    ))
+  }
+
+  decoded <- tryCatch(base64url_decode_raw(segment), error = function(...) NULL)
+  if (is.null(decoded) || !is.raw(decoded)) {
+    err_parse(paste0("JWT ", field_name, " segment could not be decoded"))
+  }
+
+  decoded
+}
+
+jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
+  if (!is.character(jwt) || length(jwt) != 1L || is.na(jwt)) {
+    err_parse(
+      "Invalid JWT format: expected a single compact serialization string"
+    )
+  }
+
+  dot_pos <- gregexpr(".", jwt, fixed = TRUE)[[1]]
+  if (length(dot_pos) != 2L || identical(dot_pos[[1]], -1L)) {
     err_parse("Invalid JWT format: expected 3 dot-separated parts")
   }
-  parts <- strsplit(jwt, "\\.")[[1]]
-  payload_raw <- base64url_decode(parts[2])
+
+  list(
+    header = substr(jwt, 1L, dot_pos[1] - 1L),
+    payload = substr(jwt, dot_pos[1] + 1L, dot_pos[2] - 1L),
+    signature = substr(jwt, dot_pos[2] + 1L, nchar(jwt)),
+    signing_input = substr(jwt, 1L, dot_pos[2] - 1L),
+    header_raw = strict_decode_jwt_segment(
+      substr(jwt, 1L, dot_pos[1] - 1L),
+      "header"
+    ),
+    payload_raw = strict_decode_jwt_segment(
+      substr(jwt, dot_pos[1] + 1L, dot_pos[2] - 1L),
+      "payload"
+    ),
+    signature_raw = strict_decode_jwt_segment(
+      substr(jwt, dot_pos[2] + 1L, nchar(jwt)),
+      "signature",
+      allow_empty = allow_empty_signature
+    )
+  )
+}
+
+parse_jwt_payload <- function(jwt) {
+  parts <- jwt_compact_parts(jwt)
+  payload_raw <- rawToChar(parts$payload_raw)
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(payload_raw, simplifyVector = TRUE),
@@ -28,14 +99,8 @@ parse_jwt_payload <- function(jwt) {
 #' @keywords internal
 #' @noRd
 parse_jwt_header <- function(jwt) {
-  # Count dots to enforce exactly 3 JWS segments (RFC 7515).
-  # strsplit drops trailing empty strings, so we count separators instead.
-  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
-  if (n_dots != 2L) {
-    err_parse("Invalid JWT format: expected 3 dot-separated parts")
-  }
-  parts <- strsplit(jwt, "\\.")[[1]]
-  header_raw <- base64url_decode(parts[1])
+  parts <- jwt_compact_parts(jwt)
+  header_raw <- rawToChar(parts$header_raw)
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(header_raw, simplifyVector = TRUE),
@@ -49,15 +114,10 @@ parse_jwt_header <- function(jwt) {
 }
 
 jwt_verification_parts <- function(jwt) {
-  n_dots <- nchar(jwt) - nchar(gsub(".", "", jwt, fixed = TRUE))
-  if (n_dots != 2L) {
-    err_parse("Invalid JWT format: expected 3 dot-separated parts")
-  }
-
-  dot_pos <- gregexpr(".", jwt, fixed = TRUE)[[1]]
+  parts <- jwt_compact_parts(jwt)
   list(
-    data = charToRaw(substr(jwt, 1L, dot_pos[2] - 1L)),
-    sig = base64url_decode_raw(substr(jwt, dot_pos[2] + 1L, nchar(jwt)))
+    data = charToRaw(parts$signing_input),
+    sig = parts$signature_raw
   )
 }
 

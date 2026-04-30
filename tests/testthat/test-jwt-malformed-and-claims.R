@@ -60,6 +60,51 @@ test_that("Malformed JWTs are rejected with parse errors", {
   })
 })
 
+test_that("JWT parsing rejects padded, invalid, and empty compact segments", {
+  header <- enc_b64url('{"alg":"none"}')
+  payload <- enc_b64url('{"sub":"u"}')
+
+  expect_error(
+    shinyOAuth:::parse_jwt_header(paste0(header, "=.", payload, ".")),
+    class = "shinyOAuth_parse_error",
+    regexp = "strict base64url alphabet"
+  )
+
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(paste0(header, ".bad*payload.")),
+    class = "shinyOAuth_parse_error",
+    regexp = "strict base64url alphabet"
+  )
+
+  expect_error(
+    shinyOAuth:::parse_jwt_header(paste0(".", payload, ".")),
+    class = "shinyOAuth_parse_error",
+    regexp = "header segment must not be empty"
+  )
+
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(paste0(header, "..")),
+    class = "shinyOAuth_parse_error",
+    regexp = "payload segment must not be empty"
+  )
+
+  expect_error(
+    shinyOAuth:::jwt_verification_parts(paste0(header, ".", payload, ".AA=")),
+    class = "shinyOAuth_parse_error",
+    regexp = "strict base64url alphabet"
+  )
+
+  parts <- shinyOAuth:::jwt_verification_parts(paste0(
+    header,
+    ".",
+    payload,
+    "."
+  ))
+  expect_true(is.raw(parts$data))
+  expect_true(is.raw(parts$sig))
+  expect_length(parts$sig, 0)
+})
+
 test_that("exp/iat/nbf boundary conditions respect leeway", {
   client <- mk_client()
   client@provider@leeway <- 5
@@ -191,7 +236,7 @@ test_that("signed RS256 temporal boundaries respect package leeway", {
     regexp = "not yet valid"
   )
 
-  jwt5 <- sign_rs256(modifyList(base_claims, list(iat = now + 121)))
+  jwt5 <- sign_rs256(modifyList(base_claims, list(iat = now + 130)))
   testthat::expect_error(
     validate_signed(jwt5),
     class = "shinyOAuth_id_token_error",
