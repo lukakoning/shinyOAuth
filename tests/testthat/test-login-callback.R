@@ -123,6 +123,7 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
   # Re-prepare to have state in store again
   url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc2 <- parse_query_param(url2, "state")
+  id_token <- build_dummy_jwt(list(sub = "u"))
 
   # Stub token exchange to avoid network: we need PKCE verifier present
   testthat::with_mocked_bindings(
@@ -134,7 +135,7 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
       list(
         access_token = "at",
         expires_in = 3600,
-        id_token = "dummy.jwt.token",
+        id_token = id_token,
         token_type = "Bearer",
         scope = "openid"
       )
@@ -422,6 +423,7 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
 
 test_that("handle_callback fails when nonce is malformed (not NULL)", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  id_token <- build_dummy_jwt(list(sub = "u"))
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
@@ -440,7 +442,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
         access_token = "at",
         token_type = "Bearer",
         expires_in = 10,
-        id_token = "dummy.jwt.token"
+        id_token = id_token
       )
     },
     .package = "shinyOAuth",
@@ -475,7 +477,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
         access_token = "at",
         token_type = "Bearer",
         expires_in = 10,
-        id_token = "dummy.jwt.token"
+        id_token = id_token
       )
     },
     .package = "shinyOAuth",

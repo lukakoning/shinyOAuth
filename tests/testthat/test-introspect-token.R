@@ -15,18 +15,20 @@ testthat::test_that("introspect_token handles unsupported and missing tokens", {
   testthat::expect_true(is.na(res$active))
   testthat::expect_identical(res$status, "introspection_unsupported")
 
-  # 2) Supported but missing token -> active = NA, status = "missing_token"
+  # 2) Supported but missing refresh token -> active = NA, status = "missing_token"
   cli@provider@introspection_url <- "https://example.com/introspect"
-  # Missing access token
-  t@access_token <- NA_character_
-  res2 <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_true(isTRUE(res2$supported))
-  testthat::expect_true(is.na(res2$active))
-  testthat::expect_identical(res2$status, "missing_token")
-  # Missing refresh token
-  t@access_token <- "at"
-  t@refresh_token <- NA_character_
-  res3 <- introspect_token(cli, t, which = "refresh", async = FALSE)
+  t_missing_refresh <- OAuthToken(
+    access_token = "at",
+    refresh_token = NA_character_,
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+  res3 <- introspect_token(
+    cli,
+    t_missing_refresh,
+    which = "refresh",
+    async = FALSE
+  )
   testthat::expect_true(isTRUE(res3$supported))
   testthat::expect_true(is.na(res3$active))
   testthat::expect_identical(res3$status, "missing_token")

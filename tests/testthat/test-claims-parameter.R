@@ -36,6 +36,7 @@ test_that("OAuthClient accepts list claims", {
       client_id = "test-id",
       client_secret = "test-secret",
       redirect_uri = "http://localhost:8100",
+      claims_validation = "none",
       claims = list(
         userinfo = list(
           email = NULL,
@@ -55,6 +56,7 @@ test_that("OAuthClient accepts pre-encoded JSON string claims", {
       client_id = "test-id",
       client_secret = "test-secret",
       redirect_uri = "http://localhost:8100",
+      claims_validation = "none",
       claims = json_claims
     )
   )

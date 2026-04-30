@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Userinfo subject-mismatch failures now inherit the generic
+`shinyOAuth_userinfo_error` class again in addition to the specific
+`shinyOAuth_userinfo_mismatch` class.
+
 * `oauth_provider(extra_token_params = ...)` now reserves `refresh_token`
 alongside the other managed token request fields, preventing duplicate
 refresh-token parameters from being appended during refresh.

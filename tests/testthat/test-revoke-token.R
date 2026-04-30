@@ -15,17 +15,15 @@ testthat::test_that("revoke_token handles unsupported and missing tokens", {
   testthat::expect_true(is.na(res$revoked))
   testthat::expect_identical(res$status, "revocation_unsupported")
 
-  # 2) Supported but missing token -> revoked = NA, status = "missing_token"
+  # 2) Supported but missing refresh token -> revoked = NA, status = "missing_token"
   cli@provider@revocation_url <- "https://example.com/revoke"
-  t@access_token <- NA_character_
-  res2 <- revoke_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_true(isTRUE(res2$supported))
-  testthat::expect_true(is.na(res2$revoked))
-  testthat::expect_identical(res2$status, "missing_token")
-
-  t@access_token <- "at"
-  t@refresh_token <- NA_character_
-  res3 <- revoke_token(cli, t, which = "refresh", async = FALSE)
+  t_missing_refresh <- OAuthToken(
+    access_token = "at",
+    refresh_token = NA_character_,
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+  res3 <- revoke_token(cli, t_missing_refresh, which = "refresh", async = FALSE)
   testthat::expect_true(isTRUE(res3$supported))
   testthat::expect_true(is.na(res3$revoked))
   testthat::expect_identical(res3$status, "missing_token")

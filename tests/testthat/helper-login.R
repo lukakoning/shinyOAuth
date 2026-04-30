@@ -31,6 +31,20 @@ parse_query_param <- function(url, name, decode = FALSE) {
 
 valid_browser_token <- function() paste(rep("ab", 64), collapse = "")
 
+build_dummy_jwt <- function(payload = list(sub = "user1")) {
+  header <- list(alg = "none", typ = "JWT")
+  encoded_header <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+    header,
+    auto_unbox = TRUE
+  )))
+  encoded_payload <- shinyOAuth:::b64url_encode(charToRaw(jsonlite::toJSON(
+    payload,
+    auto_unbox = TRUE
+  )))
+
+  paste0(encoded_header, ".", encoded_payload, ".")
+}
+
 # Centralized polling helper for async test assertions.
 # Polls `condition_fn` until it returns TRUE, flushing the Shiny reactive loop
 # and `later` callbacks each iteration.

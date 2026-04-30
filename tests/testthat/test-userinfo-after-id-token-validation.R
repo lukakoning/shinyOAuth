@@ -5,6 +5,10 @@
 test_that("login flow: get_userinfo is called after validate_id_token", {
   # Create a provider with OIDC features that require ID token validation
   # and userinfo fetch
+  id_token <- build_dummy_jwt(list(
+    sub = "user123",
+    iss = "https://test.example.com"
+  ))
 
   prov <- oauth_provider(
     name = "test",
@@ -51,7 +55,7 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
         access_token = "test-access-token",
         token_type = "Bearer",
         expires_in = 3600,
-        id_token = "header.payload.signature",
+        id_token = id_token,
         scope = "openid profile"
       )
     },
@@ -133,6 +137,10 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
+  id_token <- build_dummy_jwt(list(
+    sub = "user123",
+    iss = "https://test.example.com"
+  ))
 
   userinfo_called <- FALSE
 
@@ -143,7 +151,7 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
           access_token = "test-access-token",
           token_type = "Bearer",
           expires_in = 3600,
-          id_token = "header.payload.signature",
+          id_token = id_token,
           scope = "openid profile"
         )
       },
@@ -573,6 +581,10 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
+  id_token <- build_dummy_jwt(list(
+    sub = "user123",
+    iss = "https://test.example.com"
+  ))
 
   match_called <- FALSE
   match_args <- list()
@@ -583,7 +595,7 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
         access_token = "test-access-token",
         token_type = "Bearer",
         expires_in = 3600,
-        id_token = "header.payload.signature",
+        id_token = id_token,
         scope = "openid profile"
       )
     },
@@ -628,7 +640,7 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
 
   # Verify it was called with the correct arguments
   expect_equal(match_args$userinfo, list(sub = "user123", name = "Test User"))
-  expect_equal(match_args$id_token, "header.payload.signature")
+  expect_equal(match_args$id_token, id_token)
 })
 
 test_that("handle_callback: userinfo/id_token mismatch aborts login", {
@@ -670,6 +682,10 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
+  id_token <- build_dummy_jwt(list(
+    sub = "user123",
+    iss = "https://test.example.com"
+  ))
 
   # Let the real verify_userinfo_id_token_subject_match run - it should detect mismatch
 
@@ -680,7 +696,7 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
           access_token = "test-access-token",
           token_type = "Bearer",
           expires_in = 3600,
-          id_token = "header.payload.signature",
+          id_token = id_token,
           scope = "openid profile"
         )
       },

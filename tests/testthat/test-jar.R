@@ -78,6 +78,7 @@ make_jar_test_client <- function(
   scopes = c("openid", "profile"),
   resource = character(0),
   claims = NULL,
+  claims_validation = "none",
   required_acr_values = character(0)
 ) {
   oauth_client(
@@ -98,6 +99,7 @@ make_jar_test_client <- function(
     authorization_request_audience = authorization_request_audience,
     resource = resource,
     claims = claims,
+    claims_validation = claims_validation,
     required_acr_values = required_acr_values
   )
 }

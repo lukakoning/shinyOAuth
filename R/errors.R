@@ -359,7 +359,11 @@ err_userinfo_mismatch <- function(
   msg = "userinfo subject mismatch",
   context = list()
 ) {
-  err_abort(msg, class = "shinyOAuth_userinfo_mismatch", context = context)
+  err_abort(
+    msg,
+    class = c("shinyOAuth_userinfo_mismatch", "shinyOAuth_userinfo_error"),
+    context = context
+  )
 }
 
 err_config <- function(msg, context = list()) {
