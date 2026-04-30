@@ -393,6 +393,11 @@ to this whitelist
   60 seconds; `NA` or non-finite values fall back to the 120-second default
 - `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small randomized delay (in milliseconds) before any state validation failure (e.g., malformed token, IV/tag/ciphertext issues, or GCM authentication failure). This helps reduce timing side‑channels between different failure modes
 
+Outside that explicit `HS*` opt-in, shinyOAuth currently accepts signed JWS tokens with `RS256`, `RS384`,
+`RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS (`PS256`, `PS384`, `PS512`) is not currently
+supported. For outbound private-key JWT signing (`private_key_jwt`, signed Request Objects, and DPoP proofs),
+RSA keys are currently limited to `RS256`; use EC keys when you need `ES256`, `ES384`, or `ES512`.
+
 Note on `allowed_hosts`: patterns support globs (`*`, `?`). 
 Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply). 
 Avoid this unless you truly intend to accept any host; prefer pinning to your domain(s), e.g., `c(".example.com")`.
