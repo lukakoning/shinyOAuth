@@ -215,6 +215,9 @@ prior to making external calls:
   (`HS256`/`HS384`/`HS512`) are only allowed with explicit opt-in
   (`options(shinyOAuth.allow_hs = TRUE)`) and a sufficiently strong server-held secret.
   RSA-PSS (`PS256`, `PS384`, `PS512`) is not currently supported
+- Container type: shinyOAuth accepts signed JWS ID tokens only. Encrypted ID tokens
+  (JWE) are rejected because the package does not perform JWE decryption; configure
+  the provider to return signed-only ID tokens
 - Claims: `iss` matches expected issuer; `aud` vector contains `client_id`; `sub` present;
   `iat` is required and must be a single finite numeric; 
   time-based claims (`exp` is required, `nbf` optional) are evaluated with a small configurable leeway; 
@@ -266,6 +269,9 @@ making the request.
 The userinfo endpoint may return either a standard JSON response or a JWT-encoded response
 (per OIDC Core, section 5.3.2). When the endpoint returns `Content-Type: application/jwt`,
 the body is decoded as a JWT with signature verification against the provider JWKS.
+Only signed JWS userinfo responses are supported. Encrypted UserInfo JWTs (JWE) are
+rejected; configure the provider to return signed-only JWTs when using
+`application/jwt` responses.
 When `userinfo_signed_jwt_required = TRUE` on the provider, the endpoint must return
 `application/jwt` or the flow is aborted.
 
