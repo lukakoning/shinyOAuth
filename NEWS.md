@@ -1,9 +1,5 @@
 # shinyOAuth (development version)
 
-* Userinfo subject-mismatch failures now inherit the generic
-`shinyOAuth_userinfo_error` class again in addition to the specific
-`shinyOAuth_userinfo_mismatch` class.
-
 * `oauth_provider(extra_token_params = ...)` now reserves `refresh_token`
 alongside the other managed token request fields, preventing duplicate
 refresh-token parameters from being appended during refresh.
@@ -34,10 +30,6 @@ values instead of silently normalizing typos to `"S256"`.
   `oauth_module_server()` no longer applies ID-token claim or ACR enforcement
   to unchecked JWT payloads.
 
-* Fixed `oauth_module_server()` reauth after refresh failure so internal login
-requests no longer get blocked by a stale cached `authenticated` flag before
-reactive state has flushed.
-
 * Enforced RFC 7518 HMAC key-size minimums for `HS256` / `HS384` / `HS512`
   across `client_secret_jwt`, signed request objects, and HS ID token
   validation.
@@ -45,10 +37,6 @@ reactive state has flushed.
 * Restricted outbound RSA JWT signing to `RS256` and removed unsupported `PS*`
   algorithms from default inbound allowlists until the JOSE backend can correctly
   sign and verify RSA-PSS tokens.
-
-* `oauth_client()` now defaults `dpop_require_access_token` to `TRUE` when a
-`dpop_private_key` is configured, so Bearer access tokens are rejected unless
-you explicitly opt out with `dpop_require_access_token = FALSE`.
 
 * `oauth_module_server()` now rejects unsafe `browser_cookie_path` values that
 could rewrite cookie attributes. Explicit cookie paths must start with `/`
@@ -70,10 +58,6 @@ surfaced through `values$error_uri`.
 dev/debug softeners, but the docs now stop presenting it as a comprehensive
 deployment-hardening check and show explicit option checks instead.
 
-* Updated `refresh_token()` documentation to match runtime behavior: missing
-`expires_in` now documents the configured fallback expiry, and refresh-time
-introspection may backfill `token@cnf`.
-
 * `build_client_assertion()` now caps `options(shinyOAuth.client_assertion_ttl)`
   at 300 seconds, warning and clamping higher values instead of emitting long-
   lived JWT client assertions.
@@ -81,11 +65,6 @@ introspection may backfill `token@cnf`.
 * Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
   refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
   `aud` checks.
-
-* Fixed PEM-string private key parsing for `oauth_client()` validation so
-`client_private_key` / `dpop_private_key` can be supplied as PEM text again,
-and cleaned up a check note by fully qualifying `utils::capture.output()` /
-`utils::str()` in claim canonicalization.
 
 * Signed UserInfo JWT validation now enforces `exp`, `iat`, and `nbf` when
 those temporal claims are present, rejecting expired or not-yet-valid UserInfo
