@@ -46,7 +46,7 @@ compute_expected_at_hash <- function(access_token, alg) {
   } else if (grepl("512", alg, fixed = TRUE)) {
     openssl::sha512
   } else {
-    openssl::sha512 # EdDSA fallback
+    stop("unsupported test alg", call. = FALSE)
   }
   full_hash <- hash_fn(charToRaw(access_token))
   hash_bytes <- as.raw(full_hash)
@@ -231,6 +231,44 @@ test_that("compute_at_hash produces correct hash for known inputs", {
   left_half <- hash_bytes[1:16]
   expected <- shinyOAuth:::base64url_encode(left_half)
   expect_identical(result, expected)
+})
+
+test_that("compute_at_hash rejects EdDSA", {
+  expect_error(
+    shinyOAuth:::compute_at_hash("test-access-token", "EdDSA"),
+    class = "shinyOAuth_id_token_error",
+    regexp = "EdDSA"
+  )
+})
+
+test_that("at_hash validation rejects EdDSA tokens explicitly", {
+  client <- mk_client()
+  client@provider@allowed_algs <- c("EdDSA")
+  now <- floor(as.numeric(Sys.time()))
+
+  jwt <- build_jwt(
+    list(alg = "EdDSA"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      at_hash = "placeholder"
+    )
+  )
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_error(
+      shinyOAuth:::validate_id_token(
+        client,
+        jwt,
+        expected_access_token = "access-token"
+      ),
+      class = "shinyOAuth_id_token_error",
+      regexp = "EdDSA"
+    )
+  })
 })
 
 # --- id_token_at_hash_required tests -----------------------------------------

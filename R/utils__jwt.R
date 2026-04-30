@@ -823,6 +823,9 @@ validate_id_token <- function(
 #'
 #' Takes the left-most half of the hash of the access token ASCII octets
 #' using the hash algorithm from the JWT alg header, then base64url-encodes it.
+#' EdDSA is intentionally unsupported here because the OIDC/RFC 7518 mapping
+#' from EdDSA to an at_hash digest is not explicit enough for this package to
+#' validate safely without implementation-specific assumptions.
 #'
 #' @param access_token The access token string.
 #' @param alg The JWT algorithm (e.g., "RS256", "ES384", "RS512").
@@ -833,7 +836,6 @@ compute_at_hash <- function(access_token, alg) {
   stopifnot(is_valid_string(access_token), is_valid_string(alg))
   # Map JWT alg to hash function per RFC 7518:
   # *256 -> SHA-256, *384 -> SHA-384, *512 -> SHA-512
-  # EdDSA is not covered by at_hash spec but use SHA-512 (Ed25519 companion)
   hash_fn <- if (grepl("256", alg, fixed = TRUE)) {
     openssl::sha256
   } else if (grepl("384", alg, fixed = TRUE)) {
@@ -841,7 +843,9 @@ compute_at_hash <- function(access_token, alg) {
   } else if (grepl("512", alg, fixed = TRUE)) {
     openssl::sha512
   } else if (toupper(alg) == "EDDSA") {
-    openssl::sha512
+    err_id_token(
+      "at_hash validation for EdDSA is not supported because the digest mapping is not explicit"
+    )
   } else {
     err_id_token(paste0(
       "Cannot determine hash algorithm for at_hash from alg: ",
