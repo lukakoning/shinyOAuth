@@ -310,7 +310,11 @@ satisfied.
 \item \code{"strict"}: Throws an error if any requested essential claims are
 missing or requested claim \code{value} / \code{values} constraints are not
 satisfied by the response.
-}}
+}
+
+Enforceable requests under \code{claims$id_token} require a validated ID token.
+Configure the provider with \code{id_token_validation = TRUE} or \code{use_nonce = TRUE}
+so shinyOAuth validates the ID token before checking those claims.}
 
 \item{userinfo_jwt_required_temporal_claims}{Optional character vector of
 temporal JWT claims that must be present when the UserInfo response is a

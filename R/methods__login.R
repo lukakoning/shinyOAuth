@@ -1987,6 +1987,12 @@ verify_token_set <- function(
       isTRUE(client@provider@use_nonce) |
       isTRUE(is_valid_string(nonce)))
   racr <- client@required_acr_values %||% character(0)
+  should_enforce_id_token_claims <-
+    !identical(client@claims_validation %||% "none", "none") &&
+    claims_request_target_has_enforceable_requirements(
+      client@claims,
+      "id_token"
+    )
 
   with_otel_span(
     "shinyOAuth.token.verify",
@@ -2282,7 +2288,16 @@ verify_token_set <- function(
       # claims or explicit claim values for id_token, verify the decoded ID token
       # payload satisfies those requests. This applies to both initial login and
       # refresh (if a new ID token is returned).
-      if (isTRUE(id_token_present)) {
+      if (
+        isTRUE(id_token_present) &&
+          isTRUE(should_enforce_id_token_claims) &&
+          !isTRUE(id_token_validated)
+      ) {
+        err_id_token(
+          "Cannot enforce requested ID token claims without ID token validation"
+        )
+      }
+      if (isTRUE(id_token_present) && isTRUE(id_token_validated)) {
         id_payload <- tryCatch(
           parse_jwt_payload(token_set[["id_token"]]),
           error = function(e) NULL
@@ -2297,7 +2312,20 @@ verify_token_set <- function(
       # When the client specifies required_acr_values, verify the ID token's acr
       # claim is present and matches one of the allowlisted values.  This runs on
       # both initial login and refresh (when a new ID token is returned).
-      if (length(racr) > 0 && isTRUE(id_token_present)) {
+      if (
+        length(racr) > 0 &&
+          isTRUE(id_token_present) &&
+          !isTRUE(id_token_validated)
+      ) {
+        err_id_token(
+          "Cannot enforce required_acr_values without ID token validation"
+        )
+      }
+      if (
+        length(racr) > 0 &&
+          isTRUE(id_token_present) &&
+          isTRUE(id_token_validated)
+      ) {
         acr_payload <- tryCatch(
           parse_jwt_payload(token_set[["id_token"]]),
           error = function(e) NULL
@@ -2576,11 +2604,18 @@ claims_request_has_enforceable_requirements <- function(claims_spec) {
   any(vapply(
     targets,
     function(target) {
-      length(extract_essential_claims(claims_spec, target)) > 0 ||
-        length(extract_claim_value_constraints(claims_spec, target)) > 0
+      claims_request_target_has_enforceable_requirements(claims_spec, target)
     },
     logical(1)
   ))
+}
+
+claims_request_target_has_enforceable_requirements <- function(
+  claims_spec,
+  target
+) {
+  length(extract_essential_claims(claims_spec, target)) > 0 ||
+    length(extract_claim_value_constraints(claims_spec, target)) > 0
 }
 
 canonicalize_claim_value <- function(value) {

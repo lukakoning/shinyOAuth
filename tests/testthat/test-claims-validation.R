@@ -127,6 +127,47 @@ test_that("oauth_client does not warn when enforceable claims opt into validatio
   )
 })
 
+test_that("oauth_client rejects enforceable id_token claims without ID token validation", {
+  prov <- oauth_provider(
+    name = "test",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = "https://example.com",
+    use_nonce = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    use_pkce = TRUE
+  )
+
+  for (mode in c("warn", "strict")) {
+    expect_error(
+      oauth_client(
+        provider = prov,
+        client_id = "abc",
+        client_secret = "",
+        redirect_uri = "http://localhost:8100",
+        scopes = "openid",
+        claims = list(
+          id_token = list(auth_time = list(essential = TRUE))
+        ),
+        claims_validation = mode
+      ),
+      "validate ID tokens|id_token_validation|use_nonce"
+    )
+  }
+})
+
+test_that("oauth_client allows userinfo-only claims validation without ID token validation", {
+  expect_no_error(
+    make_test_client(
+      claims = list(
+        userinfo = list(email_verified = list(value = TRUE))
+      ),
+      claims_validation = "strict"
+    )
+  )
+})
+
 # --- Unit tests for validate_essential_claims() -------------------------------
 
 test_that("validate_essential_claims: 'none' mode skips validation entirely", {
@@ -161,6 +202,7 @@ test_that("validate_essential_claims: 'none' mode skips validation entirely", {
 
 test_that("validate_essential_claims: 'strict' mode errors on missing essential id_token claims", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE),
@@ -204,6 +246,7 @@ test_that("validate_essential_claims: 'strict' mode errors on missing essential 
 
 test_that("validate_essential_claims: 'strict' mode passes when all essential claims present", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE),
@@ -225,6 +268,7 @@ test_that("validate_essential_claims: 'strict' mode passes when all essential cl
 
 test_that("validate_essential_claims: 'warn' mode warns on missing essential claims", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE)
@@ -300,6 +344,7 @@ test_that("validate_essential_claims: skips when client has no claims", {
 
 test_that("validate_essential_claims: error message lists missing claims", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE),
@@ -325,6 +370,7 @@ test_that("validate_essential_claims: error message lists missing claims", {
 
 test_that("validate_essential_claims: partially present essential claims", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE),
@@ -347,6 +393,7 @@ test_that("validate_essential_claims: partially present essential claims", {
 
 test_that("validate_essential_claims: 'strict' mode errors on mismatched requested claim value", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         acr = list(values = c("urn:example:gold", "urn:example:silver"))
@@ -387,6 +434,7 @@ test_that("validate_essential_claims: 'strict' mode errors when value-constraine
 
 test_that("validate_essential_claims: 'warn' mode warns on mismatched requested claim value", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         email_verified = list(value = TRUE)
@@ -409,6 +457,7 @@ test_that("validate_essential_claims: 'warn' mode warns on mismatched requested 
 
 test_that("validate_essential_claims: accepts matching requested claim values", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         acr = list(values = c("urn:example:gold", "urn:example:silver")),
@@ -433,8 +482,9 @@ test_that("validate_essential_claims: accepts matching requested claim values", 
 
 # --- Integration tests via handle_callback() ----------------------------------
 
-test_that("claims_validation = 'strict' errors during handle_callback for missing ID token essential claims", {
+test_that("claims_validation = 'strict' errors during handle_callback for missing validated ID token essential claims", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         auth_time = list(essential = TRUE)
@@ -465,7 +515,7 @@ test_that("claims_validation = 'strict' errors during handle_callback for missin
       jsonlite::toJSON(
         list(
           sub = "user1",
-          iss = "https://example.com",
+          iss = "https://issuer.example.com",
           aud = "abc",
           exp = as.numeric(Sys.time()) + 3600,
           iat = as.numeric(Sys.time())
@@ -478,6 +528,9 @@ test_that("claims_validation = 'strict' errors during handle_callback for missin
 
   expect_error(
     testthat::with_mocked_bindings(
+      validate_id_token = function(...) {
+        invisible(TRUE)
+      },
       swap_code_for_token_set = function(client, code, code_verifier) {
         list(
           access_token = "t",
@@ -498,8 +551,9 @@ test_that("claims_validation = 'strict' errors during handle_callback for missin
   )
 })
 
-test_that("claims_validation = 'strict' errors during handle_callback for mismatched ID token claim values", {
+test_that("claims_validation = 'strict' errors during handle_callback for mismatched validated ID token claim values", {
   cli <- make_test_client(
+    use_nonce = TRUE,
     claims = list(
       id_token = list(
         acr = list(values = c("urn:example:gold", "urn:example:silver"))
@@ -526,7 +580,7 @@ test_that("claims_validation = 'strict' errors during handle_callback for mismat
       jsonlite::toJSON(
         list(
           sub = "user1",
-          iss = "https://example.com",
+          iss = "https://issuer.example.com",
           aud = "abc",
           acr = "urn:example:bronze",
           exp = as.numeric(Sys.time()) + 3600,
@@ -540,6 +594,9 @@ test_that("claims_validation = 'strict' errors during handle_callback for mismat
 
   expect_error(
     testthat::with_mocked_bindings(
+      validate_id_token = function(...) {
+        invisible(TRUE)
+      },
       swap_code_for_token_set = function(client, code, code_verifier) {
         list(
           access_token = "t",

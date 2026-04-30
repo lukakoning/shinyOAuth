@@ -265,6 +265,10 @@
 #'     missing or requested claim `value` / `values` constraints are not
 #'     satisfied by the response.
 #'
+#'   Enforceable requests under `claims$id_token` require a validated ID token.
+#'   Configure the provider with `id_token_validation = TRUE` or `use_nonce = TRUE`
+#'   so shinyOAuth validates the ID token before checking those claims.
+#'
 #' @param userinfo_jwt_required_temporal_claims Optional character vector of
 #'   temporal JWT claims that must be present when the UserInfo response is a
 #'   signed JWT (`application/jwt`). Allowed values are `"exp"`, `"iat"`, and
@@ -1333,6 +1337,26 @@ OAuthClient <- S7::new_class(
       )
     }
 
+    if (
+      !identical(self@claims_validation, "none") &&
+        claims_request_target_has_enforceable_requirements(
+          self@claims,
+          "id_token"
+        )
+    ) {
+      id_token_will_be_validated <-
+        isTRUE(self@provider@id_token_validation) ||
+        isTRUE(self@provider@use_nonce)
+      if (!isTRUE(id_token_will_be_validated)) {
+        return(
+          paste(
+            "OAuthClient: claims$id_token validation requires the provider to validate ID tokens;",
+            "set id_token_validation = TRUE or use_nonce = TRUE"
+          )
+        )
+      }
+    }
+
     # Validate userinfo_jwt_required_temporal_claims
     ujrtc <- self@userinfo_jwt_required_temporal_claims
     if (!is.character(ujrtc)) {
@@ -1506,6 +1530,17 @@ warn_about_unenforced_claim_requests <- function(
     return(invisible(FALSE))
   }
 
+  guidance <- paste(
+    "OIDC providers may still complete login without enforcing those requested claims.",
+    "Set {.arg claims_validation} = {.val warn} to surface mismatches or {.arg claims_validation} = {.val strict} to fail login when requested claims are missing or unsatisfied."
+  )
+  if (claims_request_target_has_enforceable_requirements(claims, "id_token")) {
+    guidance <- paste(
+      guidance,
+      "For enforceable {.code claims$id_token} requests, also configure the provider to validate ID tokens with {.code id_token_validation = TRUE} or {.code use_nonce = TRUE}."
+    )
+  }
+
   rlang::warn(
     c(
       "[{.pkg shinyOAuth}] - {.strong Enforceable claim requests are not being validated}",
@@ -1513,10 +1548,7 @@ warn_about_unenforced_claim_requests <- function(
         "The supplied {.arg claims} request includes {.code essential}, {.code value}, or {.code values} constraints,",
         "but {.arg claims_validation} was left at its default {.val none}, so shinyOAuth will not verify that the returned ID token or userinfo satisfies them."
       ),
-      "i" = paste(
-        "OIDC providers may still complete login without enforcing those requested claims.",
-        "Set {.arg claims_validation} = {.val warn} to surface mismatches or {.arg claims_validation} = {.val strict} to fail login when requested claims are missing or unsatisfied."
-      )
+      "i" = guidance
     ),
     .frequency = "once",
     .frequency_id = "shinyOAuth_claims_validation_default_none"
