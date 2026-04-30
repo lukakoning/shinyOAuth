@@ -2,6 +2,12 @@
 
 ## shinyOAuth (development version)
 
+- Fixed
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  reauth after refresh failure so internal login requests no longer get
+  blocked by a stale cached `authenticated` flag before reactive state
+  has flushed.
+
 - Enforced RFC 7518 HMAC key-size minimums for `HS256` / `HS384` /
   `HS512` across `client_secret_jwt`, signed request objects, and HS ID
   token validation.
