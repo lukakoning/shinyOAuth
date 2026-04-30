@@ -344,6 +344,57 @@ test_that("get_userinfo honors provider leeway above 60 seconds", {
   expect_equal(result$name, "Leeway User")
 })
 
+test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
+  key <- openssl::rsa_keygen(2048)
+
+  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
+  jwk$kid <- "kid-leeway-boundary"
+  jwk$use <- "sig"
+  jwks <- list(keys = list(jwk))
+
+  fixed_now <- as.POSIXct("2024-01-01 00:00:00", tz = "UTC")
+  now <- as.numeric(fixed_now)
+
+  claims <- list(
+    sub = "user-leeway-boundary",
+    name = "Boundary User",
+    iss = "https://issuer.example.com",
+    aud = "abc",
+    exp = now - 30,
+    iat = now + 30,
+    nbf = now + 30
+  )
+  jwt_body <- make_signed_jwt(claims, key, kid = "kid-leeway-boundary")
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://issuer.example.com"
+  cli@provider@leeway <- 30
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  result <- testthat::with_mocked_bindings(
+    Sys.time = function() fixed_now,
+    .package = "base",
+    get_userinfo(cli, token = "access-token")
+  )
+
+  expect_equal(result$sub, "user-leeway-boundary")
+  expect_equal(result$name, "Boundary User")
+})
+
 test_that("get_userinfo can require exp on signed JWT userinfo", {
   key <- openssl::rsa_keygen(2048)
 
