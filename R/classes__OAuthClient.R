@@ -32,8 +32,10 @@
 #'   at the token endpoint. Can be an `openssl::key` or a PEM string containing a
 #'   private key. Required when the provider's `token_auth_style = 'private_key_jwt'`.
 #'   Ignored for other auth styles. Current outbound private-key JWT signing
-#'   supports RSA and EC private keys; Ed25519/Ed448 keys are not currently
-#'   supported for client-side signing.
+#'   supports RSA and EC private keys. For RSA keys, outbound signing is currently
+#'   limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`)
+#'   are not supported. Ed25519/Ed448 keys are also not currently supported for
+#'   client-side signing.
 #'
 #' @param client_private_key_kid Optional key identifier (kid) to include in the JWT header
 #'   for `private_key_jwt` assertions. Useful when the authorization server uses kid to
@@ -49,8 +51,8 @@
 #'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
 #'   supported for outbound signing (`RS256`, `ES256`, `ES384`, `ES512`) for
-#'   private keys. EdDSA remains supported for inbound ID token verification, not outbound client
-#'   assertions.
+#'   private keys. `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA`
+#'   are not currently supported for outbound client assertions.
 #'
 #' @param client_assertion_audience Optional override for the `aud` claim used when building
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
@@ -88,8 +90,9 @@
 #'   signed authorization requests when `authorization_request_mode = "request"`.
 #'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
 #'   compatible asymmetric default based on `client_private_key` (for example
-#'   `RS256`, `ES256`, `ES384`, or `ES512`). EdDSA is not currently supported
-#'   for outbound signed authorization requests.
+#'   `RS256`, `ES256`, `ES384`, or `ES512`). `RS384`, `RS512`, `PS256`,
+#'   `PS384`, `PS512`, and `EdDSA` are not currently supported for outbound
+#'   signed authorization requests.
 #'
 #' @param authorization_request_audience Optional override for the `aud` claim
 #'   used in signed authorization requests. By default, shinyOAuth uses the
@@ -103,7 +106,9 @@
 #'   downstream request helpers. Configuring this key alone does not require
 #'   DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if token
 #'   responses must reject `token_type = "Bearer"`. Current outbound DPoP
-#'   signing supports RSA and EC private keys; Ed25519/Ed448 keys are not
+#'   signing supports RSA and EC private keys. For RSA keys, outbound signing is
+#'   currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
+#'   `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
 #'   currently supported for client-side signing.
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
@@ -113,9 +118,10 @@
 #' @param dpop_signing_alg Optional JWT signing algorithm to use for DPoP
 #'   proofs. When omitted, a compatible asymmetric default is selected based on
 #'   the private key type/curve (for example `RS256`, `ES256`, `ES384`, or
-#'   `ES512`). EdDSA is not currently supported for outbound DPoP proofs. If
-#'   an explicit value is provided but incompatible with the key, validation
-#'   fails early with a configuration error.
+#'   `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are
+#'   not currently supported for outbound DPoP proofs. If an explicit value is
+#'   provided but incompatible with the key, validation fails early with a
+#'   configuration error.
 #'
 #' @param dpop_require_access_token Logical or `NULL`. When `TRUE` and
 #'   `dpop_private_key` is configured, shinyOAuth requires the authorization

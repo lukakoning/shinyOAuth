@@ -396,7 +396,8 @@ to this whitelist
 Outside that explicit `HS*` opt-in, shinyOAuth currently accepts signed JWS tokens with `RS256`, `RS384`,
 `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS (`PS256`, `PS384`, `PS512`) is not currently
 supported. For outbound private-key JWT signing (`private_key_jwt`, signed Request Objects, and DPoP proofs),
-RSA keys are currently limited to `RS256`; use EC keys when you need `ES256`, `ES384`, or `ES512`.
+RSA keys are currently limited to `RS256`; `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are not
+currently supported for outbound signing. Use EC keys when you need `ES256`, `ES384`, or `ES512`.
 shinyOAuth accepts signed JWS ID tokens and signed UserInfo JWT responses only. Encrypted JWTs (JWE) are
 not currently supported for those surfaces; configure the provider to return signed-only tokens.
 

@@ -69,8 +69,10 @@ enabled, a non-empty \code{client_secret} is required for signature validation.}
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a
 private key. Required when the provider's \code{token_auth_style = 'private_key_jwt'}.
 Ignored for other auth styles. Current outbound private-key JWT signing
-supports RSA and EC private keys; Ed25519/Ed448 keys are not currently
-supported for client-side signing.}
+supports RSA and EC private keys. For RSA keys, outbound signing is currently
+limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
+are not supported. Ed25519/Ed448 keys are also not currently supported for
+client-side signing.}
 
 \item{client_private_key_kid}{Optional key identifier (kid) to include in the JWT header
 for \code{private_key_jwt} assertions. Useful when the authorization server uses kid to
@@ -86,8 +88,8 @@ error. When the provider advertises
 inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
 supported for outbound signing (\code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}) for
-private keys. EdDSA remains supported for inbound ID token verification, not outbound client
-assertions.}
+private keys. \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, \code{PS512}, and \code{EdDSA}
+are not currently supported for outbound client assertions.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
@@ -130,8 +132,9 @@ with \code{client_secret}.}
 signed authorization requests when \code{authorization_request_mode = "request"}.
 When omitted, shinyOAuth chooses \code{HS256} for HMAC-based signing or a
 compatible asymmetric default based on \code{client_private_key} (for example
-\code{RS256}, \code{ES256}, \code{ES384}, or \code{ES512}). EdDSA is not currently supported
-for outbound signed authorization requests.}
+\code{RS256}, \code{ES256}, \code{ES384}, or \code{ES512}). \code{RS384}, \code{RS512}, \code{PS256},
+\code{PS384}, \code{PS512}, and \code{EdDSA} are not currently supported for outbound
+signed authorization requests.}
 
 \item{authorization_request_audience}{Optional override for the \code{aud} claim
 used in signed authorization requests. By default, shinyOAuth uses the
@@ -145,7 +148,9 @@ proofs to token endpoint requests and use DPoP-bound access tokens in
 downstream request helpers. Configuring this key alone does not require
 DPoP-bound access tokens; set \code{dpop_require_access_token = TRUE} if token
 responses must reject \code{token_type = "Bearer"}. Current outbound DPoP
-signing supports RSA and EC private keys; Ed25519/Ed448 keys are not
+signing supports RSA and EC private keys. For RSA keys, outbound signing is
+currently limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256},
+\code{PS384}, \code{PS512}) are not supported. Ed25519/Ed448 keys are also not
 currently supported for client-side signing.}
 
 \item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
@@ -155,9 +160,10 @@ server expects a stable key identifier alongside the embedded public JWK.}
 \item{dpop_signing_alg}{Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
 the private key type/curve (for example \code{RS256}, \code{ES256}, \code{ES384}, or
-\code{ES512}). EdDSA is not currently supported for outbound DPoP proofs. If
-an explicit value is provided but incompatible with the key, validation
-fails early with a configuration error.}
+\code{ES512}). \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, \code{PS512}, and \code{EdDSA} are
+not currently supported for outbound DPoP proofs. If an explicit value is
+provided but incompatible with the key, validation fails early with a
+configuration error.}
 
 \item{dpop_require_access_token}{Logical or \code{NULL}. When \code{TRUE} and
 \code{dpop_private_key} is configured, shinyOAuth requires the authorization
