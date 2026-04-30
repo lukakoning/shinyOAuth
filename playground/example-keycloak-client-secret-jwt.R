@@ -117,15 +117,19 @@ server <- function(input, output, session) {
     auth$token@userinfo
   })
 
-  observeEvent(list(auth$error, auth$error_description), {
-    if (interactive() && !is.null(auth$error_description)) {
-      rlang::inform(c(
-        "OAuth error details",
-        "i" = paste0("error: ", auth$error),
-        "i" = paste0("error_description: ", auth$error_description)
-      ))
-    }
-  }, ignoreInit = TRUE)
+  observeEvent(
+    list(auth$error, auth$error_description),
+    {
+      if (interactive() && !is.null(auth$error_description)) {
+        rlang::inform(c(
+          "OAuth error details",
+          "i" = paste0("error: ", auth$error),
+          "i" = paste0("error_description: ", auth$error_description)
+        ))
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   output$oauth_error <- renderUI({
     if (is.null(auth$error)) {

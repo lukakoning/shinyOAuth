@@ -294,7 +294,8 @@ asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES
 Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
 require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
-Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")}, which intentionally excludes HS*.
+Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")},
+which intentionally excludes HS*.
 Only include \verb{HS*} if you are certain the \code{client_secret} is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments. Prefer rotating secrets regularly when enabling this.}
