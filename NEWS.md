@@ -69,6 +69,9 @@ present via `userinfo_jwt_required_temporal_claims`.
   `kid`, `typ`, and `crit` with package-classed errors in both ID token and
   UserInfo JWT paths, instead of falling through to base R type failures.
 
+* JWT parsing now rejects duplicate top-level member names in protected headers
+  and claims instead of inheriting `jsonlite`'s last-value-wins behavior.
+
 * Hardened inbound JWT/JWKS validation: HS JWT verification now normalizes
   secrets to UTF-8 and compares MACs in constant time, JWT compact parsing
   rejects malformed/padded base64url segments, ECDSA verification rejects

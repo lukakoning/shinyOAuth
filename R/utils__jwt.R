@@ -82,6 +82,7 @@ jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
 parse_jwt_payload <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   payload_raw <- rawToChar(parts$payload_raw)
+  reject_duplicate_json_object_members(payload_raw, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(payload_raw, simplifyVector = TRUE),
@@ -101,6 +102,7 @@ parse_jwt_payload <- function(jwt) {
 parse_jwt_header <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   header_raw <- rawToChar(parts$header_raw)
+  reject_duplicate_json_object_members(header_raw, "JWT header")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(header_raw, simplifyVector = FALSE),
@@ -111,6 +113,85 @@ parse_jwt_header <- function(jwt) {
       ))
     }
   )
+}
+
+reject_duplicate_json_object_members <- function(json_text, label) {
+  chars <- strsplit(enc2utf8(json_text), "", fixed = TRUE)[[1]]
+  if (!length(chars)) {
+    return(invisible(NULL))
+  }
+
+  decode_json_string_token <- function(token) {
+    tryCatch(
+      jsonlite::fromJSON(
+        paste0('["', token, '"]'),
+        simplifyVector = TRUE
+      )[[1]],
+      error = function(...) token
+    )
+  }
+
+  depth <- 0L
+  index <- 1L
+  seen <- character(0)
+
+  while (index <= length(chars)) {
+    ch <- chars[[index]]
+
+    if (identical(ch, '"')) {
+      token <- character(0)
+      index <- index + 1L
+      escaping <- FALSE
+
+      while (index <= length(chars)) {
+        ch_inner <- chars[[index]]
+        if (isTRUE(escaping)) {
+          token <- c(token, ch_inner)
+          escaping <- FALSE
+        } else if (identical(ch_inner, "\\")) {
+          token <- c(token, ch_inner)
+          escaping <- TRUE
+        } else if (identical(ch_inner, '"')) {
+          break
+        } else {
+          token <- c(token, ch_inner)
+        }
+        index <- index + 1L
+      }
+
+      if (index > length(chars)) {
+        return(invisible(NULL))
+      }
+
+      lookahead <- index + 1L
+      while (
+        lookahead <= length(chars) &&
+          grepl("[[:space:]]", chars[[lookahead]])
+      ) {
+        lookahead <- lookahead + 1L
+      }
+
+      if (
+        depth == 1L &&
+          lookahead <= length(chars) &&
+          identical(chars[[lookahead]], ":")
+      ) {
+        key <- decode_json_string_token(paste(token, collapse = ""))
+        if (key %in% seen) {
+          err_parse(paste0(label, " contains duplicate member name: ", key))
+        }
+        seen <- c(seen, key)
+      }
+    } else if (identical(ch, "{") || identical(ch, "[")) {
+      depth <- depth + 1L
+    } else if (identical(ch, "}") || identical(ch, "]")) {
+      depth <- max(0L, depth - 1L)
+    }
+
+    index <- index + 1L
+  }
+
+  invisible(NULL)
 }
 
 validate_jose_header_fields <- function(header, signal_error) {

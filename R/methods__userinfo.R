@@ -393,6 +393,10 @@ decode_userinfo_jwt <- function(
   header <- try(parse_jwt_header(jwt_str), silent = TRUE)
 
   if (inherits(header, "try-error")) {
+    header_reason <- tryCatch(
+      conditionMessage(attr(header, "condition")),
+      error = function(e) as.character(header)
+    )
     audit_userinfo_event(
       oauth_client,
       status = "userinfo_jwt_header_parse_failed",
@@ -400,6 +404,7 @@ decode_userinfo_jwt <- function(
     )
     err_userinfo(c(
       "x" = "UserInfo JWT header could not be parsed",
+      "i" = header_reason,
       "i" = "A well-formed JWT header is required for verification (OIDC Core 5.3.2)"
     ))
   }
