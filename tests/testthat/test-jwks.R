@@ -1,19 +1,20 @@
+make_public_rsa_jwk <- function(bits = 2048, kid = "k1") {
+  key <- openssl::rsa_keygen(bits = bits)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+  list(kty = jwk$kty, n = jwk$n, e = jwk$e, kid = kid)
+}
+
+make_public_ec_jwk <- function(curve = "P-256", kid = "k2") {
+  key <- openssl::ec_keygen(curve = curve)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+  list(kty = jwk$kty, crv = jwk$crv, x = jwk$x, y = jwk$y, kid = kid)
+}
+
 test_that("validate_jwks enforces structure and pins", {
-  # Minimal RSA JWK
-  rsa_jwk <- list(
-    kty = "RSA",
-    n = "sXch2LwS8wKk7Lw7W2jvH8o7J3H_8cRkS6PZs5x8d6E5pESm7Yv2V7h0C2Xv4v5c", # fake b64url
-    e = "AQAB",
-    kid = "k1"
-  )
-  # Minimal EC JWK
-  ec_jwk <- list(
-    kty = "EC",
-    crv = "P-256",
-    x = "f83OJ3D2xF4G4Z4Qf83OJ3D2xF4G4Z4Qf83OJ3D2xF4",
-    y = "x_FEzRu9H7Wqkz2fYVb6x_FEzRu9H7Wqkz2fYVb6x_FE",
-    kid = "k2"
-  )
+  testthat::skip_if_not_installed("jose")
+
+  rsa_jwk <- make_public_rsa_jwk(kid = "k1")
+  ec_jwk <- make_public_ec_jwk(kid = "k2")
   jwks <- list(keys = list(rsa_jwk, ec_jwk))
 
   # Should not error without pins
@@ -57,6 +58,37 @@ test_that("validate_jwks enforces structure and pins", {
   expect_error(
     shinyOAuth:::validate_jwks(list(keys = list(bad_rsa))),
     class = "shinyOAuth_parse_error"
+  )
+
+  bad_rsa_n <- rsa_jwk
+  bad_rsa_n$n <- "bad*modulus"
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = list(bad_rsa_n))),
+    class = "shinyOAuth_parse_error",
+    regexp = "base64urlUInt"
+  )
+
+  bad_rsa_e <- rsa_jwk
+  bad_rsa_e$e <- "AQAB="
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = list(bad_rsa_e))),
+    class = "shinyOAuth_parse_error",
+    regexp = "base64urlUInt"
+  )
+
+  weak_rsa <- make_public_rsa_jwk(bits = 1024, kid = "weak-rsa")
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = list(weak_rsa))),
+    class = "shinyOAuth_parse_error",
+    regexp = "2048 bits"
+  )
+
+  bad_ec <- ec_jwk
+  bad_ec$x <- "AQAB"
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = list(bad_ec))),
+    class = "shinyOAuth_parse_error",
+    regexp = "32 bytes"
   )
 })
 

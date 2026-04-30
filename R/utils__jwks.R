@@ -611,6 +611,66 @@ compute_jwk_thumbprint <- function(jwk) {
   base64url_encode(digest)
 }
 
+strict_decode_jwk_base64url_uint <- function(value, field_name) {
+  if (
+    !is.character(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !nzchar(value)
+  ) {
+    err_parse(paste0(field_name, " must be a non-empty base64urlUInt"))
+  }
+
+  if (!grepl("^[A-Za-z0-9_-]+$", value)) {
+    err_parse(paste0(field_name, " must be a strict base64urlUInt"))
+  }
+
+  decoded <- tryCatch(base64url_decode_raw(value), error = function(...) NULL)
+  if (is.null(decoded) || !is.raw(decoded) || length(decoded) == 0L) {
+    err_parse(paste0(field_name, " must be a valid base64urlUInt"))
+  }
+
+  decoded
+}
+
+jwk_rsa_modulus_bits <- function(modulus_raw) {
+  non_zero_idx <- which(modulus_raw != as.raw(0))
+  if (length(non_zero_idx) == 0L) {
+    return(0L)
+  }
+
+  trimmed <- modulus_raw[non_zero_idx[1]:length(modulus_raw)]
+  first_octet <- as.integer(trimmed[[1]])
+  ((length(trimmed) - 1L) * 8L) + floor(log(first_octet, base = 2)) + 1L
+}
+
+jwk_ec_coordinate_size <- function(curve) {
+  switch(
+    as.character(curve %||% ""),
+    "P-256" = 32L,
+    "P-384" = 48L,
+    "P-521" = 66L,
+    NULL
+  )
+}
+
+strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
+  decoded <- strict_decode_jwk_base64url_uint(value, field_name)
+  expected_len <- jwk_ec_coordinate_size(curve)
+
+  if (!is.null(expected_len) && length(decoded) != expected_len) {
+    err_parse(paste0(
+      field_name,
+      " must decode to ",
+      expected_len,
+      " bytes for curve ",
+      curve
+    ))
+  }
+
+  decoded
+}
+
 #' Internal: Validate JWKS structure and optionally enforce pinning
 #'
 #' @param jwks Parsed JWKS (list)
@@ -678,14 +738,22 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
         if (!is.character(k$n) || !is.character(k$e)) {
           err_parse("RSA JWK missing n/e")
         }
+        modulus_raw <- strict_decode_jwk_base64url_uint(k$n, "RSA JWK n")
+        strict_decode_jwk_base64url_uint(k$e, "RSA JWK e")
+        if (jwk_rsa_modulus_bits(modulus_raw) < 2048L) {
+          err_parse("RSA JWK modulus must be at least 2048 bits")
+        }
       } else if (kty == "EC") {
         if (!is.character(k$crv) || !is.character(k$x) || !is.character(k$y)) {
           err_parse("EC JWK missing crv/x/y")
         }
+        strict_decode_jwk_ec_coordinate(k$x, "EC JWK x", k$crv)
+        strict_decode_jwk_ec_coordinate(k$y, "EC JWK y", k$crv)
       } else if (kty == "OKP") {
         if (!is.character(k$crv) || !is.character(k$x)) {
           err_parse("OKP JWK missing crv/x")
         }
+        strict_decode_jwk_base64url_uint(k$x, "OKP JWK x")
       }
       # Compute thumbprint for pinning
       tp <- try(compute_jwk_thumbprint(k), silent = TRUE)
