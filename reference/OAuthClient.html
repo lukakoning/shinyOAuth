@@ -400,7 +400,9 @@ satisfied.</p></li>
 <li><p><code>"strict"</code>: Throws an error if any requested essential claims are
 missing or requested claim <code>value</code> / <code>values</code> constraints are not
 satisfied by the response.</p></li>
-</ul></dd>
+</ul><p>Enforceable requests under <code>claims$id_token</code> require a validated ID token.
+Configure the provider with <code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>
+so shinyOAuth validates the ID token before checking those claims.</p></dd>
 
 
 <dt id="arg-userinfo-jwt-required-temporal-claims">userinfo_jwt_required_temporal_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-temporal-claims"></a></dt>

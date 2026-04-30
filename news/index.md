@@ -2,6 +2,13 @@
 
 ## shinyOAuth (development version)
 
+- `oauth_client(claims_validation = "warn"/"strict")` now rejects
+  enforceable `claims$id_token` requests unless the provider validates
+  ID tokens, and
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  no longer applies ID-token claim or ACR enforcement to unchecked JWT
+  payloads.
+
 - Fixed
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   reauth after refresh failure so internal login requests no longer get

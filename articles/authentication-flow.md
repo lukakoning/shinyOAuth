@@ -278,7 +278,10 @@ cryptographic validation occurs prior to making external calls:
   `values`, and `claims_validation` is `"warn"` or `"strict"`, the
   decoded ID token payload is checked for missing essential claims and
   unsatisfied requested claim values. These trigger a warning or error
-  depending on the mode. This is skipped when
+  depending on the mode. For `claims$id_token`, this enforcement only
+  runs after shinyOAuth has validated the ID token; configure the
+  provider with `id_token_validation = TRUE` or `use_nonce = TRUE` so
+  those checks run on trusted token content. This is skipped when
   `claims_validation = "none"` (the default)
 - ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
   with `required_acr_values`, the ID token’s `acr` claim must be present

@@ -42,7 +42,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Fixed <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> reauth after refresh failure so internal login requests no longer get blocked by a stale cached <code>authenticated</code> flag before reactive state has flushed.</p></li>
+<ul><li><p><code>oauth_client(claims_validation = "warn"/"strict")</code> now rejects enforceable <code>claims$id_token</code> requests unless the provider validates ID tokens, and <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> no longer applies ID-token claim or ACR enforcement to unchecked JWT payloads.</p></li>
+<li><p>Fixed <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> reauth after refresh failure so internal login requests no longer get blocked by a stale cached <code>authenticated</code> flag before reactive state has flushed.</p></li>
 <li><p>Enforced RFC 7518 HMAC key-size minimums for <code>HS256</code> / <code>HS384</code> / <code>HS512</code> across <code>client_secret_jwt</code>, signed request objects, and HS ID token validation.</p></li>
 <li><p>Restricted outbound RSA JWT signing to <code>RS256</code> and removed unsupported <code>PS*</code> algorithms from default inbound allowlists until the JOSE backend can correctly sign and verify RSA-PSS tokens.</p></li>
 <li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> now defaults <code>dpop_require_access_token</code> to <code>TRUE</code> when a <code>dpop_private_key</code> is configured, so Bearer access tokens are rejected unless you explicitly opt out with <code>dpop_require_access_token = FALSE</code>.</p></li>

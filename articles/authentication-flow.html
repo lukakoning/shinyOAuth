@@ -382,8 +382,11 @@ claims via the <code>claims</code> parameter with
 <code>"warn"</code> or <code>"strict"</code>, the decoded ID token
 payload is checked for missing essential claims and unsatisfied
 requested claim values. These trigger a warning or error depending on
-the mode. This is skipped when <code>claims_validation = "none"</code>
-(the default)</li>
+the mode. For <code>claims$id_token</code>, this enforcement only runs
+after shinyOAuth has validated the ID token; configure the provider with
+<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>
+so those checks run on trusted token content. This is skipped when
+<code>claims_validation = "none"</code> (the default)</li>
 <li>ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
 with <code>required_acr_values</code>, the ID token’s <code>acr</code>
 claim must be present and match one of the specified values. This

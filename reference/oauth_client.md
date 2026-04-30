@@ -395,6 +395,11 @@ oauth_client(
     missing or requested claim `value` / `values` constraints are not
     satisfied by the response.
 
+  Enforceable requests under `claims$id_token` require a validated ID
+  token. Configure the provider with `id_token_validation = TRUE` or
+  `use_nonce = TRUE` so shinyOAuth validates the ID token before
+  checking those claims.
+
 - userinfo_jwt_required_temporal_claims:
 
   Optional character vector of temporal JWT claims that must be present
