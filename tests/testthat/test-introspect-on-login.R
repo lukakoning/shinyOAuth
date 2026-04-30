@@ -696,6 +696,51 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
   )
 })
 
+test_that("introspection scope validation does not split comma-bearing tokens", {
+  cli <- make_introspect_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("read", "write")
+  )
+  cli@introspect_elements <- "scope"
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        scope = "read write"
+      )
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true,"scope":"read,write"}')
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_token_error",
+        regexp = "Introspected scopes missing requested entries: read, write"
+      )
+    }
+  )
+})
+
 test_that("introspect_elements errors when required fields are missing", {
   cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@introspect_elements <- "sub"

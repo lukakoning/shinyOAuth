@@ -8,6 +8,10 @@ refresh-token parameters from being appended during refresh.
 form-encoded parameter names instead of silently accepting ambiguous
 `access_token`, `scope`, or `id_token` values.
 
+* Strict token-response and introspection scope validation now treats commas as
+part of a single scope token, matching RFC 6749 instead of splitting
+`scope = "read,write"` into separate `read` and `write` scopes.
+
 * OIDC discovery now pins discovered mTLS endpoint aliases to the issuer host
 by default; off-issuer aliases require an explicit host allowlist.
 

@@ -1552,25 +1552,9 @@ handle_callback_internal <- function(
                 )
               }
             } else {
-              # Normalize scope to vector (providers may return space- or comma-separated scopes)
-              if (length(intro_scope_raw) == 1L) {
-                if (
-                  grepl(",", intro_scope_raw, fixed = TRUE) &&
-                    !grepl(" ", intro_scope_raw, fixed = TRUE)
-                ) {
-                  intro_scopes <- unlist(
-                    strsplit(intro_scope_raw, ",", fixed = TRUE),
-                    use.names = FALSE
-                  )
-                } else {
-                  intro_scopes <- unlist(
-                    strsplit(intro_scope_raw, " ", fixed = TRUE),
-                    use.names = FALSE
-                  )
-                }
-              } else {
-                intro_scopes <- as.character(intro_scope_raw)
-              }
+              # Scope lists are space-delimited per RFC 6749. Commas remain
+              # part of the scope token and must not satisfy multiple requests.
+              intro_scopes <- as_scope_tokens(intro_scope_raw)
               intro_scopes <- sort(unique(intro_scopes[nzchar(intro_scopes)]))
 
               missing <- setdiff(requested_scopes, intro_scopes)
@@ -2048,26 +2032,9 @@ verify_token_set <- function(
           }
         } else {
           granted_raw <- token_set$scope
-          # Providers may return space- or comma-separated scopes; normalize to vector
-          if (length(granted_raw) == 1L) {
-            # Prefer space separation per RFC; fall back to comma when spaces absent
-            if (
-              grepl(",", granted_raw, fixed = TRUE) &&
-                !grepl(" ", granted_raw, fixed = TRUE)
-            ) {
-              granted <- unlist(
-                strsplit(granted_raw, ",", fixed = TRUE),
-                use.names = FALSE
-              )
-            } else {
-              granted <- unlist(
-                strsplit(granted_raw, " ", fixed = TRUE),
-                use.names = FALSE
-              )
-            }
-          } else {
-            granted <- as.character(granted_raw)
-          }
+          # Scope lists are space-delimited per RFC 6749. Commas remain part
+          # of a single scope token and must not satisfy multiple requests.
+          granted <- as_scope_tokens(granted_raw)
           granted <- sort(unique(granted[nzchar(granted)]))
           missing <- setdiff(requested_scopes, granted)
           if (length(missing) > 0) {
