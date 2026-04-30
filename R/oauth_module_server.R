@@ -1061,6 +1061,12 @@ oauth_module_server <- function(
       TRUE
     }
 
+    .is_authenticated_now <- function() {
+      # Refresh failures can clear token/error and immediately request reauth
+      # before the authenticated observer has flushed its cached flag.
+      isTRUE(.compute_authenticated())
+    }
+
     # Keep authenticated in sync like other values; store a plain logical
     # Also emit audit event when authenticated state changes
     .previous_authenticated <- FALSE
@@ -1190,7 +1196,7 @@ oauth_module_server <- function(
     }
 
     .build_auth_url <- function() {
-      if (isTRUE(values$authenticated)) {
+      if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("build_auth_url")
         return(NA_character_)
       }
@@ -1241,7 +1247,7 @@ oauth_module_server <- function(
     # Request a login, ensuring a browser cookie exists first. This is the
     # single entry point used by auto-redirect, manual login, and reauth.
     .request_login <- function() {
-      if (isTRUE(values$authenticated)) {
+      if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("request_login")
         return(invisible(FALSE))
       }

@@ -233,6 +233,83 @@ testthat::test_that("pending callback resumes after cookie arrives (async)", {
   )
 })
 
+testthat::test_that("async refresh failure with auto_redirect queues reauth", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("later")
+
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.skip_id_sig = TRUE
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  async_refresh_error <- tryCatch(
+    shinyOAuth:::err_id_token("Invalid ID token"),
+    error = function(e) e
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = TRUE,
+      async = TRUE,
+      indefinite_session = FALSE,
+      refresh_proactively = TRUE,
+      refresh_lead_seconds = 4000,
+      refresh_check_interval = 100
+    ),
+    expr = {
+      t <- OAuthToken(
+        access_token = "old_at",
+        refresh_token = "rt",
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      values$auth_started_at <- as.numeric(Sys.time())
+      values$error <- NULL
+      values$error_description <- NULL
+      values$browser_token <- NULL
+      session$flushReact()
+
+      testthat::with_mocked_bindings(
+        refresh_token = function(
+          oauth_client,
+          token,
+          async = TRUE,
+          introspect = FALSE,
+          shiny_session = NULL
+        ) {
+          promises::promise_reject(async_refresh_error)
+        },
+        .package = "shinyOAuth",
+        {
+          poll_for_async(function() isTRUE(values$pending_login), session)
+        }
+      )
+
+      poll_for_async(function() !isTRUE(values$authenticated), session)
+
+      testthat::expect_identical(values$error, "token_refresh_error")
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_true(is.null(values$token))
+      testthat::expect_true(isTRUE(values$reauth_triggered))
+      testthat::expect_true(isTRUE(values$pending_login))
+      testthat::expect_false(isTRUE(values$auto_redirected))
+      testthat::expect_false(isTRUE(values$refresh_in_progress))
+
+      values$browser_token <- valid_browser_token()
+      poll_for_async(function() isTRUE(values$auto_redirected), session)
+
+      testthat::expect_false(isTRUE(values$pending_login))
+      testthat::expect_true(isTRUE(values$auto_redirected))
+    }
+  )
+})
+
 testthat::test_that("async_dispatch returns promise when future is fallback", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")

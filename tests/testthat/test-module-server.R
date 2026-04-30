@@ -1143,6 +1143,45 @@ testthat::test_that("request_login is ignored while already authenticated", {
   )
 })
 
+testthat::test_that("request_login can start reauth before authenticated observer flushes", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = FALSE
+    ),
+    expr = {
+      t <- OAuthToken(
+        access_token = "existing",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      # Successful logins clear the browser token; mimic that state so
+      # reauth has to issue a fresh token and mark pending_login.
+      values$browser_token <- NULL
+      session$flushReact()
+
+      values$token <- NULL
+      result <- values$request_login()
+
+      testthat::expect_identical(result, TRUE)
+      testthat::expect_true(isTRUE(values$pending_login))
+      testthat::expect_false(isTRUE(values$auto_redirected))
+
+      session$flushReact()
+      testthat::expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
 testthat::test_that("query size cap enforced even when token already exists", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -1286,6 +1325,88 @@ testthat::test_that("oauth_module_server clears token and sets error when proact
       testthat::expect_true(is.null(values$token))
       testthat::expect_false(values$authenticated)
       testthat::expect_false(isTRUE(values$refresh_in_progress))
+    }
+  )
+})
+
+testthat::test_that("oauth_module_server refresh failure with auto_redirect queues reauth", {
+  testthat::skip_if_not_installed("later")
+
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.skip_id_sig = TRUE
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = TRUE,
+      async = FALSE,
+      indefinite_session = FALSE,
+      refresh_proactively = TRUE,
+      refresh_lead_seconds = 4000,
+      refresh_check_interval = 100
+    ),
+    expr = {
+      t <- OAuthToken(
+        access_token = "old_at",
+        refresh_token = "rt",
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+      values$token <- t
+      values$auth_started_at <- as.numeric(Sys.time())
+      values$error <- NULL
+      values$error_description <- NULL
+      # Successful login clears the browser token, so refresh-failure reauth
+      # must first queue a replacement token before redirecting.
+      values$browser_token <- NULL
+      session$flushReact()
+
+      testthat::with_mocked_bindings(
+        refresh_token = function(
+          oauth_client,
+          token,
+          async = FALSE,
+          introspect = FALSE,
+          shiny_session = NULL
+        ) {
+          shinyOAuth:::err_id_token("Invalid ID token")
+        },
+        .package = "shinyOAuth",
+        {
+          deadline <- Sys.time() + 2
+          while (!isTRUE(values$pending_login) && Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+            Sys.sleep(0.01)
+          }
+        }
+      )
+
+      testthat::expect_identical(values$error, "token_refresh_error")
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_true(is.null(values$token))
+      testthat::expect_true(isTRUE(values$reauth_triggered))
+      testthat::expect_true(isTRUE(values$pending_login))
+      testthat::expect_false(isTRUE(values$auto_redirected))
+      testthat::expect_false(isTRUE(values$refresh_in_progress))
+
+      values$browser_token <- valid_browser_token()
+
+      deadline <- Sys.time() + 2
+      while (!isTRUE(values$auto_redirected) && Sys.time() < deadline) {
+        later::run_now(0.05)
+        session$flushReact()
+        Sys.sleep(0.01)
+      }
+
+      testthat::expect_false(isTRUE(values$pending_login))
+      testthat::expect_true(isTRUE(values$auto_redirected))
     }
   )
 })
