@@ -35,6 +35,78 @@ test_that("fetch_jwks does not cache on invalid JSON", {
   expect_null(cache$get(cache_key, missing = NULL))
 })
 
+test_that("fetch_jwks rejects duplicate discovery jwks_uri members", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    base <- paste0("http://", host)
+    res$set_status(200)$set_type("application/json")$send(
+      paste0(
+        '{"issuer":"',
+        base,
+        '","jwks_uri":"',
+        base,
+        '/jwks"',
+        ',"jwks_uri":"',
+        base,
+        '/alt-jwks"}'
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- srv$url()
+
+  expect_error(
+    shinyOAuth:::fetch_jwks(
+      issuer = base,
+      jwks_cache = cachem::cache_mem(max_age = 3600),
+      pins = NULL,
+      pin_mode = "any"
+    ),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate member name: jwks_uri"
+  )
+})
+
+test_that("fetch_jwks rejects duplicate JWKS top-level members", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    base <- paste0("http://", host)
+    res$send_json(
+      object = list(
+        issuer = base,
+        jwks_uri = paste0(base, "/jwks")
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/jwks", function(req, res) {
+    res$set_status(200)$set_type("application/json")$send(
+      '{"keys":[],"keys":[]}'
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- srv$url()
+
+  expect_error(
+    shinyOAuth:::fetch_jwks(
+      issuer = base,
+      jwks_cache = cachem::cache_mem(max_age = 3600),
+      pins = NULL,
+      pin_mode = "any"
+    ),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate member name: keys"
+  )
+})
+
 test_that("validate_jwks_host_matches_issuer enforces policy only when configured", {
   # Default relaxed: no error
   expect_no_error(shinyOAuth:::validate_jwks_host_matches_issuer(

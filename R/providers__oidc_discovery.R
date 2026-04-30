@@ -409,6 +409,7 @@ oauth_provider_oidc_discover <- function(
   }
 
   body <- httr2::resp_body_string(resp)
+  reject_duplicate_json_object_members(body, "Discovery JSON")
   disc <- try(jsonlite::fromJSON(body, simplifyVector = FALSE), silent = TRUE)
 
   if (inherits(disc, "try-error")) {

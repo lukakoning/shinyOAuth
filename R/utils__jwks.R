@@ -199,7 +199,7 @@ fetch_jwks <- function(
     )
   }
   check_resp_body_size(resp, context = "jwks_discovery")
-  disc <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  disc <- .discover_parse_json(resp)
   discovery_issuer <- validate_discovery_issuer(
     issuer_input = issuer,
     issuer_discovered = disc$issuer %||% NULL,
@@ -241,7 +241,21 @@ fetch_jwks <- function(
     )
   }
   check_resp_body_size(jresp, context = "jwks_fetch")
-  jwks <- httr2::resp_body_json(jresp, simplifyVector = FALSE)
+  jwks_body <- httr2::resp_body_string(jresp)
+  reject_duplicate_json_object_members(jwks_body, "JWKS JSON")
+  jwks <- try(
+    jsonlite::fromJSON(jwks_body, simplifyVector = FALSE),
+    silent = TRUE
+  )
+  if (inherits(jwks, "try-error")) {
+    err_parse(c("x" = "Failed to parse JWKS JSON"))
+  }
+  if (is.data.frame(jwks)) {
+    jwks <- as.list(jwks)
+  }
+  if (!is.list(jwks)) {
+    err_parse(c("x" = "JWKS JSON did not parse to an object"))
+  }
   # Validate structure and (optionally) pin before caching
   validate_jwks(jwks, pins = pins, pin_mode = pin_mode)
   new_entry <- list(

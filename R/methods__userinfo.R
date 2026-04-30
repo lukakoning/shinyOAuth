@@ -164,7 +164,14 @@ get_userinfo <- function(
           )
         } else {
           ui <- try(
-            httr2::resp_body_json(resp, simplifyVector = TRUE),
+            {
+              body_txt <- httr2::resp_body_string(resp)
+              reject_duplicate_json_object_members(
+                body_txt,
+                "UserInfo response JSON"
+              )
+              jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+            },
             silent = TRUE
           )
         }

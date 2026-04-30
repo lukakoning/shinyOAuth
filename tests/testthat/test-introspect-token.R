@@ -115,6 +115,33 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   testthat::expect_identical(r8$status, "invalid_json")
 })
 
+testthat::test_that("introspect_token treats duplicate active members as invalid_json", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  t <- OAuthToken(
+    access_token = "at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true,"active":false}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  res <- introspect_token(cli, t, which = "access", async = FALSE)
+  testthat::expect_true(is.na(res$active))
+  testthat::expect_identical(res$status, "invalid_json")
+})
+
 testthat::test_that("introspect_token async returns a resolved promise", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")

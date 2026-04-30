@@ -357,6 +357,34 @@ testthat::test_that("discovery rejects non-JSON content-type", {
   )
 })
 
+testthat::test_that("discovery rejects duplicate issuer members", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      paste0(
+        '{"issuer":"',
+        issuer_url,
+        '","issuer":"',
+        issuer_url,
+        '","authorization_endpoint":"https://127.0.0.1/auth"',
+        ',"token_endpoint":"https://127.0.0.1/token"',
+        ',"jwks_uri":"https://127.0.0.1/jwks"}'
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  testthat::expect_error(
+    oauth_provider_oidc_discover(issuer = srv$url()),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate member name: issuer"
+  )
+})
+
 testthat::test_that("discovery errors when S256 is not advertised and plain is not explicit", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

@@ -742,7 +742,13 @@ introspect_token <- function(
 
         body_txt <- httr2::resp_body_string(resp)
         parsed <- try(
-          jsonlite::fromJSON(body_txt, simplifyVector = TRUE),
+          {
+            reject_duplicate_json_object_members(
+              body_txt,
+              "Introspection response JSON"
+            )
+            jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+          },
           silent = TRUE
         )
 
