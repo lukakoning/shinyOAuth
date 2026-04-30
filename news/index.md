@@ -39,12 +39,6 @@
   no longer applies ID-token claim or ACR enforcement to unchecked JWT
   payloads.
 
-- Fixed
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  reauth after refresh failure so internal login requests no longer get
-  blocked by a stale cached `authenticated` flag before reactive state
-  has flushed.
-
 - Enforced RFC 7518 HMAC key-size minimums for `HS256` / `HS384` /
   `HS512` across `client_secret_jwt`, signed request objects, and HS ID
   token validation.
@@ -52,12 +46,6 @@
 - Restricted outbound RSA JWT signing to `RS256` and removed unsupported
   `PS*` algorithms from default inbound allowlists until the JOSE
   backend can correctly sign and verify RSA-PSS tokens.
-
-- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  now defaults `dpop_require_access_token` to `TRUE` when a
-  `dpop_private_key` is configured, so Bearer access tokens are rejected
-  unless you explicitly opt out with
-  `dpop_require_access_token = FALSE`.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now rejects unsafe `browser_cookie_path` values that could rewrite
@@ -86,12 +74,6 @@
   now stop presenting it as a comprehensive deployment-hardening check
   and show explicit option checks instead.
 
-- Updated
-  [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
-  documentation to match runtime behavior: missing `expires_in` now
-  documents the configured fallback expiry, and refresh-time
-  introspection may backfill `token@cnf`.
-
 - `build_client_assertion()` now caps
   `options(shinyOAuth.client_assertion_ttl)` at 300 seconds, warning and
   clamping higher values instead of emitting long- lived JWT client
@@ -100,15 +82,6 @@
 - Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
   refresh-time `nonce`, and `azp` in addition to the existing `iss` /
   `sub` / `aud` checks.
-
-- Fixed PEM-string private key parsing for
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  validation so `client_private_key` / `dpop_private_key` can be
-  supplied as PEM text again, and cleaned up a check note by fully
-  qualifying
-  [`utils::capture.output()`](https://rdrr.io/r/utils/capture.output.html)
-  / [`utils::str()`](https://rdrr.io/r/utils/str.html) in claim
-  canonicalization.
 
 - Signed UserInfo JWT validation now enforces `exp`, `iat`, and `nbf`
   when those temporal claims are present, rejecting expired or
