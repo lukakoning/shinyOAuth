@@ -154,6 +154,58 @@ add_req_defaults <- function(req) {
     httr2::req_options(maxfilesize = max_bytes)
 }
 
+## 1.2 Client-auth request shaping ---------------------------------------
+
+# Normalize client credentials into the request shape expected by the provider.
+# Used by PAR, token exchange, refresh, revocation, and introspection helpers
+# before the request is sent. Input: request, params, client, and phase label.
+# Output: updated req/params list.
+apply_direct_client_auth <- function(req, params, client, context) {
+  tas <- normalize_token_auth_style(
+    client@provider@token_auth_style %||% "header"
+  )
+
+  if (identical(tas, "header")) {
+    req <- req |>
+      httr2::req_auth_basic(client@client_id, client@client_secret)
+  } else if (identical(tas, "body")) {
+    params$client_id <- params$client_id %||% client@client_id
+    # client_secret_post can omit client_secret for PKCE/public-like flows,
+    # but it still sends the secret when one is configured.
+    if (is_valid_string(client@client_secret)) {
+      params$client_secret <- client@client_secret
+    }
+  } else if (identical(tas, "public")) {
+    params$client_id <- params$client_id %||% client@client_id
+  } else if (tas %in% MTLS_TOKEN_AUTH_STYLES) {
+    params$client_id <- params$client_id %||% client@client_id
+  } else if (
+    identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
+  ) {
+    params$client_id <- params$client_id %||% client@client_id
+    params$client_assertion_type <-
+      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+    params$client_assertion <- build_client_assertion(
+      client,
+      aud = resolve_client_assertion_audience(client, req)
+    )
+  } else {
+    err_config(
+      c(
+        paste0("Unsupported token_auth_style for ", context, "."),
+        "i" = paste0(
+          "Got: '",
+          tas,
+          "'. Allowed: 'header', 'body', 'public', 'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', 'private_key_jwt'."
+        )
+      ),
+      context = list(phase = context, style = tas)
+    )
+  }
+
+  list(req = req, params = params)
+}
+
 #' Internal: resolve max body bytes from option
 #'
 #' @return Integer, validated max body bytes (default 1 MiB).

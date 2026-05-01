@@ -1,129 +1,12 @@
 # This file contains the inbound JWT helpers that apply ID token validation
 # rules on top of the generic JWT parsing and signature helpers.
 # Use them when a returned ID token must be matched to the expected issuer,
-# audience, nonce, access token, or Microsoft tenant-specific rules.
+# audience, nonce, access token, or provider-specific issuer rules such as
+# Microsoft tenant-specific validation.
 
 # 1 Inbound ID token helpers ----------------------------------------------
 
-## 1.1 Issuer and key-selection helpers -----------------------------------
-
-# Check whether one value looks like a GUID tenant id.
-# Used by Microsoft-specific issuer validation. Input: scalar value. Output:
-# TRUE or FALSE.
-is_guid_like <- function(value) {
-  is.character(value) &&
-    length(value) == 1L &&
-    !is.na(value) &&
-    grepl(
-      "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-      value
-    )
-}
-
-# Detect whether the configured Microsoft issuer is one of the tenant-
-# independent authorities.
-# Used by Microsoft-specific issuer handling. Input: issuer URL. Output:
-# normalized path or NULL.
-microsoft_tenant_independent_issuer <- function(issuer) {
-  if (!is_valid_string(issuer)) {
-    return(NULL)
-  }
-
-  parsed <- try(httr2::url_parse(issuer), silent = TRUE)
-  if (inherits(parsed, "try-error")) {
-    return(NULL)
-  }
-
-  host <- tolower(parsed$hostname %||% "")
-  path <- tolower(gsub("^/+|/+$", "", parsed$path %||% ""))
-
-  if (!identical(host, "login.microsoftonline.com")) {
-    return(NULL)
-  }
-
-  if (path %in% c("common/v2.0", "organizations/v2.0")) {
-    return(path)
-  }
-
-  NULL
-}
-
-# Resolve the exact issuer that an incoming ID token is expected to use.
-# Used before issuer comparison. Input: provider issuer and parsed token
-# payload. Output: list with expected issuer and Microsoft-specific flags.
-resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
-  if (is.null(microsoft_tenant_independent_issuer(provider_issuer))) {
-    return(list(
-      expected_issuer = provider_issuer,
-      enforce_key_issuer = FALSE,
-      token_tid = NULL
-    ))
-  }
-
-  token_tid <- token_payload$tid %||% NULL
-  if (!is_guid_like(token_tid)) {
-    err_id_token(c(
-      "x" = "Microsoft ID token missing or invalid tid claim",
-      "i" = paste(
-        "Tenant-independent Microsoft authorities require a GUID tid claim"
-      )
-    ))
-  }
-
-  list(
-    expected_issuer = sprintf(
-      "https://login.microsoftonline.com/%s/v2.0",
-      token_tid
-    ),
-    enforce_key_issuer = TRUE,
-    token_tid = token_tid
-  )
-}
-
-# Filter Microsoft JWKS keys to those scoped to the token's tenant issuer.
-# Used only for tenant-independent Microsoft authorities. Input: candidate
-# keys and issuer context. Output: filtered key list.
-filter_microsoft_jwks_for_token_issuer <- function(
-  keys,
-  provider_issuer,
-  token_issuer,
-  token_tid
-) {
-  if (
-    is.null(microsoft_tenant_independent_issuer(provider_issuer)) ||
-      length(keys) == 0L ||
-      !is_valid_string(token_issuer) ||
-      !is_guid_like(token_tid)
-  ) {
-    return(keys)
-  }
-
-  keep <- vapply(
-    keys,
-    function(key) {
-      key_issuer <- key$issuer %||% NULL
-      if (!is_valid_string(key_issuer)) {
-        return(FALSE)
-      }
-
-      if (grepl("\\{tenantid\\}", key_issuer, ignore.case = TRUE)) {
-        key_issuer <- gsub(
-          "\\{tenantid\\}",
-          token_tid,
-          key_issuer,
-          ignore.case = TRUE
-        )
-      }
-
-      identical(key_issuer, token_issuer)
-    },
-    logical(1)
-  )
-
-  keys[keep]
-}
-
-## 1.2 Main ID token validation -------------------------------------------
+## 1.1 Main ID token validation -------------------------------------------
 
 #' Internal: validate ID token
 #'
@@ -200,38 +83,11 @@ validate_id_token <- function(
     }
   )
   header_fields <- validate_jose_header_fields(header, err_id_token)
-
   # Defense-in-depth: if a typ header is present, require it to be exactly
-  # "JWT" per RFC 7519. Many providers omit typ; that's fine. Unknown types
-  # (e.g., JWE or vendor-specific values) are rejected to avoid accepting
-  # unintended container types.
-  typ <- header_fields$typ
-  if (!is.null(typ)) {
-    if (
-      !(is.character(typ) &&
-        length(typ) == 1L &&
-        identical(toupper(typ), "JWT"))
-    ) {
-      err_id_token(paste0(
-        "JWT typ header invalid: expected 'JWT' when present, got ",
-        as.character(typ)
-      ))
-    }
-  }
-  # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
-  # do not support.
-  # Allowlist of crit values this implementation understands (empty today).
-  supported_crit <- character()
-  crit <- header_fields$crit
-  if (!is.null(crit)) {
-    unsupported <- setdiff(crit, supported_crit)
-    if (length(unsupported) > 0L) {
-      err_id_token(paste0(
-        "JWT contains unsupported critical header parameter(s): ",
-        paste(unsupported, collapse = ", ")
-      ))
-    }
-  }
+  # "JWT" per RFC 7519. Many providers omit typ; that is still allowed.
+  # RFC 7515 s4.1.11: also reject critical header parameters we do not support.
+  enforce_inbound_jwt_header_policy(header_fields, err_id_token)
+
   alg <- toupper(header_fields$alg)
   kid <- header_fields$kid
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
@@ -635,7 +491,7 @@ validate_id_token <- function(
   invisible(payload)
 }
 
-## 1.3 EdDSA and at_hash helpers ------------------------------------------
+## 1.2 EdDSA and at_hash helpers ------------------------------------------
 
 # Normalize an EdDSA curve label into the spelling used by this file.
 # Used by EdDSA-specific at_hash handling. Input: curve name. Output:

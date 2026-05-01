@@ -2,8 +2,10 @@
 # Use them during callback handling to decrypt the saved state, confirm it still
 # matches the login that started earlier, and consume the single-use state entry.
 
-# 1 State helpers: decrypt/validate payload and fetch/remove store --------
-#
+# 1 State payload helpers -------------------------------------------------
+
+## 1.1 Decrypt and validate payload --------------------------------------
+
 #' Decrypt and validate OAuth state payload
 #'
 #' Internal utility that decrypts the encrypted `state` payload using the
@@ -86,6 +88,143 @@ state_payload_decrypt_validate <- function(
     }
   )
 }
+
+## 1.2 Payload binding and freshness -------------------------------------
+
+# Check that the sealed login state is still fresh enough to use.
+# Used by state_payload_decrypt_validate() and otel_callback_parent_hint().
+# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
+payload_verify_issued_at <- function(client, payload) {
+  # Freshness backstop for the encrypted state payload (independent of store TTL)
+  max_age <- client_state_payload_max_age(client)
+
+  # Validate issued_at (integer seconds OK)
+  ia <- payload$issued_at
+  if (length(ia) != 1L || !is.numeric(ia) || !is.finite(ia)) {
+    err_invalid_state("Invalid payload: missing or invalid issued_at")
+  }
+
+  # Use the same leeway as ID token checks for clock drift tolerance
+  leeway <- client@provider@leeway %||% getOption("shinyOAuth.leeway", 30)
+  lwe <- as.numeric(leeway %||% 0)
+  if (!is.finite(lwe) || is.na(lwe) || length(lwe) != 1) {
+    lwe <- 0
+  }
+
+  # Compute age in seconds using double math (robust even after 2038)
+  now <- as.numeric(Sys.time())
+  ia_val <- as.numeric(ia)
+
+  # Reject if issued_at is in the future beyond leeway (clock drift tolerance)
+  if (ia_val > (now + lwe)) {
+    err_invalid_state("Invalid payload: issued_at is in the future")
+  }
+
+  # Compute age for max_age check
+  age <- now - ia_val
+  if (age > max_age) {
+    err_invalid_state("Invalid payload: issued_at is too old")
+  }
+
+  invisible(TRUE)
+}
+
+# Check that the callback payload still matches the client that started login.
+# Used by state_payload_decrypt_validate() before any token exchange happens.
+# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
+payload_verify_client_binding <- function(client, payload) {
+  # Helpers --------------------------------------------------------------------
+
+  S7::check_is_S7(client, class = OAuthClient)
+
+  # Client ID ------------------------------------------------------------------
+
+  expected_client_id <- client@client_id
+  payload_client_id <- payload$client_id
+
+  if (!is_valid_string(payload_client_id)) {
+    err_invalid_state("Invalid payload: missing or invalid client_id")
+  }
+  if (!identical(payload_client_id, expected_client_id)) {
+    err_invalid_state(sprintf(
+      "Invalid payload: client_id mismatch (got %s)",
+      payload_client_id
+    ))
+  }
+
+  # Redirect_uri ---------------------------------------------------------------
+
+  expected_redirect <- client@redirect_uri
+  payload_redirect <- payload$redirect_uri
+
+  if (!is_valid_string(payload_redirect)) {
+    err_invalid_state("Invalid payload: missing or invalid redirect_uri")
+  }
+
+  if (!identical(payload_redirect, expected_redirect)) {
+    err_invalid_state(sprintf(
+      "Invalid payload: redirect_uri mismatch (got %s)",
+      payload_redirect
+    ))
+  }
+
+  # Scopes (order-insensitive set comparison) ----------------------------------
+
+  expected_scopes <- as_scope_tokens(effective_client_scopes(client))
+  payload_scopes <- as_scope_tokens(payload$scopes %||% NULL)
+
+  # Normalize by unique + sort so we can produce clear differences
+  exp_norm <- sort(unique(expected_scopes))
+  got_norm <- sort(unique(payload_scopes))
+
+  if (!setequal(exp_norm, got_norm)) {
+    missing <- setdiff(exp_norm, got_norm)
+    extra <- setdiff(got_norm, exp_norm)
+    bullets <- c("x" = "Invalid payload: scopes do not match")
+    if (length(missing)) {
+      bullets <- c(
+        bullets,
+        "!" = paste0(
+          "Missing: ",
+          paste(missing, collapse = ", ")
+        )
+      )
+    }
+    if (length(extra)) {
+      bullets <- c(
+        bullets,
+        "!" = paste0(
+          "Unexpected: ",
+          paste(extra, collapse = ", ")
+        )
+      )
+    }
+    err_invalid_state(bullets)
+  }
+
+  # Provider fingerprint -------------------------------------------------------
+
+  expected_fp <- provider_fingerprint(client@provider)
+  payload_fp <- payload$provider
+
+  if (!is_valid_string(payload_fp)) {
+    err_invalid_state(
+      "Invalid payload: missing or invalid provider fingerprint"
+    )
+  }
+  if (!identical(payload_fp, expected_fp)) {
+    err_invalid_state(sprintf(
+      "Invalid payload: provider fingerprint mismatch (got %s)",
+      payload_fp
+    ))
+  }
+
+  invisible(TRUE)
+}
+
+# 2 State store helpers ---------------------------------------------------
+
+## 2.1 Fetch and remove state entry --------------------------------------
 
 #' Fetch and remove the single-use state entry
 #'
@@ -211,7 +350,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 }
 
 
-## 1.1 Atomic consume path ------------------------------------------------
+## 2.2 Atomic consume path ------------------------------------------------
 
 # Consume one state-store entry with an atomic read-and-remove operation.
 # Used by state_store_get_remove() when the backend exposes `$take()`.
@@ -276,7 +415,7 @@ state_store_consume_atomic <- function(
 }
 
 
-## 1.2 Non-atomic fallback path -------------------------------------------
+## 2.3 Non-atomic fallback path -------------------------------------------
 
 # Consume one state-store entry with get + remove + a post-check.
 # Used by state_store_get_remove() only for per-process caches that do not offer `$take()`.
@@ -383,7 +522,7 @@ state_store_consume_fallback <- function(
 }
 
 
-## 1.3 Shared validation for state store values ----------------------------
+## 2.4 Shared state-store validation --------------------------------------
 
 # Check that a retrieved state-store value has the fields callback handling expects.
 # Used by both state-store consume paths before browser-token and PKCE checks continue.

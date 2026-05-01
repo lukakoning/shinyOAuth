@@ -442,41 +442,20 @@ decode_userinfo_jwt <- function(
       stop(e)
     }
   )
-
   # Defense-in-depth: if a typ header is present, require it to be exactly
-  # "JWT" per RFC 7519. Many providers omit typ; that's fine.
-  typ <- header_fields$typ
-  if (!is.null(typ)) {
-    if (
-      !(is.character(typ) &&
-        length(typ) == 1L &&
-        identical(toupper(typ), "JWT"))
-    ) {
+  # "JWT" per RFC 7519. Many providers omit typ; that is still allowed.
+  # RFC 7515 s4.1.11: also reject critical header parameters we do not support.
+  enforce_inbound_jwt_header_policy(
+    header_fields,
+    err_userinfo,
+    on_typ_invalid = function() {
       audit_userinfo_event(
         oauth_client,
         status = "userinfo_jwt_typ_invalid",
         shiny_session = shiny_session
       )
-      err_userinfo(paste0(
-        "JWT typ header invalid: expected 'JWT' when present, got ",
-        paste(as.character(typ), collapse = ", ")
-      ))
     }
-  }
-
-  # RFC 7515 s4.1.11: reject tokens that carry critical header parameters we
-  # do not support (mirrors the same check in validate_id_token()).
-  supported_crit <- character()
-  crit <- header_fields$crit
-  if (!is.null(crit)) {
-    unsupported <- setdiff(crit, supported_crit)
-    if (length(unsupported) > 0L) {
-      err_userinfo(paste0(
-        "JWT contains unsupported critical header parameter(s): ",
-        paste(unsupported, collapse = ", ")
-      ))
-    }
-  }
+  )
 
   alg <- toupper(header_fields$alg)
   kid <- header_fields$kid

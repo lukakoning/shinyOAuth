@@ -1492,139 +1492,7 @@ OAuthClient <- S7::new_class(
   }
 )
 
-# 2 Constructor warnings ---------------------------------------------------
-
-# Warn when a client is built inside a live Shiny session.
-# Used by oauth_client(). Input: whether state_key was omitted. Output:
-# invisible TRUE/FALSE after an optional warning.
-warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
-  if (.is_test()) {
-    return(invisible(NULL))
-  }
-
-  sess <- get_current_shiny_session()
-  if (is.null(sess)) {
-    return(invisible(NULL))
-  }
-
-  bullets <- c(
-    "[{.pkg shinyOAuth}] - OAuthClient created inside Shiny",
-    "!" = paste0(
-      "Detected OAuth client construction while a Shiny session is active. ",
-      "This is usually a bug: the OAuth login flow involves a redirect which creates a new session."
-    )
-  )
-
-  if (isTRUE(state_key_missing)) {
-    bullets <- c(
-      bullets,
-      "x" = paste0(
-        "Because you did not supply {.code state_key}, it will be auto-generated for this session ",
-        "and callbacks in the post-redirect session will be unable to decrypt/validate state."
-      )
-    )
-  } else {
-    bullets <- c(
-      bullets,
-      "i" = paste0(
-        "Construct your {.code OAuthClient} once outside server logic (e.g., in global scope) and reuse it.",
-        " If you must create clients dynamically, ensure {.code state_key} is stable across sessions and (for multi-worker deployments) shared across workers."
-      )
-    )
-  }
-
-  rlang::warn(
-    bullets,
-    .frequency = "once",
-    .frequency_id = "oauth-client-created-in-shiny"
-  )
-
-  invisible(TRUE)
-}
-
-# Warn when the caller requests claims but leaves claims validation disabled.
-# Used by oauth_client(). Input: the claims request and validation mode flags.
-# Output: invisible TRUE/FALSE after an optional warning.
-warn_about_unenforced_claim_requests <- function(
-  claims,
-  claims_validation,
-  claims_validation_missing = FALSE
-) {
-  if (
-    !isTRUE(claims_validation_missing) || !identical(claims_validation, "none")
-  ) {
-    return(invisible(FALSE))
-  }
-
-  if (!claims_request_has_enforceable_requirements(claims)) {
-    return(invisible(FALSE))
-  }
-
-  guidance <- paste(
-    "OIDC providers may still complete login without enforcing those requested claims.",
-    "Set {.arg claims_validation} = {.val warn} to surface mismatches or {.arg claims_validation} = {.val strict} to fail login when requested claims are missing or unsatisfied."
-  )
-  if (claims_request_target_has_enforceable_requirements(claims, "id_token")) {
-    guidance <- paste(
-      guidance,
-      "For enforceable {.code claims$id_token} requests, also configure the provider to validate ID tokens with {.code id_token_validation = TRUE} or {.code use_nonce = TRUE}."
-    )
-  }
-
-  rlang::warn(
-    c(
-      "[{.pkg shinyOAuth}] - {.strong Enforceable claim requests are not being validated}",
-      "!" = paste(
-        "The supplied {.arg claims} request includes {.code essential}, {.code value}, or {.code values} constraints,",
-        "but {.arg claims_validation} was left at its default {.val none}, so shinyOAuth will not verify that the returned ID token or userinfo satisfies them."
-      ),
-      "i" = guidance
-    ),
-    .frequency = "once",
-    .frequency_id = "shinyOAuth_claims_validation_default_none"
-  )
-
-  invisible(TRUE)
-}
-
-# Warn when DPoP is configured but bearer access tokens are still accepted.
-# Used by oauth_client(). Input: the constructed client and whether the
-# dpop_require_access_token argument was left at its default. Output: invisible
-# TRUE/FALSE after an optional warning.
-warn_about_optional_dpop_access_tokens <- function(
-  client,
-  dpop_require_access_token_missing = FALSE
-) {
-  if (!isTRUE(dpop_require_access_token_missing)) {
-    return(invisible(FALSE))
-  }
-
-  if (
-    is.null(client@dpop_private_key) || isTRUE(client@dpop_require_access_token)
-  ) {
-    return(invisible(FALSE))
-  }
-
-  rlang::warn(
-    c(
-      "[{.pkg shinyOAuth}] - {.strong Configured DPoP does not require DPoP access tokens}",
-      "!" = paste(
-        "This client has {.arg dpop_private_key} configured, but {.arg dpop_require_access_token} was left at its default {.val FALSE},",
-        "so shinyOAuth will still accept {.code token_type = \"Bearer\"} responses."
-      ),
-      "i" = paste(
-        "Set {.arg dpop_require_access_token} = {.val TRUE} to reject non-DPoP access tokens.",
-        "Set it explicitly to {.val FALSE} if you intentionally want refresh-token-only or opportunistic DPoP behavior."
-      )
-    ),
-    .frequency = "once",
-    .frequency_id = "shinyOAuth_dpop_require_access_token_default_false"
-  )
-
-  invisible(TRUE)
-}
-
-# 3 Helper constructor -----------------------------------------------------
+# 2 Helper constructor -----------------------------------------------------
 
 # Build a validated OAuthClient from user-supplied settings.
 # Used by app setup code before oauth_module_server(). Input: provider plus
@@ -1808,4 +1676,136 @@ oauth_client <- function(
   )
 
   client
+}
+
+# 3 Constructor warnings ---------------------------------------------------
+
+# Warn when a client is built inside a live Shiny session.
+# Used by oauth_client(). Input: whether state_key was omitted. Output:
+# invisible TRUE/FALSE after an optional warning.
+warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
+  if (.is_test()) {
+    return(invisible(NULL))
+  }
+
+  sess <- get_current_shiny_session()
+  if (is.null(sess)) {
+    return(invisible(NULL))
+  }
+
+  bullets <- c(
+    "[{.pkg shinyOAuth}] - OAuthClient created inside Shiny",
+    "!" = paste0(
+      "Detected OAuth client construction while a Shiny session is active. ",
+      "This is usually a bug: the OAuth login flow involves a redirect which creates a new session."
+    )
+  )
+
+  if (isTRUE(state_key_missing)) {
+    bullets <- c(
+      bullets,
+      "x" = paste0(
+        "Because you did not supply {.code state_key}, it will be auto-generated for this session ",
+        "and callbacks in the post-redirect session will be unable to decrypt/validate state."
+      )
+    )
+  } else {
+    bullets <- c(
+      bullets,
+      "i" = paste0(
+        "Construct your {.code OAuthClient} once outside server logic (e.g., in global scope) and reuse it.",
+        " If you must create clients dynamically, ensure {.code state_key} is stable across sessions and (for multi-worker deployments) shared across workers."
+      )
+    )
+  }
+
+  rlang::warn(
+    bullets,
+    .frequency = "once",
+    .frequency_id = "oauth-client-created-in-shiny"
+  )
+
+  invisible(TRUE)
+}
+
+# Warn when the caller requests claims but leaves claims validation disabled.
+# Used by oauth_client(). Input: the claims request and validation mode flags.
+# Output: invisible TRUE/FALSE after an optional warning.
+warn_about_unenforced_claim_requests <- function(
+  claims,
+  claims_validation,
+  claims_validation_missing = FALSE
+) {
+  if (
+    !isTRUE(claims_validation_missing) || !identical(claims_validation, "none")
+  ) {
+    return(invisible(FALSE))
+  }
+
+  if (!claims_request_has_enforceable_requirements(claims)) {
+    return(invisible(FALSE))
+  }
+
+  guidance <- paste(
+    "OIDC providers may still complete login without enforcing those requested claims.",
+    "Set {.arg claims_validation} = {.val warn} to surface mismatches or {.arg claims_validation} = {.val strict} to fail login when requested claims are missing or unsatisfied."
+  )
+  if (claims_request_target_has_enforceable_requirements(claims, "id_token")) {
+    guidance <- paste(
+      guidance,
+      "For enforceable {.code claims$id_token} requests, also configure the provider to validate ID tokens with {.code id_token_validation = TRUE} or {.code use_nonce = TRUE}."
+    )
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Enforceable claim requests are not being validated}",
+      "!" = paste(
+        "The supplied {.arg claims} request includes {.code essential}, {.code value}, or {.code values} constraints,",
+        "but {.arg claims_validation} was left at its default {.val none}, so shinyOAuth will not verify that the returned ID token or userinfo satisfies them."
+      ),
+      "i" = guidance
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_claims_validation_default_none"
+  )
+
+  invisible(TRUE)
+}
+
+# Warn when DPoP is configured but bearer access tokens are still accepted.
+# Used by oauth_client(). Input: the constructed client and whether the
+# dpop_require_access_token argument was left at its default. Output: invisible
+# TRUE/FALSE after an optional warning.
+warn_about_optional_dpop_access_tokens <- function(
+  client,
+  dpop_require_access_token_missing = FALSE
+) {
+  if (!isTRUE(dpop_require_access_token_missing)) {
+    return(invisible(FALSE))
+  }
+
+  if (
+    is.null(client@dpop_private_key) || isTRUE(client@dpop_require_access_token)
+  ) {
+    return(invisible(FALSE))
+  }
+
+  rlang::warn(
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Configured DPoP does not require DPoP access tokens}",
+      "!" = paste(
+        "This client has {.arg dpop_private_key} configured, but {.arg dpop_require_access_token} was left at its default {.val FALSE},",
+        "so shinyOAuth will still accept {.code token_type = \"Bearer\"} responses."
+      ),
+      "i" = paste(
+        "Set {.arg dpop_require_access_token} = {.val TRUE} to reject non-DPoP access tokens.",
+        "Set it explicitly to {.val FALSE} if you intentionally want refresh-token-only or opportunistic DPoP behavior."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_dpop_require_access_token_default_false"
+  )
+
+  invisible(TRUE)
 }

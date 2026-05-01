@@ -1,11 +1,38 @@
-# This file contains the option checks that soften or relax specific safety
-# protections during tests and interactive debugging.
-# Use them when code needs to know whether a normally strict browser, redirect,
-# signature, or UserInfo safety check has been explicitly softened.
+# This file contains the environment checks and option checks that soften or
+# relax specific safety protections during tests and interactive debugging.
+# Use these helpers when code needs to branch on test/interactive execution or
+# when a normally strict browser, redirect, signature, or UserInfo safety check
+# has been explicitly softened.
 
-# 1 Safety softeners -------------------------------------------------------
+# 1 Environment helpers ----------------------------------------------------
 
-## 1.1 Option-based softening checks --------------------------------------
+## 1.1 Test and interactive checks ----------------------------------------
+
+# Check whether code is currently running under testthat.
+# Used by warning and debug helpers. Input: none. Output: TRUE or FALSE.
+.is_test <- function() {
+  if (requireNamespace("testthat", quietly = TRUE)) {
+    return(testthat::is_testing())
+  }
+  return(FALSE)
+}
+
+# Check whether the current R session is interactive.
+# Used by logging and debugging helpers. Input: none. Output: TRUE or FALSE.
+.is_interactive <- function() {
+  interactive()
+}
+
+# Check whether code is running under tests or in an interactive session.
+# Used by softening helpers that should stay quiet in non-interactive batch
+# execution. Input: none. Output: TRUE or FALSE.
+.is_test_or_interactive <- function() {
+  .is_test() || .is_interactive()
+}
+
+# 2 Safety softeners -------------------------------------------------------
+
+## 2.1 Option-based softening checks --------------------------------------
 
 # Some helpers which determine if certain safety checks can be skipped
 #   based on package options. Most development-only options are hard-gated to

@@ -1059,7 +1059,69 @@ OAuthProvider <- S7::new_class(
   }
 )
 
-# 2 Helper constructor -----------------------------------------------------
+# 2 Provider helpers -------------------------------------------------------
+
+## 2.1 Provider fingerprint ------------------------------------------------
+
+# Build a stable fingerprint for the provider configuration.
+# Used when the login request is created and again when the callback finishes,
+# so callback handling can confirm it is completing the same provider setup.
+# Input: an OAuthProvider. Output: one stable sha256:<digest> string.
+provider_fingerprint <- function(provider) {
+  norm_chr <- function(x) {
+    if (is.null(x) || length(x) != 1L || is.na(x)) {
+      return("")
+    }
+    as.character(x)
+  }
+
+  iss <- norm_chr(provider@issuer)
+  au <- norm_chr(provider@auth_url)
+  tu <- norm_chr(provider@token_url)
+  ui <- norm_chr(provider@userinfo_url)
+  it <- norm_chr(provider@introspection_url)
+
+  # Use a length-prefixed canonical representation to avoid delimiter-based
+  # collisions when any component contains separators.
+  iss_u <- enc2utf8(iss)
+  au_u <- enc2utf8(au)
+  tu_u <- enc2utf8(tu)
+  ui_u <- enc2utf8(ui)
+  it_u <- enc2utf8(it)
+
+  canonical <- paste0(
+    "iss:",
+    nchar(iss_u, type = "bytes"),
+    ":",
+    iss_u,
+    "\n",
+    "au:",
+    nchar(au_u, type = "bytes"),
+    ":",
+    au_u,
+    "\n",
+    "tu:",
+    nchar(tu_u, type = "bytes"),
+    ":",
+    tu_u,
+    "\n",
+    "ui:",
+    nchar(ui_u, type = "bytes"),
+    ":",
+    ui_u,
+    "\n",
+    "it:",
+    nchar(it_u, type = "bytes"),
+    ":",
+    it_u
+  )
+
+  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
+  # Keyed digests are only for audit logs where correlation prevention matters.
+  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
+}
+
+# 3 Helper constructor -----------------------------------------------------
 
 # Build a validated OAuthProvider from user-supplied settings and helper
 # defaults.

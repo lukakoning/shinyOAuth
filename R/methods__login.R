@@ -54,7 +54,6 @@ prepare_call <- function(
   par_used <- is_valid_string(
     oauth_client@provider@par_url %||% NA_character_
   )
-
   with_trace_id(
     flow_trace_id,
     with_otel_span(
@@ -241,64 +240,6 @@ prepare_call <- function(
 
 ## 1.2 Request construction helpers ---------------------------------------
 
-# Build a stable fingerprint for the provider configuration.
-# Used by prepare_call() and payload_verify_client_binding() so the callback can
-# confirm it is finishing the same login setup that started earlier.
-# Input: an OAuthProvider. Output: one stable sha256:<digest> string.
-provider_fingerprint <- function(provider) {
-  norm_chr <- function(x) {
-    if (is.null(x) || length(x) != 1L || is.na(x)) {
-      return("")
-    }
-    as.character(x)
-  }
-
-  iss <- norm_chr(provider@issuer)
-  au <- norm_chr(provider@auth_url)
-  tu <- norm_chr(provider@token_url)
-  ui <- norm_chr(provider@userinfo_url)
-  it <- norm_chr(provider@introspection_url)
-
-  # Use a length-prefixed canonical representation to avoid delimiter-based
-  # collisions when any component contains separators.
-  iss_u <- enc2utf8(iss)
-  au_u <- enc2utf8(au)
-  tu_u <- enc2utf8(tu)
-  ui_u <- enc2utf8(ui)
-  it_u <- enc2utf8(it)
-
-  canonical <- paste0(
-    "iss:",
-    nchar(iss_u, type = "bytes"),
-    ":",
-    iss_u,
-    "\n",
-    "au:",
-    nchar(au_u, type = "bytes"),
-    ":",
-    au_u,
-    "\n",
-    "tu:",
-    nchar(tu_u, type = "bytes"),
-    ":",
-    tu_u,
-    "\n",
-    "ui:",
-    nchar(ui_u, type = "bytes"),
-    ":",
-    ui_u,
-    "\n",
-    "it:",
-    nchar(it_u, type = "bytes"),
-    ":",
-    it_u
-  )
-
-  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
-  # Keyed digests are only for audit logs where correlation prevention matters.
-  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
-}
-
 # Build the parameters sent to the provider's authorization endpoint.
 # Used by build_auth_url() for plain redirects, signed request objects, and PAR.
 # Input: client settings plus sealed state, scopes, PKCE values, and nonce. Output: a named list of request parameters.
@@ -380,7 +321,7 @@ build_authorization_params <- function(
     params$resource <- oauth_client@resource
   }
 
-  # OIDC claims parameter (OIDC Core §5.5): JSON-encode claim lists while
+  # OIDC claims parameter (OIDC Core Section 5.5): JSON-encode claim lists while
   # preserving explicit null values used to request claims without parameters.
   if (!is.null(oauth_client@claims)) {
     if (is.list(oauth_client@claims)) {
@@ -453,55 +394,6 @@ build_authorization_params <- function(
 
   # Drop NULLs before building query strings or form bodies.
   compact_list(params)
-}
-
-# Normalize client credentials into the request shape expected by the provider.
-# Used by push_authorization_request() and swap_code_for_token_set() before the
-# request is sent. Input: request, params, client, and phase label. Output: updated req/params list.
-apply_direct_client_auth <- function(req, params, client, context) {
-  tas <- normalize_token_auth_style(
-    client@provider@token_auth_style %||% "header"
-  )
-
-  if (identical(tas, "header")) {
-    req <- req |>
-      httr2::req_auth_basic(client@client_id, client@client_secret)
-  } else if (identical(tas, "body")) {
-    params$client_id <- params$client_id %||% client@client_id
-    # client_secret_post can omit client_secret for PKCE/public-like flows,
-    # but it still sends the secret when one is configured.
-    if (is_valid_string(client@client_secret)) {
-      params$client_secret <- client@client_secret
-    }
-  } else if (identical(tas, "public")) {
-    params$client_id <- params$client_id %||% client@client_id
-  } else if (tas %in% MTLS_TOKEN_AUTH_STYLES) {
-    params$client_id <- params$client_id %||% client@client_id
-  } else if (
-    identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
-  ) {
-    params$client_id <- params$client_id %||% client@client_id
-    params$client_assertion_type <-
-      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-    params$client_assertion <- build_client_assertion(
-      client,
-      aud = resolve_client_assertion_audience(client, req)
-    )
-  } else {
-    err_config(
-      c(
-        paste0("Unsupported token_auth_style for ", context, "."),
-        "i" = paste0(
-          "Got: '",
-          tas,
-          "'. Allowed: 'header', 'body', 'public', 'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', 'private_key_jwt'."
-        )
-      ),
-      context = list(phase = context, style = tas)
-    )
-  }
-
-  list(req = req, params = params)
 }
 
 # Send a pushed authorization request when the provider requires or supports it.
@@ -804,72 +696,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 # 2 Callback handling -----------------------------------------------------
 
-## 2.1 Callback context and issuer guards ---------------------------------
-
-# Check whether the callback issuer matches the configured provider issuer.
-# Used by handle_callback() and oauth_module_server() before any token exchange.
-# Input: OAuthClient and optional iss query value. Output: invisible iss on success, otherwise a typed error.
-enforce_callback_issuer <- function(
-  oauth_client,
-  iss = NULL
-) {
-  S7::check_is_S7(oauth_client, class = OAuthClient)
-
-  if (!(is.null(iss) || is_valid_string(iss))) {
-    err_input("{.arg iss} must be NULL or a non-empty string.")
-  }
-
-  should_enforce_callback_issuer <- isTRUE(
-    oauth_client@enforce_callback_issuer
-  )
-  expected_issuer <- oauth_client@provider@issuer %||% NA_character_
-  if (
-    isTRUE(should_enforce_callback_issuer) &&
-      !is_valid_string(expected_issuer)
-  ) {
-    provider_name <- oauth_client@provider@name %||% "(unnamed)"
-    err_config(
-      c(
-        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
-        "x" = paste0(
-          "Provider {.val ",
-          provider_name,
-          "} does not expose a stable issuer identifier."
-        ),
-        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
-      )
-    )
-  }
-
-  if (isTRUE(should_enforce_callback_issuer) && is.null(iss)) {
-    err_invalid_state(
-      "Callback missing required iss parameter (RFC 9207)",
-      context = list(
-        callback_error = "issuer_missing",
-        expected_issuer = expected_issuer
-      )
-    )
-  }
-
-  if (
-    !is.null(iss) &&
-      is_valid_string(expected_issuer) &&
-      !identical(iss, expected_issuer)
-  ) {
-    err_invalid_state(
-      "Callback iss parameter does not match expected issuer (RFC 9207)",
-      context = list(
-        callback_error = "issuer_mismatch",
-        expected_issuer = expected_issuer,
-        callback_issuer = iss
-      )
-    )
-  }
-
-  invisible(iss)
-}
-
-## 2.2 Entry points -------------------------------------------------------
+## 2.1 Entry point --------------------------------------------------------
 
 #' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 #'
@@ -1401,7 +1228,7 @@ handle_callback_internal <- function(
           )
         }
 
-        # Validate requested claims in userinfo (OIDC Core §5.5)
+        # Validate requested claims in userinfo (OIDC Core Section 5.5)
         validate_essential_claims(oauth_client, userinfo, "userinfo")
       }
 
@@ -1679,11 +1506,80 @@ handle_callback_internal <- function(
 }
 
 
+## 2.2 Callback context and issuer guards ---------------------------------
+
+# Check whether the callback issuer matches the configured provider issuer.
+# Used by handle_callback() and oauth_module_server() before any token exchange.
+# Input: OAuthClient and optional iss query value.
+# Output: invisible iss on success, otherwise a typed error.
+enforce_callback_issuer <- function(
+  oauth_client,
+  iss = NULL
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!(is.null(iss) || is_valid_string(iss))) {
+    err_input("{.arg iss} must be NULL or a non-empty string.")
+  }
+
+  should_enforce_callback_issuer <- isTRUE(
+    oauth_client@enforce_callback_issuer
+  )
+  expected_issuer <- oauth_client@provider@issuer %||% NA_character_
+  if (
+    isTRUE(should_enforce_callback_issuer) &&
+      !is_valid_string(expected_issuer)
+  ) {
+    provider_name <- oauth_client@provider@name %||% "(unnamed)"
+    err_config(
+      c(
+        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "x" = paste0(
+          "Provider {.val ",
+          provider_name,
+          "} does not expose a stable issuer identifier."
+        ),
+        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+      )
+    )
+  }
+
+  if (isTRUE(should_enforce_callback_issuer) && is.null(iss)) {
+    err_invalid_state(
+      "Callback missing required iss parameter (RFC 9207)",
+      context = list(
+        callback_error = "issuer_missing",
+        expected_issuer = expected_issuer
+      )
+    )
+  }
+
+  if (
+    !is.null(iss) &&
+      is_valid_string(expected_issuer) &&
+      !identical(iss, expected_issuer)
+  ) {
+    err_invalid_state(
+      "Callback iss parameter does not match expected issuer (RFC 9207)",
+      context = list(
+        callback_error = "issuer_mismatch",
+        expected_issuer = expected_issuer,
+        callback_issuer = iss
+      )
+    )
+  }
+
+  invisible(iss)
+}
+
 # 3 Token exchange and verification --------------------------------------
+
+## 3.1 Swap code for token set -------------------------------------------
 
 # Exchange the authorization code for the first token response.
 # Used by handle_callback_internal() after state and browser checks succeed.
-# Input: client, authorization code, PKCE verifier, and optional Shiny context. Output: parsed token response list.
+# Input: client, authorization code, PKCE verifier, and optional Shiny context.
+# Output: parsed token response list.
 swap_code_for_token_set <- function(
   client,
   code,
@@ -1837,9 +1733,13 @@ swap_code_for_token_set <- function(
   )
 }
 
+
+## 3.2 Verify token set --------------------------------------------------------
+
 # Check the returned token response before turning it into an OAuthToken.
 # Used by handle_callback_internal() and refresh_token() to verify scopes,
-# token type, ID token rules, and related claims. Input: client plus token response data. Output: validated token_set list.
+# token type, ID token rules, and related claims. Input: client plus token response data.
+# Output: validated token_set list.
 verify_token_set <- function(
   client,
   token_set,
@@ -2150,7 +2050,7 @@ verify_token_set <- function(
       if (isTRUE(should_validate_id_token)) {
         # Verifies signature & claims of ID token
         # Will error if invalid
-        # OIDC Core §3.1.2.1: when max_age was requested in extra_auth_params,
+        # OIDC Core Section 3.1.2.1: when max_age was requested in extra_auth_params,
         # pass it to validate_id_token() so auth_time is enforced.
         requested_max_age <- NULL
         if (!isTRUE(is_refresh)) {
@@ -2206,7 +2106,7 @@ verify_token_set <- function(
         }
       }
 
-      # Validate requested claims in ID token (OIDC Core §5.5) ---------------------
+      # Validate requested claims in ID token (OIDC Core Section 5.5) ---------------------
 
       # When claims_validation is enabled and the client requested essential
       # claims or explicit claim values for id_token, verify the decoded ID token
@@ -2231,7 +2131,7 @@ verify_token_set <- function(
         }
       }
 
-      # Validate acr claim against required_acr_values (OIDC Core §2, §3.1.2.1) ----
+      # Validate acr claim against required_acr_values (OIDC Core Sections 2 and 3.1.2.1) ----
 
       # When the client specifies required_acr_values, verify the ID token's acr
       # claim is present and matches one of the allowlisted values.  This runs on
@@ -2262,7 +2162,7 @@ verify_token_set <- function(
         acr_value <- acr_payload$acr
         if (is.null(acr_value) || !is_valid_string(acr_value)) {
           err_id_token(c(
-            "x" = "ID token missing required acr claim (OIDC Core \u00a72)",
+            "x" = "ID token missing required acr claim (OIDC Core Section 2)",
             "i" = paste0(
               "Required one of: ",
               paste(racr, collapse = ", ")
@@ -2420,447 +2320,4 @@ verify_token_type_allowlist <- function(client, token_set) {
   }
 
   invisible(TRUE)
-}
-
-
-# 4 Callback validation helpers -------------------------------------------
-
-# Check that the sealed login state is still fresh enough to use.
-# Used by state_payload_decrypt_validate() and otel_callback_parent_hint().
-# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
-payload_verify_issued_at <- function(client, payload) {
-  # Freshness backstop for the encrypted state payload (independent of store TTL)
-  max_age <- client_state_payload_max_age(client)
-
-  # Validate issued_at (integer seconds OK)
-  ia <- payload$issued_at
-  if (length(ia) != 1L || !is.numeric(ia) || !is.finite(ia)) {
-    err_invalid_state("Invalid payload: missing or invalid issued_at")
-  }
-
-  # Use the same leeway as ID token checks for clock drift tolerance
-  leeway <- client@provider@leeway %||% getOption("shinyOAuth.leeway", 30)
-  lwe <- as.numeric(leeway %||% 0)
-  if (!is.finite(lwe) || is.na(lwe) || length(lwe) != 1) {
-    lwe <- 0
-  }
-
-  # Compute age in seconds using double math (robust even after 2038)
-  now <- as.numeric(Sys.time())
-  ia_val <- as.numeric(ia)
-
-  # Reject if issued_at is in the future beyond leeway (clock drift tolerance)
-  if (ia_val > (now + lwe)) {
-    err_invalid_state("Invalid payload: issued_at is in the future")
-  }
-
-  # Compute age for max_age check
-  age <- now - ia_val
-  if (age > max_age) {
-    err_invalid_state("Invalid payload: issued_at is too old")
-  }
-
-  invisible(TRUE)
-}
-
-# Check that the callback payload still matches the client that started login.
-# Used by state_payload_decrypt_validate() before any token exchange happens.
-# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
-payload_verify_client_binding <- function(client, payload) {
-  # Helpers --------------------------------------------------------------------
-
-  S7::check_is_S7(client, class = OAuthClient)
-
-  # Client ID ------------------------------------------------------------------
-
-  expected_client_id <- client@client_id
-  payload_client_id <- payload$client_id
-
-  if (!is_valid_string(payload_client_id)) {
-    err_invalid_state("Invalid payload: missing or invalid client_id")
-  }
-  if (!identical(payload_client_id, expected_client_id)) {
-    err_invalid_state(sprintf(
-      "Invalid payload: client_id mismatch (got %s)",
-      payload_client_id
-    ))
-  }
-
-  # Redirect_uri ---------------------------------------------------------------
-
-  expected_redirect <- client@redirect_uri
-  payload_redirect <- payload$redirect_uri
-
-  if (!is_valid_string(payload_redirect)) {
-    err_invalid_state("Invalid payload: missing or invalid redirect_uri")
-  }
-
-  if (!identical(payload_redirect, expected_redirect)) {
-    err_invalid_state(sprintf(
-      "Invalid payload: redirect_uri mismatch (got %s)",
-      payload_redirect
-    ))
-  }
-
-  # Scopes (order-insensitive set comparison) ----------------------------------
-
-  expected_scopes <- as_scope_tokens(effective_client_scopes(client))
-  payload_scopes <- as_scope_tokens(payload$scopes %||% NULL)
-
-  # Normalize by unique + sort so we can produce clear differences
-  exp_norm <- sort(unique(expected_scopes))
-  got_norm <- sort(unique(payload_scopes))
-
-  if (!setequal(exp_norm, got_norm)) {
-    missing <- setdiff(exp_norm, got_norm)
-    extra <- setdiff(got_norm, exp_norm)
-    bullets <- c("x" = "Invalid payload: scopes do not match")
-    if (length(missing)) {
-      bullets <- c(
-        bullets,
-        "!" = paste0(
-          "Missing: ",
-          paste(missing, collapse = ", ")
-        )
-      )
-    }
-    if (length(extra)) {
-      bullets <- c(
-        bullets,
-        "!" = paste0(
-          "Unexpected: ",
-          paste(extra, collapse = ", ")
-        )
-      )
-    }
-    err_invalid_state(bullets)
-  }
-
-  # Provider fingerprint -------------------------------------------------------
-
-  expected_fp <- provider_fingerprint(client@provider)
-  payload_fp <- payload$provider
-
-  if (!is_valid_string(payload_fp)) {
-    err_invalid_state(
-      "Invalid payload: missing or invalid provider fingerprint"
-    )
-  }
-  if (!identical(payload_fp, expected_fp)) {
-    err_invalid_state(sprintf(
-      "Invalid payload: provider fingerprint mismatch (got %s)",
-      payload_fp
-    ))
-  }
-
-  invisible(TRUE)
-}
-
-
-# 5 Claims validation -----------------------------------------------------
-
-## 5.1 Claims request parsing and matching --------------------------------
-
-# Normalize the requested claims specification into a list.
-# Used by the claims helpers below so they can treat JSON strings and R lists the same way.
-# Input: client claims setting. Output: parsed list or NULL.
-parse_claims_spec <- function(claims_spec) {
-  if (is.null(claims_spec)) {
-    return(NULL)
-  }
-
-  if (is.character(claims_spec)) {
-    return(
-      tryCatch(
-        jsonlite::fromJSON(claims_spec, simplifyVector = FALSE),
-        error = function(e) NULL
-      )
-    )
-  }
-
-  claims_spec
-}
-
-# Pull the requested claims for one response target.
-# Used by the claims helpers to look only at `id_token` or `userinfo` rules.
-# Input: full claims spec and target name. Output: claim-entry list for that target.
-extract_target_claims <- function(claims_spec, target) {
-  claims_spec <- parse_claims_spec(claims_spec)
-
-  if (!is.list(claims_spec)) {
-    return(list())
-  }
-
-  target_claims <- claims_spec[[target]]
-  if (!is.list(target_claims) || length(target_claims) == 0) {
-    return(list())
-  }
-
-  target_claims
-}
-
-# Find which requested claims were marked as essential.
-# Used by validate_essential_claims() to decide which claims must be present.
-# Input: claims spec and target name. Output: character vector of essential claim names.
-extract_essential_claims <- function(claims_spec, target) {
-  target_claims <- extract_target_claims(claims_spec, target)
-  if (length(target_claims) == 0) {
-    return(character(0))
-  }
-
-  essential_names <- character(0)
-  for (nm in names(target_claims)) {
-    entry <- target_claims[[nm]]
-    # A claim is essential if it has a list value with essential = TRUE.
-    # NULL entries (claim requested without parameters) are not essential.
-    if (is.list(entry) && isTRUE(entry$essential)) {
-      essential_names <- c(essential_names, nm)
-    }
-  }
-
-  essential_names
-}
-
-# Collect the requested values for one claim entry.
-# Used by extract_claim_value_constraints() when a client requested exact claim values.
-# Input: one claim entry from the claims spec. Output: list of accepted values.
-extract_requested_claim_values <- function(entry) {
-  if (!is.list(entry) || length(entry) == 0) {
-    return(list())
-  }
-
-  requested <- list()
-
-  if ("value" %in% names(entry)) {
-    requested <- c(requested, list(entry$value))
-  }
-
-  if ("values" %in% names(entry) && !is.null(entry$values)) {
-    values <- entry$values
-    if (is.list(values)) {
-      value_names <- names(values)
-      if (!is.null(value_names) && any(nzchar(value_names))) {
-        requested <- c(requested, list(values))
-      } else {
-        requested <- c(requested, unname(values))
-      }
-    } else if (length(values) > 0) {
-      requested <- c(requested, as.list(unname(values)))
-    }
-  }
-
-  requested
-}
-
-# Build exact-value rules for claims on one target.
-# Used by validate_essential_claims() when the client asked for specific values.
-# Input: claims spec and target name. Output: named list of claim-to-value constraints.
-extract_claim_value_constraints <- function(claims_spec, target) {
-  target_claims <- extract_target_claims(claims_spec, target)
-  if (length(target_claims) == 0) {
-    return(list())
-  }
-
-  constraints <- list()
-  for (nm in names(target_claims)) {
-    requested <- extract_requested_claim_values(target_claims[[nm]])
-    if (length(requested) > 0) {
-      constraints[[nm]] <- requested
-    }
-  }
-
-  constraints
-}
-
-# Check whether any target in the claims request creates enforceable work.
-# Used by verify_token_set() to skip claim checks when nothing strict was requested.
-# Input: full claims spec. Output: TRUE/FALSE.
-claims_request_has_enforceable_requirements <- function(claims_spec) {
-  targets <- c("id_token", "userinfo")
-
-  any(vapply(
-    targets,
-    function(target) {
-      claims_request_target_has_enforceable_requirements(claims_spec, target)
-    },
-    logical(1)
-  ))
-}
-
-# Check whether one target in the claims request has enforceable rules.
-# Used by claims_request_has_enforceable_requirements() and verify_token_set().
-# Input: claims spec and target name. Output: TRUE/FALSE.
-claims_request_target_has_enforceable_requirements <- function(
-  claims_spec,
-  target
-) {
-  length(extract_essential_claims(claims_spec, target)) > 0 ||
-    length(extract_claim_value_constraints(claims_spec, target)) > 0
-}
-
-# Convert one claim value into a stable comparable string.
-# Used by the value-matching helpers so nested lists, scalars, and arrays can be compared consistently.
-# Input: one claim value. Output: canonical string form.
-canonicalize_claim_value <- function(value) {
-  encoded <- tryCatch(
-    jsonlite::toJSON(
-      value,
-      auto_unbox = TRUE,
-      null = "null",
-      na = "null",
-      digits = NA
-    ),
-    error = function(e) NULL
-  )
-
-  if (!is.null(encoded)) {
-    return(as.character(encoded))
-  }
-
-  paste(
-    utils::capture.output(utils::str(value, give.attr = FALSE)),
-    collapse = " "
-  )
-}
-
-# Check whether the actual claim value matches one of the requested values.
-# Used by validate_essential_claims() when the client requested exact claim values.
-# Input: actual value plus requested value list. Output: TRUE/FALSE.
-claim_matches_requested_values <- function(actual, requested) {
-  actual_value <- canonicalize_claim_value(actual)
-  requested_values <- vapply(requested, canonicalize_claim_value, character(1))
-  actual_value %in% requested_values
-}
-
-# Render requested claim values into a short human-readable message.
-# Used by validate_essential_claims() when building error text for value mismatches.
-# Input: requested value list. Output: one description string.
-format_claim_value_expectation <- function(requested) {
-  rendered <- vapply(requested, canonicalize_claim_value, character(1))
-  if (length(rendered) == 1) {
-    return(rendered[[1]])
-  }
-
-  paste0("one of ", paste(rendered, collapse = ", "))
-}
-
-## 5.2 Claims enforcement -------------------------------------------------
-
-# Check that the returned claims satisfy what the client asked for.
-# Used by verify_token_set() for ID token claims and by userinfo validation code for userinfo claims.
-# Input: client, decoded claims list, and target name. Output: invisible NULL on success or an error/warning.
-validate_essential_claims <- function(client, claims_present, target) {
-  mode <- client@claims_validation %||% "none"
-  if (identical(mode, "none")) {
-    return(invisible(NULL))
-  }
-
-  essential <- extract_essential_claims(client@claims, target)
-  value_constraints <- extract_claim_value_constraints(client@claims, target)
-  if (length(essential) == 0 && length(value_constraints) == 0) {
-    return(invisible(NULL))
-  }
-
-  if (!is.list(claims_present) || length(claims_present) == 0) {
-    present_names <- character(0)
-  } else {
-    present_names <- names(claims_present) %||% character(0)
-  }
-
-  missing_claims <- setdiff(essential, present_names)
-
-  value_mismatches <- character(0)
-  if (length(value_constraints) > 0) {
-    for (claim_name in names(value_constraints)) {
-      expected_values <- value_constraints[[claim_name]]
-
-      if (!claim_name %in% present_names) {
-        if (!claim_name %in% missing_claims) {
-          value_mismatches <- c(
-            value_mismatches,
-            paste0(
-              claim_name,
-              " is missing (expected ",
-              format_claim_value_expectation(expected_values),
-              ")"
-            )
-          )
-        }
-        next
-      }
-
-      actual_value <- claims_present[[claim_name]]
-      if (!claim_matches_requested_values(actual_value, expected_values)) {
-        value_mismatches <- c(
-          value_mismatches,
-          paste0(
-            claim_name,
-            " expected ",
-            format_claim_value_expectation(expected_values),
-            " but got ",
-            canonicalize_claim_value(actual_value)
-          )
-        )
-      }
-    }
-  }
-
-  if (length(missing_claims) == 0 && length(value_mismatches) == 0) {
-    return(invisible(NULL))
-  }
-
-  target_label <- if (identical(target, "id_token")) "ID token" else "userinfo"
-  msg_parts <- character(0)
-  if (length(missing_claims) > 0) {
-    msg_parts <- c(
-      msg_parts,
-      paste0(
-        "Essential claims missing from ",
-        target_label,
-        " response (OIDC Core \u00a75.5): ",
-        paste(missing_claims, collapse = ", ")
-      )
-    )
-  }
-  if (length(value_mismatches) > 0) {
-    msg_parts <- c(
-      msg_parts,
-      paste0(
-        "Requested claim values not satisfied in ",
-        target_label,
-        " response (OIDC Core \u00a75.5): ",
-        paste(value_mismatches, collapse = "; ")
-      )
-    )
-  }
-  msg <- paste(msg_parts, collapse = ". ")
-
-  guidance <- paste(
-    "Set claims_validation = 'warn' or 'none' to allow unsatisfied claim requests"
-  )
-
-  if (identical(mode, "strict")) {
-    if (identical(target, "id_token")) {
-      err_id_token(c(
-        "x" = msg,
-        "i" = guidance
-      ))
-    } else {
-      err_userinfo(c(
-        "x" = msg,
-        "i" = guidance
-      ))
-    }
-  } else if (identical(mode, "warn")) {
-    rlang::warn(
-      c(
-        "!" = msg,
-        "i" = "Set claims_validation = 'none' to suppress this warning"
-      ),
-      .frequency = "once",
-      .frequency_id = paste0("claims-validation-missing-", target)
-    )
-  }
-
-  invisible(NULL)
 }

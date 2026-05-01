@@ -5,12 +5,50 @@
 
 # 1 JWT parsing helpers ----------------------------------------------------
 
-## 1.1 Compact JWT parsing and JSON decoding ------------------------------
+## 1.1 Parse payload and header -------------------------------------------
 
 #' Parse JWT payload (unsigned validation only)
 #'
 #' @keywords internal
 #' @noRd
+parse_jwt_payload <- function(jwt) {
+  parts <- jwt_compact_parts(jwt)
+  payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
+  reject_duplicate_json_object_members(payload_text, "JWT payload")
+  # Normalize JSON parse failures to a consistent parse error class
+  tryCatch(
+    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
+    error = function(e) {
+      err_parse(c(
+        "Failed to parse JWT payload JSON",
+        "i" = conditionMessage(e)
+      ))
+    }
+  )
+}
+
+#' Internal: Parse JWT header (no validation)
+#'
+#' @keywords internal
+#' @noRd
+parse_jwt_header <- function(jwt) {
+  parts <- jwt_compact_parts(jwt)
+  header_text <- strict_decode_jwt_json_text(parts$header_raw, "header")
+  reject_duplicate_json_object_members(header_text, "JWT header")
+  # Normalize JSON parse failures to a consistent parse error class
+  tryCatch(
+    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
+    error = function(e) {
+      err_parse(c(
+        "Failed to parse JWT header JSON",
+        "i" = conditionMessage(e)
+      ))
+    }
+  )
+}
+
+## 1.2 Compact JWT parsing and JSON decoding ------------------------------
+
 strict_decode_jwt_segment <- function(
   segment,
   field_name,
@@ -113,9 +151,6 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   })
 
   if (!isTRUE(validUTF8(text))) {
-    # Parse the payload part of a compact JWT.
-    # Used by ID token and object-format helpers. Input: compact JWT string.
-    # Output: parsed payload object.
     err_parse(c(
       paste0("Failed to decode JWT ", field_name, " JSON text"),
       "i" = "Segment is not valid UTF-8"
@@ -123,42 +158,6 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   }
 
   text
-}
-
-parse_jwt_payload <- function(jwt) {
-  parts <- jwt_compact_parts(jwt)
-  payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
-  reject_duplicate_json_object_members(payload_text, "JWT payload")
-  # Normalize JSON parse failures to a consistent parse error class
-  tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
-    error = function(e) {
-      err_parse(c(
-        "Failed to parse JWT payload JSON",
-        "i" = conditionMessage(e)
-      ))
-    }
-  )
-}
-
-#' Internal: Parse JWT header (no validation)
-#'
-#' @keywords internal
-#' @noRd
-parse_jwt_header <- function(jwt) {
-  parts <- jwt_compact_parts(jwt)
-  header_text <- strict_decode_jwt_json_text(parts$header_raw, "header")
-  reject_duplicate_json_object_members(header_text, "JWT header")
-  # Normalize JSON parse failures to a consistent parse error class
-  tryCatch(
-    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
-    error = function(e) {
-      err_parse(c(
-        "Failed to parse JWT header JSON",
-        "i" = conditionMessage(e)
-      ))
-    }
-  )
 }
 
 # Reject duplicate top-level JSON object member names.
@@ -246,7 +245,7 @@ reject_duplicate_json_object_members <- function(json_text, label) {
   invisible(NULL)
 }
 
-## 1.2 JOSE header validation ---------------------------------------------
+## 1.3 JOSE header validation ---------------------------------------------
 
 # Validate the JOSE header fields that shinyOAuth understands.
 # Used before JWT signature or claim validation. Input: parsed header object and
@@ -342,7 +341,52 @@ validate_jose_header_fields <- function(header, signal_error) {
   )
 }
 
-## 1.3 Signature verification helpers -------------------------------------
+# Enforce the shared inbound JWT header policy after structural validation.
+# Used by ID token and signed UserInfo JWT validation. Input: normalized header
+# fields, error-signaling function, optional supported crit names, and optional
+# side-effect callbacks for invalid typ/crit cases. Output: invisible header_fields.
+enforce_inbound_jwt_header_policy <- function(
+  header_fields,
+  signal_error,
+  supported_crit = character(),
+  on_typ_invalid = NULL,
+  on_crit_invalid = NULL
+) {
+  typ <- header_fields$typ
+  if (!is.null(typ)) {
+    if (
+      !(is.character(typ) &&
+        length(typ) == 1L &&
+        identical(toupper(typ), "JWT"))
+    ) {
+      if (is.function(on_typ_invalid)) {
+        on_typ_invalid()
+      }
+      signal_error(paste0(
+        "JWT typ header invalid: expected 'JWT' when present, got ",
+        paste(as.character(typ), collapse = ", ")
+      ))
+    }
+  }
+
+  crit <- header_fields$crit
+  if (!is.null(crit)) {
+    unsupported <- setdiff(crit, supported_crit)
+    if (length(unsupported) > 0L) {
+      if (is.function(on_crit_invalid)) {
+        on_crit_invalid()
+      }
+      signal_error(paste0(
+        "JWT contains unsupported critical header parameter(s): ",
+        paste(unsupported, collapse = ", ")
+      ))
+    }
+  }
+
+  invisible(header_fields)
+}
+
+## 1.4 Signature verification helpers -------------------------------------
 
 # Extract the raw bytes needed for JWS signature verification.
 # Used by the generic signature verifiers in this file. Input: compact JWT.

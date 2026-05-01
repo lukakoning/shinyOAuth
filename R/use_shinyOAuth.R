@@ -2,6 +2,10 @@
 # Use them to load the browser code that can redirect, manage the browser token,
 # and warn when that dependency was forgotten.
 
+# 1 UI dependency helper ---------------------------------------------------
+
+## 1.1 Add the browser dependency to the UI -------------------------------
+
 #' Add JavaScript dependency to the UI of a Shiny app
 #'
 #' @description
@@ -76,34 +80,9 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
   )
 }
 
-# 1 Warn about non-usage --------------------------------------------------
+# 2 Missing dependency watchdog -------------------------------------------
 
-# Here we track if the dependency has likely been added to UI;
-# if this flag is FALSE, and `oauth_module_server()` is called,
-# a warning is emitted to remind the developer to add it (once per session)
-
-.watchdog_environment <- new.env(parent = emptyenv())
-assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
-
-# Read one file-local watchdog flag.
-# Used by use_shinyOAuth() and warn_about_missing_js_dependency() to remember whether the UI dependency was loaded.
-# Input: flag name and default value. Output: stored flag value or the default.
-.get_flag <- function(name, default = FALSE) {
-  get0(
-    name,
-    envir = .watchdog_environment,
-    inherits = FALSE,
-    ifnotfound = default
-  )
-}
-
-# Store one file-local watchdog flag.
-# Used by use_shinyOAuth() to record that the UI dependency was added.
-# Input: flag name and new value. Output: invisible TRUE.
-.set_flag <- function(name, value) {
-  assign(name, value, envir = .watchdog_environment)
-  invisible(TRUE)
-}
+## 2.1 Warn when the UI dependency is missing -----------------------------
 
 # Warn once when the Shiny module is used without loading the browser dependency.
 # Used by oauth_module_server() so missing UI setup is easier to diagnose.
@@ -129,5 +108,34 @@ warn_about_missing_js_dependency <- function() {
     .frequency_id = "js_dependency_warning"
   )
 
+  invisible(TRUE)
+}
+
+## 2.2 Store file-local watchdog state -----------------------------------
+
+# Here we track if the dependency has likely been added to UI;
+# if this flag is FALSE, and `oauth_module_server()` is called,
+# a warning is emitted to remind the developer to add it (once per session)
+
+.watchdog_environment <- new.env(parent = emptyenv())
+assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
+
+# Read one file-local watchdog flag.
+# Used by use_shinyOAuth() and warn_about_missing_js_dependency() to remember whether the UI dependency was loaded.
+# Input: flag name and default value. Output: stored flag value or the default.
+.get_flag <- function(name, default = FALSE) {
+  get0(
+    name,
+    envir = .watchdog_environment,
+    inherits = FALSE,
+    ifnotfound = default
+  )
+}
+
+# Store one file-local watchdog flag.
+# Used by use_shinyOAuth() to record that the UI dependency was added.
+# Input: flag name and new value. Output: invisible TRUE.
+.set_flag <- function(name, value) {
+  assign(name, value, envir = .watchdog_environment)
   invisible(TRUE)
 }

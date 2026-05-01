@@ -365,9 +365,9 @@ oauth_module_server <- function(
     if (!is_valid_string(revocation_url)) {
       err_config(
         c(
-          "{.arg revoke_on_session_end} = {.val TRUE} requires\n            the provider to have a {.arg revocation_url} configured.",
-          "x" = "Provider {.val {client@provider@name %||% '(unnamed)'}}\n            does not expose a revocation endpoint.",
-          "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\n            configure the provider with a valid {.arg revocation_url}."
+          "{.arg revoke_on_session_end} = {.val TRUE} requires\nthe provider to have a {.arg revocation_url} configured.",
+          "x" = "Provider {.val {client@provider@name %||% '(unnamed)'}}\n does not expose a revocation endpoint.",
+          "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\nconfigure the provider with a valid {.arg revocation_url}."
         )
       )
     }

@@ -2,7 +2,7 @@
 # Use them to revoke tokens, ask a provider whether a token is still active,
 # or refresh a session without sending the user through login again.
 
-# 1 Token lifecycle -------------------------------------------------------
+# 1 Token lifecycle and response policy -----------------------------------
 
 ## 1.1 Revocation ---------------------------------------------------------
 
@@ -66,92 +66,30 @@ revoke_token <- function(
 
   with_trace_id(trace_id, {
     if (isTRUE(async)) {
-      # Capture shiny_session for propagation into the async worker
-      captured_shiny_session <- shiny_session
-      captured_trace_id <- trace_id
-      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
-
-      # Capture shinyOAuth.* options for propagation to the async worker.
-      # This ensures audit hooks, HTTP settings, and other options are
-      # available in the worker process.
-      captured_async_options <- capture_async_options()
-      otel_parent <- otel_start_async_parent(
-        "shinyOAuth.token.revoke",
-        attributes = otel_client_attributes(
-          client = oauth_client,
-          shiny_session = parent_shiny_session,
-          async = TRUE,
-          phase = "token.revoke",
-          extra = list(
-            oauth.token.which = which,
-            oauth.client_auth_style = otel_client_auth_style(oauth_client),
-            oauth.extra_token_params_count = 0L,
-            oauth.extra_token_headers_count = otel_count_items(
-              oauth_client@provider@extra_token_headers
-            )
-          )
-        )
-      )
-
-      # Use namespace-qualified calls to avoid passing function closures to mirai
-      # (functions carry their enclosing environments, causing serialization overhead)
-      promise <- tryCatch(
-        async_dispatch(
-          expr = quote({
-            .ns <- asNamespace("shinyOAuth")
-            # Restore shinyOAuth.* options in the async worker
-            .ns$with_trace_id(captured_trace_id, {
-              .ns$with_async_options(captured_async_options, {
-                # Set async context so errors include session info with is_async = TRUE
-                .ns$with_async_session_context(captured_shiny_session, {
-                  shinyOAuth::revoke_token(
-                    oauth_client = oauth_client,
-                    oauth_token = oauth_token,
-                    which = which,
-                    async = FALSE,
-                    shiny_session = captured_shiny_session
-                  )
-                })
-              })
-            })
-          }),
-          args = list(
-            captured_trace_id = captured_trace_id,
-            captured_async_options = captured_async_options,
-            captured_shiny_session = captured_shiny_session,
-            oauth_client = oauth_client,
-            oauth_token = oauth_token,
-            which = which
-          ),
-          otel_context = list(
-            headers = otel_parent$headers,
-            worker_span_name = "shinyOAuth.token.revoke.worker",
-            shiny_session = captured_shiny_session,
-            attributes = otel_client_attributes(
-              client = oauth_client,
-              shiny_session = shiny_session,
-              async = TRUE,
-              phase = "token.revoke.worker",
-              extra = list(oauth.token.which = which)
-            )
+      return(dispatch_token_async(
+        function_name = "revoke_token",
+        call_args = list(
+          oauth_client = oauth_client,
+          oauth_token = oauth_token,
+          which = which
+        ),
+        client = oauth_client,
+        shiny_session = shiny_session,
+        trace_id = trace_id,
+        span_name = "shinyOAuth.token.revoke",
+        phase = "token.revoke",
+        worker_span_name = "shinyOAuth.token.revoke.worker",
+        worker_phase = "token.revoke.worker",
+        parent_extra = list(
+          oauth.token.which = which,
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = 0L,
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
           )
         ),
-        error = function(e) {
-          otel_end_async_parent(otel_parent, status = "error", error = e)
-          stop(e)
-        }
-      )
-      return(
-        promise |>
-          promises::then(function(value) {
-            otel_end_async_parent(otel_parent, status = "ok")
-            replay_async_conditions(value)
-          }) |>
-          promises::catch(function(err) {
-            otel_end_async_parent(otel_parent, status = "error", error = err)
-            stop(err)
-          })
-      )
+        worker_extra = list(oauth.token.which = which)
+      ))
     }
 
     with_otel_span(
@@ -385,6 +323,8 @@ revoke_token <- function(
   })
 }
 
+## 1.2 Introspection ------------------------------------------------------
+
 #' @title
 #' Introspect an OAuth 2.0 token
 #'
@@ -440,8 +380,6 @@ revoke_token <- function(
 #' @example inst/examples/token_methods.R
 #'
 #' @export
-
-## 1.2 Introspection ------------------------------------------------------
 
 introspect_token <- function(
   oauth_client,
@@ -521,92 +459,30 @@ introspect_token <- function(
 
   with_trace_id(trace_id, {
     if (isTRUE(async)) {
-      # Capture shiny_session for propagation into the async worker
-      captured_shiny_session <- shiny_session
-      captured_trace_id <- trace_id
-      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
-
-      # Capture shinyOAuth.* options for propagation to the async worker.
-      # This ensures audit hooks, HTTP settings, and other options are
-      # available in the worker process.
-      captured_async_options <- capture_async_options()
-      otel_parent <- otel_start_async_parent(
-        "shinyOAuth.token.introspect",
-        attributes = otel_client_attributes(
-          client = oauth_client,
-          shiny_session = parent_shiny_session,
-          async = TRUE,
-          phase = "token.introspect",
-          extra = list(
-            oauth.token.which = which,
-            oauth.client_auth_style = otel_client_auth_style(oauth_client),
-            oauth.extra_token_params_count = 0L,
-            oauth.extra_token_headers_count = otel_count_items(
-              oauth_client@provider@extra_token_headers
-            )
-          )
-        )
-      )
-
-      # Use namespace-qualified calls to avoid passing function closures to mirai
-      # (functions carry their enclosing environments, causing serialization overhead)
-      promise <- tryCatch(
-        async_dispatch(
-          expr = quote({
-            .ns <- asNamespace("shinyOAuth")
-            # Restore shinyOAuth.* options in the async worker
-            .ns$with_trace_id(captured_trace_id, {
-              .ns$with_async_options(captured_async_options, {
-                # Set async context so errors include session info with is_async = TRUE
-                .ns$with_async_session_context(captured_shiny_session, {
-                  shinyOAuth::introspect_token(
-                    oauth_client = oauth_client,
-                    oauth_token = oauth_token,
-                    which = which,
-                    async = FALSE,
-                    shiny_session = captured_shiny_session
-                  )
-                })
-              })
-            })
-          }),
-          args = list(
-            captured_trace_id = captured_trace_id,
-            captured_async_options = captured_async_options,
-            captured_shiny_session = captured_shiny_session,
-            oauth_client = oauth_client,
-            oauth_token = oauth_token,
-            which = which
-          ),
-          otel_context = list(
-            headers = otel_parent$headers,
-            worker_span_name = "shinyOAuth.token.introspect.worker",
-            shiny_session = captured_shiny_session,
-            attributes = otel_client_attributes(
-              client = oauth_client,
-              shiny_session = shiny_session,
-              async = TRUE,
-              phase = "token.introspect.worker",
-              extra = list(oauth.token.which = which)
-            )
+      return(dispatch_token_async(
+        function_name = "introspect_token",
+        call_args = list(
+          oauth_client = oauth_client,
+          oauth_token = oauth_token,
+          which = which
+        ),
+        client = oauth_client,
+        shiny_session = shiny_session,
+        trace_id = trace_id,
+        span_name = "shinyOAuth.token.introspect",
+        phase = "token.introspect",
+        worker_span_name = "shinyOAuth.token.introspect.worker",
+        worker_phase = "token.introspect.worker",
+        parent_extra = list(
+          oauth.token.which = which,
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = 0L,
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
           )
         ),
-        error = function(e) {
-          otel_end_async_parent(otel_parent, status = "error", error = e)
-          stop(e)
-        }
-      )
-      return(
-        promise |>
-          promises::then(function(value) {
-            otel_end_async_parent(otel_parent, status = "ok")
-            replay_async_conditions(value)
-          }) |>
-          promises::catch(function(err) {
-            otel_end_async_parent(otel_parent, status = "error", error = err)
-            stop(err)
-          })
-      )
+        worker_extra = list(oauth.token.which = which)
+      ))
     }
     with_otel_span(
       "shinyOAuth.token.introspect",
@@ -848,6 +724,8 @@ introspect_token <- function(
   })
 }
 
+## 1.3 Refresh ------------------------------------------------------------
+
 #' @title
 #' Refresh an OAuth 2.0 token
 #'
@@ -916,8 +794,6 @@ introspect_token <- function(
 #'
 #' @export
 
-## 1.3 Refresh ------------------------------------------------------------
-
 refresh_token <- function(
   oauth_client,
   token,
@@ -946,92 +822,30 @@ refresh_token <- function(
   # Optional async execution using mirai if requested and available.
   with_trace_id(trace_id, {
     if (isTRUE(async)) {
-      # Capture shiny_session for propagation into the async worker
-      captured_shiny_session <- shiny_session
-      captured_trace_id <- trace_id
-      parent_shiny_session <- normalize_shiny_session_context(shiny_session)
-
-      # Capture shinyOAuth.* options for propagation to the async worker.
-      # This ensures audit hooks, HTTP settings, and other options are
-      # available in the worker process.
-      captured_async_options <- capture_async_options()
-      otel_parent <- otel_start_async_parent(
-        "shinyOAuth.refresh",
-        attributes = otel_client_attributes(
-          client = oauth_client,
-          shiny_session = parent_shiny_session,
-          async = TRUE,
-          phase = "refresh",
-          extra = list(
-            oauth.client_auth_style = otel_client_auth_style(oauth_client),
-            oauth.extra_token_params_count = otel_count_items(
-              oauth_client@provider@extra_token_params
-            ),
-            oauth.extra_token_headers_count = otel_count_items(
-              oauth_client@provider@extra_token_headers
-            )
+      return(dispatch_token_async(
+        function_name = "refresh_token",
+        call_args = list(
+          oauth_client = oauth_client,
+          token = token,
+          introspect = introspect
+        ),
+        client = oauth_client,
+        shiny_session = shiny_session,
+        trace_id = trace_id,
+        span_name = "shinyOAuth.refresh",
+        phase = "refresh",
+        worker_span_name = "shinyOAuth.refresh.worker",
+        worker_phase = "refresh.worker",
+        parent_extra = list(
+          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.extra_token_params_count = otel_count_items(
+            oauth_client@provider@extra_token_params
+          ),
+          oauth.extra_token_headers_count = otel_count_items(
+            oauth_client@provider@extra_token_headers
           )
         )
-      )
-
-      # Use namespace-qualified calls to avoid passing function closures to mirai
-      # (functions carry their enclosing environments, causing serialization overhead)
-      promise <- tryCatch(
-        async_dispatch(
-          expr = quote({
-            .ns <- asNamespace("shinyOAuth")
-            # Restore shinyOAuth.* options in the async worker
-            .ns$with_trace_id(captured_trace_id, {
-              .ns$with_async_options(captured_async_options, {
-                # Set async context so errors include session info with is_async = TRUE
-                .ns$with_async_session_context(captured_shiny_session, {
-                  shinyOAuth::refresh_token(
-                    oauth_client = oauth_client,
-                    token = token,
-                    async = FALSE,
-                    introspect = introspect,
-                    shiny_session = captured_shiny_session
-                  )
-                })
-              })
-            })
-          }),
-          args = list(
-            captured_trace_id = captured_trace_id,
-            captured_async_options = captured_async_options,
-            captured_shiny_session = captured_shiny_session,
-            oauth_client = oauth_client,
-            token = token,
-            introspect = introspect
-          ),
-          otel_context = list(
-            headers = otel_parent$headers,
-            worker_span_name = "shinyOAuth.refresh.worker",
-            shiny_session = captured_shiny_session,
-            attributes = otel_client_attributes(
-              client = oauth_client,
-              shiny_session = shiny_session,
-              async = TRUE,
-              phase = "refresh.worker"
-            )
-          )
-        ),
-        error = function(e) {
-          otel_end_async_parent(otel_parent, status = "error", error = e)
-          stop(e)
-        }
-      )
-      return(
-        promise |>
-          promises::then(function(value) {
-            otel_end_async_parent(otel_parent, status = "ok")
-            replay_async_conditions(value)
-          }) |>
-          promises::catch(function(err) {
-            otel_end_async_parent(otel_parent, status = "error", error = err)
-            stop(err)
-          })
-      )
+      ))
     }
     with_otel_span(
       "shinyOAuth.refresh",
@@ -1308,4 +1122,106 @@ refresh_token <- function(
       parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
+}
+
+# 2 Async execution helpers -----------------------------------------------
+
+## 2.1 Shared token-method async wrapper ----------------------------------
+
+# Dispatch one token method through the shared async wrapper.
+# Used by revoke_token(), introspect_token(), and refresh_token() so trace,
+# option, session, and OTEL propagation stay in one place. Input: function
+# name plus call args, client/session context, trace id, and span metadata.
+# Output: a promise resolving to the underlying method result.
+dispatch_token_async <- function(
+  function_name,
+  call_args,
+  client,
+  shiny_session,
+  trace_id,
+  span_name,
+  phase,
+  worker_span_name,
+  worker_phase,
+  parent_extra = list(),
+  worker_extra = list()
+) {
+  captured_shiny_session <- shiny_session
+  captured_trace_id <- trace_id
+  parent_shiny_session <- normalize_shiny_session_context(shiny_session)
+
+  # Capture shinyOAuth.* options for propagation to the async worker.
+  # This ensures audit hooks, HTTP settings, and other options are
+  # available in the worker process.
+  captured_async_options <- capture_async_options()
+  otel_parent <- otel_start_async_parent(
+    span_name,
+    attributes = otel_client_attributes(
+      client = client,
+      shiny_session = parent_shiny_session,
+      async = TRUE,
+      phase = phase,
+      extra = parent_extra
+    )
+  )
+
+  # Use namespace-qualified lookup inside the worker to avoid serializing
+  # function closures and to keep the worker running the installed package.
+  promise <- tryCatch(
+    async_dispatch(
+      expr = quote({
+        .ns <- asNamespace("shinyOAuth")
+        .fn <- get(function_name, envir = .ns, inherits = FALSE)
+        .ns$with_trace_id(captured_trace_id, {
+          .ns$with_async_options(captured_async_options, {
+            .ns$with_async_session_context(captured_shiny_session, {
+              do.call(
+                .fn,
+                c(
+                  call_args,
+                  list(
+                    async = FALSE,
+                    shiny_session = captured_shiny_session
+                  )
+                )
+              )
+            })
+          })
+        })
+      }),
+      args = list(
+        function_name = function_name,
+        call_args = call_args,
+        captured_trace_id = captured_trace_id,
+        captured_async_options = captured_async_options,
+        captured_shiny_session = captured_shiny_session
+      ),
+      otel_context = list(
+        headers = otel_parent$headers,
+        worker_span_name = worker_span_name,
+        shiny_session = captured_shiny_session,
+        attributes = otel_client_attributes(
+          client = client,
+          shiny_session = shiny_session,
+          async = TRUE,
+          phase = worker_phase,
+          extra = worker_extra
+        )
+      )
+    ),
+    error = function(e) {
+      otel_end_async_parent(otel_parent, status = "error", error = e)
+      stop(e)
+    }
+  )
+
+  promise |>
+    promises::then(function(value) {
+      otel_end_async_parent(otel_parent, status = "ok")
+      replay_async_conditions(value)
+    }) |>
+    promises::catch(function(err) {
+      otel_end_async_parent(otel_parent, status = "error", error = err)
+      stop(err)
+    })
 }
