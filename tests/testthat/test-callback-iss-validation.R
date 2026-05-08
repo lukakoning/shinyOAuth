@@ -147,7 +147,9 @@ test_that("callback iss matching expected issuer is accepted in strict mode", {
 
 test_that("callback iss mismatching expected issuer is rejected", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
 
   shiny::testServer(
     app = oauth_module_server,
@@ -181,6 +183,50 @@ test_that("callback iss mismatching expected issuer is rejected", {
       testthat::expect_null(values$token)
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, "issuer_mismatch")
+    }
+  )
+})
+
+test_that("callback issuer opt-out skips mismatched iss in module callbacks", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    authorization_response_iss_parameter_supported = TRUE
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      token <- testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0(
+            "?code=ok&state=",
+            enc,
+            "&iss=",
+            utils::URLencode("https://evil.example.com", reserved = TRUE)
+          ))
+          session$flushReact()
+          values$token
+        }
+      )
+
+      testthat::expect_false(is.null(token))
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
     }
   )
 })
@@ -325,7 +371,9 @@ test_that("callback issuer enforcement requires a configured provider issuer", {
 
 test_that("callback iss with trailing slash rejected under strict equality", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
 
   shiny::testServer(
     app = oauth_module_server,
@@ -364,7 +412,9 @@ test_that("callback iss with trailing slash rejected under strict equality", {
 
 test_that("callback iss rejected for error response too (RFC 9207)", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
 
   shiny::testServer(
     app = oauth_module_server,
@@ -486,7 +536,9 @@ test_that("handle_callback accepts matching callback iss", {
 })
 
 test_that("handle_callback rejects mismatched callback iss before token exchange", {
-  cli <- make_iss_test_client()
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE
+  )
   browser_token <- valid_browser_token()
   url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
   enc <- parse_query_param(url, "state")
@@ -511,6 +563,36 @@ test_that("handle_callback rejects mismatched callback iss before token exchange
         regexp = "does not match expected issuer"
       )
     }
+  )
+})
+
+test_that("handle_callback skips mismatched callback iss when opt-out is explicit", {
+  cli <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    authorization_response_iss_parameter_supported = TRUE
+  )
+  browser_token <- valid_browser_token()
+  url <- shinyOAuth::prepare_call(cli, browser_token = browser_token)
+  enc <- parse_query_param(url, "state")
+
+  token <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shinyOAuth::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = browser_token,
+        iss = "https://evil.example.com"
+      )
+    }
+  )
+
+  testthat::expect_true(
+    is.character(token@access_token) && nzchar(token@access_token)
   )
 })
 

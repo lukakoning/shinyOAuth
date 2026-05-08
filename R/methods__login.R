@@ -1640,7 +1640,8 @@ enforce_callback_issuer <- function(
   }
 
   if (
-    !is.null(iss) &&
+    isTRUE(should_enforce_callback_issuer) &&
+      !is.null(iss) &&
       is_valid_string(expected_issuer) &&
       !identical(iss, expected_issuer)
   ) {
