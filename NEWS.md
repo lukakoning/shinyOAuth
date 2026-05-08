@@ -107,6 +107,11 @@ the client's configured scopes when a refresh response omits `scope`.
   `openid` is auto-added to the authorization request, the sealed state payload, 
   token-response scope validation, and introspection scope validation now use
   that same effective scope set.
+  * Binds the sealed callback state to the effective provider and client
+  security policy used after redirect. Multi-worker deployments must now keep
+  callback/login validation settings aligned across workers; otherwise
+  callbacks fail fast with `invalid_state` instead of resuming under a
+  different worker policy.
   
 * `oauth_provider()` (`OAuthProvider`) now:
   - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs 

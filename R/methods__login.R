@@ -120,6 +120,7 @@ prepare_call <- function(
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
           provider = oauth_client@provider |> provider_fingerprint(),
+          client_policy = state_client_policy_fingerprint(oauth_client),
           issued_at = as.numeric(Sys.time()),
           trace_id = flow_trace_id,
           otel_login_span_headers = login_span_headers

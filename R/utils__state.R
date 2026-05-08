@@ -19,8 +19,8 @@
 #'   `state` query parameter.
 #'
 #' @return A named list payload (state, client_id, redirect_uri, scopes,
-#'   provider, issued_at) on success; otherwise throws an error via
-#'   `err_invalid_state()`.
+#'   provider, client_policy, issued_at) on success; otherwise throws an error
+#'   via `err_invalid_state()`.
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -92,7 +92,271 @@ state_payload_decrypt_validate <- function(
   )
 }
 
-## 1.2 Payload binding and freshness -------------------------------------------
+## 1.2 Policy fingerprints -----------------------------------------------------
+
+#' Build a stable state-policy fingerprint
+#'
+#' Computes an unkeyed SHA-256 digest over normalized state-policy components so
+#' callback validation can confirm it is resuming under the same effective
+#' security policy that initiated login.
+#'
+#' @param components Named list of normalized policy components.
+#' @return A length-1 character string in `sha256:<digest>` format.
+#' @keywords internal
+#' @noRd
+state_policy_digest <- function(components) {
+  component_names <- names(components)
+  canonical <- vapply(
+    component_names,
+    function(component_name) {
+      value <- state_policy_component_string(components[[component_name]])
+      paste0(
+        component_name,
+        ":",
+        nchar(value, type = "bytes"),
+        ":",
+        value
+      )
+    },
+    ""
+  )
+
+  paste0(
+    "sha256:",
+    string_digest(enc2utf8(paste(canonical, collapse = "\n")), key = NULL)
+  )
+}
+
+#' Normalize one state-policy component into a stable string
+#'
+#' Used by [state_policy_digest()] before hashing policy components.
+#'
+#' @param value Arbitrary policy component value.
+#' @return Canonical UTF-8 string.
+#' @keywords internal
+#' @noRd
+state_policy_component_string <- function(value) {
+  normalized <- state_policy_normalize_value(value)
+  enc2utf8(jsonlite::toJSON(
+    normalized,
+    auto_unbox = TRUE,
+    null = "null",
+    pretty = FALSE
+  ))
+}
+
+#' Normalize a state-policy value for canonical serialization
+#'
+#' Used by [state_policy_component_string()] to convert policy fields into a
+#' JSON-serializable shape with stable ordering and explicit scalar encoding.
+#'
+#' @param value Arbitrary policy component value.
+#' @return JSON-serializable value.
+#' @keywords internal
+#' @noRd
+state_policy_normalize_value <- function(value) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+
+  if (is.function(value)) {
+    return(list(`__function__` = paste(deparse(value), collapse = "\n")))
+  }
+
+  if (is.raw(value)) {
+    return(paste0(sprintf("%02x", as.integer(value)), collapse = ""))
+  }
+
+  if (is.list(value)) {
+    if (length(value) == 0L) {
+      return(list())
+    }
+
+    value_names <- names(value)
+    if (length(value_names) > 0L && !is.null(value_names)) {
+      ord <- order(value_names)
+      value <- value[ord]
+      value_names <- value_names[ord]
+      out <- lapply(value, state_policy_normalize_value)
+      names(out) <- value_names
+      return(out)
+    }
+
+    return(lapply(value, state_policy_normalize_value))
+  }
+
+  if (is.atomic(value)) {
+    value_names <- names(value)
+    if (length(value_names) > 0L && !is.null(value_names)) {
+      ord <- order(value_names)
+      value <- value[ord]
+      out <- as.list(vapply(
+        seq_along(value),
+        function(i) state_policy_scalar_string(value[[i]]),
+        ""
+      ))
+      names(out) <- value_names[ord]
+      return(out)
+    }
+
+    return(unname(vapply(
+      seq_along(value),
+      function(i) state_policy_scalar_string(value[[i]]),
+      ""
+    )))
+  }
+
+  state_policy_scalar_string(value)
+}
+
+#' Convert one scalar policy value to a stable string
+#'
+#' Used by [state_policy_normalize_value()] for atomic leaves.
+#'
+#' @param value Scalar policy value.
+#' @return Length-1 UTF-8 string.
+#' @keywords internal
+#' @noRd
+state_policy_scalar_string <- function(value) {
+  if (is.null(value) || length(value) == 0L) {
+    return("")
+  }
+
+  if (is.logical(value)) {
+    return(
+      if (is.na(value[[1L]])) {
+        "<na>"
+      } else if (isTRUE(value[[1L]])) {
+        "true"
+      } else {
+        "false"
+      }
+    )
+  }
+
+  if (is.numeric(value)) {
+    if (is.na(value[[1L]])) {
+      return("<na>")
+    }
+    return(format(
+      signif(as.numeric(value[[1L]]), digits = 17),
+      scientific = FALSE,
+      trim = TRUE
+    ))
+  }
+
+  value_chr <- tryCatch(as.character(value[[1L]]), error = function(...) {
+    "<unsupported>"
+  })
+  if (!is.character(value_chr) || length(value_chr) != 1L || is.na(value_chr)) {
+    return("<na>")
+  }
+
+  enc2utf8(value_chr)
+}
+
+#' Normalize a character-like set for policy fingerprints
+#'
+#' Used by client/provider policy fingerprint helpers when option order does not
+#' affect behavior.
+#'
+#' @param value Character-like vector.
+#' @param transform Optional normalization function applied elementwise.
+#' @return Sorted unique character vector with empty and `NA` entries removed.
+#' @keywords internal
+#' @noRd
+state_policy_string_set <- function(value, transform = identity) {
+  values <- as.character(value %||% character(0))
+  values <- values[!is.na(values) & nzchar(values)]
+  values <- transform(values)
+  sort(unique(enc2utf8(as.character(values))))
+}
+
+#' Compute a DPoP key thumbprint for state binding
+#'
+#' Used by [state_client_policy_fingerprint()] when a client enables DPoP.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @return RFC 7638 JWK thumbprint string, or `NA_character_` when DPoP is not
+#'   configured.
+#' @keywords internal
+#' @noRd
+state_policy_dpop_key_thumbprint <- function(client) {
+  if (!client_has_dpop(client)) {
+    return(NA_character_)
+  }
+
+  compute_jwk_thumbprint(dpop_public_jwk(resolve_dpop_private_key(client)))
+}
+
+#' Compute an mTLS certificate thumbprint for state binding
+#'
+#' Used by [state_client_policy_fingerprint()] when a client presents a TLS
+#' certificate during token or protected-resource requests.
+#'
+#' @param client OAuth client carrying mTLS configuration.
+#' @return Base64url SHA-256 certificate thumbprint, or `NA_character_` when no
+#'   mTLS certificate is configured.
+#' @keywords internal
+#' @noRd
+state_policy_mtls_cert_thumbprint <- function(client) {
+  if (!client_has_mtls_certificate(client)) {
+    return(NA_character_)
+  }
+
+  tls_client_cert_thumbprint_s256(
+    client@tls_client_cert_file,
+    key_file = client@tls_client_key_file,
+    key_password = if (is_valid_string(client@tls_client_key_password)) {
+      client@tls_client_key_password
+    } else {
+      NULL
+    }
+  )
+}
+
+#' Build a client-side callback policy fingerprint
+#'
+#' Computes a stable digest over client settings that affect callback handling,
+#' token/userinfo validation, or sender-constrained token enforcement so the
+#' callback cannot resume under a looser client policy on another worker.
+#'
+#' @param client [OAuthClient] instance to fingerprint.
+#' @return A length-1 character string in `sha256:<digest>` format.
+#' @keywords internal
+#' @noRd
+state_client_policy_fingerprint <- function(client) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  components <- list(
+    enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
+    resource = state_policy_string_set(client@resource),
+    claims = client@claims,
+    state_payload_max_age = client_state_payload_max_age(client),
+    scope_validation = client@scope_validation,
+    claims_validation = client@claims_validation,
+    userinfo_jwt_required_temporal_claims = state_policy_string_set(
+      client@userinfo_jwt_required_temporal_claims,
+      transform = tolower
+    ),
+    required_acr_values = state_policy_string_set(client@required_acr_values),
+    introspect = isTRUE(client@introspect),
+    introspect_elements = state_policy_string_set(client@introspect_elements),
+    dpop_require_access_token = isTRUE(client@dpop_require_access_token),
+    dpop_signing_alg = if (client_has_dpop(client)) {
+      resolve_dpop_alg(client)
+    } else {
+      NA_character_
+    },
+    dpop_private_key_kid = client@dpop_private_key_kid,
+    dpop_key_thumbprint = state_policy_dpop_key_thumbprint(client),
+    mtls_cert_thumbprint = state_policy_mtls_cert_thumbprint(client)
+  )
+
+  state_policy_digest(components)
+}
+
+## 1.3 Payload binding and freshness -------------------------------------------
 
 #' Verify encrypted state payload freshness
 #'
@@ -233,6 +497,23 @@ payload_verify_client_binding <- function(client, payload) {
     err_invalid_state(sprintf(
       "Invalid payload: provider fingerprint mismatch (got %s)",
       payload_fp
+    ))
+  }
+
+  # Client-side callback policy fingerprint -----------------------------------
+
+  expected_client_policy <- state_client_policy_fingerprint(client)
+  payload_client_policy <- payload$client_policy
+
+  if (!is_valid_string(payload_client_policy)) {
+    err_invalid_state(
+      "Invalid payload: missing or invalid client policy fingerprint"
+    )
+  }
+  if (!identical(payload_client_policy, expected_client_policy)) {
+    err_invalid_state(sprintf(
+      "Invalid payload: client policy mismatch (got %s)",
+      payload_client_policy
     ))
   }
 

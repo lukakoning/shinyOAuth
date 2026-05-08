@@ -55,6 +55,7 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
     redirect_uri = cli@redirect_uri,
     scopes = cli@scopes,
     provider = shinyOAuth:::provider_fingerprint(cli@provider),
+    client_policy = shinyOAuth:::state_client_policy_fingerprint(cli),
     issued_at = as.numeric(Sys.time())
   )
   expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base))
@@ -95,6 +96,20 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
     shinyOAuth:::payload_verify_client_binding(cli, bad),
     class = "shinyOAuth_state_error",
     regexp = "provider fingerprint mismatch"
+  )
+  bad <- base
+  bad$client_policy <- shinyOAuth:::state_client_policy_fingerprint(
+    make_test_client(
+      use_pkce = TRUE,
+      use_nonce = FALSE,
+      scopes = c("openid", "profile"),
+      claims_validation = "strict"
+    )
+  )
+  expect_error(
+    shinyOAuth:::payload_verify_client_binding(cli, bad),
+    class = "shinyOAuth_state_error",
+    regexp = "client policy mismatch"
   )
 })
 

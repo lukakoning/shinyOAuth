@@ -15,6 +15,81 @@ test_that("provider_fingerprint avoids delimiter collisions", {
       introspection_url = S7::new_property(
         S7::class_character,
         default = NA_character_
+      ),
+      issuer_match = S7::new_property(
+        S7::class_character,
+        default = "url"
+      ),
+      use_nonce = S7::new_property(S7::class_logical, default = FALSE),
+      use_pkce = S7::new_property(S7::class_logical, default = TRUE),
+      pkce_method = S7::new_property(
+        S7::class_character,
+        default = "S256"
+      ),
+      userinfo_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      userinfo_id_selector = S7::new_property(
+        S7::class_any,
+        default = quote(function(userinfo) userinfo$sub)
+      ),
+      userinfo_id_token_match = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      userinfo_signed_jwt_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      id_token_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      id_token_validation = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      id_token_at_hash_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      token_auth_style = S7::new_property(
+        S7::class_character,
+        default = "body"
+      ),
+      tls_client_certificate_bound_access_tokens = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      jwks_pins = S7::new_property(
+        S7::class_character,
+        default = character()
+      ),
+      jwks_pin_mode = S7::new_property(
+        S7::class_character,
+        default = "any"
+      ),
+      jwks_host_issuer_match = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      jwks_host_allow_only = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      ),
+      allowed_algs = S7::new_property(
+        S7::class_character,
+        default = c("RS256", "ES256")
+      ),
+      allowed_token_types = S7::new_property(
+        S7::class_character,
+        default = character()
+      ),
+      leeway = S7::new_property(S7::class_numeric, default = 30),
+      mtls_endpoint_aliases = S7::new_property(
+        S7::class_list,
+        default = list()
       )
     )
   )
@@ -53,4 +128,117 @@ test_that("provider_fingerprint avoids delimiter collisions", {
   expect_true(startsWith(fp1, "sha256:"))
   expect_true(startsWith(fp2, "sha256:"))
   expect_false(identical(fp1, fp2))
+})
+
+test_that("provider_fingerprint changes when callback security policy changes", {
+  DummyProvider <- S7::new_class(
+    "DummyProviderPolicy",
+    properties = list(
+      issuer = S7::class_character,
+      auth_url = S7::class_character,
+      token_url = S7::class_character,
+      userinfo_url = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      ),
+      introspection_url = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      ),
+      issuer_match = S7::new_property(
+        S7::class_character,
+        default = "url"
+      ),
+      use_nonce = S7::new_property(S7::class_logical, default = TRUE),
+      use_pkce = S7::new_property(S7::class_logical, default = TRUE),
+      pkce_method = S7::new_property(
+        S7::class_character,
+        default = "S256"
+      ),
+      userinfo_required = S7::new_property(
+        S7::class_logical,
+        default = TRUE
+      ),
+      userinfo_id_selector = S7::new_property(
+        S7::class_any,
+        default = quote(function(userinfo) userinfo$sub)
+      ),
+      userinfo_id_token_match = S7::new_property(
+        S7::class_logical,
+        default = TRUE
+      ),
+      userinfo_signed_jwt_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      id_token_required = S7::new_property(
+        S7::class_logical,
+        default = TRUE
+      ),
+      id_token_validation = S7::new_property(
+        S7::class_logical,
+        default = TRUE
+      ),
+      id_token_at_hash_required = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      token_auth_style = S7::new_property(
+        S7::class_character,
+        default = "body"
+      ),
+      tls_client_certificate_bound_access_tokens = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
+      jwks_pins = S7::new_property(
+        S7::class_character,
+        default = character()
+      ),
+      jwks_pin_mode = S7::new_property(
+        S7::class_character,
+        default = "any"
+      ),
+      jwks_host_issuer_match = S7::new_property(
+        S7::class_logical,
+        default = TRUE
+      ),
+      jwks_host_allow_only = S7::new_property(
+        S7::class_character,
+        default = NA_character_
+      ),
+      allowed_algs = S7::new_property(
+        S7::class_character,
+        default = c("RS256", "ES256")
+      ),
+      allowed_token_types = S7::new_property(
+        S7::class_character,
+        default = c("Bearer")
+      ),
+      leeway = S7::new_property(S7::class_numeric, default = 30),
+      mtls_endpoint_aliases = S7::new_property(
+        S7::class_list,
+        default = list()
+      )
+    )
+  )
+
+  strict <- DummyProvider(
+    issuer = "https://issuer.example.com",
+    auth_url = "https://issuer.example.com/auth",
+    token_url = "https://issuer.example.com/token",
+    userinfo_url = "https://issuer.example.com/userinfo"
+  )
+  loose <- DummyProvider(
+    issuer = strict@issuer,
+    auth_url = strict@auth_url,
+    token_url = strict@token_url,
+    userinfo_url = strict@userinfo_url,
+    allowed_algs = "ES256"
+  )
+
+  expect_false(identical(
+    shinyOAuth:::provider_fingerprint(strict),
+    shinyOAuth:::provider_fingerprint(loose)
+  ))
 })

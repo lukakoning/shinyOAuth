@@ -1306,8 +1306,8 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
 
 #' Build a provider fingerprint
 #'
-#' Computes a stable digest over the provider endpoints that matter for login
-#' and callback validation so the callback can confirm it is finishing the same
+#' Computes a stable digest over the provider endpoints and callback-relevant
+#' security policy so the callback can confirm it is finishing under the same
 #' provider configuration that initiated the flow. Used when a login request is
 #' created and again when callback handling resumes.
 #'
@@ -1317,59 +1317,40 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
 #' @noRd
 provider_fingerprint <- function(provider) {
   components <- list(
-    iss = provider@issuer,
-    au = provider@auth_url,
-    tu = provider@token_url,
-    ui = provider@userinfo_url,
-    it = provider@introspection_url
-  )
-  for (component_name in names(components)) {
-    value <- components[[component_name]]
-    components[[component_name]] <- if (
-      is.null(value) || length(value) != 1L || is.na(value)
-    ) {
-      ""
-    } else {
-      as.character(value)
-    }
-  }
-
-  # Use a length-prefixed canonical representation to avoid delimiter-based
-  # collisions when any component contains separators.
-  iss_u <- enc2utf8(components$iss)
-  au_u <- enc2utf8(components$au)
-  tu_u <- enc2utf8(components$tu)
-  ui_u <- enc2utf8(components$ui)
-  it_u <- enc2utf8(components$it)
-
-  canonical <- paste0(
-    "iss:",
-    nchar(iss_u, type = "bytes"),
-    ":",
-    iss_u,
-    "\n",
-    "au:",
-    nchar(au_u, type = "bytes"),
-    ":",
-    au_u,
-    "\n",
-    "tu:",
-    nchar(tu_u, type = "bytes"),
-    ":",
-    tu_u,
-    "\n",
-    "ui:",
-    nchar(ui_u, type = "bytes"),
-    ":",
-    ui_u,
-    "\n",
-    "it:",
-    nchar(it_u, type = "bytes"),
-    ":",
-    it_u
+    issuer = provider@issuer,
+    auth_url = provider@auth_url,
+    token_url = provider@token_url,
+    userinfo_url = provider@userinfo_url,
+    introspection_url = provider@introspection_url,
+    issuer_match = provider@issuer_match,
+    use_nonce = isTRUE(provider@use_nonce),
+    use_pkce = isTRUE(provider@use_pkce),
+    pkce_method = provider@pkce_method,
+    userinfo_required = isTRUE(provider@userinfo_required),
+    userinfo_id_selector = provider@userinfo_id_selector,
+    userinfo_id_token_match = isTRUE(provider@userinfo_id_token_match),
+    userinfo_signed_jwt_required = isTRUE(
+      provider@userinfo_signed_jwt_required
+    ),
+    id_token_required = isTRUE(provider@id_token_required),
+    id_token_validation = isTRUE(provider@id_token_validation),
+    id_token_at_hash_required = isTRUE(provider@id_token_at_hash_required),
+    token_auth_style = provider@token_auth_style,
+    tls_client_certificate_bound_access_tokens = isTRUE(
+      provider@tls_client_certificate_bound_access_tokens
+    ),
+    jwks_pins = state_policy_string_set(provider@jwks_pins),
+    jwks_pin_mode = provider@jwks_pin_mode,
+    jwks_host_issuer_match = isTRUE(provider@jwks_host_issuer_match),
+    jwks_host_allow_only = provider@jwks_host_allow_only,
+    allowed_algs = state_policy_string_set(
+      provider@allowed_algs,
+      transform = toupper
+    ),
+    allowed_token_types = state_policy_string_set(provider@allowed_token_types),
+    leeway = provider@leeway,
+    mtls_endpoint_aliases = provider@mtls_endpoint_aliases
   )
 
-  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
-  # Keyed digests are only for audit logs where correlation prevention matters.
-  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
+  state_policy_digest(components)
 }
