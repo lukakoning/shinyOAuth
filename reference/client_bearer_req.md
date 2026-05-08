@@ -87,7 +87,8 @@ client_bearer_req(
 - token_type:
 
   Optional override for the access token type when `token` is supplied
-  as a raw string. Supported values are `Bearer` and `DPoP`.
+  as a raw string. Supported values are `Bearer` and `DPoP`. Invalid or
+  multi-valued inputs are rejected.
 
 - dpop_nonce:
 

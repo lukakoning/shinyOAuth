@@ -67,10 +67,12 @@ refresh_token(
 - introspect:
 
   Logical, default FALSE. After a successful refresh, if the provider
-  exposes an introspection endpoint, perform a best-effort introspection
-  of the new access token for audit/diagnostics. The raw introspection
-  result is not stored separately, but a successful introspection
-  response may backfill `token@cnf`.
+  exposes an introspection endpoint, introspect the new access token for
+  validation and audit/diagnostics. When enabled, refresh fails if
+  introspection is unsupported, inactive, or missing required
+  `introspect_elements`. The raw introspection result is not stored
+  separately, but a successful introspection response may backfill
+  `token@cnf`.
 
 - shiny_session:
 
