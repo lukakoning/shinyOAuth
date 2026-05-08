@@ -60,6 +60,7 @@
 <ul><li>Explicitly ignores new login requests while a session is already authenticated.</li>
 <li>Applies the browser-token double-submit check to OAuth error callbacks too, deferring <code>?error=...</code> handling until the browser token is available and treating browser-token mismatches as <code>invalid_state</code> instead of surfacing provider-controlled error text.</li>
 <li>Forwards <code>oauth_client(introspect = TRUE)</code> to its proactive refresh path, so refreshed access tokens follow the same introspection policy as the initial login.</li>
+<li>Enforces refresh-time token introspection instead of treating it as best-effort metadata enrichment, so proactive refresh now fails when introspection is unsupported, inactive, or missing required <code>introspect_elements</code> such as <code>sub</code>, <code>client_id</code>, or <code>scope</code>.</li>
 <li>Preserves <code>invalid_state</code> in its callback error state for CSRF/state/browser-token validation failures instead of flattening those paths into <code>token_exchange_error</code>.</li>
 <li>Drops provider <code>error_uri</code> values unless they are absolute HTTPS URLs, so unsafe schemes like <code>javascript:</code> are no longer surfaced through <code>values$error_uri</code>.</li>
 </ul></li>
