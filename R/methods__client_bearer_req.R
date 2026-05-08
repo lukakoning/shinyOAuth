@@ -123,7 +123,8 @@ client_bearer_req <- function(
 resolve_client_bearer_token <- function(token, token_type = NULL) {
   access_token <- token
   effective_token_type <- NULL
-  explicit_token_type <- !is.null(token_type)
+  explicit_token_type <- !(is.null(token_type) ||
+    (is.character(token_type) && length(token_type) == 1L && is.na(token_type)))
 
   if (S7::S7_inherits(token, class = OAuthToken)) {
     access_token <- token@access_token
