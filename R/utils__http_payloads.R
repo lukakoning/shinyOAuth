@@ -3,94 +3,180 @@
 # Use them when form-encoded or JSON payloads need strict parsing rules, input
 # validation, or support for repeated parameter names.
 
-# 1 HTTP payload helpers -------------------------------------------------------
+# 1 Token response parsing -----------------------------------------------------
 
-## 1.1 Parse and encode request or response bodies -----------------------------
+# 1.1 Parse token responses ----------------------------------------------------
 
 #' Parse token HTTP response by Content-Type
 #'
 #' @description
 #' Internal helper to parse OAuth token endpoint responses. Supports JSON
-#' (application/json) and form-encoded (application/x-www-form-urlencoded).
-#' Errors on unsupported content types to avoid silently parsing garbage
-#' (e.g., HTML error pages from misconfigured proxies). Used by token exchange
-#' and refresh helpers.
+#' (`application/json`) and form-encoded
+#' (`application/x-www-form-urlencoded`) bodies. Empty content types and
+#' `text/plain` are handled as a legacy compatibility path: JSON is attempted
+#' first, then form parsing is used. Other content types fail explicitly so
+#' HTML proxy errors or unrelated payloads are not parsed as tokens.
 #'
-#' @param resp httr2 response
+#' @param resp httr2 response object returned by a token-like endpoint.
 #'
-#' @return Named list with token fields
+#' @return Parsed token response. JSON responses preserve JSON scalar/list
+#'   types, with data frames converted to lists. Form-encoded responses return
+#'   a named character list such as `access_token`, `token_type`, `scope`,
+#'   `expires_in`, `refresh_token`, and provider-specific fields.
+#'
+#' @section Side effects:
+#' Reads `shinyOAuth.max_body_bytes` through `check_resp_body_size()` before
+#' parsing the response body. Does not perform network I/O.
 #'
 #' @keywords internal
 #' @noRd
 parse_token_response <- function(resp) {
   check_resp_body_size(resp, context = "token")
-  ct <- tolower(httr2::resp_header(resp, "content-type") %||% "")
+
+  content_type <- tolower(httr2::resp_header(resp, "content-type") %||% "")
   body <- httr2::resp_body_string(resp)
 
-  # Some providers include charset, e.g., application/json; charset=utf-8
-  if (grepl("application/json", ct, fixed = TRUE)) {
-    reject_duplicate_json_object_members(body, "Token response JSON")
-    out <- try(
-      httr2::resp_body_json(resp, simplifyVector = TRUE),
-      silent = TRUE
-    )
-    if (inherits(out, "try-error")) {
-      # Fallback: attempt to parse string via jsonlite
-      out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
-      if (inherits(out, "try-error")) {
-        err_parse(c("x" = "Failed to parse JSON token response"))
-      }
-    }
-    # Ensure list
-    if (is.data.frame(out)) {
-      out <- as.list(out)
-    }
-    return(out)
+  # Some providers include charset, e.g. application/json; charset=utf-8.
+  if (grepl("application/json", content_type, fixed = TRUE)) {
+    return(parse_token_response_json(body, resp = resp))
   }
 
-  # GitHub historically returns form-encoded unless header Accept: application/json
-  # Handle application/x-www-form-urlencoded explicitly
-  if (grepl("application/x-www-form-urlencoded", ct, fixed = TRUE)) {
-    # httr2::url_query_parse handles form-encoded strings
-    reject_duplicate_form_encoded_members(body, "Token response body")
-    return(httr2::url_query_parse(body))
+  # GitHub historically returns form-encoded unless Accept requests JSON.
+  if (grepl("application/x-www-form-urlencoded", content_type, fixed = TRUE)) {
+    return(parse_token_response_form(body))
   }
 
-  # Empty content-type or text/plain: legacy providers may omit or mis-set headers.
-
-  # Try JSON first (many providers respond with JSON but wrong content-type),
-  # then fall back to form parsing.
-  if (ct == "" || grepl("text/plain", ct, fixed = TRUE)) {
-    # Try JSON first
-    reject_duplicate_json_object_members(body, "Token response JSON")
-    out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
-    if (!inherits(out, "try-error")) {
-      if (is.data.frame(out)) {
-        out <- as.list(out)
-      }
-      return(out)
-    }
-    # Fall back to form parsing
-    reject_duplicate_form_encoded_members(body, "Token response body")
-    return(httr2::url_query_parse(body))
+  # Legacy providers may omit the content type or send JSON as text/plain.
+  if (
+    identical(content_type, "") ||
+      grepl("text/plain", content_type, fixed = TRUE)
+  ) {
+    return(parse_lenient_token_response(body))
   }
 
-  # Unsupported content type - fail explicitly rather than guessing
-
-  # This catches text/html (proxy error pages), XML, or other unexpected types
   err_parse(
     c(
       "x" = "Unsupported content type in token response",
-      "i" = paste0("Content-Type: ", ct),
+      "i" = paste0("Content-Type: ", content_type),
       "i" = "Expected application/json or application/x-www-form-urlencoded"
     ),
-    context = list(content_type = ct)
+    context = list(content_type = content_type)
   )
+}
+
+
+# 1.2 Response body parsers ----------------------------------------------------
+
+#' Parse a token response as strict JSON
+#'
+#' Used by `parse_token_response()` when the response advertises JSON. Duplicate
+#' top-level JSON members are rejected before parsing so ambiguous token fields
+#' cannot be smuggled through provider or parser differences.
+#'
+#' @param body Raw response body as a string.
+#' @param resp Optional httr2 response. When supplied, httr2's JSON parser is
+#'   attempted before falling back to `jsonlite::fromJSON()`.
+#' @return Parsed JSON value, normalized by `normalize_token_response_json()`.
+#' @keywords internal
+#' @noRd
+parse_token_response_json <- function(body, resp = NULL) {
+  parsed <- try_parse_token_response_json(body, resp = resp)
+  if (!isTRUE(parsed$ok)) {
+    err_parse(c("x" = "Failed to parse JSON token response"))
+  }
+
+  parsed$value
+}
+
+#' Try to parse a token response as JSON
+#'
+#' Used by strict JSON parsing and by the legacy content-type fallback. Parse
+#' failures are returned as data rather than raised so callers can decide
+#' whether to fall back to form parsing.
+#'
+#' @param body Raw response body as a string.
+#' @param resp Optional httr2 response for httr2-native parsing.
+#' @return A list with `ok`, a scalar logical, and `value`, the parsed JSON
+#'   value when `ok` is `TRUE` or `NULL` when JSON parsing failed.
+#' @keywords internal
+#' @noRd
+try_parse_token_response_json <- function(body, resp = NULL) {
+  reject_duplicate_json_object_members(body, "Token response JSON")
+
+  out <- if (inherits(resp, "httr2_response")) {
+    try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+  } else {
+    try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
+  }
+
+  if (inherits(out, "try-error")) {
+    out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
+  }
+  if (inherits(out, "try-error")) {
+    return(list(ok = FALSE, value = NULL))
+  }
+
+  list(
+    ok = TRUE,
+    value = normalize_token_response_json(out)
+  )
+}
+
+#' Normalize parsed token JSON to the package's expected shape
+#'
+#' Used after token JSON is parsed. `jsonlite` can return a data frame for
+#' object-like responses with vector fields; token callers expect list-style
+#' field access, so data frames are converted to lists.
+#'
+#' @param value Parsed JSON value.
+#' @return `value`, with data frames converted to lists.
+#' @keywords internal
+#' @noRd
+normalize_token_response_json <- function(value) {
+  if (is.data.frame(value)) {
+    return(as.list(value))
+  }
+
+  value
+}
+
+#' Parse a token response as form-encoded data
+#'
+#' Used by `parse_token_response()` for explicit form-encoded responses and as
+#' the fallback for legacy responses that were not valid JSON.
+#'
+#' @param body Raw response body as a string.
+#' @return Named character list parsed from the form body.
+#' @keywords internal
+#' @noRd
+parse_token_response_form <- function(body) {
+  reject_duplicate_form_encoded_members(body, "Token response body")
+  httr2::url_query_parse(body)
+}
+
+#' Parse a legacy token response with weak or missing Content-Type
+#'
+#' Used by `parse_token_response()` for empty content types and `text/plain`.
+#' JSON is preferred because many providers send JSON with the wrong header;
+#' form parsing is retained for older OAuth providers.
+#'
+#' @param body Raw response body as a string.
+#' @return Parsed token response as JSON data or a named character list.
+#' @keywords internal
+#' @noRd
+parse_lenient_token_response <- function(body) {
+  parsed_json <- try_parse_token_response_json(body)
+  if (isTRUE(parsed_json$ok)) {
+    return(parsed_json$value)
+  }
+
+  parse_token_response_form(body)
 }
 
 #' Reject duplicate form-encoded parameter names
 #'
-#' Used before form-encoded token responses are parsed.
+#' Used before form-encoded token responses are parsed. Duplicate token fields
+#' are rejected so callers do not have to infer which value a parser kept.
 #'
 #' @param form_text Form-encoded body text.
 #' @param label Human-readable label used in parse errors.
@@ -122,61 +208,10 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   invisible(NULL)
 }
 
-#' Percent-encode form or query parameters
-#'
-#' Preserves repeated keys for vector values. Used by request-body and URL
-#' builders that need stable repeated-parameter handling.
-#'
-#' @param params Named parameter list.
-#' @return Encoded body string.
-#' @keywords internal
-#' @noRd
-encode_www_form_params <- function(params) {
-  if (!is.list(params) || length(params) == 0) {
-    return("")
-  }
 
-  nms <- names(params)
-  if (is.null(nms)) {
-    err_config("Form/query parameters must be supplied as a named list")
-  }
+# 2 Form request bodies --------------------------------------------------------
 
-  parts <- unlist(
-    lapply(seq_along(params), function(i) {
-      nm <- nms[[i]]
-      val <- params[[i]]
-
-      if (!is_valid_string(nm)) {
-        err_config("Form/query parameters must be supplied as a named list")
-      }
-      if (is.null(val) || length(val) == 0L) {
-        return(character())
-      }
-      if (is.list(val) && !inherits(val, "AsIs")) {
-        err_config(c(
-          "x" = "Form/query parameter values must be atomic vectors",
-          "i" = paste0(
-            "Parameter ",
-            sQuote(nm),
-            " used an unsupported list value."
-          )
-        ))
-      }
-
-      val_chr <- as.character(val)
-      val_chr <- val_chr[!is.na(val_chr)]
-      if (length(val_chr) == 0L) {
-        return(character())
-      }
-
-      nm_enc <- utils::URLencode(nm, reserved = TRUE)
-      paste0(nm_enc, "=", utils::URLencode(val_chr, reserved = TRUE))
-    }),
-    use.names = FALSE
-  )
-
-  paste(parts, collapse = "&")
-}
+# 2.1 Add form bodies to requests ----------------------------------------------
 
 #' Add a form-encoded body to a request
 #'
@@ -185,7 +220,8 @@ encode_www_form_params <- function(params) {
 #'
 #' @param req httr2 request object.
 #' @param params Named parameter list.
-#' @return Updated request.
+#' @return Updated request. When `params` is empty after `NULL` and scalar `NA`
+#'   entries are removed, returns `req` unchanged.
 #' @keywords internal
 #' @noRd
 req_body_form_encoded <- function(req, params) {
@@ -194,7 +230,30 @@ req_body_form_encoded <- function(req, params) {
     return(req)
   }
 
-  use_raw <- anyDuplicated(names(params)) > 0L ||
+  if (!form_params_need_raw_body(params)) {
+    return(do.call(httr2::req_body_form, c(list(req), params)))
+  }
+
+  body <- encode_www_form_params(params)
+  httr2::req_body_raw(
+    req,
+    body = charToRaw(enc2utf8(body)),
+    type = "application/x-www-form-urlencoded"
+  )
+}
+
+#' Decide whether form parameters need raw-body encoding
+#'
+#' Used by `req_body_form_encoded()` to choose between httr2's standard form
+#' builder and the package encoder that preserves repeated keys and vector
+#' values.
+#'
+#' @param params Named parameter list after `compact_list()`.
+#' @return `TRUE` when raw form encoding is needed; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+form_params_need_raw_body <- function(params) {
+  anyDuplicated(names(params)) > 0L ||
     any(vapply(
       params,
       function(val) {
@@ -211,15 +270,73 @@ req_body_form_encoded <- function(req, params) {
       },
       logical(1)
     ))
+}
 
-  if (!use_raw) {
-    return(do.call(httr2::req_body_form, c(list(req), params)))
+
+# 2.2 Encode form parameters ---------------------------------------------------
+
+#' Percent-encode form or query parameters
+#'
+#' Preserves repeated keys for vector values. Used by request-body and URL
+#' builders that need stable repeated-parameter handling.
+#'
+#' @param params Named parameter list.
+#' @return Encoded body string such as `"a=1&scope=read&scope=write"`.
+#' @keywords internal
+#' @noRd
+encode_www_form_params <- function(params) {
+  if (!is.list(params) || length(params) == 0L) {
+    return("")
   }
 
-  body <- encode_www_form_params(params)
-  httr2::req_body_raw(
-    req,
-    body = charToRaw(enc2utf8(body)),
-    type = "application/x-www-form-urlencoded"
+  param_names <- names(params)
+  if (is.null(param_names)) {
+    err_config("Form/query parameters must be supplied as a named list")
+  }
+
+  parts <- unlist(
+    Map(encode_www_form_param, param_names, params),
+    use.names = FALSE
   )
+
+  paste(parts, collapse = "&")
+}
+
+#' Percent-encode one form or query parameter
+#'
+#' Used by `encode_www_form_params()` for each named parameter. Atomic vectors
+#' are encoded as repeated parameter names, while `NULL`, empty, and `NA` values
+#' are omitted.
+#'
+#' @param name Parameter name.
+#' @param value Parameter value.
+#' @return Character vector containing zero or more `"name=value"` pairs.
+#' @keywords internal
+#' @noRd
+encode_www_form_param <- function(name, value) {
+  if (!is_valid_string(name)) {
+    err_config("Form/query parameters must be supplied as a named list")
+  }
+  if (is.null(value) || length(value) == 0L) {
+    return(character())
+  }
+  if (is.list(value) && !inherits(value, "AsIs")) {
+    err_config(c(
+      "x" = "Form/query parameter values must be atomic vectors",
+      "i" = paste0(
+        "Parameter ",
+        sQuote(name),
+        " used an unsupported list value."
+      )
+    ))
+  }
+
+  value <- as.character(value)
+  value <- value[!is.na(value)]
+  if (length(value) == 0L) {
+    return(character())
+  }
+
+  name <- utils::URLencode(name, reserved = TRUE)
+  paste0(name, "=", utils::URLencode(value, reserved = TRUE))
 }

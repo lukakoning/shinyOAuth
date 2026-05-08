@@ -38,8 +38,8 @@ understand the security implications.}
 
 \item{check_url}{Logical. If \code{TRUE} (the default), validates \code{url} against
 \code{\link[=is_ok_host]{is_ok_host()}} before attaching the access token. This rejects relative
-URLs, plain HTTP to non-loopback hosts, and – when
-\code{options(shinyOAuth.allowed_hosts)} is set – hosts outside the allowlist.
+URLs, plain HTTP to non-loopback hosts, and when
+\code{options(shinyOAuth.allowed_hosts)} is set, hosts outside the allowlist.
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
@@ -69,6 +69,14 @@ the package's standard HTTP defaults (timeout and User-Agent).
 
 Accepts either a raw access token string or an \link{OAuthToken} object.
 }
+\section{Side effects}{
+
+This function does not perform network I/O. It reads shinyOAuth package
+options through \code{\link[=is_ok_host]{is_ok_host()}} and HTTP-default helpers, may emit warnings
+when unsafe custom auth headers are ignored, and may read configured mTLS
+certificate files when validating certificate-bound access tokens.
+}
+
 \examples{
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)
