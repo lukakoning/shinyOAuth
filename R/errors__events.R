@@ -62,9 +62,11 @@ audit_event <- function(
 #' Dispatch one trace or audit event
 #'
 #' Enriches one event with Shiny context and forwards it to OpenTelemetry and
-#' the configured audit hook. `trace_hook` remains a backward-compatible alias
-#' when `audit_hook` is unset. Used by `audit_event()` and direct internal event
-#' emitters.
+#' the configured audit hook. `trace_hook` intentionally remains supported only
+#' as an undocumented backward-compatible alias when `audit_hook` is unset, so
+#' older apps keep working without reintroducing it into the main public options
+#' surface. When both options are configured, `audit_hook` always takes
+#' precedence. Used by `audit_event()` and direct internal event emitters.
 #'
 #' @param event Named list describing one event.
 #' @return Invisibly returns `NULL`.
@@ -74,6 +76,8 @@ emit_trace_event <- function(event) {
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
   hook_name <- "audit_hook"
   if (!is.function(audit_hook)) {
+    # Keep trace_hook fallback for backward compatibility only.
+    # It remains intentionally undocumented in user-facing options guidance.
     audit_hook <- getOption("shinyOAuth.trace_hook", NULL)
     hook_name <- "trace_hook"
   }
