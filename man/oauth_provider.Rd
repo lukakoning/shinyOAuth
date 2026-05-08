@@ -184,7 +184,7 @@ capability, not that every client receives signed JWTs (this depends on
 per-client configuration at the provider). Pass \code{userinfo_signed_jwt_required = TRUE}
 explicitly if you need this protection.}
 
-\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.#'
+\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.
 Should take a single argument (the userinfo list) and return the user ID
 as a string.
 

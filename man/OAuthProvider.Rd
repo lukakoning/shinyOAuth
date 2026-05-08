@@ -137,7 +137,7 @@ if a \code{userinfo_url} is provided, \code{userinfo_required} defaults to \code
 otherwise it defaults to \code{FALSE}. This avoids unexpected validation errors
 when \code{userinfo_url} is omitted (since it is optional).}
 
-\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.#'
+\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.
 Should take a single argument (the userinfo list) and return the user ID
 as a string.
 

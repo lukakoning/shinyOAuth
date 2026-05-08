@@ -120,6 +120,8 @@ the client's configured scopes when a refresh response omits `scope`.
   - Raises typed `shinyOAuth_input_error` conditions for malformed constructor
   inputs such as vector endpoint URLs or empty discovery-helper domains, so
   apps can trap provider validation failures consistently.
+  - Fixes the generated `OAuthProvider` / `oauth_provider()` reference pages so
+  `userinfo_id_selector` no longer shows stray roxygen markup.
   - Validates custom `jwks_cache$get()` signatures without calling the cache 
   during construction, avoiding side effects in duck-typed cache backends.
   - Reserves the `refresh_token` parameter name in `extra_token_params` to 

@@ -142,7 +142,7 @@
 #' per-client configuration at the provider). Pass `userinfo_signed_jwt_required = TRUE`
 #' explicitly if you need this protection.
 #'
-#' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.#'
+#' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.
 #' Should take a single argument (the userinfo list) and return the user ID
 #' as a string.
 #'
