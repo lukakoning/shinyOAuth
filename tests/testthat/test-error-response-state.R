@@ -120,6 +120,7 @@ testthat::test_that("error response with state waits for browser_token before va
         redirect_uri = cli@redirect_uri,
         scopes = cli@scopes,
         provider = shinyOAuth:::provider_fingerprint(cli@provider),
+        client_policy = shinyOAuth:::state_client_policy_fingerprint(cli),
         issued_at = as.numeric(Sys.time())
       )
       enc <- shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key)
@@ -198,6 +199,7 @@ testthat::test_that("error response with mismatched browser_token is rejected as
         redirect_uri = cli@redirect_uri,
         scopes = cli@scopes,
         provider = shinyOAuth:::provider_fingerprint(cli@provider),
+        client_policy = shinyOAuth:::state_client_policy_fingerprint(cli),
         issued_at = as.numeric(Sys.time())
       )
       enc <- shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key)

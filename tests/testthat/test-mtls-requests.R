@@ -839,8 +839,11 @@ test_that("userinfo ignores mTLS alias when only provider metadata is present", 
 })
 
 test_that("handle_callback preserves certificate-bound context for automatic userinfo", {
-  files <- make_mtls_test_files()
-  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
 
   provider <- oauth_provider(
     name = "example",
@@ -866,10 +869,15 @@ test_that("handle_callback preserves certificate-bound context for automatic use
   )
 
   browser_token <- valid_browser_token()
+  cert_thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(
+    files$cert_file,
+    key_file = files$key_file,
+    key_password = "password"
+  )
   auth_url <- shinyOAuth:::prepare_call(client, browser_token = browser_token)
   enc <- parse_query_param(auth_url, "state")
   jwt_access_token <- build_mtls_access_jwt(list(
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = cert_thumbprint)
   ))
 
   captured_req <- NULL
@@ -883,7 +891,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
     },
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+      cert_thumbprint
     },
     req_with_retry = function(req, ...) {
       captured_req <<- req
@@ -907,7 +915,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
       expect_identical(captured_req$options$sslcert, files$cert_file)
       expect_identical(captured_req$options$sslkey, files$key_file)
       expect_identical(token@userinfo$sub, "user-123")
-      expect_identical(token@cnf$`x5t#S256`, "thumbprint")
+      expect_identical(token@cnf$`x5t#S256`, cert_thumbprint)
     }
   )
 })
