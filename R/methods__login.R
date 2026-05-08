@@ -2299,9 +2299,15 @@ verify_token_type_allowlist <- function(client, token_set) {
   # - If provider@allowed_token_types is empty (length 0 or NULL), we do not
   #   enforce token_type presence or value (provider may omit it).
   # - If allowed_token_types is non-empty, token_type MUST be present and one
-  #   of the allowed values (case-insensitive).
+  #   of the allowed values (case-insensitive). DPoP-capable clients extend
+  #   that non-empty allowlist with DPoP so the provider can return either
+  #   token_type without extra configuration.
   allowed_vec <- client@provider@allowed_token_types %||% character(0)
-  if (client_has_dpop(client) && !any(tolower(allowed_vec) == "dpop")) {
+  if (
+    length(allowed_vec) > 0 &&
+      client_has_dpop(client) &&
+      !any(tolower(allowed_vec) == "dpop")
+  ) {
     allowed_vec <- c(allowed_vec, "DPoP")
   }
 

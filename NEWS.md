@@ -6,6 +6,12 @@ mismatch enforcement in both `handle_callback()` and
 `oauth_module_server()`, even when the provider advertises callback-issuer
 support.
 
+* Fixed the documented `allowed_token_types = character(0)` opt-out for DPoP
+clients. DPoP-capable clients now keep an explicitly empty allowlist as a real
+disablement of token-type enforcement during both callback token exchange and
+refresh, unless `dpop_require_access_token = TRUE` still requires
+`token_type = "DPoP"`.
+
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now

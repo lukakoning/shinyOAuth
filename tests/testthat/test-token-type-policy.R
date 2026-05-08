@@ -52,6 +52,93 @@ test_that("when allowed_token_types is empty, missing token_type is allowed", {
   expect_true(is.character(token@access_token))
 })
 
+test_that("DPoP clients keep empty allowed_token_types as a callback opt-out", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@allowed_token_types <- character(0)
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen(),
+    dpop_require_access_token = FALSE
+  )
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  token <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "t", expires_in = 5)
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "ok",
+      payload = enc,
+      browser_token = tok
+    )
+  )
+
+  expect_s3_class(token, "S7_object")
+  expect_identical(token@access_token, "t")
+})
+
+test_that("DPoP clients keep empty allowed_token_types as a refresh opt-out", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@allowed_token_types <- character(0)
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen(),
+    dpop_require_access_token = FALSE
+  )
+
+  token <- OAuthToken(
+    access_token = "old-at",
+    token_type = "Bearer",
+    refresh_token = "refresh-1",
+    expires_at = as.numeric(Sys.time()) + 10,
+    userinfo = list()
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, client, idempotent = FALSE) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"new-at","refresh_token":"refresh-2","expires_in":60}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  refreshed <- refresh_token(cli, token, async = FALSE, introspect = FALSE)
+
+  expect_identical(refreshed@access_token, "new-at")
+  expect_identical(refreshed@refresh_token, "refresh-2")
+})
+
 test_that("when allowed_token_types is non-empty, missing token_type errors", {
   prov <- oauth_provider(
     name = "fake",
