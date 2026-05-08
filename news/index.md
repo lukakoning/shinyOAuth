@@ -143,6 +143,14 @@
     reject POST requests, so `response_mode = "form_post"` was
     previously allowed but led to abroken callback round-trip instead of
     a clear configuration error.
+  - Raises typed `shinyOAuth_input_error` conditions for malformed
+    constructor inputs such as vector endpoint URLs or empty
+    discovery-helper domains, so apps can trap provider validation
+    failures consistently.
+  - Fixes the generated `OAuthProvider` /
+    [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+    reference pages so `userinfo_id_selector` no longer shows stray
+    roxygen markup.
   - Validates custom `jwks_cache$get()` signatures without calling the
     cache during construction, avoiding side effects in duck-typed cache
     backends.
