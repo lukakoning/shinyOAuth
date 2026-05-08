@@ -22,7 +22,7 @@ still required unless the host is in `allowed_non_https_hosts`.
 
 Since `allowed_hosts` supports globs, a value like "\*" matches any host
 and therefore effectively disables endpoint host restrictions. Only use
-a catch‑all pattern when you truly intend to allow any host. In most
+a catch-all pattern when you truly intend to allow any host. In most
 deployments you should pin to your expected domain(s), e.g.
 `c(".example.com")` or a specific host name.
 

@@ -1,7 +1,8 @@
 # Create generic [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 
-Create generic
-[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+Used by app setup code to build a validated client configuration before
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+starts login or callback handling.
 
 ## Usage
 

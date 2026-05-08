@@ -1,7 +1,8 @@
 # Decrypt and validate OAuth state payload
 
 Internal utility that decrypts the encrypted `state` payload using the
-client's `state_key`, then validates freshness and client binding.
+client's `state_key`, then validates freshness and client binding. Used
+by callback handling before the code exchange continues.
 
 ## Usage
 

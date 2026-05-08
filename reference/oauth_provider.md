@@ -3,7 +3,8 @@
 Helper function to create an
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 object. This function provides sensible defaults and infers some
-settings based on the provided parameters.
+settings based on the provided parameters. Used by app setup code and
+the built-in provider helpers.
 
 ## Usage
 

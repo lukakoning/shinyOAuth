@@ -14,7 +14,7 @@ allowed_non_https_hosts defines which hosts are allowed to use HTTP instead of H
 If allowed_hosts is NULL or length 0, all hosts are allowed (subject to scheme rules),
 but HTTPS is still required unless the host is in allowed_non_https_hosts.
 Since allowed_hosts supports globs, a value like "*" matches any host
-and therefore effectively disables endpoint host restrictions. Only use a catch‑all
+and therefore effectively disables endpoint host restrictions. Only use a catch-all
 pattern when you truly intend to allow any host. In most deployments you should pin
 to your expected domain(s), e.g. c(".example.com") or a specific host name.
 Wildcards: allowed_hosts and allowed_non_https_hosts support globs:
@@ -35,7 +35,7 @@ allowed_non_https_hosts defines which hosts are allowed to use HTTP instead of H
 If allowed_hosts is NULL or length 0, all hosts are allowed (subject to scheme rules),
 but HTTPS is still required unless the host is in allowed_non_https_hosts.
 Since allowed_hosts supports globs, a value like "*" matches any host
-and therefore effectively disables endpoint host restrictions. Only use a catch‑all
+and therefore effectively disables endpoint host restrictions. Only use a catch-all
 pattern when you truly intend to allow any host. In most deployments you should pin
 to your expected domain(s), e.g. c(".example.com") or a specific host name.
 Wildcards: allowed_hosts and allowed_non_https_hosts support globs:
@@ -79,7 +79,7 @@ Any non-URLs, NAs, or empty strings cause a FALSE result.'></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Check if URL(s) are HTTPS and/or in allowed hosts lists</h1>
-      <small class="dont-index">Source: <a href="https://github.com/lukakoning/shinyOAuth/blob/master/R/utils__url_hosts.R" class="external-link"><code>R/utils__url_hosts.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/lukakoning/shinyOAuth/blob/master/R/utils__url_helpers.R" class="external-link"><code>R/utils__url_helpers.R</code></a></small>
       <div class="d-none name"><code>is_ok_host.Rd</code></div>
     </div>
 
@@ -96,7 +96,7 @@ convenience while still enforcing the same host and scheme policies.</p>
 If <code>allowed_hosts</code> is NULL or length 0, all hosts are allowed (subject to scheme rules),
 but HTTPS is still required unless the host is in <code>allowed_non_https_hosts</code>.</p>
 <p>Since <code>allowed_hosts</code> supports globs, a value like "*" matches any host
-and therefore effectively disables endpoint host restrictions. Only use a catch‑all
+and therefore effectively disables endpoint host restrictions. Only use a catch-all
 pattern when you truly intend to allow any host. In most deployments you should pin
 to your expected domain(s), e.g. <code>c(".example.com")</code> or a specific host name.</p>
 <p>Wildcards: <code>allowed_hosts</code> and <code>allowed_non_https_hosts</code> support globs:
