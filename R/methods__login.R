@@ -2306,10 +2306,10 @@ verify_token_type_allowlist <- function(client, token_set) {
 
   tt <- token_set$token_type
   if (!is.null(tt)) {
-    tt <- as.character(tt)[1]
     if (!is_valid_string(tt)) {
       err_token("Invalid token_type in token response")
     }
+    tt <- as.character(tt)
   }
 
   if (length(allowed_vec) > 0) {

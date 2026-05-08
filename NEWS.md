@@ -30,6 +30,9 @@ information.
 payloads now reject non-object JSON with typed shinyOAuth errors instead of
 failing later with raw base-R errors.
 
+* Token exchange now rejects multi-valued `token_type` responses with a typed
+`shinyOAuth_token_error` instead of truncating them to the first value.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
