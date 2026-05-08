@@ -55,6 +55,8 @@
 <span>  expires_at <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>  userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  cnf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  granted_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  granted_scopes_verified <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -94,6 +96,19 @@ userinfo endpoint (if fetched)</p></dd>
 sender-constrained access token. For RFC 8705 certificate-bound tokens,
 this may contain <code>x5t#S256</code> with the SHA-256 thumbprint of the client
 certificate that must accompany later requests.</p></dd>
+
+
+<dt id="arg-granted-scopes">granted_scopes<a class="anchor" aria-label="anchor" href="#arg-granted-scopes"></a></dt>
+<dd><p>Normalized scope tokens currently associated with the
+access token. When a provider omits <code>scope</code> in a token response,
+shinyOAuth carries forward the best-known scope set instead of dropping it.</p></dd>
+
+
+<dt id="arg-granted-scopes-verified">granted_scopes_verified<a class="anchor" aria-label="anchor" href="#arg-granted-scopes-verified"></a></dt>
+<dd><p>Logical flag indicating whether the current
+token response explicitly proved <code>granted_scopes</code>. <code>FALSE</code> means the scope
+set was assumed or carried forward because the provider omitted <code>scope</code>.
+For stronger proof, configure <code>introspect_elements = "scope"</code>.</p></dd>
 
 
 <dt id="arg-id-token-validated">id_token_validated<a class="anchor" aria-label="anchor" href="#arg-id-token-validated"></a></dt>

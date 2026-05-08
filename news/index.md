@@ -90,6 +90,13 @@
   token/secret/key previews instead of exposing full credential material
   in default console output.
 
+- `OAuthToken` now tracks normalized `granted_scopes` plus
+  `granted_scopes_verified`, so apps can distinguish between scope sets
+  that were explicitly returned and ones that were carried forward when
+  the provider omitted `scope`. Refresh now preserves prior granted
+  scopes instead of widening back to the client’s configured scopes when
+  a refresh response omits `scope`.
+
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   (`OAuthClient`) now:
 

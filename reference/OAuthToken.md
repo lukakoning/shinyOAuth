@@ -13,6 +13,8 @@ OAuthToken(
   expires_at = Inf,
   userinfo = list(),
   cnf = list(),
+  granted_scopes = character(0),
+  granted_scopes_verified = FALSE,
   id_token_validated = FALSE
 )
 ```
@@ -51,6 +53,19 @@ OAuthToken(
   sender-constrained access token. For RFC 8705 certificate-bound
   tokens, this may contain `x5t#S256` with the SHA-256 thumbprint of the
   client certificate that must accompany later requests.
+
+- granted_scopes:
+
+  Normalized scope tokens currently associated with the access token.
+  When a provider omits `scope` in a token response, shinyOAuth carries
+  forward the best-known scope set instead of dropping it.
+
+- granted_scopes_verified:
+
+  Logical flag indicating whether the current token response explicitly
+  proved `granted_scopes`. `FALSE` means the scope set was assumed or
+  carried forward because the provider omitted `scope`. For stronger
+  proof, configure `introspect_elements = "scope"`.
 
 - id_token_validated:
 

@@ -338,6 +338,15 @@ scopes; this follows the client’s <code>scope_validation</code> mode
 </ul>
 <p>(Note that not all providers may return each of these fields in
 introspection responses.)</p>
+<p><code>OAuthToken</code> objects also record the best-known
+access-token scopes in <code>token@granted_scopes</code> plus whether
+the current token response explicitly proved that scope set in
+<code>token@granted_scopes_verified</code>. If a token or refresh
+response omits <code>scope</code>, shinyOAuth carries forward the
+best-known scopes but marks them as unverified. For
+authorization-sensitive apps, add
+<code>introspect_elements = "scope"</code> so login and refresh require
+an explicit scope statement from introspection.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example with introspection enabled</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
