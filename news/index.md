@@ -130,6 +130,11 @@
     sealed state payload, token-response scope validation, and
     introspection scope validation now use that same effective scope
     set.
+  - Binds the sealed callback state to the effective provider and client
+    security policy used after redirect. Multi-worker deployments must
+    now keep callback/login validation settings aligned across workers;
+    otherwise callbacks fail fast with `invalid_state` instead of
+    resuming under a different worker policy.
 
 - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
   (`OAuthProvider`) now:
@@ -154,6 +159,9 @@
   - Fails fast when `id_token_validation = TRUE` but the discovery
     document omits `jwks_uri`, surfacing a configuration error during
     provider setup instead of a later JWKS fetch failure.
+  - Rejects issuer inputs that contain query strings or fragments before
+    building the discovery URL, matching the stricter issuer validation
+    already used by manually configured providers.
   - Rejects non-scalar endpoint metadata values with a configuration
     error.
   - Honors `jwks_host_allow_only` during its early `jwks_uri` host

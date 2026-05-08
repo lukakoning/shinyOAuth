@@ -817,7 +817,7 @@ mitigation is to sanitize user inputs before rendering them in the UI
 (e.g., using <code><a href="https://rstudio.github.io/htmltools/reference/htmlEscape.html" class="external-link">htmltools::htmlEscape()</a></code>).</p>
 </div>
 <div class="section level2">
-<h2 id="multiprocess-deployments-share-state-store-key">Multi‑process deployments: share state store &amp; key<a class="anchor" aria-label="anchor" href="#multiprocess-deployments-share-state-store-key"></a>
+<h2 id="multiprocess-deployments-share-state-store-key-and-policy">Multi‑process deployments: share state store, key, and policy<a class="anchor" aria-label="anchor" href="#multiprocess-deployments-share-state-store-key-and-policy"></a>
 </h2>
 <p>When you run multiple Shiny R processes (e.g., multiple workers,
 Shiny Server Pro, RStudio Connect, Docker/Kubernetes replicas, or any
@@ -836,6 +836,14 @@ See <code><a href="../reference/custom_cache.html">?custom_cache</a></code> for 
 <li>All workers share the same state key (e.g., read from environment
 variable; by default, a random key is generated per client instance
 which is then not shared)</li>
+<li>All workers use the same effective <code>OAuthClient</code> /
+<code>OAuthProvider</code> callback security settings. This includes
+provider-side JWT/JWKS and token/userinfo policy (for example
+<code>allowed_algs</code>, JWKS pinning, <code>issuer_match</code>,
+<code>token_auth_style</code>, DPoP/token-type policy, and userinfo
+requirements) plus client-side callback enforcement such as
+<code>enforce_callback_issuer</code>, claims validation, DPoP
+requirements, ACR enforcement, and introspection settings.</li>
 </ul>
 <p>This is because during the authorization code + PKCE flow,
 ‘shinyOAuth’ creates an encrypted “state envelope” which is stored in a
@@ -846,6 +854,13 @@ login, that worker must be able to both read the cached entry and
 decrypt the envelope using the same key. If workers have different keys,
 decryption will fail and the login flow will abort with a state
 error.</p>
+<p>The sealed state also binds the effective callback security policy.
+If a callback lands on a worker with different callback/login validation
+settings than the worker that initiated login, shinyOAuth now rejects
+that callback with a state error instead of resuming under the other
+worker’s policy. During rolling deploys that change these settings,
+expect in-flight logins to restart unless you drain old workers
+first.</p>
 <p>When providing a custom state key, please ensure it has high entropy
 (minimum 32 characters or 32 raw bytes; recommended 64–128 characters)
 to prevent offline guessing attacks against the encrypted state. Do not

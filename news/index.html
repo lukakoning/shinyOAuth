@@ -76,6 +76,7 @@
 <li>Also enforces OIDC claim request <code>value</code> and <code>values</code> constraints when <code>claims_validation</code> is enabled, not just presence of <code>essential = TRUE</code> claims.</li>
 <li>Warns when callers request <code>essential</code> or value-constrained OIDC claims but leave <code>claims_validation</code> at its default <code>"none"</code>, since those claim requests are otherwise not checked client-side.</li>
 <li>Carries the same effective requested scopes through the whole login flow. If <code>openid</code> is auto-added to the authorization request, the sealed state payload, token-response scope validation, and introspection scope validation now use that same effective scope set.</li>
+<li>Binds the sealed callback state to the effective provider and client security policy used after redirect. Multi-worker deployments must now keep callback/login validation settings aligned across workers; otherwise callbacks fail fast with <code>invalid_state</code> instead of resuming under a different worker policy.</li>
 </ul></li>
 <li>
 <p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> (<code>OAuthProvider</code>) now:</p>
@@ -87,6 +88,7 @@
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
 <ul><li>Fails fast when metadata advertises PKCE methods but omits <code>S256</code>. shinyOAuth keeps <code>S256</code> as the default and only allows a downgrade to <code>plain</code> when you pass <code>pkce_method = "plain"</code> explicitly.</li>
 <li>Fails fast when <code>id_token_validation = TRUE</code> but the discovery document omits <code>jwks_uri</code>, surfacing a configuration error during provider setup instead of a later JWKS fetch failure.</li>
+<li>Rejects issuer inputs that contain query strings or fragments before building the discovery URL, matching the stricter issuer validation already used by manually configured providers.</li>
 <li>Rejects non-scalar endpoint metadata values with a configuration error.</li>
 <li>Honors <code>jwks_host_allow_only</code> during its early <code>jwks_uri</code> host check, so explicitly pinned cross-host JWKS endpoints no longer require disabling issuer-host matching.</li>
 <li>Maps <code>token_endpoint_auth_methods_supported = ["none"]</code> to a distinct public token auth style that never sends <code>client_secret</code>, even when <code><a href="../reference/oauth_client.html">oauth_client()</a></code> picks one up from <code>OAUTH_CLIENT_SECRET</code>.</li>

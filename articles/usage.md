@@ -651,7 +651,7 @@ care to prevent XSS vulnerabilities in your app. An important mitigation
 is to sanitize user inputs before rendering them in the UI (e.g., using
 [`htmltools::htmlEscape()`](https://rstudio.github.io/htmltools/reference/htmlEscape.html)).
 
-## Multi‑process deployments: share state store & key
+## Multi‑process deployments: share state store, key, and policy
 
 When you run multiple Shiny R processes (e.g., multiple workers, Shiny
 Server Pro, RStudio Connect, Docker/Kubernetes replicas, or any
@@ -673,6 +673,13 @@ non‑sticky load balancer), you must ensure that:
 - All workers share the same state key (e.g., read from environment
   variable; by default, a random key is generated per client instance
   which is then not shared)
+- All workers use the same effective `OAuthClient` / `OAuthProvider`
+  callback security settings. This includes provider-side JWT/JWKS and
+  token/userinfo policy (for example `allowed_algs`, JWKS pinning,
+  `issuer_match`, `token_auth_style`, DPoP/token-type policy, and
+  userinfo requirements) plus client-side callback enforcement such as
+  `enforce_callback_issuer`, claims validation, DPoP requirements, ACR
+  enforcement, and introspection settings.
 
 This is because during the authorization code + PKCE flow, ‘shinyOAuth’
 creates an encrypted “state envelope” which is stored in a cache (the
@@ -682,6 +689,13 @@ lands on a different worker than the one that initiated login, that
 worker must be able to both read the cached entry and decrypt the
 envelope using the same key. If workers have different keys, decryption
 will fail and the login flow will abort with a state error.
+
+The sealed state also binds the effective callback security policy. If a
+callback lands on a worker with different callback/login validation
+settings than the worker that initiated login, shinyOAuth now rejects
+that callback with a state error instead of resuming under the other
+worker’s policy. During rolling deploys that change these settings,
+expect in-flight logins to restart unless you drain old workers first.
 
 When providing a custom state key, please ensure it has high entropy
 (minimum 32 characters or 32 raw bytes; recommended 64–128 characters)
