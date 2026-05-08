@@ -32,7 +32,15 @@ used. Non-sequential future plans run off the main R session;
 calling from async workers that lack access to the reactive domain.}
 }
 \value{
-A list with fields: supported, revoked, status
+A list with fields:
+\itemize{
+\item \code{supported}: logical, \code{TRUE} when a revocation endpoint is configured.
+\item \code{revoked}: logical or \code{NA}, \code{TRUE} when the provider accepted the
+revocation request, \code{NA} when revocation could not be attempted or the
+result is unknown.
+\item \code{status}: machine-readable status such as \code{"ok"}, \code{"missing_token"},
+\code{"revocation_unsupported"}, or \code{"http_<code>"}.
+}
 }
 \description{
 Attempts to revoke an access or refresh token using RFC 7009 when the
@@ -52,4 +60,11 @@ and \code{status = "ok"}.
 \item If the endpoint returns an HTTP error, returns \code{supported = TRUE},
 \code{revoked = NA}, and \code{status = "http_<code>"}.
 }
+}
+\section{Side effects}{
+
+Performs network I/O when the provider exposes a revocation endpoint and the
+selected token exists. Emits best-effort audit events and OpenTelemetry span
+attributes. When \code{async = TRUE}, the work may run in a background worker and
+reads package options needed by the async/audit/HTTP helpers.
 }

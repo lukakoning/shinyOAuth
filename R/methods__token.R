@@ -40,7 +40,19 @@
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #'
-#' @return A list with fields: supported, revoked, status
+#' @return A list with fields:
+#' - `supported`: logical, `TRUE` when a revocation endpoint is configured.
+#' - `revoked`: logical or `NA`, `TRUE` when the provider accepted the
+#'   revocation request, `NA` when revocation could not be attempted or the
+#'   result is unknown.
+#' - `status`: machine-readable status such as `"ok"`, `"missing_token"`,
+#'   `"revocation_unsupported"`, or `"http_<code>"`.
+#'
+#' @section Side effects:
+#' Performs network I/O when the provider exposes a revocation endpoint and the
+#' selected token exists. Emits best-effort audit events and OpenTelemetry span
+#' attributes. When `async = TRUE`, the work may run in a background worker and
+#' reads package options needed by the async/audit/HTTP helpers.
 #'
 #' @export
 revoke_token <- function(
@@ -95,29 +107,6 @@ revoke_token <- function(
     with_otel_span(
       "shinyOAuth.token.revoke",
       {
-        # Internal helper: record and return the final revocation result.
-        # Used only inside `revoke_token()` so each return path tags the same
-        # surrounding span consistently.
-        # @param result Revocation result list about to be returned.
-        # @return The same `result` list, after span attributes have been
-        #   recorded.
-        .return_revoke_result <- function(result) {
-          revoked <- result$revoked %||% NA
-          otel_set_span_attributes(
-            attributes = compact_list(list(
-              oauth.token.which = which,
-              oauth.supported = isTRUE(result$supported),
-              oauth.revoked = if (length(revoked) == 1L && !is.na(revoked)) {
-                isTRUE(revoked)
-              } else {
-                NULL
-              },
-              oauth.status = result$status %||% NULL
-            ))
-          )
-          result
-        }
-
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "revocation_endpoint",
@@ -128,27 +117,18 @@ revoke_token <- function(
         ) %||%
           NA_character_
         if (!is_valid_string(url)) {
-          try(
-            audit_event(
-              "token_revocation",
-              context = list(
-                provider = oauth_client@provider@name %||% NA_character_,
-                issuer = oauth_client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(oauth_client@client_id),
-                which = which,
-                supported = FALSE,
-                revoked = NA,
-                status = "revocation_unsupported"
-              ),
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
-          )
-          return(.return_revoke_result(list(
+          result <- list(
             supported = FALSE,
             revoked = NA,
             status = "revocation_unsupported"
-          )))
+          )
+          emit_token_revocation_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_revocation_span_result(which, result))
         }
 
         tok_val <- if (which == "access") {
@@ -158,27 +138,18 @@ revoke_token <- function(
         }
 
         if (!is_valid_string(tok_val)) {
-          try(
-            audit_event(
-              "token_revocation",
-              context = list(
-                provider = oauth_client@provider@name %||% NA_character_,
-                issuer = oauth_client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(oauth_client@client_id),
-                which = which,
-                supported = TRUE,
-                revoked = NA,
-                status = "missing_token"
-              ),
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
-          )
-          return(.return_revoke_result(list(
+          result <- list(
             supported = TRUE,
             revoked = NA,
             status = "missing_token"
-          )))
+          )
+          emit_token_revocation_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_revocation_span_result(which, result))
         }
 
         params <- list(token = tok_val)
@@ -236,76 +207,48 @@ revoke_token <- function(
           inherits(redirect_err, "try-error") || inherits(redirect_err, "error")
         ) {
           status_code <- paste0("http_", httr2::resp_status(resp))
-          try(
-            audit_event(
-              "token_revocation",
-              context = list(
-                provider = oauth_client@provider@name %||% NA_character_,
-                issuer = oauth_client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(oauth_client@client_id),
-                which = which,
-                supported = TRUE,
-                revoked = NA,
-                status = status_code
-              ),
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
-          )
-          return(.return_revoke_result(list(
+          result <- list(
             supported = TRUE,
             revoked = NA,
             status = status_code
-          )))
+          )
+          emit_token_revocation_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_revocation_span_result(which, result))
         }
 
         if (httr2::resp_is_error(resp)) {
           status_code <- paste0("http_", httr2::resp_status(resp))
-          try(
-            audit_event(
-              "token_revocation",
-              context = list(
-                provider = oauth_client@provider@name %||% NA_character_,
-                issuer = oauth_client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(oauth_client@client_id),
-                which = which,
-                supported = TRUE,
-                revoked = NA,
-                status = status_code
-              ),
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
-          )
-          return(.return_revoke_result(list(
+          result <- list(
             supported = TRUE,
             revoked = NA,
             status = status_code
-          )))
+          )
+          emit_token_revocation_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_revocation_span_result(which, result))
         }
 
-        try(
-          audit_event(
-            "token_revocation",
-            context = list(
-              provider = oauth_client@provider@name %||% NA_character_,
-              issuer = oauth_client@provider@issuer %||% NA_character_,
-              client_id_digest = string_digest(oauth_client@client_id),
-              which = which,
-              supported = TRUE,
-              revoked = TRUE,
-              status = "ok"
-            ),
-            shiny_session = shiny_session
-          ),
-          silent = TRUE
-        )
-
-        .return_revoke_result(list(
+        result <- list(
           supported = TRUE,
           revoked = TRUE,
           status = "ok"
-        ))
+        )
+        emit_token_revocation_audit(
+          oauth_client,
+          which,
+          result,
+          shiny_session
+        )
+        annotate_token_revocation_span_result(which, result)
       },
       attributes = otel_client_attributes(
         client = oauth_client,
@@ -378,7 +321,21 @@ revoke_token <- function(
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #'
-#' @return A list with fields: supported, active, raw, status
+#' @return A list with fields:
+#' - `supported`: logical, `TRUE` when an introspection endpoint is configured.
+#' - `active`: logical or `NA`, where `NA` means the provider did not return a
+#'   usable RFC 7662 `active` value.
+#' - `raw`: parsed introspection response list, or `NULL` when the endpoint is
+#'   unsupported or the response could not be parsed.
+#' - `status`: machine-readable status such as `"ok"`,
+#'   `"introspection_unsupported"`, `"missing_token"`, `"invalid_json"`,
+#'   `"missing_active"`, `"invalid_active"`, or `"http_<code>"`.
+#'
+#' @section Side effects:
+#' Performs network I/O when the provider exposes an introspection endpoint and
+#' the selected token exists. Emits best-effort audit events and OpenTelemetry
+#' span attributes. When `async = TRUE`, the work may run in a background worker
+#' and reads package options needed by the async/audit/HTTP helpers.
 #'
 #' @example inst/examples/token_methods.R
 #'
@@ -405,63 +362,6 @@ introspect_token <- function(
     isTRUE(get_async_session_context()$is_async) ||
     isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
-
-  # Internal helper: emit an audit record for the normalized introspection
-  # result. Used only inside `introspect_token()` because it depends on the
-  # surrounding client, token-kind, and Shiny-session context.
-  # @param result Normalized introspection result list.
-  # @return No return value; emits a best-effort audit event and returns
-  #   invisibly.
-  .audit_introspection <- function(result) {
-    # Best-effort audit logging for introspection (do not fail the caller).
-    # Avoid including raw introspection payloads as they may contain PII.
-    raw <- result$raw %||% NULL
-    if (!is.list(raw)) {
-      raw <- NULL
-    }
-
-    # Include digested identifiers when present in raw payload.
-    sub_digest <- NA_character_
-    if (!is.null(raw) && is_valid_string(raw$sub %||% NA_character_)) {
-      sub_digest <- string_digest(as.character(raw$sub)[1])
-    }
-    introspected_client_id_digest <- NA_character_
-    if (!is.null(raw) && is_valid_string(raw$client_id %||% NA_character_)) {
-      introspected_client_id_digest <- string_digest(as.character(
-        raw$client_id
-      )[1])
-    }
-    scope_digest <- NA_character_
-    if (
-      !is.null(raw) &&
-        !is.null(raw$scope) &&
-        is_valid_string(as.character(raw$scope)[1])
-    ) {
-      scope_digest <- string_digest(as.character(raw$scope)[1])
-    }
-
-    try(
-      audit_event(
-        "token_introspection",
-        context = list(
-          provider = oauth_client@provider@name %||% NA_character_,
-          issuer = oauth_client@provider@issuer %||% NA_character_,
-          client_id_digest = string_digest(oauth_client@client_id),
-          which = which,
-          supported = isTRUE(result$supported),
-          active = if (is.na(result$active)) NA else isTRUE(result$active),
-          status = result$status %||% NA_character_,
-          sub_digest = sub_digest,
-          introspected_client_id_digest = introspected_client_id_digest,
-          scope_digest = scope_digest
-        ),
-        shiny_session = shiny_session
-      ),
-      silent = TRUE
-    )
-
-    invisible(NULL)
-  }
 
   with_trace_id(trace_id, {
     if (isTRUE(async)) {
@@ -493,29 +393,6 @@ introspect_token <- function(
     with_otel_span(
       "shinyOAuth.token.introspect",
       {
-        # Internal helper: record and return the final introspection result.
-        # Used only inside `introspect_token()` so every success or fallback
-        # path tags the same surrounding span consistently.
-        # @param result Introspection result list about to be returned.
-        # @return The same `result` list, after span attributes have been
-        #   recorded.
-        .return_introspection_result <- function(result) {
-          active <- result$active %||% NA
-          otel_set_span_attributes(
-            attributes = compact_list(list(
-              oauth.token.which = which,
-              oauth.supported = isTRUE(result$supported),
-              oauth.active = if (length(active) == 1L && !is.na(active)) {
-                isTRUE(active)
-              } else {
-                NULL
-              },
-              oauth.status = result$status %||% NULL
-            ))
-          )
-          result
-        }
-
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "introspection_endpoint",
@@ -532,8 +409,13 @@ introspect_token <- function(
             raw = NULL,
             status = "introspection_unsupported"
           )
-          .audit_introspection(result)
-          return(.return_introspection_result(result))
+          emit_token_introspection_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_introspection_span_result(which, result))
         }
 
         tok_val <- if (which == "access") {
@@ -548,8 +430,13 @@ introspect_token <- function(
             raw = NULL,
             status = "missing_token"
           )
-          .audit_introspection(result)
-          return(.return_introspection_result(result))
+          emit_token_introspection_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_introspection_span_result(which, result))
         }
 
         params <- list(token = tok_val)
@@ -611,8 +498,13 @@ introspect_token <- function(
             raw = NULL,
             status = paste0("http_", httr2::resp_status(resp))
           )
-          .audit_introspection(result)
-          return(.return_introspection_result(result))
+          emit_token_introspection_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_introspection_span_result(which, result))
         }
 
         if (httr2::resp_is_error(resp)) {
@@ -622,8 +514,13 @@ introspect_token <- function(
             raw = NULL,
             status = paste0("http_", httr2::resp_status(resp))
           )
-          .audit_introspection(result)
-          return(.return_introspection_result(result))
+          emit_token_introspection_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_introspection_span_result(which, result))
         }
         raw <- NULL
         active <- NA
@@ -639,8 +536,13 @@ introspect_token <- function(
             raw = NULL,
             status = "body_too_large"
           )
-          .audit_introspection(result)
-          return(.return_introspection_result(result))
+          emit_token_introspection_audit(
+            oauth_client,
+            which,
+            result,
+            shiny_session
+          )
+          return(annotate_token_introspection_span_result(which, result))
         }
 
         body_txt <- httr2::resp_body_string(resp)
@@ -684,8 +586,13 @@ introspect_token <- function(
           status = status
         )
 
-        .audit_introspection(result)
-        .return_introspection_result(result)
+        emit_token_introspection_audit(
+          oauth_client,
+          which,
+          result,
+          shiny_session
+        )
+        annotate_token_introspection_span_result(which, result)
       },
       attributes = otel_client_attributes(
         client = oauth_client,
@@ -1108,7 +1015,204 @@ refresh_token <- function(
 
 # 2 Token response helpers -----------------------------------------------------
 
-## 2.1 Introspection response normalization ------------------------------------
+## 2.1 Audit and telemetry result helpers --------------------------------------
+
+# Helpers in this section keep token lifecycle entry points focused on request
+# flow. They centralize the side effects that describe final token operation
+# results to audit hooks and OpenTelemetry spans.
+
+#' Emit a token revocation audit event
+#'
+#' Used by [revoke_token()] whenever a revocation attempt reaches a final
+#' result. The audit event intentionally records only safe identifiers and the
+#' normalized result status, not token values.
+#'
+#' @param oauth_client [OAuthClient] associated with the token operation.
+#' @param which Token kind that was revoked: `"access"` or `"refresh"`.
+#' @param result Revocation result list with `supported`, `revoked`, and
+#'   `status` fields.
+#' @param shiny_session Optional Shiny session context to attach to the audit
+#'   event.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Emits a best-effort `token_revocation` audit event. Audit hook failures are
+#' swallowed so revocation result handling cannot change caller behavior.
+#'
+#' @keywords internal
+#' @noRd
+emit_token_revocation_audit <- function(
+  oauth_client,
+  which,
+  result,
+  shiny_session = NULL
+) {
+  try(
+    audit_event(
+      "token_revocation",
+      context = list(
+        provider = oauth_client@provider@name %||% NA_character_,
+        issuer = oauth_client@provider@issuer %||% NA_character_,
+        client_id_digest = string_digest(oauth_client@client_id),
+        which = which,
+        supported = isTRUE(result$supported),
+        revoked = result$revoked %||% NA,
+        status = result$status %||% NA_character_
+      ),
+      shiny_session = shiny_session
+    ),
+    silent = TRUE
+  )
+
+  invisible(NULL)
+}
+
+#' Annotate a span with a revocation result
+#'
+#' Used by [revoke_token()] immediately before returning its normalized result.
+#' This keeps every exit path tagged consistently in OpenTelemetry.
+#'
+#' @param which Token kind that was revoked: `"access"` or `"refresh"`.
+#' @param result Revocation result list with `supported`, `revoked`, and
+#'   `status` fields.
+#' @return The same `result` list, unchanged.
+#'
+#' @section Side effects:
+#' Mutates the active OpenTelemetry span by setting token revocation result
+#' attributes when a span is active.
+#'
+#' @keywords internal
+#' @noRd
+annotate_token_revocation_span_result <- function(which, result) {
+  revoked <- result$revoked %||% NA
+  otel_set_span_attributes(
+    attributes = compact_list(list(
+      oauth.token.which = which,
+      oauth.supported = isTRUE(result$supported),
+      oauth.revoked = if (length(revoked) == 1L && !is.na(revoked)) {
+        isTRUE(revoked)
+      } else {
+        NULL
+      },
+      oauth.status = result$status %||% NULL
+    ))
+  )
+  result
+}
+
+#' Emit a token introspection audit event
+#'
+#' Used by [introspect_token()] whenever introspection reaches a final result.
+#' The audit event records digests of selected identifiers from the
+#' introspection body, never the raw token or full provider response.
+#'
+#' @param oauth_client [OAuthClient] associated with the token operation.
+#' @param which Token kind that was introspected: `"access"` or `"refresh"`.
+#' @param result Introspection result list with `supported`, `active`, `raw`,
+#'   and `status` fields.
+#' @param shiny_session Optional Shiny session context to attach to the audit
+#'   event.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Emits a best-effort `token_introspection` audit event. Audit hook failures
+#' are swallowed so introspection result handling cannot change caller behavior.
+#'
+#' @keywords internal
+#' @noRd
+emit_token_introspection_audit <- function(
+  oauth_client,
+  which,
+  result,
+  shiny_session = NULL
+) {
+  raw <- result$raw %||% NULL
+  if (!is.list(raw)) {
+    raw <- NULL
+  }
+
+  sub_digest <- NA_character_
+  if (!is.null(raw) && is_valid_string(raw$sub %||% NA_character_)) {
+    sub_digest <- string_digest(as.character(raw$sub)[1])
+  }
+  introspected_client_id_digest <- NA_character_
+  if (!is.null(raw) && is_valid_string(raw$client_id %||% NA_character_)) {
+    introspected_client_id_digest <- string_digest(as.character(
+      raw$client_id
+    )[1])
+  }
+  scope_digest <- NA_character_
+  if (
+    !is.null(raw) &&
+      !is.null(raw$scope) &&
+      is_valid_string(as.character(raw$scope)[1])
+  ) {
+    scope_digest <- string_digest(as.character(raw$scope)[1])
+  }
+
+  active <- result$active %||% NA
+  try(
+    audit_event(
+      "token_introspection",
+      context = list(
+        provider = oauth_client@provider@name %||% NA_character_,
+        issuer = oauth_client@provider@issuer %||% NA_character_,
+        client_id_digest = string_digest(oauth_client@client_id),
+        which = which,
+        supported = isTRUE(result$supported),
+        active = if (length(active) == 1L && is.na(active)) {
+          NA
+        } else {
+          isTRUE(active)
+        },
+        status = result$status %||% NA_character_,
+        sub_digest = sub_digest,
+        introspected_client_id_digest = introspected_client_id_digest,
+        scope_digest = scope_digest
+      ),
+      shiny_session = shiny_session
+    ),
+    silent = TRUE
+  )
+
+  invisible(NULL)
+}
+
+#' Annotate a span with an introspection result
+#'
+#' Used by [introspect_token()] immediately before returning its normalized
+#' result. This keeps every success, fallback, and unsupported path tagged
+#' consistently in OpenTelemetry.
+#'
+#' @param which Token kind that was introspected: `"access"` or `"refresh"`.
+#' @param result Introspection result list with `supported`, `active`, `raw`,
+#'   and `status` fields.
+#' @return The same `result` list, unchanged.
+#'
+#' @section Side effects:
+#' Mutates the active OpenTelemetry span by setting token introspection result
+#' attributes when a span is active.
+#'
+#' @keywords internal
+#' @noRd
+annotate_token_introspection_span_result <- function(which, result) {
+  active <- result$active %||% NA
+  otel_set_span_attributes(
+    attributes = compact_list(list(
+      oauth.token.which = which,
+      oauth.supported = isTRUE(result$supported),
+      oauth.active = if (length(active) == 1L && !is.na(active)) {
+        isTRUE(active)
+      } else {
+        NULL
+      },
+      oauth.status = result$status %||% NULL
+    ))
+  )
+  result
+}
+
+## 2.2 Introspection response normalization ------------------------------------
 
 # Helpers in this section normalize provider responses after the main token
 # lifecycle entry functions have handled the request flow.

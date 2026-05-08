@@ -677,171 +677,7 @@ oauth_module_server <- function(
       values$error_uri <- NULL
     }
 
-    ## 2.4 Client-side actions -------------------------------------------------
-
-    # These helpers communicate with handlers defined in inst/www/shinyOAuth.js,
-    # which you load in UI with `use_shinyOAuth()`.
-
-    # Internal helper: ask the browser to set or refresh the browser token
-    # cookie. Used by `.set_browser_token()` after the server computes cookie
-    # settings.
-    # @param instance Browser-cookie instance suffix for this module.
-    # @param max_age_ms Cookie lifetime in milliseconds.
-    # @param same_site SameSite policy string.
-    # @param path Cookie path or `NULL`.
-    # @return No return value; sends a custom message to the browser.
-    .client_set_browser_token <- function(
-      instance,
-      max_age_ms,
-      same_site,
-      path
-    ) {
-      session$sendCustomMessage(
-        type = "shinyOAuth:setBrowserToken",
-        message = list(
-          instance = instance,
-          maxAgeMs = max_age_ms,
-          sameSite = same_site,
-          path = path,
-          inputId = session$ns("shinyOAuth_sid"),
-          errorInputId = session$ns("shinyOAuth_cookie_error")
-        )
-      )
-    }
-
-    # Internal helper: ask the browser to clear the browser token cookie.
-    # Used by `.clear_browser_token()` when the session binding must be reset.
-    # @param instance Browser-cookie instance suffix for this module.
-    # @param same_site SameSite policy string.
-    # @param path Cookie path or `NULL`.
-    # @return No return value; sends a custom message to the browser.
-    .client_clear_browser_token <- function(instance, same_site, path) {
-      session$sendCustomMessage(
-        type = "shinyOAuth:clearBrowserToken",
-        message = list(
-          instance = instance,
-          sameSite = same_site,
-          path = path,
-          # Let the client also clear the mirrored Shiny input so a subsequent
-          # cookie reissue will always propagate a changed value back to the server
-          inputId = session$ns("shinyOAuth_sid")
-        )
-      )
-    }
-
-    # Internal helper: ask the browser to redirect to the next URL.
-    # Used by `.redirect_to()` after a login URL has been built.
-    # @param url Absolute URL to open in the browser.
-    # @return No return value; sends a redirect message to the browser.
-    .client_redirect <- function(url) {
-      session$sendCustomMessage(
-        type = "shinyOAuth:redirect",
-        message = list(url = url)
-      )
-    }
-
-    # Internal helper: ask the browser to clear callback params and optionally
-    # fix the title. Used after callback processing and callback-query
-    # validation errors.
-    # @param title_replacement Optional title to restore.
-    # @param clean_title Whether the browser should normalize the title text.
-    # @return No return value; sends a cleanup message to the browser.
-    .client_clear_query_and_fix_title <- function(
-      title_replacement,
-      clean_title
-    ) {
-      session$sendCustomMessage(
-        type = "shinyOAuth:clearQueryAndFixTitle",
-        message = list(
-          titleReplacement = title_replacement,
-          cleanTitle = isTRUE(clean_title)
-        )
-      )
-    }
-
-    # Known OAuth/OIDC callback params to drop/recognize.
-    # Used by .process_query() and cleanup code before removing callback parameters.
-    .oauth_callback_query_keys <- c(
-      "code",
-      "state",
-      "session_state",
-      "id_token",
-      "access_token",
-      "token_type",
-      "expires_in",
-      "error",
-      "error_description",
-      "error_uri",
-      "iss"
-    )
-
-    # Internal helper: check whether a query string looks like an OAuth
-    # callback. Used by tests and URL-cleanup logic so unrelated app
-    # parameters are kept.
-    # @param query_string Raw query string, with or without a leading `?`.
-    # @return `TRUE` when OAuth callback keys are present, otherwise `FALSE`.
-    .query_has_oauth_callback_keys <- function(query_string) {
-      raw <- sub("^\\?", "", query_string %||% "")
-      if (!nzchar(raw)) {
-        return(FALSE)
-      }
-      parsed <- tryCatch(
-        shiny::parseQueryString(paste0("?", raw)),
-        error = function(...) list()
-      )
-      if (!length(parsed)) {
-        return(FALSE)
-      }
-      any(names(parsed) %in% .oauth_callback_query_keys)
-    }
-
-    # Internal helper: strip only OAuth callback parameters from a raw query
-    # string. Used after callback processing so provider data does not stay in
-    # the address bar while unrelated app parameters are kept.
-    # @param query_string Raw query string, with or without a leading `?`.
-    # @return Cleaned query string containing only non-OAuth parameters.
-    .strip_oauth_query <- function(query_string) {
-      raw <- sub("^\\?", "", query_string %||% "")
-      if (!nzchar(raw)) {
-        return("")
-      }
-      # Parse query to a named list; shiny::parseQueryString returns character
-      # vectors, preserving repeated keys as vectors.
-      parsed <- tryCatch(
-        shiny::parseQueryString(paste0("?", raw)),
-        error = function(...) list()
-      )
-      if (!length(parsed)) {
-        return("")
-      }
-      keep <- parsed[setdiff(names(parsed), .oauth_callback_query_keys)]
-      if (!length(keep)) {
-        return("")
-      }
-      # Build query with proper encoding
-      q <- tryCatch(httr2::url_query_build(keep), error = function(...) "")
-      if (!nzchar(q)) {
-        return("")
-      }
-      paste0("?", q)
-    }
-
-    # Internal helper: clear OAuth callback parameters from the URL and
-    # optionally restore the title. Used by `.process_query()` and failure
-    # paths before returning control to the app.
-    # @return No return value; asks the browser to clean up the URL and title.
-    .clear_query_and_fix_title <- function() {
-      .client_clear_query_and_fix_title(
-        title_replacement = if (!is.null(tab_title_replacement)) {
-          tab_title_replacement
-        } else {
-          NULL
-        },
-        clean_title = isTRUE(tab_title_cleaning)
-      )
-    }
-
-    ## 2.5 Browser token cookie ------------------------------------------------
+    ## 2.4 Browser token cookie ------------------------------------------------
 
     # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
     # and mirror its value into input$shinyOAuth_sid. We set it once if missing
@@ -960,22 +796,10 @@ oauth_module_server <- function(
     .set_browser_token <- function() {
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
+      instance <- build_oauth_module_browser_token_instance(session, id)
 
-      # Build a safe instance suffix from this module's namespace/id
-      ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
-      # strip trailing "-" that Shiny adds, then keep only [A-Za-z0-9_-]
-      instance <- sub("-$", "", ns_prefix)
-
-      # Calculate hash of the original namespace to ensure uniqueness
-      # even if sanitization causes collisions
-      ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
-
-      instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
-      instance <- paste0(instance, "-", ns_hash)
-
-      # Compute configured path once per session (NULL means JS defaults to '/')
-      # Delegate to custom JS handler
-      .client_set_browser_token(
+      send_oauth_module_set_browser_token(
+        session = session,
         instance = instance,
         max_age_ms = max_age_sec * 1000,
         same_site = browser_cookie_samesite,
@@ -989,21 +813,10 @@ oauth_module_server <- function(
     # @return No return value; clears the browser cookie and resets related
     #   module state.
     .clear_browser_token <- function() {
-      # Compute configured path once per session (NULL means JS defaults to '/')
+      instance <- build_oauth_module_browser_token_instance(session, id)
 
-      # Delegate to custom JS handler
-      # Build a safe instance suffix from this module's namespace/id (match setter)
-      ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
-      # strip trailing "-" that Shiny adds, then keep only [A-Za-z0-9_-]
-      instance <- sub("-$", "", ns_prefix)
-
-      # Calculate hash of the original namespace to ensure uniqueness
-      # even if sanitization causes collisions
-      ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
-
-      instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
-      instance <- paste0(instance, "-", ns_hash)
-      .client_clear_browser_token(
+      send_oauth_module_clear_browser_token(
+        session = session,
         instance = instance,
         same_site = browser_cookie_samesite,
         path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path
@@ -1028,7 +841,7 @@ oauth_module_server <- function(
       return(FALSE)
     }
 
-    ## 2.6 Authentication state ------------------------------------------------
+    ## 2.5 Authentication state ------------------------------------------------
 
     # Internal helper: compute whether the current module state counts as
     # authenticated. Used by `.is_authenticated_now()` and the authenticated
@@ -1192,7 +1005,7 @@ oauth_module_server <- function(
       ignoreInit = FALSE
     )
 
-    ## 2.7 Authorization URL and redirection helpers ---------------------------
+    ## 2.6 Authorization URL and redirection helpers ---------------------------
 
     # Internal helper: warn when code tries to start a new login while already
     # authenticated.
@@ -1266,7 +1079,7 @@ oauth_module_server <- function(
       if (is.na(url)) {
         return(invisible(FALSE))
       }
-      .client_redirect(url)
+      send_oauth_module_redirect(session, url)
       invisible(TRUE)
     }
 
@@ -1425,7 +1238,7 @@ oauth_module_server <- function(
       )
     }
 
-    ## 2.8 Callback handling and auto-redirect ---------------------------------
+    ## 2.7 Callback handling and auto-redirect ---------------------------------
 
     # Handle OAuth flow by listening to clientData$url_search
     shiny::observeEvent(
@@ -1489,7 +1302,7 @@ oauth_module_server <- function(
       )
 
       # Validate raw query size before any parsing (including the
-      # already-authenticated branch that calls .query_has_oauth_callback_keys).
+      # already-authenticated branch that checks for OAuth callback keys).
       query_size_ok <- tryCatch(
         {
           validate_untrusted_query_string(
@@ -1499,7 +1312,11 @@ oauth_module_server <- function(
           TRUE
         },
         error = function(e) {
-          .clear_query_and_fix_title()
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
           .set_error(
             "invalid_callback_query",
             e,
@@ -1526,8 +1343,12 @@ oauth_module_server <- function(
       }
 
       if (!is.null(values$token)) {
-        if (isTRUE(.query_has_oauth_callback_keys(query_string))) {
-          .clear_query_and_fix_title()
+        if (isTRUE(oauth_module_query_has_callback_keys(query_string))) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
         }
         return(invisible(NULL))
       }
@@ -1572,7 +1393,11 @@ oauth_module_server <- function(
           TRUE
         },
         error = function(e) {
-          .clear_query_and_fix_title()
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
           .set_error(
             "invalid_callback_query",
             e,
@@ -1603,7 +1428,11 @@ oauth_module_server <- function(
       if (!is.null(qs$error)) {
         # Clear sensitive callback params even on failure paths to reduce
         # leak risk via referrers, browser history, or logs.
-        .clear_query_and_fix_title()
+        clear_oauth_module_callback_query(
+          session,
+          tab_title_replacement,
+          tab_title_cleaning
+        )
         .handle_error_response(
           error = qs$error,
           error_description = qs$error_description,
@@ -1941,7 +1770,14 @@ oauth_module_server <- function(
       # Always clear callback params once we've parsed them (success or failure)
       on.exit(
         {
-          try(.clear_query_and_fix_title(), silent = TRUE)
+          try(
+            clear_oauth_module_callback_query(
+              session,
+              tab_title_replacement,
+              tab_title_cleaning
+            ),
+            silent = TRUE
+          )
         },
         add = TRUE
       )
@@ -2378,9 +2214,9 @@ oauth_module_server <- function(
 
     # Testing hooks: expose helpers for unit tests
     values$.process_query <- .process_query
-    values$.strip_oauth_query <- .strip_oauth_query
+    values$.strip_oauth_query <- strip_oauth_module_callback_query
 
-    ## 2.9 Proactive refresh ---------------------------------------------------
+    ## 2.8 Proactive refresh ---------------------------------------------------
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
@@ -2621,7 +2457,7 @@ oauth_module_server <- function(
       })
     }
 
-    ## 2.10 Expiry watch -------------------------------------------------------
+    ## 2.9 Expiry watch --------------------------------------------------------
 
     # Always-on expiry watcher to clear expired tokens and optionally reauth
     shiny::observe({
@@ -2749,15 +2585,270 @@ oauth_module_server <- function(
       shiny::invalidateLater(wake_ms, session)
     })
 
-    ## 2.11 Return reactive values ---------------------------------------------
+    ## 2.10 Return reactive values ---------------------------------------------
 
     return(values)
   })
 }
 
-# 2 Module error helpers -------------------------------------------------------
+# 2 Browser client helpers -----------------------------------------------------
 
-## 2.1 Condition inspection and formatting -------------------------------------
+## 2.1 Browser-token message helpers -------------------------------------------
+
+# Helpers in this section send messages to handlers defined in
+# `inst/www/shinyOAuth.js`, which applications load with `use_shinyOAuth()`.
+
+#' Build a browser-token cookie instance name
+#'
+#' Used by [oauth_module_server()] when asking the browser to set or clear the
+#' first-party browser-token cookie. The returned suffix is derived from the
+#' Shiny namespace and includes a short hash so sanitized namespace collisions
+#' remain unlikely.
+#'
+#' @param session Shiny session object for the module instance.
+#' @param id Module id used as a fallback when the session namespace cannot be
+#'   read.
+#' @return A single safe instance string containing only letters, numbers,
+#'   underscores, and hyphens.
+#' @keywords internal
+#' @noRd
+build_oauth_module_browser_token_instance <- function(session, id) {
+  ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
+  instance <- sub("-$", "", ns_prefix)
+  ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
+  instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
+  paste0(instance, "-", ns_hash)
+}
+
+#' Ask the browser to set the browser-token cookie
+#'
+#' Used by [oauth_module_server()] after the server resolves cookie lifetime,
+#' path, and SameSite policy for the current module instance.
+#'
+#' @param session Shiny session object for the module instance.
+#' @param instance Browser-token cookie instance suffix.
+#' @param max_age_ms Cookie lifetime in milliseconds.
+#' @param same_site SameSite policy string.
+#' @param path Cookie path, or `NULL` to let the JavaScript handler use its
+#'   default.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Sends a `shinyOAuth:setBrowserToken` custom message to the browser.
+#'
+#' @keywords internal
+#' @noRd
+send_oauth_module_set_browser_token <- function(
+  session,
+  instance,
+  max_age_ms,
+  same_site,
+  path
+) {
+  session$sendCustomMessage(
+    type = "shinyOAuth:setBrowserToken",
+    message = list(
+      instance = instance,
+      maxAgeMs = max_age_ms,
+      sameSite = same_site,
+      path = path,
+      inputId = session$ns("shinyOAuth_sid"),
+      errorInputId = session$ns("shinyOAuth_cookie_error")
+    )
+  )
+
+  invisible(NULL)
+}
+
+#' Ask the browser to clear the browser-token cookie
+#'
+#' Used by [oauth_module_server()] when logout, successful callback handling,
+#' or browser-token repair needs to reset the session binding.
+#'
+#' @param session Shiny session object for the module instance.
+#' @param instance Browser-token cookie instance suffix.
+#' @param same_site SameSite policy string.
+#' @param path Cookie path, or `NULL` to let the JavaScript handler use its
+#'   default.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Sends a `shinyOAuth:clearBrowserToken` custom message to the browser.
+#'
+#' @keywords internal
+#' @noRd
+send_oauth_module_clear_browser_token <- function(
+  session,
+  instance,
+  same_site,
+  path
+) {
+  session$sendCustomMessage(
+    type = "shinyOAuth:clearBrowserToken",
+    message = list(
+      instance = instance,
+      sameSite = same_site,
+      path = path,
+      # Let the client also clear the mirrored Shiny input so a subsequent
+      # cookie reissue will always propagate a changed value back to the server.
+      inputId = session$ns("shinyOAuth_sid")
+    )
+  )
+
+  invisible(NULL)
+}
+
+## 2.2 Browser navigation helpers ----------------------------------------------
+
+#' Ask the browser to redirect
+#'
+#' Used by [oauth_module_server()] after an authorization URL has been built
+#' and the module is ready to send the user to the provider.
+#'
+#' @param session Shiny session object for the module instance.
+#' @param url Absolute URL to open in the browser.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Sends a `shinyOAuth:redirect` custom message to the browser.
+#'
+#' @keywords internal
+#' @noRd
+send_oauth_module_redirect <- function(session, url) {
+  session$sendCustomMessage(
+    type = "shinyOAuth:redirect",
+    message = list(url = url)
+  )
+
+  invisible(NULL)
+}
+
+#' Clear OAuth callback parameters in the browser
+#'
+#' Used by [oauth_module_server()] after callback handling, provider error
+#' handling, and callback-query validation failures. It removes OAuth callback
+#' parameters from the address bar and optionally restores the tab title.
+#'
+#' @param session Shiny session object for the module instance.
+#' @param title_replacement Optional title to restore.
+#' @param clean_title Whether the browser should normalize the title text.
+#' @return Invisibly returns `NULL`.
+#'
+#' @section Side effects:
+#' Sends a `shinyOAuth:clearQueryAndFixTitle` custom message to the browser.
+#'
+#' @keywords internal
+#' @noRd
+clear_oauth_module_callback_query <- function(
+  session,
+  title_replacement,
+  clean_title
+) {
+  session$sendCustomMessage(
+    type = "shinyOAuth:clearQueryAndFixTitle",
+    message = list(
+      titleReplacement = if (!is.null(title_replacement)) {
+        title_replacement
+      } else {
+        NULL
+      },
+      cleanTitle = isTRUE(clean_title)
+    )
+  )
+
+  invisible(NULL)
+}
+
+# 3 Callback query helpers -----------------------------------------------------
+
+## 3.1 Callback query detection and cleanup ------------------------------------
+
+# OAuth/OIDC callback parameters that should be recognized and removed from the
+# browser URL after callback handling. This keeps provider data out of browser
+# history while preserving unrelated application query parameters.
+oauth_module_callback_query_keys <- c(
+  "code",
+  "state",
+  "session_state",
+  "id_token",
+  "access_token",
+  "token_type",
+  "expires_in",
+  "error",
+  "error_description",
+  "error_uri",
+  "iss"
+)
+
+#' Check whether a query string contains OAuth callback keys
+#'
+#' Used by [oauth_module_server()] to decide whether URL cleanup is needed when
+#' a callback-like query reaches a session that is already authenticated.
+#'
+#' @param query_string Raw query string, with or without a leading `?`.
+#' @return `TRUE` when OAuth callback keys are present; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+oauth_module_query_has_callback_keys <- function(query_string) {
+  raw <- sub("^\\?", "", query_string %||% "")
+  if (!nzchar(raw)) {
+    return(FALSE)
+  }
+
+  parsed <- tryCatch(
+    shiny::parseQueryString(paste0("?", raw)),
+    error = function(...) list()
+  )
+  if (!length(parsed)) {
+    return(FALSE)
+  }
+
+  any(names(parsed) %in% oauth_module_callback_query_keys)
+}
+
+#' Strip OAuth callback parameters from a query string
+#'
+#' Used by [oauth_module_server()] and tests after callback processing. The
+#' helper removes provider callback data from the query string while preserving
+#' unrelated application parameters.
+#'
+#' @param query_string Raw query string, with or without a leading `?`.
+#' @return Cleaned query string beginning with `?`, or `""` when no non-OAuth
+#'   parameters remain.
+#' @keywords internal
+#' @noRd
+strip_oauth_module_callback_query <- function(query_string) {
+  raw <- sub("^\\?", "", query_string %||% "")
+  if (!nzchar(raw)) {
+    return("")
+  }
+
+  # `shiny::parseQueryString()` returns character vectors, preserving repeated
+  # keys as vectors. Rebuild through httr2 so kept parameters are encoded.
+  parsed <- tryCatch(
+    shiny::parseQueryString(paste0("?", raw)),
+    error = function(...) list()
+  )
+  if (!length(parsed)) {
+    return("")
+  }
+
+  keep <- parsed[setdiff(names(parsed), oauth_module_callback_query_keys)]
+  if (!length(keep)) {
+    return("")
+  }
+
+  q <- tryCatch(httr2::url_query_build(keep), error = function(...) "")
+  if (!nzchar(q)) {
+    return("")
+  }
+
+  paste0("?", q)
+}
+
+# 4 Module error helpers -------------------------------------------------------
+
+## 4.1 Condition inspection and formatting -------------------------------------
 
 #' Internal: extract a trace id from a condition-like object
 #'

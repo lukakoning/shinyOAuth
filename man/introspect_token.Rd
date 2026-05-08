@@ -32,7 +32,17 @@ used. Non-sequential future plans run off the main R session;
 calling from async workers that lack access to the reactive domain.}
 }
 \value{
-A list with fields: supported, active, raw, status
+A list with fields:
+\itemize{
+\item \code{supported}: logical, \code{TRUE} when an introspection endpoint is configured.
+\item \code{active}: logical or \code{NA}, where \code{NA} means the provider did not return a
+usable RFC 7662 \code{active} value.
+\item \code{raw}: parsed introspection response list, or \code{NULL} when the endpoint is
+unsupported or the response could not be parsed.
+\item \code{status}: machine-readable status such as \code{"ok"},
+\code{"introspection_unsupported"}, \code{"missing_token"}, \code{"invalid_json"},
+\code{"missing_active"}, \code{"invalid_active"}, or \code{"http_<code>"}.
+}
 }
 \description{
 Introspects an access or refresh token using RFC 7662 when the
@@ -71,6 +81,14 @@ normalized to logical \code{TRUE}/\code{FALSE} when possible; otherwise \code{ac
 set to \code{NA}.
 }
 }
+\section{Side effects}{
+
+Performs network I/O when the provider exposes an introspection endpoint and
+the selected token exists. Emits best-effort audit events and OpenTelemetry
+span attributes. When \code{async = TRUE}, the work may run in a background worker
+and reads package options needed by the async/audit/HTTP helpers.
+}
+
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
 # are typically not called by users of this package directly, but are called
