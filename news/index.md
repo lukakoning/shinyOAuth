@@ -2,6 +2,21 @@
 
 ## shinyOAuth (development version)
 
+- Fixed the documented RFC 9207 callback issuer opt-out. Setting
+  `oauth_client(enforce_callback_issuer = FALSE)` now really skips `iss`
+  mismatch enforcement in both
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  and
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+  even when the provider advertises callback-issuer support.
+
+- Fixed the documented `allowed_token_types = character(0)` opt-out for
+  DPoP clients. DPoP-capable clients now keep an explicitly empty
+  allowlist as a real disablement of token-type enforcement during both
+  callback token exchange and refresh, unless
+  `dpop_require_access_token = TRUE` still requires
+  `token_type = "DPoP"`.
+
 - Added DPoP token (RFC 9449) support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token
