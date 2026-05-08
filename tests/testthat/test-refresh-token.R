@@ -173,9 +173,164 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   # We expect at least one token call and one userinfo call
   testthat::expect_gte(calls$token, 1L)
   testthat::expect_gte(calls$userinfo, 1L)
-  # Introspection is best-effort/optional, but with introspect=TRUE and URL set,
-  # it should have been called once.
+  # With introspect = TRUE and an endpoint configured, refresh should enforce
+  # the same introspection policy as login.
   testthat::expect_gte(calls$introspection, 1L)
+})
+
+expect_refresh_introspection_error <- function(
+  cli,
+  token,
+  introspection_result,
+  regexp
+) {
+  testthat::with_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"access_token":"new_at","expires_in":120}')
+      )
+    },
+    introspect_token = function(oauth_client, oauth_token, which, async, ...) {
+      introspection_result
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        refresh_token(cli, token, async = FALSE, introspect = TRUE),
+        class = "shinyOAuth_token_error",
+        regexp = regexp
+      )
+    }
+  )
+}
+
+testthat::test_that("refresh_token fails when required introspection is unsupported", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  expect_refresh_introspection_error(
+    cli = cli,
+    token = token,
+    introspection_result = list(
+      supported = FALSE,
+      active = NA,
+      raw = NULL,
+      status = "introspection_unsupported"
+    ),
+    regexp = "does not support"
+  )
+})
+
+testthat::test_that("refresh_token fails when introspection marks token inactive", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  expect_refresh_introspection_error(
+    cli = cli,
+    token = token,
+    introspection_result = list(
+      supported = TRUE,
+      active = FALSE,
+      raw = list(),
+      status = "inactive"
+    ),
+    regexp = "not active"
+  )
+})
+
+testthat::test_that("refresh_token fails when introspection is missing required sub", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli@introspect_elements <- "sub"
+
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = build_dummy_jwt(list(sub = "user-1"))
+  )
+
+  expect_refresh_introspection_error(
+    cli = cli,
+    token = token,
+    introspection_result = list(
+      supported = TRUE,
+      active = TRUE,
+      raw = list(),
+      status = "ok"
+    ),
+    regexp = "missing required sub"
+  )
+})
+
+testthat::test_that("refresh_token fails when introspection client_id mismatches", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli@introspect_elements <- "client_id"
+
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  expect_refresh_introspection_error(
+    cli = cli,
+    token = token,
+    introspection_result = list(
+      supported = TRUE,
+      active = TRUE,
+      raw = list(client_id = "wrong-client"),
+      status = "ok"
+    ),
+    regexp = "client_id does not match"
+  )
+})
+
+testthat::test_that("refresh_token fails when introspection omits required scope", {
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE,
+    scopes = c("openid", "profile")
+  )
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli@introspect_elements <- "scope"
+
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  expect_refresh_introspection_error(
+    cli = cli,
+    token = token,
+    introspection_result = list(
+      supported = TRUE,
+      active = TRUE,
+      raw = list(),
+      status = "ok"
+    ),
+    regexp = "missing scope"
+  )
 })
 
 testthat::test_that("refresh_token validates token_type before fetching userinfo", {

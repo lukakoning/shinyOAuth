@@ -60,6 +60,10 @@ information.
   - Forwards `oauth_client(introspect = TRUE)` to its proactive refresh path, so
   refreshed access tokens follow the same introspection policy as the initial 
   login.
+  - Enforces refresh-time token introspection instead of treating it as
+  best-effort metadata enrichment, so proactive refresh now fails when
+  introspection is unsupported, inactive, or missing required
+  `introspect_elements` such as `sub`, `client_id`, or `scope`.
   - Preserves `invalid_state` in its callback error state for 
   CSRF/state/browser-token validation failures instead of flattening those paths 
   into `token_exchange_error`.

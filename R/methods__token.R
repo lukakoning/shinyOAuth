@@ -958,23 +958,20 @@ refresh_token <- function(
         }
 
         if (isTRUE(introspect)) {
-          intro_res <- try(
-            introspect_token(
-              oauth_client,
-              token,
-              which = "access",
-              async = FALSE,
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
+          intro_res <- call_with_optional_shiny_session(
+            introspect_token,
+            oauth_client = oauth_client,
+            oauth_token = token,
+            which = "access",
+            async = FALSE,
+            shiny_session = shiny_session
           )
-          if (!inherits(intro_res, "try-error")) {
-            token@cnf <- resolve_token_cnf(
-              cnf = token@cnf,
-              access_token = token@access_token,
-              introspection_result = intro_res
-            )
-          }
+          token <- enforce_token_introspection_policy(
+            oauth_client = oauth_client,
+            token = token,
+            introspection_result = intro_res,
+            requested_scopes = effective_client_scopes(oauth_client)
+          )
         }
 
         audit_event(

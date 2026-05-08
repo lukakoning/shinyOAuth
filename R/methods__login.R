@@ -905,7 +905,6 @@ handle_callback_internal <- function(
 
   # Read introspection settings from client (already validated by OAuthClient)
   introspect <- isTRUE(oauth_client@introspect)
-  introspect_elements <- oauth_client@introspect_elements %||% character(0)
 
   # Validate required callback params without leaking raw assertion messages
   if (!is_valid_string(code)) {
@@ -1328,177 +1327,13 @@ handle_callback_internal <- function(
           async = FALSE,
           shiny_session = shiny_session
         )
-
-        # Fail login if introspection is unsupported when requested
-
-        if (!isTRUE(intro_res$supported)) {
-          err_token(c(
-            "x" = "Token introspection required but provider does not support it",
-            "i" = "Set `introspect = FALSE` or configure an introspection_url on the provider"
-          ))
-        }
-
-        # Fail login if token is not active
-        if (!isTRUE(intro_res$active)) {
-          err_token(c(
-            "x" = "Token introspection indicates the access token is not active",
-            "i" = paste0(
-              "Introspection status: ",
-              intro_res$status %||% "unknown"
-            )
-          ))
-        }
-
-        token@cnf <- resolve_token_cnf(
-          cnf = token@cnf,
-          access_token = token@access_token,
-          introspection_result = intro_res
+        token <- enforce_token_introspection_policy(
+          oauth_client = oauth_client,
+          token = token,
+          introspection_result = intro_res,
+          requested_scopes = payload$scopes %||%
+            effective_client_scopes(oauth_client)
         )
-
-        ## Extra requirements for token introspection ------------------------------
-
-        raw <- intro_res$raw %||% list()
-        if (!is.list(raw)) {
-          raw <- list()
-        }
-
-        # client_id requirement
-        if ("client_id" %in% introspect_elements) {
-          cid <- raw$client_id %||% NA_character_
-          if (!is_valid_string(cid)) {
-            err_token(c(
-              "x" = "Token introspection response missing required client_id",
-              "i" = "Disable this check or ensure your provider returns client_id in introspection"
-            ))
-          }
-          if (
-            !identical(
-              as.character(cid)[1],
-              as.character(oauth_client@client_id)[1]
-            )
-          ) {
-            err_token(c(
-              "x" = "Token introspection client_id does not match configured client_id",
-              "!" = paste0("Got: ", as.character(cid)[1])
-            ))
-          }
-        }
-
-        # sub requirement (binds access token identity to ID token or userinfo)
-        if ("sub" %in% introspect_elements) {
-          intro_sub <- raw$sub %||% NA_character_
-          if (!is_valid_string(intro_sub)) {
-            err_token(c(
-              "x" = "Token introspection response missing required sub",
-              "i" = "Disable this check or ensure your provider returns sub in introspection"
-            ))
-          }
-
-          expected_sub <- NA_character_
-          # Prefer ID token subject if present
-          if (is_valid_string(token@id_token)) {
-            pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
-            if (!inherits(pl, "try-error")) {
-              expected_sub <- pl$sub %||% NA_character_
-            }
-          }
-          # Fallback: userinfo subject
-          if (!is_valid_string(expected_sub)) {
-            ui <- token@userinfo %||% list()
-            if (is.list(ui)) {
-              expected_sub <- ui$sub %||% NA_character_
-            }
-          }
-
-          if (!is_valid_string(expected_sub)) {
-            err_token(c(
-              "x" = "Cannot validate introspection sub: no subject is available from ID token or userinfo",
-              "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
-            ))
-          }
-
-          if (
-            !identical(
-              as.character(intro_sub)[1],
-              as.character(expected_sub)[1]
-            )
-          ) {
-            err_token(c(
-              "x" = "Token introspection sub does not match authenticated subject",
-              "i" = "This may indicate a provider inconsistency or a token mix-up"
-            ))
-          }
-        }
-
-        # scope requirement
-        if ("scope" %in% introspect_elements) {
-          scope_validation_mode <- oauth_client@scope_validation %||% "strict"
-
-          # Mirror token response scope reconciliation behavior:
-          # - "none": skip scope checks
-          # - "warn": warn (do not fail login)
-          # - "strict": error
-          requested_scopes <- as_scope_tokens(
-            payload$scopes %||% effective_client_scopes(oauth_client)
-          )
-          requested_scopes <- sort(unique(requested_scopes[nzchar(
-            requested_scopes
-          )]))
-
-          if (
-            !identical(scope_validation_mode, "none") &&
-              length(requested_scopes) > 0
-          ) {
-            intro_scope_raw <- raw$scope %||% NULL
-
-            if (is.null(intro_scope_raw)) {
-              msg <- "Token introspection response missing scope; cannot validate requested scopes"
-              if (identical(scope_validation_mode, "strict")) {
-                err_token(c(
-                  "x" = msg,
-                  "i" = "Set scope_validation = 'warn' or 'none', or disable the scope introspection requirement"
-                ))
-              } else if (identical(scope_validation_mode, "warn")) {
-                rlang::warn(
-                  c(
-                    "!" = msg,
-                    "i" = "Set scope_validation = 'none' to suppress this warning"
-                  ),
-                  .frequency = "once",
-                  .frequency_id = "introspection-scope-validation-missing-scope"
-                )
-              }
-            } else {
-              # Scope lists are space-delimited per RFC 6749. Commas remain
-              # part of the scope token and must not satisfy multiple requests.
-              intro_scopes <- as_scope_tokens(intro_scope_raw)
-              intro_scopes <- sort(unique(intro_scopes[nzchar(intro_scopes)]))
-
-              missing <- setdiff(requested_scopes, intro_scopes)
-              if (length(missing) > 0) {
-                msg <- paste0(
-                  "Introspected scopes missing requested entries: ",
-                  paste(missing, collapse = ", ")
-                )
-                if (identical(scope_validation_mode, "strict")) {
-                  err_token(c(
-                    "x" = msg,
-                    "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
-                  ))
-                } else if (identical(scope_validation_mode, "warn")) {
-                  rlang::warn(
-                    c(
-                      "!" = msg,
-                      "i" = "Set scope_validation = 'none' to suppress this warning"
-                    ),
-                    .frequency = "once",
-                    .frequency_id = "introspection-scope-validation-missing-scopes"
-                  )
-                }
-              }
-            }
-          }
-        }
       }
 
       # Audit: login success with redacted identifiers
@@ -1562,6 +1397,184 @@ handle_callback_internal <- function(
       return(token)
     }
   )
+}
+
+#' Enforce the client's token-introspection policy
+#'
+#' Applies the configured `introspect` and `introspect_elements` requirements
+#' to a normalized [introspect_token()] result. Used after initial login and
+#' refresh when access-token introspection is required.
+#'
+#' @param oauth_client [OAuthClient] carrying the introspection policy.
+#' @param token [OAuthToken] being validated.
+#' @param introspection_result Normalized result list returned by
+#'   [introspect_token()].
+#' @param requested_scopes Optional scope baseline to enforce when
+#'   `"scope"` is listed in `client@introspect_elements`. Defaults to the
+#'   client's effective scopes.
+#' @return The updated [OAuthToken], with `cnf` augmented from the
+#'   introspection response when available.
+#' @keywords internal
+#' @noRd
+enforce_token_introspection_policy <- function(
+  oauth_client,
+  token,
+  introspection_result,
+  requested_scopes = NULL
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+  S7::check_is_S7(token, class = OAuthToken)
+
+  if (!is.list(introspection_result) || length(introspection_result) == 0L) {
+    err_token("Invalid token introspection result")
+  }
+
+  if (!isTRUE(introspection_result$supported)) {
+    err_token(c(
+      "x" = "Token introspection required but provider does not support it",
+      "i" = "Set `introspect = FALSE` or configure an introspection_url on the provider"
+    ))
+  }
+
+  if (!isTRUE(introspection_result$active)) {
+    err_token(c(
+      "x" = "Token introspection indicates the access token is not active",
+      "i" = paste0(
+        "Introspection status: ",
+        introspection_result$status %||% "unknown"
+      )
+    ))
+  }
+
+  token@cnf <- resolve_token_cnf(
+    cnf = token@cnf,
+    access_token = token@access_token,
+    introspection_result = introspection_result
+  )
+
+  raw <- introspection_result$raw %||% list()
+  if (!is.list(raw)) {
+    raw <- list()
+  }
+
+  introspect_elements <- oauth_client@introspect_elements %||% character(0)
+
+  if ("client_id" %in% introspect_elements) {
+    cid <- raw$client_id %||% NA_character_
+    if (!is_valid_string(cid)) {
+      err_token(c(
+        "x" = "Token introspection response missing required client_id",
+        "i" = "Disable this check or ensure your provider returns client_id in introspection"
+      ))
+    }
+    if (
+      !identical(as.character(cid)[1], as.character(oauth_client@client_id)[1])
+    ) {
+      err_token(c(
+        "x" = "Token introspection client_id does not match configured client_id",
+        "!" = paste0("Got: ", as.character(cid)[1])
+      ))
+    }
+  }
+
+  if ("sub" %in% introspect_elements) {
+    intro_sub <- raw$sub %||% NA_character_
+    if (!is_valid_string(intro_sub)) {
+      err_token(c(
+        "x" = "Token introspection response missing required sub",
+        "i" = "Disable this check or ensure your provider returns sub in introspection"
+      ))
+    }
+
+    expected_sub <- NA_character_
+    if (is_valid_string(token@id_token)) {
+      pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
+      if (!inherits(pl, "try-error")) {
+        expected_sub <- pl$sub %||% NA_character_
+      }
+    }
+    if (!is_valid_string(expected_sub)) {
+      ui <- token@userinfo %||% list()
+      if (is.list(ui)) {
+        expected_sub <- ui$sub %||% NA_character_
+      }
+    }
+
+    if (!is_valid_string(expected_sub)) {
+      err_token(c(
+        "x" = "Cannot validate introspection sub: no subject is available from ID token or userinfo",
+        "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
+      ))
+    }
+
+    if (!identical(as.character(intro_sub)[1], as.character(expected_sub)[1])) {
+      err_token(c(
+        "x" = "Token introspection sub does not match authenticated subject",
+        "i" = "This may indicate a provider inconsistency or a token mix-up"
+      ))
+    }
+  }
+
+  if ("scope" %in% introspect_elements) {
+    scope_validation_mode <- oauth_client@scope_validation %||% "strict"
+    requested_scopes <- requested_scopes %||%
+      effective_client_scopes(oauth_client)
+    requested_scopes <- as_scope_tokens(requested_scopes)
+    requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
+
+    if (
+      !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
+    ) {
+      intro_scope_raw <- raw$scope %||% NULL
+
+      if (is.null(intro_scope_raw)) {
+        msg <- "Token introspection response missing scope; cannot validate requested scopes"
+        if (identical(scope_validation_mode, "strict")) {
+          err_token(c(
+            "x" = msg,
+            "i" = "Set scope_validation = 'warn' or 'none', or disable the scope introspection requirement"
+          ))
+        } else if (identical(scope_validation_mode, "warn")) {
+          rlang::warn(
+            c(
+              "!" = msg,
+              "i" = "Set scope_validation = 'none' to suppress this warning"
+            ),
+            .frequency = "once",
+            .frequency_id = "introspection-scope-validation-missing-scope"
+          )
+        }
+      } else {
+        intro_scopes <- as_scope_tokens(intro_scope_raw)
+        intro_scopes <- sort(unique(intro_scopes[nzchar(intro_scopes)]))
+
+        missing <- setdiff(requested_scopes, intro_scopes)
+        if (length(missing) > 0) {
+          msg <- paste0(
+            "Introspected scopes missing requested entries: ",
+            paste(missing, collapse = ", ")
+          )
+          if (identical(scope_validation_mode, "strict")) {
+            err_token(c(
+              "x" = msg,
+              "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
+            ))
+          } else if (identical(scope_validation_mode, "warn")) {
+            rlang::warn(
+              c(
+                "!" = msg,
+                "i" = "Set scope_validation = 'none' to suppress this warning"
+              ),
+              .frequency = "once",
+              .frequency_id = "introspection-scope-validation-missing-scopes"
+            )
+          }
+        }
+      }
+    }
+  }
+
+  token
 }
 
 

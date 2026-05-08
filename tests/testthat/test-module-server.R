@@ -1472,7 +1472,9 @@ testthat::test_that("oauth_module_server proactive refresh forwards introspectio
               url = url,
               status = 200,
               headers = list("content-type" = "application/json"),
-              body = charToRaw('{"active":true,"client_id":"abc"}')
+              body = charToRaw(
+                '{"active":true,"client_id":"abc","sub":"user-1"}'
+              )
             ))
           }
 
@@ -1486,6 +1488,7 @@ testthat::test_that("oauth_module_server proactive refresh forwards introspectio
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
+          t@userinfo <- list(sub = "user-1")
           values$token <- t
           values$auth_started_at <- as.numeric(Sys.time())
           values$error <- NULL
