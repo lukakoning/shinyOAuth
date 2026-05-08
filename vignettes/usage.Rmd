@@ -259,6 +259,14 @@ You can optionally request additional checks via `introspect_elements`:
 
 (Note that not all providers may return each of these fields in introspection responses.)
 
+`OAuthToken` objects also record the best-known access-token scopes in
+`token@granted_scopes` plus whether the current token response explicitly
+proved that scope set in `token@granted_scopes_verified`. If a token or refresh
+response omits `scope`, shinyOAuth carries forward the best-known scopes but
+marks them as unverified. For authorization-sensitive apps, add
+`introspect_elements = "scope"` so login and refresh require an explicit scope
+statement from introspection.
+
 ```r
 # Example with introspection enabled
 client <- oauth_client(

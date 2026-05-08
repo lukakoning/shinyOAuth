@@ -104,6 +104,73 @@ as_scope_tokens <- function(scopes) {
   tokens
 }
 
+#' Normalize scope tokens for storage and comparison
+#'
+#' Coerces scope input to individual tokens, drops empty entries, removes
+#' duplicates, and sorts the result so later comparisons stay deterministic.
+#'
+#' @param scopes NULL, character, or list-like scope values.
+#' @return Character vector of normalized scope tokens.
+#' @keywords internal
+#' @noRd
+normalize_scope_tokens <- function(scopes) {
+  tokens <- as_scope_tokens(scopes)
+  tokens <- tokens[nzchar(tokens)]
+  if (!length(tokens)) {
+    return(character(0))
+  }
+
+  sort(unique(tokens))
+}
+
+#' Resolve the granted-scope state for a token response
+#'
+#' Derives the best-known granted scopes for a token response and whether those
+#' scopes were explicitly proven by the current response. Refresh responses that
+#' omit `scope` carry forward the prior grant when available.
+#'
+#' @param token_scope Raw `scope` value from the current token response.
+#' @param requested_scopes Normalized scopes requested for this flow.
+#' @param is_refresh Whether the current response came from a refresh flow.
+#' @param previous_granted_scopes Previously stored granted scopes to carry
+#'   forward when a refresh response omits `scope`.
+#' @return A list containing normalized `granted_scopes`, logical
+#'   `granted_scopes_verified`, and booleans `scope_is_omitted` /
+#'   `scope_is_empty`.
+#' @keywords internal
+#' @noRd
+resolve_granted_scope_state <- function(
+  token_scope,
+  requested_scopes,
+  is_refresh = FALSE,
+  previous_granted_scopes = NULL
+) {
+  requested_scopes <- normalize_scope_tokens(requested_scopes)
+  previous_granted_scopes <- normalize_scope_tokens(previous_granted_scopes)
+
+  scope_is_omitted <- is.null(token_scope)
+  scope_is_empty <- !scope_is_omitted &&
+    length(token_scope) == 1L &&
+    !nzchar(token_scope)
+  explicit_scope <- !scope_is_omitted &&
+    !(isTRUE(is_refresh) && scope_is_empty)
+
+  granted_scopes <- if (isTRUE(explicit_scope)) {
+    normalize_scope_tokens(token_scope)
+  } else if (isTRUE(is_refresh) && length(previous_granted_scopes) > 0) {
+    previous_granted_scopes
+  } else {
+    requested_scopes
+  }
+
+  list(
+    granted_scopes = granted_scopes,
+    granted_scopes_verified = isTRUE(explicit_scope),
+    scope_is_omitted = scope_is_omitted,
+    scope_is_empty = scope_is_empty
+  )
+}
+
 #' Ensure openid scope for OIDC providers
 #'
 #' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the

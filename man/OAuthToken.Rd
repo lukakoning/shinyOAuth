@@ -12,6 +12,8 @@ OAuthToken(
   expires_at = Inf,
   userinfo = list(),
   cnf = list(),
+  granted_scopes = character(0),
+  granted_scopes_verified = FALSE,
   id_token_validated = FALSE
 )
 }
@@ -34,6 +36,15 @@ userinfo endpoint (if fetched)}
 sender-constrained access token. For RFC 8705 certificate-bound tokens,
 this may contain \code{x5t#S256} with the SHA-256 thumbprint of the client
 certificate that must accompany later requests.}
+
+\item{granted_scopes}{Normalized scope tokens currently associated with the
+access token. When a provider omits \code{scope} in a token response,
+shinyOAuth carries forward the best-known scope set instead of dropping it.}
+
+\item{granted_scopes_verified}{Logical flag indicating whether the current
+token response explicitly proved \code{granted_scopes}. \code{FALSE} means the scope
+set was assumed or carried forward because the provider omitted \code{scope}.
+For stronger proof, configure \code{introspect_elements = "scope"}.}
 
 \item{id_token_validated}{Logical flag indicating whether the ID token was
 cryptographically validated (signature verified and standard claims checked)

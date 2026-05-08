@@ -880,6 +880,7 @@ refresh_token <- function(
           nonce = NULL,
           is_refresh = TRUE,
           original_id_token = token@id_token,
+          prior_granted_scopes = token@granted_scopes,
           shiny_session = shiny_session
         )
 
@@ -943,6 +944,10 @@ refresh_token <- function(
           token@token_type <- token_set$token_type
         }
         token@expires_at <- expires_at
+        token@granted_scopes <- token_set$granted_scopes %||% character(0)
+        token@granted_scopes_verified <- isTRUE(
+          token_set$granted_scopes_verified
+        )
 
         if (is_valid_string(token_set$id_token)) {
           token@id_token <- token_set$id_token

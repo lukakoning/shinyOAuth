@@ -250,6 +250,8 @@ test_that("scope_validation = 'warn' warns but continues on missing scopes", {
 
   expect_true(S7::S7_inherits(result, OAuthToken))
   expect_equal(result@access_token, "my_access_token")
+  expect_identical(result@granted_scopes, c("email", "profile"))
+  expect_true(result@granted_scopes_verified)
 })
 
 test_that("scope_validation = 'none' skips validation entirely", {
@@ -543,6 +545,8 @@ test_that("scope_validation = 'strict' accepts token response that omits scope",
 
   expect_true(S7::S7_inherits(result, OAuthToken))
   expect_equal(result@access_token, "t")
+  expect_identical(result@granted_scopes, c("openid", "profile"))
+  expect_false(result@granted_scopes_verified)
 })
 
 test_that("scope_validation = 'warn' accepts token response that omits scope", {
@@ -605,6 +609,8 @@ test_that("scope_validation = 'warn' accepts token response that omits scope", {
   # Token should still be returned
   expect_true(S7::S7_inherits(result, OAuthToken))
   expect_equal(result@access_token, "my_access_token")
+  expect_identical(result@granted_scopes, c("openid", "profile"))
+  expect_false(result@granted_scopes_verified)
 })
 
 test_that("scope_validation = 'none' succeeds when token response omits scope", {

@@ -1815,7 +1815,8 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
 testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 §6)", {
   # Per RFC 6749 Section 6, providers MAY omit scope from refresh responses
 
-  # when unchanged. With is_refresh=TRUE and scope=NULL, we skip validation.
+  # when unchanged. Keep the prior grant instead of widening back to the
+  # client's configured scopes.
   cli <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
@@ -1842,13 +1843,17 @@ testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = NA_character_
+    id_token = NA_character_,
+    granted_scopes = c("openid", "profile"),
+    granted_scopes_verified = TRUE
   )
 
   # Should NOT error even with strict scope_validation
   t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "refreshed_at")
+  testthat::expect_identical(t2@granted_scopes, c("openid", "profile"))
+  testthat::expect_false(t2@granted_scopes_verified)
 })
 
 testthat::test_that("refresh_token validates scope when provider returns it", {
@@ -1878,12 +1883,19 @@ testthat::test_that("refresh_token validates scope when provider returns it", {
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = NA_character_
+    id_token = NA_character_,
+    granted_scopes = c("openid", "profile"),
+    granted_scopes_verified = TRUE
   )
 
   t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "refreshed_at")
+  testthat::expect_identical(
+    t2@granted_scopes,
+    c("email", "openid", "profile")
+  )
+  testthat::expect_true(t2@granted_scopes_verified)
 })
 
 testthat::test_that("refresh_token errors when provider returns reduced scope (strict)", {

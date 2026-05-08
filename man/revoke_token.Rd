@@ -68,3 +68,4 @@ selected token exists. Emits best-effort audit events and OpenTelemetry span
 attributes. When \code{async = TRUE}, the work may run in a background worker and
 reads package options needed by the async/audit/HTTP helpers.
 }
+

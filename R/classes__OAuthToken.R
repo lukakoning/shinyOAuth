@@ -24,6 +24,13 @@
 #'   sender-constrained access token. For RFC 8705 certificate-bound tokens,
 #'   this may contain `x5t#S256` with the SHA-256 thumbprint of the client
 #'   certificate that must accompany later requests.
+#' @param granted_scopes Normalized scope tokens currently associated with the
+#'   access token. When a provider omits `scope` in a token response,
+#'   shinyOAuth carries forward the best-known scope set instead of dropping it.
+#' @param granted_scopes_verified Logical flag indicating whether the current
+#'   token response explicitly proved `granted_scopes`. `FALSE` means the scope
+#'   set was assumed or carried forward because the provider omitted `scope`.
+#'   For stronger proof, configure `introspect_elements = "scope"`.
 #' @param id_token_validated Logical flag indicating whether the ID token was
 #'  cryptographically validated (signature verified and standard claims checked)
 #'  during the OAuth flow. Defaults to `FALSE`.
@@ -69,6 +76,16 @@ OAuthToken <- S7::new_class(
     cnf = S7::new_property(
       S7::class_list,
       default = list()
+    ),
+
+    granted_scopes = S7::new_property(
+      S7::class_character,
+      default = character(0)
+    ),
+
+    granted_scopes_verified = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
 
     id_token_validated = S7::new_property(
@@ -148,6 +165,35 @@ oauth_token_validate <- function(self) {
   if (!is.null(thumbprint) && !is_valid_string(thumbprint)) {
     return(
       "OAuthToken: cnf$x5t#S256 must be a non-empty string when supplied"
+    )
+  }
+
+  granted_scopes <- self@granted_scopes
+  if (!is.character(granted_scopes)) {
+    return("OAuthToken: granted_scopes must be a character vector")
+  }
+
+  granted_scope_error <- tryCatch(
+    {
+      validate_scopes(granted_scopes)
+      NULL
+    },
+    error = function(e) conditionMessage(e)
+  )
+  if (!is.null(granted_scope_error)) {
+    return(paste0(
+      "OAuthToken: invalid granted_scopes: ",
+      granted_scope_error
+    ))
+  }
+
+  if (
+    !(is.logical(self@granted_scopes_verified) &&
+      length(self@granted_scopes_verified) == 1L &&
+      !is.na(self@granted_scopes_verified))
+  ) {
+    return(
+      "OAuthToken: granted_scopes_verified must be a single non-NA logical"
     )
   }
 

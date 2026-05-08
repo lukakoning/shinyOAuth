@@ -74,6 +74,12 @@ information.
 * `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
 previews instead of exposing full credential material in default console output.
 
+* `OAuthToken` now tracks normalized `granted_scopes` plus
+`granted_scopes_verified`, so apps can distinguish between scope sets that were
+explicitly returned and ones that were carried forward when the provider omitted
+`scope`. Refresh now preserves prior granted scopes instead of widening back to
+the client's configured scopes when a refresh response omits `scope`.
+
 * `oauth_client()` (`OAuthClient`) now:
   - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207 `iss` 
   callback parameter for shared-redirect multi-issuer deployments. Relatedly, 

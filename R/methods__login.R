@@ -1311,6 +1311,8 @@ handle_callback_internal <- function(
           cnf = token_set$cnf,
           access_token = token_set[["access_token"]]
         ),
+        granted_scopes = token_set$granted_scopes %||% character(0),
+        granted_scopes_verified = isTRUE(token_set$granted_scopes_verified),
         id_token_validated = isTRUE(token_set[[".id_token_validated"]])
       )
       # Set userinfo separately for compatibility with some S7 dispatchers
@@ -1517,16 +1519,19 @@ enforce_token_introspection_policy <- function(
 
   if ("scope" %in% introspect_elements) {
     scope_validation_mode <- oauth_client@scope_validation %||% "strict"
-    requested_scopes <- requested_scopes %||%
-      effective_client_scopes(oauth_client)
-    requested_scopes <- as_scope_tokens(requested_scopes)
-    requested_scopes <- sort(unique(requested_scopes[nzchar(requested_scopes)]))
+    requested_scopes <- normalize_scope_tokens(
+      requested_scopes %||% effective_client_scopes(oauth_client)
+    )
+    intro_scope_raw <- raw$scope %||% NULL
+
+    if (!is.null(intro_scope_raw)) {
+      token@granted_scopes <- normalize_scope_tokens(intro_scope_raw)
+      token@granted_scopes_verified <- TRUE
+    }
 
     if (
       !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
     ) {
-      intro_scope_raw <- raw$scope %||% NULL
-
       if (is.null(intro_scope_raw)) {
         msg <- "Token introspection response missing scope; cannot validate requested scopes"
         if (identical(scope_validation_mode, "strict")) {
@@ -1545,8 +1550,7 @@ enforce_token_introspection_policy <- function(
           )
         }
       } else {
-        intro_scopes <- as_scope_tokens(intro_scope_raw)
-        intro_scopes <- sort(unique(intro_scopes[nzchar(intro_scopes)]))
+        intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
         missing <- setdiff(requested_scopes, intro_scopes)
         if (length(missing) > 0) {
@@ -1841,6 +1845,8 @@ swap_code_for_token_set <- function(
 #'   checks.
 #' @param requested_scopes Scopes originally requested, defaulting to the
 #'   effective client scopes.
+#' @param prior_granted_scopes Previously stored granted scopes to carry
+#'   forward when a refresh response omits `scope`.
 #' @param shiny_session Optional Shiny session context.
 #' @return The validated `token_set` list.
 #' @keywords internal
@@ -1852,6 +1858,7 @@ verify_token_set <- function(
   is_refresh = FALSE,
   original_id_token = NULL,
   requested_scopes = NULL,
+  prior_granted_scopes = NULL,
   shiny_session = NULL
 ) {
   # Helpers/types --------------------------------------------------------------
@@ -1863,22 +1870,28 @@ verify_token_set <- function(
   }
 
   scope_validation_mode <- client@scope_validation %||% "strict"
-  requested_scopes <- requested_scopes %||% effective_client_scopes(client)
-  requested_scopes <- otel_scope_tokens(requested_scopes %||% NULL)
-  requested_scope_string <- otel_scope_string(requested_scopes %||% NULL)
-  granted_scope_string <- otel_scope_string(
-    token_set$scope %||% NULL,
-    allow_commas = TRUE
+  requested_scopes <- normalize_scope_tokens(
+    requested_scopes %||% effective_client_scopes(client)
   )
+  granted_scope_state <- resolve_granted_scope_state(
+    token_scope = token_set$scope,
+    requested_scopes = requested_scopes,
+    is_refresh = is_refresh,
+    previous_granted_scopes = prior_granted_scopes
+  )
+  granted_scopes <- granted_scope_state$granted_scopes %||% character(0)
+  granted_scopes_verified <- isTRUE(
+    granted_scope_state$granted_scopes_verified
+  )
+  scope_is_omitted <- isTRUE(granted_scope_state$scope_is_omitted)
+  scope_is_empty <- isTRUE(granted_scope_state$scope_is_empty)
+  requested_scope_string <- otel_scope_string(requested_scopes %||% NULL)
+  granted_scope_string <- otel_scope_string(granted_scopes %||% NULL)
   granted_scope_count <- {
-    granted <- otel_scope_tokens(
-      token_set$scope %||% NULL,
-      allow_commas = TRUE
-    )
-    if (!length(granted)) {
+    if (!length(granted_scopes)) {
       NULL
     } else {
-      as.integer(length(granted))
+      as.integer(length(granted_scopes))
     }
   }
   id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
@@ -1911,15 +1924,6 @@ verify_token_set <- function(
       # granted scope is identical to the requested scope. RFC 6749 Section 6
       # applies the same rule to refresh responses. We therefore treat an
       # omitted scope as unchanged from the request rather than as an error.
-      requested_scopes <- sort(unique(requested_scopes[nzchar(
-        requested_scopes
-      )]))
-
-      scope_is_omitted <- is.null(token_set$scope)
-      scope_is_empty <- !scope_is_omitted &&
-        length(token_set$scope) == 1L &&
-        !nzchar(token_set$scope)
-
       # Skip explicit scope reconciliation when provider omits scope. Per RFC
       # 6749 Sections 5.1 and 6, omission means unchanged from the requested
       # scope. During refresh we also continue tolerating empty string scope to
@@ -1949,12 +1953,7 @@ verify_token_set <- function(
             )
           }
         } else {
-          granted_raw <- token_set$scope
-          # Scope lists are space-delimited per RFC 6749. Commas remain part
-          # of a single scope token and must not satisfy multiple requests.
-          granted <- as_scope_tokens(granted_raw)
-          granted <- sort(unique(granted[nzchar(granted)]))
-          missing <- setdiff(requested_scopes, granted)
+          missing <- setdiff(requested_scopes, granted_scopes)
           if (length(missing) > 0) {
             msg <- paste0(
               "Granted scopes missing requested entries: ",
@@ -1978,6 +1977,9 @@ verify_token_set <- function(
           }
         }
       }
+
+      token_set$granted_scopes <- granted_scopes
+      token_set$granted_scopes_verified <- granted_scopes_verified
 
       # ID token -------------------------------------------------------------------
 

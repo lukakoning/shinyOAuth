@@ -303,6 +303,8 @@ method(format, OAuthToken) <- function(x, ...) {
       id_token = x@id_token,
       expires_at = x@expires_at,
       userinfo = x@userinfo,
+      granted_scopes = x@granted_scopes,
+      granted_scopes_verified = x@granted_scopes_verified,
       id_token_validated = x@id_token_validated
     ),
     secret_fields = c("access_token", "refresh_token", "id_token")
