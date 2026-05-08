@@ -82,7 +82,6 @@
 <p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> (<code>OAuthProvider</code>) now:</p>
 <ul><li>Fails fast if <code>response_mode != "query"</code>. Plain Shiny callback URLs reject POST requests, so <code>response_mode = "form_post"</code> was previously allowed but led to abroken callback round-trip instead of a clear configuration error.</li>
 <li>Raises typed <code>shinyOAuth_input_error</code> conditions for malformed constructor inputs such as vector endpoint URLs or empty discovery-helper domains, so apps can trap provider validation failures consistently.</li>
-<li>Fixes the generated <code>OAuthProvider</code> / <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> reference pages so <code>userinfo_id_selector</code> no longer shows stray roxygen markup.</li>
 <li>Validates custom <code>jwks_cache$get()</code> signatures without calling the cache during construction, avoiding side effects in duck-typed cache backends.</li>
 <li>Reserves the <code>refresh_token</code> parameter name in <code>extra_token_params</code> to prevent duplicate refresh-token parameters during token refresh requests.</li>
 </ul></li>
