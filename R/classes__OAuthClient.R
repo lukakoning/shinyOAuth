@@ -111,10 +111,11 @@
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
 #'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
 #'   proofs to token endpoint requests and use DPoP-bound access tokens in
-#'   downstream request helpers. Configuring this key alone does not require
-#'   DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if token
-#'   responses must reject `token_type = "Bearer"`. Current outbound DPoP
-#'   signing supports RSA and EC private keys. For RSA keys, outbound signing is
+#'   downstream request helpers. In [oauth_client()], configuring this key also
+#'   makes `dpop_require_access_token` default to `TRUE`, so access-token
+#'   responses reject `token_type = "Bearer"` unless you explicitly set
+#'   `dpop_require_access_token = FALSE`. Current outbound DPoP signing
+#'   supports RSA and EC private keys. For RSA keys, outbound signing is
 #'   currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
 #'   `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
 #'   currently supported for client-side signing.
@@ -645,11 +646,6 @@ oauth_client <- function(
     required_acr_values = required_acr_values,
     introspect = introspect,
     introspect_elements = introspect_elements
-  )
-
-  warn_about_optional_dpop_access_tokens(
-    client = client,
-    dpop_require_access_token_missing = dpop_require_access_token_missing
   )
 
   client
@@ -1788,53 +1784,6 @@ warn_about_unenforced_claim_requests <- function(
     ),
     .frequency = "once",
     .frequency_id = "shinyOAuth_claims_validation_default_none"
-  )
-
-  invisible(TRUE)
-}
-
-#' Warn about optional DPoP access-token enforcement
-#'
-#' Warns when DPoP is configured but `oauth_client()` still accepts non-DPoP
-#' access tokens because the caller left `dpop_require_access_token` at its
-#' default. Used by [oauth_client()] after the final client object has been
-#' constructed.
-#'
-#' @param client Constructed [OAuthClient] instance.
-#' @param dpop_require_access_token_missing Whether the caller left
-#'   `dpop_require_access_token` at its default.
-#' @return Invisibly returns `TRUE` when a warning is emitted; otherwise
-#'   invisibly returns `FALSE`.
-#' @keywords internal
-#' @noRd
-warn_about_optional_dpop_access_tokens <- function(
-  client,
-  dpop_require_access_token_missing = FALSE
-) {
-  if (!isTRUE(dpop_require_access_token_missing)) {
-    return(invisible(FALSE))
-  }
-
-  if (
-    is.null(client@dpop_private_key) || isTRUE(client@dpop_require_access_token)
-  ) {
-    return(invisible(FALSE))
-  }
-
-  rlang::warn(
-    c(
-      "[{.pkg shinyOAuth}] - {.strong Configured DPoP does not require DPoP access tokens}",
-      "!" = paste(
-        "This client has {.arg dpop_private_key} configured, but {.arg dpop_require_access_token} was left at its default {.val FALSE},",
-        "so shinyOAuth will still accept {.code token_type = \"Bearer\"} responses."
-      ),
-      "i" = paste(
-        "Set {.arg dpop_require_access_token} = {.val TRUE} to reject non-DPoP access tokens.",
-        "Set it explicitly to {.val FALSE} if you intentionally want refresh-token-only or opportunistic DPoP behavior."
-      )
-    ),
-    .frequency = "once",
-    .frequency_id = "shinyOAuth_dpop_require_access_token_default_false"
   )
 
   invisible(TRUE)

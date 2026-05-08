@@ -145,10 +145,11 @@ endpoint URL.}
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
 asymmetric private key. When provided, shinyOAuth can attach \code{DPoP}
 proofs to token endpoint requests and use DPoP-bound access tokens in
-downstream request helpers. Configuring this key alone does not require
-DPoP-bound access tokens; set \code{dpop_require_access_token = TRUE} if token
-responses must reject \code{token_type = "Bearer"}. Current outbound DPoP
-signing supports RSA and EC private keys. For RSA keys, outbound signing is
+downstream request helpers. In \code{\link[=oauth_client]{oauth_client()}}, configuring this key also
+makes \code{dpop_require_access_token} default to \code{TRUE}, so access-token
+responses reject \code{token_type = "Bearer"} unless you explicitly set
+\code{dpop_require_access_token = FALSE}. Current outbound DPoP signing
+supports RSA and EC private keys. For RSA keys, outbound signing is
 currently limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256},
 \code{PS384}, \code{PS512}) are not supported. Ed25519/Ed448 keys are also not
 currently supported for client-side signing.}
