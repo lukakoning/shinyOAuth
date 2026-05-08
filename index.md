@@ -56,7 +56,8 @@ providers and protocol features.
 - Security best practices: AES-GCM–sealed state payloads (AEAD),
   server-side state validation coupled with local cookie verification,
   HTTPS enforcement, PKCE (S256), ID token signature/claims validation
-  (including nonce), userinfo subject match, and more (see
+  (including nonce), userinfo subject match, support for DPoP, mTLS,
+  JAR, PAR, and more (see
   [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
   ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
