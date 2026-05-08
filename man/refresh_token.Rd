@@ -26,10 +26,12 @@ used. Non-sequential future plans run off the main R session;
 \code{future::sequential()} stays in-process.}
 
 \item{introspect}{Logical, default FALSE. After a successful refresh, if the
-provider exposes an introspection endpoint, perform a best-effort
-introspection of the new access token for audit/diagnostics. The raw
-introspection result is not stored separately, but a successful
-introspection response may backfill \code{token@cnf}.}
+provider exposes an introspection endpoint, introspect the new access
+token for validation and audit/diagnostics. When enabled, refresh fails
+if introspection is unsupported, inactive, or missing required
+\code{introspect_elements}. The raw introspection result is not stored
+separately, but a successful introspection response may backfill
+\code{token@cnf}.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when

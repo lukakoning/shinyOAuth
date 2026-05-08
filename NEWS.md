@@ -36,6 +36,10 @@ failing later with raw base-R errors.
 * `client_bearer_req()` now rejects invalid or multi-valued `token_type`
 inputs instead of silently defaulting them to Bearer.
 
+* Clarified `refresh_token()` documentation: when refresh-time introspection is
+enabled, unsupported or invalid introspection results are strict validation
+failures, not best-effort metadata enrichment.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
