@@ -45,7 +45,8 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 
 - Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with
   local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
-  userinfo subject match, and more (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
+  userinfo subject match, support for DPoP, mTLS, JAR, PAR, and more 
+  (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
 - Provides hooks for auditing & logging key events,
   like login successes or failures; also supports emitting OpenTelemetry signals
