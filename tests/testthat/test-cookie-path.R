@@ -1,4 +1,4 @@
-testthat::test_that("browser cookie path defaults to request path", {
+testthat::test_that("browser cookie path defaults to /", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
