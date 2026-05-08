@@ -452,9 +452,15 @@ oauth_provider_auth0 <- function(domain, name = "auth0", audience = NULL) {
 
 ## 2.1 Microsoft-specific helpers ----------------------------------------------
 
-# Check whether one value looks like a GUID tenant id.
-# Used by oauth_provider_microsoft() and tenant-independent ID token
-# validation. Input: scalar value. Output: TRUE or FALSE.
+#' Check whether a value looks like a GUID
+#'
+#' Used by [oauth_provider_microsoft()] and tenant-independent ID token
+#' validation helpers.
+#'
+#' @param value Candidate tenant identifier.
+#' @return `TRUE` when `value` is a single GUID-like string; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 is_guid_like <- function(value) {
   is.character(value) &&
     length(value) == 1L &&
@@ -465,10 +471,16 @@ is_guid_like <- function(value) {
     )
 }
 
-# Detect whether the configured Microsoft issuer is one of the tenant-
-# independent authorities.
-# Used by Microsoft-specific issuer handling. Input: issuer URL. Output:
-# normalized path or NULL.
+#' Detect a tenant-independent Microsoft issuer
+#'
+#' Used by Microsoft-specific issuer handling when tenant-independent
+#' authorities are configured.
+#'
+#' @param issuer Issuer URL to inspect.
+#' @return A normalized tenant-independent issuer path, or `NULL` when `issuer`
+#'   is not one of the supported Microsoft tenant-independent authorities.
+#' @keywords internal
+#' @noRd
 microsoft_tenant_independent_issuer <- function(issuer) {
   if (!is_valid_string(issuer)) {
     return(NULL)
@@ -493,9 +505,17 @@ microsoft_tenant_independent_issuer <- function(issuer) {
   NULL
 }
 
-# Resolve the exact issuer that an incoming ID token is expected to use.
-# Used before issuer comparison. Input: provider issuer and parsed token
-# payload. Output: list with expected issuer and Microsoft-specific flags.
+#' Resolve the expected ID token issuer
+#'
+#' Used before issuer comparison during Microsoft tenant-independent token
+#' validation.
+#'
+#' @param provider_issuer Configured provider issuer.
+#' @param token_payload Parsed ID token payload.
+#' @return A list containing `expected_issuer`, `enforce_key_issuer`, and
+#'   `token_tid`.
+#' @keywords internal
+#' @noRd
 resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
   if (is.null(microsoft_tenant_independent_issuer(provider_issuer))) {
     return(list(
@@ -525,9 +545,18 @@ resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
   )
 }
 
-# Filter Microsoft JWKS keys to those scoped to the token's tenant issuer.
-# Used only for tenant-independent Microsoft authorities. Input: candidate
-# keys and issuer context. Output: filtered key list.
+#' Filter Microsoft JWKS keys by token issuer
+#'
+#' Used only for tenant-independent Microsoft authorities after candidate keys
+#' have been selected.
+#'
+#' @param keys Candidate JWKS keys.
+#' @param provider_issuer Configured provider issuer.
+#' @param token_issuer Issuer claim from the token being validated.
+#' @param token_tid Tenant id claim from the token being validated.
+#' @return The subset of `keys` that matches the token issuer context.
+#' @keywords internal
+#' @noRd
 filter_microsoft_jwks_for_token_issuer <- function(
   keys,
   provider_issuer,

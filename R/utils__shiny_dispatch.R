@@ -7,13 +7,14 @@
 
 ## 1.1 Backend discovery and dispatch -------------------------------------
 
-# Internal: check whether mirai daemons are currently active.
-#
-# Uses `mirai::daemons_set()` (available since mirai >= 2.3.0) as the canonical
-# lightweight check. Falls back to `mirai::info()` for older mirai versions
-# that lack `daemons_set()` — `info()` returns NULL when no daemons are set.
-#
-# @return TRUE if mirai daemons are active, FALSE otherwise.
+#' Check whether mirai daemons are active
+#'
+#' Uses `mirai::daemons_set()` when available, and falls back to
+#' `mirai::info()` for older mirai versions that lack that helper.
+#'
+#' @return `TRUE` when mirai daemons are active; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 mirai_daemons_active <- function() {
   tryCatch(
     mirai::daemons_set(),
@@ -28,12 +29,14 @@ mirai_daemons_active <- function() {
   )
 }
 
-# Internal: get the number of mirai daemon connections.
-#
-# Uses `mirai::info()$connections` (the author-recommended stable interface
-# instead of `mirai::status()`).
-#
-# @return Integer count of connections, or 0L on error.
+#' Get the number of mirai daemon connections
+#'
+#' Uses `mirai::info()$connections`, which is the stable interface recommended
+#' by mirai.
+#'
+#' @return Integer count of connections, or `0L` on error.
+#' @keywords internal
+#' @noRd
 mirai_connection_count <- function() {
   tryCatch(
     as.integer(mirai::info()$connections),
@@ -41,25 +44,22 @@ mirai_connection_count <- function() {
   )
 }
 
-# Main async entry point used by oauth_module_server() and async token methods.
-# Prefers mirai if daemons are configured, otherwise falls back to
-# future_promise. Returns a promise in either case.
-#
-# Warnings and messages emitted by the worker expression are captured and
-# bundled with the result in a wrapper list (`$.shinyOAuth_async_wrapped`).
-# Callers should pass the resolved value through `replay_async_conditions()`
-# to re-emit the conditions in the main process and unwrap the actual result.
-#
-# @param expr A quoted expression to evaluate (use quote() or substitute())
-# @param args A named list of values to pass to the expression
-# @param .timeout Optional integer timeout in milliseconds for the mirai task.
-#   When using mirai with dispatcher (the default), timed-out tasks are
-#   automatically cancelled. Falls back to `getOption("shinyOAuth.async_timeout")`
-#   when NULL (default = no timeout).
-# @param otel_context Optional list with `headers`, `worker_span_name`,
-#   `attributes`, and `shiny_session` for restoring OpenTelemetry parent
-#   context in the worker.
-# @return A promise that resolves to a wrapped result (use `replay_async_conditions()`)
+#' Dispatch async work through the configured backend
+#'
+#' Main async entry point used by [oauth_module_server()] and the async token
+#' and UserInfo helpers. Prefers mirai when daemons are configured and otherwise
+#' falls back to `future_promise()`. Warnings and messages emitted by the worker
+#' are captured in a wrapper object so callers can replay them in the main
+#' process with `replay_async_conditions()`.
+#'
+#' @param expr Quoted expression to evaluate.
+#' @param args Named list of values bound into `expr`.
+#' @param .timeout Optional mirai timeout in milliseconds.
+#' @param otel_context Optional list of OTEL propagation metadata for the
+#'   worker.
+#' @return Promise that resolves to a wrapped result object.
+#' @keywords internal
+#' @noRd
 async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   captured_otel_envvars <- capture_async_otel_envvars()
@@ -208,23 +208,16 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
 
 ## 1.2 Replay and worker preparation --------------------------------------
 
-# Internal: replay conditions (warnings and messages) captured by
-# async_dispatch() and return the unwrapped result value.
-#
-# When `result` is the wrapped list produced by async_dispatch()'s
-# withCallingHandlers wrapper, this function re-emits each captured condition
-# in the main process and returns the actual value. If `result` is not wrapped
-# (e.g., from a non-async path), it is returned as-is.
-#
-# Messages are replayed first, then warnings, mirroring typical execution
-# order where informational output precedes diagnostic signals.
-#
-# Controlled by `options(shinyOAuth.replay_async_conditions)`:
-# - TRUE (default): re-emit captured conditions in the main process.
-# - FALSE: silently discard captured conditions (result is still unwrapped).
-#
-# @param result The resolved value from an async_dispatch() promise.
-# @return The unwrapped result value.
+#' Replay captured async conditions and unwrap the result
+#'
+#' Re-emits warnings and messages captured by `async_dispatch()` and then
+#' returns the wrapped value. If `result` is not wrapped, it is returned
+#' unchanged.
+#'
+#' @param result Resolved value from an `async_dispatch()` promise.
+#' @return Unwrapped result value.
+#' @keywords internal
+#' @noRd
 replay_async_conditions <- function(result) {
   if (
     is.list(result) &&
@@ -243,8 +236,12 @@ replay_async_conditions <- function(result) {
   result
 }
 
-# Internal: check if any async backend is available
-# Returns "mirai", "future", or NULL
+#' Detect the available async backend
+#'
+#' @return `"mirai"`, `"future"`, or `NULL` when no supported async backend is
+#'   available.
+#' @keywords internal
+#' @noRd
 async_backend_available <- function() {
   # Check mirai first (preferred)
   if (rlang::is_installed("mirai") && mirai_daemons_active()) {
@@ -267,21 +264,17 @@ async_backend_available <- function() {
   NULL
 }
 
-# Internal: prepare a serialization-safe copy of an OAuthClient for async workers.
-#
-# The state_store (and optionally the JWKS cache) may contain non-serializable
-# objects (e.g., closures over database connections, external pointers). Since
-# the state was already consumed on the main thread before async dispatch, the
-# worker never accesses the state_store, so we replace it with a lightweight
-# cachem::cache_mem() that is guaranteed serializable.
-#
-# After replacement, the entire client is tested with serialize(). If it still
-# fails (e.g., due to other non-serializable components), NULL is returned so
-# callers can fall back to synchronous execution.
-#
-# @param client An OAuthClient object.
-# @return A serialization-safe OAuthClient copy, or NULL if serialization
-#   fails despite cleanup.
+#' Prepare a serialization-safe OAuthClient for async workers
+#'
+#' Replaces worker-unneeded state-store internals with a lightweight
+#' serializable cache and tests the result with [serialize()]. Used before
+#' OAuth client objects are shipped to worker processes.
+#'
+#' @param client [OAuthClient] object.
+#' @return Serialization-safe OAuthClient copy, or `NULL` when cleanup is still
+#'   insufficient.
+#' @keywords internal
+#' @noRd
 prepare_client_for_worker <- function(client) {
   tryCatch(
     {
@@ -301,17 +294,18 @@ prepare_client_for_worker <- function(client) {
   )
 }
 
-# Internal: classify a mirai error for better diagnostics.
-# mirai distinguishes between execution errors (code threw), connection resets
-# (daemon crashed, errorValue 19), timeouts (errorValue 5), and cancellations
-# (errorValue 20). This helper returns a short classification string for audit
-# events and log messages. Returns NULL when mirai is not installed or when
-# the value is not an error.
-#
-# @param x The error value or data from a mirai (e.g. m$data or e in catch)
-# @return One of "mirai_error" (code error), "mirai_timeout" (timed out),
-#   "mirai_connection_reset" (daemon crash), "mirai_interrupt" (interrupted/cancelled),
-#   "mirai_error_value" (other transport error), or NULL (not a mirai error).
+#' Classify a mirai error value
+#'
+#' Used by async diagnostics so mirai transport failures, timeouts, and worker
+#' code errors can be logged distinctly.
+#'
+#' @param x Error value or condition returned by mirai.
+#' @return One of `"mirai_error"`, `"mirai_timeout"`,
+#'   `"mirai_connection_reset"`, `"mirai_interrupt"`,
+#'   `"mirai_error_value"`, or `NULL` when `x` is not recognized as a mirai
+#'   error.
+#' @keywords internal
+#' @noRd
 classify_mirai_error <- function(x) {
   if (!rlang::is_installed("mirai")) {
     return(NULL)

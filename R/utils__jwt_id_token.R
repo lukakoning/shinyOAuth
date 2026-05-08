@@ -11,7 +11,11 @@
 #' Internal: validate ID token
 #'
 #' This function validates an ID token, by checking its signature and claims.
+#' Used after token exchange and refresh when an ID token is present.
 #'
+#' @param client OAuth client providing provider configuration and credentials.
+#' @param id_token Compact JWS ID token string.
+#' @param expected_nonce If provided, the `nonce` claim MUST match this value.
 #' @param expected_sub If provided, the `sub` claim MUST match this value.
 #'   Used during refresh to ensure the new ID token is for the same user
 #'   (OIDC Core section 12.2 requirement).
@@ -23,6 +27,7 @@
 #'   contains an `auth_time` claim and that the elapsed time since authentication
 #'   does not exceed `max_age + leeway` (OIDC Core section 3.1.2.1 / section 2).
 #'
+#' @return Invisibly returns the validated ID-token claims list.
 #' @keywords internal
 #' @noRd
 validate_id_token <- function(
@@ -302,11 +307,7 @@ validate_id_token <- function(
     err_id_token("ID token missing exp claim")
   }
   # Validate temporal claims are single, finite numerics before arithmetic
-  # Used only inside validate_id_token() to keep numeric claim checks concise.
-  is_single_finite_number <- function(x) {
-    is.numeric(x) && length(x) == 1 && is.finite(x) && !is.na(x)
-  }
-  if (!is_single_finite_number(payload$exp)) {
+  if (!jwt_is_single_finite_number(payload$exp)) {
     err_id_token("exp claim must be a single finite number")
   }
   exp_val <- as.numeric(payload$exp)
@@ -324,7 +325,7 @@ validate_id_token <- function(
   if (is.null(payload$iat)) {
     err_id_token("ID token missing iat claim")
   }
-  if (!is_single_finite_number(payload$iat)) {
+  if (!jwt_is_single_finite_number(payload$iat)) {
     err_id_token("iat claim must be a single finite number when present")
   }
   iat_val <- as.numeric(payload$iat)
@@ -364,7 +365,7 @@ validate_id_token <- function(
     }
   }
   if (!is.null(payload$nbf)) {
-    if (!is_single_finite_number(payload$nbf)) {
+    if (!jwt_is_single_finite_number(payload$nbf)) {
       err_id_token("nbf claim must be a single finite number when present")
     }
     nbf_val <- as.numeric(payload$nbf)
@@ -411,7 +412,7 @@ validate_id_token <- function(
         "ID token missing auth_time claim (required when max_age is requested, OIDC Core 3.1.2.1)"
       )
     }
-    if (!is_single_finite_number(payload$auth_time)) {
+    if (!jwt_is_single_finite_number(payload$auth_time)) {
       err_id_token("auth_time claim must be a single finite number")
     }
     auth_time_val <- as.numeric(payload$auth_time)
@@ -491,11 +492,33 @@ validate_id_token <- function(
   invisible(payload)
 }
 
-## 1.2 EdDSA and at_hash helpers ------------------------------------------
+## 1.2 Numeric claim helpers ----------------------------------------------
 
-# Normalize an EdDSA curve label into the spelling used by this file.
-# Used by EdDSA-specific at_hash handling. Input: curve name. Output:
-# normalized curve or NULL.
+#' Internal: check for one finite numeric scalar
+#'
+#' Used by `validate_id_token()` to keep repeated numeric-claim checks concise
+#' while preserving a single shared definition of "single finite number".
+#'
+#' @param x Candidate value.
+#' @return `TRUE` when `x` is numeric, length 1, finite, and not `NA`;
+#'   otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+jwt_is_single_finite_number <- function(x) {
+  is.numeric(x) && length(x) == 1 && is.finite(x) && !is.na(x)
+}
+
+## 1.3 EdDSA and at_hash helpers ------------------------------------------
+
+#' Normalize an EdDSA curve label
+#'
+#' Used by `resolve_verified_eddsa_curve()` and EdDSA `at_hash` helpers so
+#' curve-dependent digest rules operate on one canonical label.
+#'
+#' @param eddsa_curve Curve name to normalize.
+#' @return Normalized curve label, or `NULL` when the curve is unsupported.
+#' @keywords internal
+#' @noRd
 canonicalize_eddsa_curve <- function(eddsa_curve) {
   if (
     !is.character(eddsa_curve) ||
@@ -517,10 +540,17 @@ canonicalize_eddsa_curve <- function(eddsa_curve) {
   NULL
 }
 
-# Resolve the verified EdDSA curve from the JWK or openssl key that verified
-# the token.
-# Used by EdDSA at_hash validation. Input: optional JWK and key. Output:
-# normalized curve or NULL.
+#' Resolve the verified EdDSA curve
+#'
+#' Used by `validate_id_token()` before EdDSA `at_hash` validation needs the
+#' concrete verified curve rather than the generic `EdDSA` algorithm label.
+#'
+#' @param jwk Optional JWK used for verification.
+#' @param key Optional openssl key object used for verification.
+#' @return Normalized curve label, or `NULL` when the verified curve cannot be
+#'   determined.
+#' @keywords internal
+#' @noRd
 resolve_verified_eddsa_curve <- function(jwk = NULL, key = NULL) {
   # Prefer the JWK curve because it is explicit and survives key conversion.
   if (is.list(jwk)) {

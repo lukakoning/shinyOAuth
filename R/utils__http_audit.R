@@ -16,9 +16,16 @@
 # Control via: options(shinyOAuth.audit_redact_http = FALSE) to disable.
 #
 # See sanitize_http_summary() for the redaction logic.
-# Build a compact HTTP summary that is safe to include in audit events.
-# Used by Shiny context capture and event helpers. Input: request-like object.
-# Output: sanitized summary list or NULL.
+#' Build a safe HTTP audit summary
+#'
+#' Creates a compact request summary that is suitable for audit events, with
+#' sensitive query parameters and headers sanitized by default. Used when audit
+#' and telemetry events need browser request context.
+#'
+#' @param req Request-like object.
+#' @return Sanitized summary list, or `NULL`.
+#' @keywords internal
+#' @noRd
 build_http_summary <- function(req) {
   if (is.null(req)) {
     return(NULL)
@@ -92,16 +99,15 @@ build_http_summary <- function(req) {
   }
 }
 
-# Redact sensitive query and header values in an HTTP summary.
-# Used by build_http_summary(). Input: summary list. Output: sanitized summary
-# list.
-# Internal: redact sensitive data from HTTP summary for safe audit logging
-#
-# This function removes or redacts:
-# - OAuth-related query params: code, state, access_token, refresh_token, id_token
-# - Sensitive headers: cookie, authorization, set_cookie, x_* (proxy headers)
-#
-# Called automatically by build_http_summary() to make audit logging safe by default.
+#' Sanitize an HTTP audit summary
+#'
+#' Removes or redacts sensitive query parameters and headers before the summary
+#' is logged or emitted in audit events. Used by `build_http_summary()`.
+#'
+#' @param summary HTTP summary list.
+#' @return Sanitized summary list.
+#' @keywords internal
+#' @noRd
 sanitize_http_summary <- function(summary) {
   if (is.null(summary)) {
     return(NULL)
@@ -120,11 +126,14 @@ sanitize_http_summary <- function(summary) {
   summary
 }
 
-# Redact sensitive OAuth parameters from a raw query string.
-# Used by sanitize_http_summary(). Input: query string. Output: redacted query
-# string.
-# Internal: redact sensitive OAuth params from a query string
-# Returns the redacted query string
+#' Redact sensitive OAuth query parameters
+#'
+#' Used by `sanitize_http_summary()`.
+#'
+#' @param qs Raw query string.
+#' @return Redacted query string.
+#' @keywords internal
+#' @noRd
 redact_query_string <- function(qs) {
   if (is.null(qs) || !nzchar(qs)) {
     return(qs)
@@ -190,11 +199,14 @@ redact_query_string <- function(qs) {
   paste(parts, collapse = "&")
 }
 
-# Remove or redact sensitive headers before audit logging.
-# Used by sanitize_http_summary(). Input: named headers list. Output: sanitized
-# headers list.
-# Internal: redact sensitive headers from a headers list
-# Returns the redacted headers list
+#' Redact sensitive HTTP headers
+#'
+#' Used by `sanitize_http_summary()`.
+#'
+#' @param hdrs Named headers list.
+#' @return Sanitized headers list.
+#' @keywords internal
+#' @noRd
 redact_headers <- function(hdrs) {
   if (is.null(hdrs) || length(hdrs) == 0) {
     return(hdrs)

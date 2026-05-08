@@ -16,7 +16,8 @@
 #' backslash (`\`).
 #'
 #' @param scopes Character vector of scope values
-#'
+#' @return Invisibly returns `TRUE` when all scopes are valid. Otherwise this
+#'   function raises an input error.
 #' @keywords internal
 #' @noRd
 validate_scopes <- function(scopes) {
@@ -79,7 +80,7 @@ validate_scopes <- function(scopes) {
 #' This helper makes internal comparisons robust by splitting on whitespace.
 #'
 #' @param scopes NULL, character, or list-like scope values
-#'
+#' @return Character vector of individual scope tokens.
 #' @keywords internal
 #' @noRd
 as_scope_tokens <- function(scopes) {
@@ -102,9 +103,6 @@ as_scope_tokens <- function(scopes) {
   tokens
 }
 
-# Ensure `openid` is present when the provider is using OpenID Connect.
-# Used before authorization requests are built. Input: scope tokens and
-# provider object. Output: scope tokens, possibly with `openid` prepended.
 #' Ensure openid scope for OIDC providers
 #'
 #' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the
@@ -159,9 +157,6 @@ ensure_openid_scope <- function(scopes, provider) {
 #'
 #' @keywords internal
 #' @noRd
-# Resolve the effective requested scopes for one OAuth client.
-# Used when login and validation code need the final scope set. Input: client
-# object. Output: character vector of scope tokens.
 effective_client_scopes <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 

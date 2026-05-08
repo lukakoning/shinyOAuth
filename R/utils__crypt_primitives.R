@@ -9,6 +9,10 @@
 
 #' Convert raw vector to lowercase hex string (cachem-safe)
 #'
+#' Used when helpers need a cache-safe or log-safe hexadecimal encoding.
+#'
+#' @param r Raw vector to convert.
+#' @return Lowercase hexadecimal string.
 #' @keywords internal
 #' @noRd
 raw_to_hex_lower <- function(r) {
@@ -21,34 +25,45 @@ raw_to_hex_lower <- function(r) {
   paste0(as.character(r), collapse = "")
 }
 
+#' Internal: normalize one compare input to raw bytes
+#'
+#' Used by `constant_time_compare()` before both values are passed through the
+#' same blinded hashing path.
+#'
+#' @param x Raw bytes or a scalar character value.
+#' @return Raw bytes for supported inputs, otherwise `NULL`.
+#' @keywords internal
+#' @noRd
+constant_time_compare_normalize_input <- function(x) {
+  if (is.raw(x) && !is.null(x)) {
+    return(x)
+  }
+
+  if (is.character(x) && length(x) == 1L && !is.na(x)) {
+    return(charToRaw(as.character(x)))
+  }
+
+  NULL
+}
+
 # Timing-safe equality --------------------------------------------------------
 
 #' Internal: compare two values using a timing-blinded path
 #'
 #' Character inputs are converted to raw bytes; invalid inputs are treated as a
 #' mismatch but still pass through the same SHA-256 and accumulator path so the
-#' caller does not branch on type- or length-based timing differences.
+#' caller does not branch on type- or length-based timing differences. Used by
+#' token, JWT, and state-validation helpers.
 #'
+#' @param a First value to compare.
+#' @param b Second value to compare.
+#' @return `TRUE` when the values compare equal after normalization; otherwise
+#'   `FALSE`.
 #' @keywords internal
 #' @noRd
 constant_time_compare <- function(a, b) {
-  # Normalize one input into raw bytes before the blinded comparison path.
-  # Used only by constant_time_compare(). Input: character or raw value.
-  # Output: raw vector or NULL.
-  normalize_input <- function(x) {
-    if (is.raw(x) && !is.null(x)) {
-      return(x)
-    }
-
-    if (is.character(x) && length(x) == 1L && !is.na(x)) {
-      return(charToRaw(as.character(x)))
-    }
-
-    NULL
-  }
-
-  a_raw <- normalize_input(a)
-  b_raw <- normalize_input(b)
+  a_raw <- constant_time_compare_normalize_input(a)
+  b_raw <- constant_time_compare_normalize_input(b)
   if (is.null(a_raw) || is.null(b_raw)) {
     # Treat invalid inputs as a mismatch but keep the blinded comparison path.
     a_raw <- raw()

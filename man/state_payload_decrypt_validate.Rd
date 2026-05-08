@@ -23,6 +23,7 @@ provider, issued_at) on success; otherwise throws an error via
 }
 \description{
 Internal utility that decrypts the encrypted \code{state} payload using the
-client's \code{state_key}, then validates freshness and client binding.
+client's \code{state_key}, then validates freshness and client binding. Used by
+callback handling before the code exchange continues.
 }
 \keyword{internal}

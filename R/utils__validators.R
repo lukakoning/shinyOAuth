@@ -9,6 +9,10 @@
 ## 1.1 Common list, string, and query checks ------------------------------
 
 #' Internal: drop NULL/NA values from a list (for query building)
+#'
+#' @param x List-like input to filter.
+#' @return `x` with `NULL` values and scalar `NA` entries removed, or `x`
+#'   unchanged when it is not a list.
 #' @keywords internal
 #' @noRd
 compact_list <- function(x) {
@@ -26,6 +30,10 @@ compact_list <- function(x) {
 
 #' Internal: check if input is a non-empty string
 #'
+#' @param x Value to check.
+#' @param min_char Minimum allowed character count.
+#' @return `TRUE` when `x` is a single non-empty string meeting the minimum
+#'   length; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 is_valid_string <- function(x, min_char = 1) {
@@ -41,6 +49,8 @@ is_valid_string <- function(x, min_char = 1) {
 #' Accepts only RFC 6265-safe path values for explicit cookie Path attributes:
 #' must start with `/` and must not contain semicolons or control characters.
 #'
+#' @param x Cookie path candidate.
+#' @return `TRUE` when `x` is a valid cookie-path value; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 is_valid_cookie_path <- function(x) {
@@ -60,6 +70,12 @@ is_valid_cookie_path <- function(x) {
 #' This helper is used for values that originate from URL query strings.
 #' It is intentionally strict about scalar-ness to avoid vector amplification.
 #'
+#' @param name Query-parameter name used in error messages.
+#' @param value Query-parameter value to validate.
+#' @param max_bytes Maximum allowed size in bytes.
+#' @param allow_empty Whether empty strings are allowed.
+#' @return Invisibly returns `NULL` on success. Otherwise this function raises a
+#'   state error.
 #' @keywords internal
 #' @noRd
 validate_untrusted_query_param <- function(
@@ -125,6 +141,10 @@ validate_untrusted_query_param <- function(
 #' This helper guards against extremely large callback query strings causing
 #' substantial allocation during parsing.
 #'
+#' @param query_string Raw callback query string.
+#' @param max_bytes Maximum allowed size in bytes.
+#' @return Invisibly returns `NULL` on success. Otherwise this function raises a
+#'   state error.
 #' @keywords internal
 #' @noRd
 validate_untrusted_query_string <- function(query_string, max_bytes) {
@@ -176,10 +196,12 @@ validate_untrusted_query_string <- function(query_string, max_bytes) {
   invisible(NULL)
 }
 
-# Safely coerce one value to a scalar character string or NA.
-# Used by request and Shiny context helpers. Input: any value. Output: scalar
-# character or NA.
-# Internal: safely coerce to scalar character or NA
+#' Safely coerce one value to a scalar character string
+#'
+#' @param x Value to coerce.
+#' @return Scalar character value, or `NA_character_`.
+#' @keywords internal
+#' @noRd
 .scalar_chr <- function(x) {
   if (is.null(x) || length(x) == 0) {
     return(NA_character_)

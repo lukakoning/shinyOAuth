@@ -240,9 +240,23 @@ prepare_call <- function(
 
 ## 1.2 Request construction helpers ---------------------------------------
 
-# Build the parameters sent to the provider's authorization endpoint.
-# Used by build_auth_url() for plain redirects, signed request objects, and PAR.
-# Input: client settings plus sealed state, scopes, PKCE values, and nonce. Output: a named list of request parameters.
+#' Build authorization request parameters
+#'
+#' Creates the parameter set sent to the provider's authorization endpoint for
+#' plain redirects, signed request objects, and PAR flows. Used by
+#' `build_auth_url()` once state, scope, PKCE, and nonce inputs are ready.
+#'
+#' @param oauth_client [OAuthClient] configuration.
+#' @param payload Sealed state payload sent as the `state` parameter.
+#' @param scopes Requested scopes, defaulting to the client's effective scopes
+#'   when omitted.
+#' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
+#' @param pkce_method PKCE method when PKCE is enabled.
+#' @param nonce OIDC nonce when the provider requires one.
+#' @return A named list of authorization parameters with `NULL` entries
+#'   removed.
+#' @keywords internal
+#' @noRd
 build_authorization_params <- function(
   oauth_client,
   payload,
@@ -396,9 +410,19 @@ build_authorization_params <- function(
   compact_list(params)
 }
 
-# Send a pushed authorization request when the provider requires or supports it.
-# Used by build_auth_url() to replace a long browser URL with a short request_uri.
-# Input: OAuthClient, prepared parameters, and optional Shiny context. Output: list(request_uri, expires_in).
+#' Send a pushed authorization request
+#'
+#' Posts the prepared authorization parameters to the provider's PAR endpoint
+#' and validates the returned `request_uri` payload. Used by `build_auth_url()`
+#' when the provider requires or supports PAR.
+#'
+#' @param client [OAuthClient] used to resolve endpoints and client
+#'   authentication.
+#' @param params Prepared authorization parameters to POST.
+#' @param shiny_session Optional Shiny session context for telemetry.
+#' @return A list with `request_uri` and `expires_in`.
+#' @keywords internal
+#' @noRd
 push_authorization_request <- function(client, params, shiny_session = NULL) {
   endpoint <- resolve_provider_endpoint_url(
     client@provider,
@@ -545,9 +569,21 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
   )
 }
 
-# Build the final browser redirect URL for the login step.
-# Used by prepare_call() after state/PKCE values are ready.
-# Input: client plus sealed payload, scopes, PKCE values, and nonce. Output: one URL string for the browser.
+#' Build the browser authorization URL
+#'
+#' Chooses between plain query parameters, signed request objects, and PAR, then
+#' returns the final browser redirect URL for the login step. Used by
+#' [prepare_call()] and module login helpers before the browser is redirected.
+#'
+#' @param oauth_client [OAuthClient] configuration.
+#' @param payload Sealed state payload.
+#' @param scopes Requested scopes.
+#' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
+#' @param pkce_method PKCE method when PKCE is enabled.
+#' @param nonce OIDC nonce when required.
+#' @return A length-1 authorization URL string.
+#' @keywords internal
+#' @noRd
 build_auth_url <- function(
   oauth_client,
   payload,
@@ -629,9 +665,17 @@ build_auth_url <- function(
   url_append_query_params(oauth_client@provider@auth_url, params)
 }
 
-# Recover the parent tracing context from the sealed login state.
-# Used by handle_callback() and oauth_module_server() so callback spans link
-# back to the earlier login request. Input: client and encrypted state. Output: list(trace_id, parent).
+#' Recover callback parent tracing context
+#'
+#' Attempts to recover tracing metadata from the sealed login state so callback
+#' spans can attach to the original login request. Used by [handle_callback()]
+#' and [oauth_module_server()] when callback work resumes later in the flow.
+#'
+#' @param oauth_client [OAuthClient] used to validate and decrypt state.
+#' @param encrypted_payload Encrypted callback state string.
+#' @return A list with `trace_id` and `parent` entries.
+#' @keywords internal
+#' @noRd
 otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -827,10 +871,25 @@ handle_callback <- function(
   )
 }
 
-# Finish a callback using already-validated state inputs when they are available.
-# Used by handle_callback() directly and by oauth_module_server() async flows
-# after the main thread has already decrypted state and consumed the state store.
-# Input: callback values plus optional decrypted payload/state-store values. Output: an OAuthToken or a typed error.
+#' Finish callback processing from validated inputs
+#'
+#' Completes callback handling once callback values are available, optionally
+#' reusing pre-decrypted state and already-consumed state-store values from the
+#' main thread. Used by [handle_callback()] directly and by async module flows
+#' after the main process has already consumed state.
+#'
+#' @param oauth_client [OAuthClient] configuration.
+#' @param code Authorization code returned by the provider.
+#' @param payload Encrypted state payload returned by the provider.
+#' @param browser_token Browser-bound session token that must match stored
+#'   state.
+#' @param decrypted_payload Optional pre-decrypted state payload.
+#' @param state_store_values Optional pre-fetched state-store record.
+#' @param shiny_session Optional Shiny session context.
+#' @return An [OAuthToken] object on success. Otherwise this function raises a
+#'   typed error.
+#' @keywords internal
+#' @noRd
 handle_callback_internal <- function(
   oauth_client,
   code,
@@ -1508,10 +1567,19 @@ handle_callback_internal <- function(
 
 ## 2.2 Callback context and issuer guards ---------------------------------
 
-# Check whether the callback issuer matches the configured provider issuer.
-# Used by handle_callback() and oauth_module_server() before any token exchange.
-# Input: OAuthClient and optional iss query value.
-# Output: invisible iss on success, otherwise a typed error.
+#' Enforce the callback issuer
+#'
+#' Checks the callback `iss` value against the configured provider issuer when
+#' issuer enforcement is enabled. Used by [handle_callback()] and
+#' [oauth_module_server()] before any token exchange starts.
+#'
+#' @param oauth_client [OAuthClient] carrying the enforcement flag and provider
+#'   issuer.
+#' @param iss Optional `iss` value from the callback query.
+#' @return Invisibly returns `iss` on success. Otherwise this function raises a
+#'   typed error.
+#' @keywords internal
+#' @noRd
 enforce_callback_issuer <- function(
   oauth_client,
   iss = NULL
@@ -1576,10 +1644,19 @@ enforce_callback_issuer <- function(
 
 ## 3.1 Swap code for token set -------------------------------------------
 
-# Exchange the authorization code for the first token response.
-# Used by handle_callback_internal() after state and browser checks succeed.
-# Input: client, authorization code, PKCE verifier, and optional Shiny context.
-# Output: parsed token response list.
+#' Exchange the authorization code for tokens
+#'
+#' Performs the first token request after callback validation succeeds. Used by
+#' `handle_callback_internal()` once state, browser, and issuer checks pass.
+#'
+#' @param client [OAuthClient] used for endpoint resolution and client
+#'   authentication.
+#' @param code Authorization code to exchange.
+#' @param code_verifier PKCE verifier, when PKCE is enabled.
+#' @param shiny_session Optional Shiny session context.
+#' @return A parsed token response list.
+#' @keywords internal
+#' @noRd
 swap_code_for_token_set <- function(
   client,
   code,
@@ -1736,10 +1813,25 @@ swap_code_for_token_set <- function(
 
 ## 3.2 Verify token set --------------------------------------------------------
 
-# Check the returned token response before turning it into an OAuthToken.
-# Used by handle_callback_internal() and refresh_token() to verify scopes,
-# token type, ID token rules, and related claims. Input: client plus token response data.
-# Output: validated token_set list.
+#' Validate a token response
+#'
+#' Checks the token response before it is converted to an [OAuthToken],
+#' including token type, scope reconciliation, ID token validation, requested
+#' claims, and refresh-specific continuity checks. Used by
+#' `handle_callback_internal()` and [refresh_token()].
+#'
+#' @param client [OAuthClient] and provider policy source.
+#' @param token_set Token response list to validate.
+#' @param nonce Expected nonce for ID token validation.
+#' @param is_refresh Whether `token_set` came from a refresh flow.
+#' @param original_id_token Previous ID token used for refresh continuity
+#'   checks.
+#' @param requested_scopes Scopes originally requested, defaulting to the
+#'   effective client scopes.
+#' @param shiny_session Optional Shiny session context.
+#' @return The validated `token_set` list.
+#' @keywords internal
+#' @noRd
 verify_token_set <- function(
   client,
   token_set,
@@ -1908,89 +2000,6 @@ verify_token_set <- function(
       # disabled (id_token_validation = FALSE).
       expected_sub <- NULL
       original_payload <- NULL
-      compare_refresh_id_token_continuity <- function(
-        new_payload,
-        original_payload
-      ) {
-        original_iss <- original_payload$iss
-        original_aud <- original_payload$aud
-        original_auth_time <- original_payload$auth_time
-        original_nonce <- original_payload$nonce %||% NULL
-        original_azp <- original_payload$azp %||% NULL
-
-        if (
-          is_valid_string(original_iss) &&
-            !identical(new_payload$iss %||% "", original_iss)
-        ) {
-          err_id_token(
-            "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
-          )
-        }
-        if (
-          !is.null(original_aud) &&
-            !identical(
-              sort(as.character(new_payload$aud %||% character())),
-              sort(as.character(original_aud))
-            )
-        ) {
-          err_id_token(
-            "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
-          )
-        }
-        if (!is.null(original_auth_time)) {
-          original_auth_time_val <- suppressWarnings(as.numeric(
-            original_auth_time
-          ))
-          if (
-            length(original_auth_time) != 1L ||
-              !is.numeric(original_auth_time_val) ||
-              !is.finite(original_auth_time_val)
-          ) {
-            err_id_token(
-              "Original ID token auth_time claim must be a single finite number to verify refresh continuity (OIDC 12.2)"
-            )
-          }
-          if (is.null(new_payload$auth_time)) {
-            err_id_token(
-              "Refresh returned an ID token missing auth_time from the original authentication (OIDC 12.2)"
-            )
-          }
-
-          new_auth_time_val <- suppressWarnings(as.numeric(
-            new_payload$auth_time
-          ))
-          if (
-            length(new_payload$auth_time) != 1L ||
-              !is.numeric(new_auth_time_val) ||
-              !is.finite(new_auth_time_val)
-          ) {
-            err_id_token(
-              "Refreshed ID token auth_time claim must be a single finite number (OIDC 12.2)"
-            )
-          }
-          if (!identical(new_auth_time_val, original_auth_time_val)) {
-            err_id_token(
-              "Refresh returned an ID token with auth_time that does not match the original (OIDC 12.2)"
-            )
-          }
-        }
-        if (
-          !is.null(new_payload$nonce) &&
-            !identical(new_payload$nonce, original_nonce)
-        ) {
-          err_id_token(
-            "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
-          )
-        }
-        if (
-          (!is.null(original_azp) || !is.null(new_payload$azp)) &&
-            !identical(new_payload$azp %||% NULL, original_azp)
-        ) {
-          err_id_token(
-            "Refresh returned an ID token with azp that does not match the original (OIDC 12.2)"
-          )
-        }
-      }
       should_validate_id_token <- isTRUE(id_token_present) &&
         (isTRUE(client@provider@id_token_validation) ||
           isTRUE(client@provider@use_nonce) ||
@@ -2250,9 +2259,18 @@ verify_token_set <- function(
   )
 }
 
-# Enforce the provider's allowed token_type policy.
-# Used by verify_token_set() so later code can trust how the access token must be used.
-# Input: client and token response list. Output: invisible TRUE or a token error.
+#' Enforce the provider token type allowlist
+#'
+#' Validates the returned `token_type` against the provider policy so later code
+#' can trust how the access token must be used. Used by `verify_token_set()` as
+#' the token response is normalized.
+#'
+#' @param client [OAuthClient] whose provider defines allowed token types.
+#' @param token_set Token response list containing `token_type`.
+#' @return Invisibly returns `TRUE` when the token type policy passes.
+#'   Otherwise this function raises a token error.
+#' @keywords internal
+#' @noRd
 verify_token_type_allowlist <- function(client, token_set) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -2320,4 +2338,101 @@ verify_token_type_allowlist <- function(client, token_set) {
   }
 
   invisible(TRUE)
+}
+
+# 4 Refresh continuity helpers --------------------------------------------
+
+#' Internal: compare original and refreshed ID token continuity claims
+#'
+#' Used by `swap_code_for_token_set()` during refresh handling to enforce OIDC
+#' Core section 12.2 continuity checks for `iss`, `aud`, `auth_time`, `nonce`,
+#' and `azp` when a provider returns a refreshed ID token.
+#'
+#' @param new_payload Parsed refreshed ID token payload.
+#' @param original_payload Parsed original ID token payload.
+#' @return No return value; raises `err_id_token()` on any continuity mismatch.
+#' @keywords internal
+#' @noRd
+compare_refresh_id_token_continuity <- function(
+  new_payload,
+  original_payload
+) {
+  original_iss <- original_payload$iss
+  original_aud <- original_payload$aud
+  original_auth_time <- original_payload$auth_time
+  original_nonce <- original_payload$nonce %||% NULL
+  original_azp <- original_payload$azp %||% NULL
+
+  if (
+    is_valid_string(original_iss) &&
+      !identical(new_payload$iss %||% "", original_iss)
+  ) {
+    err_id_token(
+      "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
+    )
+  }
+  if (
+    !is.null(original_aud) &&
+      !identical(
+        sort(as.character(new_payload$aud %||% character())),
+        sort(as.character(original_aud))
+      )
+  ) {
+    err_id_token(
+      "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
+    )
+  }
+  if (!is.null(original_auth_time)) {
+    original_auth_time_val <- suppressWarnings(as.numeric(
+      original_auth_time
+    ))
+    if (
+      length(original_auth_time) != 1L ||
+        !is.numeric(original_auth_time_val) ||
+        !is.finite(original_auth_time_val)
+    ) {
+      err_id_token(
+        "Original ID token auth_time claim must be a single finite number to verify refresh continuity (OIDC 12.2)"
+      )
+    }
+    if (is.null(new_payload$auth_time)) {
+      err_id_token(
+        "Refresh returned an ID token missing auth_time from the original authentication (OIDC 12.2)"
+      )
+    }
+
+    new_auth_time_val <- suppressWarnings(as.numeric(
+      new_payload$auth_time
+    ))
+    if (
+      length(new_payload$auth_time) != 1L ||
+        !is.numeric(new_auth_time_val) ||
+        !is.finite(new_auth_time_val)
+    ) {
+      err_id_token(
+        "Refreshed ID token auth_time claim must be a single finite number (OIDC 12.2)"
+      )
+    }
+    if (!identical(new_auth_time_val, original_auth_time_val)) {
+      err_id_token(
+        "Refresh returned an ID token with auth_time that does not match the original (OIDC 12.2)"
+      )
+    }
+  }
+  if (
+    !is.null(new_payload$nonce) &&
+      !identical(new_payload$nonce, original_nonce)
+  ) {
+    err_id_token(
+      "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
+    )
+  }
+  if (
+    (!is.null(original_azp) || !is.null(new_payload$azp)) &&
+      !identical(new_payload$azp %||% NULL, original_azp)
+  ) {
+    err_id_token(
+      "Refresh returned an ID token with azp that does not match the original (OIDC 12.2)"
+    )
+  }
 }

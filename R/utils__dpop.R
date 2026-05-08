@@ -9,6 +9,11 @@
 
 #' Internal DPoP helpers
 #'
+#' Used when a client has configured DPoP proof-of-possession support.
+#'
+#' @param client OAuth client to inspect.
+#' @return `TRUE` when the client has a configured DPoP private key; otherwise
+#'   `FALSE`.
 #' @keywords internal
 #' @noRd
 client_has_dpop <- function(client) {
@@ -16,6 +21,13 @@ client_has_dpop <- function(client) {
   !is.null(client@dpop_private_key)
 }
 
+#' Detect a DPoP token type
+#'
+#' Used after token responses are parsed.
+#'
+#' @param token_type Token type value returned by the provider.
+#' @return `TRUE` when `token_type` denotes a DPoP-bound access token;
+#'   otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 is_dpop_token_type <- function(token_type) {
@@ -25,6 +37,12 @@ is_dpop_token_type <- function(token_type) {
   identical(tolower(token_type[[1]] %||% ""), "dpop")
 }
 
+#' Resolve the configured DPoP private key
+#'
+#' Used before DPoP proofs are signed.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @return Normalized private key object.
 #' @keywords internal
 #' @noRd
 resolve_dpop_private_key <- function(client) {
@@ -40,6 +58,12 @@ resolve_dpop_private_key <- function(client) {
   )
 }
 
+#' Resolve the DPoP signing algorithm
+#'
+#' Used by DPoP proof builders.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @return Resolved JOSE algorithm string.
 #' @keywords internal
 #' @noRd
 resolve_dpop_alg <- function(client) {
@@ -57,6 +81,12 @@ resolve_dpop_alg <- function(client) {
   choose_default_alg_for_private_key(resolve_dpop_private_key(client))
 }
 
+#' Build the public JWK used in a DPoP proof header
+#'
+#' Used when constructing a DPoP proof JWT header.
+#'
+#' @param key Private key used for DPoP signing.
+#' @return Public JWK list suitable for the DPoP header.
 #' @keywords internal
 #' @noRd
 dpop_public_jwk <- function(key) {
@@ -91,6 +121,12 @@ dpop_public_jwk <- function(key) {
   jwk
 }
 
+#' Normalize a DPoP target URI
+#'
+#' Used when DPoP proof claims are assembled.
+#'
+#' @param url Request URL to normalize.
+#' @return Absolute URL string without query string or fragment.
 #' @keywords internal
 #' @noRd
 dpop_target_uri <- function(url) {
@@ -108,6 +144,12 @@ dpop_target_uri <- function(url) {
   httr2::url_build(parsed)
 }
 
+#' Compute the DPoP access-token hash
+#'
+#' Used when a DPoP proof binds an access token via `ath`.
+#'
+#' @param access_token Access-token string.
+#' @return Base64url-encoded SHA-256 hash of the access token.
 #' @keywords internal
 #' @noRd
 dpop_access_token_hash <- function(access_token) {
@@ -125,6 +167,16 @@ dpop_access_token_hash <- function(access_token) {
 
 ## 1.2 Proof building and retry helpers -----------------------------------
 
+#' Build a DPoP proof JWT
+#'
+#' Used before DPoP-protected requests are sent.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @param method HTTP method.
+#' @param url Target request URL.
+#' @param access_token Optional access token bound into the proof.
+#' @param nonce Optional nonce supplied by the server.
+#' @return Signed DPoP proof JWT string.
 #' @keywords internal
 #' @noRd
 build_dpop_proof <- function(
@@ -196,6 +248,15 @@ build_dpop_proof <- function(
   proof
 }
 
+#' Add a DPoP proof header to a request
+#'
+#' Used by outbound request builders when DPoP is enabled.
+#'
+#' @param req httr2 request object.
+#' @param client OAuth client carrying DPoP configuration.
+#' @param access_token Optional access token bound into the proof.
+#' @param nonce Optional nonce supplied by the server.
+#' @return Updated request object.
 #' @keywords internal
 #' @noRd
 req_add_dpop_proof <- function(
@@ -226,9 +287,13 @@ req_add_dpop_proof <- function(
   )
 }
 
-# Read a DPoP nonce from a response header.
-# Used when handling nonce challenges. Input: httr2 response. Output: nonce or
-# NA.
+#' Read a DPoP nonce from a response
+#'
+#' Used by DPoP retry helpers.
+#'
+#' @param resp httr2 response object.
+#' @return DPoP nonce string, or `NA_character_` when no usable nonce is
+#'   present.
 #' @keywords internal
 #' @noRd
 resp_get_dpop_nonce <- function(resp) {
@@ -239,8 +304,13 @@ resp_get_dpop_nonce <- function(resp) {
   as.character(nonce)[1]
 }
 
-# Detect whether a response is asking for a fresh DPoP nonce.
-# Used by req_with_dpop_retry(). Input: httr2 response. Output: TRUE or FALSE.
+#' Detect a DPoP nonce challenge
+#'
+#' Used after DPoP-protected requests return 4xx challenges.
+#'
+#' @param resp httr2 response object.
+#' @return `TRUE` when the response challenges the caller to send a fresh DPoP
+#'   nonce; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 resp_is_dpop_nonce_challenge <- function(resp) {
@@ -278,9 +348,15 @@ resp_is_dpop_nonce_challenge <- function(resp) {
     )
 }
 
-# Retry one DPoP-protected request once with a fresh nonce when challenged.
-# Used by token and API request helpers. Input: request, client, optional access
-# token, and idempotence flag. Output: httr2 response.
+#' Retry a DPoP-protected request once with a fresh nonce
+#'
+#' Used by outbound request helpers after a DPoP nonce challenge.
+#'
+#' @param req httr2 request object.
+#' @param client OAuth client carrying DPoP configuration.
+#' @param access_token Optional access token used when building the DPoP proof.
+#' @param idempotent Whether the request may be retried safely.
+#' @return httr2 response object.
 #' @keywords internal
 #' @noRd
 req_with_dpop_retry <- function(

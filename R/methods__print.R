@@ -35,11 +35,19 @@
   paste0("<", classes[[1]], ">")
 }
 
-# Format one field for console output.
-# Used by the shared object formatter. Input: one value plus redaction and
-# preview settings. Output: one short display string.
-# Format one field for console output.
-# Secret fields keep only a safe summary or a short preview.
+#' Format one field for console output
+#'
+#' Redacts secret values and converts nested objects or vectors into short,
+#' readable summaries for console display. Used by the shared object formatter.
+#'
+#' @param x Value to render.
+#' @param secret Whether `x` should be redacted.
+#' @param max_items Maximum number of vector or list entries to preview.
+#' @param preview_chars Number of leading and trailing characters to keep in
+#'   redacted scalar strings.
+#' @return A length-1 display string.
+#' @keywords internal
+#' @noRd
 .shinyoauth_format_field <- function(
   x,
   secret = FALSE,
@@ -202,11 +210,17 @@
   .shinyoauth_object_label(x)
 }
 
-# Build the aligned multi-line text representation shared by shinyOAuth
-# objects.
-# Used by format() methods. Input: class name, visible fields, and the list of
-# secret field names. Output: a character vector of display lines.
-# Build the aligned multi-line output used by both S7 classes.
+#' Format a shinyOAuth object for display
+#'
+#' Builds the aligned multi-line display shared by shinyOAuth console methods.
+#' Used by the S7 `format()` methods in this file.
+#'
+#' @param class_name Name shown in the display header.
+#' @param fields Named list of visible fields to render.
+#' @param secret_fields Character vector naming fields that should be redacted.
+#' @return A character vector of display lines.
+#' @keywords internal
+#' @noRd
 .shinyoauth_format_object <- function(
   class_name,
   fields,
@@ -241,10 +255,16 @@
   )
 }
 
-# Print an object by delegating to the matching format() method.
-# Used by print() methods. Input: object plus extra print args. Output:
-# invisible original object.
-# Keep print() thin so format() stays the single source of display logic.
+#' Print a shinyOAuth object via its format method
+#'
+#' Used by the S7 `print()` methods so formatting stays centralized in one
+#' place.
+#'
+#' @param x Object to print.
+#' @param ... Additional arguments forwarded to [format()].
+#' @return Invisibly returns `x`.
+#' @keywords internal
+#' @noRd
 .shinyoauth_print_object <- function(x, ...) {
   cat(format(x, ...), sep = "\n")
   invisible(x)
@@ -254,9 +274,15 @@
 
 ## 2.1 OAuthToken methods --------------------------------------------------
 
-# Format an OAuthToken with redacted secrets and short summaries.
-# Used when OAuthToken objects are printed or formatted at the console.
-# Input: OAuthToken object. Output: character vector of display lines.
+#' Internal OAuthToken formatter
+#'
+#' Used when [OAuthToken] objects are formatted or printed at the console.
+#'
+#' @param x [OAuthToken] instance.
+#' @param ... Unused extra formatting arguments.
+#' @return A character vector of display lines.
+#' @keywords internal
+#' @noRd
 method(format, OAuthToken) <- function(x, ...) {
   # Keep the visible field list explicit so the redaction policy is obvious.
   .shinyoauth_format_object(
@@ -274,18 +300,30 @@ method(format, OAuthToken) <- function(x, ...) {
   )
 }
 
-# Print an OAuthToken using the shared formatter.
-# Used at the console. Input: OAuthToken object. Output: invisible original
-# object.
+#' Internal OAuthToken printer
+#'
+#' Used when [OAuthToken] objects are printed at the console.
+#'
+#' @param x [OAuthToken] instance.
+#' @param ... Additional arguments forwarded to the shared printer.
+#' @return Invisibly returns `x`.
+#' @keywords internal
+#' @noRd
 method(print, OAuthToken) <- function(x, ...) {
   .shinyoauth_print_object(x, ...)
 }
 
 ## 2.2 OAuthClient methods -------------------------------------------------
 
-# Format an OAuthClient with redacted secrets and short summaries.
-# Used when OAuthClient objects are printed or formatted at the console.
-# Input: OAuthClient object. Output: character vector of display lines.
+#' Internal OAuthClient formatter
+#'
+#' Used when [OAuthClient] objects are formatted or printed at the console.
+#'
+#' @param x [OAuthClient] instance.
+#' @param ... Unused extra formatting arguments.
+#' @return A character vector of display lines.
+#' @keywords internal
+#' @noRd
 method(format, OAuthClient) <- function(x, ...) {
   # Keep the visible field list explicit so the redaction policy is obvious.
   .shinyoauth_format_object(
@@ -325,9 +363,15 @@ method(format, OAuthClient) <- function(x, ...) {
   )
 }
 
-# Print an OAuthClient using the shared formatter.
-# Used at the console. Input: OAuthClient object. Output: invisible original
-# object.
+#' Internal OAuthClient printer
+#'
+#' Used when [OAuthClient] objects are printed at the console.
+#'
+#' @param x [OAuthClient] instance.
+#' @param ... Additional arguments forwarded to the shared printer.
+#' @return Invisibly returns `x`.
+#' @keywords internal
+#' @noRd
 method(print, OAuthClient) <- function(x, ...) {
   .shinyoauth_print_object(x, ...)
 }

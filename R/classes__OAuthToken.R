@@ -92,78 +92,102 @@ OAuthToken <- S7::new_class(
       }
     )
   ),
-  # Validate one token bundle before the rest of the package reads token
-  # fields, expiry times, or decoded ID token claims.
-  # Used every time an OAuthToken is created. Input: one token object.
-  # Output: NULL on success or one error string describing the first problem.
-  validator = function(self) {
-    # Validate one optional token field that may be NA or a non-empty string.
-    # Used only by the validator. Input: field value and field name. Output:
-    # NULL or an error string.
-    validate_optional_token_field <- function(value, field) {
-      if (!is.character(value) || length(value) != 1L) {
-        return(sprintf(
-          "OAuthToken: %s must be a scalar character value",
-          field
-        ))
-      }
-
-      if (!is.na(value) && !nzchar(trimws(value))) {
-        return(sprintf(
-          "OAuthToken: %s must be NA or a non-empty string",
-          field
-        ))
-      }
-
-      NULL
-    }
-
-    if (!(is.character(self@access_token) && length(self@access_token) == 1L)) {
-      return("OAuthToken: access_token must be a scalar character value")
-    }
-    if (is.na(self@access_token) || !nzchar(trimws(self@access_token))) {
-      return("OAuthToken: access_token must be a non-empty string")
-    }
-
-    for (field in c("token_type", "refresh_token", "id_token")) {
-      problem <- validate_optional_token_field(S7::prop(self, field), field)
-      if (!is.null(problem)) {
-        return(problem)
-      }
-    }
-
-    expires_at <- self@expires_at
-    if (!is.numeric(expires_at) || length(expires_at) != 1L) {
-      return(
-        "OAuthToken: expires_at must be a single numeric timestamp, NA, or Inf"
-      )
-    }
-    if (is.nan(expires_at) || identical(expires_at, -Inf)) {
-      return("OAuthToken: expires_at must be a finite timestamp, NA, or Inf")
-    }
-
-    thumbprint <- self@cnf[["x5t#S256"]] %||% NULL
-    if (!is.null(thumbprint) && !is_valid_string(thumbprint)) {
-      return(
-        "OAuthToken: cnf$x5t#S256 must be a non-empty string when supplied"
-      )
-    }
-
-    if (isTRUE(self@id_token_validated)) {
-      if (!(is_valid_string(self@id_token) && nzchar(trimws(self@id_token)))) {
-        return(
-          "OAuthToken: id_token_validated = TRUE requires a non-empty id_token"
-        )
-      }
-
-      parsed_claims <- try(parse_jwt_payload(self@id_token), silent = TRUE)
-      if (inherits(parsed_claims, "try-error") || !is.list(parsed_claims)) {
-        return(
-          "OAuthToken: id_token_validated = TRUE requires id_token to be a parseable JWT"
-        )
-      }
-    }
-
-    NULL
-  }
+  validator = function(self) oauth_token_validate(self)
 )
+
+# 2 Internal validation helpers --------------------------------------------
+
+## 2.1 Bundle validation ---------------------------------------------------
+
+#' Internal: validate one OAuthToken bundle
+#'
+#' Used by the [OAuthToken] S7 class before token fields, expiry times, and ID
+#' token claims are consumed elsewhere in the package.
+#'
+#' @param self [OAuthToken] instance under validation.
+#' @return `NULL` for a valid token bundle, otherwise a length-1 validation
+#'   error string.
+#' @keywords internal
+#' @noRd
+oauth_token_validate <- function(self) {
+  if (!(is.character(self@access_token) && length(self@access_token) == 1L)) {
+    return("OAuthToken: access_token must be a scalar character value")
+  }
+  if (is.na(self@access_token) || !nzchar(trimws(self@access_token))) {
+    return("OAuthToken: access_token must be a non-empty string")
+  }
+
+  for (field in c("token_type", "refresh_token", "id_token")) {
+    problem <- oauth_token_validate_optional_token_field(
+      S7::prop(self, field),
+      field
+    )
+    if (!is.null(problem)) {
+      return(problem)
+    }
+  }
+
+  expires_at <- self@expires_at
+  if (!is.numeric(expires_at) || length(expires_at) != 1L) {
+    return(
+      "OAuthToken: expires_at must be a single numeric timestamp, NA, or Inf"
+    )
+  }
+  if (is.nan(expires_at) || identical(expires_at, -Inf)) {
+    return("OAuthToken: expires_at must be a finite timestamp, NA, or Inf")
+  }
+
+  thumbprint <- self@cnf[["x5t#S256"]] %||% NULL
+  if (!is.null(thumbprint) && !is_valid_string(thumbprint)) {
+    return(
+      "OAuthToken: cnf$x5t#S256 must be a non-empty string when supplied"
+    )
+  }
+
+  if (isTRUE(self@id_token_validated)) {
+    if (!(is_valid_string(self@id_token) && nzchar(trimws(self@id_token)))) {
+      return(
+        "OAuthToken: id_token_validated = TRUE requires a non-empty id_token"
+      )
+    }
+
+    parsed_claims <- try(parse_jwt_payload(self@id_token), silent = TRUE)
+    if (inherits(parsed_claims, "try-error") || !is.list(parsed_claims)) {
+      return(
+        "OAuthToken: id_token_validated = TRUE requires id_token to be a parseable JWT"
+      )
+    }
+  }
+
+  NULL
+}
+
+## 2.2 Optional field validation ------------------------------------------
+
+#' Internal: validate one optional OAuth token string field
+#'
+#' Used by the [OAuthToken] validator for optional `token_type`,
+#' `refresh_token`, and `id_token` fields.
+#'
+#' @param value Field value to validate.
+#' @param field Field name used in the validation error.
+#' @return `NULL` on success, otherwise a length-1 validation error string.
+#' @keywords internal
+#' @noRd
+oauth_token_validate_optional_token_field <- function(value, field) {
+  if (!is.character(value) || length(value) != 1L) {
+    return(sprintf(
+      "OAuthToken: %s must be a scalar character value",
+      field
+    ))
+  }
+
+  if (!is.na(value) && !nzchar(trimws(value))) {
+    return(sprintf(
+      "OAuthToken: %s must be NA or a non-empty string",
+      field
+    ))
+  }
+
+  NULL
+}

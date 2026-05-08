@@ -9,12 +9,13 @@
 
 ## 1.1 Build request URLs --------------------------------------------------
 
-# Append query parameters to a URL while preserving fragments and repeated
-# parameter names.
-# Used by authorization and request builders. Input: URL string and named
-# params list. Output: updated URL string.
 #' Internal: append query params to a URL while preserving repeated keys
 #'
+#' Used by authorization and outbound request builders.
+#'
+#' @param url URL string.
+#' @param params Named parameter list.
+#' @return Updated URL string.
 #' @keywords internal
 #' @noRd
 url_append_query_params <- function(url, params) {
@@ -54,9 +55,15 @@ url_append_query_params <- function(url, params) {
 
 ## 1.2 Normalize and validate issuer or endpoint URLs ---------------------
 
-# Normalize an issuer URL into a stable form for comparisons.
-# Used by discovery issuer validation. Input: URL string plus label for error
-# messages. Output: normalized issuer URL string.
+#' Normalize an issuer URL
+#'
+#' Used by discovery issuer validation and related issuer comparisons.
+#'
+#' @param url URL string to normalize.
+#' @param label Human-readable label used in error messages.
+#' @return Normalized issuer URL string.
+#' @keywords internal
+#' @noRd
 normalize_issuer_url <- function(url, label = "issuer") {
   parsed <- try(httr2::url_parse(url), silent = TRUE)
 
@@ -111,7 +118,12 @@ normalize_issuer_url <- function(url, label = "issuer") {
 #' - "url": require full issuer URL match after trailing-slash normalization
 #' - "host": require scheme+host match only (explicit opt-out)
 #' - "none": do not validate issuer consistency
+#' Used after OIDC discovery fetches issuer metadata.
 #'
+#' @param issuer_input Issuer URL provided by the caller.
+#' @param issuer_discovered Issuer URL returned by discovery metadata.
+#' @param issuer_match Issuer-matching policy.
+#' @return Normalized discovered issuer string.
 #' @keywords internal
 #' @noRd
 validate_discovery_issuer <- function(
@@ -179,17 +191,16 @@ validate_discovery_issuer <- function(
   iss
 }
 
-# Validate one absolute endpoint URL against the allowed host policy.
-# Used by discovery and provider endpoint checks. Input: endpoint URL and
-# allowed hosts vector. Output: invisible TRUE or a configuration error.
 #' Internal: validate absolute URL against allowed hosts
 #'
-#' Ensures the provided URL is absolute (has scheme and hostname) and that it
-#' satisfies the host/scheme policy enforced by `is_ok_host()` with the given
-#' allowlist. Intended to centralize endpoint checks used by discovery.
+#' Validates that one endpoint is an absolute URL and that its scheme and host
+#' satisfy the current host policy. Used by discovery and provider endpoint
+#' validation so endpoint failures raise one consistent configuration error.
 #'
-#' On failure, raises a configuration error with consistent messaging.
-#'
+#' @param u Endpoint URL to validate.
+#' @param allowed_hosts_vec Allowed host vector.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   configuration error.
 #' @keywords internal
 #' @noRd
 validate_endpoint <- function(u, allowed_hosts_vec) {
@@ -282,6 +293,10 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
 
 #' Internal: check if a string is an absolute URI
 #'
+#' Used by callback and provider URL sanitizers.
+#'
+#' @param x String to test.
+#' @return `TRUE` when `x` looks like an absolute URI; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 is_absolute_uri <- function(x) {
@@ -305,8 +320,12 @@ is_absolute_uri <- function(x) {
 #' Internal: sanitize provider callback error_uri values
 #'
 #' Provider-supplied `error_uri` values are untrusted navigation inputs. Only
-#' absolute HTTPS URLs are surfaced; anything else is dropped.
+#' absolute HTTPS URLs are surfaced; anything else is dropped. Used when the
+#' module surfaces provider error callbacks.
 #'
+#' @param x Provider-supplied `error_uri` value.
+#' @return Sanitized HTTPS URL string, or `NULL` when the value should be
+#'   dropped.
 #' @keywords internal
 #' @noRd
 sanitize_callback_error_uri <- function(x) {
@@ -332,6 +351,11 @@ sanitize_callback_error_uri <- function(x) {
 
 #' Internal: validate RFC 8707 resource indicators
 #'
+#' Used before authorization and token requests include `resource` values.
+#'
+#' @param resource Resource-indicator value or vector.
+#' @return `NULL` when `resource` is valid, otherwise a length-1 error message
+#'   string describing the first problem.
 #' @keywords internal
 #' @noRd
 resource_indicator_problem <- function(resource) {
@@ -354,8 +378,11 @@ resource_indicator_problem <- function(resource) {
 #' Internal: normalize URL path without touching query/fragment
 #'
 #' Collapses multiple consecutive slashes in the path component of a URL while
-#' preserving the query string and fragment verbatim (no re-encoding).
+#' preserving the query string and fragment verbatim (no re-encoding). Used by
+#' URL normalization and host-policy helpers.
 #'
+#' @param u URL string to normalize.
+#' @return URL string with repeated path slashes collapsed.
 #' @keywords internal
 #' @noRd
 normalize_url <- function(u) {
@@ -384,11 +411,12 @@ normalize_url <- function(u) {
   paste0(authority, path, query, fragment)
 }
 
-# Remove one trailing slash from a URL when present.
-# Used by issuer and discovery URL builders. Input: URL string. Output:
-# trimmed URL string.
 #' Internal: Right trim single trailing slash from URL
 #'
+#' Used by issuer and discovery URL builders.
+#'
+#' @param x URL string.
+#' @return URL string with one trailing slash removed when present.
 #' @keywords internal
 #' @noRd
 rtrim_slash <- function(x) sub("/$", "", x)
@@ -396,8 +424,12 @@ rtrim_slash <- function(x) sub("/$", "", x)
 #' Internal: Parse URL and extract normalized scheme and host
 #'
 #' Returns a list with lowercased scheme and hostname. Errors with err_config
-#' when the URL can't be parsed or has no hostname.
+#' when the URL can't be parsed or has no hostname. Used by host-policy and
+#' issuer/JWKS validation helpers.
 #'
+#' @param url URL string to parse.
+#' @param label Human-readable label used in error messages.
+#' @return List with normalized `scheme` and `host` entries.
 #' @keywords internal
 #' @noRd
 parse_url_components <- function(url, label = "url") {
@@ -427,6 +459,11 @@ parse_url_components <- function(url, label = "url") {
 
 #' Internal: Parse URL and return normalized host only
 #'
+#' Used where only the hostname is needed for allowlist or issuer checks.
+#'
+#' @param url URL string to parse.
+#' @param label Human-readable label used in error messages.
+#' @return Normalized host string.
 #' @keywords internal
 #' @noRd
 parse_url_host <- function(url, label = "url") {
@@ -500,133 +537,157 @@ is_ok_host <- function(
     return(FALSE)
   }
 
-  # Helper: check if a host is in the HTTP exemptions list (with glob support)
-  host_in_http_exempt <- function(host, patterns) {
-    if (is.null(patterns) || length(patterns) == 0) {
-      return(FALSE)
-    }
+  # Check all URLs; return TRUE only if all pass
+  all(vapply(
+    url,
+    is_ok_host_one,
+    logical(1),
+    allowed_non_https_hosts = allowed_non_https_hosts,
+    allowed_hosts = allowed_hosts
+  ))
+}
 
-    # Fast-path: IPv6 loopback literal
-    if (identical(tolower(host), "::1")) {
-      lp <- tolower(trimws(as.character(patterns)))
-      if (any(lp %in% c("::1", "[::1]"))) return(TRUE)
-    }
+## 3.2 Per-URL host validation --------------------------------------------
 
-    # Reuse common host matching semantics (globs, IPv6 bracket forms)
-    host_matches_any(host, patterns)
+#' Internal: validate one URL against host and scheme policy
+#'
+#' Used by [is_ok_host()] so vector inputs can be checked one URL at a time with
+#' the same scheme normalization and allowlist semantics.
+#'
+#' @param x URL string to validate.
+#' @param allowed_non_https_hosts Hosts allowed to use `http` instead of
+#'   `https`.
+#' @param allowed_hosts Optional host allowlist.
+#' @return `TRUE` when the URL passes all host-policy checks.
+#' @keywords internal
+#' @noRd
+is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
+  if (is.null(x) || is.na(x)) {
+    return(FALSE)
+  }
+  x <- trimws(as.character(x))
+  if (!nzchar(x)) {
+    return(FALSE)
   }
 
-  # Wrapper for checking a single URL
-  check_one <- function(x) {
-    if (is.null(x) || is.na(x)) {
-      return(FALSE)
-    }
-    x <- trimws(as.character(x))
-    if (!nzchar(x)) {
-      return(FALSE)
-    }
+  if (!grepl("^[A-Za-z][A-Za-z0-9+.-]*://", x)) {
+    plausible <- (grepl("^\\[", x) ||
+      grepl("localhost", x, ignore.case = TRUE) ||
+      grepl("^[0-9]{1,3}(\\.[0-9]{1,3}){3}", x) ||
+      grepl("::", x, fixed = TRUE) ||
+      grepl("\\.", x) ||
+      grepl(":[0-9]{1,5}", x)) &&
+      !grepl("\\s", x)
 
-    # If scheme is missing, attempt http then https normalization for plausible inputs
-    # (loopback names, IPv4, bracketed IPv6, has a dot, or explicit :port).
-    if (!grepl("^[A-Za-z][A-Za-z0-9+.-]*://", x)) {
-      plausible <- (grepl("^\\[", x) ||
-        grepl("localhost", x, ignore.case = TRUE) ||
-        grepl("^[0-9]{1,3}(\\.[0-9]{1,3}){3}", x) ||
-        grepl("::", x, fixed = TRUE) ||
-        grepl("\\.", x) ||
-        grepl(":[0-9]{1,5}", x)) &&
-        !grepl("\\s", x)
-
-      if (!plausible) {
-        return(FALSE)
-      }
-
-      http_try <- paste0("http://", x)
-      if (check_one(http_try)) {
-        return(TRUE)
-      }
-
-      https_try <- paste0("https://", x)
-      return(check_one(https_try))
-    }
-
-    # Robust parse via httr2 for scheme + hostname (handles IPv6 brackets)
-    parsed <- try(httr2::url_parse(x), silent = TRUE)
-    if (inherits(parsed, "try-error")) {
+    if (!plausible) {
       return(FALSE)
     }
 
-    scheme <- tolower(parsed$scheme %||% "")
-    host <- tolower(trimws(parsed$hostname %||% ""))
-
-    if (!nzchar(host)) {
-      # Fallback: extract authority and host manually (handles bracketed IPv6)
-      mm <- regexec("^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]+)", x, perl = TRUE)
-      parts <- regmatches(x, mm)[[1]]
-      if (length(parts) >= 2) {
-        auth <- parts[2]
-        if (grepl("^\\[", auth)) {
-          host <- sub("^\\[([^\\]]+)\\].*$", "\\1", auth, perl = TRUE)
-        } else {
-          host <- sub(":.*$", "", auth, perl = TRUE)
-        }
-        host <- tolower(host)
-      }
-    }
-
-    # Normalize bracketed IPv6 hostnames to bare form for matching (allow optional :port)
-    host <- sub("^\\[([^\\]]+)\\](?::.*)?$", "\\1", host, perl = TRUE)
-    host <- sub("\\.$", "", host)
-    if (!nzchar(host)) {
-      return(FALSE)
-    }
-
-    # Enforce allowed_hosts allowlist if provided
-    if (!host_matches_any(host, allowed_hosts)) {
-      # Defensive fallback: direct equality for IPv6 literals against normalized patterns
-      if (
-        !is.null(allowed_hosts) &&
-          length(allowed_hosts) > 0 &&
-          grepl(":", host, fixed = TRUE)
-      ) {
-        ah <- tolower(vapply(
-          allowed_hosts,
-          host_normalize_pattern,
-          character(1)
-        ))
-        if (!(host %in% ah || paste0("[", host, "]") %in% ah)) {
-          return(FALSE)
-        }
-      } else {
-        return(FALSE)
-      }
-    }
-
-    if (scheme == "https") {
+    http_try <- paste0("http://", x)
+    if (is_ok_host_one(http_try, allowed_non_https_hosts, allowed_hosts)) {
       return(TRUE)
     }
 
-    if (scheme == "http") {
-      # Apply matching semantics (globs, Unicode, IPv6 bracketless/bracketed) to HTTP exemptions
-      if (host_in_http_exempt(host, allowed_non_https_hosts)) {
-        return(TRUE)
-      }
-      return(FALSE)
-    }
-
-    FALSE
+    https_try <- paste0("https://", x)
+    return(is_ok_host_one(https_try, allowed_non_https_hosts, allowed_hosts))
   }
 
-  # Check all URLs; return TRUE only if all pass
-  all(vapply(url, check_one, logical(1)))
+  parsed <- try(httr2::url_parse(x), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(FALSE)
+  }
+
+  scheme <- tolower(parsed$scheme %||% "")
+  host <- tolower(trimws(parsed$hostname %||% ""))
+
+  if (!nzchar(host)) {
+    mm <- regexec("^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]+)", x, perl = TRUE)
+    parts <- regmatches(x, mm)[[1]]
+    if (length(parts) >= 2) {
+      auth <- parts[2]
+      if (grepl("^\\[", auth)) {
+        host <- sub("^\\[([^\\]]+)\\].*$", "\\1", auth, perl = TRUE)
+      } else {
+        host <- sub(":.*$", "", auth, perl = TRUE)
+      }
+      host <- tolower(host)
+    }
+  }
+
+  host <- sub("^\\[([^\\]]+)\\](?::.*)?$", "\\1", host, perl = TRUE)
+  host <- sub("\\.$", "", host)
+  if (!nzchar(host)) {
+    return(FALSE)
+  }
+
+  if (!host_matches_any(host, allowed_hosts)) {
+    if (
+      !is.null(allowed_hosts) &&
+        length(allowed_hosts) > 0 &&
+        grepl(":", host, fixed = TRUE)
+    ) {
+      ah <- tolower(vapply(
+        allowed_hosts,
+        host_normalize_pattern,
+        character(1)
+      ))
+      if (!(host %in% ah || paste0("[", host, "]") %in% ah)) {
+        return(FALSE)
+      }
+    } else {
+      return(FALSE)
+    }
+  }
+
+  if (scheme == "https") {
+    return(TRUE)
+  }
+
+  if (scheme == "http") {
+    if (host_is_in_http_exemption(host, allowed_non_https_hosts)) {
+      return(TRUE)
+    }
+    return(FALSE)
+  }
+
+  FALSE
 }
+
+#' Internal: check whether a host matches the HTTP exemption allowlist
+#'
+#' Used by `is_ok_host_one()` when a URL uses `http` and loopback or other
+#' configured exemptions should still pass host validation.
+#'
+#' @param host Hostname to test.
+#' @param patterns Host allowlist patterns with glob support.
+#' @return `TRUE` when the host matches an exemption pattern.
+#' @keywords internal
+#' @noRd
+host_is_in_http_exemption <- function(host, patterns) {
+  if (is.null(patterns) || length(patterns) == 0) {
+    return(FALSE)
+  }
+
+  if (identical(tolower(host), "::1")) {
+    lp <- tolower(trimws(as.character(patterns)))
+    if (any(lp %in% c("::1", "[::1]"))) {
+      return(TRUE)
+    }
+  }
+
+  host_matches_any(host, patterns)
+}
+
+## 3.3 Host-pattern normalization and matching ----------------------------
 
 #' Internal: normalize a host pattern to a bare hostname
 #'
 #' Strips scheme and userinfo, drops path and (for non-IPv6) port
 #' Preserves leading dot semantics (e.g., .example.com)
-#' Handles bracketed IPv6 forms `[::1]`
+#' Handles bracketed IPv6 forms `[::1]`. Used by host allowlist helpers.
 #'
+#' @param pat Host-pattern string to normalize.
+#' @return Bare normalized hostname or host pattern.
 #' @keywords internal
 #' @noRd
 host_normalize_pattern <- function(pat) {
@@ -674,13 +735,13 @@ host_normalize_pattern <- function(pat) {
   p
 }
 
-# Convert one glob-style host pattern into a regex.
-# Used by host allowlist matching. Input: host pattern. Output: regex string or
-# NULL.
 #' Internal: convert a glob host pattern to a case-insensitive regex
 #'
 #' Supports '*' and '?' and leading-dot semantics (domain itself or any subdomain)
+#' Used by host allowlist matching.
 #'
+#' @param pat Host pattern.
+#' @return Regex string, or `NULL` for invalid patterns.
 #' @keywords internal
 #' @noRd
 host_glob_to_regex <- function(pat) {
@@ -716,16 +777,18 @@ host_glob_to_regex <- function(pat) {
   paste0("^", esc, "$")
 }
 
-#' Internal: does a host match any pattern from an allowlist?
+#' Check whether a host matches an allowlist
 #'
-#' When `patterns` is NULL/empty, returns TRUE (no restriction). Patterns may
-#' include globs and leading-dot semantics. IPv6 bracket equivalence is handled.
+#' When `patterns` is `NULL` or empty, this returns `TRUE`. Patterns may include
+#' globs and leading-dot semantics. IPv6 bracket equivalence is handled. Used by
+#' [is_ok_host()] and related validators.
 #'
+#' @param host Host string to test.
+#' @param patterns Allowlist patterns.
+#' @return `TRUE` when `host` matches at least one allowlist pattern; otherwise
+#'   `FALSE`.
 #' @keywords internal
 #' @noRd
-# Check whether one host matches any entry in an allowlist.
-# Used by is_ok_host() and related validators. Input: host string and patterns.
-# Output: TRUE or FALSE.
 host_matches_any <- function(host, patterns) {
   if (is.null(patterns) || length(patterns) == 0) {
     return(TRUE)

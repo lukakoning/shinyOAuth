@@ -322,7 +322,8 @@ section 3.2.2.9.}
 \description{
 Helper function to create an \link{OAuthProvider} object.
 This function provides sensible defaults and infers
-some settings based on the provided parameters.
+some settings based on the provided parameters. Used by app setup code and
+the built-in provider helpers.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

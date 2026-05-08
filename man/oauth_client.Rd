@@ -375,7 +375,8 @@ introspection responses.)
 \link{OAuthClient} object
 }
 \description{
-Create generic \link{OAuthClient}
+Used by app setup code to build a validated client configuration before
+\code{\link[=oauth_module_server]{oauth_module_server()}} starts login or callback handling.
 }
 \examples{
 if (

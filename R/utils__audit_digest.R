@@ -7,12 +7,21 @@
 
 ## 1.1 Digest helpers ------------------------------------------------------
 
-# Compute a non-reversible digest for a sensitive string.
-# Used by audit and telemetry helpers. Input: one value plus optional key.
-# Output: a hex digest string or NA.
-# Helpers to compute non-reversible digests for sensitive strings (tokens, ids)
-# By default uses HMAC-SHA256 with a per-process key to prevent correlation
-# if audit logs leak. Set shinyOAuth.audit_digest_key = FALSE to disable keying.
+#' Compute a digest for a sensitive string
+#'
+#' Hashes one value for audit or telemetry use. By default this uses HMAC-SHA256
+#' with a per-process key so digests stay stable within one process without
+#' becoming globally correlatable if logs leak. Used by audit and telemetry
+#' helpers.
+#'
+#' @param x Value to digest. Only the first element is used.
+#' @param key Optional raw or character key returned by
+#'   `get_audit_digest_key()`. Set the corresponding option to `FALSE` to
+#'   disable keying.
+#' @return A lowercase hex digest string, or `NA_character_` when `x` cannot be
+#'   reduced to a valid scalar string.
+#' @keywords internal
+#' @noRd
 string_digest <- function(x, key = get_audit_digest_key()) {
   # Normalize to a length-1 character scalar for consistent hashing
   if (is.null(x) || length(x) == 0) {
@@ -48,9 +57,16 @@ string_digest <- function(x, key = get_audit_digest_key()) {
 # Set to a fixed raw/character value to correlate digests across processes.
 audit_digest_key_env <- new.env(parent = emptyenv())
 
-# Resolve the key used for audit digests.
-# Used by string_digest(). Input: none. Output: raw key bytes or NULL when
-# keying is disabled.
+#' Resolve the audit digest key
+#'
+#' Returns the configured digest key, coercing character values to raw bytes and
+#' lazily generating a per-process key when no explicit option has been set.
+#' Used by `string_digest()`.
+#'
+#' @return A raw vector containing the digest key, or `NULL` when keyed digests
+#'   are disabled.
+#' @keywords internal
+#' @noRd
 get_audit_digest_key <- function() {
   opt <- getOption("shinyOAuth.audit_digest_key")
 

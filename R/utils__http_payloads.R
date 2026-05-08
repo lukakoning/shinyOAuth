@@ -13,7 +13,8 @@
 #' Internal helper to parse OAuth token endpoint responses. Supports JSON
 #' (application/json) and form-encoded (application/x-www-form-urlencoded).
 #' Errors on unsupported content types to avoid silently parsing garbage
-#' (e.g., HTML error pages from misconfigured proxies).
+#' (e.g., HTML error pages from misconfigured proxies). Used by token exchange
+#' and refresh helpers.
 #'
 #' @param resp httr2 response
 #'
@@ -87,9 +88,16 @@ parse_token_response <- function(resp) {
   )
 }
 
-# Reject duplicate parameter names in a form-encoded string.
-# Used when parsing token responses. Input: form body text plus label. Output:
-# invisible NULL or a parse error.
+#' Reject duplicate form-encoded parameter names
+#'
+#' Used before form-encoded token responses are parsed.
+#'
+#' @param form_text Form-encoded body text.
+#' @param label Human-readable label used in parse errors.
+#' @return Invisibly returns `NULL` on success. Otherwise this function raises a
+#'   parse error.
+#' @keywords internal
+#' @noRd
 reject_duplicate_form_encoded_members <- function(form_text, label) {
   if (is.null(form_text) || !nzchar(form_text)) {
     return(invisible(NULL))
@@ -114,10 +122,15 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   invisible(NULL)
 }
 
-# Percent-encode named form/query parameters while preserving repeated keys.
-# Used by form-body helpers that cannot rely on httr2's simpler scalar path.
-# Input: named parameter list. Output: encoded body string.
-# Internal: percent-encode form/query params while preserving repeated keys
+#' Percent-encode form or query parameters
+#'
+#' Preserves repeated keys for vector values. Used by request-body and URL
+#' builders that need stable repeated-parameter handling.
+#'
+#' @param params Named parameter list.
+#' @return Encoded body string.
+#' @keywords internal
+#' @noRd
 encode_www_form_params <- function(params) {
   if (!is.list(params) || length(params) == 0) {
     return("")
@@ -165,10 +178,16 @@ encode_www_form_params <- function(params) {
   paste(parts, collapse = "&")
 }
 
-# Add a form-encoded body to a request while keeping repeated keys intact.
-# Used by token and related request builders. Input: httr2 request plus named
-# params list. Output: updated request.
-# Internal: add a form body while preserving repeated keys for vector values
+#' Add a form-encoded body to a request
+#'
+#' Preserves repeated keys instead of collapsing vector values onto one scalar
+#' path. Used by token and related endpoint request builders.
+#'
+#' @param req httr2 request object.
+#' @param params Named parameter list.
+#' @return Updated request.
+#' @keywords internal
+#' @noRd
 req_body_form_encoded <- function(req, params) {
   params <- compact_list(params)
   if (!length(params)) {

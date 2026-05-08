@@ -95,9 +95,12 @@ revoke_token <- function(
     with_otel_span(
       "shinyOAuth.token.revoke",
       {
-        # Attach the final revoke result to the active span before returning it.
-        # Used only inside revoke_token() after each success or fallback path.
-        # Input: result list. Output: the same result list after span attributes are updated.
+        # Internal helper: record and return the final revocation result.
+        # Used only inside `revoke_token()` so each return path tags the same
+        # surrounding span consistently.
+        # @param result Revocation result list about to be returned.
+        # @return The same `result` list, after span attributes have been
+        #   recorded.
         .return_revoke_result <- function(result) {
           revoked <- result$revoked %||% NA
           otel_set_span_attributes(
@@ -403,9 +406,12 @@ introspect_token <- function(
     isTRUE(is_async_worker_context())
   trace_id <- resolve_trace_id()
 
-  # Write one redacted audit record for the final introspection result.
-  # Used only inside introspect_token() after the provider response has been normalized.
-  # Input: result list. Output: invisible NULL.
+  # Internal helper: emit an audit record for the normalized introspection
+  # result. Used only inside `introspect_token()` because it depends on the
+  # surrounding client, token-kind, and Shiny-session context.
+  # @param result Normalized introspection result list.
+  # @return No return value; emits a best-effort audit event and returns
+  #   invisibly.
   .audit_introspection <- function(result) {
     # Best-effort audit logging for introspection (do not fail the caller).
     # Avoid including raw introspection payloads as they may contain PII.
@@ -487,9 +493,12 @@ introspect_token <- function(
     with_otel_span(
       "shinyOAuth.token.introspect",
       {
-        # Attach the final introspection result to the active span before returning it.
-        # Used only inside introspect_token() after each success or fallback path.
-        # Input: result list. Output: the same result list after span attributes are updated.
+        # Internal helper: record and return the final introspection result.
+        # Used only inside `introspect_token()` so every success or fallback
+        # path tags the same surrounding span consistently.
+        # @param result Introspection result list about to be returned.
+        # @return The same `result` list, after span attributes have been
+        #   recorded.
         .return_introspection_result <- function(result) {
           active <- result$active %||% NA
           otel_set_span_attributes(
@@ -651,37 +660,10 @@ introspect_token <- function(
           raw <- NULL
         } else {
           raw <- parsed
-          # Normalize the provider's `active` field into TRUE/FALSE/NA.
-          # Used only inside introspect_token() because providers encode this field in different ways.
-          # Input: raw `active` value. Output: logical TRUE/FALSE or NA when it cannot be trusted.
-          coerce_active <- function(x) {
-            if (is.logical(x)) {
-              return(ifelse(length(x) >= 1L, x[[1]], NA))
-            }
-            if (is.numeric(x)) {
-              xv <- suppressWarnings(as.numeric(x[[1]]))
-              if (length(xv) == 1L && !is.na(xv)) {
-                return(xv != 0)
-              }
-              return(NA)
-            }
-            if (is.character(x)) {
-              v <- tolower(trimws(as.character(x[[1]])))
-              if (v %in% c("true", "1", "t", "yes", "y")) {
-                return(TRUE)
-              }
-              if (v %in% c("false", "0", "f", "no", "n")) {
-                return(FALSE)
-              }
-              return(NA)
-            }
-            NA
-          }
-
           if (is.null(raw$active)) {
             status <- "missing_active"
           } else {
-            active <- coerce_active(raw$active)
+            active <- coerce_introspection_active(raw$active)
             if (is.na(active)) {
               status <- "invalid_active"
             }
@@ -722,6 +704,42 @@ introspect_token <- function(
       parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
+}
+
+## 1.2.1 Introspection response normalization ------------------------------
+
+#' Internal: normalize an RFC 7662 active field
+#'
+#' Used by [introspect_token()] because providers encode the introspection
+#' `active` field as logical, numeric, or string values depending on their
+#' implementation.
+#'
+#' @param x Provider-supplied `active` field value.
+#' @return `TRUE`, `FALSE`, or `NA` when the value cannot be normalized safely.
+#' @keywords internal
+#' @noRd
+coerce_introspection_active <- function(x) {
+  if (is.logical(x)) {
+    return(ifelse(length(x) >= 1L, x[[1]], NA))
+  }
+  if (is.numeric(x)) {
+    xv <- suppressWarnings(as.numeric(x[[1]]))
+    if (length(xv) == 1L && !is.na(xv)) {
+      return(xv != 0)
+    }
+    return(NA)
+  }
+  if (is.character(x)) {
+    v <- tolower(trimws(as.character(x[[1]])))
+    if (v %in% c("true", "1", "t", "yes", "y")) {
+      return(TRUE)
+    }
+    if (v %in% c("false", "0", "f", "no", "n")) {
+      return(FALSE)
+    }
+    return(NA)
+  }
+  NA
 }
 
 ## 1.3 Refresh ------------------------------------------------------------
@@ -1128,11 +1146,26 @@ refresh_token <- function(
 
 ## 2.1 Shared token-method async wrapper ----------------------------------
 
-# Dispatch one token method through the shared async wrapper.
-# Used by revoke_token(), introspect_token(), and refresh_token() so trace,
-# option, session, and OTEL propagation stay in one place. Input: function
-# name plus call args, client/session context, trace id, and span metadata.
-# Output: a promise resolving to the underlying method result.
+#' Dispatch a token helper through the async wrapper
+#'
+#' Centralizes async propagation for token-related helpers so trace ids, Shiny
+#' session context, options, and OTEL metadata are forwarded consistently. Used
+#' by [revoke_token()], [introspect_token()], and [refresh_token()].
+#'
+#' @param function_name Name of the token helper to execute in the worker.
+#' @param call_args Named list of arguments forwarded to `function_name`.
+#' @param client [OAuthClient] instance associated with the call.
+#' @param shiny_session Optional Shiny session context.
+#' @param trace_id Trace id to propagate into async execution.
+#' @param span_name Parent span name used in the caller.
+#' @param phase Phase label used for the parent span attributes.
+#' @param worker_span_name Span name used inside the worker.
+#' @param worker_phase Phase label used inside the worker.
+#' @param parent_extra Extra OTEL attributes for the parent span.
+#' @param worker_extra Extra OTEL attributes for the worker span.
+#' @return A promise resolving to the underlying token helper result.
+#' @keywords internal
+#' @noRd
 dispatch_token_async <- function(
   function_name,
   call_args,

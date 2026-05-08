@@ -11,8 +11,13 @@
 #' Internal: normalize token endpoint auth style names
 #'
 #' Canonical runtime spelling uses `public` for secretless public-client token
-#' requests. `none` is accepted as an alias to mirror OIDC discovery metadata.
+#' requests. `none` is accepted as an alias to mirror OIDC discovery metadata,
+#' and is normalized to `public`. Used by provider constructors and request
+#' builders.
 #'
+#' @param style Token-endpoint authentication style.
+#' @return Normalized token-auth style string, or the original input when it is
+#'   not recognized.
 #' @keywords internal
 #' @noRd
 normalize_token_auth_style <- function(style) {
@@ -46,6 +51,12 @@ normalize_token_auth_style <- function(style) {
 
 #' Internal: normalize PKCE method names without silently accepting typos
 #'
+#' Used by provider validation and request-building helpers.
+#'
+#' @param pkce_method PKCE method value to normalize.
+#' @param default Fallback value used for `NULL` or `NA` inputs.
+#' @return Normalized PKCE method string, or the original input when it is not
+#'   recognized.
 #' @keywords internal
 #' @noRd
 normalize_pkce_method <- function(pkce_method, default = NULL) {
@@ -74,10 +85,15 @@ normalize_pkce_method <- function(pkce_method, default = NULL) {
   pkce_method
 }
 
-# Inspect the configured authorization response_mode and reject unsupported
-# values early.
-# Used by provider validation and constructors. Input: extra_auth_params list.
-# Output: list with index, resolved mode, and optional error.
+#' Inspect the configured authorization response mode
+#'
+#' Used by provider validation and constructors.
+#'
+#' @param extra_auth_params Provider `extra_auth_params` list.
+#' @return A list containing the matched index, resolved mode, and optional
+#'   error text.
+#' @keywords internal
+#' @noRd
 inspect_auth_response_mode <- function(extra_auth_params) {
   out <- list(index = integer(0), mode = NULL, error = NULL)
 
@@ -131,9 +147,15 @@ inspect_auth_response_mode <- function(extra_auth_params) {
 
 ## 1.2 Claims request parsing and enforcement -----------------------------
 
-# Normalize the requested claims specification into a list.
-# Used by the claims helpers below so they can treat JSON strings and R lists the same way.
-# Input: client claims setting. Output: parsed list or NULL.
+#' Normalize a claims specification
+#'
+#' Used by the claims helpers below so JSON strings and R lists can be handled
+#' the same way.
+#'
+#' @param claims_spec Client claims setting.
+#' @return Parsed claims list, or `NULL`.
+#' @keywords internal
+#' @noRd
 parse_claims_spec <- function(claims_spec) {
   if (is.null(claims_spec)) {
     return(NULL)
@@ -151,9 +173,16 @@ parse_claims_spec <- function(claims_spec) {
   claims_spec
 }
 
-# Pull the requested claims for one response target.
-# Used by the claims helpers to look only at `id_token` or `userinfo` rules.
-# Input: full claims spec and target name. Output: claim-entry list for that target.
+#' Extract claims for one target
+#'
+#' Used by claims helpers that focus on one target such as `id_token` or
+#' `userinfo`.
+#'
+#' @param claims_spec Full claims specification.
+#' @param target Target name, such as `"id_token"` or `"userinfo"`.
+#' @return Claim-entry list for the requested target.
+#' @keywords internal
+#' @noRd
 extract_target_claims <- function(claims_spec, target) {
   claims_spec <- parse_claims_spec(claims_spec)
 
@@ -169,9 +198,16 @@ extract_target_claims <- function(claims_spec, target) {
   target_claims
 }
 
-# Find which requested claims were marked as essential.
-# Used by validate_essential_claims() to decide which claims must be present.
-# Input: claims spec and target name. Output: character vector of essential claim names.
+#' Extract essential claim names
+#'
+#' Used by `validate_essential_claims()` when deciding which claims must be
+#' present.
+#'
+#' @param claims_spec Full claims specification.
+#' @param target Target name.
+#' @return Character vector of essential claim names.
+#' @keywords internal
+#' @noRd
 extract_essential_claims <- function(claims_spec, target) {
   target_claims <- extract_target_claims(claims_spec, target)
   if (length(target_claims) == 0) {
@@ -191,9 +227,14 @@ extract_essential_claims <- function(claims_spec, target) {
   essential_names
 }
 
-# Collect the requested values for one claim entry.
-# Used by extract_claim_value_constraints() when a client requested exact claim values.
-# Input: one claim entry from the claims spec. Output: list of accepted values.
+#' Extract requested values from one claim entry
+#'
+#' Used by `extract_claim_value_constraints()` when exact values were requested.
+#'
+#' @param entry One claim entry from the claims specification.
+#' @return List of accepted values.
+#' @keywords internal
+#' @noRd
 extract_requested_claim_values <- function(entry) {
   if (!is.list(entry) || length(entry) == 0) {
     return(list())
@@ -222,9 +263,16 @@ extract_requested_claim_values <- function(entry) {
   requested
 }
 
-# Build exact-value rules for claims on one target.
-# Used by validate_essential_claims() when the client asked for specific values.
-# Input: claims spec and target name. Output: named list of claim-to-value constraints.
+#' Extract claim value constraints
+#'
+#' Used by `validate_essential_claims()` when the client asked for specific
+#' claim values.
+#'
+#' @param claims_spec Full claims specification.
+#' @param target Target name.
+#' @return Named list mapping claim names to requested values.
+#' @keywords internal
+#' @noRd
 extract_claim_value_constraints <- function(claims_spec, target) {
   target_claims <- extract_target_claims(claims_spec, target)
   if (length(target_claims) == 0) {
@@ -242,9 +290,16 @@ extract_claim_value_constraints <- function(claims_spec, target) {
   constraints
 }
 
-# Check whether any target in the claims request creates enforceable work.
-# Used by verify_token_set() to skip claim checks when nothing strict was requested.
-# Input: full claims spec. Output: TRUE/FALSE.
+#' Check whether a claims request has enforceable requirements
+#'
+#' Used by `verify_token_set()` to skip claim checks when nothing strict was
+#' requested.
+#'
+#' @param claims_spec Full claims specification.
+#' @return `TRUE` when any supported target has essential claims or exact-value
+#'   constraints; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 claims_request_has_enforceable_requirements <- function(claims_spec) {
   targets <- c("id_token", "userinfo")
 
@@ -257,9 +312,17 @@ claims_request_has_enforceable_requirements <- function(claims_spec) {
   ))
 }
 
-# Check whether one target in the claims request has enforceable rules.
-# Used by claims_request_has_enforceable_requirements() and verify_token_set().
-# Input: claims spec and target name. Output: TRUE/FALSE.
+#' Check whether one claims target has enforceable requirements
+#'
+#' Used by `claims_request_has_enforceable_requirements()` and
+#' `verify_token_set()`.
+#'
+#' @param claims_spec Full claims specification.
+#' @param target Target name.
+#' @return `TRUE` when the target has essential claims or exact-value
+#'   constraints; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 claims_request_target_has_enforceable_requirements <- function(
   claims_spec,
   target
@@ -268,9 +331,15 @@ claims_request_target_has_enforceable_requirements <- function(
     length(extract_claim_value_constraints(claims_spec, target)) > 0
 }
 
-# Convert one claim value into a stable comparable string.
-# Used by the value-matching helpers so nested lists, scalars, and arrays can be compared consistently.
-# Input: one claim value. Output: canonical string form.
+#' Canonicalize a claim value
+#'
+#' Used by claim value-matching helpers so scalars, arrays, and nested values
+#' compare consistently.
+#'
+#' @param value Claim value to normalize.
+#' @return Canonical string representation suitable for comparisons.
+#' @keywords internal
+#' @noRd
 canonicalize_claim_value <- function(value) {
   encoded <- tryCatch(
     jsonlite::toJSON(
@@ -293,18 +362,31 @@ canonicalize_claim_value <- function(value) {
   )
 }
 
-# Check whether the actual claim value matches one of the requested values.
-# Used by validate_essential_claims() when the client requested exact claim values.
-# Input: actual value plus requested value list. Output: TRUE/FALSE.
+#' Check whether a claim value matches requested values
+#'
+#' Used by `validate_essential_claims()` when exact claim values were
+#' requested.
+#'
+#' @param actual Actual claim value returned by the provider.
+#' @param requested Requested value list.
+#' @return `TRUE` when the actual value matches one requested value; otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
 claim_matches_requested_values <- function(actual, requested) {
   actual_value <- canonicalize_claim_value(actual)
   requested_values <- vapply(requested, canonicalize_claim_value, character(1))
   actual_value %in% requested_values
 }
 
-# Render requested claim values into a short human-readable message.
-# Used by validate_essential_claims() when building error text for value mismatches.
-# Input: requested value list. Output: one description string.
+#' Format a claim value expectation
+#'
+#' Used by `validate_essential_claims()` when it builds mismatch messages.
+#'
+#' @param requested Requested value list.
+#' @return One human-readable expectation string.
+#' @keywords internal
+#' @noRd
 format_claim_value_expectation <- function(requested) {
   rendered <- vapply(requested, canonicalize_claim_value, character(1))
   if (length(rendered) == 1) {
@@ -314,9 +396,18 @@ format_claim_value_expectation <- function(requested) {
   paste0("one of ", paste(rendered, collapse = ", "))
 }
 
-# Check that the returned claims satisfy what the client asked for.
-# Used by verify_token_set() for ID token claims and by userinfo validation code for userinfo claims.
-# Input: client, decoded claims list, and target name. Output: invisible NULL on success or an error/warning.
+#' Validate requested claims against returned claims
+#'
+#' Used by `verify_token_set()` for ID token claims and by UserInfo validation
+#' for UserInfo claims.
+#'
+#' @param client OAuth client carrying claims and claims-validation settings.
+#' @param claims_present Decoded claims list returned by the provider.
+#' @param target Target name being validated.
+#' @return Invisibly returns `NULL` on success. Otherwise this function warns or
+#'   raises an error depending on the validation mode.
+#' @keywords internal
+#' @noRd
 validate_essential_claims <- function(client, claims_present, target) {
   mode <- client@claims_validation %||% "none"
   if (identical(mode, "none")) {

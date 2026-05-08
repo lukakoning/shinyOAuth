@@ -10,7 +10,8 @@
 #' Internal: resolve the effective discovery issuer-match policy
 #'
 #' Reads `provider@issuer_match` when a provider is available and otherwise
-#' falls back to the package default of `"url"`.
+#' falls back to the package default of `"url"`. Used by JWKS discovery and
+#' cache-policy helpers.
 #'
 #' @param provider Optional [OAuthProvider] used to resolve the issuer-match
 #'   policy.
@@ -36,7 +37,8 @@ provider_issuer_match <- function(provider = NULL) {
 #' Internal: Fetch JWKS for issuer (cachem-only)
 #'
 #' Attempts to download the OpenID Connect discovery document to locate the
-#' JWKS URI, then fetches and caches the key set.
+#' JWKS URI, then fetches and caches the key set. Used by ID token and signed
+#' UserInfo verification.
 #'
 #' Caching details:
 #' - Cache entries are keyed by a stable hex sha256 of the issuer URL, combined
@@ -300,6 +302,20 @@ fetch_jwks <- function(
 #'   naturally isolate by using fresh caches.
 #' - The key is derived from `jwks_cache_key()` (issuer + pinning + host policy).
 #'
+#' @param issuer Issuer URL.
+#' @param jwks_cache Cache backend used to persist throttle state.
+#' @param pins Optional vector of pinned JWK thumbprints.
+#' @param pin_mode Pinning mode.
+#' @param min_interval Minimum number of seconds between forced refreshes.
+#' @param now Current epoch time used for the throttle check.
+#' @param issuer_match Discovery issuer-match policy.
+#' @param jwks_host_issuer_match Whether the JWKS host must match the issuer
+#'   host.
+#' @param jwks_host_allow_only Optional explicitly allowed JWKS host.
+#' Used by `fetch_jwks()` to throttle forced JWKS refreshes triggered by new
+#' or unexpected key IDs.
+#' @return `TRUE` when a forced refresh is allowed and recorded; otherwise
+#'   `FALSE`.
 #' @keywords internal
 #' @noRd
 jwks_force_refresh_allowed <- function(
@@ -345,9 +361,6 @@ jwks_force_refresh_allowed <- function(
   TRUE
 }
 
-# Build the cache key used for one JWKS entry or throttle record.
-# Used by fetch_jwks() and jwks_force_refresh_allowed(). Input: issuer plus
-# pinning and host-policy settings. Output: cache-safe key string.
 #' Internal: Compute cache key for JWKS entries
 #'
 #' Uses hex SHA-256 of issuer URL concatenated with hex SHA-256 of the
@@ -356,7 +369,17 @@ jwks_force_refresh_allowed <- function(
 #' `jwks_host_allow_only`). Including issuer and host policy prevents
 #' cross-policy cache reuse where a relaxed provider populates the cache and a
 #' stricter provider skips validation on hit.
+#' Used by `fetch_jwks()` and `jwks_force_refresh_allowed()` so cached JWKS
+#' data and refresh throttles stay scoped to the same issuer and host policy.
 #'
+#' @param issuer Issuer URL.
+#' @param pins Optional vector of pinned JWK thumbprints.
+#' @param pin_mode Pinning mode.
+#' @param issuer_match Discovery issuer-match policy.
+#' @param jwks_host_issuer_match Whether the JWKS host must match the issuer
+#'   host.
+#' @param jwks_host_allow_only Optional explicitly allowed JWKS host.
+#' @return Cache-safe key string.
 #' @keywords internal
 #' @noRd
 jwks_cache_key <- function(
@@ -406,10 +429,6 @@ jwks_cache_key <- function(
   paste0(ih, "x", ch)
 }
 
-# Validate that the fetched JWKS host satisfies the provider's host policy.
-# Used after discovery and again when cached entries are reused. Input: issuer,
-# JWKS URI, and optional provider. Output: invisible TRUE or a configuration
-# error.
 #' Internal: ensure JWKS host aligns with issuer
 #'
 #' Validates the discovery `jwks_uri` hostname according to the provider's
@@ -419,7 +438,14 @@ jwks_cache_key <- function(
 #' settings are absent/disabled, no host relation is enforced. Prefer
 #' configuring `jwks_host_allow_only` for providers that serve JWKS from a
 #' different host rather than disabling issuer-match entirely.
+#' Used by `fetch_jwks()` before network fetches and when revalidating cached
+#' JWKS metadata against the current provider policy.
 #'
+#' @param issuer Issuer URL.
+#' @param jwks_uri JWKS URI to validate.
+#' @param provider Optional provider object carrying JWKS host policy.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   configuration error.
 #' @keywords internal
 #' @noRd
 validate_jwks_host_matches_issuer <- function(

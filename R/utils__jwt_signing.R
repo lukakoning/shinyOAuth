@@ -13,6 +13,7 @@
 #' `private_key_jwt` token endpoint authentication and returns the compact
 #' serialization. The JWT uses the client's configured credentials to sign
 #' the assertion. Header will include alg and optional kid (when provided).
+#' Used by token request builders when JWT client auth is configured.
 #'
 #' Claims:
 #'  - iss: client_id
@@ -22,6 +23,9 @@
 #'  - exp: iat + ttl (default 120s; override with options(shinyOAuth.client_assertion_ttl))
 #'  - jti: random unique identifier
 #'
+#' @param client OAuth client carrying assertion credentials.
+#' @param aud Audience value for the assertion.
+#' @return Compact signed client-assertion JWT.
 #' @keywords internal
 #' @noRd
 build_client_assertion <- function(client, aud) {
@@ -175,8 +179,11 @@ build_client_assertion <- function(client, aud) {
 #' Uses an explicit client override when present, otherwise uses the exact URL
 #' on the httr2 request (so any URL normalization/modification stays consistent
 #' with the audience claim). Falls back to the provider token_url for non-httr2
-#' request doubles used in tests.
+#' request doubles used in tests. Used by `build_client_assertion()`.
 #'
+#' @param client OAuth client carrying the assertion configuration.
+#' @param req httr2 request object or request double.
+#' @return Audience string for the client assertion.
 #' @keywords internal
 #' @noRd
 resolve_client_assertion_audience <- function(client, req) {
@@ -207,6 +214,10 @@ resolve_client_assertion_audience <- function(client, req) {
 
 #' Resolve the signing algorithm for a signed authorization request.
 #'
+#' Used when request objects are built for authorization requests.
+#'
+#' @param client OAuth client carrying request-object signing configuration.
+#' @return JOSE signing algorithm string.
 #' @keywords internal
 #' @noRd
 resolve_authorization_request_signing_alg <- function(client) {
@@ -280,6 +291,10 @@ resolve_authorization_request_signing_alg <- function(client) {
 
 #' Resolve the audience (`aud`) value for a signed authorization request.
 #'
+#' Used when request objects are built for authorization requests.
+#'
+#' @param client OAuth client carrying request-object signing configuration.
+#' @return Audience string for the signed authorization request.
 #' @keywords internal
 #' @noRd
 resolve_authorization_request_audience <- function(client) {
@@ -313,6 +328,10 @@ resolve_authorization_request_audience <- function(client) {
 
 #' Canonicalize a JWS alg name for JOSE headers.
 #'
+#' Used by the signing and verification helpers in this file.
+#'
+#' @param alg Algorithm name to normalize.
+#' @return Canonicalized JOSE algorithm string, or `""` when unavailable.
 #' @keywords internal
 #' @noRd
 canonicalize_jws_alg <- function(alg) {
@@ -335,6 +354,10 @@ canonicalize_jws_alg <- function(alg) {
 
 #' Return the minimum HMAC key length in bytes for a JWS alg.
 #'
+#' Used before HS* JWTs are signed or verified.
+#'
+#' @param alg JOSE HMAC algorithm name.
+#' @return Minimum key length in bytes.
 #' @keywords internal
 #' @noRd
 min_hmac_key_bytes <- function(alg) {
@@ -351,6 +374,10 @@ min_hmac_key_bytes <- function(alg) {
 
 #' Check whether a private key can sign a JWT with a given alg.
 #'
+#' @param key Private key object.
+#' @param alg JOSE algorithm name.
+#' @param typ JWT `typ` header used for compatibility probes.
+#' @return `TRUE` when the key can sign with `alg`; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
@@ -397,6 +424,12 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
 
 #' Encode a compact HMAC JWS while preserving a custom JOSE header.
 #'
+#' @param claims Named claims list.
+#' @param secret Shared HMAC secret.
+#' @param header JOSE header list.
+#' @param size HMAC digest size in bits.
+#' @param alg Optional JOSE algorithm name.
+#' @return Compact signed JWS string.
 #' @keywords internal
 #' @noRd
 encode_hmac_jwt_with_header <- function(
@@ -476,6 +509,9 @@ encode_hmac_jwt_with_header <- function(
 
 #' Build and sign a JWT-secured authorization request (RFC 9101).
 #'
+#' @param client OAuth client carrying request-object signing configuration.
+#' @param params Authorization request parameters to embed as claims.
+#' @return Compact signed authorization-request object JWT.
 #' @keywords internal
 #' @noRd
 build_authorization_request_object <- function(client, params) {
@@ -593,6 +629,9 @@ build_authorization_request_object <- function(client, params) {
 #' Accepts either an openssl::key-like object or a PEM string. Password-protected
 #' keys are not supported in this helper; supply an openssl::key unlocked in R
 #' if needed.
+#' @param key Private key input to normalize.
+#' @param arg_name Argument name used in error messages.
+#' @return Normalized OpenSSL private-key object.
 #' @keywords internal
 #' @noRd
 normalize_private_key_input <- function(key, arg_name = "client_private_key") {
@@ -615,6 +654,8 @@ normalize_private_key_input <- function(key, arg_name = "client_private_key") {
 #' For RSA keys, prefer RS256. For EC keys, try ES256/384/512 to match P-256/384/521.
 #' Other key types are not currently supported for outbound JWT signing and
 #' fall back to a configuration error.
+#' @param key Private key object.
+#' @return Compatible default JOSE signing algorithm string.
 #' @keywords internal
 #' @noRd
 choose_default_alg_for_private_key <- function(key) {

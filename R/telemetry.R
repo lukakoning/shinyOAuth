@@ -10,9 +10,15 @@
 # logs under the same scope.
 otel_tracer_name <- "io.github.lukakoning.shinyOAuth" # nolint
 
-# Show a non-fatal warning when OTEL setup fails for one operation.
-# Used by span and log helpers. Input: a context label and the caught error.
-# Output: a warning side effect.
+#' Warn about OpenTelemetry setup failures
+#'
+#' Used by span and log helpers.
+#'
+#' @param context Short label for the failing OpenTelemetry operation.
+#' @param error Caught condition describing the failure.
+#' @return No meaningful return value; emits a warning side effect.
+#' @keywords internal
+#' @noRd
 otel_telemetry_warning <- function(context, error) {
   rlang::warn(
     paste0(
@@ -24,21 +30,40 @@ otel_telemetry_warning <- function(context, error) {
   )
 }
 
-# Read the package option that turns tracing on or off.
-# Used before starting spans. Input: none. Output: TRUE or FALSE.
+#' Check whether tracing is enabled
+#'
+#' Reads the `shinyOAuth.otel_tracing_enabled` option before spans are started.
+#'
+#' @return `TRUE` when `getOption("shinyOAuth.otel_tracing_enabled", TRUE)` is
+#'   enabled; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 otel_tracing_enabled <- function() {
   isTRUE(getOption("shinyOAuth.otel_tracing_enabled", TRUE))
 }
 
-# Read the package option that turns OTEL log emission on or off.
-# Used before writing OTEL log records. Input: none. Output: TRUE or FALSE.
+#' Check whether OTEL logging is enabled
+#'
+#' Reads the `shinyOAuth.otel_logging_enabled` option before OTEL log records
+#' are emitted.
+#'
+#' @return `TRUE` when `getOption("shinyOAuth.otel_logging_enabled", TRUE)` is
+#'   enabled; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 otel_logging_enabled <- function() {
   isTRUE(getOption("shinyOAuth.otel_logging_enabled", TRUE))
 }
 
-# Warn once when async OAuth work may also emit telemetry from worker
-# processes.
-# Used by async module setup. Input: none. Output: invisible TRUE/FALSE.
+#' Warn about async OTEL worker configuration
+#'
+#' Warns once when async OAuth work may emit telemetry from worker processes in
+#' addition to the main R process. Used by async module setup.
+#'
+#' @return Invisibly returns `TRUE` when a warning is emitted; otherwise
+#'   invisibly returns `FALSE`.
+#' @keywords internal
+#' @noRd
 warn_about_async_otel_workers <- function() {
   otel_active <-
     (otel_tracing_enabled() && isTRUE(otel::is_tracing_enabled())) ||
@@ -81,9 +106,15 @@ warn_about_async_otel_workers <- function() {
 
 ## 2.1 Scalar and list helpers --------------------------------------------
 
-# Turn one regular R value into a single OTEL-safe scalar.
-# Used by attribute builders throughout the package. Input: one value.
-# Output: one scalar value or NULL when it should be skipped.
+#' Normalize one OTEL scalar attribute value
+#'
+#' Used by attribute builders throughout the package.
+#'
+#' @param value Candidate attribute value.
+#' @return A single OTEL-safe scalar value, or `NULL` when `value` should be
+#'   skipped.
+#' @keywords internal
+#' @noRd
 otel_scalar_attribute <- function(value) {
   if (is.null(value) || length(value) == 0) {
     return(NULL)
@@ -137,9 +168,15 @@ otel_scalar_attribute <- function(value) {
   out[[1]]
 }
 
-# Convert a named R list into an OTEL attributes object.
-# Used by span and log helpers. Input: a named list of candidate attributes.
-# Output: otel::as_attributes(...) or NULL when nothing usable remains.
+#' Build an OTEL attributes object
+#'
+#' Used by span and log helpers.
+#'
+#' @param x Named list of candidate attributes.
+#' @return An `otel::as_attributes(...)` object, or `NULL` when no usable
+#'   attributes remain.
+#' @keywords internal
+#' @noRd
 otel_attributes <- function(x) {
   if (is.null(x) || !length(x)) {
     return(NULL)
@@ -164,9 +201,14 @@ otel_attributes <- function(x) {
   otel::as_attributes(attrs)
 }
 
-# Extract the hostname from a URL for OTEL server attributes.
-# Used by HTTP attribute builders. Input: a URL string. Output: host string or
-# NULL.
+#' Extract an HTTP host for telemetry
+#'
+#' Used by HTTP attribute builders.
+#'
+#' @param url URL string to inspect.
+#' @return Hostname string, or `NULL` when the URL cannot be parsed.
+#' @keywords internal
+#' @noRd
 otel_http_host <- function(url) {
   if (!is_valid_string(url)) {
     return(NULL)
@@ -185,9 +227,14 @@ otel_http_host <- function(url) {
   host
 }
 
-# Count how many items a value contains after simple flattening.
-# Used by telemetry summaries. Input: a vector or list. Output: an integer
-# count.
+#' Count telemetry items
+#'
+#' Used by telemetry summary helpers.
+#'
+#' @param x Vector-like value or list to count.
+#' @return Integer item count.
+#' @keywords internal
+#' @noRd
 otel_count_items <- function(x) {
   if (is.null(x)) {
     return(0L)
@@ -232,9 +279,18 @@ otel_join_values <- function(x, sep = " ", sort_values = TRUE) {
 
 ## 3.1 Scopes, claims, and response fields --------------------------------
 
-# Normalize scope input into individual tokens for telemetry.
-# Used by login and token telemetry. Input: scopes plus optional provider
-# context. Output: a character vector of scope tokens.
+#' Normalize scope tokens for telemetry
+#'
+#' Used by login and token telemetry helpers.
+#'
+#' @param scopes Raw scope input.
+#' @param provider Optional provider object used when deciding whether to force
+#'   `openid`.
+#' @param ensure_openid Whether `openid` should be prepended when appropriate.
+#' @param allow_commas Whether one comma-delimited string should be split.
+#' @return A character vector of normalized scope tokens.
+#' @keywords internal
+#' @noRd
 otel_scope_tokens <- function(
   scopes,
   provider = NULL,
@@ -275,9 +331,19 @@ otel_scope_tokens <- function(
   tokens
 }
 
-# Join normalized scope tokens into the string form written to OTEL.
-# Used by attribute builders. Input: scope-like values. Output: one scope
-# string or NULL.
+#' Join scope tokens for telemetry
+#'
+#' Used by telemetry attribute builders.
+#'
+#' @param scopes Raw scope input.
+#' @param provider Optional provider object used when deciding whether to force
+#'   `openid`.
+#' @param ensure_openid Whether `openid` should be prepended when appropriate.
+#' @param allow_commas Whether one comma-delimited string should be split.
+#' @return A single space-delimited scope string, or `NULL` when no scopes
+#'   survive normalization.
+#' @keywords internal
+#' @noRd
 otel_scope_string <- function(
   scopes,
   provider = NULL,
@@ -296,9 +362,18 @@ otel_scope_string <- function(
   )
 }
 
-# Count normalized scope tokens after the same cleanup rules used by
-# otel_scope_string().
-# Used by telemetry summaries. Input: scope-like values. Output: integer count.
+#' Count normalized scope tokens
+#'
+#' Used by telemetry summaries.
+#'
+#' @param scopes Raw scope input.
+#' @param provider Optional provider object used when deciding whether to force
+#'   `openid`.
+#' @param ensure_openid Whether `openid` should be prepended when appropriate.
+#' @param allow_commas Whether one comma-delimited string should be split.
+#' @return Integer count of normalized scope tokens.
+#' @keywords internal
+#' @noRd
 otel_scope_count <- function(
   scopes,
   provider = NULL,
@@ -313,9 +388,14 @@ otel_scope_count <- function(
   )))
 }
 
-# Check whether the caller requested any OIDC claims at all.
-# Used by login telemetry. Input: claims value from the client. Output: TRUE or
-# FALSE.
+#' Check whether claims were requested
+#'
+#' Used by login telemetry helpers.
+#'
+#' @param claims Claims value from the client configuration.
+#' @return `TRUE` when claims appear to be present; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 otel_claims_requested <- function(claims) {
   if (is.null(claims)) {
     return(FALSE)
@@ -330,9 +410,15 @@ otel_claims_requested <- function(claims) {
   }))
 }
 
-# Summarize which top-level claim targets were requested.
-# Used by login telemetry. Input: claims value as list or JSON string. Output:
-# comma-separated target names or NULL.
+#' Summarize requested claim targets
+#'
+#' Used by login telemetry helpers.
+#'
+#' @param claims Claims value as a list or JSON string.
+#' @return Comma-separated top-level claim target names, or `NULL` when they
+#'   cannot be determined.
+#' @keywords internal
+#' @noRd
 otel_claim_targets <- function(claims) {
   if (is.null(claims)) {
     return(NULL)
@@ -356,9 +442,14 @@ otel_claim_targets <- function(claims) {
   otel_join_values(names(claims), sep = ",", sort_values = TRUE)
 }
 
-# Read the provider's requested max_age value in numeric form for telemetry.
-# Used by login telemetry. Input: provider object. Output: non-negative number
-# or NULL.
+#' Read a provider max_age value for telemetry
+#'
+#' Used by login telemetry helpers.
+#'
+#' @param provider Provider object whose `extra_auth_params` are inspected.
+#' @return Non-negative numeric `max_age`, or `NULL` when absent or invalid.
+#' @keywords internal
+#' @noRd
 otel_requested_max_age <- function(provider) {
   if (is.null(provider)) {
     return(NULL)
@@ -382,9 +473,14 @@ otel_requested_max_age <- function(provider) {
   as.numeric(max_age)
 }
 
-# Report the client's normalized token authentication style.
-# Used by login and token telemetry. Input: client object. Output: auth style
-# string or NULL.
+#' Read the client auth style for telemetry
+#'
+#' Used by login and token telemetry helpers.
+#'
+#' @param client OAuth client object.
+#' @return Normalized auth-style string, or `NULL` when no client is supplied.
+#' @keywords internal
+#' @noRd
 otel_client_auth_style <- function(client) {
   if (is.null(client)) {
     return(NULL)
@@ -393,9 +489,15 @@ otel_client_auth_style <- function(client) {
   normalize_token_auth_style(client@provider@token_auth_style %||% "header")
 }
 
-# Report whether the browser cookie path is rooted at "/".
-# Used by module telemetry. Input: cookie path setting. Output: TRUE, FALSE, or
-# NULL.
+#' Check whether the browser cookie path is rooted
+#'
+#' Used by module telemetry helpers.
+#'
+#' @param browser_cookie_path Configured cookie path.
+#' @return `TRUE` when the cookie path is rooted at `/`, `FALSE` when it is a
+#'   valid non-root path, or `NULL` when the value is invalid.
+#' @keywords internal
+#' @noRd
 otel_browser_cookie_path_root <- function(browser_cookie_path) {
   if (is.null(browser_cookie_path)) {
     return(TRUE)
@@ -408,9 +510,15 @@ otel_browser_cookie_path_root <- function(browser_cookie_path) {
   identical(browser_cookie_path, "/")
 }
 
-# Normalize a response content type for OTEL attributes.
-# Used by HTTP and span helpers. Input: a content type string and/or response.
-# Output: lowercase media type or NULL.
+#' Normalize an HTTP content type for telemetry
+#'
+#' Used by HTTP and span helpers.
+#'
+#' @param content_type Optional explicit content type string.
+#' @param resp Optional httr2 response used when `content_type` is missing.
+#' @return Lowercase media type without parameters, or `NULL`.
+#' @keywords internal
+#' @noRd
 otel_http_content_type <- function(content_type = NULL, resp = NULL) {
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
     content_type <- content_type %||%
@@ -433,23 +541,39 @@ otel_http_content_type <- function(content_type = NULL, resp = NULL) {
   content_type
 }
 
-# Join configured ACR values into the form written to telemetry.
-# Used by login telemetry. Input: character vector of ACR values. Output: one
-# string or NULL.
+#' Join required ACR values for telemetry
+#'
+#' Used by login telemetry helpers.
+#'
+#' @param values Character vector of ACR values.
+#' @return A single joined string, or `NULL` when no usable values remain.
+#' @keywords internal
+#' @noRd
 otel_required_acr_values <- function(values) {
   otel_join_values(values, sep = " ", sort_values = FALSE)
 }
 
-# Join configured introspection checks into the form written to telemetry.
-# Used by token and login telemetry. Input: character vector of checks.
-# Output: one string or NULL.
+#' Join introspection elements for telemetry
+#'
+#' Used by token and login telemetry helpers.
+#'
+#' @param values Character vector of introspection checks.
+#' @return A single joined string, or `NULL` when no usable values remain.
+#' @keywords internal
+#' @noRd
 otel_introspect_elements <- function(values) {
   otel_join_values(values, sep = ",", sort_values = TRUE)
 }
 
-# Pull the most important token response fields into telemetry attributes.
-# Used after token exchange and refresh. Input: token response list. Output: a
-# compact named list of OTEL-safe attributes.
+#' Build token response telemetry attributes
+#'
+#' Used after token exchange and refresh work completes.
+#'
+#' @param token_set Token response list returned by token exchange or refresh
+#'   code.
+#' @return A compact named list of OTEL-safe token response attributes.
+#' @keywords internal
+#' @noRd
 otel_token_response_attributes <- function(token_set) {
   if (!is.list(token_set) || !length(token_set)) {
     return(list())
@@ -481,10 +605,13 @@ otel_token_response_attributes <- function(token_set) {
 
 ## 4.1 Shiny and HTTP context builders ------------------------------------
 
-# Read the current Shiny session context in the normalized shape used by other
-# telemetry helpers.
-# Used when callers do not pass session context explicitly. Output: session
-# context list or NULL.
+#' Capture the current Shiny session context for telemetry
+#'
+#' Used when callers do not pass session context explicitly.
+#'
+#' @return Session-context list, or `NULL` when no usable context is available.
+#' @keywords internal
+#' @noRd
 otel_current_shiny_session <- function() {
   event <- tryCatch(augment_with_shiny_context(list()), error = function(...) {
     list()
@@ -492,9 +619,15 @@ otel_current_shiny_session <- function() {
   event$shiny_session %||% NULL
 }
 
-# Build OTEL attributes that describe the active Shiny session.
-# Used by client, event, and span helpers. Input: optional session context.
-# Output: a named list of session-related attributes.
+#' Build Shiny session telemetry attributes
+#'
+#' Used by client, event, and span helpers.
+#'
+#' @param shiny_session Optional precomputed session context. When omitted, the
+#'   current session is inspected.
+#' @return A named list of session-related telemetry attributes.
+#' @keywords internal
+#' @noRd
 otel_shiny_attributes <- function(shiny_session = NULL) {
   shiny_session <- shiny_session %||% otel_current_shiny_session()
   shiny_session <- normalize_shiny_session_context(shiny_session)
@@ -524,9 +657,15 @@ otel_shiny_attributes <- function(shiny_session = NULL) {
   ))
 }
 
-# Ensure a trace id attribute is present when one is available.
-# Used by span and log builders. Input: an attribute list and optional trace
-# id. Output: the augmented attribute list.
+#' Ensure a trace id attribute is present
+#'
+#' Used by span and log builders.
+#'
+#' @param attributes Existing attribute list.
+#' @param trace_id Optional explicit trace id override.
+#' @return The original or augmented attribute list.
+#' @keywords internal
+#' @noRd
 otel_with_trace_attribute <- function(attributes = NULL, trace_id = NULL) {
   attrs <- attributes %||% list()
   trace_id <- otel_scalar_attribute(trace_id %||% get_current_trace_id())
@@ -539,10 +678,19 @@ otel_with_trace_attribute <- function(attributes = NULL, trace_id = NULL) {
   attrs
 }
 
-# Build the common client and module attributes shared across many telemetry
-# calls.
-# Used by login, token, and module code. Input: client, session, and module
-# context. Output: a named list of OTEL-safe attributes.
+#' Build common client telemetry attributes
+#'
+#' Used by login, token, and module code.
+#'
+#' @param client Optional OAuth client object.
+#' @param module_id Optional Shiny module id.
+#' @param shiny_session Optional Shiny session context.
+#' @param async Optional async execution flag.
+#' @param phase Optional operation phase label.
+#' @param extra Named list of extra attributes to merge in.
+#' @return A named list of OTEL-safe attributes.
+#' @keywords internal
+#' @noRd
 otel_client_attributes <- function(
   client = NULL,
   module_id = NULL,
@@ -574,9 +722,15 @@ otel_client_attributes <- function(
   ))
 }
 
-# Replace any stale Shiny session attributes with a fresh session snapshot.
-# Used when async work resumes in a worker. Input: attribute list and session
-# context. Output: updated attribute list.
+#' Replace stale Shiny telemetry attributes
+#'
+#' Used when async work resumes in a worker process.
+#'
+#' @param attributes Existing attribute list.
+#' @param shiny_session Fresh Shiny session context.
+#' @return Updated attribute list.
+#' @keywords internal
+#' @noRd
 otel_replace_shiny_attributes <- function(
   attributes = NULL,
   shiny_session = NULL
@@ -599,9 +753,19 @@ otel_replace_shiny_attributes <- function(
   ))
 }
 
-# Build OTEL HTTP attributes from request and response details.
-# Used by HTTP span helpers. Input: method, url, response, and optional extra
-# fields. Output: a named list of HTTP attributes.
+#' Build HTTP telemetry attributes
+#'
+#' Used by HTTP span helpers.
+#'
+#' @param method Optional HTTP method.
+#' @param url Optional request or response URL.
+#' @param resp Optional httr2 response.
+#' @param status_code Optional explicit status code.
+#' @param content_type Optional explicit content type.
+#' @param extra Named list of additional attributes to merge in.
+#' @return A named list of HTTP telemetry attributes.
+#' @keywords internal
+#' @noRd
 otel_http_attributes <- function(
   method = NULL,
   url = NULL,
@@ -637,9 +801,15 @@ otel_http_attributes <- function(
 
 ## 5.1 Span lifecycle ------------------------------------------------------
 
-# Set multiple attributes on a span after normalizing their values.
-# Used by HTTP and error helpers. Input: span plus attribute list. Output:
-# invisible NULL.
+#' Set span attributes
+#'
+#' Used by HTTP and error helpers.
+#'
+#' @param span Target span, defaulting to the active span.
+#' @param attributes Named list of candidate attributes.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_set_span_attributes <- function(span = NULL, attributes = list()) {
   if (!otel_tracing_enabled()) {
     return(invisible(NULL))
@@ -661,9 +831,14 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
   invisible(NULL)
 }
 
-# Mark a span as successful.
-# Used when an instrumented operation completes without error. Input: optional
-# span. Output: invisible NULL.
+#' Mark a span as successful
+#'
+#' Used when an instrumented operation completes without error.
+#'
+#' @param span Target span, defaulting to the active span.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_mark_span_ok <- function(span = NULL) {
   if (!otel_tracing_enabled()) {
     return(invisible(NULL))
@@ -674,9 +849,16 @@ otel_mark_span_ok <- function(span = NULL) {
   invisible(NULL)
 }
 
-# Attach error details to the current span.
-# Used when an instrumented operation fails. Input: error object, optional span,
-# and optional extra attributes. Output: invisible NULL.
+#' Record an error on a span
+#'
+#' Used when an instrumented operation fails.
+#'
+#' @param error Condition object to record.
+#' @param span Target span, defaulting to the active span.
+#' @param attributes Named list of extra error-related attributes.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_note_error <- function(error, span = NULL, attributes = list()) {
   if (!otel_tracing_enabled()) {
     return(invisible(NULL))
@@ -714,9 +896,15 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
   invisible(NULL)
 }
 
-# Copy the outcome of an HTTP response onto a span.
-# Used after outbound requests complete. Input: httr2 response and optional
-# span. Output: invisible NULL.
+#' Record an HTTP result on a span
+#'
+#' Used after outbound requests complete.
+#'
+#' @param resp httr2 response to inspect.
+#' @param span Target span, defaulting to the active span.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_record_http_result <- function(resp, span = NULL) {
   if (!otel_tracing_enabled()) {
     return(invisible(NULL))
@@ -751,9 +939,19 @@ otel_record_http_result <- function(resp, span = NULL) {
   invisible(NULL)
 }
 
-# Run code inside a local active OTEL span.
-# Used around login, token, and module operations. Input: span name, code block,
-# and optional attributes and options. Output: the result of the code block.
+#' Run code inside a local active OTEL span
+#'
+#' Used around login, token, and module operations.
+#'
+#' @param name Span name.
+#' @param code Unevaluated code block to run.
+#' @param attributes Optional named attribute list.
+#' @param options Optional span options list.
+#' @param mark_ok Whether successful completion should set span status to `ok`.
+#' @param parent Optional explicit parent context.
+#' @return The evaluated result of `code`.
+#' @keywords internal
+#' @noRd
 with_otel_span <- function(
   name,
   code,
@@ -816,9 +1014,15 @@ with_otel_span <- function(
   )
 }
 
-# Run code with an already-created span made active for the current scope.
-# Used when helper code needs to continue inside an existing span. Input: span
-# and code block. Output: the result of the code block.
+#' Run code with an existing active span
+#'
+#' Used when helper code needs to continue inside an already-created span.
+#'
+#' @param span Existing span to activate.
+#' @param code Unevaluated code block to run.
+#' @return The evaluated result of `code`.
+#' @keywords internal
+#' @noRd
 otel_with_active_span <- function(span, code) {
   code <- substitute(code)
   if (!otel_tracing_enabled() || is.null(span)) {
@@ -839,9 +1043,15 @@ otel_with_active_span <- function(span, code) {
   eval(code, envir = parent.frame())
 }
 
-# Capture the current span context as HTTP headers for later propagation.
-# Used before async work is dispatched. Input: optional span. Output: header
-# list or NULL.
+#' Capture OTEL propagation headers
+#'
+#' Used before async work is dispatched to a worker.
+#'
+#' @param span Optional explicit span whose context should be serialized.
+#' @return Header list for OTEL propagation, or `NULL` when no valid context is
+#'   available.
+#' @keywords internal
+#' @noRd
 otel_capture_context <- function(span = NULL) {
   if (!otel_tracing_enabled()) {
     return(NULL)
@@ -880,9 +1090,15 @@ otel_capture_context <- function(span = NULL) {
 
 ## 6.1 Parent context propagation -----------------------------------------
 
-# Rebuild an OTEL parent context from captured HTTP headers.
-# Used by async worker setup. Input: header list or character value. Output: an
-# OTEL context object or NULL.
+#' Rebuild an OTEL parent context from headers
+#'
+#' Used by async worker setup.
+#'
+#' @param otel_headers Header list or character value containing propagated OTEL
+#'   context.
+#' @return OTEL context object, or `NULL` when extraction fails.
+#' @keywords internal
+#' @noRd
 otel_span_context_from_headers <- function(otel_headers) {
   if (is.null(otel_headers) || !length(otel_headers)) {
     return(NULL)
@@ -918,9 +1134,16 @@ otel_span_context_from_headers <- function(otel_headers) {
   parent_ctx
 }
 
-# Start a parent span before async work is handed off to a worker.
-# Used by async login and module code. Input: span name, attributes, and
-# optional parent context. Output: a list with the span and propagated headers.
+#' Start an async parent span
+#'
+#' Used by async login and module code before work is handed off to a worker.
+#'
+#' @param name Span name.
+#' @param attributes Optional named attribute list.
+#' @param parent Optional explicit parent context passed to `otel::start_span()`.
+#' @return A list with `span` and `headers` elements.
+#' @keywords internal
+#' @noRd
 otel_start_async_parent <- function(
   name,
   attributes = NULL,
@@ -954,9 +1177,17 @@ otel_start_async_parent <- function(
   )
 }
 
-# Restore an async parent context inside a worker and start a child span.
-# Used by worker-side async code. Input: captured headers, span name, and
-# attribute or session context. Output: a started span or NULL.
+#' Restore an async parent context in a worker
+#'
+#' Used by worker-side async code.
+#'
+#' @param otel_headers Propagated header bundle.
+#' @param name Child span name.
+#' @param attributes Optional named attribute list.
+#' @param shiny_session Optional fresh session context.
+#' @return Started span object, or `NULL` when a child span cannot be created.
+#' @keywords internal
+#' @noRd
 otel_restore_parent_in_worker <- function(
   otel_headers,
   name,
@@ -998,9 +1229,16 @@ otel_restore_parent_in_worker <- function(
   span
 }
 
-# Finish the parent span created for async work.
-# Used when async work returns to the caller. Input: parent span bundle,
-# outcome status, and optional error. Output: invisible NULL.
+#' End an async parent span
+#'
+#' Used when async work returns to the caller.
+#'
+#' @param parent Parent-span bundle returned by `otel_start_async_parent()`.
+#' @param status Outcome status to record.
+#' @param error Optional condition to record for error outcomes.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_end_async_parent <- function(
   parent,
   status = c("ok", "error"),
@@ -1025,9 +1263,16 @@ otel_end_async_parent <- function(
 
 ## 7.1 Audit and log shaping ----------------------------------------------
 
-# Choose a log severity from shinyOAuth's event type and status fields.
-# Used by OTEL log emission. Input: event type plus optional status and reason.
-# Output: a severity string.
+#' Choose a log severity for an event
+#'
+#' Used by OTEL log emission helpers.
+#'
+#' @param type Event type key.
+#' @param status Optional event status.
+#' @param reason Optional event reason.
+#' @return Severity string such as `"info"`, `"warn"`, or `"error"`.
+#' @keywords internal
+#' @noRd
 otel_event_severity <- function(type, status = NULL, reason = NULL) {
   if (!is_valid_string(type)) {
     return("info")
@@ -1107,9 +1352,15 @@ otel_event_severity <- function(type, status = NULL, reason = NULL) {
   "info"
 }
 
-# Translate package event keys into OTEL attribute names.
-# Used when log records are built. Input: one event field name. Output: mapped
-# attribute key or the original name.
+#' Translate an event field name to an OTEL key
+#'
+#' Used when OTEL log records are built.
+#'
+#' @param name Event field name.
+#' @return Mapped OTEL attribute key, the original name when no mapping is
+#'   needed, or `NULL` for invalid input.
+#' @keywords internal
+#' @noRd
 otel_translate_event_key <- function(name) {
   if (!is_valid_string(name)) {
     return(NULL)
@@ -1131,9 +1382,15 @@ otel_translate_event_key <- function(name) {
   )
 }
 
-# Drop sensitive event fields and keep only OTEL-safe log attributes.
-# Used by OTEL log emission. Input: one audit or trace event list. Output:
-# named attribute list or NULL.
+#' Build OTEL-safe event attributes
+#'
+#' Used by OTEL log emission helpers.
+#'
+#' @param event Audit or trace event list.
+#' @return Named list of OTEL-safe log attributes, or `NULL` for invalid or
+#'   empty input.
+#' @keywords internal
+#' @noRd
 otel_event_attributes <- function(event) {
   if (!is.list(event) || !length(event)) {
     return(NULL)
@@ -1172,9 +1429,14 @@ otel_event_attributes <- function(event) {
   c(attrs, otel_shiny_attributes(event$shiny_session %||% NULL))
 }
 
-# Emit one OTEL log record for an audit or trace event when logging is enabled.
-# Used by audit hooks and telemetry emitters. Input: event list. Output:
-# invisible NULL.
+#' Emit an OTEL log record
+#'
+#' Used by audit hooks and telemetry emitters.
+#'
+#' @param event Audit or trace event list.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 otel_emit_log <- function(event) {
   if (!otel_logging_enabled()) {
     return(invisible(NULL))

@@ -19,9 +19,14 @@ MTLS_TOKEN_AUTH_STYLES <- c(
 # same certificate files.
 mtls_thumbprint_cache_env <- new.env(parent = emptyenv())
 
-# Build a file signature used in the mTLS thumbprint cache key.
-# Used when certificate or key files may change on disk. Input: path. Output:
-# cacheable signature string or NA.
+#' Build a file signature for the mTLS thumbprint cache
+#'
+#' Used by mTLS thumbprint cache-key helpers.
+#'
+#' @param path Certificate or key file path.
+#' @return Cacheable signature string, or `NA_character_`.
+#' @keywords internal
+#' @noRd
 mtls_thumbprint_cache_file_signature <- function(path) {
   if (!is_valid_string(path)) {
     return(NA_character_)
@@ -39,9 +44,16 @@ mtls_thumbprint_cache_file_signature <- function(path) {
   )
 }
 
-# Build the cache key for one certificate/key/password combination.
-# Used by the thumbprint cache. Input: cert path, key path, and optional key
-# password. Output: cache key string.
+#' Build an mTLS thumbprint cache key
+#'
+#' Used when certificate thumbprints are memoized.
+#'
+#' @param cert_file Client certificate path.
+#' @param key_file Optional private-key path.
+#' @param key_password Optional key password.
+#' @return Cache key string.
+#' @keywords internal
+#' @noRd
 mtls_thumbprint_cache_key <- function(
   cert_file,
   key_file = NULL,
@@ -55,9 +67,14 @@ mtls_thumbprint_cache_key <- function(
   )
 }
 
-# Read one cached certificate thumbprint when available.
-# Used before recalculating thumbprints. Input: cache key. Output: thumbprint
-# string or NULL.
+#' Read a cached mTLS thumbprint
+#'
+#' Used before recomputing certificate thumbprints.
+#'
+#' @param cache_key Cache entry key.
+#' @return Cached thumbprint string, or `NULL`.
+#' @keywords internal
+#' @noRd
 mtls_thumbprint_cache_get <- function(cache_key) {
   if (!is_valid_string(cache_key)) {
     return(NULL)
@@ -69,9 +86,15 @@ mtls_thumbprint_cache_get <- function(cache_key) {
   get(cache_key, envir = mtls_thumbprint_cache_env, inherits = FALSE)
 }
 
-# Store one certificate thumbprint in the in-memory cache.
-# Used after thumbprint calculation. Input: cache key and thumbprint. Output:
-# invisible thumbprint.
+#' Store an mTLS thumbprint in the cache
+#'
+#' Used after certificate thumbprints are computed.
+#'
+#' @param cache_key Cache entry key.
+#' @param thumbprint Thumbprint string to store.
+#' @return Invisibly returns `thumbprint`.
+#' @keywords internal
+#' @noRd
 mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
   if (!(is_valid_string(cache_key) && is_valid_string(thumbprint))) {
     return(invisible(thumbprint))
@@ -83,9 +106,15 @@ mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
 
 ## 1.2 Decide when mTLS applies ------------------------------------------
 
-# Check whether an OAuthClient has both certificate and private-key paths.
-# Used before attempting mTLS client auth. Input: OAuthClient-like object.
-# Output: TRUE or FALSE.
+#' Check whether a client has mTLS certificate material
+#'
+#' Used by mTLS endpoint, auth, and sender-constrained token helpers.
+#'
+#' @param oauth_client OAuthClient-like object.
+#' @return `TRUE` when both certificate and private-key paths are configured;
+#'   otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 client_has_mtls_certificate <- function(oauth_client) {
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(FALSE)
@@ -95,9 +124,15 @@ client_has_mtls_certificate <- function(oauth_client) {
     is_valid_string(oauth_client@tls_client_key_file)
 }
 
-# Check whether the provider authenticates the client with mutual TLS.
-# Used when choosing token endpoint auth behavior. Input: OAuthClient-like
-# object. Output: TRUE or FALSE.
+#' Check whether a client uses mTLS client authentication
+#'
+#' Used by authorization-server request builders.
+#'
+#' @param oauth_client OAuthClient-like object.
+#' @return `TRUE` when the provider token auth style is one of the mTLS styles;
+#'   otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 client_uses_mtls_auth <- function(oauth_client) {
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(FALSE)
@@ -109,10 +144,15 @@ client_uses_mtls_auth <- function(oauth_client) {
   token_auth_style %in% MTLS_TOKEN_AUTH_STYLES
 }
 
-# Check whether the provider wants certificate-bound access tokens and the
-# client can present a certificate.
-# Used when deciding whether mTLS must be applied to protected requests.
-# Input: OAuthClient-like object. Output: TRUE or FALSE.
+#' Check whether a client requests certificate-bound tokens
+#'
+#' Used by mTLS endpoint-selection helpers.
+#'
+#' @param oauth_client OAuthClient-like object.
+#' @return `TRUE` when certificate-bound tokens are enabled and the client can
+#'   present a certificate; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 client_requests_certificate_bound_tokens <- function(oauth_client) {
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(FALSE)
@@ -122,9 +162,15 @@ client_requests_certificate_bound_tokens <- function(oauth_client) {
     client_has_mtls_certificate(oauth_client)
 }
 
-# Check whether a given call should use the provider's mTLS endpoints.
-# Used for token, revocation, introspection, PAR, and userinfo requests.
-# Input: OAuthClient and optional token. Output: TRUE or FALSE.
+#' Check whether a call should use mTLS endpoints
+#'
+#' Used before token, revocation, introspection, and PAR URLs are resolved.
+#'
+#' @param oauth_client OAuthClient instance.
+#' @param token Optional token or token string.
+#' @return `TRUE` when the request should use mTLS endpoints; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 client_uses_mtls_endpoint <- function(oauth_client, token = NULL) {
   client_uses_mtls_auth(oauth_client) ||
     client_requests_certificate_bound_tokens(oauth_client) ||
@@ -132,9 +178,16 @@ client_uses_mtls_endpoint <- function(oauth_client, token = NULL) {
       token_requires_mtls_sender_constraint(token, oauth_client))
 }
 
-# Resolve one provider endpoint, preferring an mTLS alias when requested.
-# Used before building outbound requests. Input: provider, endpoint name, and
-# prefer_mtls flag. Output: endpoint URL string.
+#' Resolve a provider endpoint URL
+#'
+#' Used by outbound request builders when mTLS aliases may apply.
+#'
+#' @param provider OAuthProvider instance.
+#' @param endpoint Logical endpoint name.
+#' @param prefer_mtls Whether mTLS aliases should be preferred.
+#' @return Resolved endpoint URL string.
+#' @keywords internal
+#' @noRd
 resolve_provider_endpoint_url <- function(
   provider,
   endpoint,
@@ -172,9 +225,15 @@ resolve_provider_endpoint_url <- function(
 
 ## 1.3 Apply client certificates to requests ------------------------------
 
-# Attach the configured client certificate and key to one httr2 request.
-# Used once request routing has decided that mTLS applies. Input: request and
-# OAuthClient. Output: updated request.
+#' Attach an mTLS client certificate to a request
+#'
+#' Used before outbound calls to authorization-server or resource endpoints.
+#'
+#' @param req httr2 request object.
+#' @param oauth_client OAuthClient providing certificate configuration.
+#' @return Updated request.
+#' @keywords internal
+#' @noRd
 req_apply_mtls_client_certificate <- function(req, oauth_client) {
   if (!inherits(req, "httr2_request")) {
     return(req)
@@ -199,10 +258,16 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
   do.call(httr2::req_options, c(list(req), options))
 }
 
-# Attach an mTLS certificate to authorization-server requests when policy says
-# they should use mTLS endpoints.
-# Used for token-like authorization-server calls. Input: request, client, and
-# optional token. Output: request.
+#' Attach mTLS client authentication to authorization-server requests
+#'
+#' Used by token, revocation, introspection, and PAR request builders.
+#'
+#' @param req httr2 request object.
+#' @param oauth_client OAuthClient instance.
+#' @param token Optional token context.
+#' @return Request with the client certificate applied when needed.
+#' @keywords internal
+#' @noRd
 req_apply_authorization_server_mtls <- function(
   req,
   oauth_client,
@@ -220,9 +285,12 @@ req_apply_authorization_server_mtls <- function(
 
 ## 1.4 Resolve token certificate bindings ---------------------------------
 
-# Read the x5t#S256 thumbprint from a token or raw access token when present.
-# Used to detect sender-constrained mTLS tokens. Input: OAuthToken or token
-# string. Output: thumbprint string or NA.
+#' Read an mTLS certificate thumbprint from a token
+#'
+#' @param token OAuthToken object or raw token string.
+#' @return Thumbprint string, or `NA_character_` when none is available.
+#' @keywords internal
+#' @noRd
 token_cnf_x5t_s256 <- function(token) {
   cnf <- NULL
   access_token <- NA_character_
@@ -248,9 +316,12 @@ token_cnf_x5t_s256 <- function(token) {
   thumbprint
 }
 
-# Normalize a cnf claim into the subset shinyOAuth uses for mTLS binding.
-# Used when cnf arrives from tokens or introspection. Input: cnf-like value.
-# Output: normalized list.
+#' Normalize a cnf claim for mTLS binding
+#'
+#' @param cnf cnf-like value from a token or introspection payload.
+#' @return Normalized list.
+#' @keywords internal
+#' @noRd
 normalize_token_cnf <- function(cnf) {
   if (is.data.frame(cnf)) {
     cnf <- as.list(cnf)
@@ -267,9 +338,12 @@ normalize_token_cnf <- function(cnf) {
   list(`x5t#S256` = thumbprint)
 }
 
-# Parse cnf data from a JWT access token payload.
-# Used when token objects do not already expose cnf. Input: access token
-# string. Output: normalized cnf list.
+#' Parse cnf data from an access token
+#'
+#' @param access_token Raw access-token string.
+#' @return Normalized cnf list.
+#' @keywords internal
+#' @noRd
 token_cnf_from_access_token <- function(access_token) {
   if (!is_valid_string(access_token)) {
     return(list())
@@ -283,9 +357,12 @@ token_cnf_from_access_token <- function(access_token) {
   normalize_token_cnf(payload$cnf %||% NULL)
 }
 
-# Parse cnf data from an introspection result.
-# Used as a fallback when token payload cnf is unavailable. Input:
-# introspection result object. Output: normalized cnf list.
+#' Parse cnf data from an introspection result
+#'
+#' @param introspection_result Introspection result object or raw payload list.
+#' @return Normalized cnf list.
+#' @keywords internal
+#' @noRd
 token_cnf_from_introspection <- function(introspection_result) {
   if (!is.list(introspection_result)) {
     return(list())
@@ -302,10 +379,14 @@ token_cnf_from_introspection <- function(introspection_result) {
   normalize_token_cnf(raw$cnf %||% NULL)
 }
 
-# Resolve the effective cnf claim from explicit data, JWT payload, or
-# introspection output.
-# Used by sender-constrained token checks. Input: optional cnf, access token,
-# and introspection result. Output: normalized cnf list.
+#' Resolve the effective cnf claim
+#'
+#' @param cnf Optional explicit cnf data.
+#' @param access_token Optional raw access-token string.
+#' @param introspection_result Optional introspection payload.
+#' @return Normalized cnf list.
+#' @keywords internal
+#' @noRd
 resolve_token_cnf <- function(
   cnf = NULL,
   access_token = NULL,
@@ -324,10 +405,13 @@ resolve_token_cnf <- function(
   token_cnf_from_introspection(introspection_result)
 }
 
-# Check whether a token or client configuration requires mTLS sender
-# constraints.
-# Used before choosing protected-resource request behavior. Input: optional
-# token and OAuthClient. Output: TRUE or FALSE.
+#' Check whether mTLS sender constraints are required
+#'
+#' @param token Optional token or token string.
+#' @param oauth_client Optional OAuthClient.
+#' @return `TRUE` when sender-constrained mTLS is required; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 token_requires_mtls_sender_constraint <- function(
   token = NULL,
   oauth_client = NULL
@@ -345,9 +429,12 @@ token_requires_mtls_sender_constraint <- function(
 
 ## 1.5 Read certificates and enforce binding ------------------------------
 
-# Read one PEM certificate file or bundle into certificate objects.
-# Used before thumbprint calculation and certificate/key matching. Input:
-# certificate file path. Output: certificate list.
+#' Read client certificates
+#'
+#' @param cert_file Certificate file path.
+#' @return List of certificate objects.
+#' @keywords internal
+#' @noRd
 read_client_certificates <- function(cert_file) {
   certs <- try(openssl::read_cert_bundle(cert_file), silent = TRUE)
   if (!inherits(certs, "try-error") && length(certs) > 0) {
@@ -365,9 +452,13 @@ read_client_certificates <- function(cert_file) {
   )
 }
 
-# Read one PEM private key for mTLS client auth.
-# Used before certificate/key matching. Input: key file path and optional key
-# password. Output: openssl key object.
+#' Read a client private key
+#'
+#' @param key_file Private-key file path.
+#' @param key_password Optional key passphrase.
+#' @return Openssl key object.
+#' @keywords internal
+#' @noRd
 read_client_private_key <- function(key_file, key_password = NULL) {
   key <- try(
     openssl::read_key(
@@ -386,9 +477,14 @@ read_client_private_key <- function(key_file, key_password = NULL) {
   )
 }
 
-# Read the certificate from a bundle that matches the configured private key.
-# Used before thumbprint calculation. Input: certificate file, optional key
-# file, and optional key password. Output: matching certificate object.
+#' Read the keyed client certificate
+#'
+#' @param cert_file Certificate or bundle path.
+#' @param key_file Optional private-key path.
+#' @param key_password Optional key passphrase.
+#' @return Matching certificate object.
+#' @keywords internal
+#' @noRd
 read_keyed_client_certificate <- function(
   cert_file,
   key_file = NULL,
@@ -423,10 +519,14 @@ read_keyed_client_certificate <- function(
   )
 }
 
-# Compute the SHA-256 thumbprint of the client certificate bound to the private
-# key.
-# Used for sender-constrained token validation. Input: certificate file,
-# optional key file, and optional key password. Output: base64url thumbprint.
+#' Compute a client certificate thumbprint
+#'
+#' @param cert_file Certificate path.
+#' @param key_file Optional private-key path.
+#' @param key_password Optional key passphrase.
+#' @return Base64url-encoded certificate thumbprint string.
+#' @keywords internal
+#' @noRd
 tls_client_cert_thumbprint_s256 <- function(
   cert_file,
   key_file = NULL,
@@ -470,10 +570,14 @@ tls_client_cert_thumbprint_s256 <- function(
   thumbprint
 }
 
-# Verify that a certificate-bound token matches the configured client
-# certificate.
-# Used before protected-resource requests that enforce sender constraints.
-# Input: token and OAuthClient. Output: invisible TRUE or an input error.
+#' Validate certificate-bound token binding
+#'
+#' @param token Token or token object to validate.
+#' @param oauth_client OAuthClient whose certificate should match.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises
+#'   an input error.
+#' @keywords internal
+#' @noRd
 validate_token_certificate_binding <- function(token, oauth_client) {
   expected_thumbprint <- token_cnf_x5t_s256(token)
   if (!is_valid_string(expected_thumbprint)) {
@@ -512,10 +616,14 @@ validate_token_certificate_binding <- function(token, oauth_client) {
   invisible(TRUE)
 }
 
-# Attach the client certificate to one protected-resource request after
-# validating any sender-constrained token binding.
-# Used for mTLS-bound resource requests. Input: request, optional token, and
-# optional OAuthClient. Output: request.
+#' Attach sender-constrained mTLS to a resource request
+#'
+#' @param req Outgoing request.
+#' @param token Optional token or token string.
+#' @param oauth_client Optional OAuthClient.
+#' @return Updated request.
+#' @keywords internal
+#' @noRd
 req_apply_sender_constrained_mtls <- function(
   req,
   token = NULL,

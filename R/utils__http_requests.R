@@ -9,10 +9,10 @@
 
 #' Internal: Disable HTTP redirect following
 #'
-#' Security-hardened helper that prevents httr2 from automatically following
-#' redirect responses (3xx). This is critical for sensitive requests (token
-#' exchange, refresh, introspection, revocation, userinfo, OIDC discovery,
-#' JWKS) to prevent:
+#' Prevents httr2 from automatically following redirect responses (3xx) for
+#' sensitive provider-facing requests such as token exchange, refresh,
+#' introspection, revocation, UserInfo, OIDC discovery, and JWKS fetches.
+#' Used by all outbound provider-facing requests because redirects can:
 #'
 #' - Leaking authorization codes, tokens, client secrets, PKCE verifiers, or
 #'   other credentials to malicious or misconfigured redirect targets.
@@ -28,6 +28,9 @@
 #' but this should only be enabled when a deployment deliberately accepts the
 #' redirect-following risk for these sensitive endpoints.
 #'
+#' @param req httr2 request object.
+#' @return Request object with redirect following disabled, or the original
+#'   input when no change is needed.
 #' @keywords internal
 #' @noRd
 req_no_redirect <- function(req) {
@@ -47,7 +50,7 @@ req_no_redirect <- function(req) {
 #' sensitive endpoints. Since `req_no_redirect()` prevents following redirects,
 #' a 3xx response indicates the endpoint tried to redirect us (misconfig,
 #' attack, or proxy behavior). We should fail rather than parse an empty/wrong
-#' response body.
+#' response body. Used immediately after sensitive outbound requests complete.
 #'
 #' Skipped when `allow_redirect()` returns TRUE.
 #'
@@ -106,7 +109,11 @@ reject_redirect_response <- function(resp, context = "request") {
 #' Timeout and UA are configurable via options:
 #'   - options(shinyOAuth.timeout = 5) seconds
 #'   - options(shinyOAuth.user_agent = "shinyOAuth/<version> (+R/<version>)")
+#' Used by request builders before any network call is performed.
 #'
+#' @param req httr2 request object.
+#' @return Request object with timeout, user-agent, and body-size defaults
+#'   applied.
 #' @keywords internal
 #' @noRd
 add_req_defaults <- function(req) {
@@ -156,10 +163,18 @@ add_req_defaults <- function(req) {
 
 ## 1.2 Client-auth request shaping ---------------------------------------
 
-# Normalize client credentials into the request shape expected by the provider.
-# Used by PAR, token exchange, refresh, revocation, and introspection helpers
-# before the request is sent. Input: request, params, client, and phase label.
-# Output: updated req/params list.
+#' Apply direct client authentication to a request
+#'
+#' Shapes request credentials according to the provider's configured token auth
+#' style. Used by token, refresh, introspection, and revocation requests.
+#'
+#' @param req httr2 request object.
+#' @param params Named request-parameter list.
+#' @param client OAuth client carrying auth configuration.
+#' @param context Phase label used by downstream helpers.
+#' @return A list with updated `req` and `params` entries.
+#' @keywords internal
+#' @noRd
 apply_direct_client_auth <- function(req, params, client, context) {
   tas <- normalize_token_auth_style(
     client@provider@token_auth_style %||% "header"
@@ -208,6 +223,8 @@ apply_direct_client_auth <- function(req, params, client, context) {
 
 #' Internal: resolve max body bytes from option
 #'
+#' Used by request defaults and response-size guards.
+#'
 #' @return Integer, validated max body bytes (default 1 MiB).
 #' @keywords internal
 #' @noRd
@@ -225,7 +242,8 @@ resolve_max_body_bytes <- function() {
 #'
 #' Defense-in-depth guard that prevents expensive parsing (JSON, JWT) of
 #' oversized response bodies. Works for both Content-Length and chunked
-#' transfer encoding because it checks the actual downloaded body length.
+#' transfer encoding because it checks the actual downloaded body length. Used
+#' before token, discovery, JWKS, and UserInfo bodies are parsed.
 #'
 #' @param resp httr2 response object.
 #' @param context Character label for error messages (e.g., "token", "userinfo").
@@ -274,7 +292,8 @@ check_resp_body_size <- function(
 #'
 #' Retries on network errors and transient HTTP statuses (default: 408, 429,
 #' and 5xx). Honors Retry-After header when present (numeric seconds or
-#' HTTP-date) and otherwise uses exponential backoff with jitter.
+#' HTTP-date) and otherwise uses exponential backoff with jitter. Used by all
+#' outbound provider-facing HTTP calls.
 #'
 #' Note: This helper currently implements backoff via `Sys.sleep()` on the main
 #' R thread. In Shiny, calling this from the server will block the event loop
@@ -297,6 +316,8 @@ check_resp_body_size <- function(
 #'  - shinyOAuth.retry_backoff_cap (seconds, default 5)
 #'  - shinyOAuth.retry_status (integer vector; default c(408, 429, 500:599))
 #'
+#' @return httr2 response object. Transport failures raise a typed transport
+#'   error instead of returning.
 #' @keywords internal
 #' @noRd
 req_with_retry <- function(req, idempotent = TRUE) {
@@ -371,47 +392,6 @@ req_with_retry <- function(req, idempotent = TRUE) {
     retry_status <- c(408L, 429L, 500:599)
   }
 
-  # Parse a Retry-After header into a numeric delay in seconds.
-  # Used only by req_with_retry(). Input: httr2 response. Output: delay or NA.
-  parse_retry_after <- function(resp) {
-    ra <- try(httr2::resp_header(resp, "retry-after"), silent = TRUE)
-    if (inherits(ra, "try-error") || !is_valid_string(ra)) {
-      return(NA_real_)
-    }
-    ra <- trimws(as.character(ra))
-    # Numeric seconds
-    if (grepl("^\\d+$", ra)) {
-      val <- suppressWarnings(as.numeric(ra))
-      return(ifelse(is.finite(val) && !is.na(val) && val >= 0, val, NA_real_))
-    }
-    # HTTP-date
-    dt <- try(
-      as.POSIXct(
-        ra,
-        tz = "GMT",
-        tryFormats = c(
-          "%a, %d %b %Y %H:%M:%S %Z", # IMF-fixdate
-          "%A, %d-%b-%y %H:%M:%S %Z", # rfc850
-          "%a %b %d %H:%M:%S %Y" # asctime
-        )
-      ),
-      silent = TRUE
-    )
-    if (!inherits(dt, "try-error") && !is.na(dt)) {
-      delta <- as.numeric(dt - Sys.time())
-      return(ifelse(delta > 0, delta, NA_real_))
-    }
-    NA_real_
-  }
-
-  # Compute one exponential-backoff delay with jitter.
-  # Used only by req_with_retry(). Input: attempt number. Output: wait seconds.
-  backoff_delay <- function(attempt) {
-    # Exponential backoff with full jitter (0..min(cap, base*2^(attempt-1)))
-    max_wait <- min(cap, base * (2^(attempt - 1)))
-    stats::runif(1, min = 0, max = max_wait)
-  }
-
   last_err <- NULL
   for (i in seq_len(max_tries)) {
     # Try perform; catch transport errors
@@ -421,7 +401,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
       last_err <- resp
       # Backoff on transport errors (no Retry-After available)
       if (i < max_tries) {
-        Sys.sleep(backoff_delay(i))
+        Sys.sleep(retry_backoff_delay(i, base = base, cap = cap))
       }
     } else if (inherits(resp, "httr2_response")) {
       status <- try(httr2::resp_status(resp), silent = TRUE)
@@ -440,9 +420,9 @@ req_with_retry <- function(req, idempotent = TRUE) {
         class = "shinyOAuth_transient_response"
       )
       # Respect Retry-After when present
-      wait <- parse_retry_after(resp)
+      wait <- parse_retry_after_header(resp)
       if (is.na(wait)) {
-        wait <- backoff_delay(i)
+        wait <- retry_backoff_delay(i, base = base, cap = cap)
       }
       # Avoid excessive sleep in tests; cap at 10s for sanity
       wait <- max(0, min(wait, 10))
@@ -474,4 +454,62 @@ req_with_retry <- function(req, idempotent = TRUE) {
     )),
     parent = parent
   )
+}
+
+## 1.3 Retry timing helpers -----------------------------------------------
+
+#' Internal: parse one Retry-After response header
+#'
+#' Used by `req_with_retry()` so transient HTTP responses can respect server-
+#' supplied retry delays before falling back to client-side backoff. Extracted
+#' from `req_with_retry()` so retry-delay parsing stays testable on its own.
+#'
+#' @param resp httr2 response object.
+#' @return Retry delay in seconds, or `NA_real_` when parsing fails.
+#' @keywords internal
+#' @noRd
+parse_retry_after_header <- function(resp) {
+  ra <- try(httr2::resp_header(resp, "retry-after"), silent = TRUE)
+  if (inherits(ra, "try-error") || !is_valid_string(ra)) {
+    return(NA_real_)
+  }
+  ra <- trimws(as.character(ra))
+  if (grepl("^\\d+$", ra)) {
+    val <- suppressWarnings(as.numeric(ra))
+    return(ifelse(is.finite(val) && !is.na(val) && val >= 0, val, NA_real_))
+  }
+
+  dt <- try(
+    as.POSIXct(
+      ra,
+      tz = "GMT",
+      tryFormats = c(
+        "%a, %d %b %Y %H:%M:%S %Z",
+        "%A, %d-%b-%y %H:%M:%S %Z",
+        "%a %b %d %H:%M:%S %Y"
+      )
+    ),
+    silent = TRUE
+  )
+  if (!inherits(dt, "try-error") && !is.na(dt)) {
+    delta <- as.numeric(dt - Sys.time())
+    return(ifelse(delta > 0, delta, NA_real_))
+  }
+  NA_real_
+}
+
+#' Internal: compute one retry backoff delay with jitter
+#'
+#' Used by `req_with_retry()` when no usable `Retry-After` header is present,
+#' or when transport errors need client-side exponential backoff.
+#'
+#' @param attempt 1-based retry attempt number.
+#' @param base Base backoff interval in seconds.
+#' @param cap Maximum backoff interval in seconds.
+#' @return Randomized backoff delay in seconds.
+#' @keywords internal
+#' @noRd
+retry_backoff_delay <- function(attempt, base, cap) {
+  max_wait <- min(cap, base * (2^(attempt - 1)))
+  stats::runif(1, min = 0, max = max_wait)
 }

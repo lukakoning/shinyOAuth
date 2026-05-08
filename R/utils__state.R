@@ -9,7 +9,8 @@
 #' Decrypt and validate OAuth state payload
 #'
 #' Internal utility that decrypts the encrypted `state` payload using the
-#' client's `state_key`, then validates freshness and client binding.
+#' client's `state_key`, then validates freshness and client binding. Used by
+#' callback handling before the code exchange continues.
 #'
 #' @param client [OAuthClient] instance
 #' @param encrypted_payload Encrypted state payload string received via the
@@ -91,9 +92,16 @@ state_payload_decrypt_validate <- function(
 
 ## 1.2 Payload binding and freshness -------------------------------------
 
-# Check that the sealed login state is still fresh enough to use.
-# Used by state_payload_decrypt_validate() and otel_callback_parent_hint().
-# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
+#' Verify encrypted state payload freshness
+#'
+#' Used by [state_payload_decrypt_validate()].
+#'
+#' @param client OAuth client carrying the payload age policy.
+#' @param payload Decrypted state payload list.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   state error.
+#' @keywords internal
+#' @noRd
 payload_verify_issued_at <- function(client, payload) {
   # Freshness backstop for the encrypted state payload (independent of store TTL)
   max_age <- client_state_payload_max_age(client)
@@ -129,9 +137,16 @@ payload_verify_issued_at <- function(client, payload) {
   invisible(TRUE)
 }
 
-# Check that the callback payload still matches the client that started login.
-# Used by state_payload_decrypt_validate() before any token exchange happens.
-# Input: client and decrypted payload list. Output: invisible TRUE or a state error.
+#' Verify encrypted state payload client binding
+#'
+#' Used by [state_payload_decrypt_validate()].
+#'
+#' @param client OAuth client expected to match the payload.
+#' @param payload Decrypted state payload list.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   state error.
+#' @keywords internal
+#' @noRd
 payload_verify_client_binding <- function(client, payload) {
   # Helpers --------------------------------------------------------------------
 
@@ -228,19 +243,20 @@ payload_verify_client_binding <- function(client, payload) {
 
 #' Fetch and remove the single-use state entry
 #'
-#' Retrieves the state-bound values from the client's `state_store` and removes
-#' the entry to enforce single-use semantics.
+#' Uses the client's `state_store` to read and remove the state-bound values
+#' after the encrypted callback payload has been decrypted and validated.
 #'
 #' When the store exposes an atomic `$take(key, missing)` method (see
-#' [custom_cache()]), it is used preferentially to guarantee single-use even
-#' under concurrent access in shared/distributed backends.
-#' When `$take()` is not available, the function falls back to
-#' `$get()` + `$remove()` with a post-removal absence check.
-#' This fallback is safe for per-process caches (e.g., [cachem::cache_mem()])
-#' but **errors** for any other store (e.g., [cachem::cache_disk()] or custom
-#' backends) because non-atomic get+remove cannot guarantee single-use under
-#' concurrent access. Shared stores **must** implement `$take()` to be used
-#' as a state store.
+#' [custom_cache()]), that path is used first so single-use semantics still
+#' hold under concurrent access.
+#' When `$take()` is unavailable, the function falls back to `$get()` +
+#' `$remove()` with a post-removal absence check.
+#' That fallback is safe for per-process caches such as [cachem::cache_mem()].
+#' For shared stores it errors by default, because non-atomic get+remove cannot
+#' guarantee single-use semantics under concurrent access; operators may opt in
+#' to that weaker fallback with
+#' `options(shinyOAuth.allow_non_atomic_state_store = TRUE)`, but doing so is
+#' discouraged.
 #'
 #' @param client [OAuthClient] instance
 #' @param state Plain (decrypted) state string used as the logical key
@@ -248,9 +264,8 @@ payload_verify_client_binding <- function(client, payload) {
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #'
-#' @return A list with `browser_token`, `pkce_code_verifier`, and `nonce`.
-#'   Throws an error via `err_invalid_state()` if retrieval or removal fails,
-#'   or if the retrieved value is missing/malformed.
+#' @return Validated state-store value list. On failure this function raises
+#'   `err_invalid_state()` instead of returning a partial result.
 #' @keywords internal
 state_store_get_remove <- function(client, state, shiny_session = NULL) {
   S7::check_is_S7(client, class = OAuthClient)
@@ -352,10 +367,15 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 
 ## 2.2 Atomic consume path ------------------------------------------------
 
-# Consume one state-store entry with an atomic read-and-remove operation.
-# Used by state_store_get_remove() when the backend exposes `$take()`.
-# Input: store, computed key, client/state context, and Shiny context. Output: validated state-store value list or a state error.
-
+#' Consume a state-store entry atomically
+#'
+#' @param store State-store backend exposing `$take()`.
+#' @param key Computed store key.
+#' @param client OAuth client used for audit context.
+#' @param state Raw state string.
+#' @param shiny_session Optional Shiny session context.
+#' @return Validated state-store value list.
+#' @keywords internal
 #' @noRd
 state_store_consume_atomic <- function(
   store,
@@ -417,10 +437,15 @@ state_store_consume_atomic <- function(
 
 ## 2.3 Non-atomic fallback path -------------------------------------------
 
-# Consume one state-store entry with get + remove + a post-check.
-# Used by state_store_get_remove() only for per-process caches that do not offer `$take()`.
-# Input: store, computed key, client/state context, and Shiny context. Output: validated state-store value list or a state error.
-
+#' Consume a state-store entry with a fallback path
+#'
+#' @param store State-store backend exposing `$get()` and `$remove()`.
+#' @param key Computed store key.
+#' @param client OAuth client used for audit context.
+#' @param state Raw state string.
+#' @param shiny_session Optional Shiny session context.
+#' @return Validated state-store value list.
+#' @keywords internal
 #' @noRd
 state_store_consume_fallback <- function(
   store,
@@ -524,9 +549,12 @@ state_store_consume_fallback <- function(
 
 ## 2.4 Shared state-store validation --------------------------------------
 
-# Check that a retrieved state-store value has the fields callback handling expects.
-# Used by both state-store consume paths before browser-token and PKCE checks continue.
-# Input: one retrieved state-store value. Output: invisible value or a state error.
+#' Validate a retrieved state-store value
+#'
+#' @param ssv Retrieved state-store value.
+#' @return Invisibly returns `ssv` on success. Otherwise this function raises a
+#'   state error.
+#' @keywords internal
 #' @noRd
 validate_state_store_value <- function(ssv) {
   if (is.null(ssv) || !is.list(ssv)) {

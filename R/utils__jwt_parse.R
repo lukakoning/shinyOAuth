@@ -9,6 +9,10 @@
 
 #' Parse JWT payload (unsigned validation only)
 #'
+#' Used by inbound JWT validators after compact parsing succeeds.
+#'
+#' @param jwt Compact JWT string.
+#' @return Parsed JWT payload object.
 #' @keywords internal
 #' @noRd
 parse_jwt_payload <- function(jwt) {
@@ -29,6 +33,10 @@ parse_jwt_payload <- function(jwt) {
 
 #' Internal: Parse JWT header (no validation)
 #'
+#' Used before JOSE header policy checks and key selection.
+#'
+#' @param jwt Compact JWT string.
+#' @return Parsed JOSE header list.
 #' @keywords internal
 #' @noRd
 parse_jwt_header <- function(jwt) {
@@ -49,6 +57,16 @@ parse_jwt_header <- function(jwt) {
 
 ## 1.2 Compact JWT parsing and JSON decoding ------------------------------
 
+#' Strictly decode one compact JWT segment
+#'
+#' Used by compact JWT parsing.
+#'
+#' @param segment Encoded compact-JWT segment.
+#' @param field_name Human-readable segment label.
+#' @param allow_empty Whether an empty segment is allowed.
+#' @return Raw decoded segment bytes.
+#' @keywords internal
+#' @noRd
 strict_decode_jwt_segment <- function(
   segment,
   field_name,
@@ -93,9 +111,16 @@ strict_decode_jwt_segment <- function(
   decoded
 }
 
-# Split a compact JWT into its three decoded segments and signing input.
-# Used by parse and verification helpers. Input: compact JWT string. Output:
-# list of raw and character parts.
+#' Split a compact JWT into decoded parts
+#'
+#' Used by header, payload, and signature helpers.
+#'
+#' @param jwt Compact JWT string.
+#' @param allow_empty_signature Whether an empty signature segment is allowed.
+#' @return List containing the encoded segments, decoded raw segments, and
+#'   signing input.
+#' @keywords internal
+#' @noRd
 jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
   if (!is.character(jwt) || length(jwt) != 1L || is.na(jwt)) {
     err_parse(
@@ -129,9 +154,15 @@ jwt_compact_parts <- function(jwt, allow_empty_signature = TRUE) {
   )
 }
 
-# Decode one raw JWT segment into validated JSON text.
-# Used by header and payload parsing. Input: raw segment bytes and field name.
-# Output: JSON text string.
+#' Decode one JWT JSON segment
+#'
+#' Used after compact JWT segments are base64url-decoded.
+#'
+#' @param segment_raw Raw decoded segment bytes.
+#' @param field_name Human-readable segment label.
+#' @return JSON text string.
+#' @keywords internal
+#' @noRd
 strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   stopifnot(is.raw(segment_raw))
 
@@ -160,26 +191,131 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   text
 }
 
-# Reject duplicate top-level JSON object member names.
-# Used before parsing JWT headers and payloads. Input: JSON text and label.
-# Output: invisible NULL or a parse error.
+#' Internal: decode one JSON string token
+#'
+#' Used by `reject_duplicate_json_object_members()` so duplicate-key detection
+#' compares decoded member names rather than raw escape sequences.
+#'
+#' @param token JSON string contents without surrounding quotes.
+#' @return Decoded scalar string, or the original token on parse fallback.
+#' @keywords internal
+#' @noRd
+jwt_decode_json_string_token <- function(token) {
+  tryCatch(
+    jsonlite::fromJSON(
+      paste0('["', token, '"]'),
+      simplifyVector = TRUE
+    )[[1]],
+    error = function(...) token
+  )
+}
+
+#' Internal: validate one scalar string JOSE header field
+#'
+#' Used by `validate_jose_header_fields()` for shared `alg`, `kid`, and `typ`
+#' validation before algorithm-specific JWT checks run.
+#'
+#' @param value Parsed field value.
+#' @param field Field name for error messages.
+#' @param signal_error Function used to report validation failures.
+#' @param required Whether `NULL` is allowed.
+#' @return Scalar string or `NULL`; raises an error via `signal_error()` when
+#'   validation fails.
+#' @keywords internal
+#' @noRd
+jwt_validate_scalar_string_field <- function(
+  value,
+  field,
+  signal_error,
+  required = FALSE
+) {
+  if (is.null(value)) {
+    if (isTRUE(required)) {
+      signal_error(paste0("JWT header missing ", field))
+    }
+    return(NULL)
+  }
+
+  if (
+    !is.character(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !nzchar(value)
+  ) {
+    suffix <- if (isTRUE(required)) "" else " when present"
+    signal_error(paste0(
+      "JWT ",
+      field,
+      " header must be a single non-empty string",
+      suffix
+    ))
+  }
+
+  value
+}
+
+#' Internal: validate the JOSE crit header
+#'
+#' Used by `validate_jose_header_fields()` to normalize supported `crit`
+#' values and reject malformed extension-name vectors early.
+#'
+#' @param value Parsed `crit` header value.
+#' @param signal_error Function used to report validation failures.
+#' @return Normalized character vector or `NULL`; otherwise signals through
+#'   `signal_error()`.
+#' @keywords internal
+#' @noRd
+jwt_validate_crit_field <- function(value, signal_error) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+
+  crit <- NULL
+  if (is.character(value)) {
+    crit <- value
+  } else if (
+    is.list(value) &&
+      length(value) > 0L &&
+      all(vapply(
+        value,
+        function(item) {
+          is.character(item) && length(item) == 1L
+        },
+        logical(1)
+      ))
+  ) {
+    crit <- vapply(value, identity, character(1), USE.NAMES = FALSE)
+  }
+
+  if (
+    is.null(crit) ||
+      length(crit) == 0L ||
+      anyNA(crit) ||
+      !all(nzchar(crit)) ||
+      anyDuplicated(crit)
+  ) {
+    signal_error(
+      "JWT crit header must be a non-empty character vector of unique extension names"
+    )
+  }
+
+  crit
+}
+
+#' Reject duplicate top-level JSON object members
+#'
+#' Used before JWT header and payload JSON is parsed.
+#'
+#' @param json_text JSON text to inspect.
+#' @param label Human-readable label used in parse errors.
+#' @return Invisibly returns `NULL` on success. Otherwise this function raises a
+#'   parse error.
+#' @keywords internal
+#' @noRd
 reject_duplicate_json_object_members <- function(json_text, label) {
   chars <- strsplit(enc2utf8(json_text), "", fixed = TRUE)[[1]]
   if (!length(chars)) {
     return(invisible(NULL))
-  }
-
-  # Decode one JSON string token while preserving escape handling.
-  # Used only by reject_duplicate_json_object_members(). Input: token string.
-  # Output: decoded member name.
-  decode_json_string_token <- function(token) {
-    tryCatch(
-      jsonlite::fromJSON(
-        paste0('["', token, '"]'),
-        simplifyVector = TRUE
-      )[[1]],
-      error = function(...) token
-    )
   }
 
   depth <- 0L
@@ -227,7 +363,7 @@ reject_duplicate_json_object_members <- function(json_text, label) {
           lookahead <= length(chars) &&
           identical(chars[[lookahead]], ":")
       ) {
-        key <- decode_json_string_token(paste(token, collapse = ""))
+        key <- jwt_decode_json_string_token(paste(token, collapse = ""))
         if (key %in% seen) {
           err_parse(paste0(label, " contains duplicate member name: ", key))
         }
@@ -247,91 +383,36 @@ reject_duplicate_json_object_members <- function(json_text, label) {
 
 ## 1.3 JOSE header validation ---------------------------------------------
 
-# Validate the JOSE header fields that shinyOAuth understands.
-# Used before JWT signature or claim validation. Input: parsed header object and
-# error-signaling function. Output: normalized header fields list.
+#' Validate JOSE header fields
+#'
+#' Used by inbound JWT validation before algorithm-specific checks.
+#'
+#' @param header Parsed JOSE header object.
+#' @param signal_error Function used to report validation failures.
+#' @return Normalized header fields list.
+#' @keywords internal
+#' @noRd
 validate_jose_header_fields <- function(header, signal_error) {
   if (!is.list(header) || is.null(names(header))) {
     signal_error("JWT header must be a JSON object")
   }
-
-  # Validate one optional scalar string JOSE header field.
-  # Used only by validate_jose_header_fields(). Input: field value, field name,
-  # and whether it is required. Output: normalized value or NULL.
-  validate_scalar_string_field <- function(value, field, required = FALSE) {
-    if (is.null(value)) {
-      if (isTRUE(required)) {
-        signal_error(paste0("JWT header missing ", field))
-      }
-      return(NULL)
-    }
-
-    if (
-      !is.character(value) ||
-        length(value) != 1L ||
-        is.na(value) ||
-        !nzchar(value)
-    ) {
-      suffix <- if (isTRUE(required)) "" else " when present"
-      signal_error(paste0(
-        "JWT ",
-        field,
-        " header must be a single non-empty string",
-        suffix
-      ))
-    }
-
-    value
-  }
-
-  # Validate the JOSE crit header and enforce its expected shape.
-  # Used only by validate_jose_header_fields(). Input: crit value. Output:
-  # normalized crit vector or NULL.
-  validate_crit_field <- function(value) {
-    if (is.null(value)) {
-      return(NULL)
-    }
-
-    crit <- NULL
-    if (is.character(value)) {
-      crit <- value
-    } else if (
-      is.list(value) &&
-        length(value) > 0L &&
-        all(vapply(
-          value,
-          function(item) {
-            is.character(item) && length(item) == 1L
-          },
-          logical(1)
-        ))
-    ) {
-      crit <- vapply(value, identity, character(1), USE.NAMES = FALSE)
-    }
-
-    if (
-      is.null(crit) ||
-        length(crit) == 0L ||
-        anyNA(crit) ||
-        !all(nzchar(crit)) ||
-        anyDuplicated(crit)
-    ) {
-      signal_error(
-        "JWT crit header must be a non-empty character vector of unique extension names"
-      )
-    }
-
-    crit
-  }
-
-  alg <- validate_scalar_string_field(
+  alg <- jwt_validate_scalar_string_field(
     header$alg %||% NULL,
     "alg",
+    signal_error = signal_error,
     required = TRUE
   )
-  kid <- validate_scalar_string_field(header$kid %||% NULL, "kid")
-  typ <- validate_scalar_string_field(header$typ %||% NULL, "typ")
-  crit <- validate_crit_field(header$crit %||% NULL)
+  kid <- jwt_validate_scalar_string_field(
+    header$kid %||% NULL,
+    "kid",
+    signal_error = signal_error
+  )
+  typ <- jwt_validate_scalar_string_field(
+    header$typ %||% NULL,
+    "typ",
+    signal_error = signal_error
+  )
+  crit <- jwt_validate_crit_field(header$crit %||% NULL, signal_error)
 
   list(
     alg = alg,
@@ -341,10 +422,20 @@ validate_jose_header_fields <- function(header, signal_error) {
   )
 }
 
-# Enforce the shared inbound JWT header policy after structural validation.
-# Used by ID token and signed UserInfo JWT validation. Input: normalized header
-# fields, error-signaling function, optional supported crit names, and optional
-# side-effect callbacks for invalid typ/crit cases. Output: invisible header_fields.
+#' Enforce the shared inbound JWT header policy
+#'
+#' Used by ID token and signed UserInfo JWT validation.
+#'
+#' @param header_fields Normalized JOSE header fields.
+#' @param signal_error Function used to report validation failures.
+#' @param supported_crit Supported `crit` header names.
+#' @param on_typ_invalid Optional callback run before signaling an invalid
+#'   `typ`.
+#' @param on_crit_invalid Optional callback run before signaling invalid
+#'   `crit` usage.
+#' @return Invisibly returns `header_fields` on success.
+#' @keywords internal
+#' @noRd
 enforce_inbound_jwt_header_policy <- function(
   header_fields,
   signal_error,
@@ -388,9 +479,14 @@ enforce_inbound_jwt_header_policy <- function(
 
 ## 1.4 Signature verification helpers -------------------------------------
 
-# Extract the raw bytes needed for JWS signature verification.
-# Used by the generic signature verifiers in this file. Input: compact JWT.
-# Output: list with signing input bytes and signature bytes.
+#' Extract raw JWS verification parts
+#'
+#' Used by the generic signature verifiers in this file.
+#'
+#' @param jwt Compact JWT string.
+#' @return List with signing-input bytes and signature bytes.
+#' @keywords internal
+#' @noRd
 jwt_verification_parts <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   list(
@@ -399,9 +495,16 @@ jwt_verification_parts <- function(jwt) {
   )
 }
 
-# Verify one asymmetric JWS signature without leaking detailed timing errors.
-# Used by inbound JWT validation. Input: compact JWT, public key, and alg.
-# Output: TRUE or FALSE.
+#' Verify one asymmetric JWS signature
+#'
+#' Used by inbound JWT validation.
+#'
+#' @param jwt Compact JWT string.
+#' @param key Public key used for verification.
+#' @param alg JOSE algorithm name.
+#' @return `TRUE` when the signature verifies; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 verify_jws_signature_no_time <- function(jwt, key, alg) {
   parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
   if (is.null(parts)) {
@@ -471,9 +574,17 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
   )
 }
 
-# Verify one HMAC JWS signature using a constant-time comparison path.
-# Used by inbound HS* JWT validation. Input: compact JWT, secret, and alg.
-# Output: TRUE or FALSE.
+#' Verify one HMAC JWS signature
+#'
+#' Used by inbound HS* JWT validation.
+#'
+#' @param jwt Compact JWT string.
+#' @param secret Shared HMAC secret.
+#' @param alg JOSE algorithm name.
+#' @return `TRUE` when the computed HMAC matches the signature; otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
 verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
   parts <- tryCatch(jwt_verification_parts(jwt), error = function(...) NULL)
   if (is.null(parts)) {

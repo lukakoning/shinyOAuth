@@ -2,12 +2,18 @@
 # Use them when provider responses or package options omit expiry values or
 # return them in awkward formats that still need safe numeric handling.
 
+# 1 Expiry coercion and option helpers -------------------------------------
+
+## 1.1 Normalize option values and raw expires_in fields -------------------
+
 #' Internal: read a positive numeric scalar option
 #'
 #' Used throughout the package when reading numeric limits from options.
-#' Input: option name and fallback default. Output: one positive numeric value.
 #' Returns `default` when the option is unset or invalid.
 #'
+#' @param name Option name.
+#' @param default Fallback value when the option is unset or invalid.
+#' @return One positive numeric value.
 #' @keywords internal
 #' @noRd
 get_option_positive_number <- function(name, default) {
@@ -29,7 +35,6 @@ get_option_positive_number <- function(name, default) {
 #' Internal: coerce expires_in to numeric more tolerantly
 #'
 #' Used by token parsing helpers before they validate provider expiry values.
-#' Input: raw `expires_in` value. Output: numeric when it can be trusted, otherwise the original value.
 #'
 #' Some providers return `expires_in` as a quoted string (e.g., in
 #' form-encoded responses) and may include leading zeros ("0003600") or a
@@ -39,6 +44,8 @@ get_option_positive_number <- function(name, default) {
 #'   non-negative number.
 #' Other inputs are returned unchanged so upstream validation can handle them.
 #'
+#' @param x Raw `expires_in` value.
+#' @return Numeric value when it can be trusted; otherwise the original input.
 #' @keywords internal
 #' @noRd
 coerce_expires_in <- function(x) {
@@ -65,7 +72,6 @@ coerce_expires_in <- function(x) {
 #' Internal: normalize client state cache max_age to a positive scalar
 #'
 #' Used by [oauth_module_server()] when setting the browser-token cookie lifetime.
-#' Input: [OAuthClient] and fallback seconds. Output: positive max-age number.
 #'
 #' Falls back to 5 minutes (300s) when the cache backend does not expose a
 #' finite `max_age` via `$info()`.
@@ -74,6 +80,9 @@ coerce_expires_in <- function(x) {
 #' understand that browser cookie lifetimes will use the default rather than
 #' the cache's TTL.
 #'
+#' @param client OAuth client whose state store is being inspected.
+#' @param default Fallback max-age in seconds.
+#' @return Positive max-age number.
 #' @keywords internal
 #' @noRd
 client_state_store_max_age <- function(client, default = 300) {
@@ -132,10 +141,11 @@ client_state_store_max_age <- function(client, default = 300) {
   max_age
 }
 
+## 1.2 Resolve fallback expiries and freshness windows ---------------------
+
 #' Internal: resolve expires_at when expires_in is absent from the token response
 #'
 #' Used by token exchange and refresh code when a provider omits `expires_in`.
-#' Input: optional phase label. Output: computed `expires_at` timestamp.
 #'
 #' RFC 6749 \u00a75.1 says `expires_in` is RECOMMENDED. When it is absent we check
 #' `options(shinyOAuth.default_expires_in)` for a configurable fallback (seconds).
@@ -143,6 +153,7 @@ client_state_store_max_age <- function(client, default = 300) {
 #' A once-per-phase warning is emitted either way so operators know the value
 #' was not server-provided.
 #'
+#' @param phase Optional phase label.
 #' @return Numeric scalar: computed `expires_at` (epoch seconds).
 #' @keywords internal
 #' @noRd
@@ -210,11 +221,14 @@ resolve_missing_expires_in <- function(phase = NULL) {
 #' Internal: warn when expires_in is non-positive
 #'
 #' Used by token exchange and refresh validation to flag tokens that are already expired.
-#' Input: numeric `expires_in` and optional phase label. Output: invisible TRUE/FALSE.
 #'
 #' `expires_in <= 0` is technically valid (meaning "expires now"), but is often
 #' surprising and can indicate a provider/configuration issue.
 #'
+#' @param expires_in Numeric `expires_in` value.
+#' @param phase Optional phase label.
+#' @return Invisibly returns `TRUE` when a warning was emitted, otherwise
+#'   `FALSE`.
 #' @keywords internal
 #' @noRd
 warn_about_nonpositive_expires_in <- function(expires_in, phase = NULL) {
@@ -268,6 +282,9 @@ warn_about_nonpositive_expires_in <- function(expires_in, phase = NULL) {
 #' this value controls how old the decrypted state payload's `issued_at` is
 #' allowed to be.
 #'
+#' @param client OAuth client whose state-payload max age is being read.
+#' @param default Fallback max age in seconds.
+#' @return Positive max-age value in seconds.
 #' @keywords internal
 #' @noRd
 client_state_payload_max_age <- function(client, default = 300) {

@@ -16,24 +16,24 @@ state_store_get_remove(client, state, shiny_session = NULL)
 calling from async workers that lack access to the reactive domain.}
 }
 \value{
-A list with \code{browser_token}, \code{pkce_code_verifier}, and \code{nonce}.
-Throws an error via \code{err_invalid_state()} if retrieval or removal fails,
-or if the retrieved value is missing/malformed.
+Validated state-store value list. On failure this function raises
+\code{err_invalid_state()} instead of returning a partial result.
 }
 \description{
-Retrieves the state-bound values from the client's \code{state_store} and removes
-the entry to enforce single-use semantics.
+Uses the client's \code{state_store} to read and remove the state-bound values
+after the encrypted callback payload has been decrypted and validated.
 }
 \details{
 When the store exposes an atomic \verb{$take(key, missing)} method (see
-\code{\link[=custom_cache]{custom_cache()}}), it is used preferentially to guarantee single-use even
-under concurrent access in shared/distributed backends.
-When \verb{$take()} is not available, the function falls back to
-\verb{$get()} + \verb{$remove()} with a post-removal absence check.
-This fallback is safe for per-process caches (e.g., \code{\link[cachem:cache_mem]{cachem::cache_mem()}})
-but \strong{errors} for any other store (e.g., \code{\link[cachem:cache_disk]{cachem::cache_disk()}} or custom
-backends) because non-atomic get+remove cannot guarantee single-use under
-concurrent access. Shared stores \strong{must} implement \verb{$take()} to be used
-as a state store.
+\code{\link[=custom_cache]{custom_cache()}}), that path is used first so single-use semantics still
+hold under concurrent access.
+When \verb{$take()} is unavailable, the function falls back to \verb{$get()} +
+\verb{$remove()} with a post-removal absence check.
+That fallback is safe for per-process caches such as \code{\link[cachem:cache_mem]{cachem::cache_mem()}}.
+For shared stores it errors by default, because non-atomic get+remove cannot
+guarantee single-use semantics under concurrent access; operators may opt in
+to that weaker fallback with
+\code{options(shinyOAuth.allow_non_atomic_state_store = TRUE)}, but doing so is
+discouraged.
 }
 \keyword{internal}

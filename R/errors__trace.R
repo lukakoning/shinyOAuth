@@ -7,9 +7,14 @@
 
 .trace_context_env <- new.env(parent = emptyenv())
 
-# Read the current trace id from the process-local trace context.
-# Used by error, audit, and telemetry helpers. Input: none. Output: trace id or
-# NULL.
+#' Read the current trace id
+#'
+#' Returns the trace id currently stored in the process-local trace context, if
+#' one has been set. Used by error, audit, and telemetry helpers.
+#'
+#' @return A length-1 character trace id, or `NULL` when no trace id is active.
+#' @keywords internal
+#' @noRd
 get_current_trace_id <- function() {
   trace_id <- .trace_context_env$current %||% NULL
   if (is_valid_string(trace_id)) {
@@ -18,9 +23,16 @@ get_current_trace_id <- function() {
   NULL
 }
 
-# Resolve a caller-supplied trace id or generate a new one.
-# Used when errors and audit events need a guaranteed correlation id. Input:
-# optional trace id. Output: trace id string.
+#' Resolve a trace id
+#'
+#' Uses a caller-supplied trace id when valid, otherwise falls back to the
+#' current trace context or generates a fresh trace id. Used whenever errors or
+#' audit events need a guaranteed correlation id.
+#'
+#' @param trace_id Optional trace id supplied by the caller.
+#' @return A length-1 character trace id.
+#' @keywords internal
+#' @noRd
 resolve_trace_id <- function(trace_id = NULL) {
   trace_id <- trace_id %||% get_current_trace_id()
   if (is_valid_string(trace_id)) {
@@ -29,9 +41,17 @@ resolve_trace_id <- function(trace_id = NULL) {
   gen_trace_id()
 }
 
-# Run code with one trace id made current for nested helpers.
-# Used around work that should share the same trace id. Input: optional trace id
-# and code. Output: result of the code block.
+#' Evaluate code with one active trace id
+#'
+#' Temporarily installs one trace id in the process-local context so nested
+#' helpers, warnings, and error paths all share the same correlation id.
+#' Used around work that should share one trace id.
+#'
+#' @param trace_id Optional trace id to activate for the duration of `code`.
+#' @param code Expression or value to force while the trace id is active.
+#' @return The result of `code`.
+#' @keywords internal
+#' @noRd
 with_trace_id <- function(trace_id = NULL, code) {
   trace_id <- resolve_trace_id(trace_id)
   old <- .trace_context_env$current %||% NULL
@@ -45,9 +65,19 @@ with_trace_id <- function(trace_id = NULL, code) {
   force(code)
 }
 
-# Rethrow a condition while preserving its trace id and adding extra context.
-# Used by higher-level error wrappers. Input: caught condition, optional class,
-# and extra abort args. Output: no return; aborts.
+#' Rethrow a condition with added context
+#'
+#' Re-aborts a caught condition while preserving any existing trace id and
+#' forwarding additional arguments to [rlang::abort()]. Used by higher-level
+#' error wrappers.
+#'
+#' @param e Condition object to rethrow.
+#' @param class Optional condition class or class vector to add to the rethrown
+#'   error.
+#' @param ... Additional arguments forwarded to [rlang::abort()].
+#' @return No return value. This function always aborts.
+#' @keywords internal
+#' @noRd
 rethrow_with_context <- function(e, class = NULL, ...) {
   extra <- list(...)
   trace_id <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) {
@@ -73,10 +103,14 @@ rethrow_with_context <- function(e, class = NULL, ...) {
   do.call(rlang::abort, args)
 }
 
-# Generate a short trace id for correlation in logs and conditions.
-# Used as the fallback when no trace id is already active. Input: none.
-# Output: trace id string.
-# Generate a short trace id for correlating errors in logs
+#' Generate a trace id
+#'
+#' Creates a short trace id suitable for correlating logs, audit events, and
+#' conditions. Used as the fallback when no trace id is already active.
+#'
+#' @return A length-1 character trace id.
+#' @keywords internal
+#' @noRd
 gen_trace_id <- function() {
   tryCatch(random_urlsafe(12), error = function(e) {
     # Fallback if crypto fails

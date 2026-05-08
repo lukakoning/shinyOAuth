@@ -12,7 +12,8 @@
 #'
 #' Filters keys that declare use != "sig" while retaining keys that omit `use`.
 #' Optionally restricts to a specific `kid` and orders candidates to prefer
-#' keys whose JWK `alg` matches the JWT header algorithm when provided.
+#' keys whose JWK `alg` matches the JWT header algorithm when provided. Used
+#' before JWT signature verification begins.
 #'
 #' @param jwks_or_keys A JWKS list (with $keys) or a normalized list of JWKs
 #' @param header_alg Optional JWT header alg (character)
@@ -163,12 +164,17 @@ select_candidate_jwks <- function(
   keys
 }
 
-# Filter candidate JWKs to those compatible with one JWT algorithm.
-# Used after candidate selection and before signature verification. Input: key
-# list plus JWT alg. Output: filtered key list.
-# Filter candidate JWKs to those that are compatible with a JWT alg.
-# This mirrors the stricter ID token behavior: key type/curve must match the
-# JWT alg, and an advertised JWK alg becomes a hard constraint when present.
+#' Filter candidate JWKs by JWT algorithm
+#'
+#' Keeps only keys whose key type, curve, and optional advertised `alg` are
+#' compatible with the JWT algorithm being verified. Used after candidate keys
+#' are selected from a JWKS.
+#'
+#' @param keys Candidate JWK list.
+#' @param alg JWT algorithm name.
+#' @return Filtered key list.
+#' @keywords internal
+#' @noRd
 filter_jwks_for_alg <- function(keys, alg) {
   if (!is.list(keys) || length(keys) == 0L) {
     return(list())
@@ -176,23 +182,7 @@ filter_jwks_for_alg <- function(keys, alg) {
 
   alg <- toupper(alg %||% "")
 
-  jwk_compatible <- function(k, alg0) {
-    kty <- toupper(k$kty %||% "")
-    crv <- toupper(k$crv %||% "")
-    switch(
-      alg0,
-      RS256 = kty == "RSA",
-      RS384 = kty == "RSA",
-      RS512 = kty == "RSA",
-      ES256 = (kty == "EC" && crv == "P-256"),
-      ES384 = (kty == "EC" && crv == "P-384"),
-      ES512 = (kty == "EC" && crv == "P-521"),
-      EDDSA = (kty == "OKP" && crv %in% c("ED25519", "ED448")),
-      FALSE
-    )
-  }
-
-  keys <- Filter(function(k) jwk_compatible(k, alg), keys)
+  keys <- Filter(function(k) jwk_is_compatible_with_alg(k, alg), keys)
 
   Filter(
     function(k) {
@@ -203,10 +193,41 @@ filter_jwks_for_alg <- function(keys, alg) {
   )
 }
 
+#' Internal: check whether one JWK matches a JWT algorithm
+#'
+#' Used by `filter_jwks_for_alg()` before candidate keys are narrowed to the
+#' subset whose key type and curve can verify the requested JWT algorithm.
+#'
+#' @param jwk Parsed JWK object.
+#' @param alg JWT algorithm name.
+#' @return `TRUE` when the key is structurally compatible with `alg`, otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
+jwk_is_compatible_with_alg <- function(jwk, alg) {
+  kty <- toupper(jwk$kty %||% "")
+  crv <- toupper(jwk$crv %||% "")
+  switch(
+    alg,
+    RS256 = kty == "RSA",
+    RS384 = kty == "RSA",
+    RS512 = kty == "RSA",
+    ES256 = (kty == "EC" && crv == "P-256"),
+    ES384 = (kty == "EC" && crv == "P-384"),
+    ES512 = (kty == "EC" && crv == "P-521"),
+    EDDSA = (kty == "OKP" && crv %in% c("ED25519", "ED448")),
+    FALSE
+  )
+}
+
 ## 1.2 Convert and validate key material ----------------------------------
 
 #' Internal: Convert JWK (RSA, EC, or OKP) to an openssl public key
 #'
+#' Used immediately before signature verification.
+#'
+#' @param jwk Parsed JWK object.
+#' @return OpenSSL public-key object.
 #' @keywords internal
 #' @noRd
 jwk_to_pubkey <- function(jwk) {
@@ -230,7 +251,10 @@ jwk_to_pubkey <- function(jwk) {
 #' - RSA: {"e":"...","kty":"RSA","n":"..."}
 #' - EC:  {"crv":"...","kty":"EC","x":"...","y":"..."}
 #' - OKP: {"crv":"...","kty":"OKP","x":"..."}
+#' Used by JWKS pinning and cache-key helpers.
 #'
+#' @param jwk Parsed JWK object.
+#' @return Base64url-encoded RFC 7638 JWK thumbprint.
 #' @keywords internal
 #' @noRd
 compute_jwk_thumbprint <- function(jwk) {
@@ -278,9 +302,15 @@ compute_jwk_thumbprint <- function(jwk) {
 
 ## 2.1 Decode and size-check key fields -----------------------------------
 
-# Strictly decode a base64urlUInt field from a JWK.
-# Used by RSA, EC, and OKP key validation. Input: encoded field value and field
-# name. Output: raw decoded bytes.
+#' Strictly decode a JWK base64urlUInt field
+#'
+#' Used when RSA and EC key material is decoded from JWKS data.
+#'
+#' @param value Encoded field value.
+#' @param field_name Field name used in parse errors.
+#' @return Raw decoded bytes.
+#' @keywords internal
+#' @noRd
 strict_decode_jwk_base64url_uint <- function(value, field_name) {
   if (
     !is.character(value) ||
@@ -303,9 +333,14 @@ strict_decode_jwk_base64url_uint <- function(value, field_name) {
   decoded
 }
 
-# Compute the effective RSA modulus size in bits.
-# Used during JWKS validation to reject weak RSA keys. Input: modulus raw
-# bytes. Output: integer bit length.
+#' Compute RSA modulus size in bits
+#'
+#' Used by key-strength validation helpers.
+#'
+#' @param modulus_raw Raw decoded RSA modulus bytes.
+#' @return Integer bit length.
+#' @keywords internal
+#' @noRd
 jwk_rsa_modulus_bits <- function(modulus_raw) {
   non_zero_idx <- which(modulus_raw != as.raw(0))
   if (length(non_zero_idx) == 0L) {
@@ -317,8 +352,15 @@ jwk_rsa_modulus_bits <- function(modulus_raw) {
   ((length(trimmed) - 1L) * 8L) + floor(log(first_octet, base = 2)) + 1L
 }
 
-# Return the expected EC coordinate size for one supported curve.
-# Used by EC JWK validation. Input: curve name. Output: byte length or NULL.
+#' Return the expected EC coordinate size
+#'
+#' Used by `strict_decode_jwk_ec_coordinate()` to enforce curve-specific field
+#' lengths before EC keys are converted or validated.
+#'
+#' @param curve Curve name.
+#' @return Expected byte length, or `NULL` when the curve is unsupported.
+#' @keywords internal
+#' @noRd
 jwk_ec_coordinate_size <- function(curve) {
   switch(
     as.character(curve %||% ""),
@@ -329,9 +371,17 @@ jwk_ec_coordinate_size <- function(curve) {
   )
 }
 
-# Strictly decode and size-check one EC coordinate.
-# Used by EC JWK validation. Input: encoded coordinate, field name, and curve.
-# Output: raw decoded bytes.
+#' Strictly decode an EC coordinate
+#'
+#' Used by EC JWK validation helpers before the key is converted into an
+#' OpenSSL public key.
+#'
+#' @param value Encoded coordinate value.
+#' @param field_name Field name used in parse errors.
+#' @param curve Curve name.
+#' @return Raw decoded bytes.
+#' @keywords internal
+#' @noRd
 strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
   decoded <- strict_decode_jwk_base64url_uint(value, field_name)
   expected_len <- jwk_ec_coordinate_size(curve)
@@ -359,6 +409,8 @@ strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
 #' @param pin_mode Either "any" (at least one key matches a pin) or "all"
 #'   (every RSA/EC/OKP key must match a pin).
 #'
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   parse error.
 #' @keywords internal
 #' @noRd
 validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {

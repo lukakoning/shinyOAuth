@@ -8,8 +8,13 @@
 
 ## 1.1 Test and interactive checks ----------------------------------------
 
-# Check whether code is currently running under testthat.
-# Used by warning and debug helpers. Input: none. Output: TRUE or FALSE.
+#' Detect a testthat session
+#'
+#' Used by warning and debug helpers.
+#'
+#' @return `TRUE` when code is running under testthat; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 .is_test <- function() {
   if (requireNamespace("testthat", quietly = TRUE)) {
     return(testthat::is_testing())
@@ -17,15 +22,26 @@
   return(FALSE)
 }
 
-# Check whether the current R session is interactive.
-# Used by logging and debugging helpers. Input: none. Output: TRUE or FALSE.
+#' Detect an interactive session
+#'
+#' Used by logging and debugging helpers.
+#'
+#' @return `TRUE` when the current R session is interactive; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 .is_interactive <- function() {
   interactive()
 }
 
-# Check whether code is running under tests or in an interactive session.
-# Used by softening helpers that should stay quiet in non-interactive batch
-# execution. Input: none. Output: TRUE or FALSE.
+#' Detect tests or interactive execution
+#'
+#' Used by softening helpers that should stay quiet in non-interactive batch
+#' execution.
+#'
+#' @return `TRUE` when code is running under testthat or in an interactive
+#'   session; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 .is_test_or_interactive <- function() {
   .is_test() || .is_interactive()
 }
@@ -100,9 +116,15 @@ error_on_softened <- function() {
   return(invisible(TRUE))
 }
 
-# Check whether browser-token validation is temporarily softened.
-# Used by callback and session helpers. Input: none. Output: TRUE or FALSE,
-# with a warning in interactive development.
+#' Check whether browser token validation is softened
+#'
+#' Used by callback and session helpers.
+#'
+#' @return `TRUE` only when
+#'   `options(shinyOAuth.skip_browser_token = TRUE)` is set and the current
+#'   session is running under testthat or interactively; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 allow_skip_browser_token <- function() {
   if (!getOption("shinyOAuth.skip_browser_token", FALSE)) {
     return(FALSE)
@@ -125,9 +147,14 @@ allow_skip_browser_token <- function() {
   return(FALSE)
 }
 
-# Check whether ID token signature verification is temporarily softened.
-# Used by ID token validation helpers. Input: none. Output: TRUE or FALSE,
-# with a warning in interactive development.
+#' Check whether ID token signature verification is softened
+#'
+#' Used by ID token validation helpers.
+#'
+#' @return `TRUE` when signature verification is explicitly relaxed for tests or
+#'   interactive development; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 allow_skip_signature <- function() {
   if (!getOption("shinyOAuth.skip_id_sig", FALSE)) {
     return(FALSE)
@@ -150,10 +177,14 @@ allow_skip_signature <- function() {
   return(FALSE)
 }
 
-# Check whether HTTP error bodies may be exposed in thrown errors.
-# Used by HTTP error helpers. Input: none. Output: TRUE or FALSE, with a
-# warning in interactive development.
-# Allow exposing HTTP error bodies in thrown conditions (development only)
+#' Check whether HTTP error bodies may be exposed
+#'
+#' Used by HTTP error helpers.
+#'
+#' @return `TRUE` when error bodies may be included in thrown conditions for
+#'   development use; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 allow_expose_error_body <- function() {
   if (!isTRUE(getOption("shinyOAuth.expose_error_body", FALSE))) {
     return(FALSE)
@@ -174,11 +205,14 @@ allow_expose_error_body <- function() {
   FALSE
 }
 
-# Check whether redirect following is explicitly allowed for sensitive flows.
-# Used by HTTP request helpers. Input: none. Output: TRUE or FALSE, with a
-# warning when enabled outside tests.
-# Allow HTTP redirects on sensitive OAuth flows when the operator explicitly
-# opts in via shinyOAuth.allow_redirect.
+#' Check whether redirect following is allowed
+#'
+#' Used by HTTP request helpers.
+#'
+#' @return `TRUE` when redirect following is explicitly enabled for sensitive
+#'   OAuth flows; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 allow_redirect <- function() {
   if (!isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))) {
     return(FALSE)
@@ -202,10 +236,14 @@ allow_redirect <- function() {
   TRUE
 }
 
-# Check whether unsigned UserInfo JWTs are allowed.
-# Used by UserInfo JWT validation. Input: none. Output: TRUE/FALSE or a
-# configuration error outside test or interactive sessions.
-# Allow accepting unsigned (alg=none) UserInfo JWTs (testing only)
+#' Check whether unsigned UserInfo JWTs are allowed
+#'
+#' Used by signed UserInfo JWT validation.
+#'
+#' @return `TRUE` when unsigned UserInfo JWTs are allowed in tests or
+#'   interactive sessions; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
 allow_unsigned_userinfo_jwt <- function() {
   if (!isTRUE(getOption("shinyOAuth.allow_unsigned_userinfo_jwt", FALSE))) {
     return(FALSE)

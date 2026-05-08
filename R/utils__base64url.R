@@ -13,7 +13,10 @@
 #' - base64url_encode(raw|character) -> base64url string (no padding)
 #' - base64url_decode_raw(string) -> raw vector
 #' - base64url_decode(string) -> UTF-8 text with embedded-NUL rejection
+#' Used by JWT, JWKS, DPoP, and sealed-state helpers.
 #'
+#' @param raw_bytes Raw vector to encode.
+#' @return Base64url-encoded string without padding.
 #' @keywords internal
 #' @noRd
 base64url_encode <- function(raw_bytes) {
@@ -25,9 +28,12 @@ base64url_encode <- function(raw_bytes) {
   chartr("+/", "-_", s)
 }
 
-# Decode a base64url string into raw bytes.
-# Used by JWT, JWKS, and cryptographic helpers. Input: base64url string.
-# Output: raw vector.
+#' Decode a base64url string into raw bytes
+#'
+#' Used by JWT, JWKS, and cryptographic helpers.
+#'
+#' @param x Base64url-encoded string.
+#' @return Raw vector.
 #' @keywords internal
 #' @noRd
 base64url_decode_raw <- function(x) {
@@ -39,9 +45,13 @@ base64url_decode_raw <- function(x) {
   openssl::base64_decode(x)
 }
 
-# Decode a base64url string into text while rejecting embedded NUL bytes.
-# Used when base64url content should become UTF-8-like text. Input: base64url
-# string. Output: character string.
+#' Decode a base64url string into text
+#'
+#' Rejects embedded NUL bytes before converting the decoded payload to text.
+#' Used when base64url content must become text safely.
+#'
+#' @param x Base64url-encoded string.
+#' @return Character string.
 #' @keywords internal
 #' @noRd
 base64url_decode <- function(x) {

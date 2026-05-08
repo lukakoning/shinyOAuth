@@ -315,7 +315,10 @@ oauth_provider_oidc_discover <- function(
 #' Internal: validate issuer input
 #'
 #' Used by [oauth_provider_oidc_discover()] before any network call is made.
-#' Input: issuer URL string. Output: invisible TRUE or a configuration/input error.
+#'
+#' @param issuer Issuer URL string.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   typed input or configuration error.
 #'
 #' @keywords internal
 #' @noRd
@@ -354,7 +357,9 @@ oauth_provider_oidc_discover <- function(
 #' Internal: build httr2 request for discovery
 #'
 #' Used by [oauth_provider_oidc_discover()] after the issuer has been validated.
-#' Input: issuer URL string. Output: httr2 request object for the discovery document.
+#'
+#' @param issuer Issuer URL string.
+#' @return httr2 request object for the discovery document.
 #'
 #' @keywords internal
 #' @noRd
@@ -376,7 +381,11 @@ oauth_provider_oidc_discover <- function(
 #' Internal: fetch discovery response with retry and structured errors
 #'
 #' Used by [oauth_provider_oidc_discover()] to execute the discovery HTTP request.
-#' Input: httr2 request and issuer string. Output: successful httr2 response or a typed HTTP error.
+#'
+#' @param req httr2 request object.
+#' @param issuer Issuer string used for error context.
+#' @return Successful httr2 response. Otherwise this function raises a typed
+#'   HTTP error.
 #'
 #' @keywords internal
 #' @noRd
@@ -416,7 +425,9 @@ oauth_provider_oidc_discover <- function(
 #' Internal: parse discovery JSON and normalize to list
 #'
 #' Used by [oauth_provider_oidc_discover()] after a successful discovery fetch.
-#' Input: discovery HTTP response. Output: parsed discovery document as a named list.
+#'
+#' @param resp Discovery HTTP response.
+#' @return Parsed discovery document as a named list.
 #'
 #' @keywords internal
 #' @noRd
@@ -452,7 +463,9 @@ oauth_provider_oidc_discover <- function(
 #' Internal: extract endpoints from discovery doc
 #'
 #' Used by [oauth_provider_oidc_discover()] to pull the provider URLs it needs later.
-#' Input: parsed discovery list. Output: named list of endpoint URLs and PAR metadata.
+#'
+#' @param disc Parsed discovery document.
+#' @return Named list of endpoint URLs and PAR metadata.
 #'
 #' @keywords internal
 #' @noRd
@@ -498,7 +511,9 @@ oauth_provider_oidc_discover <- function(
 #' Internal: normalize and sanitize hostname
 #'
 #' Used by the host-policy helpers in this file so host comparisons are consistent.
-#' Input: one host string. Output: normalized lowercase host string.
+#'
+#' @param host Host string to normalize.
+#' @return Normalized lowercase host string.
 #'
 #' @keywords internal
 #' @noRd
@@ -510,13 +525,14 @@ oauth_provider_oidc_discover <- function(
 #' Internal: compute the host allowlist used during OIDC discovery
 #'
 #' Used by [oauth_provider_oidc_discover()] before validating discovered endpoints.
-#' Input: normalized issuer host. Output: host vector discovery is allowed to trust.
 #'
 #' Takes the normalized issuer host and returns the host vector that discovery
 #' should trust for both normal endpoints and RFC 8705 mTLS endpoint aliases.
 #' If the package-level `shinyOAuth.allowed_hosts` option is set, that wins;
 #' otherwise discovery falls back to trusting the issuer host only.
 #'
+#' @param iss_host Normalized issuer host.
+#' @return Host vector that discovery is allowed to trust.
 #' @keywords internal
 #' @noRd
 .discover_allowed_hosts <- function(iss_host) {
@@ -532,7 +548,11 @@ oauth_provider_oidc_discover <- function(
 #' Internal: validate all endpoints against host policy
 #'
 #' Used by [oauth_provider_oidc_discover()] after endpoint extraction.
-#' Input: endpoint list and allowed-host vector. Output: invisible TRUE or a host-policy error.
+#'
+#' @param endpoints Endpoint list.
+#' @param allowed_hosts_vec Allowed host vector.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   host-policy error.
 #'
 #' @keywords internal
 #' @noRd
@@ -553,7 +573,12 @@ oauth_provider_oidc_discover <- function(
 #' Internal: require jwks_uri when ID token validation is enabled
 #'
 #' Used by [oauth_provider_oidc_discover()] when the resulting provider must validate ID tokens.
-#' Input: discovery document, issuer, and id_token_validation flag. Output: invisible TRUE or a configuration error.
+#'
+#' @param disc Discovery document.
+#' @param iss Issuer string.
+#' @param id_token_validation Whether ID token validation is enabled.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   configuration error.
 #'
 #' @keywords internal
 #' @noRd
@@ -591,7 +616,15 @@ oauth_provider_oidc_discover <- function(
 #' Internal: enforce JWKS pinning per issuer/allowed hosts
 #'
 #' Used by [oauth_provider_oidc_discover()] to make sure signing keys come from an allowed host.
-#' Input: discovery data, issuer context, and host-policy settings. Output: invisible TRUE or a configuration error.
+#'
+#' @param disc Discovery document.
+#' @param iss Issuer string.
+#' @param iss_host Normalized issuer host.
+#' @param allowed_hosts_vec Allowed host vector used for endpoint validation.
+#' @param jwks_host_allow_only Optional exact JWKS host override.
+#' @param jwks_host_issuer_match Whether JWKS host must match the issuer host.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   configuration error.
 #'
 #' @keywords internal
 #' @noRd
@@ -679,7 +712,14 @@ oauth_provider_oidc_discover <- function(
 #' Internal: infer token auth style from discovery
 #'
 #' Used by [oauth_provider_oidc_discover()] when the caller did not choose a token auth style explicitly.
-#' Input: requested style, discovery document, PKCE flag, issuer, and token URL. Output: normalized token auth style.
+#'
+#' @param token_auth_style Requested token auth style, or `NULL`.
+#' @param disc Discovery document.
+#' @param use_pkce Whether PKCE is enabled for the client.
+#' @param iss Discovery issuer.
+#' @param token_url Token endpoint URL from discovery.
+#' @return Normalized token auth style. Otherwise this function raises a
+#'   configuration error.
 #'
 #' @keywords internal
 #' @noRd
@@ -776,9 +816,22 @@ oauth_provider_oidc_discover <- function(
   "header"
 }
 
-# Check that an explicitly requested token auth style is actually advertised.
-# Used by .discover_infer_token_auth_style() when the caller set token_auth_style.
-# Input: requested style plus discovery metadata. Output: normalized style or a configuration error.
+#' Validate an explicitly requested token auth style
+#'
+#' Confirms that the caller-requested token auth style is compatible with the
+#' client authentication methods advertised by OIDC discovery.
+#' Used by `.discover_infer_token_auth_style()` when the caller sets
+#' `token_auth_style` explicitly.
+#'
+#' @param token_auth_style Requested token auth style.
+#' @param methods Advertised token endpoint auth methods.
+#' @param use_pkce Whether PKCE is enabled for the client.
+#' @param iss Discovery issuer.
+#' @param token_url Token endpoint URL from discovery.
+#' @return The normalized token auth style. Otherwise this function raises a
+#'   configuration error.
+#' @keywords internal
+#' @noRd
 .discover_validate_requested_token_auth_style <- function(
   token_auth_style,
   methods,
@@ -826,9 +879,17 @@ oauth_provider_oidc_discover <- function(
 
 ## 2.5 mTLS discovery metadata --------------------------------------------
 
-# Extract any mTLS-specific endpoint aliases from the discovery document.
-# Used by [oauth_provider_oidc_discover()] so mTLS-capable clients can call the correct URLs.
-# Input: parsed discovery document. Output: named list of alias URLs.
+#' Extract discovered mTLS endpoint aliases
+#'
+#' Reads the optional `mtls_endpoint_aliases` object from the discovery
+#' document and maps supported alias names onto shinyOAuth's internal endpoint
+#' names.
+#' Used by [oauth_provider_oidc_discover()] before mTLS alias host validation.
+#'
+#' @param disc Parsed discovery document.
+#' @return A named list of mTLS alias URLs.
+#' @keywords internal
+#' @noRd
 .discover_extract_mtls_endpoint_aliases <- function(disc) {
   aliases <- disc[["mtls_endpoint_aliases"]] %||% list()
   if (is.null(aliases)) {
@@ -877,9 +938,16 @@ oauth_provider_oidc_discover <- function(
   out[!vapply(out, is.null, logical(1))]
 }
 
-# Read one optional boolean field from the discovery document safely.
-# Used by the discovery helpers when metadata fields may be missing.
-# Input: discovery list and field name. Output: TRUE/FALSE or a parse error.
+#' Parse an optional discovery boolean field
+#'
+#' Used by [oauth_provider_oidc_discover()] and its helper functions when
+#' discovery metadata contains optional boolean feature flags.
+#'
+#' @param disc Parsed discovery document.
+#' @param field Field name to read.
+#' @return `TRUE` or `FALSE`.
+#' @keywords internal
+#' @noRd
 .discover_parse_optional_boolean <- function(disc, field) {
   value <- disc[[field]]
   if (is.null(value)) {
@@ -892,9 +960,17 @@ oauth_provider_oidc_discover <- function(
   value
 }
 
-# Validate discovered mTLS alias URLs against the same host policy as other endpoints.
-# Used by [oauth_provider_oidc_discover()] after alias extraction.
-# Input: alias list and allowed-host vector. Output: invisible TRUE or a validation error.
+#' Validate discovered mTLS endpoint aliases
+#'
+#' Applies the same endpoint host policy to discovered mTLS aliases that the
+#' package uses for other provider endpoints.
+#'
+#' @param mtls_endpoint_aliases Named list of discovered mTLS alias URLs.
+#' @param allowed_hosts_vec Allowed host vector used for endpoint validation.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   validation error.
+#' @keywords internal
+#' @noRd
 .discover_validate_endpoint_aliases <- function(
   mtls_endpoint_aliases,
   allowed_hosts_vec
@@ -918,7 +994,14 @@ oauth_provider_oidc_discover <- function(
 #' Internal: resolve PKCE method against discovery metadata
 #'
 #' Used by [oauth_provider_oidc_discover()] to keep PKCE choices aligned with provider metadata.
-#' Input: discovery document, PKCE settings, issuer context, and optional requested method. Output: chosen PKCE method or a configuration error.
+#'
+#' @param disc Discovery document.
+#' @param use_pkce Whether PKCE is enabled.
+#' @param iss Discovery issuer.
+#' @param iss_host Normalized issuer host.
+#' @param pkce_method Optional requested PKCE method.
+#' @return Chosen PKCE method. Otherwise this function raises a configuration
+#'   error.
 #'
 #' @keywords internal
 #' @noRd
@@ -998,7 +1081,11 @@ oauth_provider_oidc_discover <- function(
 #' Internal: intersect allowed ID token algs with discovery
 #'
 #' Used by [oauth_provider_oidc_discover()] to keep ID token verification settings compatible with the provider.
-#' Input: caller allowlist, discovery document, and issuer. Output: negotiated algorithm vector.
+#'
+#' @param allowed_algs Caller allowlist of supported algorithms.
+#' @param disc Discovery document.
+#' @param iss Discovery issuer.
+#' @return Negotiated algorithm vector.
 #'
 #' @keywords internal
 #' @noRd
@@ -1037,7 +1124,10 @@ oauth_provider_oidc_discover <- function(
 #' Internal: derive default name from issuer
 #'
 #' Used by [oauth_provider_oidc_discover()] when the caller did not supply a friendly provider name.
-#' Input: optional name and issuer URL. Output: chosen provider name string.
+#'
+#' @param name Optional provider name.
+#' @param iss Issuer URL.
+#' @return Chosen provider name string.
 #'
 #' @keywords internal
 #' @noRd

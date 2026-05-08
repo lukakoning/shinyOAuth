@@ -2,6 +2,8 @@
 # Use it when you want shinyOAuth to manage redirects, callbacks, token refresh,
 # browser-token cookies, and authenticated session state inside a Shiny app.
 
+# 1 Shiny module entry point -----------------------------------------------
+
 #' @title
 #' OAuth 2.0 & OIDC authentication module for Shiny applications
 #'
@@ -658,80 +660,21 @@ oauth_module_server <- function(
 
     ## 2.3 Error handling helpers -------------------------------------------
 
-    # Extract a trace id from an error object without relying on partial matching.
-    # Used by .compose_error() when the module wants a readable message with trace context.
-    # Input: condition or error-like object. Output: trace id string or NULL.
-    .get_trace_id <- function(e) {
-      # prefer exact indexing, avoid `$` partial matching
-      tid <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) NULL)
-      if (!is.null(tid) && length(tid) && nzchar(as.character(tid)[1])) {
-        return(as.character(tid)[1])
-      }
-      # fall back to a few common alternates seen in async/promise/future errors
-      for (nm in c("traceId", "trace", "stack")) {
-        v <- tryCatch(e[[nm]], error = function(...) NULL)
-        if (!is.null(v) && length(v) && nzchar(as.character(v)[1])) {
-          return(as.character(v)[1])
-        }
-      }
-      NULL
-    }
-
-    # Build a readable error message and optionally log the original condition.
-    # Used by .set_error() before error text is stored in reactive state.
-    # Input: condition and optional phase label. Output: human-readable message string.
-    .compose_error <- function(e, phase = NULL) {
-      if (!is.null(phase)) {
-        # best-effort logging, never throw
-        try(log_condition(e, context = list(phase = phase)))
-      }
-      msg <- tryCatch(conditionMessage(e), error = function(...) {
-        "Unknown error"
-      })
-      tid <- .get_trace_id(e)
-      if (!is.null(tid)) sprintf("%s (trace %s)", msg, tid) else msg
-    }
-
-    # Write the module's exposed error fields in one place.
-    # Used throughout oauth_module_server() whenever login, callback, or refresh work fails.
-    # Input: error code plus optional condition, phase, and explicit description. Output: no return value; updates reactive state.
+    # Internal helper: write the module's exposed error fields.
+    # Used throughout `oauth_module_server()` whenever login, callback, or
+    # refresh work fails, so reactive error state stays consistent.
+    # @param code Stable module error code.
+    # @param e Optional condition to format.
+    # @param phase Optional phase label passed to `oauth_module_compose_error()`.
+    # @param description Optional explicit user-facing description.
+    # @return No return value; mutates `values$error`,
+    #   `values$error_description`, and `values$error_uri`.
     .set_error <- function(code, e = NULL, phase = NULL, description = NULL) {
       values$error <- code
       values$error_description <- description %||%
-        if (!is.null(e)) .compose_error(e, phase) else NULL
+        if (!is.null(e)) oauth_module_compose_error(e, phase) else NULL
       # Internal errors never carry error_uri; clear any stale provider value.
       values$error_uri <- NULL
-    }
-
-    # Check whether an error or any of its parents inherits from a class.
-    # Used by .callback_failure_error_code() to separate state errors from token errors.
-    # Input: condition and class name. Output: TRUE/FALSE.
-    .condition_inherits <- function(e, class_name) {
-      cur <- e
-
-      while (!is.null(cur)) {
-        if (inherits(cur, class_name)) {
-          return(TRUE)
-        }
-
-        cur <- tryCatch(
-          cur[["parent", exact = TRUE]],
-          error = function(...) NULL
-        )
-      }
-
-      FALSE
-    }
-
-    # Map a callback failure to the module error code shown to the app.
-    # Used by sync and async callback paths after callback handling fails.
-    # Input: condition. Output: error-code string.
-    .callback_failure_error_code <- function(e) {
-      if (.condition_inherits(e, "shinyOAuth_state_error")) {
-        return("invalid_state")
-      }
-
-      "token_exchange_error"
     }
 
     ## 2.4 Client-side actions ----------------------------------------------
@@ -739,9 +682,14 @@ oauth_module_server <- function(
     # These helpers communicate with handlers defined in inst/www/shinyOAuth.js,
     # which you load in UI with `use_shinyOAuth()`.
 
-    # Ask the browser-side JS to create or refresh the browser token cookie.
-    # Used by .set_browser_token() after the server computes cookie settings.
-    # Input: per-session instance id, max age, SameSite, and path. Output: no return value; sends a custom message.
+    # Internal helper: ask the browser to set or refresh the browser token
+    # cookie. Used by `.set_browser_token()` after the server computes cookie
+    # settings.
+    # @param instance Browser-cookie instance suffix for this module.
+    # @param max_age_ms Cookie lifetime in milliseconds.
+    # @param same_site SameSite policy string.
+    # @param path Cookie path or `NULL`.
+    # @return No return value; sends a custom message to the browser.
     .client_set_browser_token <- function(
       instance,
       max_age_ms,
@@ -761,9 +709,12 @@ oauth_module_server <- function(
       )
     }
 
-    # Ask the browser-side JS to clear the browser token cookie.
-    # Used by .clear_browser_token() when the session binding must be reset.
-    # Input: per-session instance id, SameSite, and path. Output: no return value; sends a custom message.
+    # Internal helper: ask the browser to clear the browser token cookie.
+    # Used by `.clear_browser_token()` when the session binding must be reset.
+    # @param instance Browser-cookie instance suffix for this module.
+    # @param same_site SameSite policy string.
+    # @param path Cookie path or `NULL`.
+    # @return No return value; sends a custom message to the browser.
     .client_clear_browser_token <- function(instance, same_site, path) {
       session$sendCustomMessage(
         type = "shinyOAuth:clearBrowserToken",
@@ -778,9 +729,10 @@ oauth_module_server <- function(
       )
     }
 
-    # Ask the browser to redirect to the next URL.
-    # Used by .redirect_to() after a login URL has been built.
-    # Input: URL string. Output: no return value; sends a custom message.
+    # Internal helper: ask the browser to redirect to the next URL.
+    # Used by `.redirect_to()` after a login URL has been built.
+    # @param url Absolute URL to open in the browser.
+    # @return No return value; sends a redirect message to the browser.
     .client_redirect <- function(url) {
       session$sendCustomMessage(
         type = "shinyOAuth:redirect",
@@ -788,9 +740,12 @@ oauth_module_server <- function(
       )
     }
 
-    # Ask the browser to remove callback parameters from the URL and optionally fix the title.
-    # Used after callback processing and callback-query validation errors.
-    # Input: replacement title and clean-title flag. Output: no return value; sends a custom message.
+    # Internal helper: ask the browser to clear callback params and optionally
+    # fix the title. Used after callback processing and callback-query
+    # validation errors.
+    # @param title_replacement Optional title to restore.
+    # @param clean_title Whether the browser should normalize the title text.
+    # @return No return value; sends a cleanup message to the browser.
     .client_clear_query_and_fix_title <- function(
       title_replacement,
       clean_title
@@ -805,6 +760,7 @@ oauth_module_server <- function(
     }
 
     # Known OAuth/OIDC callback params to drop/recognize.
+    # Used by .process_query() and cleanup code before removing callback parameters.
     .oauth_callback_query_keys <- c(
       "code",
       "state",
@@ -819,9 +775,11 @@ oauth_module_server <- function(
       "iss"
     )
 
-    # Check whether the current query string looks like an OAuth callback.
-    # Used by .process_query() and cleanup code before removing callback parameters.
-    # Input: raw query string. Output: TRUE/FALSE.
+    # Internal helper: check whether a query string looks like an OAuth
+    # callback. Used by tests and URL-cleanup logic so unrelated app
+    # parameters are kept.
+    # @param query_string Raw query string, with or without a leading `?`.
+    # @return `TRUE` when OAuth callback keys are present, otherwise `FALSE`.
     .query_has_oauth_callback_keys <- function(query_string) {
       raw <- sub("^\\?", "", query_string %||% "")
       if (!nzchar(raw)) {
@@ -837,9 +795,11 @@ oauth_module_server <- function(
       any(names(parsed) %in% .oauth_callback_query_keys)
     }
 
-    # Remove only OAuth callback parameters from a raw query string.
-    # Used by tests and URL-cleanup logic so unrelated app parameters are kept.
-    # Input: raw query string. Output: filtered query string starting with '?' or an empty string.
+    # Internal helper: strip only OAuth callback parameters from a raw query
+    # string. Used after callback processing so provider data does not stay in
+    # the address bar while unrelated app parameters are kept.
+    # @param query_string Raw query string, with or without a leading `?`.
+    # @return Cleaned query string containing only non-OAuth parameters.
     .strip_oauth_query <- function(query_string) {
       raw <- sub("^\\?", "", query_string %||% "")
       if (!nzchar(raw)) {
@@ -866,9 +826,10 @@ oauth_module_server <- function(
       paste0("?", q)
     }
 
-    # Clear OAuth callback parameters from the URL and optionally restore the title.
-    # Used after callback processing so provider data does not stay in the address bar.
-    # Input: no arguments. Output: no return value; sends a custom message.
+    # Internal helper: clear OAuth callback parameters from the URL and
+    # optionally restore the title. Used by `.process_query()` and failure
+    # paths before returning control to the app.
+    # @return No return value; asks the browser to clean up the URL and title.
     .clear_query_and_fix_title <- function() {
       .client_clear_query_and_fix_title(
         title_replacement = if (!is.null(tab_title_replacement)) {
@@ -991,9 +952,11 @@ oauth_module_server <- function(
       once = TRUE
     )
 
-    # Compute the browser-token cookie settings for this session and ask the browser to set it.
-    # Used on first load, before login, and after logout.
-    # Input: no arguments. Output: no return value; sends a custom message.
+    # Internal helper: compute browser-token cookie settings and ask the
+    # browser to set the token. Used on first load, before login, and after
+    # logout.
+    # @return No return value; computes cookie settings and asks the browser to
+    #   set the token.
     .set_browser_token <- function() {
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
@@ -1020,9 +983,11 @@ oauth_module_server <- function(
       )
     }
 
-    # Remove the browser token cookie and reset the matching server-side state.
-    # Used after successful login, during logout, and when the session binding must be reset.
-    # Input: no arguments. Output: no return value; clears browser-token-related state.
+    # Internal helper: clear the browser token cookie and reset matching
+    # server-side state. Used after successful login, during logout, and when
+    # the session binding must be reset.
+    # @return No return value; clears the browser cookie and resets related
+    #   module state.
     .clear_browser_token <- function() {
       # Compute configured path once per session (NULL means JS defaults to '/')
 
@@ -1051,9 +1016,10 @@ oauth_module_server <- function(
       values$pending_login <- FALSE
     }
 
-    # Check whether the module currently has a usable browser token.
-    # Used before login and callback work that depends on browser/session binding.
-    # Input: no arguments. Output: TRUE/FALSE.
+    # Internal helper: check whether the module currently has a usable browser
+    # token. Used before login and callback work that depends on
+    # browser-session binding.
+    # @return `TRUE` when `values$browser_token` is usable, otherwise `FALSE`.
     .has_browser_token <- function() {
       # Check if we have a browser token
       if (is_valid_string(values$browser_token)) {
@@ -1064,9 +1030,11 @@ oauth_module_server <- function(
 
     ## 2.6 Authentication state ---------------------------------------------
 
-    # Compute whether the current module state should count as authenticated.
-    # Used by .is_authenticated_now() and the authenticated observer.
-    # Input: no arguments; reads reactive state. Output: TRUE/FALSE.
+    # Internal helper: compute whether the current module state counts as
+    # authenticated. Used by `.is_authenticated_now()` and the authenticated
+    # observer.
+    # @return `TRUE` when the current token or session state should count as
+    #   authenticated.
     .compute_authenticated <- function() {
       # In indefinite_session mode we ignore module error flags when computing
       # authenticated; otherwise, any error flips authenticated to FALSE
@@ -1110,9 +1078,10 @@ oauth_module_server <- function(
       TRUE
     }
 
-    # Read the latest authenticated state without waiting for the observer to flush values$authenticated.
-    # Used by login helpers during redirect decisions.
-    # Input: no arguments. Output: TRUE/FALSE.
+    # Internal helper: read the latest authenticated state immediately.
+    # Used by login helpers during redirect decisions without waiting for the
+    # observer to flush `values$authenticated`.
+    # @return Latest authentication boolean computed from current module state.
     .is_authenticated_now <- function() {
       # Refresh failures can clear token/error and immediately request reauth
       # before the authenticated observer has flushed its cached flag.
@@ -1225,9 +1194,10 @@ oauth_module_server <- function(
 
     ## 2.7 Authorization URL and redirection helpers ------------------------
 
-    # Warn when code tries to start a new login while the session is already authenticated.
-    # Used by .build_auth_url() and .request_login().
-    # Input: action name. Output: invisible FALSE after warning.
+    # Internal helper: warn when code tries to start a new login while already
+    # authenticated.
+    # @param action Helper name that attempted to start login.
+    # @return Invisibly returns `FALSE` after emitting a warning.
     .warn_about_authenticated_login_request <- function(action) {
       rlang::warn(
         c(
@@ -1250,9 +1220,11 @@ oauth_module_server <- function(
       invisible(FALSE)
     }
 
-    # Build the next login URL and convert failures into module error state.
-    # Used by .initiate_login() and the public values$build_auth_url() helper.
-    # Input: no arguments; reads the current browser token and client settings. Output: URL string or NA.
+    # Internal helper: build the next login URL and convert failures into
+    # module error state. Used by `.initiate_login()` and the public
+    # `values$build_auth_url()` helper.
+    # @return Authorization URL string, or `NA_character_` after recording a
+    #   module error.
     .build_auth_url <- function() {
       if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("build_auth_url")
@@ -1285,9 +1257,11 @@ oauth_module_server <- function(
       )
     }
 
-    # Redirect the browser if there is a usable URL.
-    # Used by .initiate_login() after .build_auth_url() succeeds.
-    # Input: URL string or NA. Output: invisible TRUE/FALSE.
+    # Internal helper: redirect the browser if there is a usable URL. Used by
+    # `.initiate_login()` after `.build_auth_url()` succeeds.
+    # @param url Candidate authorization URL.
+    # @return Invisibly returns `TRUE` when a redirect was sent, otherwise
+    #   `FALSE`.
     .redirect_to <- function(url) {
       if (is.na(url)) {
         return(invisible(FALSE))
@@ -1296,9 +1270,10 @@ oauth_module_server <- function(
       invisible(TRUE)
     }
 
-    # Start the browser redirect for a login request.
-    # Used by .request_login() and pending-login resume logic.
-    # Input: no arguments. Output: no return value; may set auto_redirected.
+    # Internal helper: start the browser redirect for a login request. Used by
+    # `.request_login()` and pending-login resume logic.
+    # @return No return value; may redirect the browser and set
+    #   `values$auto_redirected`.
     .initiate_login <- function() {
       # Build URL first; only mark redirected if we successfully issued a redirect
       url <- .build_auth_url()
@@ -1308,9 +1283,10 @@ oauth_module_server <- function(
       }
     }
 
-    # Request a login, ensuring the browser token exists first.
-    # Used by auto-redirect, manual login, and reauthentication.
-    # Input: no arguments. Output: invisible FALSE when ignored, otherwise no meaningful return value.
+    # Internal helper: request a login, ensuring the browser token exists
+    # first. Used by auto-redirect, manual login, and reauthentication.
+    # @return Invisibly returns `FALSE` only when the request is rejected
+    #   because the session is already authenticated.
     .request_login <- function() {
       if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("request_login")
@@ -1332,10 +1308,11 @@ oauth_module_server <- function(
     values$build_auth_url <- function() .build_auth_url()
     values$request_login <- function() .request_login()
 
-    # Expose a logout helper that revokes tokens best-effort, clears session state,
-    # and rotates the browser token for the next login.
-    # Used by app code through `values$logout()`.
-    # Input: optional reason string. Output: no return value; updates reactive state.
+    # Internal helper: expose a logout helper that revokes tokens best-effort
+    # and clears session state. Used by app code through `values$logout()`.
+    # @param reason Optional logout reason string for audit trails.
+    # @return No return value; clears module auth state, rotates the browser
+    #   token, and emits logout side effects.
     values$logout <- function(reason = "manual_logout") {
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {
@@ -1423,9 +1400,12 @@ oauth_module_server <- function(
       priority = 100
     )
 
-    # Process the current URL query string and decide whether to log in, handle a callback, or surface an error.
-    # Used by the url_search observer and test hooks.
-    # Input: raw query string. Output: invisible NULL after updating module state.
+    # Internal helper: process the current URL query string. Decides whether
+    # to log in, handle a callback, or surface an error. Used by the
+    # `url_search` observer and test hooks.
+    # @param query_string Current browser query string.
+    # @return No return value; updates module state, clears query params, or
+    #   triggers login or callback handling.
     .process_query <- function(query_string) {
       # Defensive: cap untrusted callback query sizes to reduce DoS surface.
       # Apply a pre-parse guard on the raw query string so that
@@ -1623,9 +1603,12 @@ oauth_module_server <- function(
       return(invisible(NULL))
     }
 
-    # Run callback issuer enforcement and turn failures into module error state.
-    # Used by .handle_callback() and .handle_error_response().
-    # Input: optional `iss` query value. Output: TRUE/FALSE.
+    # Internal helper: run callback issuer enforcement and convert failures
+    # into module error state. Used by `.handle_callback()` and
+    # `.handle_error_response()`.
+    # @param iss Optional issuer returned on the callback.
+    # @return `TRUE` when issuer validation succeeds, otherwise `FALSE` after
+    #   recording module error state.
     .enforce_callback_issuer_or_set_error <- function(iss = NULL) {
       tryCatch(
         {
@@ -1673,9 +1656,15 @@ oauth_module_server <- function(
       )
     }
 
-    # Handle a provider-supplied error callback after validating that it matches the original login state.
-    # Used by .process_query() for `?error=...` callback URLs.
-    # Input: provider error fields plus state and optional issuer. Output: invisible NULL after updating module state.
+    # Internal helper: handle a provider-supplied error callback after state
+    # validation. Used by `.process_query()` for `?error=...` callback URLs.
+    # @param error Provider-supplied OAuth error code.
+    # @param error_description Optional provider-supplied description.
+    # @param error_uri Optional provider-supplied documentation URL.
+    # @param state Callback state value.
+    # @param iss Optional callback issuer.
+    # @return No return value; either records module error state or stages
+    #   pending callback work.
     .handle_error_response <- function(
       error,
       error_description,
@@ -1739,9 +1728,14 @@ oauth_module_server <- function(
       invisible(NULL)
     }
 
-    # Decrypt, validate, and consume state for an error callback.
-    # Used by .handle_error_response() so provider error text is only trusted after state binding succeeds.
-    # Input: sealed state string and strict flag. Output: consumed state bundle or FALSE / error.
+    # Internal helper: decrypt, validate, and consume state for an error
+    # callback. Used by `.handle_error_response()` so provider error text is
+    # only trusted after state binding succeeds.
+    # @param state Encrypted callback state payload.
+    # @param strict Whether failures should be rethrown instead of converted to
+    #   `FALSE`.
+    # @return Consumed state bundle on success, otherwise `FALSE` when
+    #   `strict` is `FALSE`.
     .consume_error_state <- function(state, strict = FALSE) {
       payload <- NULL
       state_store_values <- NULL
@@ -1826,9 +1820,13 @@ oauth_module_server <- function(
       invisible(consumed)
     }
 
-    # Check that the browser token for an error callback still matches the stored state entry.
-    # Used by .handle_error_response() after state has been consumed.
-    # Input: consumed state bundle. Output: invisible TRUE or a state error.
+    # Internal helper: validate that the browser token for an error callback
+    # matches stored state. Used by `.handle_error_response()` after state has
+    # been consumed.
+    # @param consumed_state State payload or store bundle returned by
+    #   `.consume_error_state()`.
+    # @return `TRUE` when browser-token validation succeeds; otherwise this
+    #   helper signals invalid state.
     .validate_error_response_browser_token <- function(consumed_state) {
       payload <- consumed_state$payload
       state_store_values <- consumed_state$state_store_values
@@ -1893,9 +1891,14 @@ oauth_module_server <- function(
       invisible(validated)
     }
 
-    # Handle an authorization-code callback from the provider.
-    # Used by .process_query() directly and by pending-callback resume logic.
-    # Input: code, sealed state, and optional issuer. Output: invisible NULL after updating module state.
+    # Internal helper: handle an authorization-code callback from the
+    # provider. Used by `.process_query()` directly and by pending-callback
+    # resume logic.
+    # @param code Authorization code from the callback.
+    # @param state Encrypted callback state value.
+    # @param iss Optional callback issuer.
+    # @return No return value; completes or defers callback handling and
+    #   updates module state.
     .handle_callback <- function(code, state, iss = NULL) {
       callback_parent <- NULL
       callback_hint <- otel_callback_parent_hint(client, state)
@@ -2001,7 +2004,7 @@ oauth_module_server <- function(
                       ),
                       error = function(e) {
                         .set_error(
-                          .callback_failure_error_code(e),
+                          oauth_module_callback_failure_error_code(e),
                           e,
                           phase = "async_payload_validation"
                         )
@@ -2045,7 +2048,7 @@ oauth_module_server <- function(
                           ),
                           error = function(e) {
                             .set_error(
-                              .callback_failure_error_code(e),
+                              oauth_module_callback_failure_error_code(e),
                               e,
                               phase = "async_state_store_lookup"
                             )
@@ -2197,7 +2200,7 @@ oauth_module_server <- function(
                       )
                     }
                     .set_error(
-                      .callback_failure_error_code(e),
+                      oauth_module_callback_failure_error_code(e),
                       e,
                       phase = failure_phase
                     )
@@ -2251,7 +2254,7 @@ oauth_module_server <- function(
             otel_end_async_parent(callback_parent, status = "error", error = e)
           }
           .set_error(
-            .callback_failure_error_code(e),
+            oauth_module_callback_failure_error_code(e),
             e,
             phase = failure_phase
           )
@@ -2714,4 +2717,97 @@ oauth_module_server <- function(
 
     return(values)
   })
+}
+
+# 2 Module error helpers ---------------------------------------------------
+
+## Condition inspection and formatting ------------------------------------
+
+#' Internal: extract a trace id from a condition-like object
+#'
+#' Used by `oauth_module_compose_error()` so module error messages can surface a
+#' trace id without relying on partial matching.
+#'
+#' @param e Condition or error-like object.
+#' @return Trace id string or `NULL`.
+#' @keywords internal
+#' @noRd
+oauth_module_extract_trace_id <- function(e) {
+  tid <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) NULL)
+  if (!is.null(tid) && length(tid) && nzchar(as.character(tid)[1])) {
+    return(as.character(tid)[1])
+  }
+  for (nm in c("traceId", "trace", "stack")) {
+    value <- tryCatch(e[[nm]], error = function(...) NULL)
+    if (!is.null(value) && length(value) && nzchar(as.character(value)[1])) {
+      return(as.character(value)[1])
+    }
+  }
+  NULL
+}
+
+#' Internal: compose a readable module error string
+#'
+#' Used by [oauth_module_server()] before internal conditions are stored in the
+#' module's exposed reactive error state.
+#'
+#' @param e Caught condition.
+#' @param phase Optional phase label for logging context.
+#' @return Single display string, optionally suffixed with the trace id.
+#' @keywords internal
+#' @noRd
+oauth_module_compose_error <- function(e, phase = NULL) {
+  if (!is.null(phase)) {
+    try(log_condition(e, context = list(phase = phase)))
+  }
+  msg <- tryCatch(conditionMessage(e), error = function(...) {
+    "Unknown error"
+  })
+  tid <- oauth_module_extract_trace_id(e)
+  if (!is.null(tid)) sprintf("%s (trace %s)", msg, tid) else msg
+}
+
+#' Internal: test whether a condition chain inherits from a class
+#'
+#' Used by `oauth_module_callback_failure_error_code()` so callback failures can
+#' distinguish invalid-state errors from token-exchange failures.
+#'
+#' @param e Condition to inspect.
+#' @param class_name Condition class to look for.
+#' @return `TRUE` when the condition chain inherits from `class_name`, otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
+oauth_module_condition_inherits <- function(e, class_name) {
+  cur <- e
+
+  while (!is.null(cur)) {
+    if (inherits(cur, class_name)) {
+      return(TRUE)
+    }
+
+    cur <- tryCatch(
+      cur[["parent", exact = TRUE]],
+      error = function(...) NULL
+    )
+  }
+
+  FALSE
+}
+
+#' Internal: map a callback failure to a module error code
+#'
+#' Used by [oauth_module_server()] after callback handling fails in sync or
+#' async paths.
+#'
+#' @param e Callback-handling condition.
+#' @return Module error code string.
+#' @keywords internal
+#' @noRd
+oauth_module_callback_failure_error_code <- function(e) {
+  if (oauth_module_condition_inherits(e, "shinyOAuth_state_error")) {
+    return("invalid_state")
+  }
+
+  "token_exchange_error"
 }

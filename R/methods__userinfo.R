@@ -314,10 +314,18 @@ get_userinfo <- function(
 
 ## 1.2 Audit and signed UserInfo JWT helpers ------------------------------
 
-# Emit the redacted audit event for one UserInfo attempt or result.
-# Used by both plain JSON and signed JWT UserInfo flows. Input: client, status,
-# optional subject, optional shiny_session, and extra context. Output:
-# invisible NULL.
+#' Emit a UserInfo audit event
+#'
+#' Used by both plain JSON and signed JWT UserInfo flows.
+#'
+#' @param oauth_client OAuth client associated with the request.
+#' @param status Status label for the UserInfo operation.
+#' @param sub Optional subject value.
+#' @param shiny_session Optional Shiny session context.
+#' @param extra Named list of additional audit fields.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 audit_userinfo_event <- function(
   oauth_client,
   status,
@@ -676,9 +684,16 @@ decode_userinfo_jwt <- function(
 
 #' Internal: validate required and temporal claims in a signed UserInfo JWT
 #'
+#' Used after a signed UserInfo JWT has been parsed and its signature has been
+#' verified.
+#'
 #' @param claims Named list of JWT claims.
 #' @param expected_issuer The OP's Issuer Identifier URL.
 #' @param expected_client_id The RP's Client ID.
+#' @param oauth_client Optional OAuth client used for policy and auditing.
+#' @param shiny_session Optional Shiny session context for audit events.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   UserInfo error.
 #' @keywords internal
 #' @noRd
 validate_signed_userinfo_claims <- function(
@@ -688,25 +703,6 @@ validate_signed_userinfo_claims <- function(
   oauth_client = NULL,
   shiny_session = NULL
 ) {
-  # Fail one signed UserInfo claim check with the matching audit status.
-  # Used only inside validate_signed_userinfo_claims().
-  fail_signed_userinfo_claim_validation <- function(status, bullets) {
-    if (!is.null(oauth_client)) {
-      audit_userinfo_event(
-        oauth_client,
-        status = status,
-        shiny_session = shiny_session
-      )
-    }
-    err_userinfo(bullets)
-  }
-
-  # Check that one temporal claim is a single finite numeric value.
-  # Used for exp, iat, and nbf validation inside this function only.
-  is_single_finite_number <- function(x) {
-    is.numeric(x) && length(x) == 1L && is.finite(x) && !is.na(x)
-  }
-
   now <- floor(as.numeric(Sys.time()))
   lwe <- if (!is.null(oauth_client)) {
     as.numeric(oauth_client@provider@leeway %||% 0)
@@ -816,17 +812,21 @@ validate_signed_userinfo_claims <- function(
         "i" = paste(
           "Configure userinfo_jwt_required_temporal_claims = character(0) to accept signed UserInfo JWTs without those temporal claims."
         )
-      )
+      ),
+      oauth_client = oauth_client,
+      shiny_session = shiny_session
     )
   }
 
   if (!is.null(claims$exp)) {
-    if (!is_single_finite_number(claims$exp)) {
+    if (!jwt_is_single_finite_number(claims$exp)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_exp",
         bullets = c(
           "x" = "Signed UserInfo JWT 'exp' claim must be a single finite number when present"
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
 
@@ -845,18 +845,22 @@ validate_signed_userinfo_claims <- function(
             lwe,
             "s"
           )
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
   }
 
   if (!is.null(claims$iat)) {
-    if (!is_single_finite_number(claims$iat)) {
+    if (!jwt_is_single_finite_number(claims$iat)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_iat",
         bullets = c(
           "x" = "Signed UserInfo JWT 'iat' claim must be a single finite number when present"
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
 
@@ -875,18 +879,22 @@ validate_signed_userinfo_claims <- function(
             lwe,
             "s"
           )
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
   }
 
   if (!is.null(claims$nbf)) {
-    if (!is_single_finite_number(claims$nbf)) {
+    if (!jwt_is_single_finite_number(claims$nbf)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_nbf",
         bullets = c(
           "x" = "Signed UserInfo JWT 'nbf' claim must be a single finite number when present"
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
 
@@ -905,7 +913,9 @@ validate_signed_userinfo_claims <- function(
             lwe,
             "s"
           )
-        )
+        ),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
       )
     }
   }
@@ -913,13 +923,47 @@ validate_signed_userinfo_claims <- function(
   invisible(TRUE)
 }
 
+#' Internal: fail one signed UserInfo claim validation check
+#'
+#' Used by `validate_signed_userinfo_claims()` so audit status emission and the
+#' final `err_userinfo()` call stay aligned for every claim-validation failure.
+#'
+#' @param status Audit status string.
+#' @param bullets Bullet vector passed to `err_userinfo()`.
+#' @param oauth_client Optional OAuth client used for auditing.
+#' @param shiny_session Optional Shiny session context for audit events.
+#' @return No return value; always raises a UserInfo error.
+#' @keywords internal
+#' @noRd
+fail_signed_userinfo_claim_validation <- function(
+  status,
+  bullets,
+  oauth_client = NULL,
+  shiny_session = NULL
+) {
+  if (!is.null(oauth_client)) {
+    audit_userinfo_event(
+      oauth_client,
+      status = status,
+      shiny_session = shiny_session
+    )
+  }
+  err_userinfo(bullets)
+}
+
 ## 1.4 Subject consistency checks -----------------------------------------
 
-# Verify that the userinfo subject selected by the provider matches the ID
-# token subject.
-# Used after both ID token and UserInfo are available. Input: client, userinfo
-# claim list, and raw id_token string. Output: invisible TRUE or a userinfo
-# error.
+#' Verify UserInfo and ID token subject consistency
+#'
+#' Used once both the ID token and UserInfo payload are available.
+#'
+#' @param oauth_client OAuth client carrying provider policy.
+#' @param userinfo UserInfo claim list.
+#' @param id_token Raw ID token string.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   UserInfo error.
+#' @keywords internal
+#' @noRd
 verify_userinfo_id_token_subject_match <- function(
   oauth_client,
   userinfo,

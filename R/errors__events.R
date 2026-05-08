@@ -23,11 +23,18 @@
 #   - shiny_session: list with session token and optional HTTP context
 #   - ...: fields from context
 
-# Build and emit one structured audit event.
-# Used across login, token, state, and module code. Input: event type,
-# non-sensitive context, and optional Shiny/trace context. Output: invisible
-# trace id.
-# Broadcast audit events via hooks and OTel logs
+#' Emit one audit event
+#'
+#' Builds a structured audit event, attaches a trace id, and forwards it to the
+#' configured event pipeline. Used across login, token, state, and module code.
+#'
+#' @param type Short audit event name, without the `audit_` prefix.
+#' @param context Named list of non-sensitive event fields.
+#' @param shiny_session Optional pre-captured Shiny session context.
+#' @param trace_id Optional trace id to reuse for the emitted event.
+#' @return Invisibly returns the trace id used for the event.
+#' @keywords internal
+#' @noRd
 audit_event <- function(
   type,
   context = list(),
@@ -53,13 +60,17 @@ audit_event <- function(
   invisible(trace_id)
 }
 
-# Enrich one event and dispatch it to OTEL logging and the configured hook.
-# Used by audit_event() and direct internal event emitters. Input: one event
-# list. Output: invisible NULL.
-# Central event dispatcher: enriches with Shiny context, then fans out to
-# OTel logs and the configured native event hook.
-# trace_hook remains as a backward-compatible alias for audit_hook when the
-# latter is unset.
+#' Dispatch one trace or audit event
+#'
+#' Enriches one event with Shiny context and forwards it to OpenTelemetry and
+#' the configured audit hook. `trace_hook` remains a backward-compatible alias
+#' when `audit_hook` is unset. Used by `audit_event()` and direct internal event
+#' emitters.
+#'
+#' @param event Named list describing one event.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 emit_trace_event <- function(event) {
   audit_hook <- getOption("shinyOAuth.audit_hook", NULL)
   hook_name <- "audit_hook"
@@ -102,12 +113,19 @@ emit_trace_event <- function(event) {
 
 ## 1.2 Other helpers -------------------------------------------------------
 
-# Optionally print a concise internal error summary to the console.
-# Used for interactive debugging and explicit tests. Input: condition object,
-# optional context, and flags controlling output. Output: invisible NULL.
-# Optionally print a concise internal error summary to the console.
-# This is an internal debugging aid for interactive development and explicit
-# tests, not a user-configurable package option.
+#' Print a concise internal condition summary
+#'
+#' Internal debugging helper used in interactive sessions and explicit tests to
+#' summarize a condition and, optionally, include a traceback. Used for
+#' interactive debugging and explicit tests.
+#'
+#' @param e Condition object to summarize.
+#' @param context Optional named list of extra debugging context.
+#' @param enabled Whether console output should be produced.
+#' @param include_traceback Whether to include an rlang or base traceback.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
 log_condition <- function(
   e,
   context = list(),
