@@ -160,6 +160,27 @@ test_that("JWT parsing rejects embedded NUL and invalid UTF-8 JSON text", {
   )
 })
 
+test_that("JWT parsing rejects non-object payload JSON", {
+  header <- enc_b64url('{"alg":"none"}')
+  payload_array <- enc_b64url('["sub","u"]')
+  jwt <- paste0(header, ".", payload_array, ".")
+
+  expect_error(
+    shinyOAuth:::parse_jwt_payload(jwt),
+    class = "shinyOAuth_parse_error",
+    regexp = "JWT payload must be a JSON object"
+  )
+
+  client <- mk_client()
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_error(
+      shinyOAuth:::validate_id_token(client, jwt),
+      class = "shinyOAuth_id_token_error",
+      regexp = "JSON object"
+    )
+  })
+})
+
 test_that("exp/iat/nbf boundary conditions respect leeway", {
   client <- mk_client()
   client@provider@leeway <- 5

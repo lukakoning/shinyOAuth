@@ -191,6 +191,34 @@ test_that("parse_token_response signals parse error for invalid json", {
   )
 })
 
+test_that("parse_token_response rejects non-object JSON values", {
+  array_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/json"),
+    body = charToRaw('["access_token","abc"]')
+  )
+
+  plain_array_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "text/plain"),
+    body = charToRaw('["access_token","abc"]')
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(array_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "JSON object"
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(plain_array_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "JSON object"
+  )
+})
+
 test_that("parse_token_response rejects duplicate JSON token parameters", {
   dup_resp <- httr2::response(
     url = "https://example.com/token",

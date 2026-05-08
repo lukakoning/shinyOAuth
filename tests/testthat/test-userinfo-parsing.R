@@ -64,3 +64,26 @@ testthat::test_that("get_userinfo rejects duplicate sub members in JSON response
     regexp = "duplicate member name: sub"
   )
 })
+
+testthat::test_that("get_userinfo rejects non-object JSON responses", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('[{"sub":"alice"}]')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "JSON object"
+  )
+})

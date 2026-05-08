@@ -84,6 +84,9 @@ parse_token_response_json <- function(body, resp = NULL) {
   if (!isTRUE(parsed$ok)) {
     err_parse(c("x" = "Failed to parse JSON token response"))
   }
+  if (!isTRUE(parsed$is_object)) {
+    err_parse("Token response JSON must be a JSON object")
+  }
 
   parsed$value
 }
@@ -97,11 +100,13 @@ parse_token_response_json <- function(body, resp = NULL) {
 #' @param body Raw response body as a string.
 #' @param resp Optional httr2 response for httr2-native parsing.
 #' @return A list with `ok`, a scalar logical, and `value`, the parsed JSON
-#'   value when `ok` is `TRUE` or `NULL` when JSON parsing failed.
+#'   value when `ok` is `TRUE` or `NULL` when JSON parsing failed, plus
+#'   `is_object` indicating whether the payload used a top-level JSON object.
 #' @keywords internal
 #' @noRd
 try_parse_token_response_json <- function(body, resp = NULL) {
   reject_duplicate_json_object_members(body, "Token response JSON")
+  is_object <- json_text_is_object(body)
 
   out <- if (inherits(resp, "httr2_response")) {
     try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
@@ -113,12 +118,17 @@ try_parse_token_response_json <- function(body, resp = NULL) {
     out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
   }
   if (inherits(out, "try-error")) {
-    return(list(ok = FALSE, value = NULL))
+    return(list(ok = FALSE, value = NULL, is_object = is_object))
   }
 
   list(
     ok = TRUE,
-    value = normalize_token_response_json(out)
+    value = if (isTRUE(is_object)) {
+      normalize_token_response_json(out)
+    } else {
+      out
+    },
+    is_object = is_object
   )
 }
 
@@ -167,6 +177,9 @@ parse_token_response_form <- function(body) {
 parse_lenient_token_response <- function(body) {
   parsed_json <- try_parse_token_response_json(body)
   if (isTRUE(parsed_json$ok)) {
+    if (!isTRUE(parsed_json$is_object)) {
+      err_parse("Token response JSON must be a JSON object")
+    }
     return(parsed_json$value)
   }
 

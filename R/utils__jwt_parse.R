@@ -20,6 +20,7 @@ parse_jwt_payload <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
   reject_duplicate_json_object_members(payload_text, "JWT payload")
+  assert_json_text_is_object(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
@@ -44,6 +45,7 @@ parse_jwt_header <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   header_text <- strict_decode_jwt_json_text(parts$header_raw, "header")
   reject_duplicate_json_object_members(header_text, "JWT header")
+  assert_json_text_is_object(header_text, "JWT header")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
     jsonlite::fromJSON(header_text, simplifyVector = FALSE),
@@ -209,6 +211,54 @@ jwt_decode_json_string_token <- function(token) {
     )[[1]],
     error = function(...) token
   )
+}
+
+#' Internal: check whether JSON text starts with an object
+#'
+#' Used before parsing inbound JSON payloads that must be top-level objects so
+#' arrays, scalars, and other valid-but-wrong JSON values are rejected with
+#' typed package errors.
+#'
+#' @param json_text JSON text to inspect.
+#' @return `TRUE` when the first non-whitespace character is `{`; otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
+json_text_is_object <- function(json_text) {
+  if (!is.character(json_text) || length(json_text) != 1L || is.na(json_text)) {
+    return(FALSE)
+  }
+
+  trimmed <- enc2utf8(json_text)
+  if (startsWith(trimmed, "\ufeff")) {
+    trimmed <- substring(trimmed, 2L)
+  }
+  trimmed <- sub("^[[:space:]]+", "", trimmed)
+
+  nzchar(trimmed) && identical(substr(trimmed, 1L, 1L), "{")
+}
+
+#' Internal: assert that JSON text uses an object at the top level
+#'
+#' Used by inbound token, UserInfo, and JWT parsers before field access occurs.
+#'
+#' @param json_text JSON text to inspect.
+#' @param label Human-readable label used in error messages.
+#' @param signal_error Function used to report validation failures.
+#' @return Invisibly returns `NULL` on success. Otherwise signals via
+#'   `signal_error()`.
+#' @keywords internal
+#' @noRd
+assert_json_text_is_object <- function(
+  json_text,
+  label,
+  signal_error = err_parse
+) {
+  if (!isTRUE(json_text_is_object(json_text))) {
+    signal_error(paste0(label, " must be a JSON object"))
+  }
+
+  invisible(NULL)
 }
 
 #' Internal: validate one scalar string JOSE header field

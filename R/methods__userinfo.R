@@ -180,6 +180,7 @@ get_userinfo <- function(
                 body_txt,
                 "UserInfo response JSON"
               )
+              assert_json_text_is_object(body_txt, "UserInfo response JSON")
               jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
             },
             silent = TRUE

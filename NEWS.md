@@ -26,6 +26,10 @@ token exchange/refresh, userinfo/introspection/revocation, and session-end
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
 
+* Hardened JSON payload parsing. Token responses, UserInfo JSON, and JWT
+payloads now reject non-object JSON with typed shinyOAuth errors instead of
+failing later with raw base-R errors.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
