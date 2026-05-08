@@ -2,9 +2,9 @@
 # Use them during callback handling to decrypt the saved state, confirm it still
 # matches the login that started earlier, and consume the single-use state entry.
 
-# 1 State payload helpers -------------------------------------------------
+# 1 State payload helpers ------------------------------------------------------
 
-## 1.1 Decrypt and validate payload --------------------------------------
+## 1.1 Decrypt and validate payload --------------------------------------------
 
 #' Decrypt and validate OAuth state payload
 #'
@@ -90,7 +90,7 @@ state_payload_decrypt_validate <- function(
   )
 }
 
-## 1.2 Payload binding and freshness -------------------------------------
+## 1.2 Payload binding and freshness -------------------------------------------
 
 #' Verify encrypted state payload freshness
 #'
@@ -237,9 +237,9 @@ payload_verify_client_binding <- function(client, payload) {
   invisible(TRUE)
 }
 
-# 2 State store helpers ---------------------------------------------------
+# 2 State store helpers --------------------------------------------------------
 
-## 2.1 Fetch and remove state entry --------------------------------------
+## 2.1 Fetch and remove state entry --------------------------------------------
 
 #' Fetch and remove the single-use state entry
 #'
@@ -365,7 +365,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 }
 
 
-## 2.2 Atomic consume path ------------------------------------------------
+## 2.2 Atomic consume path -----------------------------------------------------
 
 #' Consume a state-store entry atomically
 #'
@@ -435,7 +435,7 @@ state_store_consume_atomic <- function(
 }
 
 
-## 2.3 Non-atomic fallback path -------------------------------------------
+## 2.3 Non-atomic fallback path ------------------------------------------------
 
 #' Consume a state-store entry with a fallback path
 #'
@@ -547,7 +547,7 @@ state_store_consume_fallback <- function(
 }
 
 
-## 2.4 Shared state-store validation --------------------------------------
+## 2.4 Shared state-store validation -------------------------------------------
 
 #' Validate a retrieved state-store value
 #'

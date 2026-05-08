@@ -3,9 +3,9 @@
 # Use them to build one structured event, enrich it with session context, and
 # send it to the configured hooks and OpenTelemetry logging bridge.
 
-# 1 Event helpers ----------------------------------------------------------
+# 1 Event helpers --------------------------------------------------------------
 
-## 1.1 Audit helpers -------------------------------------------------------
+## 1.1 Audit helpers -----------------------------------------------------------
 
 # Audit convenience to emit structured audit events
 # - type: short action name, e.g., "token_exchange", "token_refresh", "userinfo"
@@ -111,7 +111,7 @@ emit_trace_event <- function(event) {
   invisible(NULL)
 }
 
-## 1.2 Other helpers -------------------------------------------------------
+## 1.2 Other helpers -----------------------------------------------------------
 
 #' Print a concise internal condition summary
 #'

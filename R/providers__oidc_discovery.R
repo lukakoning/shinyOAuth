@@ -2,9 +2,9 @@
 # Use them when a provider publishes a standard metadata document and you want
 # shinyOAuth to fill in endpoints, safety checks, and sensible defaults automatically.
 
-# 1 OIDC discovery --------------------------------------------------------
+# 1 OIDC discovery -------------------------------------------------------------
 
-## 1.1 Provider construction ----------------------------------------------
+## 1.1 Provider construction ---------------------------------------------------
 
 #' @title
 #' Discover and create an OpenID Connect (OIDC) [OAuthProvider]
@@ -308,9 +308,9 @@ oauth_provider_oidc_discover <- function(
   do.call(oauth_provider, c(provider_args, dots))
 }
 
-# 2 Discovery helpers -----------------------------------------------------
+# 2 Discovery helpers ----------------------------------------------------------
 
-## 2.1 Input validation ---------------------------------------------------
+## 2.1 Input validation --------------------------------------------------------
 
 #' Internal: validate issuer input
 #'
@@ -376,7 +376,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.2 Transport and parsing ----------------------------------------------
+## 2.2 Transport and parsing ---------------------------------------------------
 
 #' Internal: fetch discovery response with retry and structured errors
 #'
@@ -506,7 +506,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.3 Endpoint and host policy -------------------------------------------
+## 2.3 Endpoint and host policy ------------------------------------------------
 
 #' Internal: normalize and sanitize hostname
 #'
@@ -568,7 +568,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.4 Capability negotiation ---------------------------------------------
+## 2.4 Capability negotiation --------------------------------------------------
 
 #' Internal: require jwks_uri when ID token validation is enabled
 #'
@@ -877,7 +877,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.5 mTLS discovery metadata --------------------------------------------
+## 2.5 mTLS discovery metadata -------------------------------------------------
 
 #' Extract discovered mTLS endpoint aliases
 #'
@@ -989,7 +989,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.6 PKCE and algorithm negotiation -------------------------------------
+## 2.6 PKCE and algorithm negotiation ------------------------------------------
 
 #' Internal: resolve PKCE method against discovery metadata
 #'
@@ -1119,7 +1119,7 @@ oauth_provider_oidc_discover <- function(
 }
 
 
-## 2.7 Naming -------------------------------------------------------------
+## 2.7 Naming ------------------------------------------------------------------
 
 #' Internal: derive default name from issuer
 #'

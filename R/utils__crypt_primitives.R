@@ -3,9 +3,12 @@
 # Use them for safe raw-to-hex conversion and constant-time comparisons in
 # places where token or signature material should not leak through timing.
 
-# 1 Cryptographic primitives -----------------------------------------------
+# 1 Cryptographic primitives ---------------------------------------------------
 
-## 1.1 Raw and comparison helpers -----------------------------------------
+## 1.1 Raw and comparison helpers ----------------------------------------------
+
+# Functions in this subsection encode raw values and compare secret material
+# without branching on obvious input differences.
 
 #' Convert raw vector to lowercase hex string (cachem-safe)
 #'
@@ -45,8 +48,6 @@ constant_time_compare_normalize_input <- function(x) {
 
   NULL
 }
-
-# Timing-safe equality --------------------------------------------------------
 
 #' Internal: compare two values using a timing-blinded path
 #'

@@ -14,6 +14,19 @@
 - **Examples**: `inst/examples/*.R` - Minimal code snippets illustrating specific features (shipped with package)
 - Common R idioms: use `%||%` for null coalescing, `compact_list()` to drop NULL/NA from lists, `is_valid_string()` for non-empty string checks
 
+## R File Style
+- Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.
+- Use numbered section and subsection comments to organize R files:
+  - `# 1 Title goes here ------------------------------------------`
+  - `## 1.2 Subtitle goes here ------------------------------------`
+  - `### 1.2.1 Subsubtitle goes here ------------------------------`
+- Section separator dashes must extend through column 80. Keep section text in regular sentence case, not title case.
+- Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.
+- Add a short section introduction when it makes the purpose of the section easier to understand.
+- Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.
+- Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, `@param` entries, and `@return`. Use `@keywords internal` and `@noRd` for non-exported helpers.
+- Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.
+
 ## Core Code Paths
 - `oauth_module_server()` orchestrates redirect→callback→token→refresh, exposing a reactiveValues API (`request_login()`, `logout()`, `build_auth_url()`) and watchdogs for missing JS/browser tokens.
 - Token exchange, refresh, and userinfo logic live in R/methods__login.R, R/methods__token.R, R/methods__userinfo.R; these rely on `swap_code_for_token_set()` and expect httr2 requests to pass through `add_req_defaults()` and `req_with_retry()`.

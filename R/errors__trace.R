@@ -3,7 +3,7 @@
 # Use them when one failure or event needs a stable id that can be reused across
 # nested helpers, warnings, logs, and rethrown conditions.
 
-# 1 Trace context ----------------------------------------------------------
+# 1 Trace context --------------------------------------------------------------
 
 .trace_context_env <- new.env(parent = emptyenv())
 

@@ -2,9 +2,9 @@
 # Use them to revoke tokens, ask a provider whether a token is still active,
 # or refresh a session without sending the user through login again.
 
-# 1 Token lifecycle and response policy -----------------------------------
+# 1 Token lifecycle and response policy ----------------------------------------
 
-## 1.1 Revocation ---------------------------------------------------------
+## 1.1 Revocation --------------------------------------------------------------
 
 #' @title
 #' Revoke an OAuth 2.0 token
@@ -326,7 +326,7 @@ revoke_token <- function(
   })
 }
 
-## 1.2 Introspection ------------------------------------------------------
+## 1.2 Introspection -----------------------------------------------------------
 
 #' @title
 #' Introspect an OAuth 2.0 token
@@ -706,43 +706,7 @@ introspect_token <- function(
   })
 }
 
-## 1.2.1 Introspection response normalization ------------------------------
-
-#' Internal: normalize an RFC 7662 active field
-#'
-#' Used by [introspect_token()] because providers encode the introspection
-#' `active` field as logical, numeric, or string values depending on their
-#' implementation.
-#'
-#' @param x Provider-supplied `active` field value.
-#' @return `TRUE`, `FALSE`, or `NA` when the value cannot be normalized safely.
-#' @keywords internal
-#' @noRd
-coerce_introspection_active <- function(x) {
-  if (is.logical(x)) {
-    return(ifelse(length(x) >= 1L, x[[1]], NA))
-  }
-  if (is.numeric(x)) {
-    xv <- suppressWarnings(as.numeric(x[[1]]))
-    if (length(xv) == 1L && !is.na(xv)) {
-      return(xv != 0)
-    }
-    return(NA)
-  }
-  if (is.character(x)) {
-    v <- tolower(trimws(as.character(x[[1]])))
-    if (v %in% c("true", "1", "t", "yes", "y")) {
-      return(TRUE)
-    }
-    if (v %in% c("false", "0", "f", "no", "n")) {
-      return(FALSE)
-    }
-    return(NA)
-  }
-  NA
-}
-
-## 1.3 Refresh ------------------------------------------------------------
+## 1.3 Refresh -----------------------------------------------------------------
 
 #' @title
 #' Refresh an OAuth 2.0 token
@@ -1142,9 +1106,50 @@ refresh_token <- function(
   })
 }
 
-# 2 Async execution helpers -----------------------------------------------
+# 2 Token response helpers -----------------------------------------------------
 
-## 2.1 Shared token-method async wrapper ----------------------------------
+## 2.1 Introspection response normalization ------------------------------------
+
+# Helpers in this section normalize provider responses after the main token
+# lifecycle entry functions have handled the request flow.
+
+#' Internal: normalize an RFC 7662 active field
+#'
+#' Used by [introspect_token()] because providers encode the introspection
+#' `active` field as logical, numeric, or string values depending on their
+#' implementation.
+#'
+#' @param x Provider-supplied `active` field value.
+#' @return `TRUE`, `FALSE`, or `NA` when the value cannot be normalized safely.
+#' @keywords internal
+#' @noRd
+coerce_introspection_active <- function(x) {
+  if (is.logical(x)) {
+    return(ifelse(length(x) >= 1L, x[[1]], NA))
+  }
+  if (is.numeric(x)) {
+    xv <- suppressWarnings(as.numeric(x[[1]]))
+    if (length(xv) == 1L && !is.na(xv)) {
+      return(xv != 0)
+    }
+    return(NA)
+  }
+  if (is.character(x)) {
+    v <- tolower(trimws(as.character(x[[1]])))
+    if (v %in% c("true", "1", "t", "yes", "y")) {
+      return(TRUE)
+    }
+    if (v %in% c("false", "0", "f", "no", "n")) {
+      return(FALSE)
+    }
+    return(NA)
+  }
+  NA
+}
+
+# 3 Async execution helpers ----------------------------------------------------
+
+## 3.1 Shared token-method async wrapper ---------------------------------------
 
 #' Dispatch a token helper through the async wrapper
 #'

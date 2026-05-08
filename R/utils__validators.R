@@ -4,9 +4,9 @@
 # callback query size limits, so higher-level OAuth code stays focused on flow
 # logic instead of repetitive guard clauses.
 
-# 1 Shared validators ------------------------------------------------------
+# 1 Shared validators ----------------------------------------------------------
 
-## 1.1 Common list, string, and query checks ------------------------------
+## 1.1 Common list, string, and query checks -----------------------------------
 
 #' Internal: drop NULL/NA values from a list (for query building)
 #'

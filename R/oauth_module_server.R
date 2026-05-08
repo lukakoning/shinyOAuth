@@ -2,7 +2,7 @@
 # Use it when you want shinyOAuth to manage redirects, callbacks, token refresh,
 # browser-token cookies, and authenticated session state inside a Shiny app.
 
-# 1 Shiny module entry point -----------------------------------------------
+# 1 Shiny module entry point ---------------------------------------------------
 
 #' @title
 #' OAuth 2.0 & OIDC authentication module for Shiny applications
@@ -260,9 +260,9 @@ oauth_module_server <- function(
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
-  # 1 Module setup ---------------------------------------------------------
+  # 1 Module setup -------------------------------------------------------------
 
-  ## 1.1 Parameter validation ----------------------------------------------
+  ## 1.1 Parameter validation --------------------------------------------------
 
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -358,7 +358,7 @@ oauth_module_server <- function(
     err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
   }
 
-  ## 1.2 Browser and async prerequisites -----------------------------------
+  ## 1.2 Browser and async prerequisites ---------------------------------------
 
   # Fail fast: revoke_on_session_end requires a revocation URL
 
@@ -474,10 +474,10 @@ oauth_module_server <- function(
     }
   }
 
-  # 2 Shiny module ---------------------------------------------------------
+  # 2 Shiny module -------------------------------------------------------------
 
   shiny::moduleServer(id, function(input, output, session) {
-    ## 2.1 Reactive values --------------------------------------------------
+    ## 2.1 Reactive values -----------------------------------------------------
 
     # Set browser token initial value to "__SKIPPED__" in test mode
     browser_token_initial <- NULL
@@ -560,7 +560,7 @@ oauth_module_server <- function(
       parent = NA
     )
 
-    ## 2.2 Session-end hooks ------------------------------------------------
+    ## 2.2 Session-end hooks ---------------------------------------------------
 
     # Capture session context now while we still have it (it won't be
     # available in onSessionEnded callback). Keep separate sync/async variants
@@ -658,7 +658,7 @@ oauth_module_server <- function(
       })
     }
 
-    ## 2.3 Error handling helpers -------------------------------------------
+    ## 2.3 Error handling helpers ----------------------------------------------
 
     # Internal helper: write the module's exposed error fields.
     # Used throughout `oauth_module_server()` whenever login, callback, or
@@ -677,7 +677,7 @@ oauth_module_server <- function(
       values$error_uri <- NULL
     }
 
-    ## 2.4 Client-side actions ----------------------------------------------
+    ## 2.4 Client-side actions -------------------------------------------------
 
     # These helpers communicate with handlers defined in inst/www/shinyOAuth.js,
     # which you load in UI with `use_shinyOAuth()`.
@@ -841,7 +841,7 @@ oauth_module_server <- function(
       )
     }
 
-    ## 2.5 Browser token cookie ---------------------------------------------
+    ## 2.5 Browser token cookie ------------------------------------------------
 
     # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
     # and mirror its value into input$shinyOAuth_sid. We set it once if missing
@@ -1028,7 +1028,7 @@ oauth_module_server <- function(
       return(FALSE)
     }
 
-    ## 2.6 Authentication state ---------------------------------------------
+    ## 2.6 Authentication state ------------------------------------------------
 
     # Internal helper: compute whether the current module state counts as
     # authenticated. Used by `.is_authenticated_now()` and the authenticated
@@ -1192,7 +1192,7 @@ oauth_module_server <- function(
       ignoreInit = FALSE
     )
 
-    ## 2.7 Authorization URL and redirection helpers ------------------------
+    ## 2.7 Authorization URL and redirection helpers ---------------------------
 
     # Internal helper: warn when code tries to start a new login while already
     # authenticated.
@@ -1301,12 +1301,48 @@ oauth_module_server <- function(
       }
     }
 
-    # Expose helpers for manual login flows when `auto_redirect = FALSE`:
-    values$set_browser_token <- function() .set_browser_token()
-    values$clear_browser_token <- function() .clear_browser_token()
-    values$has_browser_token <- function() .has_browser_token()
-    values$build_auth_url <- function() .build_auth_url()
-    values$request_login <- function() .request_login()
+    # Expose helpers for manual login flows when `auto_redirect = FALSE`.
+
+    # Module value helper: set or refresh the browser token cookie.
+    # Used by app code when manual login flows need to prepare the browser
+    # session before building an authorization URL.
+    # @return No return value; sends a browser-token message.
+    values$set_browser_token <- function() {
+      .set_browser_token()
+    }
+
+    # Module value helper: clear the browser token cookie.
+    # Used by app code when it needs to reset the browser-session binding
+    # outside the built-in logout flow.
+    # @return No return value; clears browser and server token state.
+    values$clear_browser_token <- function() {
+      .clear_browser_token()
+    }
+
+    # Module value helper: report browser-token availability.
+    # Used by app code to decide whether an auth URL can be built yet.
+    # @return `TRUE` when a browser token is available, otherwise `FALSE`.
+    values$has_browser_token <- function() {
+      .has_browser_token()
+    }
+
+    # Module value helper: build the next authorization URL.
+    # Used by app code in manual login flows when it wants to render a link or
+    # button target instead of redirecting immediately.
+    # @return Authorization URL string, or `NA_character_` after recording a
+    #   module error.
+    values$build_auth_url <- function() {
+      .build_auth_url()
+    }
+
+    # Module value helper: request a login redirect.
+    # Used by app code in manual login flows when a click or other event should
+    # start authentication.
+    # @return Invisibly returns `FALSE` only when the request is rejected
+    #   because the session is already authenticated.
+    values$request_login <- function() {
+      .request_login()
+    }
 
     # Internal helper: expose a logout helper that revokes tokens best-effort
     # and clears session state. Used by app code through `values$logout()`.
@@ -1389,7 +1425,7 @@ oauth_module_server <- function(
       )
     }
 
-    ## 2.8 Callback handling and auto-redirect ------------------------------
+    ## 2.8 Callback handling and auto-redirect ---------------------------------
 
     # Handle OAuth flow by listening to clientData$url_search
     shiny::observeEvent(
@@ -2344,7 +2380,7 @@ oauth_module_server <- function(
     values$.process_query <- .process_query
     values$.strip_oauth_query <- .strip_oauth_query
 
-    ## 2.9 Proactive refresh ------------------------------------------------
+    ## 2.9 Proactive refresh ---------------------------------------------------
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
@@ -2585,7 +2621,7 @@ oauth_module_server <- function(
       })
     }
 
-    ## 2.10 Expiry watch ----------------------------------------------------
+    ## 2.10 Expiry watch -------------------------------------------------------
 
     # Always-on expiry watcher to clear expired tokens and optionally reauth
     shiny::observe({
@@ -2713,15 +2749,15 @@ oauth_module_server <- function(
       shiny::invalidateLater(wake_ms, session)
     })
 
-    ## 2.11 Return reactive values ------------------------------------------
+    ## 2.11 Return reactive values ---------------------------------------------
 
     return(values)
   })
 }
 
-# 2 Module error helpers ---------------------------------------------------
+# 2 Module error helpers -------------------------------------------------------
 
-## Condition inspection and formatting ------------------------------------
+## 2.1 Condition inspection and formatting -------------------------------------
 
 #' Internal: extract a trace id from a condition-like object
 #'

@@ -4,9 +4,9 @@
 # audience, nonce, access token, or provider-specific issuer rules such as
 # Microsoft tenant-specific validation.
 
-# 1 Inbound ID token helpers ----------------------------------------------
+# 1 Inbound ID token helpers ---------------------------------------------------
 
-## 1.1 Main ID token validation -------------------------------------------
+## 1.1 Main ID token validation ------------------------------------------------
 
 #' Internal: validate ID token
 #'
@@ -492,7 +492,7 @@ validate_id_token <- function(
   invisible(payload)
 }
 
-## 1.2 Numeric claim helpers ----------------------------------------------
+## 1.2 Numeric claim helpers ---------------------------------------------------
 
 #' Internal: check for one finite numeric scalar
 #'
@@ -508,7 +508,7 @@ jwt_is_single_finite_number <- function(x) {
   is.numeric(x) && length(x) == 1 && is.finite(x) && !is.na(x)
 }
 
-## 1.3 EdDSA and at_hash helpers ------------------------------------------
+## 1.3 EdDSA and at_hash helpers -----------------------------------------------
 
 #' Normalize an EdDSA curve label
 #'

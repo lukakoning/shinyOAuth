@@ -3,9 +3,9 @@
 # Use them when login, token, or userinfo code should run away from the main
 # Shiny process without losing diagnostics or trace context.
 
-# 1 Async dispatch helpers -------------------------------------------------
+# 1 Async dispatch helpers -----------------------------------------------------
 
-## 1.1 Backend discovery and dispatch -------------------------------------
+## 1.1 Backend discovery and dispatch ------------------------------------------
 
 #' Check whether mirai daemons are active
 #'
@@ -206,7 +206,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   )
 }
 
-## 1.2 Replay and worker preparation --------------------------------------
+## 1.2 Replay and worker preparation -------------------------------------------
 
 #' Replay captured async conditions and unwrap the result
 #'

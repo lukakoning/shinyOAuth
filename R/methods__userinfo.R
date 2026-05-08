@@ -3,9 +3,9 @@
 # Use them when an access token should be turned into profile claims, or when a
 # provider returns `application/jwt` and those claims must be verified first.
 
-# 1 UserInfo methods -------------------------------------------------------
+# 1 UserInfo methods -----------------------------------------------------------
 
-## 1.1 Fetch and parse userinfo -------------------------------------------
+## 1.1 Fetch and parse userinfo ------------------------------------------------
 
 #' Get user info from OAuth 2.0 provider
 #'
@@ -312,7 +312,7 @@ get_userinfo <- function(
   )
 }
 
-## 1.2 Audit and signed UserInfo JWT helpers ------------------------------
+## 1.2 Audit and signed UserInfo JWT helpers -----------------------------------
 
 #' Emit a UserInfo audit event
 #'
@@ -680,7 +680,7 @@ decode_userinfo_jwt <- function(
   ))
 }
 
-## 1.3 Signed UserInfo claim validation -----------------------------------
+## 1.3 Signed UserInfo claim validation ----------------------------------------
 
 #' Internal: validate required and temporal claims in a signed UserInfo JWT
 #'
@@ -951,7 +951,7 @@ fail_signed_userinfo_claim_validation <- function(
   err_userinfo(bullets)
 }
 
-## 1.4 Subject consistency checks -----------------------------------------
+## 1.4 Subject consistency checks ----------------------------------------------
 
 #' Verify UserInfo and ID token subject consistency
 #'

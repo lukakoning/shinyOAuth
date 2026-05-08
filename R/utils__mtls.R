@@ -3,13 +3,14 @@
 # Use them when shinyOAuth needs to choose an mTLS alias endpoint, attach a
 # client certificate, or confirm that a sender-constrained token matches it.
 
-# 1 Mutual TLS helpers -----------------------------------------------------
+# 1 Mutual TLS helpers ---------------------------------------------------------
 
-## 1.1 Policy constants and thumbprint cache ------------------------------
+## 1.1 Policy constants and thumbprint cache -----------------------------------
 
-# Internal: token_auth_style values that mean "authenticate the client with
-# mutual TLS". Treated as constant policy data by discovery and token request
-# code rather than a helper function.
+# Constants and cache objects in this subsection keep mTLS policy decisions and
+# certificate thumbprint lookups in one place.
+#
+# Token auth styles that mean "authenticate the client with mutual TLS".
 MTLS_TOKEN_AUTH_STYLES <- c(
   "tls_client_auth",
   "self_signed_tls_client_auth"
@@ -104,7 +105,7 @@ mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
   invisible(thumbprint)
 }
 
-## 1.2 Decide when mTLS applies ------------------------------------------
+## 1.2 Decide when mTLS applies ------------------------------------------------
 
 #' Check whether a client has mTLS certificate material
 #'
@@ -223,7 +224,7 @@ resolve_provider_endpoint_url <- function(
   base_url
 }
 
-## 1.3 Apply client certificates to requests ------------------------------
+## 1.3 Apply client certificates to requests -----------------------------------
 
 #' Attach an mTLS client certificate to a request
 #'
@@ -283,7 +284,7 @@ req_apply_authorization_server_mtls <- function(
   req_apply_mtls_client_certificate(req, oauth_client)
 }
 
-## 1.4 Resolve token certificate bindings ---------------------------------
+## 1.4 Resolve token certificate bindings --------------------------------------
 
 #' Read an mTLS certificate thumbprint from a token
 #'
@@ -427,7 +428,7 @@ token_requires_mtls_sender_constraint <- function(
   FALSE
 }
 
-## 1.5 Read certificates and enforce binding ------------------------------
+## 1.5 Read certificates and enforce binding -----------------------------------
 
 #' Read client certificates
 #'

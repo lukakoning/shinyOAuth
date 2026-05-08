@@ -3,9 +3,9 @@
 # Use them when code needs strict JWT segment decoding, JOSE header checks, or
 # algorithm-specific signature verification without yet applying ID-token rules.
 
-# 1 JWT parsing helpers ----------------------------------------------------
+# 1 JWT parsing helpers --------------------------------------------------------
 
-## 1.1 Parse payload and header -------------------------------------------
+## 1.1 Parse payload and header ------------------------------------------------
 
 #' Parse JWT payload (unsigned validation only)
 #'
@@ -55,7 +55,7 @@ parse_jwt_header <- function(jwt) {
   )
 }
 
-## 1.2 Compact JWT parsing and JSON decoding ------------------------------
+## 1.2 Compact JWT parsing and JSON decoding -----------------------------------
 
 #' Strictly decode one compact JWT segment
 #'
@@ -381,7 +381,7 @@ reject_duplicate_json_object_members <- function(json_text, label) {
   invisible(NULL)
 }
 
-## 1.3 JOSE header validation ---------------------------------------------
+## 1.3 JOSE header validation --------------------------------------------------
 
 #' Validate JOSE header fields
 #'
@@ -477,7 +477,7 @@ enforce_inbound_jwt_header_policy <- function(
   invisible(header_fields)
 }
 
-## 1.4 Signature verification helpers -------------------------------------
+## 1.4 Signature verification helpers ------------------------------------------
 
 #' Extract raw JWS verification parts
 #'

@@ -3,9 +3,9 @@
 # Use them to apply the package's security defaults around redirects, timeouts,
 # body-size limits, and retries.
 
-# 1 HTTP request helpers ---------------------------------------------------
+# 1 HTTP request helpers -------------------------------------------------------
 
-## 1.1 Redirects, defaults, and retries -----------------------------------
+## 1.1 Redirects, defaults, and retries ----------------------------------------
 
 #' Internal: Disable HTTP redirect following
 #'
@@ -161,7 +161,7 @@ add_req_defaults <- function(req) {
     httr2::req_options(maxfilesize = max_bytes)
 }
 
-## 1.2 Client-auth request shaping ---------------------------------------
+## 1.2 Client-auth request shaping ---------------------------------------------
 
 #' Apply direct client authentication to a request
 #'
@@ -456,7 +456,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
   )
 }
 
-## 1.3 Retry timing helpers -----------------------------------------------
+## 1.3 Retry timing helpers ----------------------------------------------------
 
 #' Internal: parse one Retry-After response header
 #'

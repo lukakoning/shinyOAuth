@@ -2,9 +2,9 @@
 # Use them when login, token, module, or async code needs spans or logs without
 # repeating the same value-cleaning and attribute-building rules each time.
 
-# 1 Telemetry setup --------------------------------------------------------
+# 1 Telemetry setup ------------------------------------------------------------
 
-## 1.1 Switches and warnings ----------------------------------------------
+## 1.1 Switches and warnings ---------------------------------------------------
 
 # Keep one stable instrumentation name so OTEL groups shinyOAuth spans and
 # logs under the same scope.
@@ -102,9 +102,9 @@ warn_about_async_otel_workers <- function() {
   invisible(TRUE)
 }
 
-# 2 Value normalization ----------------------------------------------------
+# 2 Value normalization --------------------------------------------------------
 
-## 2.1 Scalar and list helpers --------------------------------------------
+## 2.1 Scalar and list helpers -------------------------------------------------
 
 #' Normalize one OTEL scalar attribute value
 #'
@@ -249,6 +249,19 @@ otel_count_items <- function(x) {
   as.integer(length(x))
 }
 
+#' Join telemetry values into one string
+#'
+#' Flattens a value or list of values into a stable, space-separated string.
+#' Used by telemetry helpers that need compact summaries of scopes, claims, or
+#' content types for span and log attributes.
+#'
+#' @param x Vector-like value or list to join.
+#' @param sep Separator inserted between values.
+#' @param sort_values Whether to sort the unique values before joining.
+#' @return A length-1 character string, or `NULL` when there are no usable
+#'   values.
+#' @keywords internal
+#' @noRd
 otel_join_values <- function(x, sep = " ", sort_values = TRUE) {
   if (is.null(x)) {
     return(NULL)
@@ -275,9 +288,9 @@ otel_join_values <- function(x, sep = " ", sort_values = TRUE) {
   paste(x, collapse = sep)
 }
 
-# 3 OAuth value summaries --------------------------------------------------
+# 3 OAuth value summaries ------------------------------------------------------
 
-## 3.1 Scopes, claims, and response fields --------------------------------
+## 3.1 Scopes, claims, and response fields -------------------------------------
 
 #' Normalize scope tokens for telemetry
 #'
@@ -601,9 +614,9 @@ otel_token_response_attributes <- function(token_set) {
   ))
 }
 
-# 4 Request and session attributes ----------------------------------------
+# 4 Request and session attributes ---------------------------------------------
 
-## 4.1 Shiny and HTTP context builders ------------------------------------
+## 4.1 Shiny and HTTP context builders -----------------------------------------
 
 #' Capture the current Shiny session context for telemetry
 #'
@@ -797,9 +810,9 @@ otel_http_attributes <- function(
   ))
 }
 
-# 5 Span helpers -----------------------------------------------------------
+# 5 Span helpers ---------------------------------------------------------------
 
-## 5.1 Span lifecycle ------------------------------------------------------
+## 5.1 Span lifecycle ----------------------------------------------------------
 
 #' Set span attributes
 #'
@@ -1086,9 +1099,9 @@ otel_capture_context <- function(span = NULL) {
   headers
 }
 
-# 6 Async context handoff --------------------------------------------------
+# 6 Async context handoff ------------------------------------------------------
 
-## 6.1 Parent context propagation -----------------------------------------
+## 6.1 Parent context propagation ----------------------------------------------
 
 #' Rebuild an OTEL parent context from headers
 #'
@@ -1259,9 +1272,9 @@ otel_end_async_parent <- function(
   invisible(NULL)
 }
 
-# 7 Event logging ----------------------------------------------------------
+# 7 Event logging --------------------------------------------------------------
 
-## 7.1 Audit and log shaping ----------------------------------------------
+## 7.1 Audit and log shaping ---------------------------------------------------
 
 #' Choose a log severity for an event
 #'

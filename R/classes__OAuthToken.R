@@ -3,9 +3,9 @@
 # Use it to keep the access token, optional refresh or ID tokens, expiry time,
 # and fetched user info together in one validated result object.
 
-# 1 OAuth token class ------------------------------------------------------
+# 1 OAuth token class ----------------------------------------------------------
 
-## 1.1 Class definition ----------------------------------------------------
+## 1.1 Class definition --------------------------------------------------------
 
 #' OAuthToken S7 class
 #'
@@ -95,9 +95,9 @@ OAuthToken <- S7::new_class(
   validator = function(self) oauth_token_validate(self)
 )
 
-# 2 Internal validation helpers --------------------------------------------
+# 2 Internal validation helpers ------------------------------------------------
 
-## 2.1 Bundle validation ---------------------------------------------------
+## 2.1 Bundle validation -------------------------------------------------------
 
 #' Internal: validate one OAuthToken bundle
 #'
@@ -118,12 +118,19 @@ oauth_token_validate <- function(self) {
   }
 
   for (field in c("token_type", "refresh_token", "id_token")) {
-    problem <- oauth_token_validate_optional_token_field(
-      S7::prop(self, field),
-      field
-    )
-    if (!is.null(problem)) {
-      return(problem)
+    value <- S7::prop(self, field)
+    if (!is.character(value) || length(value) != 1L) {
+      return(sprintf(
+        "OAuthToken: %s must be a scalar character value",
+        field
+      ))
+    }
+
+    if (!is.na(value) && !nzchar(trimws(value))) {
+      return(sprintf(
+        "OAuthToken: %s must be NA or a non-empty string",
+        field
+      ))
     }
   }
 
@@ -157,36 +164,6 @@ oauth_token_validate <- function(self) {
         "OAuthToken: id_token_validated = TRUE requires id_token to be a parseable JWT"
       )
     }
-  }
-
-  NULL
-}
-
-## 2.2 Optional field validation ------------------------------------------
-
-#' Internal: validate one optional OAuth token string field
-#'
-#' Used by the [OAuthToken] validator for optional `token_type`,
-#' `refresh_token`, and `id_token` fields.
-#'
-#' @param value Field value to validate.
-#' @param field Field name used in the validation error.
-#' @return `NULL` on success, otherwise a length-1 validation error string.
-#' @keywords internal
-#' @noRd
-oauth_token_validate_optional_token_field <- function(value, field) {
-  if (!is.character(value) || length(value) != 1L) {
-    return(sprintf(
-      "OAuthToken: %s must be a scalar character value",
-      field
-    ))
-  }
-
-  if (!is.na(value) && !nzchar(trimws(value))) {
-    return(sprintf(
-      "OAuthToken: %s must be NA or a non-empty string",
-      field
-    ))
   }
 
   NULL

@@ -3,9 +3,9 @@
 # Use them when scope input may come from user code in a few shapes and the
 # package needs one clean token vector for requests and later validation.
 
-# 1 Scope helpers ----------------------------------------------------------
+# 1 Scope helpers --------------------------------------------------------------
 
-## 1.1 Normalize and validate scopes --------------------------------------
+## 1.1 Normalize and validate scopes -------------------------------------------
 
 #' Validate OAuth 2.0 scope strings
 #'

@@ -3,9 +3,9 @@
 # Use them when async work should see the same package options, digest keys,
 # and OTEL exporter setup as the main Shiny process.
 
-# 1 Async option and OTEL propagation -------------------------------------
+# 1 Async option and OTEL propagation ------------------------------------------
 
-## 1.1 Capture and apply configuration ------------------------------------
+## 1.1 Capture and apply configuration -----------------------------------------
 
 #' Capture shinyOAuth options for async workers
 #'
@@ -130,7 +130,7 @@ capture_async_otel_envvars <- function() {
   Sys.getenv(otel_names, unset = NA_character_)
 }
 
-## 1.2 OTEL cache reset warnings and env restoration ----------------------
+## 1.2 OTEL cache reset warnings and env restoration ---------------------------
 
 #' Resolve the available OTEL cache reset hook
 #'
@@ -361,7 +361,7 @@ restore_async_otel_envvars <- function(old_envvars) {
   invisible(NULL)
 }
 
-## 1.3 Run worker code with captured options ------------------------------
+## 1.3 Run worker code with captured options -----------------------------------
 
 #' Run code with captured async options restored
 #'

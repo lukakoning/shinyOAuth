@@ -2,9 +2,9 @@
 # Use them when provider responses or package options omit expiry values or
 # return them in awkward formats that still need safe numeric handling.
 
-# 1 Expiry coercion and option helpers -------------------------------------
+# 1 Expiry coercion and option helpers -----------------------------------------
 
-## 1.1 Normalize option values and raw expires_in fields -------------------
+## 1.1 Normalize option values and raw expires_in fields -----------------------
 
 #' Internal: read a positive numeric scalar option
 #'
@@ -141,7 +141,7 @@ client_state_store_max_age <- function(client, default = 300) {
   max_age
 }
 
-## 1.2 Resolve fallback expiries and freshness windows ---------------------
+## 1.2 Resolve fallback expiries and freshness windows -------------------------
 
 #' Internal: resolve expires_at when expires_in is absent from the token response
 #'

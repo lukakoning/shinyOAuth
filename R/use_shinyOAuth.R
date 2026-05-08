@@ -2,9 +2,9 @@
 # Use them to load the browser code that can redirect, manage the browser token,
 # and warn when that dependency was forgotten.
 
-# 1 UI dependency helper ---------------------------------------------------
+# 1 UI dependency helper -------------------------------------------------------
 
-## 1.1 Add the browser dependency to the UI -------------------------------
+## 1.1 Add the browser dependency to the UI ------------------------------------
 
 #' Add JavaScript dependency to the UI of a Shiny app
 #'
@@ -38,7 +38,7 @@
 #'
 #' @seealso [oauth_module_server()]
 use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
-  .set_flag(".called_js_dependency", TRUE)
+  assign(".called_js_dependency", TRUE, envir = .watchdog_environment)
 
   if (
     !(isTRUE(inject_referrer_meta) || identical(inject_referrer_meta, FALSE))
@@ -80,9 +80,9 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
   )
 }
 
-# 2 Missing dependency watchdog -------------------------------------------
+# 2 Missing dependency watchdog ------------------------------------------------
 
-## 2.1 Warn when the UI dependency is missing -----------------------------
+## 2.1 Warn when the UI dependency is missing ----------------------------------
 
 #' Warn when the UI dependency is missing
 #'
@@ -98,7 +98,14 @@ warn_about_missing_js_dependency <- function() {
   if (.is_test()) {
     return(invisible(NULL))
   }
-  if (.get_flag(".called_js_dependency")) {
+  if (
+    get0(
+      ".called_js_dependency",
+      envir = .watchdog_environment,
+      inherits = FALSE,
+      ifnotfound = FALSE
+    )
+  ) {
     return(invisible(NULL))
   }
 
@@ -118,7 +125,7 @@ warn_about_missing_js_dependency <- function() {
   invisible(TRUE)
 }
 
-## 2.2 Store file-local watchdog state -----------------------------------
+## 2.2 Store file-local watchdog state -----------------------------------------
 
 # Here we track if the dependency has likely been added to UI;
 # if this flag is FALSE, and `oauth_module_server()` is called,
@@ -126,38 +133,3 @@ warn_about_missing_js_dependency <- function() {
 
 .watchdog_environment <- new.env(parent = emptyenv())
 assign(".called_js_dependency", FALSE, envir = .watchdog_environment)
-
-#' Read a file-local dependency flag
-#'
-#' Looks up one watchdog flag from the private environment used to track
-#' whether the UI dependency has already been registered. Used by
-#' [use_shinyOAuth()] and `warn_about_missing_js_dependency()`.
-#'
-#' @param name Flag name to read from the watchdog environment.
-#' @param default Default value returned when the flag has not been set.
-#' @return The stored flag value, or `default` when the flag is absent.
-#' @keywords internal
-#' @noRd
-.get_flag <- function(name, default = FALSE) {
-  get0(
-    name,
-    envir = .watchdog_environment,
-    inherits = FALSE,
-    ifnotfound = default
-  )
-}
-
-#' Store a file-local dependency flag
-#'
-#' Persists one watchdog flag in the private environment used by the UI
-#' dependency checks. Used by [use_shinyOAuth()] when the dependency is added.
-#'
-#' @param name Flag name to update in the watchdog environment.
-#' @param value Value to store for `name`.
-#' @return Invisibly returns `TRUE` after the flag is stored.
-#' @keywords internal
-#' @noRd
-.set_flag <- function(name, value) {
-  assign(name, value, envir = .watchdog_environment)
-  invisible(TRUE)
-}

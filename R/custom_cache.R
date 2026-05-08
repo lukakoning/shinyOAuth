@@ -3,9 +3,12 @@
 # Use it when state or JWKS data should live in a shared backend instead of the
 # default in-memory cache.
 
-# 1 Custom cache helper ----------------------------------------------------
+# 1 Custom cache helper --------------------------------------------------------
 
-## 1.1 Build cachem-like backend ------------------------------------------
+## 1.1 Build cachem-like backend -----------------------------------------------
+
+# Functions in this section create cachem-compatible objects from caller-supplied
+# backend functions.
 
 #' Create a custom cache backend (cachem-like)
 #'
@@ -99,10 +102,9 @@ custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
       )
     }
   }
-  # Validate optional info hook if provided
-  if (is.null(info)) {
-    info <- function() list()
-  } else if (!is.function(info)) {
+  # Validate optional info hook if provided. A missing hook is handled by the
+  # R6 method itself so no one-off helper function is needed.
+  if (!is.null(info) && !is.function(info)) {
     err_input(
       "cache_backend: `info` must be a function() -> list(max_age = seconds, ...) (see `?custom_cache`)"
     )
@@ -138,6 +140,9 @@ custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
         private$.remove(key)
       },
       info = function() {
+        if (is.null(private$.info)) {
+          return(list())
+        }
         out <- try(private$.info(), silent = TRUE)
         if (inherits(out, "try-error") || is.null(out)) {
           return(list())

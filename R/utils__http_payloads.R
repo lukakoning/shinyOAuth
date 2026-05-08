@@ -3,9 +3,9 @@
 # Use them when form-encoded or JSON payloads need strict parsing rules, input
 # validation, or support for repeated parameter names.
 
-# 1 HTTP payload helpers ---------------------------------------------------
+# 1 HTTP payload helpers -------------------------------------------------------
 
-## 1.1 Parse and encode request or response bodies ------------------------
+## 1.1 Parse and encode request or response bodies -----------------------------
 
 #' Parse token HTTP response by Content-Type
 #'

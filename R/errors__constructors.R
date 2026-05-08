@@ -3,11 +3,12 @@
 # Use them when code needs a consistent package-specific error class, formatted
 # message, and event emission rather than a plain `stop()`.
 
-# 1 Error constructors -----------------------------------------------------
+# 1 Error constructors ---------------------------------------------------------
 
-## 1.1 Generic constructors and formatting --------------------------------
+## 1.1 Generic constructors and formatting -------------------------------------
 
-# Generic -----------------------------------------------------------------
+# Functions in this subsection create the base package condition and prepare
+# the small formatting helpers it needs.
 
 #' Abort with a typed shinyOAuth error
 #'
@@ -108,7 +109,6 @@ normalize_bullets <- function(msg, default_type = "!") {
   }
   # Flatten one level if someone supplied list() of strings
   if (is.list(msg)) {
-    # Flatten one level if someone supplied list() of strings
     msg <- unlist(msg, recursive = FALSE, use.names = TRUE)
   }
   # Preserve names across coercion to character (as.character() drops names)
@@ -130,9 +130,9 @@ normalize_bullets <- function(msg, default_type = "!") {
   stats::setNames(as.character(msg), nm)
 }
 
-# 2 Specialized error constructors ----------------------------------------
+# 2 Specialized error constructors ---------------------------------------------
 
-## 2.1 HTTP and transport failures ----------------------------------------
+## 2.1 HTTP and transport failures ---------------------------------------------
 
 #' Abort with a typed HTTP error
 #'
@@ -338,31 +338,93 @@ err_transport <- function(
   )
 }
 
-## 2.2 Typed wrapper constructors -----------------------------------------
+## 2.2 Typed wrapper constructors ----------------------------------------------
 
 # Thin typed wrappers around err_abort() for the package's common error classes.
 # Used throughout login, token, JWT, state, and HTTP helpers.
 
+#' Raise an invalid state error
+#'
+#' Wraps `err_abort()` with the package state-error class. Used when stored or
+#' returned OAuth state data is missing, expired, malformed, or does not match
+#' the browser session.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_invalid_state <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_state_error", context = context)
 }
 
+#' Raise a PKCE error
+#'
+#' Wraps `err_abort()` with the package PKCE-error class. Used when the code
+#' verifier or challenge values required for the OAuth login flow are invalid.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_pkce <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_pkce_error", context = context)
 }
 
+#' Raise a token error
+#'
+#' Wraps `err_abort()` with the package token-error class. Used by token
+#' exchange, refresh, revocation, introspection, and token response validation.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_token <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_token_error", context = context)
 }
 
+#' Raise an ID token error
+#'
+#' Wraps `err_abort()` with the package ID-token-error class. Used when an OIDC
+#' ID token is missing, cannot be decoded, or fails claim or signature checks.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_id_token <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_id_token_error", context = context)
 }
 
+#' Raise a UserInfo error
+#'
+#' Wraps `err_abort()` with the package UserInfo-error class. Used when loading,
+#' parsing, or validating a UserInfo response fails.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_userinfo <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_userinfo_error", context = context)
 }
 
+#' Raise a UserInfo subject mismatch error
+#'
+#' Wraps `err_abort()` with classes for a UserInfo response whose subject does
+#' not match the ID token subject. Used after signed or plain UserInfo responses
+#' are decoded.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_userinfo_mismatch <- function(
   msg = "userinfo subject mismatch",
   context = list()
@@ -374,19 +436,49 @@ err_userinfo_mismatch <- function(
   )
 }
 
+#' Raise a configuration error
+#'
+#' Wraps `err_abort()` with the package configuration-error class. Used when
+#' caller settings, provider metadata, or package options are inconsistent.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_config <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_config_error", context = context)
 }
 
+#' Raise an input error
+#'
+#' Wraps `err_abort()` with the package input-error class. Used when a public
+#' function receives an argument value that cannot be accepted.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_input <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_input_error", context = context)
 }
 
+#' Raise a parse error
+#'
+#' Wraps `err_abort()` with the package parse-error class. Used when JSON, JWT,
+#' JWKS, form, or other structured data cannot be decoded safely.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
 err_parse <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_parse_error", context = context)
 }
 
-## 2.3 Other helpers -------------------------------------------------------
+## 2.3 Other helpers -----------------------------------------------------------
 
 #' Sanitize an HTTP response body preview
 #'

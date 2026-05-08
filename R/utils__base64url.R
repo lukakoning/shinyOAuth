@@ -3,9 +3,9 @@
 # Use them when binary data needs the URL-safe base64 encoding required by many
 # OAuth and OpenID Connect specs.
 
-# 1 Base64url helpers ------------------------------------------------------
+# 1 Base64url helpers ----------------------------------------------------------
 
-## 1.1 Encode and decode ---------------------------------------------------
+## 1.1 Encode and decode -------------------------------------------------------
 
 #' Internal base64url helpers
 #'

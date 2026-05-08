@@ -2,9 +2,9 @@
 # Use it for registrations that must happen when shinyOAuth loads, not for the
 # OAuth flow logic itself.
 
-# 1 Package startup --------------------------------------------------------
+# 1 Package startup ------------------------------------------------------------
 
-## 1.1 Namespace setup -----------------------------------------------------
+## 1.1 Namespace setup ---------------------------------------------------------
 
 utils::globalVariables(c("input", "private", "public"))
 

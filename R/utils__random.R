@@ -3,9 +3,9 @@
 # Use them anywhere the OAuth flow needs high-entropy values or needs to check
 # that returned browser or callback values match the expected format.
 
-# 1 Random and token validation helpers -----------------------------------
+# 1 Random and token validation helpers ----------------------------------------
 
-## 1.1 Generate and validate protocol randomness --------------------------
+## 1.1 Generate and validate protocol randomness -------------------------------
 
 #' Generate a cryptographically secure URL-safe random string
 #'

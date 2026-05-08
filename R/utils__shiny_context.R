@@ -3,9 +3,9 @@
 # Use them when login, audit, telemetry, or async worker code needs to keep a
 # connection back to the originating browser session.
 
-# 1 Shiny session context helpers -----------------------------------------
+# 1 Shiny session context helpers ----------------------------------------------
 
-## 1.1 Read current Shiny session state -----------------------------------
+## 1.1 Read current Shiny session state ----------------------------------------
 
 # Environment to store fallback session context for async workers
 # This allows errors thrown in async workers to include session context
@@ -89,7 +89,7 @@ current_audit_http_summary <- function() {
   build_http_summary(req)
 }
 
-## 1.2 Capture and normalize async session context ------------------------
+## 1.2 Capture and normalize async session context -----------------------------
 #' Capture the current Shiny session context
 #'
 #' Captures the browser/session context before leaving the main Shiny process so
@@ -261,7 +261,7 @@ with_async_session_context <- function(ctx, code) {
   force(code)
 }
 
-## 1.3 Attach and forward context -----------------------------------------
+## 1.3 Attach and forward context ----------------------------------------------
 
 #' Attach Shiny session context to an event list
 #'

@@ -3,9 +3,9 @@
 # Use it to keep provider settings, client credentials, request options, and
 # state-handling rules in one validated object before the OAuth flow starts.
 
-# 1 OAuth client class -----------------------------------------------------
+# 1 OAuth client class ---------------------------------------------------------
 
-## 1.1 Class definition ----------------------------------------------------
+## 1.1 Class definition --------------------------------------------------------
 
 #' OAuthClient S7 class
 #'
@@ -470,7 +470,7 @@ OAuthClient <- S7::new_class(
   validator = function(self) oauth_client_validate(self)
 )
 
-# 2 Helper constructor -----------------------------------------------------
+# 2 Helper constructor ---------------------------------------------------------
 
 #' Create generic [OAuthClient]
 #'
@@ -656,9 +656,9 @@ oauth_client <- function(
   client
 }
 
-# 3 Validation and constructor support helpers -----------------------------
+# 3 Validation and constructor support helpers ---------------------------------
 
-## 3.1 Client validation ---------------------------------------------------
+## 3.1 Client validation -------------------------------------------------------
 
 #' Internal: validate one OAuthClient configuration
 #'
@@ -1357,9 +1357,10 @@ oauth_client_validate <- function(self) {
     list(name = "tls_client_key_file", value = tls_client_key_file),
     list(name = "tls_client_ca_file", value = tls_client_ca_file)
   )) {
-    msg <- oauth_client_check_file_field(field$value, field$name)
-    if (!is.null(msg)) {
-      return(msg)
+    if (is_valid_string(field$value) && !file.exists(field$value)) {
+      return(
+        paste0("OAuthClient: ", field$name, " must point to an existing file")
+      )
     }
   }
 
@@ -1677,32 +1678,7 @@ oauth_client_validate <- function(self) {
   NULL
 }
 
-## 3.2 TLS path validation -------------------------------------------------
-
-#' Internal: validate an optional TLS file path
-#'
-#' Used by the [OAuthClient] validator when optional TLS certificate, key, and
-#' CA bundle paths are supplied.
-#'
-#' @param value Candidate file path or missing value.
-#' @param name Field name used in the validation error.
-#' @return `NULL` when the field is absent or valid, otherwise a length-1
-#'   validation error string.
-#' @keywords internal
-#' @noRd
-oauth_client_check_file_field <- function(value, name) {
-  if (!is_valid_string(value)) {
-    return(NULL)
-  }
-  if (!file.exists(value)) {
-    return(
-      paste0("OAuthClient: ", name, " must point to an existing file")
-    )
-  }
-  NULL
-}
-
-## 3.3 Constructor warnings ------------------------------------------------
+## 3.2 Constructor warnings ----------------------------------------------------
 
 #' Warn when a client is created inside Shiny server code
 #'

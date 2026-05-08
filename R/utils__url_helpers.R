@@ -5,9 +5,83 @@
 # endpoint identifiers, safely parse untrusted URLs, or enforce allowed-host
 # and HTTPS policy.
 
-# 1 URL entry points -------------------------------------------------------
+# 1 URL entry points -----------------------------------------------------------
 
-## 1.1 Build request URLs --------------------------------------------------
+## 1.1 Check host policy -------------------------------------------------------
+
+#' @title
+#' Check if URL(s) are HTTPS and/or in allowed hosts lists
+#'
+#' @description
+#' Returns TRUE if every input URL is either:
+#' - a syntactically valid HTTPS URL, and (if set) whose host matches `allowed_hosts`, or
+#' - an HTTP URL whose host matches `allowed_non_https_hosts` (e.g. localhost, 127.0.0.1, ::1),
+#'   and (if set) also matches `allowed_hosts`.
+#'
+#' If the input omits the scheme (e.g., "localhost:8080/cb"), this function
+#' will first attempt to validate it as HTTP (useful for loopback development),
+#' and if that fails, as HTTPS. This mirrors how helpers normalize inputs for
+#' convenience while still enforcing the same host and scheme policies.
+#'
+#' `allowed_hosts` is thus an allowlist of hosts/domains that are permitted, while
+#' `allowed_non_https_hosts` defines which hosts are allowed to use HTTP instead of HTTPS.
+#' If `allowed_hosts` is NULL or length 0, all hosts are allowed (subject to scheme rules),
+#' but HTTPS is still required unless the host is in `allowed_non_https_hosts`.
+#'
+#' Since `allowed_hosts` supports globs, a value like "*" matches any host
+#' and therefore effectively disables endpoint host restrictions. Only use a catch-all
+#' pattern when you truly intend to allow any host. In most deployments you should pin
+#' to your expected domain(s), e.g. `c(".example.com")` or a specific host name.
+#'
+#' Wildcards: `allowed_hosts` and `allowed_non_https_hosts` support globs:
+#' `*` = any chars, `?` = one char. A leading `.example.com` matches the
+#' domain itself and any subdomain.
+#'
+#' Any non-URLs, NAs, or empty strings cause a FALSE result.
+#'
+#' @details
+#' This function is used internally to validate redirect URIs in OAuth clients,
+#' but can be used elsewhere to test if URLs would be allowed. Internally, it will always
+#' determine the default values for `allowed_non_https_hosts` and `allowed_hosts`
+#' from the options `shinyOAuth.allowed_non_https_hosts` and
+#' `shinyOAuth.allowed_hosts`, respectively.
+#'
+#' @param url Single URL or vector of URLs (character; length 1 or more)
+#' @param allowed_non_https_hosts Character vector of hostnames that are allowed
+#' to use HTTP instead of HTTPS. Defaults to localhost equivalents. Supports globs
+#' @param allowed_hosts Optional allowlist of hosts/domains; if supplied (length > 0),
+#' only these hosts are permitted. Supports globs
+#'
+#' @return Logical indicator (TRUE if all URLs pass all checks; FALSE otherwise)
+#'
+#' @example inst/examples/is_ok_host.R
+#'
+#' @export
+is_ok_host <- function(
+  url,
+  allowed_non_https_hosts = getOption(
+    "shinyOAuth.allowed_non_https_hosts",
+    # Note: host extraction removes square brackets for IPv6; include both forms for robustness
+    default = c("localhost", "127.0.0.1", "::1", "[::1]")
+  ),
+  allowed_hosts = getOption("shinyOAuth.allowed_hosts", default = NULL)
+) {
+  # Handle NULL/empty input early; return FALSE for those
+  if (is.null(url) || length(url) == 0) {
+    return(FALSE)
+  }
+
+  # Check all URLs; return TRUE only if all pass
+  all(vapply(
+    url,
+    is_ok_host_one,
+    logical(1),
+    allowed_non_https_hosts = allowed_non_https_hosts,
+    allowed_hosts = allowed_hosts
+  ))
+}
+
+## 1.2 Build request URLs ------------------------------------------------------
 
 #' Internal: append query params to a URL while preserving repeated keys
 #'
@@ -53,7 +127,7 @@ url_append_query_params <- function(url, params) {
   paste0(base, sep, query, fragment)
 }
 
-## 1.2 Normalize and validate issuer or endpoint URLs ---------------------
+## 1.3 Normalize and validate issuer or endpoint URLs --------------------------
 
 #' Normalize an issuer URL
 #'
@@ -287,9 +361,9 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
   invisible(TRUE)
 }
 
-# 2 URL parsing helpers ----------------------------------------------------
+# 2 URL parsing helpers --------------------------------------------------------
 
-## 2.1 Recognize and inspect URLs -----------------------------------------
+## 2.1 Recognize and inspect URLs ----------------------------------------------
 
 #' Internal: check if a string is an absolute URI
 #'
@@ -471,83 +545,9 @@ parse_url_host <- function(url, label = "url") {
   sub("^\\[([^\\]]+)\\]$", "\\1", h)
 }
 
-# 3 URL host policy helpers -----------------------------------------------
+# 3 URL host policy helpers ----------------------------------------------------
 
-## 3.1 Host allowlist matching --------------------------------------------
-
-#' @title
-#' Check if URL(s) are HTTPS and/or in allowed hosts lists
-#'
-#' @description
-#' Returns TRUE if every input URL is either:
-#' - a syntactically valid HTTPS URL, and (if set) whose host matches `allowed_hosts`, or
-#' - an HTTP URL whose host matches `allowed_non_https_hosts` (e.g. localhost, 127.0.0.1, ::1),
-#'   and (if set) also matches `allowed_hosts`.
-#'
-#' If the input omits the scheme (e.g., "localhost:8080/cb"), this function
-#' will first attempt to validate it as HTTP (useful for loopback development),
-#' and if that fails, as HTTPS. This mirrors how helpers normalize inputs for
-#' convenience while still enforcing the same host and scheme policies.
-#'
-#' `allowed_hosts` is thus an allowlist of hosts/domains that are permitted, while
-#' `allowed_non_https_hosts` defines which hosts are allowed to use HTTP instead of HTTPS.
-#' If `allowed_hosts` is NULL or length 0, all hosts are allowed (subject to scheme rules),
-#' but HTTPS is still required unless the host is in `allowed_non_https_hosts`.
-#'
-#' Since `allowed_hosts` supports globs, a value like "*" matches any host
-#' and therefore effectively disables endpoint host restrictions. Only use a catch-all
-#' pattern when you truly intend to allow any host. In most deployments you should pin
-#' to your expected domain(s), e.g. `c(".example.com")` or a specific host name.
-#'
-#' Wildcards: `allowed_hosts` and `allowed_non_https_hosts` support globs:
-#' `*` = any chars, `?` = one char. A leading `.example.com` matches the
-#' domain itself and any subdomain.
-#'
-#' Any non-URLs, NAs, or empty strings cause a FALSE result.
-#'
-#' @details
-#' This function is used internally to validate redirect URIs in OAuth clients,
-#' but can be used elsewhere to test if URLs would be allowed. Internally, it will always
-#' determine the default values for `allowed_non_https_hosts` and `allowed_hosts`
-#' from the options `shinyOAuth.allowed_non_https_hosts` and
-#' `shinyOAuth.allowed_hosts`, respectively.
-#'
-#' @param url Single URL or vector of URLs (character; length 1 or more)
-#' @param allowed_non_https_hosts Character vector of hostnames that are allowed
-#' to use HTTP instead of HTTPS. Defaults to localhost equivalents. Supports globs
-#' @param allowed_hosts Optional allowlist of hosts/domains; if supplied (length > 0),
-#' only these hosts are permitted. Supports globs
-#'
-#' @return Logical indicator (TRUE if all URLs pass all checks; FALSE otherwise)
-#'
-#' @example inst/examples/is_ok_host.R
-#'
-#' @export
-is_ok_host <- function(
-  url,
-  allowed_non_https_hosts = getOption(
-    "shinyOAuth.allowed_non_https_hosts",
-    # Note: host extraction removes square brackets for IPv6; include both forms for robustness
-    default = c("localhost", "127.0.0.1", "::1", "[::1]")
-  ),
-  allowed_hosts = getOption("shinyOAuth.allowed_hosts", default = NULL)
-) {
-  # Handle NULL/empty input early; return FALSE for those
-  if (is.null(url) || length(url) == 0) {
-    return(FALSE)
-  }
-
-  # Check all URLs; return TRUE only if all pass
-  all(vapply(
-    url,
-    is_ok_host_one,
-    logical(1),
-    allowed_non_https_hosts = allowed_non_https_hosts,
-    allowed_hosts = allowed_hosts
-  ))
-}
-
-## 3.2 Per-URL host validation --------------------------------------------
+## 3.1 Per-URL host validation -------------------------------------------------
 
 #' Internal: validate one URL against host and scheme policy
 #'
@@ -644,7 +644,22 @@ is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
   }
 
   if (scheme == "http") {
-    if (host_is_in_http_exemption(host, allowed_non_https_hosts)) {
+    if (
+      is.null(allowed_non_https_hosts) || length(allowed_non_https_hosts) == 0
+    ) {
+      return(FALSE)
+    }
+
+    if (identical(tolower(host), "::1")) {
+      allowed_http_hosts <- tolower(trimws(as.character(
+        allowed_non_https_hosts
+      )))
+      if (any(allowed_http_hosts %in% c("::1", "[::1]"))) {
+        return(TRUE)
+      }
+    }
+
+    if (host_matches_any(host, allowed_non_https_hosts)) {
       return(TRUE)
     }
     return(FALSE)
@@ -653,32 +668,7 @@ is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
   FALSE
 }
 
-#' Internal: check whether a host matches the HTTP exemption allowlist
-#'
-#' Used by `is_ok_host_one()` when a URL uses `http` and loopback or other
-#' configured exemptions should still pass host validation.
-#'
-#' @param host Hostname to test.
-#' @param patterns Host allowlist patterns with glob support.
-#' @return `TRUE` when the host matches an exemption pattern.
-#' @keywords internal
-#' @noRd
-host_is_in_http_exemption <- function(host, patterns) {
-  if (is.null(patterns) || length(patterns) == 0) {
-    return(FALSE)
-  }
-
-  if (identical(tolower(host), "::1")) {
-    lp <- tolower(trimws(as.character(patterns)))
-    if (any(lp %in% c("::1", "[::1]"))) {
-      return(TRUE)
-    }
-  }
-
-  host_matches_any(host, patterns)
-}
-
-## 3.3 Host-pattern normalization and matching ----------------------------
+## 3.2 Host-pattern normalization and matching ---------------------------------
 
 #' Internal: normalize a host pattern to a bare hostname
 #'

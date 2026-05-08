@@ -4,9 +4,9 @@
 # Use them to keep token auth style, PKCE, response-mode handling, and OIDC
 # claims request parsing consistent across constructors and request builders.
 
-# 1 OAuth parameter helpers ------------------------------------------------
+# 1 OAuth parameter helpers ----------------------------------------------------
 
-## 1.1 Normalize protocol parameters --------------------------------------
+## 1.1 Normalize protocol parameters -------------------------------------------
 
 #' Internal: normalize token endpoint auth style names
 #'
@@ -145,7 +145,7 @@ inspect_auth_response_mode <- function(extra_auth_params) {
   out
 }
 
-## 1.2 Claims request parsing and enforcement -----------------------------
+## 1.2 Claims request parsing and enforcement ----------------------------------
 
 #' Normalize a claims specification
 #'

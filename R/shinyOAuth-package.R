@@ -2,9 +2,9 @@
 # Use it for imports and package startup declarations that belong to the whole
 # package rather than to one specific OAuth helper.
 
-# 1 Package metadata -------------------------------------------------------
+# 1 Package metadata -----------------------------------------------------------
 
-## 1.1 Namespace and imports ----------------------------------------------
+## 1.1 Namespace and imports ---------------------------------------------------
 
 #' @keywords internal
 "_PACKAGE"

@@ -3,9 +3,9 @@
 # Use them when an identifier needs to stay stable enough for correlation but
 # should not be logged in plaintext.
 
-# 1 Audit digests ----------------------------------------------------------
+# 1 Audit digests --------------------------------------------------------------
 
-## 1.1 Digest helpers ------------------------------------------------------
+## 1.1 Digest helpers ----------------------------------------------------------
 
 #' Compute a digest for a sensitive string
 #'

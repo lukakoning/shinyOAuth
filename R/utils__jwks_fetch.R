@@ -3,9 +3,9 @@
 # Use them when ID token or signed UserInfo validation needs the provider's
 # public keys and the package must enforce issuer, host, and pinning policy.
 
-# 1 JWKS fetch and cache helpers ------------------------------------------
+# 1 JWKS fetch and cache helpers -----------------------------------------------
 
-## 1.1 Discovery, caching, and host policy --------------------------------
+## 1.1 Discovery, caching, and host policy -------------------------------------
 
 #' Internal: resolve the effective discovery issuer-match policy
 #'

@@ -3,11 +3,12 @@
 # Use them to turn state metadata into an encrypted compact token and to safely
 # decrypt, validate, and normalize that token again during callback handling.
 
-# 1 State encryption helpers -----------------------------------------------
+# 1 State encryption helpers ---------------------------------------------------
 
-## 1.1 Encrypt and decrypt sealed state -----------------------------------
+## 1.1 Encrypt and decrypt sealed state ----------------------------------------
 
-# Authenticated encrypt/decrypt of the state payload ---------------------------
+# Functions in this subsection encrypt state payloads before login redirects and
+# decrypt them again during callback handling.
 
 #' Internal: normalize or derive a 32-byte state encryption key
 #'
@@ -565,7 +566,7 @@ state_decrypt_gcm <- function(
   parsed
 }
 
-# 2 State cache keys -------------------------------------------------------
+# 2 State cache keys -----------------------------------------------------------
 
 #' Derive a cache key for an OAuth state value
 #'

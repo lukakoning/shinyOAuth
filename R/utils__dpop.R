@@ -3,9 +3,9 @@
 # Use them when a client is configured with a DPoP key and outbound requests or
 # token responses need the extra proof-of-possession behavior.
 
-# 1 DPoP helpers -----------------------------------------------------------
+# 1 DPoP helpers ---------------------------------------------------------------
 
-## 1.1 Client and proof helpers -------------------------------------------
+## 1.1 Client and proof helpers ------------------------------------------------
 
 #' Internal DPoP helpers
 #'
@@ -165,7 +165,7 @@ dpop_access_token_hash <- function(access_token) {
   base64url_encode(openssl::sha256(token_raw))
 }
 
-## 1.2 Proof building and retry helpers -----------------------------------
+## 1.2 Proof building and retry helpers ----------------------------------------
 
 #' Build a DPoP proof JWT
 #'

@@ -2,11 +2,20 @@
 # Use them to keep console output readable while still hiding secrets and other
 # nested internals that would be noisy or unsafe to print in full.
 
-# 1 Print helpers ----------------------------------------------------------
+# 1 Print helpers --------------------------------------------------------------
 
-## 1.1 Shared formatting helpers ------------------------------------------
+## 1.1 Shared formatting helpers -----------------------------------------------
 
-# Render object-like fields as short labels instead of dumping nested internals.
+#' Render object-like fields for console output
+#'
+#' Converts nested S7 objects and other structured values into short labels
+#' instead of dumping internals. Used by the shared print formatter so client,
+#' provider, and token objects stay readable and do not expose unnecessary data.
+#'
+#' @param x Object or value to label.
+#' @return A length-1 character label for `x`.
+#' @keywords internal
+#' @noRd
 .shinyoauth_object_label <- function(x) {
   if (S7::S7_inherits(x, OAuthProvider)) {
     provider_name <- x@name %||% NA_character_
@@ -270,9 +279,9 @@
   invisible(x)
 }
 
-# 2 S7 format and print methods -------------------------------------------
+# 2 S7 format and print methods ------------------------------------------------
 
-## 2.1 OAuthToken methods --------------------------------------------------
+## 2.1 OAuthToken methods ------------------------------------------------------
 
 #' Internal OAuthToken formatter
 #'
@@ -313,7 +322,7 @@ method(print, OAuthToken) <- function(x, ...) {
   .shinyoauth_print_object(x, ...)
 }
 
-## 2.2 OAuthClient methods -------------------------------------------------
+## 2.2 OAuthClient methods -----------------------------------------------------
 
 #' Internal OAuthClient formatter
 #'

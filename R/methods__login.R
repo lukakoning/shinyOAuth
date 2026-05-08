@@ -2,9 +2,9 @@
 # Use them to build the browser redirect, process the provider callback,
 # exchange the returned code for tokens, and validate the returned identity data.
 
-# 1 Authorization request -------------------------------------------------
+# 1 Authorization request ------------------------------------------------------
 
-## 1.1 Entry point --------------------------------------------------------
+## 1.1 Entry point -------------------------------------------------------------
 
 #' Prepare a OAuth 2.0 authorization call and build an authorization URL
 #'
@@ -238,7 +238,7 @@ prepare_call <- function(
   )
 }
 
-## 1.2 Request construction helpers ---------------------------------------
+## 1.2 Request construction helpers --------------------------------------------
 
 #' Build authorization request parameters
 #'
@@ -738,9 +738,9 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 }
 
 
-# 2 Callback handling -----------------------------------------------------
+# 2 Callback handling ----------------------------------------------------------
 
-## 2.1 Entry point --------------------------------------------------------
+## 2.1 Entry point -------------------------------------------------------------
 
 #' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 #'
@@ -1565,7 +1565,7 @@ handle_callback_internal <- function(
 }
 
 
-## 2.2 Callback context and issuer guards ---------------------------------
+## 2.2 Callback context and issuer guards --------------------------------------
 
 #' Enforce the callback issuer
 #'
@@ -1640,9 +1640,9 @@ enforce_callback_issuer <- function(
   invisible(iss)
 }
 
-# 3 Token exchange and verification --------------------------------------
+# 3 Token exchange and verification --------------------------------------------
 
-## 3.1 Swap code for token set -------------------------------------------
+## 3.1 Swap code for token set -------------------------------------------------
 
 #' Exchange the authorization code for tokens
 #'
@@ -2340,7 +2340,7 @@ verify_token_type_allowlist <- function(client, token_set) {
   invisible(TRUE)
 }
 
-# 4 Refresh continuity helpers --------------------------------------------
+# 4 Refresh continuity helpers -------------------------------------------------
 
 #' Internal: compare original and refreshed ID token continuity claims
 #'

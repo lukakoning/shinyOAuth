@@ -2,9 +2,9 @@
 # Use them when you want common provider endpoints and defaults filled in for you
 # instead of building an OAuthProvider object field by field.
 
-# 1 Provider constructors -------------------------------------------------
+# 1 Provider constructors ------------------------------------------------------
 
-## 1.1 Generic OIDC construction -----------------------------------------
+## 1.1 Generic OIDC construction -----------------------------------------------
 
 #' @title
 #' Create a generic OpenID Connect (OIDC) [OAuthProvider]
@@ -72,7 +72,7 @@ oauth_provider_oidc <- function(
   )
 }
 
-## 1.2 Direct-configured provider presets --------------------------------
+## 1.2 Direct-configured provider presets --------------------------------------
 
 #' Create a GitHub [OAuthProvider]
 #'
@@ -332,7 +332,7 @@ oauth_provider_spotify <- function(
 }
 
 
-## 1.3 Discovery-backed provider presets ---------------------------------
+## 1.3 Discovery-backed provider presets ---------------------------------------
 
 #' Create a Slack [OAuthProvider] (via OIDC discovery)
 #'

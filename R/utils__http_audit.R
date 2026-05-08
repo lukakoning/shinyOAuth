@@ -3,24 +3,20 @@
 # Use them when request context should be logged or traced without leaking OAuth
 # codes, tokens, cookies, or proxy details.
 
-# 1 HTTP audit helpers -----------------------------------------------------
+# 1 HTTP audit helpers ---------------------------------------------------------
 
-## 1.1 Build and sanitize HTTP summaries ----------------------------------
+## 1.1 Build and sanitize HTTP summaries ---------------------------------------
 
-# Internal: derive a compact, JSON-serializable HTTP summary from a request
-#
-# The returned summary is sanitized by default to prevent secret leakage in
-# audit logs. Sensitive OAuth query params (code, state, access_token, etc.)
-# and headers (Cookie, Authorization, x-* proxy headers) are redacted.
-#
-# Control via: options(shinyOAuth.audit_redact_http = FALSE) to disable.
-#
-# See sanitize_http_summary() for the redaction logic.
+# Functions in this subsection summarize request metadata and redact values
+# that should not appear in audit events.
+
 #' Build a safe HTTP audit summary
 #'
 #' Creates a compact request summary that is suitable for audit events, with
 #' sensitive query parameters and headers sanitized by default. Used when audit
-#' and telemetry events need browser request context.
+#' and telemetry events need browser request context. Redaction is enabled by
+#' default and can be disabled with
+#' `options(shinyOAuth.audit_redact_http = FALSE)`.
 #'
 #' @param req Request-like object.
 #' @return Sanitized summary list, or `NULL`.

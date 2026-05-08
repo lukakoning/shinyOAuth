@@ -4,9 +4,9 @@
 # when a normally strict browser, redirect, signature, or UserInfo safety check
 # has been explicitly softened.
 
-# 1 Environment helpers ----------------------------------------------------
+# 1 Environment helpers --------------------------------------------------------
 
-## 1.1 Test and interactive checks ----------------------------------------
+## 1.1 Test and interactive checks ---------------------------------------------
 
 #' Detect a testthat session
 #'
@@ -46,9 +46,9 @@
   .is_test() || .is_interactive()
 }
 
-# 2 Safety softeners -------------------------------------------------------
+# 2 Safety softeners -----------------------------------------------------------
 
-## 2.1 Option-based softening checks --------------------------------------
+## 2.1 Option-based softening checks -------------------------------------------
 
 # Some helpers which determine if certain safety checks can be skipped
 #   based on package options. Most development-only options are hard-gated to

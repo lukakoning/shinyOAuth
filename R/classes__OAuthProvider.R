@@ -3,9 +3,9 @@
 # Use it to keep endpoint URLs, protocol rules, and security checks in one
 # validated object before any login or token requests are sent.
 
-# 1 OAuth provider class ---------------------------------------------------
+# 1 OAuth provider class -------------------------------------------------------
 
-## 1.1 Class definition ----------------------------------------------------
+## 1.1 Class definition --------------------------------------------------------
 
 #' OAuthProvider S7 class
 #'
@@ -399,699 +399,7 @@ OAuthProvider <- S7::new_class(
   validator = function(self) oauth_provider_validate(self)
 )
 
-# 2 Provider helpers -------------------------------------------------------
-
-## 2.1 Provider validation -------------------------------------------------
-
-#' Internal: validate one OAuthProvider configuration
-#'
-#' Used by the [OAuthProvider] S7 class before the rest of the package builds
-#' authorization URLs, performs discovery, fetches JWKS, or exchanges tokens.
-#'
-#' @param self [OAuthProvider] instance under validation.
-#' @return `NULL` for a valid provider, otherwise a length-1 validation error
-#'   string.
-#' @keywords internal
-#' @noRd
-oauth_provider_validate <- function(self) {
-  # Reuse for all properties (required vs optional mirrors your S7 defs)
-  fields <- list(
-    auth_url = list(val = self@auth_url, required = TRUE),
-    token_url = list(val = self@token_url, required = TRUE),
-    userinfo_url = list(val = self@userinfo_url, required = FALSE),
-    introspection_url = list(val = self@introspection_url, required = FALSE),
-    revocation_url = list(val = self@revocation_url, required = FALSE),
-    par_url = list(
-      val = self@par_url,
-      required = FALSE
-    ),
-    issuer = list(val = self@issuer, required = FALSE)
-  )
-  for (nm in names(fields)) {
-    f <- fields[[nm]]
-    msg <- oauth_provider_check_host_field(f$val, nm, f$required)
-    if (!is.null(msg)) {
-      return(msg)
-    }
-  }
-
-  # OIDC issuer identifiers must not contain query or fragment components
-  if (is_valid_string(self@issuer)) {
-    parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)
-    if (
-      !inherits(parsed_issuer, "try-error") &&
-        (length(parsed_issuer$query) > 0L ||
-          nzchar(parsed_issuer$fragment %||% ""))
-    ) {
-      return(
-        "OAuthProvider: issuer must not contain query or fragment components"
-      )
-    }
-  }
-
-  if (!isTRUE(self@issuer_match %in% c("url", "host", "none"))) {
-    return("OAuthProvider: issuer_match must be 'url', 'host', or 'none'")
-  }
-
-  # Validate extra_token_headers: must be named character vector of length n
-  # with all non-empty names and scalar (length-1) character values.
-  if (length(self@extra_token_headers) > 0) {
-    eth <- self@extra_token_headers
-    if (!is.character(eth)) {
-      return(
-        "OAuthProvider: extra_token_headers must be a named character vector"
-      )
-    }
-    nms <- names(eth)
-    if (is.null(nms) || !all(nzchar(nms))) {
-      return(
-        "OAuthProvider: extra_token_headers must have non-empty names for all headers"
-      )
-    }
-
-    default_reserved_headers <- c("authorization", "cookie")
-    unblocked <- tolower(getOption(
-      "shinyOAuth.unblock_token_headers",
-      character()
-    ))
-    reserved_header_names <- setdiff(default_reserved_headers, unblocked)
-    bad_headers <- intersect(tolower(trimws(nms)), reserved_header_names)
-    if (length(bad_headers) > 0) {
-      return(sprintf(
-        paste0(
-          "OAuthProvider: extra_token_headers must not contain reserved headers: %s. ",
-          "To unblock, set `options(shinyOAuth.unblock_token_headers = c(...))`"
-        ),
-        paste(sQuote(bad_headers), collapse = ", ")
-      ))
-    }
-
-    bad_len <- lengths(eth) != 1L
-    if (any(bad_len)) {
-      return("OAuthProvider: each extra_token_headers value must be length 1")
-    }
-    if (any(is.na(eth) | !nzchar(eth))) {
-      return(
-        "OAuthProvider: extra_token_headers values must be non-empty strings"
-      )
-    }
-  }
-
-  if (length(self@mtls_endpoint_aliases) > 0) {
-    aliases <- self@mtls_endpoint_aliases
-    if (!is.list(aliases)) {
-      return("OAuthProvider: mtls_endpoint_aliases must be a named list")
-    }
-    alias_names <- names(aliases)
-    if (is.null(alias_names) || !all(nzchar(alias_names))) {
-      return(
-        "OAuthProvider: mtls_endpoint_aliases must have non-empty names for all aliases"
-      )
-    }
-
-    for (alias_name in alias_names) {
-      alias_value <- aliases[[alias_name]]
-      if (!is_valid_string(alias_value)) {
-        return(sprintf(
-          "OAuthProvider: mtls_endpoint_aliases$%s must be a non-empty string",
-          alias_name
-        ))
-      }
-
-      msg <- oauth_provider_check_host_field(
-        alias_value,
-        paste0("mtls_endpoint_aliases$", alias_name),
-        required = TRUE
-      )
-      if (!is.null(msg)) {
-        return(msg)
-      }
-    }
-  }
-
-  if (
-    !(is.logical(self@tls_client_certificate_bound_access_tokens) &&
-      length(self@tls_client_certificate_bound_access_tokens) == 1L &&
-      !is.na(self@tls_client_certificate_bound_access_tokens))
-  ) {
-    return(
-      paste(
-        "OAuthProvider: tls_client_certificate_bound_access_tokens",
-        "must be a single non-NA logical"
-      )
-    )
-  }
-
-  if (length(self@extra_auth_params) > 0) {
-    nms <- names(self@extra_auth_params)
-    if (is.null(nms) || !all(nzchar(nms))) {
-      return(
-        "OAuthProvider: extra_auth_params must be a named list (all elements must have names)"
-      )
-    }
-  }
-
-  response_mode_info <- inspect_auth_response_mode(self@extra_auth_params)
-  if (!is.null(response_mode_info$error)) {
-    return(response_mode_info$error)
-  }
-
-  default_reserved_auth_keys <- c(
-    "response_type",
-    "client_id",
-    "redirect_uri",
-    "request_uri",
-    "request",
-    "state",
-    "scope",
-    "code_challenge",
-    "code_challenge_method",
-    "nonce",
-    "claims"
-  )
-  unblocked_auth <- tolower(trimws(getOption(
-    "shinyOAuth.unblock_auth_params",
-    character()
-  )))
-  reserved_auth_keys <- setdiff(default_reserved_auth_keys, unblocked_auth)
-  if (length(self@extra_auth_params) > 0) {
-    nms <- tolower(trimws(names(self@extra_auth_params)))
-    bad <- intersect(nms, reserved_auth_keys)
-    if (length(bad) > 0) {
-      return(sprintf(
-        paste0(
-          "OAuthProvider: extra_auth_params must not contain reserved keys managed by shinyOAuth: %s. ",
-          "To unblock, set options(shinyOAuth.unblock_auth_params = c(...))"
-        ),
-        paste(sQuote(bad), collapse = ", ")
-      ))
-    }
-  }
-
-  if (length(self@extra_token_params) > 0) {
-    nms <- names(self@extra_token_params)
-    if (is.null(nms) || !all(nzchar(nms))) {
-      return(
-        "OAuthProvider: extra_token_params must be a named list (all elements must have names)"
-      )
-    }
-  }
-
-  default_reserved_token_keys <- c(
-    "grant_type",
-    "code",
-    "refresh_token",
-    "redirect_uri",
-    "code_verifier",
-    "client_id",
-    "client_secret",
-    "client_assertion",
-    "client_assertion_type"
-  )
-  unblocked_token <- tolower(trimws(getOption(
-    "shinyOAuth.unblock_token_params",
-    character()
-  )))
-  reserved_token_keys <- setdiff(default_reserved_token_keys, unblocked_token)
-  if (length(self@extra_token_params) > 0) {
-    nms <- tolower(trimws(names(self@extra_token_params)))
-    bad <- intersect(nms, reserved_token_keys)
-    if (length(bad) > 0) {
-      return(sprintf(
-        paste0(
-          "OAuthProvider: extra_token_params must not contain reserved keys managed by shinyOAuth: %s. ",
-          "To unblock, set options(shinyOAuth.unblock_token_params = c(...))"
-        ),
-        paste(sQuote(bad), collapse = ", ")
-      ))
-    }
-  }
-
-  tok_style <- normalize_token_auth_style(self@token_auth_style)
-  if (
-    !isTRUE(
-      tok_style %in%
-        c(
-          "header",
-          "body",
-          "public",
-          "tls_client_auth",
-          "self_signed_tls_client_auth",
-          "client_secret_jwt",
-          "private_key_jwt"
-        )
-    )
-  ) {
-    return(paste0(
-      "OAuthProvider: token_auth_style must be one of 'header', 'body', 'public', ",
-      "'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', or 'private_key_jwt' ('none' is accepted as an alias for 'public')"
-    ))
-  }
-
-  if (!is.null(self@pkce_method)) {
-    if (!isTRUE(self@pkce_method %in% c("S256", "plain"))) {
-      return("OAuthProvider: pkce_method must be 'S256' or 'plain'")
-    }
-  }
-
-  has_get <- !is.null(self@jwks_cache$get) &&
-    is.function(self@jwks_cache$get)
-  has_set <- !is.null(self@jwks_cache$set) &&
-    is.function(self@jwks_cache$set)
-  if (!isTRUE(has_get && has_set)) {
-    return(
-      paste(
-        "OAuthProvider: jwks_cache must provide $get(key, missing=NULL) and",
-        "$set(key, value) methods"
-      )
-    )
-  }
-  jget_formals <- try(formals(self@jwks_cache$get), silent = TRUE)
-  jget_args <- if (!inherits(jget_formals, "try-error")) {
-    names(jget_formals)
-  } else {
-    character()
-  }
-  if (!("..." %in% jget_args || "missing" %in% jget_args)) {
-    return(
-      "OAuthProvider: jwks_cache$get must accept argument 'missing' (expected signature get(key, missing = NULL))"
-    )
-  }
-  jset_formals <- try(formals(self@jwks_cache$set), silent = TRUE)
-  jset_args <- if (!inherits(jset_formals, "try-error")) {
-    names(jset_formals)
-  } else {
-    character()
-  }
-  if (
-    !("..." %in% jset_args ||
-      ("key" %in% jset_args && "value" %in% jset_args))
-  ) {
-    return("OAuthProvider: jwks_cache$set must accept (key, value)")
-  }
-  if (
-    !is.null(self@jwks_cache$remove) && is.function(self@jwks_cache$remove)
-  ) {
-    jrm_formals <- try(formals(self@jwks_cache$remove), silent = TRUE)
-    jrm_args <- if (!inherits(jrm_formals, "try-error")) {
-      names(jrm_formals)
-    } else {
-      character()
-    }
-    if (!("..." %in% jrm_args || length(jrm_args) >= 1L)) {
-      return(
-        "OAuthProvider: jwks_cache$remove must accept (key) when provided"
-      )
-    }
-  }
-
-  if (!isTRUE(self@jwks_pin_mode %in% c("any", "all"))) {
-    return("OAuthProvider: jwks_pin_mode must be 'any' or 'all'")
-  }
-  if (length(self@jwks_pins) > 0) {
-    ok <- vapply(
-      self@jwks_pins,
-      function(x) {
-        is.character(x) && length(x) == 1 && grepl("^[A-Za-z0-9_-]+$", x)
-      },
-      logical(1)
-    )
-    if (!all(ok)) {
-      return("OAuthProvider: jwks_pins must be base64url strings")
-    }
-  }
-
-  if (length(self@allowed_algs) > 0) {
-    supported <- c(
-      "RS256",
-      "RS384",
-      "RS512",
-      "ES256",
-      "ES384",
-      "ES512",
-      "EDDSA",
-      "HS256",
-      "HS384",
-      "HS512"
-    )
-    aa <- toupper(self@allowed_algs)
-    bad <- setdiff(aa, supported)
-    if (length(bad) > 0) {
-      return(paste0(
-        "OAuthProvider: allowed_algs contains unsupported entries: ",
-        paste(bad, collapse = ", ")
-      ))
-    }
-
-    if (any(aa %in% c("HS256", "HS384", "HS512"))) {
-      allow_hs <- isTRUE(getOption("shinyOAuth.allow_hs", FALSE))
-      if (!allow_hs) {
-        return(
-          "OAuthProvider: allowed_algs includes HS* but `options(shinyOAuth.allow_hs = TRUE)` is not enabled"
-        )
-      }
-    }
-  }
-
-  if (
-    !(is.logical(self@require_pushed_authorization_requests) &&
-      length(self@require_pushed_authorization_requests) == 1L &&
-      !is.na(self@require_pushed_authorization_requests))
-  ) {
-    return(
-      paste(
-        "OAuthProvider: require_pushed_authorization_requests",
-        "must be a single non-NA logical"
-      )
-    )
-  }
-  if (
-    isTRUE(self@require_pushed_authorization_requests) &&
-      !is_valid_string(self@par_url %||% NA_character_)
-  ) {
-    return(
-      paste(
-        "OAuthProvider: require_pushed_authorization_requests = TRUE",
-        "requires par_url"
-      )
-    )
-  }
-
-  request_object_algs <- self@request_object_signing_alg_values_supported
-  if (length(request_object_algs) > 0) {
-    if (!is.character(request_object_algs)) {
-      return(
-        paste(
-          "OAuthProvider: request_object_signing_alg_values_supported",
-          "must be a character vector"
-        )
-      )
-    }
-    if (anyNA(request_object_algs) || !all(nzchar(request_object_algs))) {
-      return(
-        paste(
-          "OAuthProvider: request_object_signing_alg_values_supported",
-          "must contain only non-empty strings"
-        )
-      )
-    }
-  }
-
-  if (
-    !(is.logical(self@require_signed_request_object) &&
-      length(self@require_signed_request_object) == 1L &&
-      !is.na(self@require_signed_request_object))
-  ) {
-    return(
-      "OAuthProvider: require_signed_request_object must be a single non-NA logical"
-    )
-  }
-  if (
-    isTRUE(self@require_signed_request_object) &&
-      length(self@request_object_signing_alg_values_supported) > 0 &&
-      !any(
-        toupper(self@request_object_signing_alg_values_supported) != "NONE"
-      )
-  ) {
-    return(
-      paste(
-        "OAuthProvider: require_signed_request_object = TRUE is inconsistent",
-        "with request_object_signing_alg_values_supported = 'none' only"
-      )
-    )
-  }
-
-  if (isTRUE(self@use_nonce)) {
-    if (!is_valid_string(self@issuer)) {
-      return(
-        "OAuthProvider: use_nonce = TRUE requires a non-empty provider issuer"
-      )
-    }
-  }
-
-  token_endpoint_auth_signing_algs <-
-    self@token_endpoint_auth_signing_alg_values_supported
-  if (length(token_endpoint_auth_signing_algs) > 0) {
-    if (!is.character(token_endpoint_auth_signing_algs)) {
-      return(
-        paste(
-          "OAuthProvider: token_endpoint_auth_signing_alg_values_supported",
-          "must be a character vector"
-        )
-      )
-    }
-    if (
-      anyNA(token_endpoint_auth_signing_algs) ||
-        !all(nzchar(token_endpoint_auth_signing_algs))
-    ) {
-      return(
-        paste(
-          "OAuthProvider: token_endpoint_auth_signing_alg_values_supported",
-          "must contain only non-empty strings"
-        )
-      )
-    }
-  }
-
-  if (length(self@allowed_token_types) > 0) {
-    att <- self@allowed_token_types
-    if (!is.character(att)) {
-      return("OAuthProvider: allowed_token_types must be a character vector")
-    }
-    if (any(is.na(att) | !nzchar(att))) {
-      return(
-        "OAuthProvider: allowed_token_types must contain only non-empty strings"
-      )
-    }
-  }
-
-  if (isTRUE(self@id_token_validation)) {
-    if (!is_valid_string(self@issuer)) {
-      return(
-        "OAuthProvider: id_token_validation = TRUE requires a non-empty provider issuer"
-      )
-    }
-  }
-
-  if (isTRUE(self@id_token_at_hash_required)) {
-    if (!isTRUE(self@id_token_validation)) {
-      return(
-        "OAuthProvider: id_token_at_hash_required = TRUE requires id_token_validation = TRUE"
-      )
-    }
-  }
-
-  if (isTRUE(self@userinfo_required)) {
-    if (!is_valid_string(self@userinfo_url)) {
-      return(
-        "OAuthProvider: userinfo_required = TRUE requires a non-empty userinfo_url"
-      )
-    }
-    if (!is_ok_host(self@userinfo_url)) {
-      return(
-        "OAuthProvider: userinfo_url provided but not accepted as a host (see `?is_ok_host`)"
-      )
-    }
-  }
-
-  if (isTRUE(self@userinfo_signed_jwt_required)) {
-    if (!isTRUE(self@userinfo_required)) {
-      return(
-        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires userinfo_required = TRUE"
-      )
-    }
-    if (!is_valid_string(self@issuer)) {
-      return(
-        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires a non-empty issuer (for JWKS verification)"
-      )
-    }
-  }
-
-  if (isTRUE(self@userinfo_id_token_match)) {
-    if (!isTRUE(self@userinfo_required)) {
-      return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires userinfo_required = TRUE"
-      )
-    }
-    if (!isTRUE(self@id_token_validation)) {
-      return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires id_token_validation = TRUE"
-      )
-    }
-    if (
-      !is_valid_string(self@userinfo_url) || !is_ok_host(self@userinfo_url)
-    ) {
-      return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires a valid userinfo_url"
-      )
-    }
-    if (
-      is.null(self@userinfo_id_selector) ||
-        !is.function(self@userinfo_id_selector)
-    ) {
-      return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires a configured userinfo_id_selector function"
-      )
-    }
-  }
-
-  if (
-    !is.numeric(self@leeway) ||
-      length(self@leeway) != 1 ||
-      !is.finite(self@leeway) ||
-      self@leeway < 0
-  ) {
-    return(
-      "OAuthProvider: leeway must be a single finite non-negative numeric value"
-    )
-  }
-
-  if (is_valid_string(self@jwks_host_allow_only)) {
-    val <- trimws(self@jwks_host_allow_only)
-    host_only <- val
-    if (grepl("^https?://", tolower(val))) {
-      host_only <- try(
-        parse_url_host(val, "jwks_host_allow_only"),
-        silent = TRUE
-      )
-      if (inherits(host_only, "try-error")) {
-        return("OAuthProvider: jwks_host_allow_only URL could not be parsed")
-      }
-    } else {
-      if (!grepl("^[A-Za-z0-9.-]+$", host_only)) {
-        return(
-          "OAuthProvider: jwks_host_allow_only must be a hostname or a URL containing a hostname"
-        )
-      }
-      host_only <- sub("\\.$", "", tolower(host_only))
-    }
-  }
-
-  NULL
-}
-
-## 2.2 Endpoint validation -------------------------------------------------
-
-#' Internal: validate one provider endpoint-like field
-#'
-#' Used by the [OAuthProvider] validator for required and optional endpoint
-#' fields before the provider object is accepted.
-#'
-#' @param value Endpoint string to validate.
-#' @param name Field label used in validation errors.
-#' @param required Whether the field must be present.
-#' @return `NULL` on success, otherwise the first validation error string.
-#' @keywords internal
-#' @noRd
-oauth_provider_check_host_field <- function(value, name, required = FALSE) {
-  if (required && !is_valid_string(value)) {
-    return(sprintf(
-      "OAuthProvider: %s is required and must be a non-empty string",
-      name
-    ))
-  }
-  if (!is_valid_string(value)) {
-    return(NULL)
-  }
-
-  parsed <- try(httr2::url_parse(value), silent = TRUE)
-  if (
-    inherits(parsed, "try-error") ||
-      !nzchar((parsed$scheme %||% "")) ||
-      !nzchar((parsed$hostname %||% ""))
-  ) {
-    return(sprintf(
-      "OAuthProvider: %s must be an absolute URL (including scheme and hostname)",
-      name
-    ))
-  }
-
-  if (!is_ok_host(value)) {
-    return(sprintf(
-      "OAuthProvider: %s provided but not accepted as a host (see `?is_ok_host` for details)",
-      name
-    ))
-  }
-  NULL
-}
-
-## 2.3 Provider fingerprint ------------------------------------------------
-
-#' Build a provider fingerprint
-#'
-#' Computes a stable digest over the provider endpoints that matter for login
-#' and callback validation so the callback can confirm it is finishing the same
-#' provider configuration that initiated the flow. Used when a login request is
-#' created and again when callback handling resumes.
-#'
-#' @param provider [OAuthProvider] instance to fingerprint.
-#' @return A length-1 character string in `sha256:<digest>` format.
-#' @keywords internal
-#' @noRd
-provider_fingerprint <- function(provider) {
-  iss <- oauth_provider_fingerprint_component(provider@issuer)
-  au <- oauth_provider_fingerprint_component(provider@auth_url)
-  tu <- oauth_provider_fingerprint_component(provider@token_url)
-  ui <- oauth_provider_fingerprint_component(provider@userinfo_url)
-  it <- oauth_provider_fingerprint_component(provider@introspection_url)
-
-  # Use a length-prefixed canonical representation to avoid delimiter-based
-  # collisions when any component contains separators.
-  iss_u <- enc2utf8(iss)
-  au_u <- enc2utf8(au)
-  tu_u <- enc2utf8(tu)
-  ui_u <- enc2utf8(ui)
-  it_u <- enc2utf8(it)
-
-  canonical <- paste0(
-    "iss:",
-    nchar(iss_u, type = "bytes"),
-    ":",
-    iss_u,
-    "\n",
-    "au:",
-    nchar(au_u, type = "bytes"),
-    ":",
-    au_u,
-    "\n",
-    "tu:",
-    nchar(tu_u, type = "bytes"),
-    ":",
-    tu_u,
-    "\n",
-    "ui:",
-    nchar(ui_u, type = "bytes"),
-    ":",
-    ui_u,
-    "\n",
-    "it:",
-    nchar(it_u, type = "bytes"),
-    ":",
-    it_u
-  )
-
-  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
-  # Keyed digests are only for audit logs where correlation prevention matters.
-  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
-}
-
-#' Internal: normalize one provider fingerprint component
-#'
-#' Used by `provider_fingerprint()` so missing endpoint fields are encoded
-#' consistently before the canonical digest string is built.
-#'
-#' @param x Candidate scalar value.
-#' @return Length-1 character string, or `""` for missing values.
-#' @keywords internal
-#' @noRd
-oauth_provider_fingerprint_component <- function(x) {
-  if (is.null(x) || length(x) != 1L || is.na(x)) {
-    return("")
-  }
-  as.character(x)
-}
-
-# 3 Helper constructor -----------------------------------------------------
+# 2 Generic provider constructor -----------------------------------------------
 
 #' Create generic [OAuthProvider]
 #'
@@ -1382,4 +690,686 @@ oauth_provider <- function(
     leeway = leeway,
     id_token_at_hash_required = id_token_at_hash_required
   )
+}
+# 3 Provider helpers -----------------------------------------------------------
+
+## 3.1 Provider validation -----------------------------------------------------
+
+#' Internal: validate one OAuthProvider configuration
+#'
+#' Used by the [OAuthProvider] S7 class before the rest of the package builds
+#' authorization URLs, performs discovery, fetches JWKS, or exchanges tokens.
+#'
+#' @param self [OAuthProvider] instance under validation.
+#' @return `NULL` for a valid provider, otherwise a length-1 validation error
+#'   string.
+#' @keywords internal
+#' @noRd
+oauth_provider_validate <- function(self) {
+  # Reuse for all properties (required vs optional mirrors your S7 defs)
+  fields <- list(
+    auth_url = list(val = self@auth_url, required = TRUE),
+    token_url = list(val = self@token_url, required = TRUE),
+    userinfo_url = list(val = self@userinfo_url, required = FALSE),
+    introspection_url = list(val = self@introspection_url, required = FALSE),
+    revocation_url = list(val = self@revocation_url, required = FALSE),
+    par_url = list(
+      val = self@par_url,
+      required = FALSE
+    ),
+    issuer = list(val = self@issuer, required = FALSE)
+  )
+  for (nm in names(fields)) {
+    f <- fields[[nm]]
+    msg <- oauth_provider_check_host_field(f$val, nm, f$required)
+    if (!is.null(msg)) {
+      return(msg)
+    }
+  }
+
+  # OIDC issuer identifiers must not contain query or fragment components
+  if (is_valid_string(self@issuer)) {
+    parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)
+    if (
+      !inherits(parsed_issuer, "try-error") &&
+        (length(parsed_issuer$query) > 0L ||
+          nzchar(parsed_issuer$fragment %||% ""))
+    ) {
+      return(
+        "OAuthProvider: issuer must not contain query or fragment components"
+      )
+    }
+  }
+
+  if (!isTRUE(self@issuer_match %in% c("url", "host", "none"))) {
+    return("OAuthProvider: issuer_match must be 'url', 'host', or 'none'")
+  }
+
+  # Validate extra_token_headers: must be named character vector of length n
+  # with all non-empty names and scalar (length-1) character values.
+  if (length(self@extra_token_headers) > 0) {
+    eth <- self@extra_token_headers
+    if (!is.character(eth)) {
+      return(
+        "OAuthProvider: extra_token_headers must be a named character vector"
+      )
+    }
+    nms <- names(eth)
+    if (is.null(nms) || !all(nzchar(nms))) {
+      return(
+        "OAuthProvider: extra_token_headers must have non-empty names for all headers"
+      )
+    }
+
+    default_reserved_headers <- c("authorization", "cookie")
+    unblocked <- tolower(getOption(
+      "shinyOAuth.unblock_token_headers",
+      character()
+    ))
+    reserved_header_names <- setdiff(default_reserved_headers, unblocked)
+    bad_headers <- intersect(tolower(trimws(nms)), reserved_header_names)
+    if (length(bad_headers) > 0) {
+      return(sprintf(
+        paste0(
+          "OAuthProvider: extra_token_headers must not contain reserved headers: %s. ",
+          "To unblock, set `options(shinyOAuth.unblock_token_headers = c(...))`"
+        ),
+        paste(sQuote(bad_headers), collapse = ", ")
+      ))
+    }
+
+    bad_len <- lengths(eth) != 1L
+    if (any(bad_len)) {
+      return("OAuthProvider: each extra_token_headers value must be length 1")
+    }
+    if (any(is.na(eth) | !nzchar(eth))) {
+      return(
+        "OAuthProvider: extra_token_headers values must be non-empty strings"
+      )
+    }
+  }
+
+  if (length(self@mtls_endpoint_aliases) > 0) {
+    aliases <- self@mtls_endpoint_aliases
+    if (!is.list(aliases)) {
+      return("OAuthProvider: mtls_endpoint_aliases must be a named list")
+    }
+    alias_names <- names(aliases)
+    if (is.null(alias_names) || !all(nzchar(alias_names))) {
+      return(
+        "OAuthProvider: mtls_endpoint_aliases must have non-empty names for all aliases"
+      )
+    }
+
+    for (alias_name in alias_names) {
+      alias_value <- aliases[[alias_name]]
+      if (!is_valid_string(alias_value)) {
+        return(sprintf(
+          "OAuthProvider: mtls_endpoint_aliases$%s must be a non-empty string",
+          alias_name
+        ))
+      }
+
+      msg <- oauth_provider_check_host_field(
+        alias_value,
+        paste0("mtls_endpoint_aliases$", alias_name),
+        required = TRUE
+      )
+      if (!is.null(msg)) {
+        return(msg)
+      }
+    }
+  }
+
+  if (
+    !(is.logical(self@tls_client_certificate_bound_access_tokens) &&
+      length(self@tls_client_certificate_bound_access_tokens) == 1L &&
+      !is.na(self@tls_client_certificate_bound_access_tokens))
+  ) {
+    return(
+      paste(
+        "OAuthProvider: tls_client_certificate_bound_access_tokens",
+        "must be a single non-NA logical"
+      )
+    )
+  }
+
+  if (length(self@extra_auth_params) > 0) {
+    nms <- names(self@extra_auth_params)
+    if (is.null(nms) || !all(nzchar(nms))) {
+      return(
+        "OAuthProvider: extra_auth_params must be a named list (all elements must have names)"
+      )
+    }
+  }
+
+  response_mode_info <- inspect_auth_response_mode(self@extra_auth_params)
+  if (!is.null(response_mode_info$error)) {
+    return(response_mode_info$error)
+  }
+
+  default_reserved_auth_keys <- c(
+    "response_type",
+    "client_id",
+    "redirect_uri",
+    "request_uri",
+    "request",
+    "state",
+    "scope",
+    "code_challenge",
+    "code_challenge_method",
+    "nonce",
+    "claims"
+  )
+  unblocked_auth <- tolower(trimws(getOption(
+    "shinyOAuth.unblock_auth_params",
+    character()
+  )))
+  reserved_auth_keys <- setdiff(default_reserved_auth_keys, unblocked_auth)
+  if (length(self@extra_auth_params) > 0) {
+    nms <- tolower(trimws(names(self@extra_auth_params)))
+    bad <- intersect(nms, reserved_auth_keys)
+    if (length(bad) > 0) {
+      return(sprintf(
+        paste0(
+          "OAuthProvider: extra_auth_params must not contain reserved keys managed by shinyOAuth: %s. ",
+          "To unblock, set options(shinyOAuth.unblock_auth_params = c(...))"
+        ),
+        paste(sQuote(bad), collapse = ", ")
+      ))
+    }
+  }
+
+  if (length(self@extra_token_params) > 0) {
+    nms <- names(self@extra_token_params)
+    if (is.null(nms) || !all(nzchar(nms))) {
+      return(
+        "OAuthProvider: extra_token_params must be a named list (all elements must have names)"
+      )
+    }
+  }
+
+  default_reserved_token_keys <- c(
+    "grant_type",
+    "code",
+    "refresh_token",
+    "redirect_uri",
+    "code_verifier",
+    "client_id",
+    "client_secret",
+    "client_assertion",
+    "client_assertion_type"
+  )
+  unblocked_token <- tolower(trimws(getOption(
+    "shinyOAuth.unblock_token_params",
+    character()
+  )))
+  reserved_token_keys <- setdiff(default_reserved_token_keys, unblocked_token)
+  if (length(self@extra_token_params) > 0) {
+    nms <- tolower(trimws(names(self@extra_token_params)))
+    bad <- intersect(nms, reserved_token_keys)
+    if (length(bad) > 0) {
+      return(sprintf(
+        paste0(
+          "OAuthProvider: extra_token_params must not contain reserved keys managed by shinyOAuth: %s. ",
+          "To unblock, set options(shinyOAuth.unblock_token_params = c(...))"
+        ),
+        paste(sQuote(bad), collapse = ", ")
+      ))
+    }
+  }
+
+  tok_style <- normalize_token_auth_style(self@token_auth_style)
+  if (
+    !isTRUE(
+      tok_style %in%
+        c(
+          "header",
+          "body",
+          "public",
+          "tls_client_auth",
+          "self_signed_tls_client_auth",
+          "client_secret_jwt",
+          "private_key_jwt"
+        )
+    )
+  ) {
+    return(paste0(
+      "OAuthProvider: token_auth_style must be one of 'header', 'body', 'public', ",
+      "'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', or 'private_key_jwt' ('none' is accepted as an alias for 'public')"
+    ))
+  }
+
+  if (!is.null(self@pkce_method)) {
+    if (!isTRUE(self@pkce_method %in% c("S256", "plain"))) {
+      return("OAuthProvider: pkce_method must be 'S256' or 'plain'")
+    }
+  }
+
+  has_get <- !is.null(self@jwks_cache$get) &&
+    is.function(self@jwks_cache$get)
+  has_set <- !is.null(self@jwks_cache$set) &&
+    is.function(self@jwks_cache$set)
+  if (!isTRUE(has_get && has_set)) {
+    return(
+      paste(
+        "OAuthProvider: jwks_cache must provide $get(key, missing=NULL) and",
+        "$set(key, value) methods"
+      )
+    )
+  }
+  jget_formals <- try(formals(self@jwks_cache$get), silent = TRUE)
+  jget_args <- if (!inherits(jget_formals, "try-error")) {
+    names(jget_formals)
+  } else {
+    character()
+  }
+  if (!("..." %in% jget_args || "missing" %in% jget_args)) {
+    return(
+      "OAuthProvider: jwks_cache$get must accept argument 'missing' (expected signature get(key, missing = NULL))"
+    )
+  }
+  jset_formals <- try(formals(self@jwks_cache$set), silent = TRUE)
+  jset_args <- if (!inherits(jset_formals, "try-error")) {
+    names(jset_formals)
+  } else {
+    character()
+  }
+  if (
+    !("..." %in% jset_args || ("key" %in% jset_args && "value" %in% jset_args))
+  ) {
+    return("OAuthProvider: jwks_cache$set must accept (key, value)")
+  }
+  if (!is.null(self@jwks_cache$remove) && is.function(self@jwks_cache$remove)) {
+    jrm_formals <- try(formals(self@jwks_cache$remove), silent = TRUE)
+    jrm_args <- if (!inherits(jrm_formals, "try-error")) {
+      names(jrm_formals)
+    } else {
+      character()
+    }
+    if (!("..." %in% jrm_args || length(jrm_args) >= 1L)) {
+      return(
+        "OAuthProvider: jwks_cache$remove must accept (key) when provided"
+      )
+    }
+  }
+
+  if (!isTRUE(self@jwks_pin_mode %in% c("any", "all"))) {
+    return("OAuthProvider: jwks_pin_mode must be 'any' or 'all'")
+  }
+  if (length(self@jwks_pins) > 0) {
+    ok <- vapply(
+      self@jwks_pins,
+      function(x) {
+        is.character(x) && length(x) == 1 && grepl("^[A-Za-z0-9_-]+$", x)
+      },
+      logical(1)
+    )
+    if (!all(ok)) {
+      return("OAuthProvider: jwks_pins must be base64url strings")
+    }
+  }
+
+  if (length(self@allowed_algs) > 0) {
+    supported <- c(
+      "RS256",
+      "RS384",
+      "RS512",
+      "ES256",
+      "ES384",
+      "ES512",
+      "EDDSA",
+      "HS256",
+      "HS384",
+      "HS512"
+    )
+    aa <- toupper(self@allowed_algs)
+    bad <- setdiff(aa, supported)
+    if (length(bad) > 0) {
+      return(paste0(
+        "OAuthProvider: allowed_algs contains unsupported entries: ",
+        paste(bad, collapse = ", ")
+      ))
+    }
+
+    if (any(aa %in% c("HS256", "HS384", "HS512"))) {
+      allow_hs <- isTRUE(getOption("shinyOAuth.allow_hs", FALSE))
+      if (!allow_hs) {
+        return(
+          "OAuthProvider: allowed_algs includes HS* but `options(shinyOAuth.allow_hs = TRUE)` is not enabled"
+        )
+      }
+    }
+  }
+
+  if (
+    !(is.logical(self@require_pushed_authorization_requests) &&
+      length(self@require_pushed_authorization_requests) == 1L &&
+      !is.na(self@require_pushed_authorization_requests))
+  ) {
+    return(
+      paste(
+        "OAuthProvider: require_pushed_authorization_requests",
+        "must be a single non-NA logical"
+      )
+    )
+  }
+  if (
+    isTRUE(self@require_pushed_authorization_requests) &&
+      !is_valid_string(self@par_url %||% NA_character_)
+  ) {
+    return(
+      paste(
+        "OAuthProvider: require_pushed_authorization_requests = TRUE",
+        "requires par_url"
+      )
+    )
+  }
+
+  request_object_algs <- self@request_object_signing_alg_values_supported
+  if (length(request_object_algs) > 0) {
+    if (!is.character(request_object_algs)) {
+      return(
+        paste(
+          "OAuthProvider: request_object_signing_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (anyNA(request_object_algs) || !all(nzchar(request_object_algs))) {
+      return(
+        paste(
+          "OAuthProvider: request_object_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  if (
+    !(is.logical(self@require_signed_request_object) &&
+      length(self@require_signed_request_object) == 1L &&
+      !is.na(self@require_signed_request_object))
+  ) {
+    return(
+      "OAuthProvider: require_signed_request_object must be a single non-NA logical"
+    )
+  }
+  if (
+    isTRUE(self@require_signed_request_object) &&
+      length(self@request_object_signing_alg_values_supported) > 0 &&
+      !any(
+        toupper(self@request_object_signing_alg_values_supported) != "NONE"
+      )
+  ) {
+    return(
+      paste(
+        "OAuthProvider: require_signed_request_object = TRUE is inconsistent",
+        "with request_object_signing_alg_values_supported = 'none' only"
+      )
+    )
+  }
+
+  if (isTRUE(self@use_nonce)) {
+    if (!is_valid_string(self@issuer)) {
+      return(
+        "OAuthProvider: use_nonce = TRUE requires a non-empty provider issuer"
+      )
+    }
+  }
+
+  token_endpoint_auth_signing_algs <-
+    self@token_endpoint_auth_signing_alg_values_supported
+  if (length(token_endpoint_auth_signing_algs) > 0) {
+    if (!is.character(token_endpoint_auth_signing_algs)) {
+      return(
+        paste(
+          "OAuthProvider: token_endpoint_auth_signing_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(token_endpoint_auth_signing_algs) ||
+        !all(nzchar(token_endpoint_auth_signing_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: token_endpoint_auth_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  if (length(self@allowed_token_types) > 0) {
+    att <- self@allowed_token_types
+    if (!is.character(att)) {
+      return("OAuthProvider: allowed_token_types must be a character vector")
+    }
+    if (any(is.na(att) | !nzchar(att))) {
+      return(
+        "OAuthProvider: allowed_token_types must contain only non-empty strings"
+      )
+    }
+  }
+
+  if (isTRUE(self@id_token_validation)) {
+    if (!is_valid_string(self@issuer)) {
+      return(
+        "OAuthProvider: id_token_validation = TRUE requires a non-empty provider issuer"
+      )
+    }
+  }
+
+  if (isTRUE(self@id_token_at_hash_required)) {
+    if (!isTRUE(self@id_token_validation)) {
+      return(
+        "OAuthProvider: id_token_at_hash_required = TRUE requires id_token_validation = TRUE"
+      )
+    }
+  }
+
+  if (isTRUE(self@userinfo_required)) {
+    if (!is_valid_string(self@userinfo_url)) {
+      return(
+        "OAuthProvider: userinfo_required = TRUE requires a non-empty userinfo_url"
+      )
+    }
+    if (!is_ok_host(self@userinfo_url)) {
+      return(
+        "OAuthProvider: userinfo_url provided but not accepted as a host (see `?is_ok_host`)"
+      )
+    }
+  }
+
+  if (isTRUE(self@userinfo_signed_jwt_required)) {
+    if (!isTRUE(self@userinfo_required)) {
+      return(
+        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires userinfo_required = TRUE"
+      )
+    }
+    if (!is_valid_string(self@issuer)) {
+      return(
+        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires a non-empty issuer (for JWKS verification)"
+      )
+    }
+  }
+
+  if (isTRUE(self@userinfo_id_token_match)) {
+    if (!isTRUE(self@userinfo_required)) {
+      return(
+        "OAuthProvider: userinfo_id_token_match = TRUE requires userinfo_required = TRUE"
+      )
+    }
+    if (!isTRUE(self@id_token_validation)) {
+      return(
+        "OAuthProvider: userinfo_id_token_match = TRUE requires id_token_validation = TRUE"
+      )
+    }
+    if (!is_valid_string(self@userinfo_url) || !is_ok_host(self@userinfo_url)) {
+      return(
+        "OAuthProvider: userinfo_id_token_match = TRUE requires a valid userinfo_url"
+      )
+    }
+    if (
+      is.null(self@userinfo_id_selector) ||
+        !is.function(self@userinfo_id_selector)
+    ) {
+      return(
+        "OAuthProvider: userinfo_id_token_match = TRUE requires a configured userinfo_id_selector function"
+      )
+    }
+  }
+
+  if (
+    !is.numeric(self@leeway) ||
+      length(self@leeway) != 1 ||
+      !is.finite(self@leeway) ||
+      self@leeway < 0
+  ) {
+    return(
+      "OAuthProvider: leeway must be a single finite non-negative numeric value"
+    )
+  }
+
+  if (is_valid_string(self@jwks_host_allow_only)) {
+    val <- trimws(self@jwks_host_allow_only)
+    host_only <- val
+    if (grepl("^https?://", tolower(val))) {
+      host_only <- try(
+        parse_url_host(val, "jwks_host_allow_only"),
+        silent = TRUE
+      )
+      if (inherits(host_only, "try-error")) {
+        return("OAuthProvider: jwks_host_allow_only URL could not be parsed")
+      }
+    } else {
+      if (!grepl("^[A-Za-z0-9.-]+$", host_only)) {
+        return(
+          "OAuthProvider: jwks_host_allow_only must be a hostname or a URL containing a hostname"
+        )
+      }
+      host_only <- sub("\\.$", "", tolower(host_only))
+    }
+  }
+
+  NULL
+}
+
+## 3.2 Endpoint validation -----------------------------------------------------
+
+#' Internal: validate one provider endpoint-like field
+#'
+#' Used by the [OAuthProvider] validator for required and optional endpoint
+#' fields before the provider object is accepted.
+#'
+#' @param value Endpoint string to validate.
+#' @param name Field label used in validation errors.
+#' @param required Whether the field must be present.
+#' @return `NULL` on success, otherwise the first validation error string.
+#' @keywords internal
+#' @noRd
+oauth_provider_check_host_field <- function(value, name, required = FALSE) {
+  if (required && !is_valid_string(value)) {
+    return(sprintf(
+      "OAuthProvider: %s is required and must be a non-empty string",
+      name
+    ))
+  }
+  if (!is_valid_string(value)) {
+    return(NULL)
+  }
+
+  parsed <- try(httr2::url_parse(value), silent = TRUE)
+  if (
+    inherits(parsed, "try-error") ||
+      !nzchar((parsed$scheme %||% "")) ||
+      !nzchar((parsed$hostname %||% ""))
+  ) {
+    return(sprintf(
+      "OAuthProvider: %s must be an absolute URL (including scheme and hostname)",
+      name
+    ))
+  }
+
+  if (!is_ok_host(value)) {
+    return(sprintf(
+      "OAuthProvider: %s provided but not accepted as a host (see `?is_ok_host` for details)",
+      name
+    ))
+  }
+  NULL
+}
+
+## 3.3 Provider fingerprint ----------------------------------------------------
+
+#' Build a provider fingerprint
+#'
+#' Computes a stable digest over the provider endpoints that matter for login
+#' and callback validation so the callback can confirm it is finishing the same
+#' provider configuration that initiated the flow. Used when a login request is
+#' created and again when callback handling resumes.
+#'
+#' @param provider [OAuthProvider] instance to fingerprint.
+#' @return A length-1 character string in `sha256:<digest>` format.
+#' @keywords internal
+#' @noRd
+provider_fingerprint <- function(provider) {
+  components <- list(
+    iss = provider@issuer,
+    au = provider@auth_url,
+    tu = provider@token_url,
+    ui = provider@userinfo_url,
+    it = provider@introspection_url
+  )
+  for (component_name in names(components)) {
+    value <- components[[component_name]]
+    components[[component_name]] <- if (
+      is.null(value) || length(value) != 1L || is.na(value)
+    ) {
+      ""
+    } else {
+      as.character(value)
+    }
+  }
+
+  # Use a length-prefixed canonical representation to avoid delimiter-based
+  # collisions when any component contains separators.
+  iss_u <- enc2utf8(components$iss)
+  au_u <- enc2utf8(components$au)
+  tu_u <- enc2utf8(components$tu)
+  ui_u <- enc2utf8(components$ui)
+  it_u <- enc2utf8(components$it)
+
+  canonical <- paste0(
+    "iss:",
+    nchar(iss_u, type = "bytes"),
+    ":",
+    iss_u,
+    "\n",
+    "au:",
+    nchar(au_u, type = "bytes"),
+    ":",
+    au_u,
+    "\n",
+    "tu:",
+    nchar(tu_u, type = "bytes"),
+    ":",
+    tu_u,
+    "\n",
+    "ui:",
+    nchar(ui_u, type = "bytes"),
+    ":",
+    ui_u,
+    "\n",
+    "it:",
+    nchar(it_u, type = "bytes"),
+    ":",
+    it_u
+  )
+
+  # Use unkeyed digest (key = NULL) so fingerprint is stable across processes.
+  # Keyed digests are only for audit logs where correlation prevention matters.
+  paste0("sha256:", string_digest(enc2utf8(canonical), key = NULL))
 }

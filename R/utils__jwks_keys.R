@@ -4,9 +4,9 @@
 # compatible candidate keys, usable public keys, and structural checks on the
 # returned key material.
 
-# 1 JWKS verification helpers ---------------------------------------------
+# 1 JWKS verification helpers --------------------------------------------------
 
-## 1.1 Select candidate keys ----------------------------------------------
+## 1.1 Select candidate keys ---------------------------------------------------
 
 #' Internal: Select candidate JWKs for signature verification
 #'
@@ -220,7 +220,7 @@ jwk_is_compatible_with_alg <- function(jwk, alg) {
   )
 }
 
-## 1.2 Convert and validate key material ----------------------------------
+## 1.2 Convert and validate key material ---------------------------------------
 
 #' Internal: Convert JWK (RSA, EC, or OKP) to an openssl public key
 #'
@@ -298,9 +298,9 @@ compute_jwk_thumbprint <- function(jwk) {
   base64url_encode(digest)
 }
 
-# 2 JWK decoding helpers ---------------------------------------------------
+# 2 JWK decoding helpers -------------------------------------------------------
 
-## 2.1 Decode and size-check key fields -----------------------------------
+## 2.1 Decode and size-check key fields ----------------------------------------
 
 #' Strictly decode a JWK base64urlUInt field
 #'
@@ -352,25 +352,6 @@ jwk_rsa_modulus_bits <- function(modulus_raw) {
   ((length(trimmed) - 1L) * 8L) + floor(log(first_octet, base = 2)) + 1L
 }
 
-#' Return the expected EC coordinate size
-#'
-#' Used by `strict_decode_jwk_ec_coordinate()` to enforce curve-specific field
-#' lengths before EC keys are converted or validated.
-#'
-#' @param curve Curve name.
-#' @return Expected byte length, or `NULL` when the curve is unsupported.
-#' @keywords internal
-#' @noRd
-jwk_ec_coordinate_size <- function(curve) {
-  switch(
-    as.character(curve %||% ""),
-    "P-256" = 32L,
-    "P-384" = 48L,
-    "P-521" = 66L,
-    NULL
-  )
-}
-
 #' Strictly decode an EC coordinate
 #'
 #' Used by EC JWK validation helpers before the key is converted into an
@@ -384,7 +365,13 @@ jwk_ec_coordinate_size <- function(curve) {
 #' @noRd
 strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
   decoded <- strict_decode_jwk_base64url_uint(value, field_name)
-  expected_len <- jwk_ec_coordinate_size(curve)
+  expected_len <- switch(
+    as.character(curve %||% ""),
+    "P-256" = 32L,
+    "P-384" = 48L,
+    "P-521" = 66L,
+    NULL
+  )
 
   if (!is.null(expected_len) && length(decoded) != expected_len) {
     err_parse(paste0(
@@ -399,7 +386,7 @@ strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
   decoded
 }
 
-## 1.3 Validate fetched JWKS objects --------------------------------------
+## 2.2 Validate fetched JWKS objects -------------------------------------------
 
 #' Internal: Validate JWKS structure and optionally enforce pinning
 #'
