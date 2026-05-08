@@ -107,6 +107,18 @@ test_that("custom Authorization header is ignored and warned", {
   expect_equal(dry$headers$`x-other`, "ok")
 })
 
+test_that("client_bearer_req rejects non-scalar token_type overrides", {
+  expect_error(
+    client_bearer_req(
+      token = "tok",
+      url = "https://example.com/base",
+      token_type = c("DPoP", "Bearer")
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "token_type"
+  )
+})
+
 test_that("client_bearer_req disables redirects by default", {
   req <- client_bearer_req(
     token = "tok",

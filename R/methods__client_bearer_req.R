@@ -41,6 +41,7 @@
 #'   token string.
 #' @param token_type Optional override for the access token type when `token`
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
+#'   Invalid or multi-valued inputs are rejected.
 #' @param dpop_nonce Optional DPoP nonce to embed in the proof for this
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
@@ -121,28 +122,29 @@ client_bearer_req <- function(
 #' @noRd
 resolve_client_bearer_token <- function(token, token_type = NULL) {
   access_token <- token
-  effective_token_type <- token_type %||% NA_character_
+  effective_token_type <- NULL
+  explicit_token_type <- !is.null(token_type)
 
   if (S7::S7_inherits(token, class = OAuthToken)) {
     access_token <- token@access_token
-    effective_token_type <- token@token_type %||% effective_token_type
+    effective_token_type <- token@token_type
+  }
+
+  if (isTRUE(explicit_token_type)) {
+    effective_token_type <- token_type
   }
 
   if (!is_valid_string(access_token)) {
     err_input("access_token must be a non-empty string")
   }
 
-  if (
-    !is.character(effective_token_type) ||
-      length(effective_token_type) != 1L
-  ) {
-    effective_token_type <- NA_character_
-  }
-
-  effective_token_type <- if (
-    !is.na(effective_token_type) && nzchar(effective_token_type)
-  ) {
-    as.character(effective_token_type)[[1]]
+  effective_token_type <- if (isTRUE(explicit_token_type)) {
+    if (!is_valid_string(effective_token_type)) {
+      err_input("token_type must be a single non-empty string")
+    }
+    as.character(effective_token_type)
+  } else if (is_valid_string(effective_token_type)) {
+    as.character(effective_token_type)
   } else {
     "Bearer"
   }

@@ -51,7 +51,8 @@ validate any \code{cnf} thumbprint from an \link{OAuthToken} or raw JWT access
 token string.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
-is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.}
+is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
+Invalid or multi-valued inputs are rejected.}
 
 \item{dpop_nonce}{Optional DPoP nonce to embed in the proof for this
 request. This is primarily useful after a resource server challenges with

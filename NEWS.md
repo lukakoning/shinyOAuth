@@ -33,6 +33,9 @@ failing later with raw base-R errors.
 * Token exchange now rejects multi-valued `token_type` responses with a typed
 `shinyOAuth_token_error` instead of truncating them to the first value.
 
+* `client_bearer_req()` now rejects invalid or multi-valued `token_type`
+inputs instead of silently defaulting them to Bearer.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
