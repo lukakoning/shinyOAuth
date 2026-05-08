@@ -1,17 +1,5 @@
 # shinyOAuth (development version)
 
-* Fixed the documented RFC 9207 callback issuer opt-out. Setting
-`oauth_client(enforce_callback_issuer = FALSE)` now really skips `iss`
-mismatch enforcement in both `handle_callback()` and
-`oauth_module_server()`, even when the provider advertises callback-issuer
-support.
-
-* Fixed the documented `allowed_token_types = character(0)` opt-out for DPoP
-clients. DPoP-capable clients now keep an explicitly empty allowlist as a real
-disablement of token-type enforcement during both callback token exchange and
-refresh, unless `dpop_require_access_token = TRUE` still requires
-`token_type = "DPoP"`.
-
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh/revocation/introspection
 requests can attach DPoP proofs with nonce retry, and downstream helpers now
@@ -37,20 +25,6 @@ key OAuth operations such as module initialization, login/callback handling,
 token exchange/refresh, userinfo/introspection/revocation, and session-end 
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
-
-* Hardened JSON payload parsing. Token responses, UserInfo JSON, and JWT
-payloads now reject non-object JSON with typed shinyOAuth errors instead of
-failing later with raw base-R errors.
-
-* Token exchange now rejects multi-valued `token_type` responses with a typed
-`shinyOAuth_token_error` instead of truncating them to the first value.
-
-* `client_bearer_req()` now rejects invalid or multi-valued `token_type`
-inputs instead of silently defaulting them to Bearer.
-
-* Clarified `refresh_token()` documentation: when refresh-time introspection is
-enabled, unsupported or invalid introspection results are strict validation
-failures, not best-effort metadata enrichment.
 
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
