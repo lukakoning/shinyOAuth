@@ -33,24 +33,6 @@
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
   for more information.
 
-- Hardened JSON payload parsing. Token responses, UserInfo JSON, and JWT
-  payloads now reject non-object JSON with typed shinyOAuth errors
-  instead of failing later with raw base-R errors.
-
-- Token exchange now rejects multi-valued `token_type` responses with a
-  typed `shinyOAuth_token_error` instead of truncating them to the first
-  value.
-
-- [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  now rejects invalid or multi-valued `token_type` inputs instead of
-  silently defaulting them to Bearer.
-
-- Clarified
-  [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
-  documentation: when refresh-time introspection is enabled, unsupported
-  or invalid introspection results are strict validation failures, not
-  best-effort metadata enrichment.
-
 - Observability and audit logging improvements:
 
   - Improved observability correlation for existing audit flows.
