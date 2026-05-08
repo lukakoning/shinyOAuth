@@ -65,6 +65,21 @@
 <li>Common R idioms: use <code>%||%</code> for null coalescing, <code>compact_list()</code> to drop NULL/NA from lists, <code>is_valid_string()</code> for non-empty string checks</li>
 </ul></div>
 <div class="section level2">
+<h2 id="r-file-style">R File Style<a class="anchor" aria-label="anchor" href="#r-file-style"></a></h2>
+<ul><li>Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.</li>
+<li>Use numbered section and subsection comments to organize R files:
+<ul><li><code># 1 Title goes here ------------------------------------------</code></li>
+<li><code>## 1.2 Subtitle goes here ------------------------------------</code></li>
+<li><code>### 1.2.1 Subsubtitle goes here ------------------------------</code></li>
+</ul></li>
+<li>Section separator dashes must extend through column 80. Keep section text in regular sentence case, not title case.</li>
+<li>Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.</li>
+<li>Add a short section introduction when it makes the purpose of the section easier to understand.</li>
+<li>Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.</li>
+<li>Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, <code>@param</code> entries, and <code>@return</code>. Use <code>@keywords internal</code> and <code>@noRd</code> for non-exported helpers.</li>
+<li>Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="core-code-paths">Core Code Paths<a class="anchor" aria-label="anchor" href="#core-code-paths"></a></h2>
 <ul><li>
 <code><a href="reference/oauth_module_server.html">oauth_module_server()</a></code> orchestrates redirect→callback→token→refresh, exposing a reactiveValues API (<code>request_login()</code>, <code>logout()</code>, <code>build_auth_url()</code>) and watchdogs for missing JS/browser tokens.</li>

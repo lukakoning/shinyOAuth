@@ -126,28 +126,28 @@ were cryptographically validated.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Example requires a real token from a completed OAuth flow</span></span></span>
 <span class="r-in"><span><span class="co"># (code is therefore not run; would error with placeholder values below)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Define client</span></span></span>
-<span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  provider <span class="op">=</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="co"># Define client</span></span></span>
+<span class="r-in"><span>  <span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    provider <span class="op">=</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Have a valid OAuthToken object; fake example below</span></span></span>
-<span class="r-in"><span><span class="co"># (typically provided by `oauth_module_server()` or `handle_callback()`)</span></span></span>
-<span class="r-in"><span><span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="handle_callback.html">handle_callback</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;code&gt;"</span>, <span class="st">"&lt;payload&gt;"</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="co"># Have a valid OAuthToken object; fake example below</span></span></span>
+<span class="r-in"><span>  <span class="co"># (typically provided by `oauth_module_server()` or `handle_callback()`)</span></span></span>
+<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="handle_callback.html">handle_callback</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;code&gt;"</span>, <span class="st">"&lt;payload&gt;"</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Get userinfo</span></span></span>
-<span class="r-in"><span><span class="va">user_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="get_userinfo.html">get_userinfo</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="co"># Get userinfo</span></span></span>
+<span class="r-in"><span>  <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="fu"><a href="get_userinfo.html">get_userinfo</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Introspect token (if supported by provider)</span></span></span>
-<span class="r-in"><span><span class="va">introspection</span> <span class="op">&lt;-</span> <span class="fu"><a href="introspect_token.html">introspect_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="co"># Introspect token (if supported by provider)</span></span></span>
+<span class="r-in"><span>  <span class="va">introspection</span> <span class="op">&lt;-</span> <span class="fu"><a href="introspect_token.html">introspect_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Refresh token</span></span></span>
-<span class="r-in"><span><span class="va">new_token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, introspect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span>  <span class="co"># Refresh token</span></span></span>
+<span class="r-in"><span>  <span class="va">new_token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, introspect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

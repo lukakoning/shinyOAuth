@@ -83,39 +83,39 @@ should be used to redirect the user to the OAuth provider's authorization endpoi
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Please note: `prepare_call()` &amp; `handle_callback()` are typically</span></span></span>
-<span class="r-in"><span><span class="co"># not called by users of this package directly, but are called </span></span></span>
+<span class="r-in"><span><span class="co"># not called by users of this package directly, but are called</span></span></span>
 <span class="r-in"><span><span class="co"># internally by `oauth_module_server()`. These functions are exported</span></span></span>
 <span class="r-in"><span><span class="co"># nonetheless for advanced use cases. Most users will not need to</span></span></span>
 <span class="r-in"><span><span class="co"># call these functions directly</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Below code shows generic usage of `prepare_call()` and `handle_callback()`</span></span></span>
 <span class="r-in"><span><span class="co"># (code is not run because it would require user interaction)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># Define client</span></span></span>
-<span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  provider <span class="op">=</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="co"># Define client</span></span></span>
+<span class="r-in"><span>  <span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    provider <span class="op">=</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Get authorization URL and and store state in client's state store</span></span></span>
-<span class="r-in"><span><span class="co"># `&lt;browser_token&gt;` is a token that identifies the browser session</span></span></span>
-<span class="r-in"><span><span class="co">#  and would typically be stored in a browser cookie</span></span></span>
-<span class="r-in"><span><span class="co">#  (`oauth_module_server()` handles this typically)</span></span></span>
-<span class="r-in"><span><span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu">prepare_call</span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="co"># Get authorization URL and and store state in client's state store</span></span></span>
+<span class="r-in"><span>  <span class="co"># `&lt;browser_token&gt;` is a token that identifies the browser session</span></span></span>
+<span class="r-in"><span>  <span class="co">#  and would typically be stored in a browser cookie</span></span></span>
+<span class="r-in"><span>  <span class="co">#  (`oauth_module_server()` handles this typically)</span></span></span>
+<span class="r-in"><span>  <span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu">prepare_call</span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Redirect user to authorization URL; retrieve code &amp; payload from query;</span></span></span>
-<span class="r-in"><span><span class="co"># read also `&lt;browser_token&gt;` from browser cookie</span></span></span>
-<span class="r-in"><span><span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
-<span class="r-in"><span><span class="va">code</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
-<span class="r-in"><span><span class="va">payload</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
-<span class="r-in"><span><span class="va">browser_token</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
+<span class="r-in"><span>  <span class="co"># Redirect user to authorization URL; retrieve code &amp; payload from query;</span></span></span>
+<span class="r-in"><span>  <span class="co"># read also `&lt;browser_token&gt;` from browser cookie</span></span></span>
+<span class="r-in"><span>  <span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
+<span class="r-in"><span>  <span class="va">code</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
+<span class="r-in"><span>  <span class="va">payload</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
+<span class="r-in"><span>  <span class="va">browser_token</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Handle callback, exchanging code for token and validating state</span></span></span>
-<span class="r-in"><span><span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
-<span class="r-in"><span><span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="handle_callback.html">handle_callback</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">code</span>, <span class="va">payload</span>, <span class="va">browser_token</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span>  <span class="co"># Handle callback, exchanging code for token and validating state</span></span></span>
+<span class="r-in"><span>  <span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
+<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="handle_callback.html">handle_callback</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">code</span>, <span class="va">payload</span>, <span class="va">browser_token</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

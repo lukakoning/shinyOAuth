@@ -51,8 +51,8 @@ error_on_softened()
 #>   `shinyOAuth.unblock_auth_params` when they matter to your deployment.
 
 # Below call would error (is therefore not run):
-if (FALSE) { # \dontrun{
-options(shinyOAuth.skip_id_sig = TRUE)
-error_on_softened()
-} # }
+if (interactive()) {
+  options(shinyOAuth.skip_id_sig = TRUE)
+  error_on_softened()
+}
 ```
