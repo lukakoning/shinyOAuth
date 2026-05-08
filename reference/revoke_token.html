@@ -129,7 +129,21 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with fields: supported, revoked, status</p>
+    <p>A list with fields:</p><ul><li><p><code>supported</code>: logical, <code>TRUE</code> when a revocation endpoint is configured.</p></li>
+<li><p><code>revoked</code>: logical or <code>NA</code>, <code>TRUE</code> when the provider accepted the
+revocation request, <code>NA</code> when revocation could not be attempted or the
+result is unknown.</p></li>
+<li><p><code>status</code>: machine-readable status such as <code>"ok"</code>, <code>"missing_token"</code>,
+<code>"revocation_unsupported"</code>, or <code>"http_&lt;code&gt;"</code>.</p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="side-effects">Side effects<a class="anchor" aria-label="anchor" href="#side-effects"></a></h2>
+
+
+<p>Performs network I/O when the provider exposes a revocation endpoint and the
+selected token exists. Emits best-effort audit events and OpenTelemetry span
+attributes. When <code>async = TRUE</code>, the work may run in a background worker and
+reads package options needed by the async/audit/HTTP helpers.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

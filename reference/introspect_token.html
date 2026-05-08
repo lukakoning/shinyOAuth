@@ -132,8 +132,15 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with fields: supported, active, raw, status</p>
-    </div>
+    <p>A list with fields:</p><ul><li><p><code>supported</code>: logical, <code>TRUE</code> when an introspection endpoint is configured.</p></li>
+<li><p><code>active</code>: logical or <code>NA</code>, where <code>NA</code> means the provider did not return a
+usable RFC 7662 <code>active</code> value.</p></li>
+<li><p><code>raw</code>: parsed introspection response list, or <code>NULL</code> when the endpoint is
+unsupported or the response could not be parsed.</p></li>
+<li><p><code>status</code>: machine-readable status such as <code>"ok"</code>,
+<code>"introspection_unsupported"</code>, <code>"missing_token"</code>, <code>"invalid_json"</code>,
+<code>"missing_active"</code>, <code>"invalid_active"</code>, or <code>"http_&lt;code&gt;"</code>.</p></li>
+</ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Best-effort semantics:</p><ul><li><p>If the provider does not expose an introspection endpoint, the function
@@ -150,6 +157,15 @@ numeric, or character variants like "true"/"false", 1/0). These are
 normalized to logical <code>TRUE</code>/<code>FALSE</code> when possible; otherwise <code>active</code> is
 set to <code>NA</code>.</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="side-effects">Side effects<a class="anchor" aria-label="anchor" href="#side-effects"></a></h2>
+
+
+<p>Performs network I/O when the provider exposes an introspection endpoint and
+the selected token exists. Emits best-effort audit events and OpenTelemetry
+span attributes. When <code>async = TRUE</code>, the work may run in a background worker
+and reads package options needed by the async/audit/HTTP helpers.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

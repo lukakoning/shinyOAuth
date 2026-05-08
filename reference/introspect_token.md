@@ -72,7 +72,20 @@ introspect_token(
 
 ## Value
 
-A list with fields: supported, active, raw, status
+A list with fields:
+
+- `supported`: logical, `TRUE` when an introspection endpoint is
+  configured.
+
+- `active`: logical or `NA`, where `NA` means the provider did not
+  return a usable RFC 7662 `active` value.
+
+- `raw`: parsed introspection response list, or `NULL` when the endpoint
+  is unsupported or the response could not be parsed.
+
+- `status`: machine-readable status such as `"ok"`,
+  `"introspection_unsupported"`, `"missing_token"`, `"invalid_json"`,
+  `"missing_active"`, `"invalid_active"`, or `"http_<code>"`.
 
 ## Details
 
@@ -94,6 +107,14 @@ Best-effort semantics:
   (logical, numeric, or character variants like "true"/"false", 1/0).
   These are normalized to logical `TRUE`/`FALSE` when possible;
   otherwise `active` is set to `NA`.
+
+## Side effects
+
+Performs network I/O when the provider exposes an introspection endpoint
+and the selected token exists. Emits best-effort audit events and
+OpenTelemetry span attributes. When `async = TRUE`, the work may run in
+a background worker and reads package options needed by the
+async/audit/HTTP helpers.
 
 ## Examples
 

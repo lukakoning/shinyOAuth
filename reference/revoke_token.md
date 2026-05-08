@@ -73,4 +73,21 @@ revoke_token(
 
 ## Value
 
-A list with fields: supported, revoked, status
+A list with fields:
+
+- `supported`: logical, `TRUE` when a revocation endpoint is configured.
+
+- `revoked`: logical or `NA`, `TRUE` when the provider accepted the
+  revocation request, `NA` when revocation could not be attempted or the
+  result is unknown.
+
+- `status`: machine-readable status such as `"ok"`, `"missing_token"`,
+  `"revocation_unsupported"`, or `"http_<code>"`.
+
+## Side effects
+
+Performs network I/O when the provider exposes a revocation endpoint and
+the selected token exists. Emits best-effort audit events and
+OpenTelemetry span attributes. When `async = TRUE`, the work may run in
+a background worker and reads package options needed by the
+async/audit/HTTP helpers.
