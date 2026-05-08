@@ -129,6 +129,9 @@ the client's configured scopes when a refresh response omits `scope`.
   - Fails fast when `id_token_validation = TRUE` but the
   discovery document omits `jwks_uri`, surfacing a configuration error during
   provider setup instead of a later JWKS fetch failure.
+  - Rejects issuer inputs that contain query strings or fragments before
+  building the discovery URL, matching the stricter issuer validation already
+  used by manually configured providers.
   - Rejects non-scalar endpoint metadata values with a configuration error.
   - Honors `jwks_host_allow_only` during its early `jwks_uri` host check, so 
   explicitly pinned cross-host JWKS endpoints no longer require disabling 

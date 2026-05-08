@@ -98,6 +98,26 @@ testthat::test_that("OIDC discovery issuer must be absolute", {
   )
 })
 
+testthat::test_that("OIDC discovery rejects issuer query component", {
+  f <- shinyOAuth:::.discover_assert_valid_issuer
+
+  testthat::expect_error(
+    f("https://idp.example.com?x=1"),
+    class = "shinyOAuth_input_error",
+    regexp = "issuer must not contain query or fragment"
+  )
+})
+
+testthat::test_that("OIDC discovery rejects issuer fragment component", {
+  f <- shinyOAuth:::.discover_assert_valid_issuer
+
+  testthat::expect_error(
+    f("https://idp.example.com#frag"),
+    class = "shinyOAuth_input_error",
+    regexp = "issuer must not contain query or fragment"
+  )
+})
+
 testthat::test_that("validate_endpoint rejects non-scalar endpoint values", {
   f <- shinyOAuth:::validate_endpoint
 
