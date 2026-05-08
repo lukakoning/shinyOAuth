@@ -329,13 +329,14 @@ oauth_client(
   an `openssl::key` or a PEM string containing an asymmetric private
   key. When provided, shinyOAuth can attach `DPoP` proofs to token
   endpoint requests and use DPoP-bound access tokens in downstream
-  request helpers. Configuring this key alone does not require
-  DPoP-bound access tokens; set `dpop_require_access_token = TRUE` if
-  token responses must reject `token_type = "Bearer"`. Current outbound
-  DPoP signing supports RSA and EC private keys. For RSA keys, outbound
-  signing is currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS
-  (`PS256`, `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are
-  also not currently supported for client-side signing.
+  request helpers. In `oauth_client()`, configuring this key also makes
+  `dpop_require_access_token` default to `TRUE`, so access-token
+  responses reject `token_type = "Bearer"` unless you explicitly set
+  `dpop_require_access_token = FALSE`. Current outbound DPoP signing
+  supports RSA and EC private keys. For RSA keys, outbound signing is
+  currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
+  `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
+  currently supported for client-side signing.
 
 - dpop_private_key_kid:
 
