@@ -167,6 +167,27 @@ test_that("oauth_provider rejects vector auth_url", {
   )
 })
 
+test_that("oauth_provider constructor input guards raise typed errors", {
+  expect_error(
+    oauth_provider(
+      name = "test",
+      auth_url = c("https://a.com/auth", "https://b.com/auth"),
+      token_url = "https://example.com/token"
+    ),
+    class = "shinyOAuth_input_error"
+  )
+
+  expect_error(
+    oauth_provider(
+      name = "test",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      pkce_method = c("S256", "plain")
+    ),
+    class = "shinyOAuth_input_error"
+  )
+})
+
 test_that("oauth_provider rejects vector token_url", {
   expect_error(
     oauth_provider(

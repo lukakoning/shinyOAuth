@@ -117,6 +117,9 @@ the client's configured scopes when a refresh response omits `scope`.
   - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs 
   reject POST requests, so `response_mode = "form_post"` was previously allowed 
   but led to abroken callback round-trip instead of a clear configuration error.
+  - Raises typed `shinyOAuth_input_error` conditions for malformed constructor
+  inputs such as vector endpoint URLs or empty discovery-helper domains, so
+  apps can trap provider validation failures consistently.
   - Validates custom `jwks_cache$get()` signatures without calling the cache 
   during construction, avoiding side effects in duck-typed cache backends.
   - Reserves the `refresh_token` parameter name in `extra_token_params` to 

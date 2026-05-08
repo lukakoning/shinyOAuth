@@ -416,3 +416,22 @@ test_that("oauth_provider_okta rejects empty domain", {
 test_that("oauth_provider_auth0 rejects empty domain", {
   expect_error(oauth_provider_auth0(domain = ""))
 })
+
+test_that("exported provider helper validation errors are typed", {
+  expect_error(
+    oauth_provider_microsoft(tenant = ""),
+    class = "shinyOAuth_input_error"
+  )
+  expect_error(
+    oauth_provider_keycloak(base_url = "", realm = "r"),
+    class = "shinyOAuth_input_error"
+  )
+  expect_error(
+    oauth_provider_okta(domain = ""),
+    class = "shinyOAuth_input_error"
+  )
+  expect_error(
+    oauth_provider_auth0(domain = ""),
+    class = "shinyOAuth_input_error"
+  )
+})

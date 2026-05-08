@@ -221,7 +221,9 @@ oauth_provider_microsoft <- function(
   id_token_validation = NULL
 ) {
   tenant <- tenant[1]
-  stopifnot(is.character(tenant), length(tenant) == 1, nzchar(tenant))
+  if (!is_valid_string(tenant)) {
+    err_input("tenant must be a non-empty string")
+  }
   consumer_tenant_guid <- "9188040d-6c67-4c5b-b112-36a304b66dad"
   tenant_independent_alias <- tenant %in% c("common", "organizations")
   consumer_alias <- identical(tenant, "consumers")
@@ -374,7 +376,12 @@ oauth_provider_keycloak <- function(
   name = paste0("keycloak-", realm),
   token_auth_style = "body"
 ) {
-  stopifnot(nzchar(base_url), nzchar(realm))
+  if (!is_valid_string(base_url)) {
+    err_input("base_url must be a non-empty string")
+  }
+  if (!is_valid_string(realm)) {
+    err_input("realm must be a non-empty string")
+  }
 
   issuer <- paste0(rtrim_slash(base_url), "/realms/", realm)
 
@@ -401,7 +408,9 @@ oauth_provider_okta <- function(
   auth_server = "default",
   name = "okta"
 ) {
-  stopifnot(nzchar(domain))
+  if (!is_valid_string(domain)) {
+    err_input("domain must be a non-empty string")
+  }
 
   base <- if (grepl("^https?://", domain)) {
     domain
@@ -429,7 +438,9 @@ oauth_provider_okta <- function(
 #'
 #' @export
 oauth_provider_auth0 <- function(domain, name = "auth0", audience = NULL) {
-  stopifnot(nzchar(domain))
+  if (!is_valid_string(domain)) {
+    err_input("domain must be a non-empty string")
+  }
 
   base <- if (grepl("^https?://", domain)) {
     domain

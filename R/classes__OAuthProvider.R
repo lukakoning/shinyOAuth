@@ -475,13 +475,12 @@ oauth_provider <- function(
   )) {
     u_val <- url_arg[[2]]
     if (!is.null(u_val) && (!is.character(u_val) || length(u_val) != 1L)) {
-      stop(
+      err_input(paste0(
         "OAuthProvider: ",
         url_arg[[1]],
         " must be a scalar character string (length 1), not length ",
-        length(u_val),
-        call. = FALSE
-      )
+        length(u_val)
+      ))
     }
   }
 
@@ -537,11 +536,10 @@ oauth_provider <- function(
     !is.null(pkce_method) &&
       (!is.character(pkce_method) || length(pkce_method) != 1L)
   ) {
-    stop(
+    err_input(paste0(
       "OAuthProvider: pkce_method must be a scalar character string (length 1), not length ",
-      length(pkce_method),
-      call. = FALSE
-    )
+      length(pkce_method)
+    ))
   }
   if (is.null(pkce_method) || is.na(pkce_method)) {
     pkce_method <- "S256"
