@@ -1,6 +1,8 @@
-# This file contains the helpers that connect shinyOAuth code to OpenTelemetry.
-# Use them when login, token, module, or async code needs spans or logs without
-# repeating the same value-cleaning and attribute-building rules each time.
+# This file contains the helpers that connect shinyOAuth to OpenTelemetry
+# OpenTelemetry is the tracing and logging system used to observe what code is
+# doing
+# Used for creating spans and logs without repeating cleanup and attribute
+# rules
 
 # 1 Telemetry setup ------------------------------------------------------------
 

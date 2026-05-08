@@ -1,8 +1,8 @@
-# This file contains the helpers that select, inspect, decode, and validate
-# JWK and JWKS key objects.
-# Use them after a JWKS is fetched, when signature verification needs
-# compatible candidate keys, usable public keys, and structural checks on the
-# returned key material.
+# This file contains the helpers that inspect, select, decode, and validate
+# JWK and JWKS key objects
+# A JWK is one public key, and a JWKS is a set of those keys
+# Used for choosing usable verification keys after a provider's key set has
+# been fetched
 
 # 1 JWKS verification helpers --------------------------------------------------
 

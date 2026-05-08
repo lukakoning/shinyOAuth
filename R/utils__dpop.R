@@ -1,7 +1,8 @@
-# This file contains the helpers for DPoP proof creation, nonce challenges,
-# and DPoP-aware request retries.
-# Use them when a client is configured with a DPoP key and outbound requests or
-# token responses need the extra proof-of-possession behavior.
+# This file contains helpers for DPoP proof creation, nonce challenges, and
+# DPoP-aware request retries
+# DPoP ties a token to a client key so a stolen token is harder to replay
+# Used for creating DPoP proofs, handling DPoP nonce challenges, and retrying
+# requests that need a fresh proof
 
 # 1 DPoP helpers ---------------------------------------------------------------
 

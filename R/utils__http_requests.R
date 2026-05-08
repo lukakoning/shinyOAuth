@@ -1,7 +1,7 @@
 # This file contains the shared HTTP request helpers used before talking to
-# providers, discovery endpoints, JWKS endpoints, and downstream APIs.
-# Use them to apply the package's security defaults around redirects, timeouts,
-# body-size limits, and retries.
+# providers and downstream APIs
+# Used for applying the package's defaults for redirects, timeouts, body-size
+# limits, and retries
 
 # 1 HTTP request helpers -------------------------------------------------------
 

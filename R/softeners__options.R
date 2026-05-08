@@ -1,8 +1,7 @@
-# This file contains the environment checks and option checks that soften or
-# relax specific safety protections during tests and interactive debugging.
-# Use these helpers when code needs to branch on test/interactive execution or
-# when a normally strict browser, redirect, signature, or UserInfo safety check
-# has been explicitly softened.
+# This file contains the environment and option checks that relax specific
+# safety protections during tests and debugging
+# Used for branching when strict browser, redirect, signature, or UserInfo
+# checks have been explicitly softened
 
 # 1 Environment helpers --------------------------------------------------------
 

@@ -1,8 +1,8 @@
-# This file contains the inbound JWT helpers that apply ID token validation
-# rules on top of the generic JWT parsing and signature helpers.
-# Use them when a returned ID token must be matched to the expected issuer,
-# audience, nonce, access token, or provider-specific issuer rules such as
-# Microsoft tenant-specific validation.
+# This file contains the helpers that apply ID token validation rules on top of
+# the generic JWT parsing and signature checks
+# An ID token is the signed token that tells the app who logged in
+# Used for checking that token against the expected issuer, audience, nonce,
+# and other provider rules
 
 # 1 Inbound ID token helpers ---------------------------------------------------
 

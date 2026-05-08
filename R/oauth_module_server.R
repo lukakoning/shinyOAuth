@@ -1,6 +1,8 @@
-# This file contains the main Shiny module that runs the browser login session.
-# Use it when you want shinyOAuth to manage redirects, callbacks, token refresh,
-# browser-token cookies, and authenticated session state inside a Shiny app.
+# This file contains the main Shiny module that runs the browser login session
+# It keeps the login flow tied to one browser session from redirect to
+# callback
+# Used for managing redirects, callbacks, token refresh, and authenticated
+# state inside a Shiny app
 
 # 1 Shiny module entry point ---------------------------------------------------
 

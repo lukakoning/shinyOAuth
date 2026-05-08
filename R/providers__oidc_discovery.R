@@ -1,6 +1,8 @@
-# This file contains helpers for OpenID Connect discovery.
-# Use them when a provider publishes a standard metadata document and you want
-# shinyOAuth to fill in endpoints, safety checks, and sensible defaults automatically.
+# This file contains helpers for OpenID Connect discovery
+# OpenID Connect discovery is the standard metadata document that tells a
+# client which endpoints and settings a provider supports
+# Used for building provider objects from that metadata and checking it for
+# safety
 
 # 1 OIDC discovery -------------------------------------------------------------
 

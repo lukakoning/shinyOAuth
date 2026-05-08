@@ -1,7 +1,6 @@
-# This file contains the error-constructor helpers that turn failures into
-# typed shinyOAuth conditions with trace ids and structured context.
-# Use them when code needs a consistent package-specific error class, formatted
-# message, and event emission rather than a plain `stop()`.
+# This file contains error-constructor helpers for shinyOAuth
+# Used for creating package-specific errors with consistent messages, classes,
+# trace ids, and structured context
 
 # 1 Error constructors ---------------------------------------------------------
 

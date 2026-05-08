@@ -1,6 +1,5 @@
-# This file contains package startup hooks and small namespace-level setup.
-# Use it for registrations that must happen when shinyOAuth loads, not for the
-# OAuth flow logic itself.
+# This file contains package startup hooks and small namespace-level setup
+# Used for registrations that must run when shinyOAuth loads
 
 # 1 Package startup ------------------------------------------------------------
 

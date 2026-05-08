@@ -1,7 +1,9 @@
-# This file contains the authenticated encryption helpers for the sealed OAuth
-# state payload.
-# Use them to turn state metadata into an encrypted compact token and to safely
-# decrypt, validate, and normalize that token again during callback handling.
+# This file contains the encryption helpers for the sealed OAuth state
+# payload
+# The state value is the temporary login data sent out during redirect and
+# checked again on callback
+# Used for encrypting that state into a compact token and decrypting it safely
+# during callback handling
 
 # 1 State encryption helpers ---------------------------------------------------
 

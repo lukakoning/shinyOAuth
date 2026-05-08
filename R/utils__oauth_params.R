@@ -1,8 +1,7 @@
 # This file contains small helpers that normalize or inspect OAuth parameter
-# values before they are used in requests, claims enforcement, or provider
-# validation.
-# Use them to keep token auth style, PKCE, response-mode handling, and OIDC
-# claims request parsing consistent across constructors and request builders.
+# values before they are used in requests or validation
+# Used for keeping common protocol parameters consistent across constructors,
+# request builders, and validators
 
 # 1 OAuth parameter helpers ----------------------------------------------------
 

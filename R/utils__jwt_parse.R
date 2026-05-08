@@ -1,7 +1,8 @@
 # This file contains the low-level helpers that parse compact JWTs and verify
-# generic JWS signatures.
-# Use them when code needs strict JWT segment decoding, JOSE header checks, or
-# algorithm-specific signature verification without yet applying ID-token rules.
+# generic JWS signatures
+# A JWT is a compact signed token format used widely in OAuth and OIDC
+# Used for decoding token parts, checking headers, and verifying signatures
+# before higher-level ID token rules are applied
 
 # 1 JWT parsing helpers --------------------------------------------------------
 

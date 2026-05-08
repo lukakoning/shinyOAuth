@@ -1,7 +1,8 @@
-# This file contains the low-level base64url helpers used by JWT, JWKS, DPoP,
-# and sealed state code.
-# Use them when binary data needs the URL-safe base64 encoding required by many
-# OAuth and OpenID Connect specs.
+# This file contains the low-level base64url helpers used by JWT, DPoP, sealed
+# state, and related code
+# Base64url is the URL-safe version of base64 used by many OAuth and OpenID
+# Connect formats
+# Used for encoding and decoding binary data in that format
 
 # 1 Base64url helpers ----------------------------------------------------------
 

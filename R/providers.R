@@ -1,6 +1,6 @@
-# This file contains ready-to-use provider constructors.
-# Use them when you want common provider endpoints and defaults filled in for you
-# instead of building an OAuthProvider object field by field.
+# This file contains ready-to-use provider constructors
+# Used for creating common provider configurations with endpoints and defaults
+# already filled in
 
 # 1 Provider constructors ------------------------------------------------------
 

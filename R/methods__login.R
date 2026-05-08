@@ -1,6 +1,6 @@
-# This file contains the functions that run the login and callback flow.
-# Use them to build the browser redirect, process the provider callback,
-# exchange the returned code for tokens, and validate the returned identity data.
+# This file contains the functions that run the login and callback flow
+# Used for building the browser redirect, processing the provider callback,
+# exchanging the returned code for tokens, and validating identity data
 
 # 1 Authorization request ------------------------------------------------------
 

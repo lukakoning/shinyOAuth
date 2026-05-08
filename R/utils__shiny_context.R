@@ -1,7 +1,7 @@
 # This file contains the helpers that read, capture, normalize, and forward
-# Shiny session context.
-# Use them when login, audit, telemetry, or async worker code needs to keep a
-# connection back to the originating browser session.
+# Shiny session context
+# Used for keeping a link back to the originating browser session during
+# login, audit logging, telemetry, and async work
 
 # 1 Shiny session context helpers ----------------------------------------------
 

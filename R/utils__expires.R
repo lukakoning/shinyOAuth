@@ -1,6 +1,5 @@
-# This file contains small helpers for expiry and timeout numbers.
-# Use them when provider responses or package options omit expiry values or
-# return them in awkward formats that still need safe numeric handling.
+# This file contains small helpers for expiry and timeout values
+# Used for turning missing or awkward expiry values into safe numbers
 
 # 1 Expiry coercion and option helpers -----------------------------------------
 

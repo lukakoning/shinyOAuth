@@ -1,7 +1,9 @@
 # This file contains the helpers that fetch, cache, and policy-check JWKS data
-# from an issuer.
-# Use them when ID token or signed UserInfo validation needs the provider's
-# public keys and the package must enforce issuer, host, and pinning policy.
+# from a provider
+# A JWKS is a provider's published set of public keys used to verify
+# signatures
+# Used for downloading those keys, caching them, and checking issuer, host,
+# and pinning policy before they are trusted
 
 # 1 JWKS fetch and cache helpers -----------------------------------------------
 

@@ -1,7 +1,7 @@
 # This file contains the helpers that discover async backends, dispatch work to
-# them, and replay worker-side conditions on the main process.
-# Use them when login, token, or userinfo code should run away from the main
-# Shiny process without losing diagnostics or trace context.
+# them, and replay worker-side conditions on the main process
+# Used for running login, token, or userinfo work away from the main Shiny
+# process without losing errors, warnings, or trace context
 
 # 1 Async dispatch helpers -----------------------------------------------------
 

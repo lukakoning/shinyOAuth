@@ -1,7 +1,7 @@
 # This file defines the OAuthProvider object that describes the remote OAuth or
-# OpenID Connect server.
-# Use it to keep endpoint URLs, protocol rules, and security checks in one
-# validated object before any login or token requests are sent.
+# OpenID Connect server
+# Used for keeping endpoint URLs, protocol rules, and security checks in one
+# validated object
 
 # 1 OAuth provider class -------------------------------------------------------
 

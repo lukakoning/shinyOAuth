@@ -1,7 +1,6 @@
-# This file defines the OAuthClient object used by login, callback, token, and
-# refresh code.
-# Use it to keep provider settings, client credentials, request options, and
-# state-handling rules in one validated object before the OAuth flow starts.
+# This file defines the OAuthClient object used across the login flow
+# Used for keeping provider settings, client credentials, request options, and
+# state-handling rules in one validated object
 
 # 1 OAuth client class ---------------------------------------------------------
 

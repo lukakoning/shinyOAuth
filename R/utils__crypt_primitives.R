@@ -1,7 +1,7 @@
 # This file contains small cryptographic utility helpers that other auth and
-# state helpers build on.
-# Use them for safe raw-to-hex conversion and constant-time comparisons in
-# places where token or signature material should not leak through timing.
+# state helpers build on
+# Used for constant-time comparisons and small byte-conversion tasks where
+# sensitive data should not leak through timing or formatting
 
 # 1 Cryptographic primitives ---------------------------------------------------
 

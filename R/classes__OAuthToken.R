@@ -1,7 +1,7 @@
-# This file defines the OAuthToken object returned after login, refresh, or
-# other token operations.
-# Use it to keep the access token, optional refresh or ID tokens, expiry time,
-# and fetched user info together in one validated result object.
+# This file defines the OAuthToken object returned by login, refresh, and other
+# token operations
+# Used for storing the access token, optional refresh or ID tokens, expiry
+# time, and fetched user info in one validated result object
 
 # 1 OAuth token class ----------------------------------------------------------
 

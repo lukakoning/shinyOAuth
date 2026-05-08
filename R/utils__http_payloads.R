@@ -1,7 +1,7 @@
 # This file contains helpers that parse and build HTTP payload bodies used by
-# token and related endpoint requests.
-# Use them when form-encoded or JSON payloads need strict parsing rules, input
-# validation, or support for repeated parameter names.
+# token and related endpoint requests
+# Used for handling form-encoded and JSON payloads with strict parsing and
+# validation rules
 
 # 1 Token response parsing -----------------------------------------------------
 

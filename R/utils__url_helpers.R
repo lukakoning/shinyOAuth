@@ -1,9 +1,7 @@
 # This file contains URL builders, normalizers, validation helpers, and host
-# policy checks used across provider setup, discovery, callback handling, and
-# outbound requests.
-# Use them when the code needs to build authorization URLs, normalize issuer or
-# endpoint identifiers, safely parse untrusted URLs, or enforce allowed-host
-# and HTTPS policy.
+# policy checks used across the package
+# Used for building authorization URLs, parsing untrusted URLs, normalizing
+# issuer and endpoint values, and enforcing allowed-host and HTTPS rules
 
 # 1 URL entry points -----------------------------------------------------------
 

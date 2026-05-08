@@ -1,7 +1,7 @@
-# This file contains helpers for generating and validating random protocol
-# values such as state, nonce, PKCE verifiers, and browser tokens.
-# Use them anywhere the OAuth flow needs high-entropy values or needs to check
-# that returned browser or callback values match the expected format.
+# This file contains helpers for generating and validating random values used
+# during the login flow
+# Used for creating and checking state values, nonces, code verifiers, and
+# browser-session tokens
 
 # 1 Random and token validation helpers ----------------------------------------
 

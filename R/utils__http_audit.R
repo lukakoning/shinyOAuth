@@ -1,7 +1,7 @@
-# This file contains helpers that turn raw HTTP request data into a safe summary
-# for audit events.
-# Use them when request context should be logged or traced without leaking OAuth
-# codes, tokens, cookies, or proxy details.
+# This file contains helpers that turn raw HTTP request data into a safe
+# summary for audit events
+# Used for logging request context without leaking codes, tokens, cookies, or
+# proxy details
 
 # 1 HTTP audit helpers ---------------------------------------------------------
 

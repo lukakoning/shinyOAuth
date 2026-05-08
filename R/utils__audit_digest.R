@@ -1,7 +1,7 @@
 # This file contains the helpers that hash sensitive values before they are
-# written to audit logs or telemetry.
-# Use them when an identifier needs to stay stable enough for correlation but
-# should not be logged in plaintext.
+# written to audit logs or telemetry
+# Used for keeping identifiers stable enough for correlation without logging
+# them in plain text
 
 # 1 Audit digests --------------------------------------------------------------
 

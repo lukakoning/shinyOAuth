@@ -1,8 +1,7 @@
 # This file contains small validation and coercion helpers shared across many
-# other files.
-# Use them for common checks such as string validity, cookie-path safety, and
-# callback query size limits, so higher-level OAuth code stays focused on flow
-# logic instead of repetitive guard clauses.
+# other files
+# Used for common checks such as string validity, cookie-path safety, and
+# callback query size limits
 
 # 1 Shared validators ----------------------------------------------------------
 

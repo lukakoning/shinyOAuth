@@ -1,7 +1,8 @@
 # This file contains helpers that normalize, validate, and finalize OAuth or
-# OIDC scope values.
-# Use them when scope input may come from user code in a few shapes and the
-# package needs one clean token vector for requests and later validation.
+# OIDC scope values
+# Scopes are the named permissions or identity fields a client asks for
+# Used for turning user input into one clean scope vector for requests and
+# later validation
 
 # 1 Scope helpers --------------------------------------------------------------
 

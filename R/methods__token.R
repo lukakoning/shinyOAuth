@@ -1,6 +1,7 @@
-# This file contains the token lifecycle functions that run after login succeeds.
-# Use them to revoke tokens, ask a provider whether a token is still active,
-# or refresh a session without sending the user through login again.
+# This file contains the token lifecycle functions that run after login
+# succeeds
+# Used for refreshing tokens, revoking tokens, and checking whether a token is
+# still active
 
 # 1 Token lifecycle and response policy ----------------------------------------
 

@@ -1,7 +1,6 @@
-# This file contains the helpers that create, carry, and restore trace ids for
-# errors and audit events.
-# Use them when one failure or event needs a stable id that can be reused across
-# nested helpers, warnings, logs, and rethrown conditions.
+# This file contains helpers that create, carry, and restore trace ids
+# Used for giving related errors, warnings, logs, and audit events the same
+# stable identifier
 
 # 1 Trace context --------------------------------------------------------------
 

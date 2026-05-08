@@ -1,7 +1,9 @@
 # This file contains the helpers for mutual TLS client authentication,
-# certificate-bound access tokens, and mTLS endpoint selection.
-# Use them when shinyOAuth needs to choose an mTLS alias endpoint, attach a
-# client certificate, or confirm that a sender-constrained token matches it.
+# certificate-bound access tokens, and mTLS endpoint selection
+# Mutual TLS uses client certificates so the server can verify which client is
+# making the request
+# Used for choosing mTLS endpoints, attaching client certificates, and
+# checking that a certificate-bound token matches the certificate
 
 # 1 Mutual TLS helpers ---------------------------------------------------------
 

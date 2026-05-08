@@ -1,7 +1,8 @@
 # This file contains the helpers that fetch UserInfo responses and validate
-# signed UserInfo JWTs.
-# Use them when an access token should be turned into profile claims, or when a
-# provider returns `application/jwt` and those claims must be verified first.
+# signed UserInfo results
+# The UserInfo endpoint returns profile data about the signed-in user
+# Used for fetching that profile data and verifying it when a provider signs
+# it
 
 # 1 UserInfo methods -----------------------------------------------------------
 

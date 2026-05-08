@@ -1,7 +1,8 @@
 # This file contains the outbound JWT signing helpers used for client
-# assertions, signed authorization requests, and related signing decisions.
-# Use them when shinyOAuth must create a JWT, choose a compatible signing
-# algorithm, or normalize private-key input before signing.
+# assertions, signed authorization requests, and related signing decisions
+# A JWT is a compact token format that can be signed to prove who created it
+# Used for creating signed JWTs, choosing a compatible signing algorithm, and
+# normalizing private-key input before signing
 
 # 1 Outbound JWT signing helpers -----------------------------------------------
 

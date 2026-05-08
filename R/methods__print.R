@@ -1,6 +1,6 @@
-# This file contains the format() and print() helpers for shinyOAuth objects.
-# Use them to keep console output readable while still hiding secrets and other
-# nested internals that would be noisy or unsafe to print in full.
+# This file contains the format() and print() helpers for shinyOAuth objects
+# Used for producing readable console output without printing secrets or noisy
+# internal details in full
 
 # 1 Print helpers --------------------------------------------------------------
 

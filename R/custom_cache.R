@@ -1,7 +1,7 @@
-# This file contains the helper for building custom cache backends that look
-# like `cachem` objects to shinyOAuth.
-# Use it when state or JWKS data should live in a shared backend instead of the
-# default in-memory cache.
+# This file contains the helper for building custom cache backends for
+# shinyOAuth
+# Used for storing login state or provider signing keys in a shared backend
+# instead of the default in-memory cache
 
 # 1 Custom cache helper --------------------------------------------------------
 

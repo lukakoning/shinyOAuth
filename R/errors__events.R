@@ -1,7 +1,6 @@
-# This file contains the event and audit helpers used when shinyOAuth records
-# what happened during login, token, and callback flows.
-# Use them to build one structured event, enrich it with session context, and
-# send it to the configured hooks and OpenTelemetry logging bridge.
+# This file contains event and audit helpers for shinyOAuth
+# Used for recording what happened during login, token, and callback flows in a
+# structured way
 
 # 1 Event helpers --------------------------------------------------------------
 

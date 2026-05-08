@@ -1,7 +1,7 @@
 # This file contains the helpers that propagate shinyOAuth and OpenTelemetry
-# configuration into reused async workers.
-# Use them when async work should see the same package options, digest keys,
-# and OTEL exporter setup as the main Shiny process.
+# configuration into reused async workers
+# Used for giving async workers the same package options, digest keys, and
+# telemetry setup as the main Shiny process
 
 # 1 Async option and OTEL propagation ------------------------------------------
 

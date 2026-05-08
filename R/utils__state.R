@@ -1,6 +1,8 @@
-# This file contains helpers for the sealed login state and the state store.
-# Use them during callback handling to decrypt the saved state, confirm it still
-# matches the login that started earlier, and consume the single-use state entry.
+# This file contains helpers for the sealed login state and the state store
+# The state value is the temporary login data that is created before redirect
+# and checked again on callback
+# Used for decrypting saved state, matching it to the original login, and
+# consuming the single-use state entry
 
 # 1 State payload helpers ------------------------------------------------------
 

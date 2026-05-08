@@ -1,6 +1,7 @@
-# This file contains the UI-side helpers for the browser JavaScript dependency.
-# Use them to load the browser code that can redirect, manage the browser token,
-# and warn when that dependency was forgotten.
+# This file contains the UI-side helpers for the browser JavaScript dependency
+# That browser code handles redirects and keeps the login flow tied to the
+# current browser session
+# Used for adding the shinyOAuth JavaScript dependency to a Shiny UI
 
 # 1 UI dependency helper -------------------------------------------------------
 
