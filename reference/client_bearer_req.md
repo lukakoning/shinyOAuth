@@ -67,8 +67,8 @@ client_bearer_req(
   Logical. If `TRUE` (the default), validates `url` against
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   before attaching the access token. This rejects relative URLs, plain
-  HTTP to non-loopback hosts, and – when
-  `options(shinyOAuth.allowed_hosts)` is set – hosts outside the
+  HTTP to non-loopback hosts, and when
+  `options(shinyOAuth.allowed_hosts)` is set, hosts outside the
   allowlist. Set to `FALSE` only if you have already validated the URL
   and understand the security implications.
 
@@ -99,6 +99,15 @@ client_bearer_req(
 An httr2 request object, ready to be further customized or performed
 with
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
+
+## Side effects
+
+This function does not perform network I/O. It reads shinyOAuth package
+options through
+[`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
+and HTTP-default helpers, may emit warnings when unsafe custom auth
+headers are ignored, and may read configured mTLS certificate files when
+validating certificate-bound access tokens.
 
 ## Examples
 

@@ -110,8 +110,8 @@ understand the security implications.</p></dd>
 <dt id="arg-check-url">check_url<a class="anchor" aria-label="anchor" href="#arg-check-url"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (the default), validates <code>url</code> against
 <code><a href="is_ok_host.html">is_ok_host()</a></code> before attaching the access token. This rejects relative
-URLs, plain HTTP to non-loopback hosts, and – when
-<code>options(shinyOAuth.allowed_hosts)</code> is set – hosts outside the allowlist.
+URLs, plain HTTP to non-loopback hosts, and when
+<code>options(shinyOAuth.allowed_hosts)</code> is set, hosts outside the allowlist.
 Set to <code>FALSE</code> only if you have already validated the URL and understand
 the security implications.</p></dd>
 
@@ -140,6 +140,15 @@ request. This is primarily useful after a resource server challenges with
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An httr2 request object, ready to be further customized or
 performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="side-effects">Side effects<a class="anchor" aria-label="anchor" href="#side-effects"></a></h2>
+
+
+<p>This function does not perform network I/O. It reads shinyOAuth package
+options through <code><a href="is_ok_host.html">is_ok_host()</a></code> and HTTP-default helpers, may emit warnings
+when unsafe custom auth headers are ignored, and may read configured mTLS
+certificate files when validating certificate-bound access tokens.</p>
     </div>
 
     <div class="section level2">
