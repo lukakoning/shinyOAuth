@@ -118,7 +118,8 @@ test_that("oauth_provider rejects vector pkce_method", {
       token_url = "https://example.com/token",
       pkce_method = c("S256", "plain")
     ),
-    "pkce_method must be a scalar character string"
+    "pkce_method must be a scalar character string",
+    class = "shinyOAuth_input_error"
   )
 })
 
@@ -163,27 +164,7 @@ test_that("oauth_provider rejects vector auth_url", {
       auth_url = c("https://a.com/auth", "https://b.com/auth"),
       token_url = "https://example.com/token"
     ),
-    "auth_url must be a scalar character string"
-  )
-})
-
-test_that("oauth_provider constructor input guards raise typed errors", {
-  expect_error(
-    oauth_provider(
-      name = "test",
-      auth_url = c("https://a.com/auth", "https://b.com/auth"),
-      token_url = "https://example.com/token"
-    ),
-    class = "shinyOAuth_input_error"
-  )
-
-  expect_error(
-    oauth_provider(
-      name = "test",
-      auth_url = "https://example.com/auth",
-      token_url = "https://example.com/token",
-      pkce_method = c("S256", "plain")
-    ),
+    "auth_url must be a scalar character string",
     class = "shinyOAuth_input_error"
   )
 })
@@ -195,7 +176,8 @@ test_that("oauth_provider rejects vector token_url", {
       auth_url = "https://example.com/auth",
       token_url = c("https://a.com/token", "https://b.com/token")
     ),
-    "token_url must be a scalar character string"
+    "token_url must be a scalar character string",
+    class = "shinyOAuth_input_error"
   )
 })
 
@@ -207,7 +189,8 @@ test_that("oauth_provider rejects vector userinfo_url", {
       token_url = "https://example.com/token",
       userinfo_url = c("https://a.com/u", "https://b.com/u")
     ),
-    "userinfo_url must be a scalar character string"
+    "userinfo_url must be a scalar character string",
+    class = "shinyOAuth_input_error"
   )
 })
 
@@ -219,7 +202,8 @@ test_that("oauth_provider rejects vector introspection_url", {
       token_url = "https://example.com/token",
       introspection_url = c("https://a.com/i", "https://b.com/i")
     ),
-    "introspection_url must be a scalar character string"
+    "introspection_url must be a scalar character string",
+    class = "shinyOAuth_input_error"
   )
 })
 
@@ -231,7 +215,8 @@ test_that("oauth_provider rejects vector revocation_url", {
       token_url = "https://example.com/token",
       revocation_url = c("https://a.com/r", "https://b.com/r")
     ),
-    "revocation_url must be a scalar character string"
+    "revocation_url must be a scalar character string",
+    class = "shinyOAuth_input_error"
   )
 })
 

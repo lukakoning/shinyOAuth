@@ -402,36 +402,41 @@ test_that("oauth_provider_slack constructs correct issuer", {
 # ── Input validation for discovery-based providers ──────────────────────────
 
 test_that("oauth_provider_keycloak rejects empty base_url and realm", {
-  expect_error(oauth_provider_keycloak(base_url = "", realm = "r"))
-  expect_error(oauth_provider_keycloak(
-    base_url = "http://localhost",
-    realm = ""
-  ))
+  expect_error(
+    oauth_provider_keycloak(base_url = "", realm = "r"),
+    "base_url must be a non-empty string",
+    class = "shinyOAuth_input_error"
+  )
+  expect_error(
+    oauth_provider_keycloak(
+      base_url = "http://localhost",
+      realm = ""
+    ),
+    "realm must be a non-empty string",
+    class = "shinyOAuth_input_error"
+  )
 })
 
 test_that("oauth_provider_okta rejects empty domain", {
-  expect_error(oauth_provider_okta(domain = ""))
+  expect_error(
+    oauth_provider_okta(domain = ""),
+    "domain must be a non-empty string",
+    class = "shinyOAuth_input_error"
+  )
 })
 
 test_that("oauth_provider_auth0 rejects empty domain", {
-  expect_error(oauth_provider_auth0(domain = ""))
-})
-
-test_that("exported provider helper validation errors are typed", {
-  expect_error(
-    oauth_provider_microsoft(tenant = ""),
-    class = "shinyOAuth_input_error"
-  )
-  expect_error(
-    oauth_provider_keycloak(base_url = "", realm = "r"),
-    class = "shinyOAuth_input_error"
-  )
-  expect_error(
-    oauth_provider_okta(domain = ""),
-    class = "shinyOAuth_input_error"
-  )
   expect_error(
     oauth_provider_auth0(domain = ""),
+    "domain must be a non-empty string",
+    class = "shinyOAuth_input_error"
+  )
+})
+
+test_that("oauth_provider_microsoft rejects empty tenant with typed error", {
+  expect_error(
+    oauth_provider_microsoft(tenant = ""),
+    "tenant must be a non-empty string",
     class = "shinyOAuth_input_error"
   )
 })
