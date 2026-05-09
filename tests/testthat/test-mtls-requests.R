@@ -542,7 +542,10 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
     tls_client_cert_thumbprint_s256 = function(...) {
       stop("thumbprint check should not run for revocation")
     },
-    req_with_dpop_retry = function(req, ...) {
+    req_with_dpop_retry = function(...) {
+      stop("DPoP retry should not run for revocation")
+    },
+    req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
         url = req$url,
@@ -606,7 +609,10 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
     tls_client_cert_thumbprint_s256 = function(...) {
       stop("thumbprint check should not run for introspection")
     },
-    req_with_dpop_retry = function(req, ...) {
+    req_with_dpop_retry = function(...) {
+      stop("DPoP retry should not run for introspection")
+    },
+    req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
         url = req$url,
@@ -1127,7 +1133,10 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
       expect_identical(cert_file, files$cert_file)
       "thumbprint"
     },
-    req_with_dpop_retry = function(req, ...) {
+    req_with_dpop_retry = function(...) {
+      stop("DPoP retry should not run for revocation or introspection")
+    },
+    req_with_retry = function(req, ...) {
       captured_urls <<- c(captured_urls, as.character(req$url))
       captured_reqs[[length(captured_urls)]] <<- req
 
