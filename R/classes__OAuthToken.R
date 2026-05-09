@@ -23,7 +23,9 @@
 #' @param cnf Optional confirmation claim set returned alongside a
 #'   sender-constrained access token. For RFC 8705 certificate-bound tokens,
 #'   this may contain `x5t#S256` with the SHA-256 thumbprint of the client
-#'   certificate that must accompany later requests.
+#'   certificate that must accompany later requests. For DPoP-bound tokens,
+#'   this may contain `jkt` with the RFC 7638 thumbprint of the public JWK
+#'   bound to the token.
 #' @param granted_scopes Normalized scope tokens currently associated with the
 #'   access token. When a provider omits `scope` in a token response,
 #'   shinyOAuth carries forward the best-known scope set instead of dropping it.
@@ -165,6 +167,13 @@ oauth_token_validate <- function(self) {
   if (!is.null(thumbprint) && !is_valid_string(thumbprint)) {
     return(
       "OAuthToken: cnf$x5t#S256 must be a non-empty string when supplied"
+    )
+  }
+
+  dpop_jkt <- self@cnf[["jkt"]] %||% NULL
+  if (!is.null(dpop_jkt) && !is_valid_string(dpop_jkt)) {
+    return(
+      "OAuthToken: cnf$jkt must be a non-empty string when supplied"
     )
   }
 

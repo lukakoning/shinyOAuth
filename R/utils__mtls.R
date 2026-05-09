@@ -334,11 +334,18 @@ normalize_token_cnf <- function(cnf) {
   }
 
   thumbprint <- cnf[["x5t#S256"]] %||% NA_character_
-  if (!is_valid_string(thumbprint)) {
+  dpop_jkt <- cnf[["jkt"]] %||% NA_character_
+
+  normalized <- compact_list(list(
+    `x5t#S256` = if (is_valid_string(thumbprint)) thumbprint else NULL,
+    jkt = if (is_valid_string(dpop_jkt)) dpop_jkt else NULL
+  ))
+
+  if (!length(normalized)) {
     return(list())
   }
 
-  list(`x5t#S256` = thumbprint)
+  normalized
 }
 
 #' Parse cnf data from an access token

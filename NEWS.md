@@ -93,6 +93,8 @@ previews instead of exposing full credential material in default console output.
 explicitly returned and ones that were carried forward when the provider omitted
 `scope`. Refresh now preserves prior granted scopes instead of widening back to
 the client's configured scopes when a refresh response omits `scope`.
+  The shared token model also preserves DPoP `cnf.jkt` confirmation data now,
+  instead of keeping only the mTLS `cnf.x5t#S256` thumbprint.
 
 * `oauth_client()` (`OAuthClient`) now:
   - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207 `iss` 
