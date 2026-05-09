@@ -92,6 +92,64 @@ test_that("DPoP clients keep empty allowed_token_types as a callback opt-out", {
   expect_identical(token@access_token, "t")
 })
 
+test_that("callback carries forward effective DPoP token_type for userinfo when omitted", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@allowed_token_types <- character(0)
+  prov@userinfo_url <- "https://example.com/userinfo"
+  prov@userinfo_required <- TRUE
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen(),
+    dpop_require_access_token = FALSE
+  )
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  seen <- new.env(parent = emptyenv())
+  seen$token_type <- NA_character_
+
+  token <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "t",
+        cnf = list(jkt = shinyOAuth:::client_dpop_jkt(cli)),
+        expires_in = 5
+      )
+    },
+    get_userinfo = function(
+      oauth_client,
+      token,
+      token_type = NULL,
+      shiny_session = NULL
+    ) {
+      seen$token_type <- token@token_type
+      list(sub = "user-1")
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "ok",
+      payload = enc,
+      browser_token = tok
+    )
+  )
+
+  expect_identical(seen$token_type, "DPoP")
+  expect_identical(token@token_type, "DPoP")
+  expect_identical(token@userinfo$sub, "user-1")
+})
+
 test_that("DPoP clients keep empty allowed_token_types as a refresh opt-out", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- character(0)

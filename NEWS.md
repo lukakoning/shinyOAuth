@@ -5,6 +5,11 @@ now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
 `token_type = "DPoP"` when the server returns it.
 
+* Callback login now preserves DPoP sender-constraint semantics when a
+provider returns a DPoP-bound access token via `cnf.jkt` but omits
+`token_type`, so login-time UserInfo fetches and returned `OAuthToken`
+objects still use DPoP.
+
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 

@@ -1268,6 +1268,10 @@ handle_callback_internal <- function(
         requested_scopes = payload$scopes %||% NULL,
         shiny_session = shiny_session
       )
+      effective_token_type <- resolve_effective_access_token_type(
+        oauth_client,
+        token_set = token_set
+      )
 
       # Fetch userinfo -------------------------------------------------------------
 
@@ -1277,7 +1281,7 @@ handle_callback_internal <- function(
       if (isTRUE(oauth_client@provider@userinfo_required)) {
         userinfo_token <- OAuthToken(
           access_token = token_set[["access_token"]],
-          token_type = token_set$token_type %||% NA_character_,
+          token_type = effective_token_type,
           userinfo = list(),
           cnf = resolve_token_cnf(
             cnf = token_set$cnf,
@@ -1312,7 +1316,7 @@ handle_callback_internal <- function(
       token <- OAuthToken(
         access_token = token_set[["access_token"]] %||%
           err_token("Token response missing access_token"),
-        token_type = token_set$token_type %||% NA_character_,
+        token_type = effective_token_type,
         refresh_token = token_set$refresh_token %||% NA_character_,
         expires_at = if (
           is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
@@ -2379,6 +2383,56 @@ verify_token_type_allowlist <- function(client, token_set) {
   }
 
   invisible(TRUE)
+}
+
+#' Resolve the effective access token type
+#'
+#' Used after token-response policy checks so later UserInfo and resource
+#' helpers preserve DPoP sender-constraint behavior even when permissive
+#' providers omit `token_type`.
+#'
+#' @param oauth_client [OAuthClient] whose DPoP configuration may imply DPoP.
+#' @param token_set Token response list containing `token_type`,
+#'   `access_token`, and optional `cnf`.
+#' @param prior_token_type Optional prior token type to carry forward when the
+#'   current token response omits `token_type`.
+#' @return Scalar token type string, or `NA_character_` when no effective type
+#'   can be derived.
+#' @keywords internal
+#' @noRd
+resolve_effective_access_token_type <- function(
+  oauth_client,
+  token_set,
+  prior_token_type = NULL
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!is.list(token_set)) {
+    err_token("Invalid token set: must be a list")
+  }
+
+  effective_token_type <- token_set$token_type %||% NA_character_
+  if (!is_valid_string(effective_token_type)) {
+    effective_token_type <- prior_token_type %||% NA_character_
+  }
+  if (
+    !is_valid_string(effective_token_type) &&
+      client_has_dpop(oauth_client) &&
+      is_valid_string(token_cnf_jkt(
+        access_token = token_set$access_token,
+        cnf = token_set$cnf
+      ))
+  ) {
+    # Providers may omit token_type when allowed_token_types is empty.
+    # Preserve DPoP sender-constraint semantics for immediate userinfo.
+    effective_token_type <- "DPoP"
+  }
+
+  if (is_valid_string(effective_token_type)) {
+    return(as.character(effective_token_type))
+  }
+
+  NA_character_
 }
 
 # 4 Refresh continuity helpers -------------------------------------------------
