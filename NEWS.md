@@ -26,6 +26,11 @@ token exchange/refresh, userinfo/introspection/revocation, and session-end
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
 
+* JWKS caching now respects tightened global host policy immediately. Cached
+entries are scoped to the current `allowed_hosts` /
+`allowed_non_https_hosts` settings, and cache hits re-check the stored
+`jwks_uri` before a JWKS is trusted.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
@@ -53,6 +58,9 @@ information.
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
   session is already authenticated.
+  - Fails cleanly at startup when `revoke_on_session_end = TRUE` but the
+  provider does not expose a `revocation_url`, instead of crashing while
+  formatting that configuration error.
   - Applies the browser-token double-submit check to
   OAuth error callbacks too, deferring `?error=...` handling until the browser
   token is available and treating browser-token mismatches as `invalid_state`
@@ -655,11 +663,3 @@ to further clarify this.
 # shinyOAuth 0.1.1
 
 * Initial CRAN submission.
-* JWKS caching now respects tightened global host policy immediately. Cached
-entries are scoped to the current `allowed_hosts` /
-`allowed_non_https_hosts` settings, and cache hits re-check the stored
-`jwks_uri` before a JWKS is trusted.
-
-  - Fails cleanly at startup when `revoke_on_session_end = TRUE` but the
-  provider does not expose a `revocation_url`, instead of crashing while
-  formatting that configuration error.
