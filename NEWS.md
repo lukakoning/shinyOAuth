@@ -10,6 +10,10 @@ provider returns a DPoP-bound access token via `cnf.jkt` but omits
 `token_type`, so login-time UserInfo fetches and returned `OAuthToken`
 objects still use DPoP.
 
+* `get_userinfo()` now honors an explicit `token_type` override when an
+`OAuthToken` object carries a missing `token_type`, so callers can still force
+the DPoP request path for repaired token objects.
+
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 
