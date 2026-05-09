@@ -233,14 +233,15 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
     prov,
     dpop_private_key = make_dpop_private_key()
   )
-  wrong_key_resp <- shinyOAuth::client_bearer_req(
-    login$token,
-    prov@userinfo_url,
-    oauth_client = attacker_client
-  ) |>
-    httr2::req_error(is_error = function(resp) FALSE) |>
-    httr2::req_perform()
-  expect_keycloak_dpop_rejection(wrong_key_resp)
+  testthat::expect_error(
+    shinyOAuth::client_bearer_req(
+      login$token,
+      prov@userinfo_url,
+      oauth_client = attacker_client
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "cnf\\.jkt thumbprint"
+  )
 })
 
 testthat::test_that("DPoP strict guard fails closed on a real Keycloak Bearer response", {

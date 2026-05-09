@@ -103,17 +103,15 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
     prov,
     dpop_private_key = make_dpop_private_key()
   )
-  wrong_key_resp <- shinyOAuth::client_bearer_req(
-    login$token,
-    resource$url,
-    oauth_client = attacker_client
-  ) |>
-    httr2::req_error(is_error = function(resp) FALSE) |>
-    httr2::req_perform()
-  wrong_key_body <- httr2::resp_body_json(wrong_key_resp, simplifyVector = TRUE)
-
-  testthat::expect_identical(httr2::resp_status(wrong_key_resp), 401L)
-  testthat::expect_identical(wrong_key_body$error, "dpop_key_mismatch")
+  testthat::expect_error(
+    shinyOAuth::client_bearer_req(
+      login$token,
+      resource$url,
+      oauth_client = attacker_client
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "cnf\\.jkt thumbprint"
+  )
 
   replay_req <- shinyOAuth::client_bearer_req(
     login$token,

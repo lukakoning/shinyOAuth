@@ -1622,7 +1622,7 @@ otel_async_daemon("introspect_token async exports correlated spans from a real d
   app$post("/introspect", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(active = TRUE))
+    res$send('{"active":true}')
   })
   srv <- webfakes::local_app_process(app)
 

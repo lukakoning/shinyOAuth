@@ -219,8 +219,11 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
   skip_mtls_common()
   local_test_options()
 
-  prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
-  prov@userinfo_required <- FALSE
+  prov <- make_mtls_provider(
+    token_auth_style = "tls_client_auth",
+    userinfo_required = FALSE,
+    userinfo_id_token_match = FALSE
+  )
   client <- make_mtls_confidential_client(prov)
 
   login <- perform_mtls_module_login(client)
