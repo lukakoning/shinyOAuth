@@ -22,6 +22,115 @@ client_has_dpop <- function(client) {
   !is.null(client@dpop_private_key)
 }
 
+# Cache DPoP nonces per request origin and client key so later requests can
+# reuse server-provided nonces without waiting for another challenge.
+dpop_nonce_cache_env <- new.env(parent = emptyenv())
+
+#' Build a DPoP nonce cache key
+#'
+#' Used when DPoP nonces are memoized between requests.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @param url Request URL whose origin scopes the cached nonce.
+#' @return Cache key string, or `NA_character_` when no usable key can be
+#'   derived.
+#' @keywords internal
+#' @noRd
+dpop_nonce_cache_key <- function(client, url) {
+  if (
+    !S7::S7_inherits(client, class = OAuthClient) || !client_has_dpop(client)
+  ) {
+    return(NA_character_)
+  }
+  if (!is_valid_string(url)) {
+    return(NA_character_)
+  }
+
+  parsed <- try(httr2::url_parse(url), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(NA_character_)
+  }
+  if (
+    !is_valid_string(parsed$scheme %||% NULL) ||
+      !is_valid_string(parsed$hostname %||% NULL)
+  ) {
+    return(NA_character_)
+  }
+
+  parsed$username <- NULL
+  parsed$password <- NULL
+  parsed$path <- "/"
+  parsed$query <- NULL
+  parsed$fragment <- NULL
+
+  origin <- try(httr2::url_build(parsed), silent = TRUE)
+  if (inherits(origin, "try-error") || !is_valid_string(origin)) {
+    return(NA_character_)
+  }
+
+  client_id_key <- string_digest(client@client_id, key = NULL)
+  dpop_jkt <- try(
+    compute_jwk_thumbprint(
+      dpop_public_jwk(resolve_dpop_private_key(client))
+    ),
+    silent = TRUE
+  )
+  if (!is_valid_string(client_id_key) || inherits(dpop_jkt, "try-error")) {
+    return(NA_character_)
+  }
+  if (!is_valid_string(dpop_jkt)) {
+    return(NA_character_)
+  }
+
+  paste(origin, client_id_key, dpop_jkt, sep = "::")
+}
+
+#' Read a cached DPoP nonce
+#'
+#' Used before building a DPoP proof when the caller did not supply a nonce.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @param url Request URL whose origin scopes the cached nonce.
+#' @return Cached nonce string, or `NULL` when no usable cached nonce exists.
+#' @keywords internal
+#' @noRd
+dpop_nonce_cache_get <- function(client, url) {
+  cache_key <- dpop_nonce_cache_key(client, url)
+  if (!is_valid_string(cache_key)) {
+    return(NULL)
+  }
+  if (!exists(cache_key, envir = dpop_nonce_cache_env, inherits = FALSE)) {
+    return(NULL)
+  }
+
+  nonce <- get(cache_key, envir = dpop_nonce_cache_env, inherits = FALSE)
+  if (!is_valid_string(nonce)) {
+    return(NULL)
+  }
+
+  nonce
+}
+
+#' Store a DPoP nonce in the cache
+#'
+#' Used after a DPoP-protected response provides a fresh nonce.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @param url Request URL whose origin scopes the cached nonce.
+#' @param nonce DPoP nonce to cache.
+#' @return Invisibly returns `nonce`.
+#' @keywords internal
+#' @noRd
+dpop_nonce_cache_set <- function(client, url, nonce) {
+  cache_key <- dpop_nonce_cache_key(client, url)
+  if (!(is_valid_string(cache_key) && is_valid_string(nonce))) {
+    return(invisible(nonce))
+  }
+
+  assign(cache_key, nonce, envir = dpop_nonce_cache_env)
+  invisible(nonce)
+}
+
 #' Detect a DPoP token type
 #'
 #' Used after token responses are parsed.
@@ -271,9 +380,12 @@ req_add_dpop_proof <- function(
   }
 
   method <- req$method %||% "GET"
-  url <- req$url %||% NA_character_
+  url <- req[["url"]] %||% NA_character_
   if (!is_valid_string(url)) {
     err_config("Request URL missing while building DPoP proof")
+  }
+  if (!is_valid_string(nonce)) {
+    nonce <- dpop_nonce_cache_get(client, url) %||% NULL
   }
 
   httr2::req_headers(
@@ -370,21 +482,27 @@ req_with_dpop_retry <- function(
     return(req_with_retry(req, idempotent = idempotent))
   }
 
+  url <- req[["url"]] %||% NA_character_
+
   resp <- req_with_retry(
     req_add_dpop_proof(req, client, access_token = access_token),
     idempotent = idempotent
   )
 
+  nonce <- resp_get_dpop_nonce(resp)
+  if (is_valid_string(nonce)) {
+    dpop_nonce_cache_set(client, url, nonce)
+  }
+
   if (!resp_is_dpop_nonce_challenge(resp)) {
     return(resp)
   }
 
-  nonce <- resp_get_dpop_nonce(resp)
   if (!is_valid_string(nonce)) {
     return(resp)
   }
 
-  req_with_retry(
+  resp <- req_with_retry(
     req_add_dpop_proof(
       req,
       client,
@@ -393,4 +511,11 @@ req_with_dpop_retry <- function(
     ),
     idempotent = idempotent
   )
+
+  next_nonce <- resp_get_dpop_nonce(resp)
+  if (is_valid_string(next_nonce)) {
+    dpop_nonce_cache_set(client, url, next_nonce)
+  }
+
+  resp
 }
