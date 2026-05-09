@@ -71,6 +71,8 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  authorization_request_mode <span class="op">=</span> <span class="st">"parameters"</span>,</span>
 <span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  authorization_request_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  authorization_request_ttl <span class="op">=</span> <span class="fl">120</span>,</span>
+<span>  authorization_request_nbf_skew <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -214,6 +216,20 @@ signed authorization requests.</p></dd>
 used in signed authorization requests. By default, shinyOAuth uses the
 provider issuer when available and otherwise falls back to the authorization
 endpoint URL.</p></dd>
+
+
+<dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>
+<dd><p>Positive number of seconds to keep signed
+authorization request objects (<code>request</code> JWTs) valid. Default is <code>120</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-nbf-skew">authorization_request_nbf_skew<a class="anchor" aria-label="anchor" href="#arg-authorization-request-nbf-skew"></a></dt>
+<dd><p>Optional non-negative number of
+seconds. When provided, shinyOAuth adds an <code>nbf</code> claim set to
+<code>iat - authorization_request_nbf_skew</code> so deployments can tolerate small
+clock skew while still emitting bounded request-object validity windows.
+Leave <code>NULL</code> (the default) to omit <code>nbf</code> unless you supply one explicitly
+through extra authorization parameters.</p></dd>
 
 
 <dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>

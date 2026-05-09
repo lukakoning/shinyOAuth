@@ -86,7 +86,9 @@ the package's standard HTTP defaults (timeout and User-Agent).</p>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>Optional HTTP method (character). Defaults to "GET".</p></dd>
+<dd><p>Optional HTTP method (character). Defaults to "GET". When
+the effective token type is <code>DPoP</code>, this must be the final request method
+because the proof is signed against it.</p></dd>
 
 
 <dt id="arg-headers">headers<a class="anchor" aria-label="anchor" href="#arg-headers"></a></dt>
@@ -139,8 +141,11 @@ request. This is primarily useful after a resource server challenges with
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An httr2 request object, ready to be further customized or
-performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>.</p>
+    <p>An httr2 request object, ready to be performed with
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>. Callers may still add headers or query
+parameters, but when the effective token type is <code>DPoP</code> they must not
+change the request method or base URL after calling
+<code>client_bearer_req()</code> because the proof is already bound to those values.</p>
     </div>
     <div class="section level2">
     <h2 id="side-effects">Side effects<a class="anchor" aria-label="anchor" href="#side-effects"></a></h2>
@@ -150,6 +155,14 @@ performed with <code><a href="https://httr2.r-lib.org/reference/req_perform.html
 options through <code><a href="is_ok_host.html">is_ok_host()</a></code> and HTTP-default helpers, may emit warnings
 when unsafe custom auth headers are ignored, and may read configured mTLS
 certificate files when validating certificate-bound access tokens.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="dpop-note">DPoP note<a class="anchor" aria-label="anchor" href="#dpop-note"></a></h2>
+
+
+<p>DPoP proofs bind the current HTTP method and target URI (without query or
+fragment). Adding query parameters after <code>client_bearer_req()</code> is fine, but
+changing the method, scheme, host, or path invalidates the proof.</p>
     </div>
 
     <div class="section level2">

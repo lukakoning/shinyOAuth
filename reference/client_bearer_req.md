@@ -42,7 +42,9 @@ client_bearer_req(
 
 - method:
 
-  Optional HTTP method (character). Defaults to "GET".
+  Optional HTTP method (character). Defaults to "GET". When the
+  effective token type is `DPoP`, this must be the final request method
+  because the proof is signed against it.
 
 - headers:
 
@@ -97,9 +99,12 @@ client_bearer_req(
 
 ## Value
 
-An httr2 request object, ready to be further customized or performed
-with
+An httr2 request object, ready to be performed with
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
+Callers may still add headers or query parameters, but when the
+effective token type is `DPoP` they must not change the request method
+or base URL after calling `client_bearer_req()` because the proof is
+already bound to those values.
 
 ## Side effects
 
@@ -109,6 +114,13 @@ options through
 and HTTP-default helpers, may emit warnings when unsafe custom auth
 headers are ignored, and may read configured mTLS certificate files when
 validating certificate-bound access tokens.
+
+## DPoP note
+
+DPoP proofs bind the current HTTP method and target URI (without query
+or fragment). Adding query parameters after `client_bearer_req()` is
+fine, but changing the method, scheme, host, or path invalidates the
+proof.
 
 ## Examples
 

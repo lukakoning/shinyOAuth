@@ -690,4 +690,8 @@ While this R package has been developed with care and the OAuth 2.0/OIDC
 protocols contain many security features, no guarantees can be made in
 the realm of cybersecurity. For highly sensitive applications, consider
 a layered (‘defense-in-depth’) approach to security (for example, adding
-an IP whitelist as an additional safeguard).
+an IP whitelist as an additional safeguard). If that token type is
+`DPoP`, treat the method and base URL you pass to
+[`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+as final inputs: changing them on the returned request will invalidate
+the proof.
