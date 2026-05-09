@@ -7,6 +7,8 @@ proofs with nonce retry, and downstream helpers now preserve and use
   - `client_bearer_req()` now documents the DPoP request contract more
   precisely: the helper signs the proof against the supplied method and base
   URL, so callers must finalize those values before building the request.
+  - Cached DPoP nonces now use a bounded in-memory cache with a five-minute TTL
+  and LRU entry cap instead of accumulating unbounded per-target entries.
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.

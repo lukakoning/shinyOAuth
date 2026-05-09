@@ -541,6 +541,14 @@ test_that("verify_token_set rejects DPoP cnf.jkt mismatches during exchange and 
   expect_mismatch(TRUE)
 })
 
+test_that("DPoP nonce cache is bounded by age and entry count", {
+  info <- shinyOAuth:::dpop_nonce_cache$info()
+
+  expect_identical(info$max_age, 300)
+  expect_identical(info$max_n, 256)
+  expect_identical(info$evict, "lru")
+})
+
 test_that("swap_code_for_token_set retries once on DPoP nonce challenge", {
   testthat::skip_if_not_installed("webfakes")
 

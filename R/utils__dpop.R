@@ -23,8 +23,10 @@ client_has_dpop <- function(client) {
 }
 
 # Cache DPoP nonces per target URI and client key so later requests can reuse
-# server-provided nonces without bleeding between different endpoints.
-dpop_nonce_cache_env <- new.env(parent = emptyenv())
+# server-provided nonces without bleeding between different endpoints. Bound the
+# cache by age and entry count so long-lived apps do not accumulate unbounded
+# per-resource state.
+dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
 
 #' Build a DPoP nonce cache key
 #'
@@ -60,7 +62,13 @@ dpop_nonce_cache_key <- function(client, url) {
     return(NA_character_)
   }
 
-  paste(target_uri, client_id_key, dpop_jkt, sep = "::")
+  cache_input <- paste(target_uri, client_id_key, dpop_jkt, sep = "::")
+  digest <- try(openssl::sha256(charToRaw(cache_input)), silent = TRUE)
+  if (inherits(digest, "try-error")) {
+    return(NA_character_)
+  }
+
+  paste0(sprintf("%02x", as.integer(digest)), collapse = "")
 }
 
 #' Read a cached DPoP nonce
@@ -77,11 +85,11 @@ dpop_nonce_cache_get <- function(client, url) {
   if (!is_valid_string(cache_key)) {
     return(NULL)
   }
-  if (!exists(cache_key, envir = dpop_nonce_cache_env, inherits = FALSE)) {
+  if (!isTRUE(dpop_nonce_cache$exists(cache_key))) {
     return(NULL)
   }
 
-  nonce <- get(cache_key, envir = dpop_nonce_cache_env, inherits = FALSE)
+  nonce <- dpop_nonce_cache$get(cache_key)
   if (!is_valid_string(nonce)) {
     return(NULL)
   }
@@ -105,7 +113,7 @@ dpop_nonce_cache_set <- function(client, url, nonce) {
     return(invisible(nonce))
   }
 
-  assign(cache_key, nonce, envir = dpop_nonce_cache_env)
+  dpop_nonce_cache$set(cache_key, nonce)
   invisible(nonce)
 }
 
