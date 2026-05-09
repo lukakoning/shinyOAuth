@@ -38,7 +38,9 @@ Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
 OpenTelemetry logs are derived from the same underlying events as
 `shinyOAuth.audit_hook`, but they are flattened into scalar attributes.
 Nested structures like the full `shiny_session` object and the raw `timestamp`
-field are not preserved verbatim in the OTel log payload.
+field are not preserved verbatim in the OTel log payload; instead, shinyOAuth
+exports derived scalar session/request attributes such as async/process ids,
+the digested Shiny session token, and selected HTTP request metadata.
 
 ## Event structure
 
@@ -69,7 +71,7 @@ The structure is designed to be directly serializable with `jsonlite::toJSON()`:
 - If you pre-capture a worker-intended context with `capture_shiny_session_context(is_async = TRUE)` but emit the event before any worker dispatch actually happens, shinyOAuth normalizes that borrowed context back to `FALSE` because the event was still emitted on the main process.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
-- `mirai_error_type`: a top-level event field on certain async failure events. It classifies mirai transport-level failures separately from application-level errors. Present on `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session` events:
+- `mirai_error_type`: a top-level event field present only on async failure variants of `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session`. It classifies mirai transport-level failures separately from application-level errors. When present:
   - `"mirai_error"` — code threw an R error inside the worker
   - `"mirai_timeout"` — the task exceeded its timeout and was cancelled by dispatcher
   - `"mirai_connection_reset"` — the daemon process crashed or was terminated
@@ -121,7 +123,10 @@ the async promise path. The package automatically propagates your
 there as well. For shinyOAuth-managed async work, the package also replays the
 parent session's relevant `OTEL_*` / `OTEL_R_*` environment variables inside
 the async execution context so exporter configuration stays aligned with the
-main R process.
+main R process. It also propagates the effective
+`shinyOAuth.otel_tracing_enabled` and `shinyOAuth.otel_logging_enabled` option
+gates so reused workers do not keep stale telemetry-disabled state from an
+earlier task.
 
 Note that your audit hook function (and any objects referenced in
 its closure) must be serializable. If your hook writes to a database connection,
@@ -184,6 +189,8 @@ email addresses) can be dictionary-attacked.
 	- `state_digest`
 	- `browser_token_digest`
 	- `pkce_method` (e.g., `S256`, `plain`, or `NA`)
+	- `par_used` (logical)
+	- `request_object_used` (logical)
 	- `nonce_present` (logical)
 	- `scopes_count`
 	- `redirect_uri`
@@ -195,19 +202,30 @@ email addresses) can be dictionary-attacked.
 - When: the callback query parameters fail validation (e.g., too large)
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
 
-### Callback issuer mismatch
+### Callback issuer validation
+
+#### Event: `audit_callback_iss_missing`
+
+- When: `enforce_callback_issuer = TRUE` and the callback omits the RFC 9207 `iss` parameter
+- Context: `provider`, `expected_issuer`, `client_id_digest`, `error_class`
 
 #### Event: `audit_callback_iss_mismatch`
 
 - When: the callback includes an `iss` query parameter (per RFC 9207) that does not match the provider's expected issuer
-- Context: `provider`, `expected_issuer`, `client_id_digest`
+- Context: `provider`, `expected_issuer`, `callback_issuer`, `client_id_digest`, `error_class`
+
+#### Event: `audit_callback_iss_validation_failed`
+
+- When: callback issuer validation fails before token exchange for a reason other than the dedicated missing/mismatch cases above
+- Context: `provider`, `expected_issuer`, `callback_issuer` (when present), `client_id_digest`, `error_class`
 
 ### Callback received
 
 #### Event: `audit_callback_received`
 
-- When: `handle_callback()` begins processing a callback
+- When: after the sealed `state` payload has been decrypted and validated (or prevalidated on the main process for async callback handling), just before state-store consumption and the later browser-token/PKCE/nonce checks
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`, `state_digest`, `browser_token_digest`
+- Notes: callbacks that fail before payload validation do not emit this event
 
 ### Callback validation
 
@@ -260,12 +278,13 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 
 #### Event: `audit_token_introspection`
 
-- When: `introspect_token()` is called (e.g., during login if `introspect = TRUE`)
+- When: `introspect_token()` reaches a final result (for example during login or refresh when `introspect = TRUE`)
 - Context:
 	- `provider`, `issuer`, `client_id_digest`
 	- `which` ("access" or "refresh")
 	- `supported` (logical), `active` (logical|NA), `status`
 	- `sub_digest`, `introspected_client_id_digest`, `scope_digest` (when available)
+- `status` values include `"ok"`, `"introspection_unsupported"`, `"missing_token"`, `"body_too_large"`, `"invalid_json"`, `"missing_active"`, `"invalid_active"`, and `"http_<code>"`
 
 ### Login result
 
@@ -289,6 +308,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
   - `async_token_exchange`
   - `async_payload_validation`
   - `async_state_store_lookup`
+- `mirai_error_type` is only present on async failure paths
 
 ### Logout and session clears
 
@@ -302,17 +322,18 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 - When: the module clears the token reactively
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`, `error_class`, `mirai_error_type`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`, `reauth_window`, `token_expired`
-- Note: `error_class` is present on refresh failure reasons (`refresh_failed_async`, `refresh_failed_sync`) but absent for `reauth_window` and `token_expired`
+- Note: `error_class` is present on refresh failure reasons (`refresh_failed_async`, `refresh_failed_sync`) but absent for `reauth_window` and `token_expired`; `mirai_error_type` is only present for async refresh-failure clears
 
 ### Token revocation
 
 #### Event: `audit_token_revocation`
 
-- When: `revoke_token()` is called (e.g., during logout or session end)
+- When: `revoke_token()` reaches a final outcome (including early `unsupported` or `missing_token` returns) during logout or session end
 - Context:
 	- `provider`, `issuer`, `client_id_digest`
 	- `which` ("access" or "refresh")
 	- `supported` (logical), `revoked` (logical|NA), `status`
+- `status` values include `"ok"`, `"revocation_unsupported"`, `"missing_token"`, and `"http_<code>"`
 
 ### Refresh failures while keeping the session (indefinite sessions)
 
@@ -320,6 +341,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 
 - When: a token refresh attempt fails but the module is configured not to clear the session (i.e., `indefinite_session = TRUE` in `oauth_module_server()`)
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (`refresh_failed_async`|`refresh_failed_sync`), `kept_token` (TRUE), `error_class`, `mirai_error_type`
+- `mirai_error_type` is only present on async refresh failures
 
 ### Browser cookie/WebCrypto error
 
@@ -357,23 +379,29 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 	- `"userinfo_not_jwt"` – signed JWT required but response was not `application/jwt`. Additional fields: `content_type`
 	- `"userinfo_jwt_encrypted"` – userinfo response was a JWE, which shinyOAuth does not decrypt
 	- `"userinfo_jwt_header_parse_failed"` – JWT header could not be parsed
+	- `"userinfo_jwt_header_invalid"` – JWT header parsed but was malformed or structurally invalid
+	- `"userinfo_jwt_typ_invalid"` – JWT header `typ` did not indicate a JWT
 	- `"userinfo_jwt_unsigned"` – JWT uses `alg=none`. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_alg_rejected"` – JWT algorithm not in provider's allowed asymmetric algorithms. Additional fields: `jwt_alg`
 	- `"userinfo_jwt_no_issuer"` – provider issuer not configured for JWKS verification
 	- `"userinfo_jwt_jwks_fetch_failed"` – JWKS fetch failed during signature verification
 	- `"userinfo_jwt_signature_invalid"` – signature verification failed against candidate JWKS keys
 	- `"userinfo_jwt_no_matching_key"` – provider JWKS had no compatible key for the JWT
+	- `"userinfo_jwt_payload_parse_failed"` – JWT payload could not be parsed as JSON
 	- `"userinfo_jwt_missing_sub"`, `"userinfo_jwt_missing_iss"`, `"userinfo_jwt_missing_aud"` – signed JWT omitted a required claim
 	- `"userinfo_jwt_iss_mismatch"`, `"userinfo_jwt_aud_mismatch"` – signed JWT claims did not match the configured issuer/client
+	- `"userinfo_jwt_missing_required_temporal_claims"` – signed JWT omitted required temporal claims such as `exp` or `iat`
+	- `"userinfo_jwt_invalid_exp"`, `"userinfo_jwt_invalid_iat"`, `"userinfo_jwt_invalid_nbf"` – temporal claim was present but not a single usable numeric value
+	- `"userinfo_jwt_expired"`, `"userinfo_jwt_iat_future"`, `"userinfo_jwt_nbf_future"` – temporal claim failed time validation
 
 ### State parsing failures
 
-State parsing failures occur while decoding and validating the encrypted wrapper prior to extracting the logical state value.
+State parsing failures occur while decoding and validating the encrypted wrapper prior to extracting the logical state value, and also when deriving a cache key from a malformed logical state string.
 
 #### Event: `audit_state_parse_failure`
 
-- When: the encrypted state wrapper or its components fail validation/decoding
-- Context: includes `phase = decrypt`, a `reason` code (e.g., `token_b64_invalid`, `iv_missing`, `tag_len_invalid`), `token_digest`, and any additional details (such as lengths). Emitted best-effort from parsing utilities and never interferes with control flow.
+- When: the encrypted state wrapper or its components fail validation/decoding, or cache-key derivation receives an invalid logical state string
+- Context: includes `phase` (`decrypt` or `cache_key`), a `reason` code, and either `token_digest` (`phase = decrypt`) or `state_digest` (`phase = cache_key`), plus any additional details (such as lengths). Emitted best-effort from parsing utilities and never interferes with control flow.
 
 ### Error response state consumption
 

@@ -36,16 +36,27 @@ and how to enable/disable them.
 
 OTel log records are generated from the same structured events that shinyOAuth
 emits to its native R hook (`shinyOAuth.audit_hook`).
-The log content, event types, and severity levels mirror
-what is described in `vignette("audit-logging", package = "shinyOAuth")`;
-refer there for full details about the various events and their content.
+The log content and event types mirror what is described in
+`vignette("audit-logging", package = "shinyOAuth")`; refer there for full
+details about the various events and their content.
 The OTel representation is flatter, though: nested objects are converted to
 scalar attributes where possible, so fields like `shiny_session` are not
-preserved verbatim as a nested payload.
+preserved verbatim as a nested payload. Instead, shinyOAuth emits derived
+scalar attributes such as `shiny.session_token_digest`,
+`shiny.session.is_async`, `shiny.session.main_process_id`,
+`shiny.session.process_id`, and, when request metadata is included,
+`http.request.method` plus `server.address`.
 The package's own audit correlation id is exported as the scalar attribute
 `shinyoauth.trace_id`; it is distinct from OpenTelemetry's trace/span ids.
 When a shinyOAuth operation-level correlation id is available, spans also carry
 the same `shinyoauth.trace_id` attribute for cross-redirect correlation.
+
+Because those request attributes are derived from the same captured
+`shiny_session$http` object used by audit events, setting
+`options(shinyOAuth.audit_include_http = FALSE)` removes them from OTel logs as
+well. By contrast, `options(shinyOAuth.audit_redact_http = FALSE)` only affects
+the raw nested HTTP summary on audit-hook events; it does not change the shape
+of the flattened OTel attributes.
 
 When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set, shinyOAuth
 stops creating OTel log records but the native R hooks still fire.
@@ -83,6 +94,19 @@ reconfiguring exporter/provider state depends on the installed `otel` package's
 cache reset hook. The robust path is still to set the desired `OTEL_*`
 configuration before dispatching the async work that should use it.
 
+shinyOAuth also propagates the effective
+`shinyOAuth.otel_tracing_enabled` / `shinyOAuth.otel_logging_enabled` option
+gates into async workers so they do not keep stale telemetry-disabled option
+state from an earlier task. When reused workers need an OTel cache reset and
+the installed `otel` stack cannot provide or run that reset cleanly,
+shinyOAuth emits a warning that exporter changes may not take effect until the
+workers are recreated.
+
+For async `refresh_token()`, `revoke_token()`, and `introspect_token()` calls,
+expect a four-span chain rather than just a parent span and a worker span:
+main-process operation span -> `*.worker` bridge span -> worker-side operation
+span with the same base name -> `*.http` client span.
+
 ### Span catalog
 
 #### Span: `shinyOAuth.module.init`
@@ -118,8 +142,35 @@ configuration before dispatching the async work that should use it.
   - `oauth.claims.targets`
   - `oauth.required_acr_values`, `oauth.required_acr_values_count`
   - `oauth.max_age.requested`
+  - `oauth.request_object_used`
   - `oauth.extra_auth_params_count`
   - Shiny session/process metadata when available
+
+  #### Span: `shinyOAuth.login.par`
+
+  - When: during pushed authorization request (PAR) submission when the provider exposes `par_url`
+  - Represents: PAR request construction, client authentication, PAR response validation, and extraction of `request_uri`
+  - Main attributes:
+    - `oauth.provider.name`, `oauth.provider.issuer`
+    - `oauth.client_id_digest`
+    - `oauth.phase = "login.par"`
+    - `oauth.client_auth_style`
+    - `oauth.extra_auth_params_count`
+    - `oauth.extra_token_headers_count`
+    - Shiny session/process metadata when available
+
+  #### Span: `shinyOAuth.login.par.http`
+
+  - When: for outbound PAR HTTP calls
+  - Represents: the actual POST to the configured PAR endpoint
+  - Main attributes:
+    - `http.request.method = "POST"`
+    - `server.address`
+    - `oauth.phase = "login.par"`
+    - `http.response.status_code`, `http.response.content_type` after a response is available
+  - Notes:
+    - this is used as a client span (`kind = "client"`)
+    - redirects are rejected before client credentials or PAR parameters can leak
 
 #### Span: `shinyOAuth.callback`
 
@@ -132,12 +183,16 @@ configuration before dispatching the async work that should use it.
   - `oauth.client_id_digest`
   - `oauth.async`
   - `oauth.phase = "callback"`
-  - `oauth.introspect`, `oauth.introspect_elements`,
-    `oauth.introspect_elements_count`
+  - `oauth.introspect`, `oauth.introspect_elements_count`
   - `oauth.userinfo.required`
   - `oauth.userinfo.id_token_match_required`
   - `oauth.id_token.validation_enabled`
   - Shiny session/process metadata when available
+- Notes:
+  - synchronous `handle_callback()` spans also include the joined
+    `oauth.introspect_elements` attribute
+  - the async parent callback span created on the main process carries only
+    `oauth.introspect_elements_count`
 - Parenting:
   - when the callback can recover the original login span context from the
     encrypted state payload, it becomes a child of that `shinyOAuth.login.request`
@@ -151,12 +206,12 @@ configuration before dispatching the async work that should use it.
   `oauth.phase`
 - Emitted phases currently include:
   - `callback.state_payload` and `callback.state_store_consume`
-    - emitted on the main process in async callback mode, before worker dispatch
+    - emitted during normal synchronous callback handling, and also on the main process before worker dispatch in async callback mode
   - `callback.browser_token_validation`
   - `callback.pkce_verifier_validation`
   - `callback.nonce_validation`
-    - emitted during the normal synchronous callback path and inside the async
-      worker after parent context restoration
+    - emitted during the normal synchronous callback path and, in async mode,
+      inside the worker after parent context restoration
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
@@ -299,6 +354,9 @@ configuration before dispatching the async work that should use it.
   - `oauth.async = TRUE`
   - `oauth.phase = "refresh.worker"`
   - propagated Shiny session/process metadata
+- Notes:
+  - the actual worker-side refresh logic then runs inside a nested
+    `shinyOAuth.refresh` span beneath this bridge span
 
 #### Span: `shinyOAuth.logout`
 
@@ -367,6 +425,9 @@ configuration before dispatching the async work that should use it.
   - `oauth.phase = "token.revoke.worker"`
   - `oauth.token.which` (`"access"` or `"refresh"`)
   - propagated Shiny session/process metadata
+- Notes:
+  - the actual worker-side revocation logic then runs inside a nested
+    `shinyOAuth.token.revoke` span beneath this bridge span
 
 #### Span: `shinyOAuth.token.introspect`
 
@@ -412,3 +473,6 @@ configuration before dispatching the async work that should use it.
   - `oauth.phase = "token.introspect.worker"`
   - `oauth.token.which` (`"access"` or `"refresh"`)
   - propagated Shiny session/process metadata
+- Notes:
+  - the actual worker-side introspection logic then runs inside a nested
+    `shinyOAuth.token.introspect` span beneath this bridge span

@@ -17,7 +17,7 @@ It streamlines the full authorization/authentication flow, including:
 - State, nonce, and PKCE generation, sealing, and verification
 - Authorization code exchange and token validation
 - Optional userinfo retrieval & ID token signature/claims validation
-- Proactive token refresh and re‑authentication triggers
+- Optional proactive token refresh and re‑authentication triggers
 
 For a full step-by-step protocol breakdown, see the separate vignette:
 `vignette("authentication-flow", package = "shinyOAuth")`.
@@ -85,6 +85,13 @@ dependency. Always place `use_shinyOAuth()` in your UI; otherwise, the module wi
 You may place it near the top-level of your UI (e.g., inside `fluidPage()`, `tagList()`,
 or `bslib::page()`).
 
+By default, `use_shinyOAuth()` also injects
+`<meta name="referrer" content="no-referrer">`. This helps prevent OAuth
+callback query parameters such as `code` and `state` from leaking via the
+`Referer` header to third-party subresources during the initial callback page
+load. Set `inject_referrer_meta = FALSE` only if you intentionally manage
+referrer policy elsewhere.
+
 Note also that you must access the app in a regular browser.
 This is because the necessary redirects that the browser must perform can usually
 not be handled inside embedded viewers of IDEs like RStudio or Positron.
@@ -150,7 +157,8 @@ runApp(
 ## Making authenticated API calls
 
 Once authenticated, you may want to call an API on behalf of the user using the access token.
-Use `client_bearer_req()` to quickly build an authorized 'httr2' request with the correct Bearer token.
+Use `client_bearer_req()` to quickly build an authorized 'httr2' request with the correct
+authorization scheme for the current token type.
 See the example app below; it calls the GitHub API to obtain the user's repositories.
 
 ```{r, eval = FALSE}
@@ -232,6 +240,29 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
+If your client is configured with `dpop_private_key` and the provider returns
+`token_type = "DPoP"`, call `client_bearer_req()` with `oauth_client = client`
+so shinyOAuth can attach DPoP proofs on downstream API calls. If a resource
+server challenges with `DPoP-Nonce`, rebuild the request with
+`dpop_nonce = <value>` from that challenge before retrying. In
+`oauth_client()`, configuring `dpop_private_key` also makes
+`dpop_require_access_token = TRUE` by default, so logins fail fast unless the
+authorization server actually returns a DPoP access token.
+
+The same `oauth_client = client` argument is also required when you use
+sender-constrained mTLS or certificate-bound access tokens, because shinyOAuth
+uses it to attach the configured client certificate and validate any `cnf`
+thumbprint before the request is sent.
+
+```r
+req <- client_bearer_req(
+  auth$token,
+  "https://resource.example.com/me",
+  oauth_client = client
+)
+resp <- httr2::req_perform(req)
+```
+
 For an example application which fetches data from the Spotify web API, see:
 `vignette("example-spotify", package = "shinyOAuth")`.
 
@@ -243,11 +274,15 @@ and token retrieval plus any configured OIDC checks have succeeded.
 If your provider supports RFC 7662 token introspection, you can optionally add an extra
 validation step by enabling `introspect = TRUE` when creating your `oauth_client()`.
 
-When enabled, the module calls the provider introspection endpoint during callback processing and
-requires the response to indicate `active = TRUE`. If proactive refresh is enabled, refreshed access
-tokens are introspected through the same client policy. If introspection is unsupported by the provider
-or the introspection request fails, the login or refresh is aborted and `$authenticated` is not set to
-`TRUE`.
+When enabled, the module calls the provider introspection endpoint after token retrieval and requires
+the response to indicate `active = TRUE` before the login is treated as complete. If proactive refresh
+is enabled, refreshed access tokens are introspected through the same client policy before the session
+is updated.
+
+If introspection itself fails, the login is aborted. On refresh, the default module behavior is to
+clear the session and optionally reauthenticate; when `oauth_module_server(indefinite_session = TRUE)`
+is in use, shinyOAuth instead keeps the current token, marks it as stale in `auth$token_stale`, and
+does not clear the session automatically.
 
 You can optionally request additional checks via `introspect_elements`:
 
@@ -285,10 +320,14 @@ auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
 
 By default, `oauth_module_server()` performs network operations (authorization code exchange, refresh, userinfo) on the main R thread. During transient network errors the package retries with backoff, and sleeping on the main thread can block the Shiny event loop for the worker process.
 
-To avoid blocking, enable async mode and configure an async backend. 
+To avoid blocking, enable async mode and configure an async backend.
 The package supports both 'mirai' and 'future' for async execution (see below).
-The package auto-detects which backend is configured. 
+The package auto-detects which backend is configured.
 If both are set up, mirai takes precedence (it offers lower overhead and non-blocking dispatch).
+
+For the `future` backend, use a non-sequential plan such as `future::multisession()` or
+`future::multicore()` where available. `future::sequential()` still runs in-process and does not move
+network work off the main R thread.
 
 If you need to keep `async = FALSE`, you may consider reducing retry behaviour
 to limit blocking during provider incidents. See 'Global options' and then 
@@ -335,8 +374,10 @@ server <- function(input, output, session) {
 
 ## Logout
 
-To log out the user, call `auth$logout()`. This clears the local session and
-attempts to revoke tokens at the provider (if a revocation endpoint is available):
+To log out the user, call `auth$logout()`. This clears the local session,
+sets `auth$error` to `"logged_out"`, reissues a fresh browser token for the
+next login attempt, and attempts to revoke tokens at the provider (if a
+revocation endpoint is available):
 
 ```r
 observeEvent(input$logout_btn, {
@@ -350,7 +391,12 @@ See `?revoke_token` for programmatic use outside the module.
 ### Automatic revocation on session end
 
 To revoke tokens when the Shiny session ends (e.g., browser tab closed, timeout), 
-set `revoke_on_session_end = TRUE`:
+set `revoke_on_session_end = TRUE`.
+
+This requires the provider to have a configured `revocation_url`.
+`oauth_module_server()` validates that at startup and errors otherwise. The
+built-in GitHub provider used earlier in this vignette does not expose a
+revocation endpoint, so this setting only applies to providers that do:
 
 ```r
 auth <- oauth_module_server(
@@ -386,7 +432,8 @@ for more details about logs and traces via OpenTelemetry.
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies (may reveal details)
 
 This option exposes sanitized HTTP response bodies in thrown errors for local debugging.
-It is intended for development, not for normal package usage.
+It is only honored in testthat or interactive sessions and is intended for
+development, not for normal package usage.
 
 ### Networking/security
 
@@ -489,12 +536,16 @@ cap than token expiry alone. A warning is emitted in either case
 
 ### Development/debugging
 
-- `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie binding
-- `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature verification
-- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept unsigned (`alg=none`) UserInfo JWTs
+- `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie binding in tests or interactive sessions
+- `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature verification in tests or interactive sessions
+- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept unsigned (`alg=none`) UserInfo JWTs in tests or interactive sessions; outside those contexts shinyOAuth errors instead of honoring it
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token exchange
 
-Don't enable these in production. They disable key security checks or alter error behavior, and are intended for local testing/debugging only.
+The same test-or-interactive restriction applies to
+`options(shinyOAuth.expose_error_body = TRUE)`.
+
+Don't enable these in production. They disable key security checks or alter
+error behavior, and are intended for local testing/debugging only.
 
 ### Size caps
 
@@ -568,7 +619,7 @@ your app registration only the permissions it needs
 - Sanitize user inputs before rendering them in the UI (e.g., using `htmltools::htmlEscape()`)
 - Make use of audit logging (see `vignette("audit-logging", package = "shinyOAuth")`) and
 monitor these logs
-- Consider enabling automatic revocation on session end (`revoke_on_session_end = TRUE`)
+- Consider enabling automatic revocation on session end (`revoke_on_session_end = TRUE`) for providers that expose a revocation endpoint
 - If your provider can return UserInfo as a signed JWT (`Content-Type: application/jwt`),
 set `userinfo_signed_jwt_required = TRUE` in your `OAuthProvider` to prevent downgrade
 to plain JSON. Without this flag, shinyOAuth verifies any JWT it receives, but a
