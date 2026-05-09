@@ -33,6 +33,11 @@
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
   for more information.
 
+- JWKS caching now respects tightened global host policy immediately.
+  Cached entries are scoped to the current `allowed_hosts` /
+  `allowed_non_https_hosts` settings, and cache hits re-check the stored
+  `jwks_uri` before a JWKS is trusted.
+
 - Observability and audit logging improvements:
 
   - Improved observability correlation for existing audit flows.
@@ -68,6 +73,9 @@
 
   - Explicitly ignores new login requests while a session is already
     authenticated.
+  - Fails cleanly at startup when `revoke_on_session_end = TRUE` but the
+    provider does not expose a `revocation_url`, instead of crashing
+    while formatting that configuration error.
   - Applies the browser-token double-submit check to OAuth error
     callbacks too, deferring `?error=...` handling until the browser
     token is available and treating browser-token mismatches as
