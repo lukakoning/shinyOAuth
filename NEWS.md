@@ -4,8 +4,6 @@
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
 `token_type = "DPoP"` when the server returns it.
-  Cached DPoP nonces are now scoped to the target endpoint URI so nonces from
-  token responses do not leak into protected-resource proofs on the same host.
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
@@ -14,17 +12,12 @@ authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
-  OIDC discovery now preserves request transport capability flags and fails
-  fast when a provider explicitly disallows the `request` or `request_uri`
-  transport that shinyOAuth would need for JAR or PAR.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed Request Objects via
 `authorization_request_mode = "request"`, using either
 `client_private_key` or `client_secret` signing depending on client
 configuration.
-  JAR-over-PAR requests now keep `client_id` in the pushed form body even when
-  PAR client authentication uses HTTP Basic auth.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
@@ -62,11 +55,6 @@ entries are scoped to the current `allowed_hosts` /
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
 
-* Documentation now clarifies three existing security-relevant behaviors:
-  `extra_token_headers` are also sent on PAR requests, signed UserInfo JWT
-  verification accepts only asymmetric algorithms from `allowed_algs`, and the
-  multi-audience ID token `azp` requirement is a deliberate hardening choice.
-
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
   session is already authenticated.
@@ -101,8 +89,6 @@ previews instead of exposing full credential material in default console output.
 explicitly returned and ones that were carried forward when the provider omitted
 `scope`. Refresh now preserves prior granted scopes instead of widening back to
 the client's configured scopes when a refresh response omits `scope`.
-  The shared token model also preserves DPoP `cnf.jkt` confirmation data now,
-  instead of keeping only the mTLS `cnf.x5t#S256` thumbprint.
 
 * `oauth_client()` (`OAuthClient`) now:
   - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207 `iss` 
