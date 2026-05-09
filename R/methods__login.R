@@ -1910,6 +1910,7 @@ verify_token_set <- function(
       as.integer(length(granted_scopes))
     }
   }
+  phase <- if (isTRUE(is_refresh)) "refresh_token" else "exchange_code"
   id_token_present <- isTRUE(is_valid_string(token_set[["id_token"]]))
   id_token_required <- !isTRUE(is_refresh) &&
     (isTRUE(client@provider@id_token_required) |
@@ -1929,6 +1930,13 @@ verify_token_set <- function(
     "shinyOAuth.token.verify",
     {
       verify_token_type_allowlist(client, token_set)
+      validate_token_dpop_binding(
+        oauth_client = client,
+        access_token = token_set[["access_token"]],
+        cnf = token_set[["cnf"]] %||% NULL,
+        error_context = "token",
+        phase = phase
+      )
 
       # Scope reconciliation --------------------------------------------------------
 

@@ -52,12 +52,7 @@ dpop_nonce_cache_key <- function(client, url) {
   }
 
   client_id_key <- string_digest(client@client_id, key = NULL)
-  dpop_jkt <- try(
-    compute_jwk_thumbprint(
-      dpop_public_jwk(resolve_dpop_private_key(client))
-    ),
-    silent = TRUE
-  )
+  dpop_jkt <- try(client_dpop_jkt(client), silent = TRUE)
   if (!is_valid_string(client_id_key) || inherits(dpop_jkt, "try-error")) {
     return(NA_character_)
   }
@@ -149,6 +144,122 @@ resolve_dpop_private_key <- function(client) {
     client@dpop_private_key,
     arg_name = "dpop_private_key"
   )
+}
+
+#' Compute the configured DPoP JWK thumbprint
+#'
+#' Used when DPoP-bound tokens must be rebound to the locally configured
+#' private key.
+#'
+#' @param client OAuth client carrying DPoP configuration.
+#' @return Base64url-encoded RFC 7638 thumbprint string.
+#' @keywords internal
+#' @noRd
+client_dpop_jkt <- function(client) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  compute_jwk_thumbprint(
+    dpop_public_jwk(resolve_dpop_private_key(client))
+  )
+}
+
+#' Extract cnf.jkt from a token-like input
+#'
+#' Used when DPoP-bound access tokens must be rebound to a local key.
+#'
+#' @param token Optional [OAuthToken] object or raw access-token string.
+#' @param access_token Optional raw access-token string.
+#' @param cnf Optional explicit cnf claim data.
+#' @return `cnf$jkt` as a scalar string, or `NA_character_` when absent.
+#' @keywords internal
+#' @noRd
+token_cnf_jkt <- function(token = NULL, access_token = NULL, cnf = NULL) {
+  if (S7::S7_inherits(token, class = OAuthToken)) {
+    cnf <- token@cnf
+    access_token <- token@access_token
+  } else if (is_valid_string(token)) {
+    access_token <- token
+  }
+
+  cnf <- resolve_token_cnf(
+    cnf = cnf,
+    access_token = access_token
+  )
+  dpop_jkt <- cnf[["jkt"]] %||% NA_character_
+  if (!is_valid_string(dpop_jkt)) {
+    return(NA_character_)
+  }
+
+  dpop_jkt
+}
+
+#' Validate DPoP-bound token binding against the configured key
+#'
+#' Used after token responses are parsed and before outbound DPoP proofs are
+#' attached so mismatched local keys fail closed instead of relying on a later
+#' server rejection.
+#'
+#' @param oauth_client Optional [OAuthClient] expected to own the DPoP key.
+#' @param token Optional [OAuthToken] object or raw access-token string.
+#' @param access_token Optional raw access-token string.
+#' @param cnf Optional explicit cnf claim data.
+#' @param error_context Whether binding failures should raise input or token
+#'   errors.
+#' @param phase Optional token-processing phase for token errors.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises
+#'   an input or token error.
+#' @keywords internal
+#' @noRd
+validate_token_dpop_binding <- function(
+  oauth_client,
+  token = NULL,
+  access_token = NULL,
+  cnf = NULL,
+  error_context = c("input", "token"),
+  phase = NULL
+) {
+  error_context <- match.arg(error_context)
+
+  expected_jkt <- token_cnf_jkt(
+    token = token,
+    access_token = access_token,
+    cnf = cnf
+  )
+  if (!is_valid_string(expected_jkt)) {
+    return(invisible(TRUE))
+  }
+
+  fail <- switch(
+    error_context,
+    input = function(message) err_input(message),
+    token = function(message) {
+      err_token(message, context = compact_list(list(phase = phase)))
+    }
+  )
+
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    fail(
+      "oauth_client must be an OAuthClient when using DPoP-bound access tokens"
+    )
+  }
+
+  if (!client_has_dpop(oauth_client)) {
+    fail(
+      paste(
+        "oauth_client with dpop_private_key is required when token cnf.jkt",
+        "binds the access token"
+      )
+    )
+  }
+
+  actual_jkt <- client_dpop_jkt(oauth_client)
+  if (!identical(actual_jkt, expected_jkt)) {
+    fail(
+      "oauth_client dpop_private_key does not match token cnf.jkt thumbprint"
+    )
+  }
+
+  invisible(TRUE)
 }
 
 #' Resolve the DPoP signing algorithm

@@ -110,6 +110,31 @@ test_that("client_bearer_req rejects non-ASCII DPoP access tokens", {
   )
 })
 
+test_that("client_bearer_req rejects DPoP cnf.jkt mismatches", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov)
+  wrong_key <- openssl::rsa_keygen()
+  wrong_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(wrong_key)
+  )
+  tok <- OAuthToken(
+    access_token = "access-token",
+    token_type = "DPoP",
+    userinfo = list(),
+    cnf = list(jkt = wrong_jkt)
+  )
+
+  expect_error(
+    client_bearer_req(
+      token = tok,
+      url = "https://resource.example.com/api",
+      oauth_client = cli
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "cnf\\.jkt thumbprint"
+  )
+})
+
 test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(
@@ -482,6 +507,38 @@ test_that("verify_token_type_allowlist accepts DPoP when client enables it", {
       list(access_token = "t", token_type = "DPoP")
     )
   )
+})
+
+test_that("verify_token_set rejects DPoP cnf.jkt mismatches during exchange and refresh", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov)
+  wrong_key <- openssl::rsa_keygen()
+  wrong_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(wrong_key)
+  )
+
+  expect_mismatch <- function(is_refresh) {
+    expect_error(
+      shinyOAuth:::verify_token_set(
+        cli,
+        token_set = list(
+          access_token = "at-1",
+          token_type = "DPoP",
+          expires_in = 60,
+          cnf = list(jkt = wrong_jkt)
+        ),
+        nonce = NULL,
+        is_refresh = is_refresh,
+        requested_scopes = character(0),
+        prior_granted_scopes = character(0)
+      ),
+      class = "shinyOAuth_token_error",
+      regexp = "cnf\\.jkt thumbprint"
+    )
+  }
+
+  expect_mismatch(FALSE)
+  expect_mismatch(TRUE)
 })
 
 test_that("swap_code_for_token_set retries once on DPoP nonce challenge", {

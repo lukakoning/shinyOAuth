@@ -76,6 +76,12 @@ client_bearer_req <- function(
     token_type = token_info$token_type,
     oauth_client = oauth_client
   )
+  validate_client_bearer_sender_constraints(
+    token = token,
+    access_token = token_info$access_token,
+    token_type = token_info$token_type,
+    oauth_client = oauth_client
+  )
   validate_client_bearer_url(url, check_url = check_url)
 
   req <- build_client_bearer_authorized_request(
@@ -188,6 +194,39 @@ validate_client_bearer_token_context <- function(token_type, oauth_client) {
       "oauth_client with dpop_private_key is required for token_type = 'DPoP'"
     )
   }
+
+  invisible(TRUE)
+}
+
+#' Validate sender-constraint bindings for an authorized API request
+#'
+#' Used by [client_bearer_req()] before an outbound request is built. This
+#' keeps locally configured DPoP keys aligned with any DPoP token `cnf$jkt`
+#' binding before a proof is signed.
+#'
+#' @param token Original token input supplied to [client_bearer_req()].
+#' @param access_token Scalar access-token string.
+#' @param token_type Effective access-token type.
+#' @param oauth_client Optional [OAuthClient] supplied to [client_bearer_req()].
+#' @return Invisibly returns `TRUE` when sender constraints are locally valid.
+#' @keywords internal
+#' @noRd
+validate_client_bearer_sender_constraints <- function(
+  token,
+  access_token,
+  token_type,
+  oauth_client
+) {
+  if (!is_dpop_token_type(token_type)) {
+    return(invisible(TRUE))
+  }
+
+  validate_token_dpop_binding(
+    oauth_client = oauth_client,
+    token = token,
+    access_token = access_token,
+    error_context = "input"
+  )
 
   invisible(TRUE)
 }
