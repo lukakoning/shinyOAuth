@@ -36,7 +36,9 @@ for more details. OpenTelemetry logs are derived from the same
 underlying events as `shinyOAuth.audit_hook`, but they are flattened
 into scalar attributes. Nested structures like the full `shiny_session`
 object and the raw `timestamp` field are not preserved verbatim in the
-OTel log payload.
+OTel log payload; instead, shinyOAuth exports derived scalar
+session/request attributes such as async/process ids, the digested Shiny
+session token, and selected HTTP request metadata.
 
 ## Event structure
 
@@ -155,7 +157,10 @@ these async executions, so audit events fire there as well. For
 shinyOAuth-managed async work, the package also replays the parent
 session’s relevant `OTEL_*` / `OTEL_R_*` environment variables inside
 the async execution context so exporter configuration stays aligned with
-the main R process.
+the main R process. It also propagates the effective
+`shinyOAuth.otel_tracing_enabled` and `shinyOAuth.otel_logging_enabled`
+option gates so reused workers do not keep stale telemetry-disabled
+state from an earlier task.
 
 Note that your audit hook function (and any objects referenced in its
 closure) must be serializable. If your hook writes to a database

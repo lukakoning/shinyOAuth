@@ -309,12 +309,19 @@ the GitHub API to obtain the user’s repositories.</p>
 <p>If your client is configured with <code>dpop_private_key</code> and
 the provider returns <code>token_type = "DPoP"</code>, call
 <code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> with <code>oauth_client = client</code>
-so shinyOAuth can attach DPoP proofs (and answer <code>DPoP-Nonce</code>
-challenges) on downstream API calls. In <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
-configuring <code>dpop_private_key</code> also makes
+so shinyOAuth can attach DPoP proofs on downstream API calls. If a
+resource server challenges with <code>DPoP-Nonce</code>, rebuild the
+request with <code>dpop_nonce = &lt;value&gt;</code> from that challenge
+before retrying. In <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, configuring
+<code>dpop_private_key</code> also makes
 <code>dpop_require_access_token = TRUE</code> by default, so logins fail
 fast unless the authorization server actually returns a DPoP access
 token.</p>
+<p>The same <code>oauth_client = client</code> argument is also required
+when you use sender-constrained mTLS or certificate-bound access tokens,
+because shinyOAuth uses it to attach the configured client certificate
+and validate any <code>cnf</code> thumbprint before the request is
+sent.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
@@ -337,12 +344,17 @@ optionally add an extra validation step by enabling
 <code>introspect = TRUE</code> when creating your
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>.</p>
 <p>When enabled, the module calls the provider introspection endpoint
-during callback processing and requires the response to indicate
-<code>active = TRUE</code>. If proactive refresh is enabled, refreshed
-access tokens are introspected through the same client policy. If
-introspection is unsupported by the provider or the introspection
-request fails, the login or refresh is aborted and
-<code>$authenticated</code> is not set to <code>TRUE</code>.</p>
+after token retrieval and requires the response to indicate
+<code>active = TRUE</code> before the login is treated as complete. If
+proactive refresh is enabled, refreshed access tokens are introspected
+through the same client policy before the session is updated.</p>
+<p>If introspection itself fails, the login is aborted. On refresh, the
+default module behavior is to clear the session and optionally
+reauthenticate; when
+<code>oauth_module_server(indefinite_session = TRUE)</code> is in use,
+shinyOAuth instead keeps the current token, marks it as stale in
+<code>auth$token_stale</code>, and does not clear the session
+automatically.</p>
 <p>You can optionally request additional checks via
 <code>introspect_elements</code>:</p>
 <ul>
@@ -396,6 +408,11 @@ The package supports both ‘mirai’ and ‘future’ for async execution (see
 below). The package auto-detects which backend is configured. If both
 are set up, mirai takes precedence (it offers lower overhead and
 non-blocking dispatch).</p>
+<p>For the <code>future</code> backend, use a non-sequential plan such
+as <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession()</a></code> or
+<code><a href="https://future.futureverse.org/reference/multicore.html" class="external-link">future::multicore()</a></code> where available.
+<code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> still runs in-process and does not
+move network work off the main R thread.</p>
 <p>If you need to keep <code>async = FALSE</code>, you may consider
 reducing retry behaviour to limit blocking during provider incidents.
 See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
@@ -443,7 +460,9 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <h2 id="logout">Logout<a class="anchor" aria-label="anchor" href="#logout"></a>
 </h2>
 <p>To log out the user, call <code>auth$logout()</code>. This clears the
-local session and attempts to revoke tokens at the provider (if a
+local session, sets <code>auth$error</code> to
+<code>"logged_out"</code>, reissues a fresh browser token for the next
+login attempt, and attempts to revoke tokens at the provider (if a
 revocation endpoint is available):</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>

@@ -92,11 +92,21 @@ sequence of operations and the rationale behind each step.</p>
 <div class="section level3">
 <h3 id="first-page-load-set-a-browser-token">1. First page load: set a browser token<a class="anchor" aria-label="anchor" href="#first-page-load-set-a-browser-token"></a>
 </h3>
-<p>On the first load of your app, the module sets a small random cookie
-in the user’s browser (SameSite=Strict; Secure when over HTTPS). This
-browser token is mirrored to Shiny as an input. Its purpose is to ensure
-that the same browser that starts the OAuth 2.0 flow is the one that
-finishes it (a “double-submit” style CSRF defense).</p>
+<p>On the first load of your app, the module asks the browser to set a
+small random cookie (SameSite=<code>Strict</code> by default;
+<code>Secure</code> when required by HTTPS or
+<code>SameSite=None</code>). When the app is served over HTTPS and the
+cookie path is the default root path, the browser token uses the
+<code>__Host-</code> cookie prefix for extra hardening.</p>
+<p>This browser token is mirrored to Shiny as an input. Its purpose is
+to ensure that the same browser that starts the OAuth 2.0 flow is the
+one that finishes it (a “double-submit” style CSRF defense). If the
+browser cannot create or read the cookie bridge (for example because
+cookies are blocked or Web Crypto is unavailable), the module surfaces
+<code>browser_cookie_error</code> and does not proceed with
+authentication. If the mirrored token is malformed, shinyOAuth rejects
+it, audits the event, and asks the browser to regenerate a fresh token
+before login or callback processing continues.</p>
 </div>
 <div class="section level3">
 <h3 id="decide-whether-to-start-login">2. Decide whether to start login<a class="anchor" aria-label="anchor" href="#decide-whether-to-start-login"></a>
@@ -130,13 +140,17 @@ replay attacks</li>
 <li>state, client_id, redirect_uri</li>
 <li>requested scopes</li>
 <li>provider fingerprint (issuer/auth/token URLs)</li>
+<li>client-policy fingerprint for callback-time policy binding</li>
 <li>issued_at timestamp</li>
+<li>flow observability metadata such as the internal trace id and
+propagated OTel headers</li>
 </ul>
 <p>Sealing the state prevents tampering, stale callbacks, and mix-ups
 with other providers/clients.</p>
-<p>On the server side, the package will store the sealed state (as a
-cache-safe hash key) in the state store (e.g., a ‘cachem’ backend) along
-with the following data:</p>
+<p>On the server side, the package stores side-car callback data in the
+state store (for example a <code>cachem</code> backend) under a
+cache-safe key derived from the plain state value, along with the
+following data:</p>
 <ul>
 <li>browser token</li>
 <li>code_verifier</li>
@@ -249,7 +263,16 @@ plus <code>error</code>, <code>error_description</code>, and
 callback. This consists of the following steps:</p>
 <ul>
 <li>Wait for the browser token input if not yet visible</li>
-<li>Enforce callback query size caps (DoS protection)</li>
+<li>Wait for a usable browser token input if not yet visible; when the
+cookie bridge fails, the module surfaces
+<code>browser_cookie_error</code> instead of attempting authentication
+without that binding</li>
+<li>Enforce callback query size caps (DoS protection), first on the raw
+callback query string before parsing and then on sensitive parameters
+such as <code>code</code>, <code>state</code>, <code>error</code>,
+<code>error_description</code>, <code>error_uri</code>, and
+<code>iss</code>
+</li>
 <li>Validate the callback <code>iss</code> query parameter against the
 provider’s configured/discovered issuer to defend against
 authorization-server mix-up attacks (per RFC 9207). When
@@ -281,6 +304,12 @@ aborts with a <code>shinyOAuth_state_error</code>
 <li>Audit events are emitted on failures (e.g.,
 <code>state_store_lookup_failed</code>,
 <code>state_store_removal_failed</code>)</li>
+<li>In multi-worker deployments, shared state stores are expected to
+provide an atomic <code>$take()</code> method for single-use semantics.
+Without that, shinyOAuth rejects shared stores by default unless the
+operator explicitly opts into the weaker replay-risk fallback with
+<code>options(shinyOAuth.allow_non_atomic_state_store = TRUE)</code>
+</li>
 </ul>
 </li>
 <li>Verify that user’s browser token matches the previously stored
@@ -499,47 +528,13 @@ values. These trigger a warning or error depending on the mode</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="token-introspection-optional">11. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
+<h3 id="build-the-oauthtoken-object">11. Build the <code>OAuthToken</code> object<a class="anchor" aria-label="anchor" href="#build-the-oauthtoken-object"></a>
 </h3>
-<p>Some providers support RFC 7662 token introspection (an additional
-endpoint where the server can ask the provider whether an access token
-is currently active and retrieve related metadata).</p>
-<p>If you enable <code>introspect = TRUE</code> when creating your
-<code><a href="../reference/oauth_client.html">oauth_client()</a></code>, the module calls the provider’s
-introspection endpoint during callback processing and requires the
-response to indicate <code>active = TRUE</code>. If introspection is
-unsupported by the provider or the introspection request fails, the
-login is aborted and <code>$authenticated</code> is not set to
-<code>TRUE</code>.</p>
-<p>Even for certificate-bound access tokens, introspection is still
-treated as an authorization-server call rather than a protected-resource
-proof-of-possession check: shinyOAuth uses mTLS for the introspection
-request when configured, but does not locally reject the call just
-because the token’s stored thumbprint and the current client certificate
-differ.</p>
-<p>You can optionally enforce additional provider-dependent fields via
-<code>oauth_client(introspect_elements = ...)</code>:</p>
-<ul>
-<li>
-<code>"sub"</code> – require introspection <code>sub</code> to match
-the session subject</li>
-<li>
-<code>"client_id"</code> – require introspection
-<code>client_id</code> to match your OAuth client id</li>
-<li>
-<code>"scope"</code> – validate introspection <code>scope</code>
-against requested scopes (respects the client’s
-<code>scope_validation</code> mode)</li>
-</ul>
-<p>(Note that not all providers may return each of these fields in
-introspection responses.)</p>
-</div>
-<div class="section level3">
-<h3 id="build-the-oauthtoken-object">12. Build the <code>OAuthToken</code> object<a class="anchor" aria-label="anchor" href="#build-the-oauthtoken-object"></a>
-</h3>
-<p>Now that all verifications have passed, the module builds the final
-token object. This is an S7 <code>OAuthToken</code> object which
-contains:</p>
+<p>Once the token response and any preceding verification steps have
+succeeded, the module builds the working token object. This happens
+before optional token introspection, but the module does not mark the
+session authenticated until the remaining checks have finished.</p>
+<p>This is an S7 <code>OAuthToken</code> object which contains:</p>
 <ul>
 <li>
 <code>access_token</code> (string)</li>
@@ -572,6 +567,44 @@ current token response explicitly proved those scopes)</li>
 <li>
 <code>userinfo</code> (optional list)</li>
 </ul>
+</div>
+<div class="section level3">
+<h3 id="token-introspection-optional">12. Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
+</h3>
+<p>Some providers support RFC 7662 token introspection (an additional
+endpoint where the server can ask the provider whether an access token
+is currently active and retrieve related metadata).</p>
+<p>If you enable <code>introspect = TRUE</code> when creating your
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code>, the module calls the provider’s
+introspection endpoint after the token object has been built and
+requires the response to indicate <code>active = TRUE</code> before the
+session is treated as authenticated. If the provider does not expose an
+<code>introspection_url</code>, <code><a href="../reference/oauth_client.html">oauth_client()</a></code> already
+fails fast at construction time. If the introspection request itself
+fails, or if the response is inactive, the login is aborted and
+<code>$authenticated</code> is not set to <code>TRUE</code>.</p>
+<p>Even for certificate-bound access tokens, introspection is still
+treated as an authorization-server call rather than a protected-resource
+proof-of-possession check: shinyOAuth uses mTLS for the introspection
+request when configured, but does not locally reject the call just
+because the token’s stored thumbprint and the current client certificate
+differ.</p>
+<p>You can optionally enforce additional provider-dependent fields via
+<code>oauth_client(introspect_elements = ...)</code>:</p>
+<ul>
+<li>
+<code>"sub"</code> – require introspection <code>sub</code> to match
+the session subject</li>
+<li>
+<code>"client_id"</code> – require introspection
+<code>client_id</code> to match your OAuth client id</li>
+<li>
+<code>"scope"</code> – validate introspection <code>scope</code>
+against requested scopes (respects the client’s
+<code>scope_validation</code> mode)</li>
+</ul>
+<p>(Note that not all providers may return each of these fields in
+introspection responses.)</p>
 <p>The <code>$authenticated</code> value as returned by
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now becomes TRUE, meaning all
 requested verifications have passed.</p>
@@ -661,6 +694,10 @@ claims in the refreshed ID token are compared against the original ID
 token’s values (not just the provider configuration) per OIDC Core
 Section 12.2, to cover edge cases with multi-tenant providers or
 rotating issuer URIs</li>
+<li>shinyOAuth also enforces continuity for <code>auth_time</code> when
+the original ID token had it, rejects a refreshed <code>nonce</code>
+when it changes, and requires <code>azp</code> to match when either
+token carries it</li>
 </ul>
 </li>
 </ul>

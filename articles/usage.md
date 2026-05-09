@@ -250,12 +250,19 @@ runApp(
 If your client is configured with `dpop_private_key` and the provider
 returns `token_type = "DPoP"`, call
 [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-with `oauth_client = client` so shinyOAuth can attach DPoP proofs (and
-answer `DPoP-Nonce` challenges) on downstream API calls. In
+with `oauth_client = client` so shinyOAuth can attach DPoP proofs on
+downstream API calls. If a resource server challenges with `DPoP-Nonce`,
+rebuild the request with `dpop_nonce = <value>` from that challenge
+before retrying. In
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
 configuring `dpop_private_key` also makes
 `dpop_require_access_token = TRUE` by default, so logins fail fast
 unless the authorization server actually returns a DPoP access token.
+
+The same `oauth_client = client` argument is also required when you use
+sender-constrained mTLS or certificate-bound access tokens, because
+shinyOAuth uses it to attach the configured client certificate and
+validate any `cnf` thumbprint before the request is sent.
 
 ``` r
 req <- client_bearer_req(
@@ -282,12 +289,17 @@ optionally add an extra validation step by enabling `introspect = TRUE`
 when creating your
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
-When enabled, the module calls the provider introspection endpoint
-during callback processing and requires the response to indicate
-`active = TRUE`. If proactive refresh is enabled, refreshed access
-tokens are introspected through the same client policy. If introspection
-is unsupported by the provider or the introspection request fails, the
-login or refresh is aborted and `$authenticated` is not set to `TRUE`.
+When enabled, the module calls the provider introspection endpoint after
+token retrieval and requires the response to indicate `active = TRUE`
+before the login is treated as complete. If proactive refresh is
+enabled, refreshed access tokens are introspected through the same
+client policy before the session is updated.
+
+If introspection itself fails, the login is aborted. On refresh, the
+default module behavior is to clear the session and optionally
+reauthenticate; when `oauth_module_server(indefinite_session = TRUE)` is
+in use, shinyOAuth instead keeps the current token, marks it as stale in
+`auth$token_stale`, and does not clear the session automatically.
 
 You can optionally request additional checks via `introspect_elements`:
 
@@ -341,6 +353,15 @@ below). The package auto-detects which backend is configured. If both
 are set up, mirai takes precedence (it offers lower overhead and
 non-blocking dispatch).
 
+For the `future` backend, use a non-sequential plan such as
+[`future::multisession()`](https://future.futureverse.org/reference/multisession.html)
+or
+[`future::multicore()`](https://future.futureverse.org/reference/multicore.html)
+where available.
+[`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
+still runs in-process and does not move network work off the main R
+thread.
+
 If you need to keep `async = FALSE`, you may consider reducing retry
 behaviour to limit blocking during provider incidents. See ‘Global
 options’ and then ‘HTTP timeout/retries’.
@@ -386,9 +407,10 @@ server <- function(input, output, session) {
 
 ## Logout
 
-To log out the user, call `auth$logout()`. This clears the local session
-and attempts to revoke tokens at the provider (if a revocation endpoint
-is available):
+To log out the user, call `auth$logout()`. This clears the local
+session, sets `auth$error` to `"logged_out"`, reissues a fresh browser
+token for the next login attempt, and attempts to revoke tokens at the
+provider (if a revocation endpoint is available):
 
 ``` r
 observeEvent(input$logout_btn, {
