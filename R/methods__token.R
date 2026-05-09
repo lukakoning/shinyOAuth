@@ -187,7 +187,7 @@ revoke_token <- function(
         resp <- with_otel_span(
           "shinyOAuth.token.revoke.http",
           {
-            resp <- req_with_dpop_retry(req, oauth_client)
+            resp <- req_with_retry(req)
             otel_record_http_result(resp)
             resp
           },
@@ -473,7 +473,7 @@ introspect_token <- function(
         resp <- with_otel_span(
           "shinyOAuth.token.introspect.http",
           {
-            resp <- req_with_dpop_retry(req, oauth_client)
+            resp <- req_with_retry(req)
             otel_record_http_result(resp)
             resp
           },

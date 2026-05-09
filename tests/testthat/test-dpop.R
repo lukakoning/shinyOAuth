@@ -1021,12 +1021,12 @@ test_that("refresh_token reuses a nonce learned from a successful token exchange
   expect_identical(refreshed@refresh_token, "refresh-2")
 })
 
-test_that("revoke_token, introspect_token, and get_userinfo send DPoP proofs", {
+test_that("revoke_token and introspect_token skip DPoP proofs while get_userinfo still sends one", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
   app$post("/revoke", function(req, res) {
-    if (!nzchar(req$get_header("dpop") %||% "")) {
+    if (nzchar(req$get_header("dpop") %||% "")) {
       res$set_status(400)
       res$send("")
       return()
@@ -1035,7 +1035,7 @@ test_that("revoke_token, introspect_token, and get_userinfo send DPoP proofs", {
     res$send("")
   })
   app$post("/introspect", function(req, res) {
-    if (!nzchar(req$get_header("dpop") %||% "")) {
+    if (nzchar(req$get_header("dpop") %||% "")) {
       res$set_status(400)
       res$set_type("application/json")
       res$send(jsonlite::toJSON(
