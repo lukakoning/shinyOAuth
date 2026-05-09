@@ -547,26 +547,32 @@ introspect_token <- function(
         }
 
         body_txt <- httr2::resp_body_string(resp)
+        body_trimmed <- trimws(body_txt)
         parsed <- try(
           {
             reject_duplicate_json_object_members(
               body_txt,
               "Introspection response JSON"
             )
-            jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+            jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
           },
           silent = TRUE
         )
 
-        if (inherits(parsed, "try-error") || !is.list(parsed)) {
+        if (
+          inherits(parsed, "try-error") ||
+            !is.list(parsed) ||
+            is.data.frame(parsed) ||
+            !startsWith(body_trimmed, "{")
+        ) {
           status <- "invalid_json"
           raw <- NULL
         } else {
           raw <- parsed
-          if (is.null(raw$active)) {
+          if (is.null(raw[["active"]])) {
             status <- "missing_active"
           } else {
-            active <- coerce_introspection_active(raw$active)
+            active <- coerce_introspection_active(raw[["active"]])
             if (is.na(active)) {
               status <- "invalid_active"
             }
@@ -1218,8 +1224,12 @@ annotate_token_introspection_span_result <- function(which, result) {
 #' @keywords internal
 #' @noRd
 coerce_introspection_active <- function(x) {
+  if (is.list(x) || length(x) != 1L) {
+    return(NA)
+  }
+
   if (is.logical(x)) {
-    return(ifelse(length(x) >= 1L, x[[1]], NA))
+    return(ifelse(!is.na(x[[1]]), x[[1]], NA))
   }
   if (is.numeric(x)) {
     xv <- suppressWarnings(as.numeric(x[[1]]))
