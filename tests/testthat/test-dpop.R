@@ -748,6 +748,70 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
   expect_identical(state$proof_nonces, c("", "success-nonce-1"))
 })
 
+test_that("req_with_dpop_retry does not reuse a nonce across same-origin endpoints", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    introspection_url = NA_character_,
+    revocation_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    token_auth_style = "body"
+  )
+  cli <- make_dpop_test_client(prov)
+  token_req <- httr2::request(prov@token_url) |>
+    httr2::req_method("POST")
+  userinfo_req <- httr2::request(prov@userinfo_url)
+
+  state <- new.env(parent = emptyenv())
+  state$seen <- list()
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, idempotent = TRUE) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      payload <- decode_dpop_payload(dry$headers$dpop)
+      state$seen[[length(state$seen) + 1L]] <<- list(
+        url = as.character(req$url),
+        nonce = payload$nonce %||% ""
+      )
+
+      headers <- list("content-type" = "application/json")
+      if (identical(as.character(req$url), prov@token_url)) {
+        headers[["dpop-nonce"]] <- "token-nonce-1"
+      }
+
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = headers,
+        body = charToRaw("{}")
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  shinyOAuth:::req_with_dpop_retry(token_req, cli, idempotent = FALSE)
+  shinyOAuth:::req_with_dpop_retry(
+    userinfo_req,
+    cli,
+    access_token = "at-1",
+    idempotent = TRUE
+  )
+
+  expect_identical(state$seen[[1]]$url, prov@token_url)
+  expect_identical(state$seen[[1]]$nonce, "")
+  expect_identical(state$seen[[2]]$url, prov@userinfo_url)
+  expect_identical(state$seen[[2]]$nonce, "")
+})
+
 test_that("handle_callback enforces strict DPoP token_type after exchange", {
   testthat::skip_if_not_installed("webfakes")
 

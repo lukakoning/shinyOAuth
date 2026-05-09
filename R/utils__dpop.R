@@ -22,8 +22,8 @@ client_has_dpop <- function(client) {
   !is.null(client@dpop_private_key)
 }
 
-# Cache DPoP nonces per request origin and client key so later requests can
-# reuse server-provided nonces without waiting for another challenge.
+# Cache DPoP nonces per target URI and client key so later requests can reuse
+# server-provided nonces without bleeding between different endpoints.
 dpop_nonce_cache_env <- new.env(parent = emptyenv())
 
 #' Build a DPoP nonce cache key
@@ -31,7 +31,7 @@ dpop_nonce_cache_env <- new.env(parent = emptyenv())
 #' Used when DPoP nonces are memoized between requests.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose origin scopes the cached nonce.
+#' @param url Request URL whose target URI scopes the cached nonce.
 #' @return Cache key string, or `NA_character_` when no usable key can be
 #'   derived.
 #' @keywords internal
@@ -46,25 +46,8 @@ dpop_nonce_cache_key <- function(client, url) {
     return(NA_character_)
   }
 
-  parsed <- try(httr2::url_parse(url), silent = TRUE)
-  if (inherits(parsed, "try-error")) {
-    return(NA_character_)
-  }
-  if (
-    !is_valid_string(parsed$scheme %||% NULL) ||
-      !is_valid_string(parsed$hostname %||% NULL)
-  ) {
-    return(NA_character_)
-  }
-
-  parsed$username <- NULL
-  parsed$password <- NULL
-  parsed$path <- "/"
-  parsed$query <- NULL
-  parsed$fragment <- NULL
-
-  origin <- try(httr2::url_build(parsed), silent = TRUE)
-  if (inherits(origin, "try-error") || !is_valid_string(origin)) {
+  target_uri <- try(dpop_target_uri(url), silent = TRUE)
+  if (inherits(target_uri, "try-error") || !is_valid_string(target_uri)) {
     return(NA_character_)
   }
 
@@ -82,7 +65,7 @@ dpop_nonce_cache_key <- function(client, url) {
     return(NA_character_)
   }
 
-  paste(origin, client_id_key, dpop_jkt, sep = "::")
+  paste(target_uri, client_id_key, dpop_jkt, sep = "::")
 }
 
 #' Read a cached DPoP nonce
@@ -90,7 +73,7 @@ dpop_nonce_cache_key <- function(client, url) {
 #' Used before building a DPoP proof when the caller did not supply a nonce.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose origin scopes the cached nonce.
+#' @param url Request URL whose target URI scopes the cached nonce.
 #' @return Cached nonce string, or `NULL` when no usable cached nonce exists.
 #' @keywords internal
 #' @noRd
@@ -116,7 +99,7 @@ dpop_nonce_cache_get <- function(client, url) {
 #' Used after a DPoP-protected response provides a fresh nonce.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose origin scopes the cached nonce.
+#' @param url Request URL whose target URI scopes the cached nonce.
 #' @param nonce DPoP nonce to cache.
 #' @return Invisibly returns `nonce`.
 #' @keywords internal

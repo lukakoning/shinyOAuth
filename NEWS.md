@@ -4,6 +4,8 @@
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
 `token_type = "DPoP"` when the server returns it.
+  Cached DPoP nonces are now scoped to the target endpoint URI so nonces from
+  token responses do not leak into protected-resource proofs on the same host.
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
