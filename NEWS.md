@@ -128,6 +128,9 @@ the client's configured scopes when a refresh response omits `scope`.
   - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs 
   reject POST requests, so `response_mode = "form_post"` was previously allowed 
   but led to abroken callback round-trip instead of a clear configuration error.
+  - Treats nonce-enabled OIDC flows as sufficient validation context for
+  `userinfo_id_token_match`, and shinyOAuth now always binds userinfo to a
+  validated ID token subject when that baseline exists.
   - Raises typed `shinyOAuth_input_error` conditions for malformed constructor
   inputs such as vector endpoint URLs or empty discovery-helper domains, so
   apps can trap provider validation failures consistently.

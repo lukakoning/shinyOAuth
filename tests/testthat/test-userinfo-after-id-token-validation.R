@@ -100,6 +100,134 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
   )
 })
 
+test_that("handle_callback binds userinfo to a nonce-validated id_token even when the flag is FALSE", {
+  id_token <- build_dummy_jwt(list(
+    sub = "user123",
+    iss = "https://test.example.com"
+  ))
+
+  prov <- oauth_provider(
+    name = "test",
+    auth_url = "https://test.example.com/auth",
+    token_url = "https://test.example.com/token",
+    userinfo_url = "https://test.example.com/userinfo",
+    issuer = "https://test.example.com",
+    use_nonce = TRUE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = TRUE,
+    id_token_required = TRUE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    token_auth_style = "body",
+    jwks_cache = cachem::cache_mem(max_age = 60),
+    allowed_algs = c("RS256"),
+    allowed_token_types = c("Bearer")
+  )
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "test-client",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = c("openid", "profile"),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  match_called <- FALSE
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "test-access-token",
+        token_type = "Bearer",
+        expires_in = 3600,
+        id_token = id_token,
+        scope = "openid profile"
+      )
+    },
+    validate_id_token = function(
+      client,
+      id_token,
+      expected_nonce = NULL,
+      expected_sub = NULL,
+      expected_access_token = NULL,
+      max_age = NULL
+    ) {
+      invisible(list(sub = "user123", iss = "https://test.example.com"))
+    },
+    get_userinfo = function(oauth_client, token) {
+      list(sub = "user123", name = "Test User")
+    },
+    verify_userinfo_id_token_subject_match = function(
+      client,
+      userinfo,
+      id_token
+    ) {
+      match_called <<- TRUE
+      invisible(TRUE)
+    },
+    .package = "shinyOAuth",
+    {
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "auth-code",
+        payload = enc,
+        browser_token = tok
+      )
+    }
+  )
+
+  expect_true(
+    match_called,
+    label = paste(
+      "validated ID token + userinfo must still be bound even when",
+      "userinfo_id_token_match = FALSE"
+    )
+  )
+})
+
+test_that("oauth_provider accepts and infers nonce-driven userinfo subject binding", {
+  explicit <- oauth_provider(
+    name = "test",
+    auth_url = "https://test.example.com/auth",
+    token_url = "https://test.example.com/token",
+    userinfo_url = "https://test.example.com/userinfo",
+    issuer = "https://test.example.com",
+    use_nonce = TRUE,
+    use_pkce = TRUE,
+    userinfo_required = TRUE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = TRUE,
+    token_auth_style = "body"
+  )
+
+  inferred <- oauth_provider(
+    name = "test",
+    auth_url = "https://test.example.com/auth",
+    token_url = "https://test.example.com/token",
+    userinfo_url = "https://test.example.com/userinfo",
+    issuer = "https://test.example.com",
+    use_nonce = TRUE,
+    use_pkce = TRUE,
+    userinfo_required = TRUE,
+    id_token_validation = FALSE,
+    token_auth_style = "body"
+  )
+
+  expect_true(explicit@userinfo_id_token_match)
+  expect_true(inferred@userinfo_id_token_match)
+  expect_false(explicit@id_token_validation)
+  expect_false(inferred@id_token_validation)
+})
+
 test_that("login flow: get_userinfo not called when ID token validation fails", {
   # Ensure that if ID token validation fails, we never reach the userinfo call
   prov <- oauth_provider(
@@ -470,8 +598,9 @@ test_that("verify_token_set: refresh without userinfo skips match", {
   )
 })
 
-test_that("verify_token_set: refresh without id_token skips match", {
-  # During refresh, if id_token is missing, skip the match check
+test_that("verify_token_set: refresh without id_token fails closed when policy requires binding", {
+  # During refresh, if userinfo is present but no validated ID token baseline is
+  # available, userinfo_id_token_match = TRUE must fail closed.
 
   prov <- oauth_provider(
     name = "test",
@@ -509,32 +638,16 @@ test_that("verify_token_set: refresh without id_token skips match", {
     scope = "openid"
   )
 
-  match_called <- FALSE
-
-  result <- testthat::with_mocked_bindings(
-    verify_userinfo_id_token_subject_match = function(
-      client,
-      userinfo,
-      id_token
-    ) {
-      match_called <<- TRUE
-      stop("Should not be called when id_token is missing")
-    },
-    .package = "shinyOAuth",
-    {
-      shinyOAuth:::verify_token_set(
-        cli,
-        token_set = token_set,
-        nonce = NULL,
-        is_refresh = TRUE
-        # No original_id_token needed since there's no id_token in response
-      )
-    }
-  )
-
-  expect_false(
-    match_called,
-    label = "verify_userinfo_id_token_subject_match must not be called when id_token missing"
+  testthat::expect_error(
+    shinyOAuth:::verify_token_set(
+      cli,
+      token_set = token_set,
+      nonce = NULL,
+      is_refresh = TRUE
+      # No original_id_token needed since there's no validated baseline
+    ),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "validated ID token"
   )
 })
 

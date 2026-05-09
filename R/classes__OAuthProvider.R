@@ -109,17 +109,19 @@
 #' otherwise it defaults to `FALSE`. This avoids unexpected validation errors
 #' when `userinfo_url` is omitted (since it is optional).
 #'
-#' @param userinfo_id_token_match Whether to verify that the user ID ("sub") from the ID token
-#' matches the user ID extracted from the userinfo response. This requires both
-#' `userinfo_required` and `id_token_validation` to be TRUE (and thus a valid `userinfo_url`
-#' and `issuer` to be set, plus potentially setting the client's scope to include "openid",
-#' so that an ID token is returned). Furthermore, the provider's `userinfo_id_selector` must be configured
-#' to extract the user ID from the userinfo response. This check helps ensure
-#' the integrity of the user information by confirming that both sources agree on the user's identity.
+#' @param userinfo_id_token_match Whether to fail closed if UserInfo cannot be
+#' bound to a validated ID token subject. Whenever both UserInfo and a
+#' validated ID token are available, shinyOAuth always verifies that their
+#' `sub` values match. Setting this field to `TRUE` additionally requires a
+#' validated ID token baseline whenever UserInfo is fetched. This requires
+#' `userinfo_required` plus either `id_token_validation` or `use_nonce` to be
+#' `TRUE`, and the provider's `userinfo_id_selector` must be configured to
+#' extract the user ID from the userinfo response.
 #'
 #' For [oauth_provider()], when not explicitly supplied, this is inferred as
-#' `TRUE` only if both `userinfo_required` and `id_token_validation` are `TRUE`;
-#' otherwise it defaults to `FALSE`.
+#' `TRUE` when `userinfo_required` is `TRUE` and either
+#' `id_token_validation` or `use_nonce` is `TRUE`; otherwise it defaults to
+#' `FALSE`.
 #'
 #' @param userinfo_signed_jwt_required Whether to require that the userinfo
 #' endpoint returns a signed JWT (`Content-Type: application/jwt`) whose
@@ -639,7 +641,7 @@ oauth_provider <- function(
   }
   if (is.null(userinfo_id_token_match)) {
     userinfo_id_token_match <- isTRUE(userinfo_required) &&
-      isTRUE(id_token_validation)
+      (isTRUE(id_token_validation) || isTRUE(use_nonce))
   }
 
   OAuthProvider(
@@ -1200,9 +1202,9 @@ oauth_provider_validate <- function(self) {
         "OAuthProvider: userinfo_id_token_match = TRUE requires userinfo_required = TRUE"
       )
     }
-    if (!isTRUE(self@id_token_validation)) {
+    if (!(isTRUE(self@id_token_validation) || isTRUE(self@use_nonce))) {
       return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires id_token_validation = TRUE"
+        "OAuthProvider: userinfo_id_token_match = TRUE requires id_token_validation = TRUE or use_nonce = TRUE"
       )
     }
     if (!is_valid_string(self@userinfo_url) || !is_ok_host(self@userinfo_url)) {

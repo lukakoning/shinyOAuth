@@ -1045,3 +1045,67 @@ verify_userinfo_id_token_subject_match <- function(
 
   return(invisible(TRUE))
 }
+
+#' Enforce UserInfo subject binding against a validated ID token baseline
+#'
+#' Used after UserInfo is fetched during login or refresh. Whenever a
+#' validated ID token is available, shinyOAuth always cross-checks the UserInfo
+#' subject against it. When `userinfo_id_token_match = TRUE`, the absence of a
+#' validated ID token baseline is treated as an error rather than silently
+#' accepting unbound UserInfo data.
+#'
+#' @param oauth_client OAuth client carrying provider policy.
+#' @param userinfo UserInfo claim list.
+#' @param token_set Optional token response list containing `id_token` and
+#'   `.id_token_validated`.
+#' @param token Optional prior [OAuthToken] used as the refresh-time baseline
+#'   when a new response omits the ID token.
+#' @return Invisibly returns `TRUE` when a comparison was performed, otherwise
+#'   `FALSE` when no validated baseline was available and policy did not require
+#'   one.
+#' @keywords internal
+#' @noRd
+enforce_userinfo_id_token_subject_match <- function(
+  oauth_client,
+  userinfo,
+  token_set = NULL,
+  token = NULL
+) {
+  baseline_id_token <- NA_character_
+
+  if (
+    is.list(token_set) &&
+      isTRUE(token_set[[".id_token_validated"]]) &&
+      is_valid_string(token_set[["id_token"]])
+  ) {
+    baseline_id_token <- token_set[["id_token"]]
+  }
+
+  if (!is_valid_string(baseline_id_token) && !is.null(token)) {
+    S7::check_is_S7(token, OAuthToken)
+    if (isTRUE(token@id_token_validated) && is_valid_string(token@id_token)) {
+      baseline_id_token <- token@id_token
+    }
+  }
+
+  if (!is_valid_string(baseline_id_token)) {
+    if (isTRUE(oauth_client@provider@userinfo_id_token_match)) {
+      err_userinfo(c(
+        "x" = "Cannot verify UserInfo subject against a validated ID token",
+        "i" = paste(
+          "userinfo_id_token_match = TRUE requires a new or preserved",
+          "validated ID token when userinfo is fetched"
+        )
+      ))
+    }
+    return(invisible(FALSE))
+  }
+
+  verify_userinfo_id_token_subject_match(
+    oauth_client,
+    userinfo = userinfo,
+    id_token = baseline_id_token
+  )
+
+  invisible(TRUE)
+}

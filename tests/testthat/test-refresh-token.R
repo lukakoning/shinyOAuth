@@ -597,7 +597,8 @@ testthat::test_that("refresh_token rejects new id_token with mismatched sub (OID
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = original_id_token
+    id_token = original_id_token,
+    id_token_validated = TRUE
   )
 
   # Should fail: new ID token has different sub than original
@@ -693,7 +694,8 @@ testthat::test_that("refresh_token accepts new id_token with matching sub (OIDC 
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = original_id_token
+    id_token = original_id_token,
+    id_token_validated = TRUE
   )
 
   # Should succeed: sub matches
@@ -916,7 +918,8 @@ testthat::test_that("refresh_token preserves original id_token when refresh omit
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = original_id_token
+    id_token = original_id_token,
+    id_token_validated = TRUE
   )
 
   t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
@@ -1393,7 +1396,8 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
     access_token = "old_at",
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = original_id_token
+    id_token = original_id_token,
+    id_token_validated = TRUE
   )
 
   # New ID token with correct sub
@@ -1515,7 +1519,7 @@ testthat::test_that("refresh_token errors when userinfo_id_token_match lacks an 
   testthat::expect_error(
     refresh_token(cli, t, async = FALSE, introspect = FALSE),
     class = "shinyOAuth_userinfo_error",
-    regexp = "Cannot verify refreshed userinfo subject"
+    regexp = "validated ID token"
   )
 })
 
@@ -1569,6 +1573,91 @@ testthat::test_that("refresh_token rejects refreshed userinfo that mismatches pr
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
     id_token = original_id_token,
+    id_token_validated = TRUE,
+    userinfo = list(sub = "user-123", name = "Old Name")
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      url <- as.character(req$url)
+      if (grepl("userinfo", url, fixed = TRUE)) {
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"sub":"different-user","name":"Imposter"}')
+        )
+      } else {
+        httr2::response(
+          url = url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            '{"access_token":"new_at","token_type":"Bearer","expires_in":3600}'
+          )
+        )
+      }
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    class = "shinyOAuth_userinfo_mismatch"
+  )
+})
+
+testthat::test_that("refresh_token still binds refreshed userinfo to a preserved validated id_token when the flag is FALSE", {
+  prov <- oauth_provider(
+    name = "oidc-example",
+    auth_url = "https://issuer.example.com/auth",
+    token_url = "https://issuer.example.com/token",
+    userinfo_url = "https://issuer.example.com/userinfo",
+    issuer = "https://issuer.example.com",
+    id_token_validation = TRUE,
+    id_token_required = FALSE,
+    userinfo_required = TRUE,
+    userinfo_id_token_match = FALSE,
+    userinfo_id_selector = function(ui) ui$sub,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "body"
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  original_payload <- list(
+    iss = "https://issuer.example.com",
+    sub = "user-123",
+    aud = "abc",
+    exp = as.numeric(Sys.time()) + 3600,
+    iat = as.numeric(Sys.time())
+  )
+  original_id_token <- paste(
+    shinyOAuth:::base64url_encode(charToRaw('{"alg":"none"}')),
+    shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
+      original_payload,
+      auto_unbox = TRUE
+    ))),
+    "",
+    sep = "."
+  )
+
+  t <- OAuthToken(
+    access_token = "old_at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = original_id_token,
+    id_token_validated = TRUE,
     userinfo = list(sub = "user-123", name = "Old Name")
   )
 
@@ -1656,6 +1745,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
     id_token = original_id_token,
+    id_token_validated = TRUE,
     userinfo = list(sub = "user-123", name = "Old Name")
   )
 
@@ -1771,6 +1861,7 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 10,
     id_token = original_id_token,
+    id_token_validated = TRUE,
     userinfo = list(sub = "user-123", name = "Old Name")
   )
 

@@ -151,17 +151,19 @@ if a \code{userinfo_url} is provided, \code{userinfo_required} defaults to \code
 otherwise it defaults to \code{FALSE}. This avoids unexpected validation errors
 when \code{userinfo_url} is omitted (since it is optional).}
 
-\item{userinfo_id_token_match}{Whether to verify that the user ID ("sub") from the ID token
-matches the user ID extracted from the userinfo response. This requires both
-\code{userinfo_required} and \code{id_token_validation} to be TRUE (and thus a valid \code{userinfo_url}
-and \code{issuer} to be set, plus potentially setting the client's scope to include "openid",
-so that an ID token is returned). Furthermore, the provider's \code{userinfo_id_selector} must be configured
-to extract the user ID from the userinfo response. This check helps ensure
-the integrity of the user information by confirming that both sources agree on the user's identity.
+\item{userinfo_id_token_match}{Whether to fail closed if UserInfo cannot be
+bound to a validated ID token subject. Whenever both UserInfo and a
+validated ID token are available, shinyOAuth always verifies that their
+\code{sub} values match. Setting this field to \code{TRUE} additionally requires a
+validated ID token baseline whenever UserInfo is fetched. This requires
+\code{userinfo_required} plus either \code{id_token_validation} or \code{use_nonce} to be
+\code{TRUE}, and the provider's \code{userinfo_id_selector} must be configured to
+extract the user ID from the userinfo response.
 
 For \code{\link[=oauth_provider]{oauth_provider()}}, when not explicitly supplied, this is inferred as
-\code{TRUE} only if both \code{userinfo_required} and \code{id_token_validation} are \code{TRUE};
-otherwise it defaults to \code{FALSE}.}
+\code{TRUE} when \code{userinfo_required} is \code{TRUE} and either
+\code{id_token_validation} or \code{use_nonce} is \code{TRUE}; otherwise it defaults to
+\code{FALSE}.}
 
 \item{userinfo_signed_jwt_required}{Whether to require that the userinfo
 endpoint returns a signed JWT (\code{Content-Type: application/jwt}) whose

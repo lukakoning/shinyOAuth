@@ -78,10 +78,11 @@ fully validated (signature and claims) in addition to the OIDC 12.2 \code{sub}
 continuity check.
 
 When \code{userinfo_required = TRUE}, userinfo is re-fetched using the fresh
-access token. If \code{userinfo_id_token_match = TRUE}, refreshed userinfo is
-checked against the refresh ID token when one is returned, otherwise against
-the preserved original ID token from the initial login. If no trustworthy ID
-token baseline is available, refresh fails instead of updating userinfo.
+access token. Whenever shinyOAuth has both refreshed userinfo and a
+validated ID token baseline, it checks that their \code{sub} claims still match.
+If \code{userinfo_id_token_match = TRUE}, the absence of a trustworthy ID token
+baseline is treated as an error instead of silently accepting unbound
+userinfo data.
 }
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`

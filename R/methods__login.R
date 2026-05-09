@@ -1285,16 +1285,14 @@ handle_callback_internal <- function(
         )
         token_set[["userinfo"]] <- userinfo
 
-        # Verify userinfo subject matches ID token subject (if configured).
-        # ID token is guaranteed present here: verify_token_set() already enforces
-        # id_token_required when userinfo_id_token_match = TRUE (see line ~1303).
-        if (isTRUE(oauth_client@provider@userinfo_id_token_match)) {
-          verify_userinfo_id_token_subject_match(
-            oauth_client,
-            userinfo = userinfo,
-            id_token = token_set[["id_token"]]
-          )
-        }
+        # OIDC Core requires UserInfo subject binding whenever a validated ID
+        # token baseline is available. Explicit userinfo_id_token_match = TRUE
+        # also fails closed if that baseline is missing.
+        enforce_userinfo_id_token_subject_match(
+          oauth_client,
+          userinfo = userinfo,
+          token_set = token_set
+        )
 
         # Validate requested claims in userinfo (OIDC Core Section 5.5)
         validate_essential_claims(oauth_client, userinfo, "userinfo")
@@ -2224,24 +2222,21 @@ verify_token_set <- function(
       # During initial login (is_refresh = FALSE): this check is now performed by
       # handle_callback() AFTER userinfo is fetched, not here. This function is
       # called before userinfo fetch in the new flow, so we skip this check.
-      # During refresh: validate only if BOTH userinfo and id_token are present.
-      # (userinfo is fetched when userinfo_required = TRUE; id_token may be omitted
-      # per OIDC 12.2). When both are available, verify subjects still match.
+      # During refresh, direct callers may provide userinfo alongside the token
+      # response. Bind it to any validated ID token baseline in the response,
+      # and fail closed when policy explicitly requires that baseline.
+
+      token_set[[".id_token_validated"]] <- id_token_validated
 
       if (isTRUE(is_refresh)) {
-        id_token_present <- is_valid_string(token_set[["id_token"]])
         userinfo_present <- is.list(token_set[["userinfo"]]) &&
           length(token_set[["userinfo"]]) > 0
 
-        should_match <- isTRUE(client@provider@userinfo_id_token_match) &&
-          id_token_present &&
-          userinfo_present
-
-        if (should_match) {
-          verify_userinfo_id_token_subject_match(
+        if (userinfo_present) {
+          enforce_userinfo_id_token_subject_match(
             client,
             userinfo = token_set[["userinfo"]],
-            id_token = token_set[["id_token"]]
+            token_set = token_set
           )
         }
       }
@@ -2254,7 +2249,6 @@ verify_token_set <- function(
           oauth.scopes.granted_count = granted_scope_count
         ))
       )
-      token_set[[".id_token_validated"]] <- id_token_validated
 
       token_set
     },

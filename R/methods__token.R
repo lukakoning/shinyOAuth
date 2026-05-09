@@ -638,10 +638,11 @@ introspect_token <- function(
 #' continuity check.
 #'
 #' When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
-#' access token. If `userinfo_id_token_match = TRUE`, refreshed userinfo is
-#' checked against the refresh ID token when one is returned, otherwise against
-#' the preserved original ID token from the initial login. If no trustworthy ID
-#' token baseline is available, refresh fails instead of updating userinfo.
+#' access token. Whenever shinyOAuth has both refreshed userinfo and a
+#' validated ID token baseline, it checks that their `sub` claims still match.
+#' If `userinfo_id_token_match = TRUE`, the absence of a trustworthy ID token
+#' baseline is treated as an error instead of silently accepting unbound
+#' userinfo data.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
@@ -903,28 +904,12 @@ refresh_token <- function(
             shiny_session = shiny_session
           )
 
-          if (isTRUE(oauth_client@provider@userinfo_id_token_match)) {
-            baseline_id_token <- token_set[["id_token"]]
-            if (!is_valid_string(baseline_id_token)) {
-              baseline_id_token <- token@id_token
-            }
-
-            if (!is_valid_string(baseline_id_token)) {
-              err_userinfo(c(
-                "x" = "Cannot verify refreshed userinfo subject",
-                "i" = paste(
-                  "userinfo_id_token_match = TRUE requires a new or preserved",
-                  "ID token during refresh"
-                )
-              ))
-            }
-
-            verify_userinfo_id_token_subject_match(
-              oauth_client,
-              userinfo = ui,
-              id_token = baseline_id_token
-            )
-          }
+          enforce_userinfo_id_token_subject_match(
+            oauth_client,
+            userinfo = ui,
+            token_set = token_set,
+            token = token
+          )
 
           validate_essential_claims(oauth_client, ui, "userinfo")
           token_set$userinfo <- ui
