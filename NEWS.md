@@ -5,14 +5,6 @@ now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
 `token_type = "DPoP"` when the server returns it.
 
-* DPoP-bound access tokens now fail closed when a returned `cnf$jkt`
-does not match the configured `dpop_private_key`, both when token responses
-are verified and before outbound DPoP proofs are attached.
-
-* When a provider omits `token_type` under `allowed_token_types = character()`,
-refresh now carries forward the effective DPoP token type for its immediate
-userinfo call instead of silently falling back to a proofless Bearer request.
-
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 
