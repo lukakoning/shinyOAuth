@@ -180,8 +180,10 @@ uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
 the browser. The same authorization request parameters are first sent
 server-to-server to the provider’s PAR endpoint as a form-encoded POST.
 Client authentication for that POST follows the provider’s configured
-token authentication style: HTTP Basic, body client secret,
-<code>client_secret_jwt</code>, or <code>private_key_jwt</code>.</p>
+token authentication style: public client id only, HTTP Basic, body
+client secret, <code>client_secret_jwt</code>,
+<code>private_key_jwt</code>, or mTLS client authentication when
+configured.</p>
 <p>For PAR, the provider must return a successful JSON response with
 HTTP <code>201 Created</code>, including a <code>request_uri</code> and
 a positive integer <code>expires_in</code>. The browser redirect is then
@@ -235,8 +237,9 @@ log in and authorize the app to access the requested scopes.</p>
 </h3>
 <p>The provider redirects the user’s browser back to your Shiny app
 (your <code>redirect_uri</code>), including the <code>code</code> and
-<code>state</code> parameters (and optionally <code>error</code> and
-<code>error_description</code> on failure).</p>
+<code>state</code> parameters, and optionally RFC 9207 <code>iss</code>,
+plus <code>error</code>, <code>error_description</code>, and
+<code>error_uri</code> on failure.</p>
 </div>
 <div class="section level3">
 <h3 id="callback-processing-state-verification-handle_callback">7. Callback processing &amp; state verification
@@ -297,13 +300,16 @@ authorization code for tokens.</p>
 <p>A POST request is made to the token endpoint with
 <code>grant_type=authorization_code</code>, the code, the redirect_uri,
 and the <code>code_verifier</code> (PKCE). Client authentication method
-depends on provider style: HTTP Basic header
-(<code>client_secret_basic</code>), body params
-(<code>client_secret_post</code>), or JWT-based assertions
-(<code>client_secret_jwt</code>, <code>private_key_jwt</code>) when
-configured. The response must include at least
-<code>access_token</code>. Malformed or error responses abort the
-flow.</p>
+depends on provider style: public (<code>client_id</code> only), HTTP
+Basic header (<code>client_secret_basic</code>), body params
+(<code>client_secret_post</code>), JWT-based assertions
+(<code>client_secret_jwt</code>, <code>private_key_jwt</code>), or mTLS
+when configured. When the client is configured with
+<code>dpop_private_key</code>, shinyOAuth also attaches a DPoP proof to
+the token request and can regenerate it once if the authorization server
+responds with a <code>DPoP-Nonce</code> challenge. The response must
+include at least <code>access_token</code>. Malformed or error responses
+abort the flow.</p>
 <p>When successful, the package also applies two safety rails:</p>
 <ul>
 <li>If the token response includes <code>scope</code>, shinyOAuth can
@@ -345,6 +351,36 @@ access tokens are expected to fail at the protected resource. The
 recovery path is to refresh or re-authenticate, obtain a new access
 token bound to the new certificate, and then retry the
 protected-resource request.</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="what-changes-when-dpop-is-enabled-rfc-9449">What changes when DPoP is enabled (RFC 9449)<a class="anchor" aria-label="anchor" href="#what-changes-when-dpop-is-enabled-rfc-9449"></a>
+</h4>
+<p>When the client is configured with <code>dpop_private_key</code>,
+shinyOAuth adds proof-of-possession behavior on both token-endpoint and
+protected-resource requests:</p>
+<ul>
+<li>Authorization-code exchange and refresh calls to the token endpoint
+carry a DPoP proof. If the authorization server responds with a
+<code>DPoP-Nonce</code> challenge, shinyOAuth can mint a fresh proof
+once and retry the same request</li>
+<li>If the provider already enforces a non-empty
+<code>allowed_token_types</code> allowlist, shinyOAuth automatically
+adds <code>DPoP</code> to that allowlist for DPoP-capable clients so the
+provider can return either Bearer or DPoP tokens without extra provider
+configuration</li>
+<li>In <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, configuring
+<code>dpop_private_key</code> also makes
+<code>dpop_require_access_token = TRUE</code> by default. That means
+login or refresh fails fast unless the authorization server explicitly
+returns <code>token_type = "DPoP"</code>. Set it to <code>FALSE</code>
+only when you intentionally allow Bearer access tokens, such as
+deployments that use DPoP only for refresh tokens</li>
+<li>Later <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> calls and downstream
+<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> requests also attach DPoP proofs when
+the effective access-token type is <code>DPoP</code> and the caller
+supplies the corresponding <code>OAuthClient</code>
+</li>
 </ul>
 </div>
 </div>
@@ -508,6 +544,9 @@ contains:</p>
 <li>
 <code>access_token</code> (string)</li>
 <li>
+<code>token_type</code> (string, e.g., <code>Bearer</code> or
+<code>DPoP</code>)</li>
+<li>
 <code>refresh_token</code> (optional string)</li>
 <li>
 <code>expires_at</code> (numeric timestamp, seconds since epoch;
@@ -521,6 +560,15 @@ token was cryptographically verified)</li>
 <code>id_token_claims</code> (read-only named list exposing the
 decoded JWT payload, e.g., <code>sub</code>, <code>acr</code>,
 <code>amr</code>, <code>auth_time</code>)</li>
+<li>
+<code>cnf</code> (optional confirmation claim set, such as an mTLS
+certificate thumbprint)</li>
+<li>
+<code>granted_scopes</code> (normalized scope tokens currently
+associated with the access token)</li>
+<li>
+<code>granted_scopes_verified</code> (logical indicating whether the
+current token response explicitly proved those scopes)</li>
 <li>
 <code>userinfo</code> (optional list)</li>
 </ul>
@@ -618,12 +666,12 @@ module exposes the failure via its reactive state (for example,
 <code>auth$error_description</code>). By default it also clears the
 current session token; if
 <code>oauth_module_server(indefinite_session = TRUE)</code>, the token
-is kept but marked stale. In the default mode, the
-<code>$authenticated</code> flag becomes <code>FALSE</code> while the
-error is present. However, when <code>indefinite_session = TRUE</code>,
-the <code>$authenticated</code> flag remains <code>TRUE</code> even if
-errors are present, allowing long-lived sessions despite transient
-refresh failures.</p>
+is kept and <code>auth$token_stale</code> becomes <code>TRUE</code>. In
+the default mode, the <code>$authenticated</code> flag becomes
+<code>FALSE</code> while the error is present. However, when
+<code>indefinite_session = TRUE</code>, the <code>$authenticated</code>
+flag remains <code>TRUE</code> even if errors are present, allowing
+long-lived sessions despite transient refresh failures.</p>
 </div>
 </div>
 <div class="section level3">

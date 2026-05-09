@@ -219,9 +219,9 @@ process instead of being redirected immediately on page load.</p>
 </h2>
 <p>Once authenticated, you may want to call an API on behalf of the user
 using the access token. Use <code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> to quickly
-build an authorized ‘httr2’ request with the correct Bearer token. See
-the example app below; it calls the GitHub API to obtain the user’s
-repositories.</p>
+build an authorized ‘httr2’ request with the correct authorization
+scheme for the current token type. See the example app below; it calls
+the GitHub API to obtain the user’s repositories.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -299,6 +299,22 @@ repositories.</p>
 <span></span>
 <span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
 <span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
+<p>If your client is configured with <code>dpop_private_key</code> and
+the provider returns <code>token_type = "DPoP"</code>, call
+<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> with <code>oauth_client = client</code>
+so shinyOAuth can attach DPoP proofs (and answer <code>DPoP-Nonce</code>
+challenges) on downstream API calls. In <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
+configuring <code>dpop_private_key</code> also makes
+<code>dpop_require_access_token = TRUE</code> by default, so logins fail
+fast unless the authorization server actually returns a DPoP access
+token.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span></span>
+<span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
+<span>  <span class="st">"https://resource.example.com/me"</span>,</span>
+<span>  oauth_client <span class="op">=</span> <span class="va">client</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span></code></pre></div>
 <p>For an example application which fetches data from the Spotify web
 API, see:
 <code><a href="../articles/example-spotify.html">vignette("example-spotify", package = "shinyOAuth")</a></code>.</p>
@@ -347,7 +363,7 @@ best-known scopes but marks them as unverified. For
 authorization-sensitive apps, add
 <code>introspect_elements = "scope"</code> so login and refresh require
 an explicit scope statement from introspection.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example with introspection enabled</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
@@ -379,7 +395,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <div class="section level3">
 <h3 id="mirai-async-backend-recommended">‘mirai’ async backend (recommended)<a class="anchor" aria-label="anchor" href="#mirai-async-backend-recommended"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Set up daemons at the top of your app (or in global.R)</span></span>
 <span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span></span>
@@ -400,7 +416,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <div class="section level3">
 <h3 id="future-async-backend">‘future’ async backend<a class="anchor" aria-label="anchor" href="#future-async-backend"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Set up workers at the top of your app</span></span>
 <span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
@@ -422,7 +438,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <p>To log out the user, call <code>auth$logout()</code>. This clears the
 local session and attempts to revoke tokens at the provider (if a
 revocation endpoint is available):</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
@@ -434,7 +450,7 @@ revocation endpoint is available):</p>
 </h3>
 <p>To revoke tokens when the Shiny session ends (e.g., browser tab
 closed, timeout), set <code>revoke_on_session_end = TRUE</code>:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  client <span class="op">=</span> <span class="va">client</span>,</span>

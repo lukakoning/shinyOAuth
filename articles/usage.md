@@ -156,9 +156,9 @@ runApp(
 Once authenticated, you may want to call an API on behalf of the user
 using the access token. Use
 [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-to quickly build an authorized ‘httr2’ request with the correct Bearer
-token. See the example app below; it calls the GitHub API to obtain the
-user’s repositories.
+to quickly build an authorized ‘httr2’ request with the correct
+authorization scheme for the current token type. See the example app
+below; it calls the GitHub API to obtain the user’s repositories.
 
 ``` r
 library(shiny)
@@ -237,6 +237,25 @@ runApp(
 
 # Open the app in your regular browser at http://127.0.0.1:8100
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
+```
+
+If your client is configured with `dpop_private_key` and the provider
+returns `token_type = "DPoP"`, call
+[`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+with `oauth_client = client` so shinyOAuth can attach DPoP proofs (and
+answer `DPoP-Nonce` challenges) on downstream API calls. In
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+configuring `dpop_private_key` also makes
+`dpop_require_access_token = TRUE` by default, so logins fail fast
+unless the authorization server actually returns a DPoP access token.
+
+``` r
+req <- client_bearer_req(
+  auth$token,
+  "https://resource.example.com/me",
+  oauth_client = client
+)
+resp <- httr2::req_perform(req)
 ```
 
 For an example application which fetches data from the Spotify web API,

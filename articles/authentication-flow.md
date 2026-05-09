@@ -106,8 +106,9 @@ Authorization Requests (PAR, RFC 9126) before redirecting the browser.
 The same authorization request parameters are first sent
 server-to-server to the provider’s PAR endpoint as a form-encoded POST.
 Client authentication for that POST follows the provider’s configured
-token authentication style: HTTP Basic, body client secret,
-`client_secret_jwt`, or `private_key_jwt`.
+token authentication style: public client id only, HTTP Basic, body
+client secret, `client_secret_jwt`, `private_key_jwt`, or mTLS client
+authentication when configured.
 
 For PAR, the provider must return a successful JSON response with HTTP
 `201 Created`, including a `request_uri` and a positive integer
@@ -155,8 +156,9 @@ in and authorize the app to access the requested scopes.
 ### 6. Provider redirects user back to the app
 
 The provider redirects the user’s browser back to your Shiny app (your
-`redirect_uri`), including the `code` and `state` parameters (and
-optionally `error` and `error_description` on failure).
+`redirect_uri`), including the `code` and `state` parameters, and
+optionally RFC 9207 `iss`, plus `error`, `error_description`, and
+`error_uri` on failure.
 
 ### 7. Callback processing & state verification (`handle_callback()`)
 
@@ -208,9 +210,13 @@ authorization code for tokens.
 A POST request is made to the token endpoint with
 `grant_type=authorization_code`, the code, the redirect_uri, and the
 `code_verifier` (PKCE). Client authentication method depends on provider
-style: HTTP Basic header (`client_secret_basic`), body params
-(`client_secret_post`), or JWT-based assertions (`client_secret_jwt`,
-`private_key_jwt`) when configured. The response must include at least
+style: public (`client_id` only), HTTP Basic header
+(`client_secret_basic`), body params (`client_secret_post`), JWT-based
+assertions (`client_secret_jwt`, `private_key_jwt`), or mTLS when
+configured. When the client is configured with `dpop_private_key`,
+shinyOAuth also attaches a DPoP proof to the token request and can
+regenerate it once if the authorization server responds with a
+`DPoP-Nonce` challenge. The response must include at least
 `access_token`. Malformed or error responses abort the flow.
 
 When successful, the package also applies two safety rails:
@@ -251,6 +257,35 @@ both which endpoints it prefers and how it treats the resulting tokens:
   recovery path is to refresh or re-authenticate, obtain a new access
   token bound to the new certificate, and then retry the
   protected-resource request.
+
+#### What changes when DPoP is enabled (RFC 9449)
+
+When the client is configured with `dpop_private_key`, shinyOAuth adds
+proof-of-possession behavior on both token-endpoint and
+protected-resource requests:
+
+- Authorization-code exchange and refresh calls to the token endpoint
+  carry a DPoP proof. If the authorization server responds with a
+  `DPoP-Nonce` challenge, shinyOAuth can mint a fresh proof once and
+  retry the same request
+- If the provider already enforces a non-empty `allowed_token_types`
+  allowlist, shinyOAuth automatically adds `DPoP` to that allowlist for
+  DPoP-capable clients so the provider can return either Bearer or DPoP
+  tokens without extra provider configuration
+- In
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+  configuring `dpop_private_key` also makes
+  `dpop_require_access_token = TRUE` by default. That means login or
+  refresh fails fast unless the authorization server explicitly returns
+  `token_type = "DPoP"`. Set it to `FALSE` only when you intentionally
+  allow Bearer access tokens, such as deployments that use DPoP only for
+  refresh tokens
+- Later
+  [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  calls and downstream
+  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  requests also attach DPoP proofs when the effective access-token type
+  is `DPoP` and the caller supplies the corresponding `OAuthClient`
 
 ### 9. Validate ID token (OIDC only)
 
@@ -383,6 +418,7 @@ Now that all verifications have passed, the module builds the final
 token object. This is an S7 `OAuthToken` object which contains:
 
 - `access_token` (string)
+- `token_type` (string, e.g., `Bearer` or `DPoP`)
 - `refresh_token` (optional string)
 - `expires_at` (numeric timestamp, seconds since epoch; `Inf` for
   non-expiring tokens)
@@ -391,6 +427,12 @@ token object. This is an S7 `OAuthToken` object which contains:
   cryptographically verified)
 - `id_token_claims` (read-only named list exposing the decoded JWT
   payload, e.g., `sub`, `acr`, `amr`, `auth_time`)
+- `cnf` (optional confirmation claim set, such as an mTLS certificate
+  thumbprint)
+- `granted_scopes` (normalized scope tokens currently associated with
+  the access token)
+- `granted_scopes_verified` (logical indicating whether the current
+  token response explicitly proved those scopes)
 - `userinfo` (optional list)
 
 The `$authenticated` value as returned by
@@ -474,12 +516,12 @@ If refresh fails inside
 the module exposes the failure via its reactive state (for example,
 `auth$error == "token_refresh_error"` plus `auth$error_description`). By
 default it also clears the current session token; if
-`oauth_module_server(indefinite_session = TRUE)`, the token is kept but
-marked stale. In the default mode, the `$authenticated` flag becomes
-`FALSE` while the error is present. However, when
-`indefinite_session = TRUE`, the `$authenticated` flag remains `TRUE`
-even if errors are present, allowing long-lived sessions despite
-transient refresh failures.
+`oauth_module_server(indefinite_session = TRUE)`, the token is kept and
+`auth$token_stale` becomes `TRUE`. In the default mode, the
+`$authenticated` flag becomes `FALSE` while the error is present.
+However, when `indefinite_session = TRUE`, the `$authenticated` flag
+remains `TRUE` even if errors are present, allowing long-lived sessions
+despite transient refresh failures.
 
 ### 15. Logout and token revocation
 
