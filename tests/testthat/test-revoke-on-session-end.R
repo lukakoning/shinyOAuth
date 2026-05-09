@@ -59,6 +59,28 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
   testthat::expect_true(!any(async_values))
 })
 
+testthat::test_that("revoke_on_session_end requires a configured revocation_url", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@revocation_url <- NA_character_
+
+  testthat::expect_error(
+    shiny::testServer(
+      app = oauth_module_server,
+      args = list(
+        id = "auth",
+        client = cli,
+        auto_redirect = FALSE,
+        revoke_on_session_end = TRUE
+      ),
+      expr = {}
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "revocation_url"
+  )
+})
+
 testthat::test_that("revoke_on_session_end uses async only when module async = TRUE", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")

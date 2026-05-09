@@ -660,3 +660,6 @@ entries are scoped to the current `allowed_hosts` /
 `allowed_non_https_hosts` settings, and cache hits re-check the stored
 `jwks_uri` before a JWKS is trusted.
 
+  - Fails cleanly at startup when `revoke_on_session_end = TRUE` but the
+  provider does not expose a `revocation_url`, instead of crashing while
+  formatting that configuration error.
