@@ -514,10 +514,12 @@ when using <code>application/jwt</code> responses. When
 endpoint must return <code>application/jwt</code> or the flow is
 aborted.</p>
 <ul>
-<li>Subject match: if
-<code>oauth_provider(userinfo_id_token_match = TRUE)</code>, it is
-checked that <code>sub</code> in userinfo equals <code>sub</code> in the
-ID token</li>
+<li>Subject match: whenever shinyOAuth has both userinfo and a validated
+ID token baseline, it checks that <code>sub</code> in userinfo equals
+<code>sub</code> in the ID token. Setting
+<code>oauth_provider(userinfo_id_token_match = TRUE)</code> additionally
+makes the flow fail closed when userinfo is fetched but no validated ID
+token baseline is available</li>
 <li>Requested claims (OIDC Core §5.5): if the client requested specific
 userinfo claims via the <code>claims</code> parameter with
 <code>essential = TRUE</code>, <code>value</code>, or

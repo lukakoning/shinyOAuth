@@ -394,8 +394,11 @@ rejected; configure the provider to return signed-only JWTs when using
 on the provider, the endpoint must return `application/jwt` or the flow
 is aborted.
 
-- Subject match: if `oauth_provider(userinfo_id_token_match = TRUE)`, it
-  is checked that `sub` in userinfo equals `sub` in the ID token
+- Subject match: whenever shinyOAuth has both userinfo and a validated
+  ID token baseline, it checks that `sub` in userinfo equals `sub` in
+  the ID token. Setting `oauth_provider(userinfo_id_token_match = TRUE)`
+  additionally makes the flow fail closed when userinfo is fetched but
+  no validated ID token baseline is available
 - Requested claims (OIDC Core §5.5): if the client requested specific
   userinfo claims via the `claims` parameter with `essential = TRUE`,
   `value`, or `values`, and `claims_validation` is `"warn"` or

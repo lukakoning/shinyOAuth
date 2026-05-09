@@ -458,7 +458,8 @@ oauth_client(
   introspection response when `introspect = TRUE`. Supported values:
 
   - `"sub"`: require the introspected `sub` to match the session subject
-    (from ID token `sub` when available, else from userinfo `sub`).
+    (from a validated ID token `sub` when available, else from userinfo
+    `sub`).
 
   - `"client_id"`: require the introspected `client_id` to match your
     OAuth client id.

@@ -4,10 +4,9 @@
 
 - Added DPoP token (RFC 9449) support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  can now take a DPoP private key, token
-  exchange/refresh/revocation/introspection requests can attach DPoP
-  proofs with nonce retry, and downstream helpers now preserve and use
-  `token_type = "DPoP"` when the server returns it.
+  can now take a DPoP private key, token exchange/refresh requests can
+  attach DPoP proofs with nonce retry, and downstream helpers now
+  preserve and use `token_type = "DPoP"` when the server returns it.
 
 - Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client
   authentication, certificate-bound access tokens, and mTLS endpoint
@@ -138,6 +137,9 @@
     sealed state payload, token-response scope validation, and
     introspection scope validation now use that same effective scope
     set.
+  - Uses a validated ID token `sub` for `introspect_elements = "sub"`
+    before falling back to userinfo, so unvalidated ID token payloads no
+    longer anchor the introspection subject check.
   - Binds the sealed callback state to the effective provider and client
     security policy used after redirect. Multi-worker deployments must
     now keep callback/login validation settings aligned across workers;
@@ -151,6 +153,9 @@
     reject POST requests, so `response_mode = "form_post"` was
     previously allowed but led to abroken callback round-trip instead of
     a clear configuration error.
+  - Treats nonce-enabled OIDC flows as sufficient validation context for
+    `userinfo_id_token_match`, and shinyOAuth now always binds userinfo
+    to a validated ID token subject when that baseline exists.
   - Raises typed `shinyOAuth_input_error` conditions for malformed
     constructor inputs such as vector endpoint URLs or empty
     discovery-helper domains, so apps can trap provider validation
@@ -208,6 +213,13 @@
   identity against a new or preserved ID token subject, preventing
   identity confusion when providers omit `id_token` from refresh
   responses.
+
+- PAR success responses now reject duplicate top-level JSON member names
+  before accepting `request_uri` and `expires_in`.
+
+- Revocation and introspection requests no longer attach DPoP proofs.
+  DPoP is now limited to token endpoint traffic and downstream resource
+  requests.
 
 - Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
   refresh-time `nonce`, and `azp` in addition to the existing `iss` /

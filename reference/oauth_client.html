@@ -447,7 +447,8 @@ have an <code>introspection_url</code> configured.</p></dd>
 <dd><p>Optional character vector of additional
 requirements to enforce on the introspection response when
 <code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
-(from ID token <code>sub</code> when available, else from userinfo <code>sub</code>).</p></li>
+(from a validated ID token <code>sub</code> when available, else from userinfo
+<code>sub</code>).</p></li>
 <li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
 client id.</p></li>
 <li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes

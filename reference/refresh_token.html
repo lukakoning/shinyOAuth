@@ -13,10 +13,11 @@ When id_token_validation = TRUE, any refresh-returned ID token is also
 fully validated (signature and claims) in addition to the OIDC 12.2 sub
 continuity check.
 When userinfo_required = TRUE, userinfo is re-fetched using the fresh
-access token. If userinfo_id_token_match = TRUE, refreshed userinfo is
-checked against the refresh ID token when one is returned, otherwise against
-the preserved original ID token from the initial login. If no trustworthy ID
-token baseline is available, refresh fails instead of updating userinfo."><meta property="og:description" content="Refreshes an OAuth session by obtaining a fresh access token using the
+access token. Whenever shinyOAuth has both refreshed userinfo and a
+validated ID token baseline, it checks that their sub claims still match.
+If userinfo_id_token_match = TRUE, the absence of a trustworthy ID token
+baseline is treated as an error instead of silently accepting unbound
+userinfo data."><meta property="og:description" content="Refreshes an OAuth session by obtaining a fresh access token using the
 refresh token. When configured, also re-fetches userinfo and validates any
 new ID token returned by the provider.
 Per OIDC Core Section 12.2, providers may omit the ID token from refresh
@@ -30,10 +31,11 @@ When id_token_validation = TRUE, any refresh-returned ID token is also
 fully validated (signature and claims) in addition to the OIDC 12.2 sub
 continuity check.
 When userinfo_required = TRUE, userinfo is re-fetched using the fresh
-access token. If userinfo_id_token_match = TRUE, refreshed userinfo is
-checked against the refresh ID token when one is returned, otherwise against
-the preserved original ID token from the initial login. If no trustworthy ID
-token baseline is available, refresh fails instead of updating userinfo."></head><body>
+access token. Whenever shinyOAuth has both refreshed userinfo and a
+validated ID token baseline, it checks that their sub claims still match.
+If userinfo_id_token_match = TRUE, the absence of a trustworthy ID token
+baseline is treated as an error instead of silently accepting unbound
+userinfo data."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -90,10 +92,11 @@ ID token is available, refresh fails with an error.</p>
 fully validated (signature and claims) in addition to the OIDC 12.2 <code>sub</code>
 continuity check.</p>
 <p>When <code>userinfo_required = TRUE</code>, userinfo is re-fetched using the fresh
-access token. If <code>userinfo_id_token_match = TRUE</code>, refreshed userinfo is
-checked against the refresh ID token when one is returned, otherwise against
-the preserved original ID token from the initial login. If no trustworthy ID
-token baseline is available, refresh fails instead of updating userinfo.</p>
+access token. Whenever shinyOAuth has both refreshed userinfo and a
+validated ID token baseline, it checks that their <code>sub</code> claims still match.
+If <code>userinfo_id_token_match = TRUE</code>, the absence of a trustworthy ID token
+baseline is treated as an error instead of silently accepting unbound
+userinfo data.</p>
     </div>
 
     <div class="section level2">

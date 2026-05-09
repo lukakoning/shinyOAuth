@@ -304,8 +304,8 @@ in use, shinyOAuth instead keeps the current token, marks it as stale in
 You can optionally request additional checks via `introspect_elements`:
 
 - `"sub"` – require the introspected `sub` to match the session subject
-  (from ID token `sub` when available; otherwise userinfo `sub` when
-  available)
+  (from a validated ID token `sub` when available; otherwise userinfo
+  `sub` when available)
 - `"client_id"` – require the introspected `client_id` to match your
   OAuth client id
 - `"scope"` – validate returned scopes against requested scopes; this

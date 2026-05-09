@@ -42,7 +42,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Added DPoP token (RFC 9449) support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh/revocation/introspection requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
+<ul><li><p>Added DPoP token (RFC 9449) support: <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now take a DPoP private key, token exchange/refresh requests can attach DPoP proofs with nonce retry, and downstream helpers now preserve and use <code>token_type = "DPoP"</code> when the server returns it.</p></li>
 <li><p>Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client authentication, certificate-bound access tokens, and mTLS endpoint aliases.</p></li>
 <li><p>Added Pushed Authorization Request (‘PAR’, RFC 9126) support. Providers can now configure <code>par_url</code> directly or pick it up from OIDC discovery, and login flows will push the authorization request and redirect with the returned <code>request_uri</code>.</p></li>
 <li><p>Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support. <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now send signed Request Objects via <code>authorization_request_mode = "request"</code>, using either <code>client_private_key</code> or <code>client_secret</code> signing depending on client configuration.</p></li>
@@ -78,11 +78,13 @@
 <li>Also enforces OIDC claim request <code>value</code> and <code>values</code> constraints when <code>claims_validation</code> is enabled, not just presence of <code>essential = TRUE</code> claims.</li>
 <li>Warns when callers request <code>essential</code> or value-constrained OIDC claims but leave <code>claims_validation</code> at its default <code>"none"</code>, since those claim requests are otherwise not checked client-side.</li>
 <li>Carries the same effective requested scopes through the whole login flow. If <code>openid</code> is auto-added to the authorization request, the sealed state payload, token-response scope validation, and introspection scope validation now use that same effective scope set.</li>
+<li>Uses a validated ID token <code>sub</code> for <code>introspect_elements = "sub"</code> before falling back to userinfo, so unvalidated ID token payloads no longer anchor the introspection subject check.</li>
 <li>Binds the sealed callback state to the effective provider and client security policy used after redirect. Multi-worker deployments must now keep callback/login validation settings aligned across workers; otherwise callbacks fail fast with <code>invalid_state</code> instead of resuming under a different worker policy.</li>
 </ul></li>
 <li>
 <p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> (<code>OAuthProvider</code>) now:</p>
 <ul><li>Fails fast if <code>response_mode != "query"</code>. Plain Shiny callback URLs reject POST requests, so <code>response_mode = "form_post"</code> was previously allowed but led to abroken callback round-trip instead of a clear configuration error.</li>
+<li>Treats nonce-enabled OIDC flows as sufficient validation context for <code>userinfo_id_token_match</code>, and shinyOAuth now always binds userinfo to a validated ID token subject when that baseline exists.</li>
 <li>Raises typed <code>shinyOAuth_input_error</code> conditions for malformed constructor inputs such as vector endpoint URLs or empty discovery-helper domains, so apps can trap provider validation failures consistently.</li>
 <li>Validates custom <code>jwks_cache$get()</code> signatures without calling the cache during construction, avoiding side effects in duck-typed cache backends.</li>
 <li>Reserves the <code>refresh_token</code> parameter name in <code>extra_token_params</code> to prevent duplicate refresh-token parameters during token refresh requests.</li>
@@ -100,6 +102,8 @@
 <li><p><code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code> no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo identity by default. <code>common</code> and <code>organizations</code> now validate ID tokens using Microsoft’s tenant-independent issuer and signing-key issuer rules, and <code>consumers</code> now validates against the stable consumer tenant issuer.</p></li>
 <li><p><code>validate_id_token()</code> now properly rejects <code>auth_time</code> claims set in the future (beyond leeway). Previously, a future <code>auth_time</code> produced a negative elapsed value that always passed the <code>max_age</code> freshness check.</p></li>
 <li><p><code><a href="../reference/refresh_token.html">refresh_token()</a></code> now refuses to update userinfo unless it can verify the refreshed identity against a new or preserved ID token subject, preventing identity confusion when providers omit <code>id_token</code> from refresh responses.</p></li>
+<li><p>PAR success responses now reject duplicate top-level JSON member names before accepting <code>request_uri</code> and <code>expires_in</code>.</p></li>
+<li><p>Revocation and introspection requests no longer attach DPoP proofs. DPoP is now limited to token endpoint traffic and downstream resource requests.</p></li>
 <li><p>Refreshed OIDC ID tokens now enforce full continuity for <code>auth_time</code>, refresh-time <code>nonce</code>, and <code>azp</code> in addition to the existing <code>iss</code> / <code>sub</code> / <code>aud</code> checks.</p></li>
 <li>
 <p><code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> now:</p>

@@ -207,21 +207,20 @@ OAuthProvider(
 
 - userinfo_id_token_match:
 
-  Whether to verify that the user ID ("sub") from the ID token matches
-  the user ID extracted from the userinfo response. This requires both
-  `userinfo_required` and `id_token_validation` to be TRUE (and thus a
-  valid `userinfo_url` and `issuer` to be set, plus potentially setting
-  the client's scope to include "openid", so that an ID token is
-  returned). Furthermore, the provider's `userinfo_id_selector` must be
-  configured to extract the user ID from the userinfo response. This
-  check helps ensure the integrity of the user information by confirming
-  that both sources agree on the user's identity.
+  Whether to fail closed if UserInfo cannot be bound to a validated ID
+  token subject. Whenever both UserInfo and a validated ID token are
+  available, shinyOAuth always verifies that their `sub` values match.
+  Setting this field to `TRUE` additionally requires a validated ID
+  token baseline whenever UserInfo is fetched. This requires
+  `userinfo_required` plus either `id_token_validation` or `use_nonce`
+  to be `TRUE`, and the provider's `userinfo_id_selector` must be
+  configured to extract the user ID from the userinfo response.
 
   For
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
-  when not explicitly supplied, this is inferred as `TRUE` only if both
-  `userinfo_required` and `id_token_validation` are `TRUE`; otherwise it
-  defaults to `FALSE`.
+  when not explicitly supplied, this is inferred as `TRUE` when
+  `userinfo_required` is `TRUE` and either `id_token_validation` or
+  `use_nonce` is `TRUE`; otherwise it defaults to `FALSE`.
 
 - userinfo_signed_jwt_required:
 

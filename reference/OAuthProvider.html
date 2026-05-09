@@ -247,16 +247,18 @@ provide a default selector that extracts the <code>sub</code> field.</p></dd>
 
 
 <dt id="arg-userinfo-id-token-match">userinfo_id_token_match<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-token-match"></a></dt>
-<dd><p>Whether to verify that the user ID ("sub") from the ID token
-matches the user ID extracted from the userinfo response. This requires both
-<code>userinfo_required</code> and <code>id_token_validation</code> to be TRUE (and thus a valid <code>userinfo_url</code>
-and <code>issuer</code> to be set, plus potentially setting the client's scope to include "openid",
-so that an ID token is returned). Furthermore, the provider's <code>userinfo_id_selector</code> must be configured
-to extract the user ID from the userinfo response. This check helps ensure
-the integrity of the user information by confirming that both sources agree on the user's identity.</p>
+<dd><p>Whether to fail closed if UserInfo cannot be
+bound to a validated ID token subject. Whenever both UserInfo and a
+validated ID token are available, shinyOAuth always verifies that their
+<code>sub</code> values match. Setting this field to <code>TRUE</code> additionally requires a
+validated ID token baseline whenever UserInfo is fetched. This requires
+<code>userinfo_required</code> plus either <code>id_token_validation</code> or <code>use_nonce</code> to be
+<code>TRUE</code>, and the provider's <code>userinfo_id_selector</code> must be configured to
+extract the user ID from the userinfo response.</p>
 <p>For <code><a href="oauth_provider.html">oauth_provider()</a></code>, when not explicitly supplied, this is inferred as
-<code>TRUE</code> only if both <code>userinfo_required</code> and <code>id_token_validation</code> are <code>TRUE</code>;
-otherwise it defaults to <code>FALSE</code>.</p></dd>
+<code>TRUE</code> when <code>userinfo_required</code> is <code>TRUE</code> and either
+<code>id_token_validation</code> or <code>use_nonce</code> is <code>TRUE</code>; otherwise it defaults to
+<code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-userinfo-signed-jwt-required">userinfo_signed_jwt_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-signed-jwt-required"></a></dt>
