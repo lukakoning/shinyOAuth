@@ -290,21 +290,18 @@ req_apply_authorization_server_mtls <- function(
 
 #' Read an mTLS certificate thumbprint from a token
 #'
-#' @param token OAuthToken object or raw token string.
+#' @param token Optional [OAuthToken] object or raw token string.
+#' @param access_token Optional raw access-token string.
+#' @param cnf Optional explicit cnf claim data.
 #' @return Thumbprint string, or `NA_character_` when none is available.
 #' @keywords internal
 #' @noRd
-token_cnf_x5t_s256 <- function(token) {
-  cnf <- NULL
-  access_token <- NA_character_
-
+token_cnf_x5t_s256 <- function(token = NULL, access_token = NULL, cnf = NULL) {
   if (S7::S7_inherits(token, class = OAuthToken)) {
     cnf <- token@cnf
     access_token <- token@access_token
   } else if (is_valid_string(token)) {
     access_token <- token
-  } else {
-    return(NA_character_)
   }
 
   cnf <- resolve_token_cnf(
@@ -582,20 +579,46 @@ tls_client_cert_thumbprint_s256 <- function(
 
 #' Validate certificate-bound token binding
 #'
-#' @param token Token or token object to validate.
+#' @param token Optional token or token object to validate.
+#' @param access_token Optional raw access-token string.
+#' @param cnf Optional explicit cnf claim data.
 #' @param oauth_client OAuthClient whose certificate should match.
+#' @param error_context Whether binding failures should raise input or token
+#'   errors.
+#' @param phase Optional token-processing phase for token errors.
 #' @return Invisibly returns `TRUE` on success. Otherwise this function raises
-#'   an input error.
+#'   an input or token error.
 #' @keywords internal
 #' @noRd
-validate_token_certificate_binding <- function(token, oauth_client) {
-  expected_thumbprint <- token_cnf_x5t_s256(token)
+validate_token_certificate_binding <- function(
+  token = NULL,
+  oauth_client,
+  access_token = NULL,
+  cnf = NULL,
+  error_context = c("input", "token"),
+  phase = NULL
+) {
+  error_context <- match.arg(error_context)
+
+  expected_thumbprint <- token_cnf_x5t_s256(
+    token = token,
+    access_token = access_token,
+    cnf = cnf
+  )
   if (!is_valid_string(expected_thumbprint)) {
     return(invisible(TRUE))
   }
 
+  fail <- switch(
+    error_context,
+    input = function(message) err_input(message),
+    token = function(message) {
+      err_token(message, context = compact_list(list(phase = phase)))
+    }
+  )
+
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
-    err_input(
+    fail(
       "oauth_client must be an OAuthClient when using certificate-bound access tokens"
     )
   }
@@ -604,7 +627,7 @@ validate_token_certificate_binding <- function(token, oauth_client) {
     !(is_valid_string(oauth_client@tls_client_cert_file) &&
       is_valid_string(oauth_client@tls_client_key_file))
   ) {
-    err_input(
+    fail(
       paste(
         "oauth_client must include tls_client_cert_file and tls_client_key_file",
         "when using certificate-bound access tokens"
@@ -618,7 +641,7 @@ validate_token_certificate_binding <- function(token, oauth_client) {
     key_password = oauth_client@tls_client_key_password
   )
   if (!identical(actual_thumbprint, expected_thumbprint)) {
-    err_input(
+    fail(
       "oauth_client TLS certificate does not match token cnf x5t#S256 thumbprint"
     )
   }

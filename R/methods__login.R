@@ -1941,6 +1941,13 @@ verify_token_set <- function(
         error_context = "token",
         phase = phase
       )
+      validate_token_certificate_binding(
+        access_token = token_set[["access_token"]],
+        cnf = token_set[["cnf"]] %||% NULL,
+        oauth_client = client,
+        error_context = "token",
+        phase = phase
+      )
 
       # Scope reconciliation --------------------------------------------------------
 

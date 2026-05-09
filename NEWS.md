@@ -7,6 +7,10 @@ proofs with nonce retry, and downstream helpers now preserve and use
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
+  - Certificate-bound access tokens are now validated against the configured
+  client certificate as soon as shinyOAuth accepts a new token response or
+  refresh response, instead of waiting until the token is first used against a
+  resource endpoint.
 
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
 Providers can now configure `par_url` directly or pick it up from OIDC
