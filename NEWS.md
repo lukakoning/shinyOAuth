@@ -14,6 +14,9 @@ authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
+  OIDC discovery now preserves request transport capability flags and fails
+  fast when a provider explicitly disallows the `request` or `request_uri`
+  transport that shinyOAuth would need for JAR or PAR.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed Request Objects via

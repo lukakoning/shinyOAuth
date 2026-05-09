@@ -47,6 +47,14 @@
 #'   metadata so `OAuthClient` can fail fast when a request-object algorithm is
 #'   unsupported or when the provider requires signed Request Objects.
 #'
+#' - Authorization request transport metadata: when the discovery document
+#'   advertises `request_parameter_supported`,
+#'   `request_uri_parameter_supported`, or
+#'   `require_request_uri_registration`, the resulting provider stores that
+#'   metadata so shinyOAuth can fail fast when a provider explicitly disallows
+#'   the `request` transport used by JAR or the `request_uri` transport used by
+#'   PAR redirects.
+#'
 #' - Token endpoint JWT auth metadata: when the discovery document advertises
 #'   `token_endpoint_auth_signing_alg_values_supported`, the resulting provider
 #'   stores that metadata so `OAuthClient` can fail fast when a JWT client
@@ -238,6 +246,18 @@ oauth_provider_oidc_discover <- function(
     disc,
     "require_signed_request_object"
   )
+  request_parameter_supported <- .discover_parse_nullable_boolean(
+    disc,
+    "request_parameter_supported"
+  )
+  request_uri_parameter_supported <- .discover_parse_nullable_boolean(
+    disc,
+    "request_uri_parameter_supported"
+  )
+  require_request_uri_registration <- .discover_parse_nullable_boolean(
+    disc,
+    "require_request_uri_registration"
+  )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%
@@ -285,6 +305,9 @@ oauth_provider_oidc_discover <- function(
     require_pushed_authorization_requests = require_pushed_authorization_requests,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = require_signed_request_object,
+    request_parameter_supported = request_parameter_supported,
+    request_uri_parameter_supported = request_uri_parameter_supported,
+    require_request_uri_registration = require_request_uri_registration,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
@@ -963,6 +986,28 @@ oauth_provider_oidc_discover <- function(
   value <- disc[[field]]
   if (is.null(value)) {
     return(FALSE)
+  }
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    err_parse(sprintf("Discovery %s must be a JSON boolean", field))
+  }
+
+  value
+}
+
+#' Parse nullable discovery boolean metadata
+#'
+#' Used by [oauth_provider_oidc_discover()] for optional booleans where the
+#' distinction between explicit `FALSE` and omitted metadata matters.
+#'
+#' @param disc Parsed discovery document.
+#' @param field Field name to read.
+#' @return `TRUE`, `FALSE`, or `NA` when the metadata was omitted.
+#' @keywords internal
+#' @noRd
+.discover_parse_nullable_boolean <- function(disc, field) {
+  value <- disc[[field]]
+  if (is.null(value)) {
+    return(NA)
   }
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
     err_parse(sprintf("Discovery %s must be a JSON boolean", field))

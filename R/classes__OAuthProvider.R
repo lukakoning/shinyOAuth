@@ -43,6 +43,17 @@
 #' @param require_signed_request_object Logical. Whether the provider requires
 #'   signed Request Objects for authorization requests. When `TRUE`, clients
 #'   should opt into `authorization_request_mode = "request"`.
+#' @param request_parameter_supported Logical or `NA`. Whether discovery
+#'   metadata explicitly advertises support for the authorization-request
+#'   `request` parameter. `NA` means the provider did not say.
+#' @param request_uri_parameter_supported Logical or `NA`. Whether discovery
+#'   metadata explicitly advertises support for the authorization-request
+#'   `request_uri` parameter. `NA` means the provider did not say.
+#' @param require_request_uri_registration Logical or `NA`. Whether discovery
+#'   metadata says caller-managed `request_uri` values must be pre-registered.
+#'   `NA` means the provider did not say. shinyOAuth does not currently send
+#'   caller-managed `request_uri` values, but it preserves this metadata for
+#'   fail-fast validation and inspection.
 #' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
 #'   JWS algorithms that the provider advertises for JWT-based client
 #'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token
@@ -305,6 +316,18 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
+    request_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
+    request_uri_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
+    require_request_uri_registration = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
     token_endpoint_auth_signing_alg_values_supported = S7::new_property(
       S7::class_character,
       default = character()
@@ -403,6 +426,35 @@ OAuthProvider <- S7::new_class(
 
 # 2 Generic provider constructor -----------------------------------------------
 
+#' Normalize optional provider boolean metadata
+#'
+#' Used by [oauth_provider()] when callers or discovery wire through provider
+#' capability flags where omitted metadata must remain distinguishable from
+#' explicit `FALSE`.
+#'
+#' @param value Candidate logical value.
+#' @param field Field name used in validation errors.
+#' @return Scalar logical or `NA` when the metadata is unspecified.
+#' @keywords internal
+#' @noRd
+normalize_optional_provider_boolean <- function(value, field) {
+  if (is.null(value)) {
+    return(NA)
+  }
+  if (!is.logical(value) || length(value) != 1L) {
+    err_input(paste0(
+      "OAuthProvider: ",
+      field,
+      " must be a scalar logical or NA"
+    ))
+  }
+  if (is.na(value)) {
+    return(NA)
+  }
+
+  value
+}
+
 #' Create generic [OAuthProvider]
 #'
 #' Helper function to create an [OAuthProvider] object.
@@ -428,6 +480,9 @@ oauth_provider <- function(
   require_pushed_authorization_requests = FALSE,
   request_object_signing_alg_values_supported = character(),
   require_signed_request_object = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   mtls_endpoint_aliases = list(),
@@ -500,6 +555,18 @@ oauth_provider <- function(
   request_object_signing_alg_values_supported <- toupper(as.character(
     unlist(request_object_signing_alg_values_supported, use.names = FALSE)
   ))
+  request_parameter_supported <- normalize_optional_provider_boolean(
+    request_parameter_supported,
+    "request_parameter_supported"
+  )
+  request_uri_parameter_supported <- normalize_optional_provider_boolean(
+    request_uri_parameter_supported,
+    "request_uri_parameter_supported"
+  )
+  require_request_uri_registration <- normalize_optional_provider_boolean(
+    require_request_uri_registration,
+    "require_request_uri_registration"
+  )
   if (is.null(token_endpoint_auth_signing_alg_values_supported)) {
     token_endpoint_auth_signing_alg_values_supported <- character()
   }
@@ -657,6 +724,9 @@ oauth_provider <- function(
     ),
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     require_signed_request_object = isTRUE(require_signed_request_object),
+    request_parameter_supported = request_parameter_supported,
+    request_uri_parameter_supported = request_uri_parameter_supported,
+    require_request_uri_registration = require_request_uri_registration,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = isTRUE(
       authorization_response_iss_parameter_supported
@@ -1062,6 +1132,45 @@ oauth_provider_validate <- function(self) {
       paste(
         "OAuthProvider: require_pushed_authorization_requests = TRUE",
         "requires par_url"
+      )
+    )
+  }
+
+  for (field in c(
+    "request_parameter_supported",
+    "request_uri_parameter_supported",
+    "require_request_uri_registration"
+  )) {
+    value <- S7::prop(self, field)
+    if (!(is.logical(value) && length(value) == 1L)) {
+      return(paste0(
+        "OAuthProvider: ",
+        field,
+        " must be a scalar logical or NA"
+      ))
+    }
+  }
+
+  if (
+    identical(self@request_uri_parameter_supported, FALSE) &&
+      is_valid_string(self@par_url %||% NA_character_)
+  ) {
+    return(
+      paste(
+        "OAuthProvider: request_uri_parameter_supported = FALSE",
+        "is inconsistent with par_url"
+      )
+    )
+  }
+
+  if (
+    identical(self@request_uri_parameter_supported, FALSE) &&
+      isTRUE(self@require_request_uri_registration)
+  ) {
+    return(
+      paste(
+        "OAuthProvider: request_uri_parameter_supported = FALSE",
+        "is inconsistent with require_request_uri_registration = TRUE"
       )
     )
   }

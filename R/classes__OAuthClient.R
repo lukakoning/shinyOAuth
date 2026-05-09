@@ -1011,6 +1011,17 @@ oauth_client_validate <- function(self) {
     )
   }
   if (
+    identical(arm, "request") &&
+      identical(self@provider@request_parameter_supported, FALSE)
+  ) {
+    return(
+      paste(
+        "OAuthClient: provider discovery metadata says request parameter transport is not supported;",
+        "authorization_request_mode = 'request' cannot be used"
+      )
+    )
+  }
+  if (
     !identical(arm, "request") &&
       isTRUE(self@provider@require_signed_request_object)
   ) {
