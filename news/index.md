@@ -214,13 +214,6 @@
   identity confusion when providers omit `id_token` from refresh
   responses.
 
-- PAR success responses now reject duplicate top-level JSON member names
-  before accepting `request_uri` and `expires_in`.
-
-- Revocation and introspection requests no longer attach DPoP proofs.
-  DPoP is now limited to token endpoint traffic and downstream resource
-  requests.
-
 - Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
   refresh-time `nonce`, and `azp` in addition to the existing `iss` /
   `sub` / `aud` checks.

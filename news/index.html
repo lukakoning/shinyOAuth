@@ -102,8 +102,6 @@
 <li><p><code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code> no longer drops the Microsoft alias tenants to OAuth 2.0 plus userinfo identity by default. <code>common</code> and <code>organizations</code> now validate ID tokens using Microsoft’s tenant-independent issuer and signing-key issuer rules, and <code>consumers</code> now validates against the stable consumer tenant issuer.</p></li>
 <li><p><code>validate_id_token()</code> now properly rejects <code>auth_time</code> claims set in the future (beyond leeway). Previously, a future <code>auth_time</code> produced a negative elapsed value that always passed the <code>max_age</code> freshness check.</p></li>
 <li><p><code><a href="../reference/refresh_token.html">refresh_token()</a></code> now refuses to update userinfo unless it can verify the refreshed identity against a new or preserved ID token subject, preventing identity confusion when providers omit <code>id_token</code> from refresh responses.</p></li>
-<li><p>PAR success responses now reject duplicate top-level JSON member names before accepting <code>request_uri</code> and <code>expires_in</code>.</p></li>
-<li><p>Revocation and introspection requests no longer attach DPoP proofs. DPoP is now limited to token endpoint traffic and downstream resource requests.</p></li>
 <li><p>Refreshed OIDC ID tokens now enforce full continuity for <code>auth_time</code>, refresh-time <code>nonce</code>, and <code>azp</code> in addition to the existing <code>iss</code> / <code>sub</code> / <code>aud</code> checks.</p></li>
 <li>
 <p><code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> now:</p>
