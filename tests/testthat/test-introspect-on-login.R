@@ -277,8 +277,8 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
   )
 })
 
-test_that("introspect_elements can require sub match (id_token)", {
-  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+test_that("introspect_elements can require sub match from a validated id_token", {
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = TRUE)
   cli@introspect_elements <- "sub"
 
   tok <- valid_browser_token()
@@ -295,6 +295,16 @@ test_that("introspect_elements can require sub match (id_token)", {
         token_type = "Bearer",
         id_token = idt
       )
+    },
+    validate_id_token = function(
+      client,
+      id_token,
+      expected_nonce = NULL,
+      expected_sub = NULL,
+      expected_access_token = NULL,
+      max_age = NULL
+    ) {
+      invisible(list(sub = "u1", iss = client@provider@issuer))
     },
     req_with_retry = function(req, ...) {
       httr2::response(
@@ -328,12 +338,105 @@ test_that("introspect_elements can require sub match (id_token)", {
         id_token = idt
       )
     },
+    validate_id_token = function(
+      client,
+      id_token,
+      expected_nonce = NULL,
+      expected_sub = NULL,
+      expected_access_token = NULL,
+      max_age = NULL
+    ) {
+      invisible(list(sub = "u1", iss = client@provider@issuer))
+    },
     req_with_retry = function(req, ...) {
       httr2::response(
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"u2"}')
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc2,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_token_error",
+        regexp = "sub does not match"
+      )
+    }
+  )
+})
+
+test_that("introspect_elements sub falls back to userinfo before an unvalidated id_token", {
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@introspect_elements <- "sub"
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@userinfo_required <- TRUE
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  idt <- .build_dummy_jwt(list(sub = "u1"))
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        id_token = idt
+      )
+    },
+    get_userinfo = function(oauth_client, token) {
+      list(sub = "u2", name = "User Two")
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true,"sub":"u2"}')
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      tok_obj <- shinyOAuth:::handle_callback(
+        cli,
+        code = "abc",
+        payload = enc,
+        browser_token = tok
+      )
+      testthat::expect_equal(tok_obj@userinfo$sub, "u2")
+      testthat::expect_false(tok_obj@id_token_validated)
+    }
+  )
+
+  url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc2 <- parse_query_param(url2, "state")
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "at",
+        expires_in = 3600,
+        token_type = "Bearer",
+        id_token = idt
+      )
+    },
+    get_userinfo = function(oauth_client, token) {
+      list(sub = "u2", name = "User Two")
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true,"sub":"u1"}')
       )
     },
     .package = "shinyOAuth",

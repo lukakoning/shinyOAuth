@@ -362,7 +362,8 @@ requirements to enforce on the introspection response when
 \code{introspect = TRUE}. Supported values:
 \itemize{
 \item \code{"sub"}: require the introspected \code{sub} to match the session subject
-(from ID token \code{sub} when available, else from userinfo \code{sub}).
+(from a validated ID token \code{sub} when available, else from userinfo
+\code{sub}).
 \item \code{"client_id"}: require the introspected \code{client_id} to match your OAuth
 client id.
 \item \code{"scope"}: validate introspected \code{scope} against requested scopes

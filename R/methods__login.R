@@ -1499,7 +1499,7 @@ enforce_token_introspection_policy <- function(
     }
 
     expected_sub <- NA_character_
-    if (is_valid_string(token@id_token)) {
+    if (isTRUE(token@id_token_validated) && is_valid_string(token@id_token)) {
       pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
       if (!inherits(pl, "try-error")) {
         expected_sub <- pl$sub %||% NA_character_
@@ -1514,7 +1514,7 @@ enforce_token_introspection_policy <- function(
 
     if (!is_valid_string(expected_sub)) {
       err_token(c(
-        "x" = "Cannot validate introspection sub: no subject is available from ID token or userinfo",
+        "x" = "Cannot validate introspection sub: no subject is available from a validated ID token or userinfo",
         "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
       ))
     }

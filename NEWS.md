@@ -115,6 +115,9 @@ the client's configured scopes when a refresh response omits `scope`.
   `openid` is auto-added to the authorization request, the sealed state payload, 
   token-response scope validation, and introspection scope validation now use
   that same effective scope set.
+  * Uses a validated ID token `sub` for `introspect_elements = "sub"` before
+  falling back to userinfo, so unvalidated ID token payloads no longer anchor
+  the introspection subject check.
   * Binds the sealed callback state to the effective provider and client
   security policy used after redirect. Multi-worker deployments must now keep
   callback/login validation settings aligned across workers; otherwise
