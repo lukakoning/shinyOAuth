@@ -22,7 +22,9 @@ client_bearer_req(
 
 \item{url}{The absolute URL to call.}
 
-\item{method}{Optional HTTP method (character). Defaults to "GET".}
+\item{method}{Optional HTTP method (character). Defaults to "GET". When
+the effective token type is \code{DPoP}, this must be the final request method
+because the proof is signed against it.}
 
 \item{headers}{Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.
@@ -59,8 +61,11 @@ request. This is primarily useful after a resource server challenges with
 \code{DPoP-Nonce}.}
 }
 \value{
-An httr2 request object, ready to be further customized or
-performed with \code{\link[httr2:req_perform]{httr2::req_perform()}}.
+An httr2 request object, ready to be performed with
+\code{\link[httr2:req_perform]{httr2::req_perform()}}. Callers may still add headers or query
+parameters, but when the effective token type is \code{DPoP} they must not
+change the request method or base URL after calling
+\code{\link[=client_bearer_req]{client_bearer_req()}} because the proof is already bound to those values.
 }
 \description{
 Convenience helper to reduce boilerplate when calling downstream APIs.
@@ -76,6 +81,13 @@ This function does not perform network I/O. It reads shinyOAuth package
 options through \code{\link[=is_ok_host]{is_ok_host()}} and HTTP-default helpers, may emit warnings
 when unsafe custom auth headers are ignored, and may read configured mTLS
 certificate files when validating certificate-bound access tokens.
+}
+
+\section{DPoP note}{
+
+DPoP proofs bind the current HTTP method and target URI (without query or
+fragment). Adding query parameters after \code{\link[=client_bearer_req]{client_bearer_req()}} is fine, but
+changing the method, scheme, host, or path invalidates the proof.
 }
 
 \examples{

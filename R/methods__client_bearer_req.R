@@ -17,7 +17,9 @@
 #'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call.
-#' @param method Optional HTTP method (character). Defaults to "GET".
+#' @param method Optional HTTP method (character). Defaults to "GET". When
+#'   the effective token type is `DPoP`, this must be the final request method
+#'   because the proof is signed against it.
 #' @param headers Optional named list or named character vector of extra
 #'   headers to set on the request. Header names are case-insensitive.
 #'   Any user-supplied `Authorization` or `DPoP` header is ignored to ensure
@@ -46,14 +48,22 @@
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
 #'
-#' @return An httr2 request object, ready to be further customized or
-#'   performed with [httr2::req_perform()].
+#' @return An httr2 request object, ready to be performed with
+#'   [httr2::req_perform()]. Callers may still add headers or query
+#'   parameters, but when the effective token type is `DPoP` they must not
+#'   change the request method or base URL after calling
+#'   [client_bearer_req()] because the proof is already bound to those values.
 #'
 #' @section Side effects:
 #' This function does not perform network I/O. It reads shinyOAuth package
 #' options through [is_ok_host()] and HTTP-default helpers, may emit warnings
 #' when unsafe custom auth headers are ignored, and may read configured mTLS
 #' certificate files when validating certificate-bound access tokens.
+#'
+#' @section DPoP note:
+#' DPoP proofs bind the current HTTP method and target URI (without query or
+#' fragment). Adding query parameters after [client_bearer_req()] is fine, but
+#' changing the method, scheme, host, or path invalidates the proof.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
