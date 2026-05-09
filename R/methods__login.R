@@ -632,7 +632,10 @@ build_auth_url <- function(
     if (isTRUE(par_used)) {
       par_resp <- push_authorization_request(
         client = oauth_client,
-        params = list(request = request_object)
+        params = list(
+          client_id = oauth_client@client_id,
+          request = request_object
+        )
       )
 
       if (!is_valid_string(par_resp$request_uri)) {

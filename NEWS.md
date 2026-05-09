@@ -18,6 +18,8 @@ with the returned `request_uri`.
 `authorization_request_mode = "request"`, using either
 `client_private_key` or `client_secret` signing depending on client
 configuration.
+  JAR-over-PAR requests now keep `client_id` in the pushed form body even when
+  PAR client authentication uses HTTP Basic auth.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces

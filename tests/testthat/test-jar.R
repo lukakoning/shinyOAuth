@@ -273,6 +273,41 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
   expect_identical(pl$dpop_jkt, expected_jkt)
 })
 
+test_that("request mode through PAR keeps client_id in the body for header auth", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      token_auth_style = "header"
+    )
+  )
+  body_text <- NULL
+  auth_header_names <- character()
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_text <<- request_body_text(req)
+      auth_header_names <<- names(as.list(req[["headers"]]))
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(auth_url, "request_uri=")
+  expect_true("Authorization" %in% auth_header_names)
+  expect_match(body_text, "client_id=abc")
+  expect_match(body_text, "request=")
+  expect_false(grepl("client_secret=", body_text, fixed = TRUE))
+})
+
 test_that("request mode through PAR keeps extra auth params inside the request object", {
   cli <- make_jar_test_client(
     provider = make_jar_test_provider(
