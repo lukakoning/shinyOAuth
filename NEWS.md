@@ -655,3 +655,8 @@ to further clarify this.
 # shinyOAuth 0.1.1
 
 * Initial CRAN submission.
+* JWKS caching now respects tightened global host policy immediately. Cached
+entries are scoped to the current `allowed_hosts` /
+`allowed_non_https_hosts` settings, and cache hits re-check the stored
+`jwks_uri` before a JWKS is trusted.
+
