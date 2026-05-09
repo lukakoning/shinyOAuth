@@ -27,6 +27,9 @@ with the returned `request_uri`.
 `authorization_request_mode = "request"`, using either
 `client_private_key` or `client_secret` signing depending on client
 configuration.
+  - Signed request objects now let callers configure the request JWT lifetime
+  and optionally emit an `nbf` claim with explicit skew tolerance instead of
+  using a fixed hard-coded validity window.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces

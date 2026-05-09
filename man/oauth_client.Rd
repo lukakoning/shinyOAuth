@@ -28,6 +28,8 @@ oauth_client(
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
+  authorization_request_ttl = 120,
+  authorization_request_nbf_skew = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -251,6 +253,16 @@ signed authorization requests.}
 used in signed authorization requests. By default, shinyOAuth uses the
 provider issuer when available and otherwise falls back to the authorization
 endpoint URL.}
+
+\item{authorization_request_ttl}{Positive number of seconds to keep signed
+authorization request objects (\code{request} JWTs) valid. Default is \code{120}.}
+
+\item{authorization_request_nbf_skew}{Optional non-negative number of
+seconds. When provided, shinyOAuth adds an \code{nbf} claim set to
+\code{iat - authorization_request_nbf_skew} so deployments can tolerate small
+clock skew while still emitting bounded request-object validity windows.
+Leave \code{NULL} (the default) to omit \code{nbf} unless you supply one explicitly
+through extra authorization parameters.}
 
 \item{dpop_private_key}{Optional private key used to generate DPoP proofs
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an

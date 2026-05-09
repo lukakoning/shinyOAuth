@@ -534,7 +534,8 @@ build_authorization_request_object <- function(client, params) {
   alg <- resolve_authorization_request_signing_alg(client)
   aud <- resolve_authorization_request_audience(client)
   now <- floor(as.numeric(Sys.time()))
-  ttl <- 120L
+  ttl <- as.numeric(client@authorization_request_ttl %||% 120)
+  nbf_skew <- as.numeric(client@authorization_request_nbf_skew %||% NA_real_)
 
   claims_param <- params$claims %||% NULL
   if (
@@ -551,9 +552,14 @@ build_authorization_request_object <- function(client, params) {
     }
   }
 
+  managed_claim_names <- c("iss", "aud", "iat", "exp", "jti")
+  if (!is.na(nbf_skew)) {
+    managed_claim_names <- c(managed_claim_names, "nbf")
+  }
+
   params[intersect(
     names(params) %||% character(0),
-    c("iss", "aud", "iat", "exp", "jti")
+    managed_claim_names
   )] <- NULL
 
   claims <- compact_list(c(
@@ -563,6 +569,7 @@ build_authorization_request_object <- function(client, params) {
       aud = aud,
       iat = now,
       exp = now + ttl,
+      nbf = if (!is.na(nbf_skew)) now - nbf_skew else NULL,
       jti = random_urlsafe(32)
     )
   ))

@@ -106,6 +106,14 @@
 #'   used in signed authorization requests. By default, shinyOAuth uses the
 #'   provider issuer when available and otherwise falls back to the authorization
 #'   endpoint URL.
+#' @param authorization_request_ttl Positive number of seconds to keep signed
+#'   authorization request objects (`request` JWTs) valid. Default is `120`.
+#' @param authorization_request_nbf_skew Optional non-negative number of
+#'   seconds. When provided, shinyOAuth adds an `nbf` claim set to
+#'   `iat - authorization_request_nbf_skew` so deployments can tolerate small
+#'   clock skew while still emitting bounded request-object validity windows.
+#'   Leave `NULL` (the default) to omit `nbf` unless you supply one explicitly
+#'   through extra authorization parameters.
 #'
 #' @param dpop_private_key Optional private key used to generate DPoP proofs
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
@@ -393,6 +401,16 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    # Signed authorization request lifetime in seconds.
+    authorization_request_ttl = S7::new_property(
+      S7::class_numeric,
+      default = 120
+    ),
+    # Optional request-object nbf skew in seconds; NA means omit nbf.
+    authorization_request_nbf_skew = S7::new_property(
+      S7::class_numeric,
+      default = NA_real_
+    ),
     # Optional DPoP proof key (PEM string or openssl::key) used to
     # sender-constrain token and resource requests.
     dpop_private_key = S7::new_property(S7::class_any, default = NULL),
@@ -509,6 +527,8 @@ oauth_client <- function(
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
+  authorization_request_ttl = 120,
+  authorization_request_nbf_skew = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -637,6 +657,9 @@ oauth_client <- function(
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
       NA_character_,
+    authorization_request_ttl = authorization_request_ttl,
+    authorization_request_nbf_skew = authorization_request_nbf_skew %||%
+      NA_real_,
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
     dpop_signing_alg = dpop_signing_alg %||% NA_character_,
@@ -1054,6 +1077,43 @@ oauth_client_validate <- function(self) {
   if (!is.na(ara) && !nzchar(ara)) {
     return(
       "OAuthClient: authorization_request_audience must be non-empty when provided (use NULL or NA to omit)"
+    )
+  }
+
+  arttl <- self@authorization_request_ttl %||% NA_real_
+  if (!(is.numeric(arttl) && length(arttl) == 1L && is.finite(arttl))) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_ttl must be a single finite number",
+        "of seconds"
+      )
+    )
+  }
+  if (arttl <= 0) {
+    return(
+      "OAuthClient: authorization_request_ttl must be greater than 0 seconds"
+    )
+  }
+
+  arns <- self@authorization_request_nbf_skew %||% NA_real_
+  if (
+    !(is.numeric(arns) &&
+      length(arns) == 1L &&
+      (is.na(arns) || is.finite(arns)))
+  ) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_nbf_skew must be NULL/NA or a",
+        "single finite number of seconds"
+      )
+    )
+  }
+  if (!is.na(arns) && arns < 0) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_nbf_skew must be greater than or",
+        "equal to 0 seconds"
+      )
     )
   }
 

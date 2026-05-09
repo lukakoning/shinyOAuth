@@ -78,6 +78,8 @@ make_jar_test_client <- function(
   dpop_signing_alg = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
+  authorization_request_ttl = 120,
+  authorization_request_nbf_skew = NULL,
   scopes = c("openid", "profile"),
   resource = character(0),
   claims = NULL,
@@ -103,6 +105,8 @@ make_jar_test_client <- function(
     authorization_request_mode = "request",
     authorization_request_signing_alg = authorization_request_signing_alg,
     authorization_request_audience = authorization_request_audience,
+    authorization_request_ttl = authorization_request_ttl,
+    authorization_request_nbf_skew = authorization_request_nbf_skew,
     resource = resource,
     claims = claims,
     claims_validation = claims_validation,
@@ -175,6 +179,60 @@ test_that("request objects default to private-key signing and honor audience ove
   expect_identical(hdr$alg, "RS256")
   expect_identical(hdr$kid, "kid-123")
   expect_identical(pl$aud, "https://example.com/custom-aud")
+})
+
+test_that("request objects honor ttl and optional nbf skew controls", {
+  cli <- make_jar_test_client(
+    authorization_request_ttl = 300,
+    authorization_request_nbf_skew = 15
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+
+  expect_equal(pl$exp - pl$iat, 300)
+  expect_equal(pl$iat - pl$nbf, 15)
+})
+
+test_that("oauth_client validates request-object ttl and nbf skew", {
+  prov <- make_jar_test_provider()
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = paste(rep("s", 32), collapse = ""),
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid"),
+      state_store = cachem::cache_mem(max_age = 60),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      authorization_request_mode = "request",
+      authorization_request_ttl = 0
+    ),
+    regexp = "authorization_request_ttl must be greater than 0"
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = paste(rep("s", 32), collapse = ""),
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid"),
+      state_store = cachem::cache_mem(max_age = 60),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      authorization_request_mode = "request",
+      authorization_request_nbf_skew = -1
+    ),
+    regexp = "authorization_request_nbf_skew must be greater than or equal to 0"
+  )
 })
 
 test_that("request mode requires signing material", {
