@@ -320,6 +320,12 @@ build_authorization_params <- function(
     state = payload
   )
 
+  if (client_has_dpop(oauth_client)) {
+    params$dpop_jkt <- compute_jwk_thumbprint(
+      dpop_public_jwk(resolve_dpop_private_key(oauth_client))
+    )
+  }
+
   if (isTRUE(oauth_client@provider@use_pkce)) {
     params$code_challenge <- pkce_code_challenge
     params$code_challenge_method <- pkce_method
@@ -383,6 +389,9 @@ build_authorization_params <- function(
       "code_challenge_method",
       "claims"
     )
+    if (client_has_dpop(oauth_client)) {
+      default_blocked_params <- c(default_blocked_params, "dpop_jkt")
+    }
     if (length(racr) > 0) {
       default_blocked_params <- c(default_blocked_params, "acr_values")
     }

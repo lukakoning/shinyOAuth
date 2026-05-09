@@ -73,6 +73,9 @@ make_jar_test_client <- function(
   client_secret = paste(rep("s", 32), collapse = ""),
   client_private_key = NULL,
   client_private_key_kid = NULL,
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   scopes = c("openid", "profile"),
@@ -94,6 +97,9 @@ make_jar_test_client <- function(
     ),
     client_private_key = client_private_key,
     client_private_key_kid = client_private_key_kid,
+    dpop_private_key = dpop_private_key,
+    dpop_private_key_kid = dpop_private_key_kid,
+    dpop_signing_alg = dpop_signing_alg,
     authorization_request_mode = "request",
     authorization_request_signing_alg = authorization_request_signing_alg,
     authorization_request_audience = authorization_request_audience,
@@ -134,6 +140,21 @@ test_that("prepare_call emits a signed request object instead of raw auth params
   expect_true(is.character(pl$code_challenge) && nzchar(pl$code_challenge))
   expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
   expect_true(is.character(pl$jti) && nzchar(pl$jti))
+})
+
+test_that("request mode includes dpop_jkt inside the signed request object", {
+  key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(dpop_private_key = key)
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+  expected_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  expect_false("dpop_jkt" %in% query_param_names(auth_url))
+  expect_identical(pl$dpop_jkt, expected_jkt)
 })
 
 test_that("request objects default to private-key signing and honor audience overrides", {
@@ -216,6 +237,40 @@ test_that("request mode pushes signed request objects through PAR when available
   expect_identical(pl$client_id, "abc")
   expect_identical(pl$redirect_uri, "http://localhost:8100")
   expect_true(is.character(pl$state) && nzchar(pl$state))
+})
+
+test_that("request mode through PAR keeps dpop_jkt inside the request object", {
+  key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(par_url = "https://example.com/par"),
+    dpop_private_key = key
+  )
+  body_data <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_data <<- req$body$data %||% list()
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  pl <- shinyOAuth:::parse_jwt_payload(body_data$request)
+  expected_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false("dpop_jkt" %in% names(body_data))
+  expect_identical(pl$dpop_jkt, expected_jkt)
 })
 
 test_that("request mode through PAR keeps extra auth params inside the request object", {

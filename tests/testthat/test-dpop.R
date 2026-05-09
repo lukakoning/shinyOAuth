@@ -51,6 +51,20 @@ verify_dpop_rs256_signature <- function(proof, pubkey) {
   )
 }
 
+test_that("prepare_call includes dpop_jkt in authorization request parameters", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  key <- openssl::rsa_keygen()
+  cli <- make_dpop_test_client(prov, dpop_private_key = key)
+
+  auth_url <- prepare_call(cli, valid_browser_token())
+  dpop_jkt <- parse_query_param(auth_url, "dpop_jkt", decode = TRUE)
+  expected_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  expect_identical(dpop_jkt, expected_jkt)
+})
+
 test_that("client_bearer_req builds DPoP authorization and proof headers", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
