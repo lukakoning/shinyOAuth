@@ -652,6 +652,11 @@ blocked: <code>grant_type</code>, <code>code</code>,
 <code>Cookie</code>
 </li>
 </ul>
+<p><code>extra_token_headers</code> are also sent on PAR requests
+because shinyOAuth uses the same back-channel header surface for PAR as
+it does for token-style authorization-server calls. Do not put secrets
+or routing headers there unless you want them sent to both the PAR
+endpoint and the token/introspection/ revocation endpoints.</p>
 </div>
 <div class="section level3">
 <h3 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
@@ -950,7 +955,11 @@ this flag, shinyOAuth verifies any JWT it receives, but a misconfigured
 provider or man-in-the-middle could return unsigned JSON claims instead,
 bypassing signature verification. If your provider can also emit
 encrypted UserInfo JWTs (JWE), configure it to return signed-only JWS
-instead; shinyOAuth does not decrypt JWE userinfo responses.</li>
+instead; shinyOAuth does not decrypt JWE userinfo responses. Signature
+verification on this surface is limited to asymmetric algorithms from
+<code>allowed_algs</code>; <code>HS256</code>, <code>HS384</code>, and
+<code>HS512</code> are rejected for UserInfo JWTs even if you allow HS*
+for ID tokens.</li>
 <li>Use a provider which enforces strong authentication (e.g.,
 multi-factor authentication)</li>
 <li>Set Content Security Policy (CSP) headers to restrict resource

@@ -95,7 +95,9 @@ userinfo endpoint (if fetched)</p></dd>
 <dd><p>Optional confirmation claim set returned alongside a
 sender-constrained access token. For RFC 8705 certificate-bound tokens,
 this may contain <code>x5t#S256</code> with the SHA-256 thumbprint of the client
-certificate that must accompany later requests.</p></dd>
+certificate that must accompany later requests. For DPoP-bound tokens,
+this may contain <code>jkt</code> with the RFC 7638 thumbprint of the public JWK
+bound to the token.</p></dd>
 
 
 <dt id="arg-granted-scopes">granted_scopes<a class="anchor" aria-label="anchor" href="#arg-granted-scopes"></a></dt>

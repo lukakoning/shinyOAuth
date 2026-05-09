@@ -52,7 +52,9 @@ OAuthToken(
   Optional confirmation claim set returned alongside a
   sender-constrained access token. For RFC 8705 certificate-bound
   tokens, this may contain `x5t#S256` with the SHA-256 thumbprint of the
-  client certificate that must accompany later requests.
+  client certificate that must accompany later requests. For DPoP-bound
+  tokens, this may contain `jkt` with the RFC 7638 thumbprint of the
+  public JWK bound to the token.
 
 - granted_scopes:
 

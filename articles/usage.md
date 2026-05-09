@@ -558,6 +558,12 @@ options:
   allows overriding the specified token exchange headers
   (case-insensitive). Default blocked: `Authorization`, `Cookie`
 
+`extra_token_headers` are also sent on PAR requests because shinyOAuth
+uses the same back-channel header surface for PAR as it does for
+token-style authorization-server calls. Do not put secrets or routing
+headers there unless you want them sent to both the PAR endpoint and the
+token/introspection/ revocation endpoints.
+
 ### Async timeout (mirai)
 
 - `options(shinyOAuth.async_timeout = 10000)` – per-task timeout in
@@ -791,7 +797,10 @@ your app to production:
   man-in-the-middle could return unsigned JSON claims instead, bypassing
   signature verification. If your provider can also emit encrypted
   UserInfo JWTs (JWE), configure it to return signed-only JWS instead;
-  shinyOAuth does not decrypt JWE userinfo responses.
+  shinyOAuth does not decrypt JWE userinfo responses. Signature
+  verification on this surface is limited to asymmetric algorithms from
+  `allowed_algs`; `HS256`, `HS384`, and `HS512` are rejected for
+  UserInfo JWTs even if you allow HS\* for ID tokens.
 - Use a provider which enforces strong authentication (e.g.,
   multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading

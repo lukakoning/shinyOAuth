@@ -28,6 +28,9 @@ OAuthProvider(
   require_pushed_authorization_requests = FALSE,
   request_object_signing_alg_values_supported = character(0),
   require_signed_request_object = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
@@ -110,6 +113,26 @@ OAuthProvider(
   Logical. Whether the provider requires signed Request Objects for
   authorization requests. When `TRUE`, clients should opt into
   `authorization_request_mode = "request"`.
+
+- request_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request` parameter. `NA` means
+  the provider did not say.
+
+- request_uri_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request_uri` parameter. `NA`
+  means the provider did not say.
+
+- require_request_uri_registration:
+
+  Logical or `NA`. Whether discovery metadata says caller-managed
+  `request_uri` values must be pre-registered. `NA` means the provider
+  did not say. shinyOAuth does not currently send caller-managed
+  `request_uri` values, but it preserves this metadata for fail-fast
+  validation and inspection.
 
 - token_endpoint_auth_signing_alg_values_supported:
 
@@ -231,8 +254,10 @@ OAuthProvider(
   - If the userinfo response is not `application/jwt`, authentication
     fails.
 
-  - If the JWT uses `alg=none` or an algorithm not in `allowed_algs`,
-    authentication fails.
+  - If the JWT uses `alg=none` or an algorithm not in the asymmetric
+    subset of `allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
+    fails. `HS*` algorithms are not accepted for UserInfo JWTs on this
+    surface even if they appear in `allowed_algs`.
 
   - If signature verification fails (JWKS fetch error, no compatible
     keys, or invalid signature), authentication fails.
@@ -299,7 +324,10 @@ OAuthProvider(
 
 - extra_token_headers:
 
-  Extra headers for token exchange requests (named character vector)
+  Extra headers for back-channel token-style requests (named character
+  vector). shinyOAuth applies these headers to token exchange, refresh,
+  introspection, revocation, and PAR requests. Use this only for headers
+  you intentionally want on that full set of authorization-server calls.
 
 - mtls_endpoint_aliases:
 

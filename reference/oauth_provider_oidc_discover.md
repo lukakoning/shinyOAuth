@@ -149,6 +149,14 @@ object configured from discovery
   algorithm is unsupported or when the provider requires signed Request
   Objects.
 
+- Authorization request transport metadata: when the discovery document
+  advertises `request_parameter_supported`,
+  `request_uri_parameter_supported`, or
+  `require_request_uri_registration`, the resulting provider stores that
+  metadata so shinyOAuth can fail fast when a provider explicitly
+  disallows the `request` transport used by JAR or the `request_uri`
+  transport used by PAR redirects.
+
 - Token endpoint JWT auth metadata: when the discovery document
   advertises `token_endpoint_auth_signing_alg_values_supported`, the
   resulting provider stores that metadata so `OAuthClient` can fail fast

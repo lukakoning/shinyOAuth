@@ -446,10 +446,12 @@ in the future are rejected</li>
 <li>Maximum ID token lifetime: <code>exp - iat</code> is checked against
 <code>options(shinyOAuth.max_id_token_lifetime)</code> (default 24
 hours); tokens with unreasonably long lifetimes are rejected</li>
-<li>Authorized party (<code>azp</code>): if <code>aud</code> has
-multiple entries, <code>azp</code> MUST be present and equal to
-<code>client_id</code>. If <code>azp</code> is present in any case, it
-MUST equal <code>client_id</code>
+<li>Authorized party (<code>azp</code>): shinyOAuth currently hardens
+multi-audience ID tokens by requiring <code>azp = client_id</code>
+whenever <code>aud</code> has multiple entries. This is stricter than
+the loosest OIDC-compatible provider behavior, but it keeps client
+binding explicit. If <code>azp</code> is present in any case, it MUST
+equal <code>client_id</code>
 </li>
 <li>Nonce: must match the previously stored value (if configured)</li>
 <li>
@@ -512,7 +514,11 @@ signed JWS userinfo responses are supported. Encrypted UserInfo JWTs
 when using <code>application/jwt</code> responses. When
 <code>userinfo_signed_jwt_required = TRUE</code> on the provider, the
 endpoint must return <code>application/jwt</code> or the flow is
-aborted.</p>
+aborted. UserInfo JWT verification is limited to asymmetric algorithms
+from the provider’s <code>allowed_algs</code> (<code>RS*</code>,
+<code>ES*</code>, or <code>EdDSA</code>); <code>HS256</code>,
+<code>HS384</code>, and <code>HS512</code> are rejected on this surface
+even if HS* is otherwise enabled for ID tokens.</p>
 <ul>
 <li>Subject match: whenever shinyOAuth has both userinfo and a validated
 ID token baseline, it checks that <code>sub</code> in userinfo equals

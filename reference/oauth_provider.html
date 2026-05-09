@@ -67,6 +67,9 @@ the built-in provider helpers.</p>
 <span>  require_pushed_authorization_requests <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  require_signed_request_object <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  require_request_uri_registration <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -152,6 +155,26 @@ When populated, this metadata is used for early validation of
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
 should opt into <code>authorization_request_mode = "request"</code>.</p></dd>
+
+
+<dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata explicitly advertises support for the authorization-request
+<code>request</code> parameter. <code>NA</code> means the provider did not say.</p></dd>
+
+
+<dt id="arg-request-uri-parameter-supported">request_uri_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-uri-parameter-supported"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata explicitly advertises support for the authorization-request
+<code>request_uri</code> parameter. <code>NA</code> means the provider did not say.</p></dd>
+
+
+<dt id="arg-require-request-uri-registration">require_request_uri_registration<a class="anchor" aria-label="anchor" href="#arg-require-request-uri-registration"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata says caller-managed <code>request_uri</code> values must be pre-registered.
+<code>NA</code> means the provider did not say. shinyOAuth does not currently send
+caller-managed <code>request_uri</code> values, but it preserves this metadata for
+fail-fast validation and inspection.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
@@ -261,8 +284,10 @@ extract the user ID from the userinfo response.</p>
 <dd><p>Whether to require that the userinfo
 endpoint returns a signed JWT (<code>Content-Type: application/jwt</code>) whose
 signature can be verified against the provider's JWKS. When <code>TRUE</code>:</p><ul><li><p>If the userinfo response is not <code>application/jwt</code>, authentication fails.</p></li>
-<li><p>If the JWT uses <code>alg=none</code> or an algorithm not in <code>allowed_algs</code>,
-authentication fails.</p></li>
+<li><p>If the JWT uses <code>alg=none</code> or an algorithm not in the asymmetric
+subset of <code>allowed_algs</code> (<code>RS*</code>, <code>ES*</code>, or <code>EdDSA</code>), authentication
+fails. <code>HS*</code> algorithms are not accepted for UserInfo JWTs on this
+surface even if they appear in <code>allowed_algs</code>.</p></li>
 <li><p>If signature verification fails (JWKS fetch error, no compatible keys,
 or invalid signature), authentication fails.</p></li>
 </ul><p>This prevents an attacker or misconfigured provider from bypassing signature
@@ -316,7 +341,11 @@ is provided or when OIDC is used.</p></dd>
 
 
 <dt id="arg-extra-token-headers">extra_token_headers<a class="anchor" aria-label="anchor" href="#arg-extra-token-headers"></a></dt>
-<dd><p>Extra headers for token exchange requests (named character vector)</p></dd>
+<dd><p>Extra headers for back-channel token-style
+requests (named character vector). shinyOAuth applies these headers to
+token exchange, refresh, introspection, revocation, and PAR requests.
+Use this only for headers you intentionally want on that full set of
+authorization-server calls.</p></dd>
 
 
 <dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>

@@ -339,9 +339,11 @@ cryptographic validation occurs prior to making external calls:
 - Maximum ID token lifetime: `exp - iat` is checked against
   `options(shinyOAuth.max_id_token_lifetime)` (default 24 hours); tokens
   with unreasonably long lifetimes are rejected
-- Authorized party (`azp`): if `aud` has multiple entries, `azp` MUST be
-  present and equal to `client_id`. If `azp` is present in any case, it
-  MUST equal `client_id`
+- Authorized party (`azp`): shinyOAuth currently hardens multi-audience
+  ID tokens by requiring `azp = client_id` whenever `aud` has multiple
+  entries. This is stricter than the loosest OIDC-compatible provider
+  behavior, but it keeps client binding explicit. If `azp` is present in
+  any case, it MUST equal `client_id`
 - Nonce: must match the previously stored value (if configured)
 - `auth_time` validation (OIDC Core §3.1.2.1): when `max_age` is present
   in `extra_auth_params`, the ID token’s `auth_time` claim must be
@@ -392,7 +394,10 @@ userinfo responses are supported. Encrypted UserInfo JWTs (JWE) are
 rejected; configure the provider to return signed-only JWTs when using
 `application/jwt` responses. When `userinfo_signed_jwt_required = TRUE`
 on the provider, the endpoint must return `application/jwt` or the flow
-is aborted.
+is aborted. UserInfo JWT verification is limited to asymmetric
+algorithms from the provider’s `allowed_algs` (`RS*`, `ES*`, or
+`EdDSA`); `HS256`, `HS384`, and `HS512` are rejected on this surface
+even if HS\* is otherwise enabled for ID tokens.
 
 - Subject match: whenever shinyOAuth has both userinfo and a validated
   ID token baseline, it checks that `sub` in userinfo equals `sub` in
