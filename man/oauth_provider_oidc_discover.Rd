@@ -113,6 +113,13 @@ PAR capability and policy metadata so authorization requests can use RFC
 \code{require_signed_request_object}, the resulting provider stores that
 metadata so \code{OAuthClient} can fail fast when a request-object algorithm is
 unsupported or when the provider requires signed Request Objects.
+\item Authorization request transport metadata: when the discovery document
+advertises \code{request_parameter_supported},
+\code{request_uri_parameter_supported}, or
+\code{require_request_uri_registration}, the resulting provider stores that
+metadata so shinyOAuth can fail fast when a provider explicitly disallows
+the \code{request} transport used by JAR or the \code{request_uri} transport used by
+PAR redirects.
 \item Token endpoint JWT auth metadata: when the discovery document advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client

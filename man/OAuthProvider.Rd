@@ -15,6 +15,9 @@ OAuthProvider(
   require_pushed_authorization_requests = FALSE,
   request_object_signing_alg_values_supported = character(0),
   require_signed_request_object = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
@@ -77,6 +80,20 @@ When populated, this metadata is used for early validation of
 \item{require_signed_request_object}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients
 should opt into \code{authorization_request_mode = "request"}.}
+
+\item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
+metadata explicitly advertises support for the authorization-request
+\code{request} parameter. \code{NA} means the provider did not say.}
+
+\item{request_uri_parameter_supported}{Logical or \code{NA}. Whether discovery
+metadata explicitly advertises support for the authorization-request
+\code{request_uri} parameter. \code{NA} means the provider did not say.}
+
+\item{require_request_uri_registration}{Logical or \code{NA}. Whether discovery
+metadata says caller-managed \code{request_uri} values must be pre-registered.
+\code{NA} means the provider did not say. shinyOAuth does not currently send
+caller-managed \code{request_uri} values, but it preserves this metadata for
+fail-fast validation and inspection.}
 
 \item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
 JWS algorithms that the provider advertises for JWT-based client
@@ -165,8 +182,10 @@ endpoint returns a signed JWT (\code{Content-Type: application/jwt}) whose
 signature can be verified against the provider's JWKS. When \code{TRUE}:
 \itemize{
 \item If the userinfo response is not \code{application/jwt}, authentication fails.
-\item If the JWT uses \code{alg=none} or an algorithm not in \code{allowed_algs},
-authentication fails.
+\item If the JWT uses \code{alg=none} or an algorithm not in the asymmetric
+subset of \code{allowed_algs} (\verb{RS*}, \verb{ES*}, or \code{EdDSA}), authentication
+fails. \verb{HS*} algorithms are not accepted for UserInfo JWTs on this
+surface even if they appear in \code{allowed_algs}.
 \item If signature verification fails (JWKS fetch error, no compatible keys,
 or invalid signature), authentication fails.
 }
@@ -211,7 +230,11 @@ section 3.2.2.9.}
 
 \item{extra_token_params}{Extra parameters for token exchange}
 
-\item{extra_token_headers}{Extra headers for token exchange requests (named character vector)}
+\item{extra_token_headers}{Extra headers for back-channel token-style
+requests (named character vector). shinyOAuth applies these headers to
+token exchange, refresh, introspection, revocation, and PAR requests.
+Use this only for headers you intentionally want on that full set of
+authorization-server calls.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},

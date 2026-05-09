@@ -62,6 +62,11 @@ entries are scoped to the current `allowed_hosts` /
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
 
+* Documentation now clarifies three existing security-relevant behaviors:
+  `extra_token_headers` are also sent on PAR requests, signed UserInfo JWT
+  verification accepts only asymmetric algorithms from `allowed_algs`, and the
+  multi-audience ID token `azp` requirement is a deliberate hardening choice.
+
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
   session is already authenticated.

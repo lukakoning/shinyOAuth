@@ -139,8 +139,10 @@
 #' signature can be verified against the provider's JWKS. When `TRUE`:
 #' \itemize{
 #'   \item If the userinfo response is not `application/jwt`, authentication fails.
-#'   \item If the JWT uses `alg=none` or an algorithm not in `allowed_algs`,
-#'     authentication fails.
+#'   \item If the JWT uses `alg=none` or an algorithm not in the asymmetric
+#'     subset of `allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
+#'     fails. `HS*` algorithms are not accepted for UserInfo JWTs on this
+#'     surface even if they appear in `allowed_algs`.
 #'   \item If signature verification fails (JWKS fetch error, no compatible keys,
 #'     or invalid signature), authentication fails.
 #' }
@@ -192,7 +194,11 @@
 #'
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange
-#' @param extra_token_headers Extra headers for token exchange requests (named character vector)
+#' @param extra_token_headers Extra headers for back-channel token-style
+#'   requests (named character vector). shinyOAuth applies these headers to
+#'   token exchange, refresh, introspection, revocation, and PAR requests.
+#'   Use this only for headers you intentionally want on that full set of
+#'   authorization-server calls.
 #'
 #' @param token_auth_style How to authenticate when exchanging tokens. One of:
 #'   - "header": HTTP Basic (client_secret_basic)
