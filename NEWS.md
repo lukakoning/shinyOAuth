@@ -4,18 +4,9 @@
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
 `token_type = "DPoP"` when the server returns it.
-  - `client_bearer_req()` now documents the DPoP request contract more
-  precisely: the helper signs the proof against the supplied method and base
-  URL, so callers must finalize those values before building the request.
-  - Cached DPoP nonces now use a bounded in-memory cache with a five-minute TTL
-  and LRU entry cap instead of accumulating unbounded per-target entries.
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
-  - Certificate-bound access tokens are now validated against the configured
-  client certificate as soon as shinyOAuth accepts a new token response or
-  refresh response, instead of waiting until the token is first used against a
-  resource endpoint.
 
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
 Providers can now configure `par_url` directly or pick it up from OIDC
@@ -27,9 +18,6 @@ with the returned `request_uri`.
 `authorization_request_mode = "request"`, using either
 `client_private_key` or `client_secret` signing depending on client
 configuration.
-  - Signed request objects now let callers configure the request JWT lifetime
-  and optionally emit an `nbf` claim with explicit skew tolerance instead of
-  using a fixed hard-coded validity window.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
