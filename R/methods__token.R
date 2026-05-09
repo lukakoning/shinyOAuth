@@ -892,11 +892,27 @@ refresh_token <- function(
           prior_granted_scopes = token@granted_scopes,
           shiny_session = shiny_session
         )
+        effective_token_type <- token_set$token_type %||% NA_character_
+        if (!is_valid_string(effective_token_type)) {
+          effective_token_type <- token@token_type %||% NA_character_
+        }
+        if (
+          !is_valid_string(effective_token_type) &&
+            client_has_dpop(oauth_client) &&
+            is_valid_string(token_cnf_jkt(
+              access_token = token_set$access_token,
+              cnf = token_set$cnf
+            ))
+        ) {
+          # Providers may omit token_type when allowed_token_types is empty.
+          # Preserve DPoP sender-constraint semantics for immediate userinfo.
+          effective_token_type <- "DPoP"
+        }
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {
           userinfo_token <- OAuthToken(
             access_token = token_set$access_token,
-            token_type = token_set$token_type %||% NA_character_,
+            token_type = effective_token_type,
             userinfo = list(),
             cnf = resolve_token_cnf(
               cnf = token_set$cnf,
@@ -933,8 +949,8 @@ refresh_token <- function(
         if (is_valid_string(token_set$refresh_token)) {
           token@refresh_token <- token_set$refresh_token
         }
-        if (is_valid_string(token_set$token_type)) {
-          token@token_type <- token_set$token_type
+        if (is_valid_string(effective_token_type)) {
+          token@token_type <- effective_token_type
         }
         token@expires_at <- expires_at
         token@granted_scopes <- token_set$granted_scopes %||% character(0)
