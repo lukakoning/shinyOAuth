@@ -386,6 +386,31 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
     regexp = "positive integer"
   )
   expect_length(cli@state_store$keys(), 0L)
+
+  cli <- make_par_test_client()
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          paste0(
+            '{"request_uri":"urn:ietf:params:oauth:request_uri:first",',
+            '"request_uri":"urn:ietf:params:oauth:request_uri:second",',
+            '"expires_in":90}'
+          )
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "duplicate member name: request_uri"
+  )
+  expect_length(cli@state_store$keys(), 0L)
 })
 
 test_that("provider reserves request_uri and request object parameters", {

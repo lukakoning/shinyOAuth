@@ -528,13 +528,17 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
           )
         )
       }
-      out <- try(
-        httr2::resp_body_json(resp, simplifyVector = TRUE),
-        silent = TRUE
-      )
-      if (inherits(out, "try-error") || !is.list(out)) {
+      body_text <- httr2::resp_body_string(resp)
+      out <- try_parse_token_response_json(body_text, resp = resp)
+      if (!isTRUE(out$ok)) {
         err_parse("Failed to parse pushed authorization request response")
       }
+      if (!isTRUE(out$is_object)) {
+        err_parse(
+          "Pushed authorization request response JSON must be a JSON object"
+        )
+      }
+      out <- out$value
 
       request_uri <- out$request_uri %||% NULL
       expires_in <- out$expires_in %||% NULL

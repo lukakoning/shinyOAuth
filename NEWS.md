@@ -1,9 +1,9 @@
 # shinyOAuth (development version)
 
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
-now take a DPoP private key, token exchange/refresh/revocation/introspection
-requests can attach DPoP proofs with nonce retry, and downstream helpers now
-preserve and use `token_type = "DPoP"` when the server returns it.
+now take a DPoP private key, token exchange/refresh requests can attach DPoP
+proofs with nonce retry, and downstream helpers now preserve and use
+`token_type = "DPoP"` when the server returns it.
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
@@ -175,6 +175,12 @@ elapsed value that always passed the `max_age` freshness check.
 * `refresh_token()` now refuses to update userinfo unless it can verify the 
 refreshed identity against a new or preserved ID token subject, preventing
 identity confusion when providers omit `id_token` from refresh responses.
+
+* PAR success responses now reject duplicate top-level JSON member names before
+accepting `request_uri` and `expires_in`.
+
+* Revocation and introspection requests no longer attach DPoP proofs. DPoP is
+now limited to token endpoint traffic and downstream resource requests.
 
 * Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
 refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
