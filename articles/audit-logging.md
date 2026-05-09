@@ -226,6 +226,8 @@ identifiers (like email addresses) can be dictionary-attacked.
   - `state_digest`
   - `browser_token_digest`
   - `pkce_method` (e.g., `S256`, `plain`, or `NA`)
+  - `par_used` (logical)
+  - `request_object_used` (logical)
   - `nonce_present` (logical)
   - `scopes_count`
   - `redirect_uri`
@@ -237,13 +239,23 @@ identifiers (like email addresses) can be dictionary-attacked.
 - When: the callback query parameters fail validation (e.g., too large)
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
 
-### Callback issuer mismatch
+### Callback issuer validation
+
+#### Event: `audit_callback_iss_missing`
+
+- When: `enforce_callback_issuer = TRUE` and the callback omits the RFC
+  9207 `iss` parameter
+- Context: `provider`, `expected_issuer`, `client_id_digest`,
+  `error_class`
 
 #### Event: `audit_callback_iss_mismatch`
 
 - When: the callback includes an `iss` query parameter (per RFC 9207)
   that does not match the provider’s expected issuer
-- Context: `provider`, `expected_issuer`, `client_id_digest`
+- Context: `provider`, `expected_issuer`, `callback_issuer`,
+  `client_id_digest`, `error_class`
+- Notes: other issuer-validation failures are reported as
+  `audit_callback_iss_validation_failed`
 
 ### Callback received
 

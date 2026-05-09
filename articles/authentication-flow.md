@@ -165,10 +165,13 @@ callback. This consists of the following steps:
 
 - Wait for the browser token input if not yet visible
 - Enforce callback query size caps (DoS protection)
-- If the callback includes an `iss` query parameter, validate it against
-  the provider’s configured/discovered issuer to defend against
-  authorization-server mix-up attacks (per RFC 9207). A mismatch
-  produces an `issuer_mismatch` error and audit event
+- Validate the callback `iss` query parameter against the provider’s
+  configured/discovered issuer to defend against authorization-server
+  mix-up attacks (per RFC 9207). When
+  `oauth_client(enforce_callback_issuer = TRUE)` is enabled, callbacks
+  that omit `iss` are also rejected before token exchange. A mismatch
+  produces an `issuer_mismatch` error; a missing required `iss` produces
+  an `issuer_missing` error and corresponding audit event
 - If the callback is an error response (`?error=...`), require a valid
   `state` parameter and defer surfacing the provider error until
   sealed-state validation, single-use state consumption, and
@@ -469,10 +472,11 @@ With respect to OIDC ID token handling:
 If refresh fails inside
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
 the module exposes the failure via its reactive state (for example,
-`token_refresh_error`). By default it also clears the current session
-token; if `oauth_module_server(indefinite_session = TRUE)`, the token is
-kept but marked stale. In the default mode, the `$authenticated` flag
-becomes `FALSE` while the error is present. However, when
+`auth$error == "token_refresh_error"` plus `auth$error_description`). By
+default it also clears the current session token; if
+`oauth_module_server(indefinite_session = TRUE)`, the token is kept but
+marked stale. In the default mode, the `$authenticated` flag becomes
+`FALSE` while the error is present. However, when
 `indefinite_session = TRUE`, the `$authenticated` flag remains `TRUE`
 even if errors are present, allowing long-lived sessions despite
 transient refresh failures.

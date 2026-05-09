@@ -109,11 +109,15 @@ configuration before dispatching the async work that should use it.
 
 - When: when shinyOAuth prepares the authorization redirect in
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+
 - Represents: generation of state, PKCE material, nonce, state-store
   write, and construction of the authorization URL
+
 - Parenting: this span is started as a root span so it remains visible
   even when login is triggered from within a Shiny reactive update
+
 - Main attributes:
+
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase = "login.request"`
@@ -126,6 +130,36 @@ configuration before dispatching the async work that should use it.
   - `oauth.max_age.requested`
   - `oauth.extra_auth_params_count`
   - Shiny session/process metadata when available
+
+  #### Span: `shinyOAuth.login.par`
+
+  - When: during pushed authorization request (PAR) submission when the
+    provider exposes `par_url`
+  - Represents: PAR request construction, client authentication, PAR
+    response validation, and extraction of `request_uri`
+  - Main attributes:
+    - `oauth.provider.name`, `oauth.provider.issuer`
+    - `oauth.client_id_digest`
+    - `oauth.phase = "login.par"`
+    - `oauth.client_auth_style`
+    - `oauth.extra_auth_params_count`
+    - `oauth.extra_token_headers_count`
+    - Shiny session/process metadata when available
+
+  #### Span: `shinyOAuth.login.par.http`
+
+  - When: for outbound PAR HTTP calls
+  - Represents: the actual POST to the configured PAR endpoint
+  - Main attributes:
+    - `http.request.method = "POST"`
+    - `server.address`
+    - `oauth.phase = "login.par"`
+    - `http.response.status_code`, `http.response.content_type` after a
+      response is available
+  - Notes:
+    - this is used as a client span (`kind = "client"`)
+    - redirects are rejected before client credentials or PAR parameters
+      can leak
 
 #### Span: `shinyOAuth.callback`
 

@@ -227,6 +227,56 @@ even when login is triggered from within a Shiny reactive update</li>
 <li><code>oauth.extra_auth_params_count</code></li>
 <li>Shiny session/process metadata when available</li>
 </ul>
+<h4 id="span-shinyoauth.login.par">Span:
+<code>shinyOAuth.login.par</code>
+</h4>
+<ul>
+<li>When: during pushed authorization request (PAR) submission when the
+provider exposes <code>par_url</code>
+</li>
+<li>Represents: PAR request construction, client authentication, PAR
+response validation, and extraction of <code>request_uri</code>
+</li>
+<li>Main attributes:
+<ul>
+<li>
+<code>oauth.provider.name</code>,
+<code>oauth.provider.issuer</code>
+</li>
+<li><code>oauth.client_id_digest</code></li>
+<li><code>oauth.phase = "login.par"</code></li>
+<li><code>oauth.client_auth_style</code></li>
+<li><code>oauth.extra_auth_params_count</code></li>
+<li><code>oauth.extra_token_headers_count</code></li>
+<li>Shiny session/process metadata when available</li>
+</ul>
+</li>
+</ul>
+<h4 id="span-shinyoauth.login.par.http">Span:
+<code>shinyOAuth.login.par.http</code>
+</h4>
+<ul>
+<li>When: for outbound PAR HTTP calls</li>
+<li>Represents: the actual POST to the configured PAR endpoint</li>
+<li>Main attributes:
+<ul>
+<li><code>http.request.method = "POST"</code></li>
+<li><code>server.address</code></li>
+<li><code>oauth.phase = "login.par"</code></li>
+<li>
+<code>http.response.status_code</code>,
+<code>http.response.content_type</code> after a response is
+available</li>
+</ul>
+</li>
+<li>Notes:
+<ul>
+<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>redirects are rejected before client credentials or PAR parameters
+can leak</li>
+</ul>
+</li>
+</ul>
 </li>
 </ul>
 </div>

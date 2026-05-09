@@ -325,6 +325,10 @@ URL</p></li>
 <code>pkce_method</code> (e.g., <code>S256</code>,
 <code>plain</code>, or <code>NA</code>)</li>
 <li>
+<code>par_used</code> (logical)</li>
+<li>
+<code>request_object_used</code> (logical)</li>
+<li>
 <code>nonce_present</code> (logical)</li>
 <li><code>scopes_count</code></li>
 <li><code>redirect_uri</code></li>
@@ -349,8 +353,19 @@ large)</li>
 </div>
 </div>
 <div class="section level3">
-<h3 id="callback-issuer-mismatch">Callback issuer mismatch<a class="anchor" aria-label="anchor" href="#callback-issuer-mismatch"></a>
+<h3 id="callback-issuer-validation">Callback issuer validation<a class="anchor" aria-label="anchor" href="#callback-issuer-validation"></a>
 </h3>
+<div class="section level4">
+<h4 id="event-audit_callback_iss_missing">Event: <code>audit_callback_iss_missing</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_missing"></a>
+</h4>
+<ul>
+<li>When: <code>enforce_callback_issuer = TRUE</code> and the callback
+omits the RFC 9207 <code>iss</code> parameter</li>
+<li>Context: <code>provider</code>, <code>expected_issuer</code>,
+<code>client_id_digest</code>, <code>error_class</code>
+</li>
+</ul>
+</div>
 <div class="section level4">
 <h4 id="event-audit_callback_iss_mismatch">Event: <code>audit_callback_iss_mismatch</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_mismatch"></a>
 </h4>
@@ -358,7 +373,11 @@ large)</li>
 <li>When: the callback includes an <code>iss</code> query parameter (per
 RFC 9207) that does not match the provider’s expected issuer</li>
 <li>Context: <code>provider</code>, <code>expected_issuer</code>,
-<code>client_id_digest</code>
+<code>callback_issuer</code>, <code>client_id_digest</code>,
+<code>error_class</code>
+</li>
+<li>Notes: other issuer-validation failures are reported as
+<code>audit_callback_iss_validation_failed</code>
 </li>
 </ul>
 </div>

@@ -247,11 +247,14 @@ callback. This consists of the following steps:</p>
 <ul>
 <li>Wait for the browser token input if not yet visible</li>
 <li>Enforce callback query size caps (DoS protection)</li>
-<li>If the callback includes an <code>iss</code> query parameter,
-validate it against the provider’s configured/discovered issuer to
-defend against authorization-server mix-up attacks (per RFC 9207). A
-mismatch produces an <code>issuer_mismatch</code> error and audit
-event</li>
+<li>Validate the callback <code>iss</code> query parameter against the
+provider’s configured/discovered issuer to defend against
+authorization-server mix-up attacks (per RFC 9207). When
+<code>oauth_client(enforce_callback_issuer = TRUE)</code> is enabled,
+callbacks that omit <code>iss</code> are also rejected before token
+exchange. A mismatch produces an <code>issuer_mismatch</code> error; a
+missing required <code>iss</code> produces an
+<code>issuer_missing</code> error and corresponding audit event</li>
 <li>If the callback is an error response (<code>?error=...</code>),
 require a valid <code>state</code> parameter and defer surfacing the
 provider error until sealed-state validation, single-use state
@@ -611,8 +614,9 @@ rotating issuer URIs</li>
 </ul>
 <p>If refresh fails inside <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, the
 module exposes the failure via its reactive state (for example,
-<code>token_refresh_error</code>). By default it also clears the current
-session token; if
+<code>auth$error == "token_refresh_error"</code> plus
+<code>auth$error_description</code>). By default it also clears the
+current session token; if
 <code>oauth_module_server(indefinite_session = TRUE)</code>, the token
 is kept but marked stale. In the default mode, the
 <code>$authenticated</code> flag becomes <code>FALSE</code> while the
