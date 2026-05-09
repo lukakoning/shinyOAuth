@@ -48,6 +48,55 @@ testthat::test_that("manual login flow yields authenticated TRUE on success", {
   )
 })
 
+testthat::test_that("manual sync login succeeds with browser-token protection enabled", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  btok <- valid_browser_token()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      async = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_false(values$has_browser_token())
+
+      session$setInputs(shinyOAuth_sid = btok)
+      session$flushReact()
+
+      testthat::expect_true(values$has_browser_token())
+      testthat::expect_identical(values$browser_token, btok)
+
+      url <- values$build_auth_url()
+      testthat::expect_true(is.character(url) && nzchar(url))
+      enc <- parse_query_param(url, "state")
+      testthat::expect_true(is.character(enc) && nzchar(enc))
+
+      token <- testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          list(access_token = "t-sync-cookie", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0("?code=ok&state=", enc))
+          session$flushReact()
+          values$token
+        }
+      )
+
+      testthat::expect_false(is.null(token))
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_null(values$error_description)
+    }
+  )
+})
+
 testthat::test_that("login fails when introspection validation fails", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
