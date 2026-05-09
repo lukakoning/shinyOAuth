@@ -7,7 +7,13 @@
   can now take a DPoP private key, token
   exchange/refresh/revocation/introspection requests can attach DPoP
   proofs with nonce retry, and downstream helpers now preserve and use
-  `token_type = "DPoP"` when the server returns it.
+  `token_type = "DPoP"` when the server returns it. Authorization
+  requests now also send `dpop_jkt` when DPoP is configured, including
+  signed request-object and PAR flows, so authorization codes can be
+  sender-constrained from the start of the login flow. When DPoP
+  responses return `DPoP-Nonce` on success, shinyOAuth now remembers and
+  reuses that nonce on the next DPoP request to the same origin instead
+  of waiting for another nonce challenge.
 
 - Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client
   authentication, certificate-bound access tokens, and mTLS endpoint
