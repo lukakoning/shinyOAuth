@@ -151,13 +151,6 @@ load the necessary JavaScript dependency. Always place
 function. You may place it near the top-level of your UI (e.g., inside
 <code><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage()</a></code>, <code><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList()</a></code>, or
 <code><a href="https://rstudio.github.io/bslib/reference/page.html" class="external-link">bslib::page()</a></code>).</p>
-<p>By default, <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> also injects
-<code>&lt;meta name="referrer" content="no-referrer"&gt;</code>. This
-helps prevent OAuth callback query parameters such as <code>code</code>
-and <code>state</code> from leaking via the <code>Referer</code> header
-to third-party subresources during the initial callback page load. Set
-<code>inject_referrer_meta = FALSE</code> only if you intentionally
-manage referrer policy elsewhere.</p>
 <p>Note also that you must access the app in a regular browser. This is
 because the necessary redirects that the browser must perform can
 usually not be handled inside embedded viewers of IDEs like RStudio or
@@ -306,94 +299,9 @@ the GitHub API to obtain the user’s repositories.</p>
 <span></span>
 <span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
 <span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
-<p>If your client is configured with <code>dpop_private_key</code> and
-the provider returns <code>token_type = "DPoP"</code>, call
-<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> with <code>oauth_client = client</code>
-so shinyOAuth can attach DPoP proofs on downstream API calls. If a
-resource server challenges with <code>DPoP-Nonce</code>, rebuild the
-request with <code>dpop_nonce = &lt;value&gt;</code> from that challenge
-before retrying. In <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, configuring
-<code>dpop_private_key</code> also makes
-<code>dpop_require_access_token = TRUE</code> by default, so logins fail
-fast unless the authorization server actually returns a DPoP access
-token.</p>
-<p>The same <code>oauth_client = client</code> argument is also required
-when you use sender-constrained mTLS or certificate-bound access tokens,
-because shinyOAuth uses it to attach the configured client certificate
-and validate any <code>cnf</code> thumbprint before the request is
-sent.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span></span>
-<span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
-<span>  <span class="st">"https://resource.example.com/me"</span>,</span>
-<span>  oauth_client <span class="op">=</span> <span class="va">client</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span></code></pre></div>
 <p>For an example application which fetches data from the Spotify web
 API, see:
 <code><a href="../articles/example-spotify.html">vignette("example-spotify", package = "shinyOAuth")</a></code>.</p>
-</div>
-<div class="section level2">
-<h2 id="token-introspection-optional">Token introspection (optional)<a class="anchor" aria-label="anchor" href="#token-introspection-optional"></a>
-</h2>
-<p>By default, <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> considers a login
-complete once the callback has been validated and token retrieval plus
-any configured OIDC checks have succeeded.</p>
-<p>If your provider supports RFC 7662 token introspection, you can
-optionally add an extra validation step by enabling
-<code>introspect = TRUE</code> when creating your
-<code><a href="../reference/oauth_client.html">oauth_client()</a></code>.</p>
-<p>When enabled, the module calls the provider introspection endpoint
-after token retrieval and requires the response to indicate
-<code>active = TRUE</code> before the login is treated as complete. If
-proactive refresh is enabled, refreshed access tokens are introspected
-through the same client policy before the session is updated.</p>
-<p>If introspection itself fails, the login is aborted. On refresh, the
-default module behavior is to clear the session and optionally
-reauthenticate; when
-<code>oauth_module_server(indefinite_session = TRUE)</code> is in use,
-shinyOAuth instead keeps the current token, marks it as stale in
-<code>auth$token_stale</code>, and does not clear the session
-automatically.</p>
-<p>You can optionally request additional checks via
-<code>introspect_elements</code>:</p>
-<ul>
-<li>
-<code>"sub"</code> – require the introspected <code>sub</code> to
-match the session subject (from a validated ID token <code>sub</code>
-when available; otherwise userinfo <code>sub</code> when available)</li>
-<li>
-<code>"client_id"</code> – require the introspected
-<code>client_id</code> to match your OAuth client id</li>
-<li>
-<code>"scope"</code> – validate returned scopes against requested
-scopes; this follows the client’s <code>scope_validation</code> mode
-(<code>"strict"</code> errors, <code>"warn"</code> warns,
-<code>"none"</code> skips scope checks)</li>
-</ul>
-<p>(Note that not all providers may return each of these fields in
-introspection responses.)</p>
-<p><code>OAuthToken</code> objects also record the best-known
-access-token scopes in <code>token@granted_scopes</code> plus whether
-the current token response explicitly proved that scope set in
-<code>token@granted_scopes_verified</code>. If a token or refresh
-response omits <code>scope</code>, shinyOAuth carries forward the
-best-known scopes but marks them as unverified. For
-authorization-sensitive apps, add
-<code>introspect_elements = "scope"</code> so login and refresh require
-an explicit scope statement from introspection.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Example with introspection enabled</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span>,</span>
-<span>  introspect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sub"</span>, <span class="st">"client_id"</span>, <span class="st">"scope"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="async-mode-to-keep-ui-responsive">Async mode to keep UI responsive<a class="anchor" aria-label="anchor" href="#async-mode-to-keep-ui-responsive"></a>
@@ -419,7 +327,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <div class="section level3">
 <h3 id="mirai-async-backend-recommended">‘mirai’ async backend (recommended)<a class="anchor" aria-label="anchor" href="#mirai-async-backend-recommended"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Set up daemons at the top of your app (or in global.R)</span></span>
 <span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span></span>
@@ -440,7 +348,7 @@ See ‘Global options’ and then ‘HTTP timeout/retries’.</p>
 <div class="section level3">
 <h3 id="future-async-backend">‘future’ async backend<a class="anchor" aria-label="anchor" href="#future-async-backend"></a>
 </h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Set up workers at the top of your app</span></span>
 <span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
@@ -464,7 +372,7 @@ local session, sets <code>auth$error</code> to
 <code>"logged_out"</code>, reissues a fresh browser token for the next
 login attempt, and attempts to revoke tokens at the provider (if a
 revocation endpoint is available):</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
@@ -481,7 +389,7 @@ closed, timeout), set <code>revoke_on_session_end = TRUE</code>.</p>
 validates that at startup and errors otherwise. The built-in GitHub
 provider used earlier in this vignette does not expose a revocation
 endpoint, so this setting only applies to providers that do:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  client <span class="op">=</span> <span class="va">client</span>,</span>
@@ -534,19 +442,6 @@ for details about audit hooks, and
 details about logs and traces via OpenTelemetry.</p>
 </div>
 <div class="section level3">
-<h3 id="debugging">Debugging<a class="anchor" aria-label="anchor" href="#debugging"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies (may reveal details)</li>
-</ul>
-<p>This option exposes sanitized HTTP response bodies in thrown errors
-for local debugging. It is only honored in testthat or interactive
-sessions and is intended for development, not for normal package
-usage.</p>
-</div>
-<div class="section level3">
 <h3 id="networkingsecurity">Networking/security<a class="anchor" aria-label="anchor" href="#networkingsecurity"></a>
 </h3>
 <ul>
@@ -589,21 +484,6 @@ validation failure (e.g., malformed token, IV/tag/ciphertext issues, or
 GCM authentication failure). This helps reduce timing side‑channels
 between different failure modes</li>
 </ul>
-<p>Outside that explicit <code>HS*</code> opt-in, shinyOAuth currently
-accepts signed JWS tokens with <code>RS256</code>, <code>RS384</code>,
-<code>RS512</code>, <code>ES256</code>, <code>ES384</code>,
-<code>ES512</code>, and <code>EdDSA</code>. RSA-PSS (<code>PS256</code>,
-<code>PS384</code>, <code>PS512</code>) is not currently supported. For
-outbound private-key JWT signing (<code>private_key_jwt</code>, signed
-Request Objects, and DPoP proofs), RSA keys are currently limited to
-<code>RS256</code>; <code>RS384</code>, <code>RS512</code>,
-<code>PS256</code>, <code>PS384</code>, <code>PS512</code>, and
-<code>EdDSA</code> are not currently supported for outbound signing. Use
-EC keys when you need <code>ES256</code>, <code>ES384</code>, or
-<code>ES512</code>. shinyOAuth accepts signed JWS ID tokens and signed
-UserInfo JWT responses only. Encrypted JWTs (JWE) are not currently
-supported for those surfaces; configure the provider to return
-signed-only tokens.</p>
 <p>Note on <code>allowed_hosts</code>: patterns support globs
 (<code>*</code>, <code>?</code>). Using a catch‑all like
 <code>"*"</code> matches any host and effectively disables endpoint host
@@ -652,11 +532,6 @@ blocked: <code>grant_type</code>, <code>code</code>,
 <code>Cookie</code>
 </li>
 </ul>
-<p><code>extra_token_headers</code> are also sent on PAR requests
-because shinyOAuth uses the same back-channel header surface for PAR as
-it does for token-style authorization-server calls. Do not put secrets
-or routing headers there unless you want them sent to both the PAR
-endpoint and the token/introspection/ revocation endpoints.</p>
 </div>
 <div class="section level3">
 <h3 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
@@ -779,9 +654,10 @@ of honoring it</li>
 <li>
 <code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
 during token exchange</li>
+<li>
+<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
+sanitized HTTP bodies (may reveal details)</li>
 </ul>
-<p>The same test-or-interactive restriction applies to
-<code>options(shinyOAuth.expose_error_body = TRUE)</code>.</p>
 <p>Don’t enable these in production. They disable key security checks or
 alter error behavior, and are intended for local testing/debugging
 only.</p>

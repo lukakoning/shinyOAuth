@@ -87,14 +87,6 @@ near the top-level of your UI (e.g., inside
 or
 [`bslib::page()`](https://rstudio.github.io/bslib/reference/page.html)).
 
-By default,
-[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-also injects `<meta name="referrer" content="no-referrer">`. This helps
-prevent OAuth callback query parameters such as `code` and `state` from
-leaking via the `Referer` header to third-party subresources during the
-initial callback page load. Set `inject_referrer_meta = FALSE` only if
-you intentionally manage referrer policy elsewhere.
-
 Note also that you must access the app in a regular browser. This is
 because the necessary redirects that the browser must perform can
 usually not be handled inside embedded viewers of IDEs like RStudio or
@@ -247,96 +239,9 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
-If your client is configured with `dpop_private_key` and the provider
-returns `token_type = "DPoP"`, call
-[`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-with `oauth_client = client` so shinyOAuth can attach DPoP proofs on
-downstream API calls. If a resource server challenges with `DPoP-Nonce`,
-rebuild the request with `dpop_nonce = <value>` from that challenge
-before retrying. In
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-configuring `dpop_private_key` also makes
-`dpop_require_access_token = TRUE` by default, so logins fail fast
-unless the authorization server actually returns a DPoP access token.
-
-The same `oauth_client = client` argument is also required when you use
-sender-constrained mTLS or certificate-bound access tokens, because
-shinyOAuth uses it to attach the configured client certificate and
-validate any `cnf` thumbprint before the request is sent.
-
-``` r
-req <- client_bearer_req(
-  auth$token,
-  "https://resource.example.com/me",
-  oauth_client = client
-)
-resp <- httr2::req_perform(req)
-```
-
 For an example application which fetches data from the Spotify web API,
 see:
 [`vignette("example-spotify", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md).
-
-## Token introspection (optional)
-
-By default,
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-considers a login complete once the callback has been validated and
-token retrieval plus any configured OIDC checks have succeeded.
-
-If your provider supports RFC 7662 token introspection, you can
-optionally add an extra validation step by enabling `introspect = TRUE`
-when creating your
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-
-When enabled, the module calls the provider introspection endpoint after
-token retrieval and requires the response to indicate `active = TRUE`
-before the login is treated as complete. If proactive refresh is
-enabled, refreshed access tokens are introspected through the same
-client policy before the session is updated.
-
-If introspection itself fails, the login is aborted. On refresh, the
-default module behavior is to clear the session and optionally
-reauthenticate; when `oauth_module_server(indefinite_session = TRUE)` is
-in use, shinyOAuth instead keeps the current token, marks it as stale in
-`auth$token_stale`, and does not clear the session automatically.
-
-You can optionally request additional checks via `introspect_elements`:
-
-- `"sub"` – require the introspected `sub` to match the session subject
-  (from a validated ID token `sub` when available; otherwise userinfo
-  `sub` when available)
-- `"client_id"` – require the introspected `client_id` to match your
-  OAuth client id
-- `"scope"` – validate returned scopes against requested scopes; this
-  follows the client’s `scope_validation` mode (`"strict"` errors,
-  `"warn"` warns, `"none"` skips scope checks)
-
-(Note that not all providers may return each of these fields in
-introspection responses.)
-
-`OAuthToken` objects also record the best-known access-token scopes in
-`token@granted_scopes` plus whether the current token response
-explicitly proved that scope set in `token@granted_scopes_verified`. If
-a token or refresh response omits `scope`, shinyOAuth carries forward
-the best-known scopes but marks them as unverified. For
-authorization-sensitive apps, add `introspect_elements = "scope"` so
-login and refresh require an explicit scope statement from
-introspection.
-
-``` r
-# Example with introspection enabled
-client <- oauth_client(
-  provider = provider,
-  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
-  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
-  redirect_uri = "http://127.0.0.1:8100",
-  introspect = TRUE,
-  introspect_elements = c("sub", "client_id", "scope")
-)
-
-auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
-```
 
 ## Async mode to keep UI responsive
 
@@ -475,15 +380,6 @@ for details about audit hooks, and
 [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
 for more details about logs and traces via OpenTelemetry.
 
-### Debugging
-
-- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
-  HTTP bodies (may reveal details)
-
-This option exposes sanitized HTTP response bodies in thrown errors for
-local debugging. It is only honored in testthat or interactive sessions
-and is intended for development, not for normal package usage.
-
 ### Networking/security
 
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway
@@ -511,18 +407,6 @@ and is intended for development, not for normal package usage.
   (e.g., malformed token, IV/tag/ciphertext issues, or GCM
   authentication failure). This helps reduce timing side‑channels
   between different failure modes
-
-Outside that explicit `HS*` opt-in, shinyOAuth currently accepts signed
-JWS tokens with `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`,
-and `EdDSA`. RSA-PSS (`PS256`, `PS384`, `PS512`) is not currently
-supported. For outbound private-key JWT signing (`private_key_jwt`,
-signed Request Objects, and DPoP proofs), RSA keys are currently limited
-to `RS256`; `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are
-not currently supported for outbound signing. Use EC keys when you need
-`ES256`, `ES384`, or `ES512`. shinyOAuth accepts signed JWS ID tokens
-and signed UserInfo JWT responses only. Encrypted JWTs (JWE) are not
-currently supported for those surfaces; configure the provider to return
-signed-only tokens.
 
 Note on `allowed_hosts`: patterns support globs (`*`, `?`). Using a
 catch‑all like `"*"` matches any host and effectively disables endpoint
@@ -557,12 +441,6 @@ options:
 - `options(shinyOAuth.unblock_token_headers = c("authorization"))` –
   allows overriding the specified token exchange headers
   (case-insensitive). Default blocked: `Authorization`, `Cookie`
-
-`extra_token_headers` are also sent on PAR requests because shinyOAuth
-uses the same back-channel header surface for PAR as it does for
-token-style authorization-server calls. Do not put secrets or routing
-headers there unless you want them sent to both the PAR endpoint and the
-token/introspection/ revocation endpoints.
 
 ### Async timeout (mirai)
 
@@ -648,9 +526,8 @@ token/introspection/ revocation endpoints.
   outside those contexts shinyOAuth errors instead of honoring it
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
   exchange
-
-The same test-or-interactive restriction applies to
-`options(shinyOAuth.expose_error_body = TRUE)`.
+- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
+  HTTP bodies (may reveal details)
 
 Don’t enable these in production. They disable key security checks or
 alter error behavior, and are intended for local testing/debugging only.
