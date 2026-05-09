@@ -595,8 +595,9 @@ token.</p>
 <p>Now that the flow is complete, the module will manage the token
 lifetime during the active session. This may consist of:</p>
 <ul>
-<li>Proactive refresh: if enabled and a refresh token exists, the access
-token is refreshed before expiry</li>
+<li>Proactive refresh: if enabled via
+<code>oauth_module_server(refresh_proactively = TRUE)</code> and a
+refresh token exists, the access token is refreshed before expiry</li>
 <li>Expiration: expired tokens are cleared automatically, setting the
 <code>$authenticated</code> flag to FALSE</li>
 <li>Re-authentication: optionally,
@@ -624,6 +625,9 @@ present; otherwise shinyOAuth synthesizes a finite fallback lifetime
 preserved</li>
 <li>If <code>oauth_provider(userinfo_required = TRUE)</code>, userinfo
 is re-fetched using the fresh access token</li>
+<li>If <code>oauth_client(introspect = TRUE)</code>, the refreshed
+access token is introspected through the same client policy before the
+session is updated</li>
 </ul>
 <p>If you are running a security-sensitive app, set
 <code>options(shinyOAuth.default_expires_in = ...)</code> to the
@@ -694,6 +698,10 @@ cookie)</li>
 <p>To automatically attempt revocation when a Shiny session ends (for
 example, a tab close or session timeout), set
 <code>revoke_on_session_end = TRUE</code>:</p>
+<p>This requires the provider to have a configured
+<code>revocation_url</code>; otherwise
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> rejects
+<code>revoke_on_session_end = TRUE</code> at startup.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>

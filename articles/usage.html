@@ -83,7 +83,7 @@ users</li>
 <li>Authorization code exchange and token validation</li>
 <li>Optional userinfo retrieval &amp; ID token signature/claims
 validation</li>
-<li>Proactive token refresh and re‑authentication triggers</li>
+<li>Optional proactive token refresh and re‑authentication triggers</li>
 </ul>
 <p>For a full step-by-step protocol breakdown, see the separate
 vignette:
@@ -151,6 +151,13 @@ load the necessary JavaScript dependency. Always place
 function. You may place it near the top-level of your UI (e.g., inside
 <code><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage()</a></code>, <code><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList()</a></code>, or
 <code><a href="https://rstudio.github.io/bslib/reference/page.html" class="external-link">bslib::page()</a></code>).</p>
+<p>By default, <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> also injects
+<code>&lt;meta name="referrer" content="no-referrer"&gt;</code>. This
+helps prevent OAuth callback query parameters such as <code>code</code>
+and <code>state</code> from leaking via the <code>Referer</code> header
+to third-party subresources during the initial callback page load. Set
+<code>inject_referrer_meta = FALSE</code> only if you intentionally
+manage referrer policy elsewhere.</p>
 <p>Note also that you must access the app in a regular browser. This is
 because the necessary redirects that the browser must perform can
 usually not be handled inside embedded viewers of IDEs like RStudio or
@@ -449,7 +456,12 @@ revocation endpoint is available):</p>
 <h3 id="automatic-revocation-on-session-end">Automatic revocation on session end<a class="anchor" aria-label="anchor" href="#automatic-revocation-on-session-end"></a>
 </h3>
 <p>To revoke tokens when the Shiny session ends (e.g., browser tab
-closed, timeout), set <code>revoke_on_session_end = TRUE</code>:</p>
+closed, timeout), set <code>revoke_on_session_end = TRUE</code>.</p>
+<p>This requires the provider to have a configured
+<code>revocation_url</code>. <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
+validates that at startup and errors otherwise. The built-in GitHub
+provider used earlier in this vignette does not expose a revocation
+endpoint, so this setting only applies to providers that do:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>  <span class="st">"auth"</span>,</span>
@@ -511,8 +523,9 @@ details about logs and traces via OpenTelemetry.</p>
 sanitized HTTP bodies (may reveal details)</li>
 </ul>
 <p>This option exposes sanitized HTTP response bodies in thrown errors
-for local debugging. It is intended for development, not for normal
-package usage.</p>
+for local debugging. It is only honored in testthat or interactive
+sessions and is intended for development, not for normal package
+usage.</p>
 </div>
 <div class="section level3">
 <h3 id="networkingsecurity">Networking/security<a class="anchor" aria-label="anchor" href="#networkingsecurity"></a>
@@ -730,17 +743,21 @@ recommended for production without additional replay protection.</li>
 <ul>
 <li>
 <code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
-browser cookie binding</li>
+browser cookie binding in tests or interactive sessions</li>
 <li>
 <code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
-signature verification</li>
+signature verification in tests or interactive sessions</li>
 <li>
 <code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
-– accept unsigned (<code>alg=none</code>) UserInfo JWTs</li>
+– accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
+interactive sessions; outside those contexts shinyOAuth errors instead
+of honoring it</li>
 <li>
 <code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
 during token exchange</li>
 </ul>
+<p>The same test-or-interactive restriction applies to
+<code>options(shinyOAuth.expose_error_body = TRUE)</code>.</p>
 <p>Don’t enable these in production. They disable key security checks or
 alter error behavior, and are intended for local testing/debugging
 only.</p>
@@ -904,7 +921,8 @@ optional and consider your own allowlist.</li>
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>) and
 monitor these logs</li>
 <li>Consider enabling automatic revocation on session end
-(<code>revoke_on_session_end = TRUE</code>)</li>
+(<code>revoke_on_session_end = TRUE</code>) for providers that expose a
+revocation endpoint</li>
 <li>If your provider can return UserInfo as a signed JWT
 (<code>Content-Type: application/jwt</code>), set
 <code>userinfo_signed_jwt_required = TRUE</code> in your

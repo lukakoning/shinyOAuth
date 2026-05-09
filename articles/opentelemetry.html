@@ -98,8 +98,8 @@ their content, and how to enable/disable them.</p>
 </h2>
 <p>OTel log records are generated from the same structured events that
 shinyOAuth emits to its native R hook
-(<code>shinyOAuth.audit_hook</code>). The log content, event types, and
-severity levels mirror what is described in
+(<code>shinyOAuth.audit_hook</code>). The log content and event types
+mirror what is described in
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>; refer
 there for full details about the various events and their content. The
 OTel representation is flatter, though: nested objects are converted to
@@ -224,6 +224,7 @@ even when login is triggered from within a Shiny reactive update</li>
 <code>oauth.required_acr_values_count</code>
 </li>
 <li><code>oauth.max_age.requested</code></li>
+<li><code>oauth.request_object_used</code></li>
 <li><code>oauth.extra_auth_params_count</code></li>
 <li>Shiny session/process metadata when available</li>
 </ul>
@@ -340,8 +341,8 @@ the encrypted state payload, it becomes a child of that
 <code>callback.state_payload</code> and
 <code>callback.state_store_consume</code>
 <ul>
-<li>emitted on the main process in async callback mode, before worker
-dispatch</li>
+<li>emitted during normal synchronous callback handling, and also on the
+main process before worker dispatch in async callback mode</li>
 </ul>
 </li>
 <li><code>callback.browser_token_validation</code></li>
@@ -349,8 +350,8 @@ dispatch</li>
 <li>
 <code>callback.nonce_validation</code>
 <ul>
-<li>emitted during the normal synchronous callback path and inside the
-async worker after parent context restoration</li>
+<li>emitted during the normal synchronous callback path and, in async
+mode, inside the worker after parent context restoration</li>
 </ul>
 </li>
 </ul>

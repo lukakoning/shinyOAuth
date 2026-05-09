@@ -162,11 +162,12 @@ PID of the main R process that spawned the async worker. This allows you
 to correlate events from workers back to the originating main
 process.</li>
 <li>
-<code>mirai_error_type</code>: a top-level event field on certain
-async failure events. It classifies mirai transport-level failures
-separately from application-level errors. Present on
-<code>login_failed</code>, <code>session_cleared</code>, and
-<code>refresh_failed_but_kept_session</code> events:
+<code>mirai_error_type</code>: a top-level event field present only
+on async failure variants of <code>login_failed</code>,
+<code>session_cleared</code>, and
+<code>refresh_failed_but_kept_session</code>. It classifies mirai
+transport-level failures separately from application-level errors. When
+present:
 <ul>
 <li>
 <code>"mirai_error"</code> — code threw an R error inside the
@@ -376,8 +377,17 @@ RFC 9207) that does not match the provider’s expected issuer</li>
 <code>callback_issuer</code>, <code>client_id_digest</code>,
 <code>error_class</code>
 </li>
-<li>Notes: other issuer-validation failures are reported as
-<code>audit_callback_iss_validation_failed</code>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="event-audit_callback_iss_validation_failed">Event: <code>audit_callback_iss_validation_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_validation_failed"></a>
+</h4>
+<ul>
+<li>When: callback issuer validation fails before token exchange for a
+reason other than the dedicated missing/mismatch cases above</li>
+<li>Context: <code>provider</code>, <code>expected_issuer</code>,
+<code>callback_issuer</code> (when present),
+<code>client_id_digest</code>, <code>error_class</code>
 </li>
 </ul>
 </div>
@@ -389,12 +399,16 @@ RFC 9207) that does not match the provider’s expected issuer</li>
 <h4 id="event-audit_callback_received">Event: <code>audit_callback_received</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_received"></a>
 </h4>
 <ul>
-<li>When: <code><a href="../reference/handle_callback.html">handle_callback()</a></code> begins processing a
-callback</li>
+<li>When: after the sealed <code>state</code> payload has been decrypted
+and validated (or prevalidated on the main process for async callback
+handling), just before state-store consumption and the later
+browser-token/PKCE/nonce checks</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>code_digest</code>,
 <code>state_digest</code>, <code>browser_token_digest</code>
 </li>
+<li>Notes: callbacks that fail before payload validation do not emit
+this event</li>
 </ul>
 </div>
 </div>
@@ -523,8 +537,9 @@ value and the package fell back to
 <h4 id="event-audit_token_introspection">Event: <code>audit_token_introspection</code><a class="anchor" aria-label="anchor" href="#event-audit_token_introspection"></a>
 </h4>
 <ul>
-<li>When: <code><a href="../reference/introspect_token.html">introspect_token()</a></code> is called (e.g., during login
-if <code>introspect = TRUE</code>)</li>
+<li>When: <code><a href="../reference/introspect_token.html">introspect_token()</a></code> reaches a final result (for
+example during login or refresh when
+<code>introspect = TRUE</code>)</li>
 <li>Context:
 <ul>
 <li>
@@ -541,6 +556,13 @@ if <code>introspect = TRUE</code>)</li>
 <code>sub_digest</code>, <code>introspected_client_id_digest</code>,
 <code>scope_digest</code> (when available)</li>
 </ul>
+</li>
+<li>
+<code>status</code> values include <code>"ok"</code>,
+<code>"introspection_unsupported"</code>, <code>"missing_token"</code>,
+<code>"body_too_large"</code>, <code>"invalid_json"</code>,
+<code>"missing_active"</code>, <code>"invalid_active"</code>, and
+<code>"http_&lt;code&gt;"</code>
 </li>
 </ul>
 </div>
@@ -592,6 +614,9 @@ Shiny module</li>
 <li><code>async_state_store_lookup</code></li>
 </ul>
 </li>
+<li>
+<code>mirai_error_type</code> is only present on async failure
+paths</li>
 </ul>
 </div>
 </div>
@@ -624,8 +649,8 @@ Shiny module</li>
 <li>Note: <code>error_class</code> is present on refresh failure reasons
 (<code>refresh_failed_async</code>, <code>refresh_failed_sync</code>)
 but absent for <code>reauth_window</code> and
-<code>token_expired</code>
-</li>
+<code>token_expired</code>; <code>mirai_error_type</code> is only
+present for async refresh-failure clears</li>
 </ul>
 </div>
 </div>
@@ -636,8 +661,9 @@ but absent for <code>reauth_window</code> and
 <h4 id="event-audit_token_revocation">Event: <code>audit_token_revocation</code><a class="anchor" aria-label="anchor" href="#event-audit_token_revocation"></a>
 </h4>
 <ul>
-<li>When: <code><a href="../reference/revoke_token.html">revoke_token()</a></code> is called (e.g., during logout or
-session end)</li>
+<li>When: <code><a href="../reference/revoke_token.html">revoke_token()</a></code> reaches a final outcome (including
+early <code>unsupported</code> or <code>missing_token</code> returns)
+during logout or session end</li>
 <li>Context:
 <ul>
 <li>
@@ -651,6 +677,11 @@ session end)</li>
 <code>status</code>
 </li>
 </ul>
+</li>
+<li>
+<code>status</code> values include <code>"ok"</code>,
+<code>"revocation_unsupported"</code>, <code>"missing_token"</code>, and
+<code>"http_&lt;code&gt;"</code>
 </li>
 </ul>
 </div>
@@ -672,6 +703,9 @@ to clear the session (i.e., <code>indefinite_session = TRUE</code> in
 <code>kept_token</code> (TRUE), <code>error_class</code>,
 <code>mirai_error_type</code>
 </li>
+<li>
+<code>mirai_error_type</code> is only present on async refresh
+failures</li>
 </ul>
 </div>
 </div>
@@ -771,6 +805,12 @@ which shinyOAuth does not decrypt</li>
 <code>"userinfo_jwt_header_parse_failed"</code> – JWT header could
 not be parsed</li>
 <li>
+<code>"userinfo_jwt_header_invalid"</code> – JWT header parsed but
+was malformed or structurally invalid</li>
+<li>
+<code>"userinfo_jwt_typ_invalid"</code> – JWT header
+<code>typ</code> did not indicate a JWT</li>
+<li>
 <code>"userinfo_jwt_unsigned"</code> – JWT uses
 <code>alg=none</code>. Additional fields: <code>jwt_alg</code>
 </li>
@@ -792,6 +832,9 @@ verification failed against candidate JWKS keys</li>
 <code>"userinfo_jwt_no_matching_key"</code> – provider JWKS had no
 compatible key for the JWT</li>
 <li>
+<code>"userinfo_jwt_payload_parse_failed"</code> – JWT payload could
+not be parsed as JSON</li>
+<li>
 <code>"userinfo_jwt_missing_sub"</code>,
 <code>"userinfo_jwt_missing_iss"</code>,
 <code>"userinfo_jwt_missing_aud"</code> – signed JWT omitted a required
@@ -800,6 +843,21 @@ claim</li>
 <code>"userinfo_jwt_iss_mismatch"</code>,
 <code>"userinfo_jwt_aud_mismatch"</code> – signed JWT claims did not
 match the configured issuer/client</li>
+<li>
+<code>"userinfo_jwt_missing_required_temporal_claims"</code> –
+signed JWT omitted required temporal claims such as <code>exp</code> or
+<code>iat</code>
+</li>
+<li>
+<code>"userinfo_jwt_invalid_exp"</code>,
+<code>"userinfo_jwt_invalid_iat"</code>,
+<code>"userinfo_jwt_invalid_nbf"</code> – temporal claim was present but
+not a single usable numeric value</li>
+<li>
+<code>"userinfo_jwt_expired"</code>,
+<code>"userinfo_jwt_iat_future"</code>,
+<code>"userinfo_jwt_nbf_future"</code> – temporal claim failed time
+validation</li>
 </ul>
 </li>
 </ul>
@@ -809,19 +867,21 @@ match the configured issuer/client</li>
 <h3 id="state-parsing-failures">State parsing failures<a class="anchor" aria-label="anchor" href="#state-parsing-failures"></a>
 </h3>
 <p>State parsing failures occur while decoding and validating the
-encrypted wrapper prior to extracting the logical state value.</p>
+encrypted wrapper prior to extracting the logical state value, and also
+when deriving a cache key from a malformed logical state string.</p>
 <div class="section level4">
 <h4 id="event-audit_state_parse_failure">Event: <code>audit_state_parse_failure</code><a class="anchor" aria-label="anchor" href="#event-audit_state_parse_failure"></a>
 </h4>
 <ul>
 <li>When: the encrypted state wrapper or its components fail
-validation/decoding</li>
-<li>Context: includes <code>phase = decrypt</code>, a
-<code>reason</code> code (e.g., <code>token_b64_invalid</code>,
-<code>iv_missing</code>, <code>tag_len_invalid</code>),
-<code>token_digest</code>, and any additional details (such as lengths).
-Emitted best-effort from parsing utilities and never interferes with
-control flow.</li>
+validation/decoding, or cache-key derivation receives an invalid logical
+state string</li>
+<li>Context: includes <code>phase</code> (<code>decrypt</code> or
+<code>cache_key</code>), a <code>reason</code> code, and either
+<code>token_digest</code> (<code>phase = decrypt</code>) or
+<code>state_digest</code> (<code>phase = cache_key</code>), plus any
+additional details (such as lengths). Emitted best-effort from parsing
+utilities and never interferes with control flow.</li>
 </ul>
 </div>
 </div>

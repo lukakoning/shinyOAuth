@@ -456,8 +456,9 @@ a fresh value, so a future flow can start with a new per-session token.
 Now that the flow is complete, the module will manage the token lifetime
 during the active session. This may consist of:
 
-- Proactive refresh: if enabled and a refresh token exists, the access
-  token is refreshed before expiry
+- Proactive refresh: if enabled via
+  `oauth_module_server(refresh_proactively = TRUE)` and a refresh token
+  exists, the access token is refreshed before expiry
 - Expiration: expired tokens are cleared automatically, setting the
   `$authenticated` flag to FALSE
 - Re-authentication: optionally,
@@ -482,6 +483,9 @@ works as follows:
   `refresh_token`), it is stored; otherwise the original is preserved
 - If `oauth_provider(userinfo_required = TRUE)`, userinfo is re-fetched
   using the fresh access token
+- If `oauth_client(introspect = TRUE)`, the refreshed access token is
+  introspected through the same client policy before the session is
+  updated
 
 If you are running a security-sensitive app, set
 `options(shinyOAuth.default_expires_in = ...)` to the provider’s
@@ -540,6 +544,11 @@ You can also revoke tokens directly via
 To automatically attempt revocation when a Shiny session ends (for
 example, a tab close or session timeout), set
 `revoke_on_session_end = TRUE`:
+
+This requires the provider to have a configured `revocation_url`;
+otherwise
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+rejects `revoke_on_session_end = TRUE` at startup.
 
 ``` r
 auth <- oauth_module_server(

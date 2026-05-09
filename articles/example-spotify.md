@@ -527,7 +527,12 @@ ui <- bslib::page_fluid(
 server <- function(input, output, session) {
   # Handle Spotify login -------------------------------------------------------
 
-  auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
+  auth <- oauth_module_server(
+    "auth",
+    client,
+    auto_redirect = FALSE,
+    refresh_proactively = TRUE
+  )
 
   # Expose auth state to JS for our conditionalPanel
   output$isAuthenticated <- shiny::reactive({
@@ -555,7 +560,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   output$oauth_error <- renderUI({
-    if (is.null(auth$error)) {
+    if (is.null(auth$error) || identical(auth$error, "logged_out")) {
       return(NULL)
     }
 
@@ -1006,7 +1011,7 @@ server <- function(input, output, session) {
 
     ggplot(counts_df, aes_string(x = "plays", y = "artist")) +
       geom_col(fill = "#1DB954", width = 0.65) +
-      geom_text(aes(label = plays), hjust = -0.2, color = "#F5F6F8", size = 4) +
+      geom_text(aes_string(label = "plays"), hjust = -0.2, color = "#F5F6F8", size = 4) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.08))) +
       labs(x = x_lab, y = NULL) +
       theme_minimal(base_family = "Inter", base_size = 13) +

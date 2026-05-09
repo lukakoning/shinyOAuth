@@ -33,7 +33,7 @@ content, and how to enable/disable them.
 
 OTel log records are generated from the same structured events that
 shinyOAuth emits to its native R hook (`shinyOAuth.audit_hook`). The log
-content, event types, and severity levels mirror what is described in
+content and event types mirror what is described in
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md);
 refer there for full details about the various events and their content.
 The OTel representation is flatter, though: nested objects are converted
@@ -128,6 +128,7 @@ configuration before dispatching the async work that should use it.
   - `oauth.claims.targets`
   - `oauth.required_acr_values`, `oauth.required_acr_values_count`
   - `oauth.max_age.requested`
+  - `oauth.request_object_used`
   - `oauth.extra_auth_params_count`
   - Shiny session/process metadata when available
 
@@ -194,13 +195,13 @@ configuration before dispatching the async work that should use it.
   `oauth.phase`
 - Emitted phases currently include:
   - `callback.state_payload` and `callback.state_store_consume`
-    - emitted on the main process in async callback mode, before worker
-      dispatch
+    - emitted during normal synchronous callback handling, and also on
+      the main process before worker dispatch in async callback mode
   - `callback.browser_token_validation`
   - `callback.pkce_verifier_validation`
   - `callback.nonce_validation`
-    - emitted during the normal synchronous callback path and inside the
-      async worker after parent context restoration
+    - emitted during the normal synchronous callback path and, in async
+      mode, inside the worker after parent context restoration
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
