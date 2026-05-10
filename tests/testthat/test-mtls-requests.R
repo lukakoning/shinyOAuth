@@ -235,6 +235,97 @@ test_that("certificate-bound public clients reject token responses missing cnf",
   )
 })
 
+test_that("certificate-bound login can backfill cnf from introspection before userinfo", {
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
+
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = "https://example.com/userinfo",
+    introspection_url = "https://example.com/introspect",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      userinfo_endpoint = "https://example.com/mtls/userinfo",
+      introspection_endpoint = "https://example.com/mtls/introspect"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  client@introspect <- TRUE
+
+  browser_token <- valid_browser_token()
+  auth_url <- shinyOAuth:::prepare_call(client, browser_token = browser_token)
+  payload <- parse_query_param(auth_url, "state")
+  captured_userinfo_req <- NULL
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "opaque-access-token",
+        expires_in = 3600,
+        token_type = "Bearer"
+      )
+    },
+    req_with_retry = function(req, ...) {
+      req_url <- as.character(req$url)
+      if (identical(req_url, "https://example.com/mtls/introspect")) {
+        return(httr2::response(
+          url = req$url,
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            paste0(
+              '{"active":true,"cnf":{"x5t#S256":"',
+              thumbprint,
+              '"}}'
+            )
+          )
+        ))
+      }
+
+      captured_userinfo_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"sub":"user-1"}')
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      token <- shinyOAuth:::handle_callback(
+        client,
+        code = "abc",
+        payload = payload,
+        browser_token = browser_token
+      )
+
+      testthat::expect_identical(token@cnf$`x5t#S256`, thumbprint)
+      testthat::expect_identical(token@userinfo$sub, "user-1")
+      testthat::expect_identical(
+        captured_userinfo_req$url,
+        "https://example.com/mtls/userinfo"
+      )
+    }
+  )
+})
+
 test_that("certificate-bound PAR uses mTLS alias without mTLS auth style", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
@@ -651,6 +742,79 @@ test_that("certificate-bound refresh rejects token responses missing cnf", {
     class = "shinyOAuth_token_error",
     regexp = "required cnf x5t#S256 thumbprint"
   )
+})
+
+test_that("certificate-bound refresh can backfill cnf from introspection", {
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
+
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    introspection_url = "https://example.com/introspect",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token",
+      introspection_endpoint = "https://example.com/mtls/introspect"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list()
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, ...) {
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          paste0(
+            '{"active":true,"cnf":{"x5t#S256":"',
+            thumbprint,
+            '"}}'
+          )
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  refreshed <- shinyOAuth::refresh_token(client, token, introspect = TRUE)
+
+  expect_identical(refreshed@access_token, "new-at")
+  expect_identical(refreshed@refresh_token, "new-rt")
+  expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
 })
 
 test_that("refresh uses token cnf to choose mTLS alias without provider metadata", {

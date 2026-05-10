@@ -1270,60 +1270,27 @@ handle_callback_internal <- function(
       # Verify token set: validates ID token signature + claims (including nonce),
       # scope reconciliation, and token_type. Userinfo is NOT yet present; the
       # subject match check will run after userinfo is fetched below.
+      defer_certificate_binding <- isTRUE(introspect) &&
+        client_requests_certificate_bound_tokens(oauth_client) &&
+        !is_valid_string(
+          token_cnf_x5t_s256(
+            access_token = token_set[["access_token"]],
+            cnf = token_set[["cnf"]] %||% NULL
+          )
+        )
       token_set <- verify_token_set(
         oauth_client,
         token_set = token_set,
         nonce = nonce,
         is_refresh = FALSE,
         requested_scopes = payload$scopes %||% NULL,
-        shiny_session = shiny_session
+        shiny_session = shiny_session,
+        defer_certificate_binding = defer_certificate_binding
       )
       effective_token_type <- resolve_effective_access_token_type(
         oauth_client,
         token_set = token_set
       )
-
-      # Fetch userinfo -------------------------------------------------------------
-
-      # Fetch userinfo AFTER ID token validation. This ordering ensures we only
-      # make external calls after cryptographic validation passes.
-
-      if (isTRUE(oauth_client@provider@userinfo_required)) {
-        userinfo_token <- OAuthToken(
-          access_token = token_set[["access_token"]],
-          token_type = effective_token_type,
-          id_token = token_set$id_token %||% NA_character_,
-          id_token_validated = isTRUE(token_set[[".id_token_validated"]]),
-          userinfo = list(),
-          cnf = resolve_token_cnf(
-            cnf = token_set$cnf,
-            access_token = token_set[["access_token"]]
-          )
-        )
-        userinfo <- call_with_optional_shiny_session(
-          get_userinfo,
-          oauth_client = oauth_client,
-          token = userinfo_token,
-          shiny_session = shiny_session
-        )
-        token_set[["userinfo"]] <- userinfo
-
-        # OIDC Core requires UserInfo subject binding whenever a validated ID
-        # token baseline is available. Explicit userinfo_id_token_match = TRUE
-        # also fails closed if that baseline is missing.
-        enforce_userinfo_id_token_subject_match(
-          oauth_client,
-          userinfo = userinfo,
-          token_set = token_set
-        )
-
-        # Validate requested claims in userinfo (OIDC Core Section 5.5)
-        validate_essential_claims(oauth_client, userinfo, "userinfo")
-      }
-
-      # Return ---------------------------------------------------------------------
-
-      # Turn into OAuthToken & return
 
       token <- OAuthToken(
         access_token = token_set[["access_token"]] %||%
@@ -1346,11 +1313,8 @@ handle_callback_internal <- function(
         granted_scopes_verified = isTRUE(token_set$granted_scopes_verified),
         id_token_validated = isTRUE(token_set[[".id_token_validated"]])
       )
-      # Set userinfo separately for compatibility with some S7 dispatchers
-      token@userinfo <- token_set$userinfo %||% list()
 
-      # Optional token introspection validation -----------------------------------
-
+      intro_res <- NULL
       if (isTRUE(introspect)) {
         intro_res <- call_with_optional_shiny_session(
           introspect_token,
@@ -1360,6 +1324,57 @@ handle_callback_internal <- function(
           async = FALSE,
           shiny_session = shiny_session
         )
+        token@cnf <- resolve_token_cnf(
+          cnf = token@cnf,
+          access_token = token@access_token,
+          introspection_result = intro_res
+        )
+
+        if (isTRUE(defer_certificate_binding)) {
+          validate_token_certificate_binding(
+            token = token,
+            oauth_client = oauth_client,
+            error_context = "token",
+            phase = "exchange_code"
+          )
+        }
+      }
+
+      # Fetch userinfo -------------------------------------------------------------
+
+      # Fetch userinfo after token validation. When introspection is enabled,
+      # backfill cnf first so certificate-bound opaque tokens can satisfy the
+      # initial sender-constraint check and the first automatic userinfo call.
+
+      if (isTRUE(oauth_client@provider@userinfo_required)) {
+        userinfo <- call_with_optional_shiny_session(
+          get_userinfo,
+          oauth_client = oauth_client,
+          token = token,
+          shiny_session = shiny_session
+        )
+        token_set[["userinfo"]] <- userinfo
+
+        # OIDC Core requires UserInfo subject binding whenever a validated ID
+        # token baseline is available. Explicit userinfo_id_token_match = TRUE
+        # also fails closed if that baseline is missing.
+        enforce_userinfo_id_token_subject_match(
+          oauth_client,
+          userinfo = userinfo,
+          token_set = token_set
+        )
+
+        # Validate requested claims in userinfo (OIDC Core Section 5.5)
+        validate_essential_claims(oauth_client, userinfo, "userinfo")
+
+        token@userinfo <- userinfo
+      }
+
+      # Return ---------------------------------------------------------------------
+
+      # Optional token introspection validation -----------------------------------
+
+      if (isTRUE(introspect)) {
         token <- enforce_token_introspection_policy(
           oauth_client = oauth_client,
           token = token,
@@ -1936,6 +1951,9 @@ swap_code_for_token_set <- function(
 #' @param prior_granted_scopes Previously stored granted scopes to carry
 #'   forward when a refresh response omits `scope`.
 #' @param shiny_session Optional Shiny session context.
+#' @param defer_certificate_binding Logical. When `TRUE`, postpone strict mTLS
+#'   certificate-binding checks until the caller has had a chance to backfill
+#'   `cnf` from token introspection.
 #' @return The validated `token_set` list.
 #' @keywords internal
 #' @noRd
@@ -1947,7 +1965,8 @@ verify_token_set <- function(
   original_id_token = NULL,
   requested_scopes = NULL,
   prior_granted_scopes = NULL,
-  shiny_session = NULL
+  shiny_session = NULL,
+  defer_certificate_binding = FALSE
 ) {
   # Helpers/types --------------------------------------------------------------
 
@@ -2009,13 +2028,15 @@ verify_token_set <- function(
         error_context = "token",
         phase = phase
       )
-      validate_token_certificate_binding(
-        access_token = token_set[["access_token"]],
-        cnf = token_set[["cnf"]] %||% NULL,
-        oauth_client = client,
-        error_context = "token",
-        phase = phase
-      )
+      if (!isTRUE(defer_certificate_binding)) {
+        validate_token_certificate_binding(
+          access_token = token_set[["access_token"]],
+          cnf = token_set[["cnf"]] %||% NULL,
+          oauth_client = client,
+          error_context = "token",
+          phase = phase
+        )
+      }
 
       # Scope reconciliation --------------------------------------------------------
 

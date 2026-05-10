@@ -905,6 +905,14 @@ refresh_token <- function(
           expires_in = tok$expires_in,
           scope = tok$scope
         )
+        defer_certificate_binding <- isTRUE(introspect) &&
+          client_requests_certificate_bound_tokens(oauth_client) &&
+          !is_valid_string(
+            token_cnf_x5t_s256(
+              access_token = token_set$access_token,
+              cnf = token_set$cnf
+            )
+          )
         token_set <- verify_token_set(
           oauth_client,
           token_set = token_set,
@@ -912,13 +920,77 @@ refresh_token <- function(
           is_refresh = TRUE,
           original_id_token = token@id_token,
           prior_granted_scopes = token@granted_scopes,
-          shiny_session = shiny_session
+          shiny_session = shiny_session,
+          defer_certificate_binding = defer_certificate_binding
         )
         effective_token_type <- resolve_effective_access_token_type(
           oauth_client,
           token_set = token_set,
           prior_token_type = token@token_type
         )
+
+        expires_at <- if (
+          is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
+        ) {
+          as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
+        } else {
+          resolve_missing_expires_in(phase = "refresh_token")
+        }
+
+        refreshed_id_token <- if (is_valid_string(token_set$id_token)) {
+          token_set$id_token
+        } else {
+          token@id_token
+        }
+        refreshed_id_token_validated <- if (
+          is_valid_string(token_set$id_token)
+        ) {
+          isTRUE(token_set[[".id_token_validated"]])
+        } else {
+          isTRUE(token@id_token_validated)
+        }
+
+        refreshed_token <- OAuthToken(
+          access_token = token_set$access_token,
+          token_type = effective_token_type,
+          refresh_token = token_set$refresh_token %||% token@refresh_token,
+          expires_at = expires_at,
+          id_token = refreshed_id_token %||% NA_character_,
+          id_token_validated = refreshed_id_token_validated,
+          userinfo = token@userinfo %||% list(),
+          cnf = resolve_token_cnf(
+            cnf = token_set$cnf,
+            access_token = token_set$access_token
+          ),
+          granted_scopes = token_set$granted_scopes %||% character(0),
+          granted_scopes_verified = isTRUE(token_set$granted_scopes_verified)
+        )
+
+        intro_res <- NULL
+        if (isTRUE(introspect)) {
+          intro_res <- call_with_optional_shiny_session(
+            introspect_token,
+            oauth_client = oauth_client,
+            oauth_token = refreshed_token,
+            which = "access",
+            async = FALSE,
+            shiny_session = shiny_session
+          )
+          refreshed_token@cnf <- resolve_token_cnf(
+            cnf = refreshed_token@cnf,
+            access_token = refreshed_token@access_token,
+            introspection_result = intro_res
+          )
+
+          if (isTRUE(defer_certificate_binding)) {
+            validate_token_certificate_binding(
+              token = refreshed_token,
+              oauth_client = oauth_client,
+              error_context = "token",
+              phase = "refresh_token"
+            )
+          }
+        }
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {
           userinfo_baseline_id_token <- if (
@@ -937,22 +1009,14 @@ refresh_token <- function(
           } else {
             isTRUE(token@id_token_validated)
           }
-
-          userinfo_token <- OAuthToken(
-            access_token = token_set$access_token,
-            token_type = effective_token_type,
-            id_token = userinfo_baseline_id_token %||% NA_character_,
-            id_token_validated = userinfo_baseline_id_token_validated,
-            userinfo = list(),
-            cnf = resolve_token_cnf(
-              cnf = token_set$cnf,
-              access_token = token_set$access_token
-            )
-          )
+          refreshed_token@id_token <- userinfo_baseline_id_token %||%
+            NA_character_
+          refreshed_token@id_token_validated <-
+            userinfo_baseline_id_token_validated
           ui <- call_with_optional_shiny_session(
             get_userinfo,
             oauth_client = oauth_client,
-            token = userinfo_token,
+            token = refreshed_token,
             shiny_session = shiny_session
           )
 
@@ -965,58 +1029,28 @@ refresh_token <- function(
 
           validate_essential_claims(oauth_client, ui, "userinfo")
           token_set$userinfo <- ui
-        }
-
-        expires_at <- if (
-          is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
-        ) {
-          as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
-        } else {
-          resolve_missing_expires_in(phase = "refresh_token")
-        }
-
-        token@access_token <- token_set$access_token
-        if (is_valid_string(token_set$refresh_token)) {
-          token@refresh_token <- token_set$refresh_token
-        }
-        if (is_valid_string(effective_token_type)) {
-          token@token_type <- effective_token_type
-        }
-        token@expires_at <- expires_at
-        token@granted_scopes <- token_set$granted_scopes %||% character(0)
-        token@granted_scopes_verified <- isTRUE(
-          token_set$granted_scopes_verified
-        )
-
-        if (is_valid_string(token_set$id_token)) {
-          token@id_token <- token_set$id_token
-          token@id_token_validated <- isTRUE(token_set[[".id_token_validated"]])
-        }
-        token@cnf <- resolve_token_cnf(
-          cnf = token_set$cnf,
-          access_token = token_set$access_token
-        )
-
-        if (!is.null(token_set$userinfo)) {
-          token@userinfo <- token_set$userinfo
+          refreshed_token@userinfo <- ui
         }
 
         if (isTRUE(introspect)) {
-          intro_res <- call_with_optional_shiny_session(
-            introspect_token,
+          refreshed_token <- enforce_token_introspection_policy(
             oauth_client = oauth_client,
-            oauth_token = token,
-            which = "access",
-            async = FALSE,
-            shiny_session = shiny_session
-          )
-          token <- enforce_token_introspection_policy(
-            oauth_client = oauth_client,
-            token = token,
+            token = refreshed_token,
             introspection_result = intro_res,
             requested_scopes = effective_client_scopes(oauth_client)
           )
         }
+
+        token@access_token <- refreshed_token@access_token
+        token@refresh_token <- refreshed_token@refresh_token
+        token@token_type <- refreshed_token@token_type
+        token@expires_at <- refreshed_token@expires_at
+        token@granted_scopes <- refreshed_token@granted_scopes
+        token@granted_scopes_verified <- refreshed_token@granted_scopes_verified
+        token@id_token <- refreshed_token@id_token
+        token@id_token_validated <- refreshed_token@id_token_validated
+        token@cnf <- refreshed_token@cnf
+        token@userinfo <- refreshed_token@userinfo
 
         audit_event(
           "token_refresh",
