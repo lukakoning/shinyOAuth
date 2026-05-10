@@ -43,7 +43,9 @@
 #'   token string.
 #' @param token_type Optional override for the access token type when `token`
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
-#'   Invalid or multi-valued inputs are rejected.
+#'   Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
+#'   preserves `OAuthToken@token_type` and also infers `DPoP` from a raw JWT
+#'   access token's `cnf.jkt` binding when `oauth_client` carries a DPoP key.
 #' @param dpop_nonce Optional DPoP nonce to embed in the proof for this
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
@@ -80,7 +82,11 @@ client_bearer_req <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
-  token_info <- resolve_client_bearer_token(token, token_type)
+  token_info <- resolve_client_bearer_token(
+    token = token,
+    token_type = token_type,
+    oauth_client = oauth_client
+  )
 
   validate_client_bearer_token_context(
     token_type = token_info$token_type,
@@ -132,11 +138,18 @@ client_bearer_req <- function(
 #'
 #' @param token Either an [OAuthToken] object or a raw access-token string.
 #' @param token_type Optional token-type override for raw token strings.
+#' @param oauth_client Optional [OAuthClient] whose configured DPoP key may
+#'   imply an effective `DPoP` token type for raw JWT access tokens carrying a
+#'   `cnf.jkt` binding.
 #' @return A named list with `access_token` and `token_type` scalar string
 #'   entries.
 #' @keywords internal
 #' @noRd
-resolve_client_bearer_token <- function(token, token_type = NULL) {
+resolve_client_bearer_token <- function(
+  token,
+  token_type = NULL,
+  oauth_client = NULL
+) {
   access_token <- token
   effective_token_type <- NULL
   explicit_token_type <- !(is.null(token_type) ||
@@ -162,6 +175,12 @@ resolve_client_bearer_token <- function(token, token_type = NULL) {
     as.character(effective_token_type)
   } else if (is_valid_string(effective_token_type)) {
     as.character(effective_token_type)
+  } else if (
+    S7::S7_inherits(oauth_client, class = OAuthClient) &&
+      client_has_dpop(oauth_client) &&
+      is_valid_string(token_cnf_jkt(token = token, access_token = access_token))
+  ) {
+    "DPoP"
   } else {
     "Bearer"
   }

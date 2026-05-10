@@ -54,7 +54,9 @@ token string.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
-Invalid or multi-valued inputs are rejected.}
+Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
+preserves \code{OAuthToken@token_type} and also infers \code{DPoP} from a raw JWT
+access token's \code{cnf.jkt} binding when \code{oauth_client} carries a DPoP key.}
 
 \item{dpop_nonce}{Optional DPoP nonce to embed in the proof for this
 request. This is primarily useful after a resource server challenges with

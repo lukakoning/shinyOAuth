@@ -62,6 +62,14 @@ get_userinfo <- function(
     err_config("provider userinfo_url is not configured")
   }
 
+  token_info <- resolve_client_bearer_token(
+    token = token,
+    token_type = token_type,
+    oauth_client = oauth_client
+  )
+  access_token <- token_info$access_token
+  effective_token_type <- token_info$token_type
+
   userinfo_url <- resolve_provider_endpoint_url(
     oauth_client@provider,
     "userinfo_endpoint",
@@ -80,7 +88,7 @@ get_userinfo <- function(
           token = token,
           url = userinfo_url,
           oauth_client = oauth_client,
-          token_type = token_type
+          token_type = effective_token_type
         )
 
         # Execute request. Let transport failures propagate as
@@ -89,7 +97,7 @@ get_userinfo <- function(
         resp <- with_otel_span(
           "shinyOAuth.userinfo.http",
           {
-            if (is_dpop_token_type(token_type %||% NA_character_)) {
+            if (is_dpop_token_type(effective_token_type %||% NA_character_)) {
               resp <- req_with_dpop_retry(
                 req,
                 oauth_client,

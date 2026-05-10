@@ -135,6 +135,33 @@ test_that("client_bearer_req rejects DPoP cnf.jkt mismatches", {
   )
 })
 
+test_that("client_bearer_req infers DPoP from raw JWT access-token cnf.jkt", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  key <- openssl::rsa_keygen()
+  cli <- make_dpop_test_client(prov, dpop_private_key = key)
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+  raw_token <- build_dummy_jwt(list(
+    sub = "user-1",
+    cnf = list(jkt = jkt)
+  ))
+
+  req <- client_bearer_req(
+    token = raw_token,
+    url = "https://resource.example.com/api",
+    oauth_client = cli
+  )
+
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+  expect_identical(dry$headers$authorization, paste("DPoP", raw_token))
+  expect_true(nzchar(dry$headers$dpop))
+
+  payload <- decode_dpop_payload(dry$headers$dpop)
+  expect_identical(payload$htu, "https://resource.example.com/api")
+  expect_true(nzchar(payload$ath))
+})
+
 test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(
@@ -1297,6 +1324,64 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
   expect_identical(userinfo$request_count, 2L)
   expect_false(isTRUE(userinfo$first_has_nonce))
   expect_identical(userinfo$second_nonce, "resource-nonce-1")
+})
+
+test_that("get_userinfo retries a DPoP nonce challenge for inferred raw JWT tokens", {
+  state <- new.env(parent = emptyenv())
+  state$count <- 0L
+  state$first_has_nonce <- NA
+  state$second_nonce <- NA_character_
+
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@userinfo_url <- "https://example.com/userinfo"
+  key <- openssl::rsa_keygen()
+  cli <- make_dpop_test_client(prov, dpop_private_key = key)
+  raw_token <- build_dummy_jwt(list(
+    sub = "user-1",
+    cnf = list(
+      jkt = shinyOAuth:::compute_jwk_thumbprint(
+        shinyOAuth:::dpop_public_jwk(key)
+      )
+    )
+  ))
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      state$count <<- state$count + 1L
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      payload <- decode_dpop_payload(dry$headers$dpop)
+
+      if (state$count == 1L) {
+        state$first_has_nonce <<- "nonce" %in% names(payload)
+        return(httr2::response(
+          url = "https://example.com/userinfo",
+          status = 401,
+          headers = list(
+            "content-type" = "application/json",
+            "www-authenticate" = 'DPoP error="use_dpop_nonce"',
+            "dpop-nonce" = "resource-nonce-raw"
+          ),
+          body = charToRaw('{"error":"use_dpop_nonce"}')
+        ))
+      }
+
+      state$second_nonce <<- payload$nonce %||% NA_character_
+      httr2::response(
+        url = "https://example.com/userinfo",
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"sub":"user-1","request_count":2}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  userinfo <- get_userinfo(cli, token = raw_token)
+
+  expect_identical(userinfo$sub, "user-1")
+  expect_identical(userinfo$request_count, 2L)
+  expect_false(isTRUE(state$first_has_nonce))
+  expect_identical(state$second_nonce, "resource-nonce-raw")
 })
 
 test_that("get_userinfo keeps DPoP resource requests idempotent", {
