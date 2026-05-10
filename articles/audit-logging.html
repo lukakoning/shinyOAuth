@@ -100,14 +100,7 @@ fast, non-blocking, and never throw errors.</p>
 <p>Another way that ‘shinyOAuth’ can emit audit events is via
 OpenTelemetry logging. Please see
 <code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more
-details. OpenTelemetry logs are derived from the same underlying events
-as <code>shinyOAuth.audit_hook</code>, but they are flattened into
-scalar attributes. Nested structures like the full
-<code>shiny_session</code> object and the raw <code>timestamp</code>
-field are not preserved verbatim in the OTel log payload; instead,
-shinyOAuth exports derived scalar session/request attributes such as
-async/process ids, the digested Shiny session token, and selected HTTP
-request metadata.</p>
+details.</p>
 </div>
 <div class="section level2">
 <h2 id="event-structure">Event structure<a class="anchor" aria-label="anchor" href="#event-structure"></a>
@@ -304,7 +297,7 @@ comparable across them, configure a shared key:</p>
 <p>To disable keying (legacy deterministic SHA-256 digests):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>Note: unkeyed digests are pseudonymous, not anonymized—low-entropy
+<p>Note: unkeyed digests are pseudonymous, so not anonymized—low-entropy
 identifiers (like email addresses) can be dictionary-attacked.</p>
 </div>
 </div>
