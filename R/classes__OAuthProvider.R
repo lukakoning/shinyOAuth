@@ -48,7 +48,9 @@
 #'   `request` parameter. `NA` means the provider did not say.
 #' @param request_uri_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
-#'   `request_uri` parameter. `NA` means the provider did not say.
+#'   `request_uri` parameter for caller-managed request URIs. `NA` means the
+#'   provider did not say. PAR-issued `request_uri` handles remain valid even
+#'   when this metadata is `FALSE`.
 #' @param require_request_uri_registration Logical or `NA`. Whether discovery
 #'   metadata says caller-managed `request_uri` values must be pre-registered.
 #'   `NA` means the provider did not say. shinyOAuth does not currently send
@@ -1155,18 +1157,6 @@ oauth_provider_validate <- function(self) {
         " must be a scalar logical or NA"
       ))
     }
-  }
-
-  if (
-    identical(self@request_uri_parameter_supported, FALSE) &&
-      is_valid_string(self@par_url %||% NA_character_)
-  ) {
-    return(
-      paste(
-        "OAuthProvider: request_uri_parameter_supported = FALSE",
-        "is inconsistent with par_url"
-      )
-    )
   }
 
   if (

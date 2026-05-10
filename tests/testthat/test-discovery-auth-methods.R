@@ -240,7 +240,7 @@ test_that("oidc discovery preserves authorization request transport metadata", {
   testthat::expect_identical(prov@require_request_uri_registration, TRUE)
 })
 
-test_that("oidc discovery fails fast when PAR request_uri transport is disabled", {
+test_that("oidc discovery allows PAR when caller-managed request_uri is disabled", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
@@ -262,10 +262,13 @@ test_that("oidc discovery fails fast when PAR request_uri transport is disabled"
   })
   srv <- webfakes::local_app_process(app)
 
-  testthat::expect_error(
-    oauth_provider_oidc_discover(issuer = srv$url()),
-    regexp = "request_uri_parameter_supported = FALSE"
+  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+
+  testthat::expect_identical(
+    prov@par_url,
+    paste0(sub("/+$", "", srv$url()), "/par")
   )
+  testthat::expect_identical(prov@request_uri_parameter_supported, FALSE)
 })
 
 test_that("request mode remains available when PAR carries the request object", {
@@ -296,9 +299,10 @@ test_that("request mode remains available when PAR carries the request object", 
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       ),
       authorization_request_mode = "request"
-    ),
-    regexp = "request parameter transport is not supported"
+    )
   )
+
+  testthat::expect_s3_class(cli, "shinyOAuth::OAuthClient")
 })
 
 test_that("oidc discovery lets caller override request object signing algs", {

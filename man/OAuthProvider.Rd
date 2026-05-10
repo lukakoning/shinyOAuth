@@ -87,7 +87,8 @@ metadata explicitly advertises support for the authorization-request
 
 \item{request_uri_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request
-\code{request_uri} parameter. \code{NA} means the provider did not say.}
+\code{request_uri} parameter for caller-managed request URIs. \code{NA} means the
+provider did not say. PAR-issued \code{request_uri} handles remain valid even when this metadata is \code{FALSE}.}
 
 \item{require_request_uri_registration}{Logical or \code{NA}. Whether discovery
 metadata says caller-managed \code{request_uri} values must be pre-registered.

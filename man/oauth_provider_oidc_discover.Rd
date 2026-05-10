@@ -120,8 +120,11 @@ advertises \code{request_parameter_supported},
 \code{request_uri_parameter_supported}, or
 \code{require_request_uri_registration}, the resulting provider stores that
 metadata so shinyOAuth can fail fast when a provider explicitly disallows
-the \code{request} transport used by JAR or the \code{request_uri} transport used by
-PAR redirects.
+the front-channel \code{request} transport used by JAR or caller-managed
+\code{request_uri} values. When PAR is configured, shinyOAuth sends signed
+Request Objects to the PAR endpoint and the browser redirect only carries
+the PAR-issued \code{request_uri} handle, regardless of
+\code{request_uri_parameter_supported}.
 \item Token endpoint JWT auth metadata: when the discovery document advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client
