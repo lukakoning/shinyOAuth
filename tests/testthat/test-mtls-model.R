@@ -140,6 +140,49 @@ test_that("certificate-bound sender constraint requires token binding or an mTLS
   )
 })
 
+test_that("certificate-bound clients reject tokens missing cnf thumbprints", {
+  cert_file <- tempfile(fileext = ".pem")
+  key_file <- tempfile(fileext = ".pem")
+  ca_file <- tempfile(fileext = ".pem")
+  on.exit(unlink(c(cert_file, key_file, ca_file), force = TRUE), add = TRUE)
+
+  write_fake_pem(cert_file, "CERTIFICATE")
+  write_fake_pem(key_file, "PRIVATE KEY")
+  write_fake_pem(ca_file, "CERTIFICATE")
+
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0),
+    tls_client_cert_file = cert_file,
+    tls_client_key_file = key_file,
+    tls_client_ca_file = ca_file
+  )
+
+  expect_error(
+    shinyOAuth:::validate_token_certificate_binding(
+      access_token = "at",
+      cnf = NULL,
+      oauth_client = cli
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "required cnf x5t#S256 thumbprint"
+  )
+})
+
 test_that("verify_token_set rejects certificate thumbprint mismatches during exchange and refresh", {
   cert_file <- mtls_pem_fixture("client-cert.pem")
   key_file <- mtls_pem_fixture("client-key.pem")

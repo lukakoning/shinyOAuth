@@ -600,15 +600,6 @@ validate_token_certificate_binding <- function(
 ) {
   error_context <- match.arg(error_context)
 
-  expected_thumbprint <- token_cnf_x5t_s256(
-    token = token,
-    access_token = access_token,
-    cnf = cnf
-  )
-  if (!is_valid_string(expected_thumbprint)) {
-    return(invisible(TRUE))
-  }
-
   fail <- switch(
     error_context,
     input = function(message) err_input(message),
@@ -616,6 +607,25 @@ validate_token_certificate_binding <- function(
       err_token(message, context = compact_list(list(phase = phase)))
     }
   )
+
+  expected_thumbprint <- token_cnf_x5t_s256(
+    token = token,
+    access_token = access_token,
+    cnf = cnf
+  )
+  if (!is_valid_string(expected_thumbprint)) {
+    # If the client explicitly requests certificate-bound tokens, accepting a
+    # token without cnf.x5t#S256 would silently downgrade that contract.
+    if (client_requests_certificate_bound_tokens(oauth_client)) {
+      fail(
+        paste(
+          "oauth_client requires certificate-bound access tokens, but the token",
+          "does not include the required cnf x5t#S256 thumbprint"
+        )
+      )
+    }
+    return(invisible(TRUE))
+  }
 
   if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     fail(
