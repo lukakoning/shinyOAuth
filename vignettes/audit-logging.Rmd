@@ -277,6 +277,11 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 - When: token exchange fails
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`, `error_class`
 
+Detailed sender-constraint diagnostics such as DPoP token-type inference,
+DPoP nonce retries, and mTLS endpoint-alias selection are emitted on the
+OpenTelemetry spans documented in `vignette("opentelemetry")` rather than on
+the high-level audit events.
+
 ### Token introspection
 
 #### Event: `audit_token_introspection`

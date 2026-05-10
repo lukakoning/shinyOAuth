@@ -113,7 +113,14 @@ get_userinfo <- function(
           attributes = otel_http_attributes(
             method = "GET",
             url = userinfo_url,
-            extra = list(oauth.phase = "userinfo")
+            extra = c(
+              list(oauth.phase = "userinfo"),
+              otel_mtls_endpoint_alias_attributes(
+                provider = oauth_client@provider,
+                endpoint = "userinfo_endpoint",
+                url = userinfo_url
+              )
+            )
           ),
           options = list(kind = "client"),
           mark_ok = FALSE
@@ -326,9 +333,16 @@ get_userinfo <- function(
         client = oauth_client,
         shiny_session = shiny_session,
         phase = "userinfo",
-        extra = list(
-          oauth.userinfo.jwt_required = isTRUE(
-            oauth_client@provider@userinfo_signed_jwt_required
+        extra = c(
+          list(
+            oauth.userinfo.jwt_required = isTRUE(
+              oauth_client@provider@userinfo_signed_jwt_required
+            )
+          ),
+          otel_sender_constraint_token_attributes(
+            client = oauth_client,
+            token = token,
+            effective_token_type = effective_token_type
           )
         )
       )

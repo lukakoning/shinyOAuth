@@ -565,16 +565,164 @@ otel_introspect_elements <- function(values) {
   otel_join_values(values, sep = ",", sort_values = TRUE)
 }
 
+#' Build sender-constraint capability telemetry attributes
+#'
+#' Used by span attribute builders so DPoP and mTLS client capabilities are
+#' visible on OTEL spans.
+#'
+#' @param client Optional OAuth client object.
+#' @return A compact named list of sender-constraint capability attributes.
+#' @keywords internal
+#' @noRd
+otel_sender_constraint_client_attributes <- function(client = NULL) {
+  if (is.null(client) || !S7::S7_inherits(client, class = OAuthClient)) {
+    return(list())
+  }
+
+  compact_list(list(
+    oauth.dpop.configured = client_has_dpop(client),
+    oauth.mtls.client_certificate = client_has_mtls_certificate(client),
+    oauth.mtls.client_auth = client_uses_mtls_auth(client),
+    oauth.mtls.certificate_bound_tokens = client_requests_certificate_bound_tokens(
+      client
+    )
+  ))
+}
+
+#' Build sender-constraint token telemetry attributes
+#'
+#' Used by token and userinfo spans to describe DPoP or mTLS bindings on the
+#' effective token being processed.
+#'
+#' @param client Optional OAuth client object.
+#' @param token Optional [OAuthToken] object or raw access-token string.
+#' @param token_set Optional token response list containing `access_token`,
+#'   `token_type`, and `cnf`.
+#' @param effective_token_type Optional effective token type after local
+#'   inference.
+#' @return A compact named list of sender-constraint token attributes.
+#' @keywords internal
+#' @noRd
+otel_sender_constraint_token_attributes <- function(
+  client = NULL,
+  token = NULL,
+  token_set = NULL,
+  effective_token_type = NULL
+) {
+  access_token <- NULL
+  cnf <- NULL
+  explicit_token_type <- NA_character_
+
+  if (is.list(token_set)) {
+    access_token <- token_set$access_token %||% NULL
+    cnf <- token_set$cnf %||% NULL
+    explicit_token_type <- token_set$token_type %||% NA_character_
+  } else if (S7::S7_inherits(token, class = OAuthToken)) {
+    access_token <- token@access_token
+    cnf <- token@cnf
+    explicit_token_type <- token@token_type %||% NA_character_
+  } else if (is_valid_string(token)) {
+    access_token <- token
+  }
+
+  dpop_bound <- is_valid_string(token_cnf_jkt(
+    token = token,
+    access_token = access_token,
+    cnf = cnf
+  ))
+  mtls_bound <- is_valid_string(token_cnf_x5t_s256(
+    token = token,
+    access_token = access_token,
+    cnf = cnf
+  ))
+
+  inferred_dpop <- FALSE
+  if (
+    !is_valid_string(effective_token_type) &&
+      S7::S7_inherits(client, class = OAuthClient) &&
+      client_has_dpop(client) &&
+      isTRUE(dpop_bound)
+  ) {
+    effective_token_type <- "DPoP"
+    inferred_dpop <- TRUE
+  }
+
+  if (
+    !isTRUE(inferred_dpop) &&
+      !is_valid_string(explicit_token_type) &&
+      S7::S7_inherits(client, class = OAuthClient) &&
+      client_has_dpop(client) &&
+      isTRUE(dpop_bound) &&
+      is_dpop_token_type(effective_token_type %||% NA_character_)
+  ) {
+    inferred_dpop <- TRUE
+  }
+
+  compact_list(list(
+    oauth.dpop.bound = isTRUE(dpop_bound),
+    oauth.dpop.token_type_inferred = isTRUE(inferred_dpop),
+    oauth.mtls.bound = isTRUE(mtls_bound)
+  ))
+}
+
+#' Build mTLS endpoint alias telemetry attributes
+#'
+#' Used by HTTP span helpers so traces show when an RFC 8705 alias URL was
+#' selected instead of the provider's base endpoint.
+#'
+#' @param provider Optional OAuth provider object.
+#' @param endpoint Logical endpoint name.
+#' @param url Resolved request URL.
+#' @return A named list containing `oauth.mtls.endpoint_alias` when an alias was
+#'   selected, otherwise an empty list.
+#' @keywords internal
+#' @noRd
+otel_mtls_endpoint_alias_attributes <- function(
+  provider = NULL,
+  endpoint,
+  url = NULL
+) {
+  if (
+    is.null(provider) ||
+      !S7::S7_inherits(provider, class = OAuthProvider) ||
+      !is_valid_string(url)
+  ) {
+    return(list())
+  }
+
+  alias_names <- switch(
+    endpoint,
+    par_endpoint = c("par_endpoint", "pushed_authorization_request_endpoint"),
+    endpoint
+  )
+
+  for (alias_name in alias_names) {
+    alias_url <- provider@mtls_endpoint_aliases[[alias_name]] %||% NA_character_
+    if (is_valid_string(alias_url) && identical(alias_url, url)) {
+      return(list(oauth.mtls.endpoint_alias = alias_name))
+    }
+  }
+
+  list()
+}
+
 #' Build token response telemetry attributes
 #'
 #' Used after token exchange and refresh work completes.
 #'
 #' @param token_set Token response list returned by token exchange or refresh
 #'   code.
+#' @param client Optional OAuth client object.
+#' @param effective_token_type Optional effective token type after local
+#'   inference.
 #' @return A compact named list of OTEL-safe token response attributes.
 #' @keywords internal
 #' @noRd
-otel_token_response_attributes <- function(token_set) {
+otel_token_response_attributes <- function(
+  token_set,
+  client = NULL,
+  effective_token_type = NULL
+) {
   if (!is.list(token_set) || !length(token_set)) {
     return(list())
   }
@@ -585,18 +733,25 @@ otel_token_response_attributes <- function(token_set) {
   )
   expires_in_present <- !is.null(token_set$expires_in)
 
-  compact_list(list(
-    oauth.token_type = otel_scalar_attribute(token_set$token_type %||% NULL),
-    oauth.received_id_token = isTRUE(is_valid_string(token_set$id_token)),
-    oauth.received_refresh_token = isTRUE(is_valid_string(
-      token_set$refresh_token
-    )),
-    oauth.expires_in_present = isTRUE(expires_in_present),
-    oauth.expires_in_synthesized = !isTRUE(expires_in_present),
-    oauth.scope.present = length(scope_tokens) > 0L,
-    oauth.scopes.granted = otel_scope_string(
-      token_set$scope %||% NULL,
-      allow_commas = TRUE
+  compact_list(c(
+    list(
+      oauth.token_type = otel_scalar_attribute(token_set$token_type %||% NULL),
+      oauth.received_id_token = isTRUE(is_valid_string(token_set$id_token)),
+      oauth.received_refresh_token = isTRUE(is_valid_string(
+        token_set$refresh_token
+      )),
+      oauth.expires_in_present = isTRUE(expires_in_present),
+      oauth.expires_in_synthesized = !isTRUE(expires_in_present),
+      oauth.scope.present = length(scope_tokens) > 0L,
+      oauth.scopes.granted = otel_scope_string(
+        token_set$scope %||% NULL,
+        allow_commas = TRUE
+      )
+    ),
+    otel_sender_constraint_token_attributes(
+      client = client,
+      token_set = token_set,
+      effective_token_type = effective_token_type
     )
   ))
 }
@@ -717,6 +872,7 @@ otel_client_attributes <- function(
       oauth.async = async,
       oauth.phase = phase
     ),
+    otel_sender_constraint_client_attributes(client = client),
     otel_shiny_attributes(shiny_session = shiny_session),
     extra
   ))
@@ -917,7 +1073,10 @@ otel_record_http_result <- function(resp, span = NULL) {
   span <- span %||% otel::get_active_span()
   otel_set_span_attributes(
     span = span,
-    attributes = otel_http_attributes(resp = resp)
+    attributes = compact_list(c(
+      otel_http_attributes(resp = resp),
+      attr(resp, "shinyOAuth.otel_attributes", exact = TRUE) %||% list()
+    ))
   )
 
   status_code <- tryCatch(httr2::resp_status(resp), error = function(...) NULL)

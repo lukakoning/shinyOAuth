@@ -193,7 +193,14 @@ revoke_token <- function(
           attributes = otel_http_attributes(
             method = "POST",
             url = url,
-            extra = list(oauth.phase = "token.revoke")
+            extra = c(
+              list(oauth.phase = "token.revoke"),
+              otel_mtls_endpoint_alias_attributes(
+                provider = oauth_client@provider,
+                endpoint = "revocation_endpoint",
+                url = url
+              )
+            )
           ),
           options = list(kind = "client"),
           mark_ok = FALSE
@@ -478,7 +485,14 @@ introspect_token <- function(
           attributes = otel_http_attributes(
             method = "POST",
             url = url,
-            extra = list(oauth.phase = "token.introspect")
+            extra = c(
+              list(oauth.phase = "token.introspect"),
+              otel_mtls_endpoint_alias_attributes(
+                provider = oauth_client@provider,
+                endpoint = "introspection_endpoint",
+                url = url
+              )
+            )
           ),
           options = list(kind = "client"),
           mark_ok = FALSE
@@ -811,7 +825,14 @@ refresh_token <- function(
           attributes = otel_http_attributes(
             method = "POST",
             url = token_url,
-            extra = list(oauth.phase = "refresh")
+            extra = c(
+              list(oauth.phase = "refresh"),
+              otel_mtls_endpoint_alias_attributes(
+                provider = oauth_client@provider,
+                endpoint = "token_endpoint",
+                url = token_url
+              )
+            )
           ),
           options = list(kind = "client"),
           mark_ok = FALSE
@@ -835,7 +856,10 @@ refresh_token <- function(
         }
 
         otel_set_span_attributes(
-          attributes = otel_token_response_attributes(tok)
+          attributes = otel_token_response_attributes(
+            tok,
+            client = oauth_client
+          )
         )
 
         # Validate expires_in if present (align with swap_code_for_token_set())

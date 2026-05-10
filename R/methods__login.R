@@ -489,7 +489,14 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
         attributes = otel_http_attributes(
           method = "POST",
           url = endpoint,
-          extra = list(oauth.phase = "login.par")
+          extra = c(
+            list(oauth.phase = "login.par"),
+            otel_mtls_endpoint_alias_attributes(
+              provider = client@provider,
+              endpoint = "par_endpoint",
+              url = endpoint
+            )
+          )
         ),
         options = list(kind = "client"),
         mark_ok = FALSE
@@ -1815,7 +1822,14 @@ swap_code_for_token_set <- function(
         attributes = otel_http_attributes(
           method = "POST",
           url = token_url,
-          extra = list(oauth.phase = "token.exchange")
+          extra = c(
+            list(oauth.phase = "token.exchange"),
+            otel_mtls_endpoint_alias_attributes(
+              provider = client@provider,
+              endpoint = "token_endpoint",
+              url = token_url
+            )
+          )
         ),
         options = list(kind = "client"),
         mark_ok = FALSE
@@ -1840,7 +1854,10 @@ swap_code_for_token_set <- function(
       }
 
       otel_set_span_attributes(
-        attributes = otel_token_response_attributes(token_set)
+        attributes = otel_token_response_attributes(
+          token_set,
+          client = client
+        )
       )
 
       # Verify 'access_token' is present in response
@@ -2341,6 +2358,10 @@ verify_token_set <- function(
         oauth.required_acr_values = otel_required_acr_values(racr),
         oauth.required_acr_values_count = otel_count_items(racr),
         oauth.refresh_flow = isTRUE(is_refresh)
+      ),
+      otel_sender_constraint_token_attributes(
+        client = client,
+        token_set = token_set
       )
     )
   )

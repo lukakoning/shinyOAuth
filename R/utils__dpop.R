@@ -612,6 +612,14 @@ req_with_dpop_retry <- function(
     return(resp)
   }
 
+  attr(resp, "shinyOAuth.otel_attributes") <- compact_list(c(
+    attr(resp, "shinyOAuth.otel_attributes", exact = TRUE) %||% list(),
+    list(
+      oauth.dpop.nonce_challenge = TRUE,
+      oauth.dpop.nonce_retry = FALSE
+    )
+  ))
+
   if (!is_valid_string(nonce)) {
     return(resp)
   }
@@ -630,6 +638,14 @@ req_with_dpop_retry <- function(
   if (is_valid_string(next_nonce)) {
     dpop_nonce_cache_set(client, url, next_nonce)
   }
+
+  attr(resp, "shinyOAuth.otel_attributes") <- compact_list(c(
+    attr(resp, "shinyOAuth.otel_attributes", exact = TRUE) %||% list(),
+    list(
+      oauth.dpop.nonce_challenge = TRUE,
+      oauth.dpop.nonce_retry = TRUE
+    )
+  ))
 
   resp
 }
