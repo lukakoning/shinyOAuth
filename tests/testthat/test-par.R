@@ -42,7 +42,8 @@ make_par_test_client <- function(
   extra_auth_params = list(),
   extra_token_headers = character(),
   client_assertion_audience = NULL,
-  par_url = "https://example.com/par"
+  par_url = "https://example.com/par",
+  dpop_private_key = NULL
 ) {
   prov <- oauth_provider(
     name = "example",
@@ -67,6 +68,7 @@ make_par_test_client <- function(
     scopes = character(0),
     resource = resource,
     client_assertion_audience = client_assertion_audience,
+    dpop_private_key = dpop_private_key,
     state_store = cachem::cache_mem(max_age = 60),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -140,6 +142,66 @@ test_that("PAR requests disable retries as non-idempotent POSTs", {
     "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
   )
   expect_identical(retry_idempotent, FALSE)
+})
+
+test_that("PAR attaches DPoP proof and retries once on nonce challenge", {
+  cli <- make_par_test_client(dpop_private_key = openssl::rsa_keygen())
+  proofs <- character(0)
+  retry_count <- 0L
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      retry_count <<- retry_count + 1L
+      dry <- httr2::req_dry_run(
+        req,
+        quiet = TRUE,
+        redact_headers = FALSE
+      )
+      proofs <<- c(proofs, dry$headers$dpop %||% NA_character_)
+
+      if (retry_count == 1L) {
+        return(httr2::response(
+          url = as.character(req$url),
+          status = 400,
+          headers = list(
+            "content-type" = "application/json",
+            "dpop-nonce" = "par-nonce-1"
+          ),
+          body = charToRaw('{"error":"use_dpop_nonce"}')
+        ))
+      }
+
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(auth_url, "request_uri=")
+  expect_identical(retry_count, 2L)
+  expect_true(all(vapply(proofs, nzchar, logical(1))))
+
+  first_payload <- jsonlite::fromJSON(
+    shinyOAuth:::base64url_decode(strsplit(proofs[[1]], ".", fixed = TRUE)[[
+      1
+    ]][[2]])
+  )
+  second_payload <- jsonlite::fromJSON(
+    shinyOAuth:::base64url_decode(strsplit(proofs[[2]], ".", fixed = TRUE)[[
+      1
+    ]][[2]])
+  )
+
+  expect_false("nonce" %in% names(first_payload))
+  expect_identical(second_payload$nonce, "par-nonce-1")
 })
 
 test_that("PAR HTTP failures surface as PAR-specific errors", {

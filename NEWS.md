@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+- PAR requests now reuse the DPoP proof helper, so DPoP-enabled clients send a
+  `DPoP` header on pushed authorization requests and automatically retry once
+  when the authorization server responds with a `DPoP-Nonce` challenge.
+
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
