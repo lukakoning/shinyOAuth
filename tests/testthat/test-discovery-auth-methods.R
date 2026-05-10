@@ -268,11 +268,12 @@ test_that("oidc discovery fails fast when PAR request_uri transport is disabled"
   )
 })
 
-test_that("request mode fails fast when discovery disables request transport", {
-  prov <- oauth_provider(
+test_that("request mode remains available when PAR carries the request object", {
+  prov <- shinyOAuth::oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
+    par_url = "https://example.com/par",
     issuer = "https://issuer.example.com",
     use_nonce = FALSE,
     use_pkce = TRUE,
@@ -282,8 +283,8 @@ test_that("request mode fails fast when discovery disables request transport", {
     allowed_token_types = character()
   )
 
-  testthat::expect_error(
-    oauth_client(
+  cli <- testthat::expect_no_error(
+    shinyOAuth::oauth_client(
       provider = prov,
       client_id = "abc",
       client_secret = paste(rep("s", 32), collapse = ""),

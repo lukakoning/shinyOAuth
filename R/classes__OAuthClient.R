@@ -1028,12 +1028,16 @@ oauth_client_validate <- function(self) {
   }
   if (
     identical(arm, "request") &&
-      identical(self@provider@request_parameter_supported, FALSE)
+      identical(self@provider@request_parameter_supported, FALSE) &&
+      !is_valid_string(self@provider@par_url %||% NA_character_)
   ) {
     return(
       paste(
         "OAuthClient: provider discovery metadata says request parameter transport is not supported;",
-        "authorization_request_mode = 'request' cannot be used"
+        paste(
+          "authorization_request_mode = 'request' cannot be used unless",
+          "PAR is configured"
+        )
       )
     )
   }
