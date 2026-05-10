@@ -52,7 +52,9 @@ access tokens issued by this provider. Defaults to 'Bearer'}
 \link{OAuthProvider} object
 }
 \description{
-Preconfigured \link{OAuthProvider} for OpenID Connect (OIDC) compliant providers.
+Helper for providers that follow a standard OpenID Connect endpoint layout.
+It builds the usual OIDC endpoints from one base URL and then calls
+\code{\link[=oauth_provider]{oauth_provider()}} with OIDC-friendly defaults.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

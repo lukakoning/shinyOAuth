@@ -13,8 +13,8 @@ oauth_provider_spotify(name = "spotify")
 \link{OAuthProvider} object for use with a Spotify OAuth 2.0 app
 }
 \description{
-Pre-configured OAuth 2.0 provider for Spotify.
-Uses /v1/me as "userinfo". No ID token (not OIDC).
+Ready-to-use OAuth 2.0 provider settings for Spotify.
+It uses \verb{/v1/me} as the user profile endpoint and does not expect ID tokens.
 }
 \details{
 Spotify requires scopes to be included in the authorization request.

@@ -13,7 +13,7 @@ oauth_provider_google(name = "google")
 \link{OAuthProvider} object for use with a Google OAuth 2.0 app
 }
 \description{
-Pre-configured \link{OAuthProvider} for Google.
+Ready-to-use \link{OAuthProvider} settings for Google.
 }
 \details{
 You can register a new Google OAuth 2.0 app in the

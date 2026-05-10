@@ -112,7 +112,7 @@ for a single-element vector, wrap it in \code{\link[=I]{I()}}, e.g.,
 \code{acr = list(values = I("urn:mace:incommon:iap:silver"))} produces
 \verb{\{"values":["urn:mace:incommon:iap:silver"]\}}. Multi-element vectors
 are always encoded as arrays.
-\item A character string: pre-encoded JSON string (for advanced use). Must
+\item A character string: pre-encoded JSON string (advanced use). Must
 be valid JSON. Use this when you need full control over JSON encoding.
 Note: The \code{claims} parameter is OPTIONAL per OIDC Core §5.5. Not all
 providers support it; consult your provider's documentation.
@@ -124,28 +124,24 @@ method for replay-safe single-use state consumption. The backend
 must implement cachem-like methods \verb{$get(key, missing)}, \verb{$set(key, value)},
 and \verb{$remove(key)}; \verb{$info()} is optional.
 
-Trade-offs: \code{cache_mem} is in-memory and thus scoped to a single R process
-(good default for a single Shiny process). For multi-process deployments,
-use \code{\link[=custom_cache]{custom_cache()}} with an atomic \verb{$take()} backed by a shared store
-(e.g., Redis \code{GETDEL}, SQL \verb{DELETE ... RETURNING}). Plain
-\code{cachem::cache_disk()} is \strong{not safe} as a shared state store because its
-\verb{$get()} + \verb{$remove()} operations are not atomic; use it only if wrapped
-in a \code{\link[=custom_cache]{custom_cache()}} that provides \verb{$take()}.
-See also \code{vignette("usage", package = "shinyOAuth")}.
+\code{cachem::cache_mem()} is a good default for a single Shiny process. For
+multi-process deployments, use \code{\link[=custom_cache]{custom_cache()}} with an atomic \verb{$take()}
+backed by a shared store (for example Redis \code{GETDEL} or SQL
+\verb{DELETE ... RETURNING}). Plain \code{cachem::cache_disk()} is \strong{not safe} as
+a shared state store because its \verb{$get()} + \verb{$remove()} operations are not
+atomic.
 
 The client automatically generates, persists (in \code{state_store}), and
 validates the OAuth \code{state} parameter (and OIDC \code{nonce} when applicable)
-during the authorization code flow}
+during the authorization code flow.}
 
 \item{state_payload_max_age}{Positive number of seconds. Maximum allowed age
 for the decrypted state payload's \code{issued_at} timestamp during callback
 validation.
 
-This value is an independent freshness backstop against replay attacks on
-the encrypted \code{state} payload. It is intentionally decoupled from
-\code{state_store} TTL (which controls how long the single-use state entry can
-exist in the server-side cache, and also drives browser cookie max-age in
-\code{\link[=oauth_module_server]{oauth_module_server()}}).
+This is the freshness window for the sealed \code{state} payload itself. It is
+separate from the \code{state_store} TTL, which controls how long the one-time
+server-side state entry can exist.
 
 Default is 300 seconds.}
 
@@ -153,7 +149,7 @@ Default is 300 seconds.}
 generated state parameter. Higher values provide more entropy and better
 security against CSRF attacks. Must be between 22 and 128 (to align with
 \code{validate_state()}'s default minimum which targets ~128 bits for base64url‑like
-strings). Default is 64, which provides approximately 384 bits of entropy}
+strings). Default is 64.}
 
 \item{state_key}{Optional per-client secret used as the state sealing key
 for AES-GCM AEAD (authenticated encryption) of the state payload that
@@ -168,15 +164,10 @@ Type: character string (>= 32 bytes when encoded) or raw vector
 external stores. Both forms are normalized internally by cryptographic
 helpers.
 
-Multi-process deployments: if your app runs with multiple R workers or behind
-a non-sticky load balancer, you must configure a shared \code{state_store} and the
-same \code{state_key} across all workers. Otherwise callbacks that land on a
-different worker will be unable to decrypt/validate the state envelope and
-authentication will fail. In such environments, do not rely on the random
-per-process default: provide an explicit, high-entropy key (for example via
-a secret store or environment variable). Prefer values with substantial
-entropy (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
-human‑memorable passphrases. See also \code{vignette("usage", package = "shinyOAuth")}.}
+Multi-process deployments: if your app runs with multiple R workers or
+behind a non-sticky load balancer, configure a shared \code{state_store} and
+the same \code{state_key} across all workers. Otherwise callbacks that land on
+a different worker will fail state validation.}
 
 \item{client_private_key}{Optional private key for \code{private_key_jwt} client authentication
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a
@@ -184,8 +175,7 @@ private key. Required when the provider's \code{token_auth_style = 'private_key_
 Ignored for other auth styles. Current outbound private-key JWT signing
 supports RSA and EC private keys. For RSA keys, outbound signing is currently
 limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
-are not supported. Ed25519/Ed448 keys are also not currently supported for
-client-side signing.}
+are not supported. Ed25519/Ed448 keys are also not currently supported.}
 
 \item{client_private_key_kid}{Optional key identifier (kid) to include in the JWT header
 for \code{private_key_jwt} assertions. Useful when the authorization server uses kid to
@@ -237,7 +227,8 @@ redirect URL.
 RFC 9101) via the \code{request} parameter.
 }
 
-Request mode requires signing material on the client. shinyOAuth prefers
+Most users can keep the default. Request mode is an advanced option that
+requires signing material on the client. shinyOAuth prefers
 \code{client_private_key} when present; otherwise it falls back to HMAC signing
 with \code{client_secret}.}
 
@@ -275,7 +266,8 @@ responses reject \code{token_type = "Bearer"} unless you explicitly set
 supports RSA and EC private keys. For RSA keys, outbound signing is
 currently limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256},
 \code{PS384}, \code{PS512}) are not supported. Ed25519/Ed448 keys are also not
-currently supported for client-side signing.}
+currently supported. This is an advanced setting; most clients do not need
+DPoP unless their provider or resource server asks for it.}
 
 \item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
 the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -389,7 +381,7 @@ introspection responses.)
 \link{OAuthClient} object
 }
 \description{
-Used by app setup code to build a validated client configuration before
+Main helper for creating a validated \link{OAuthClient} configuration before
 \code{\link[=oauth_module_server]{oauth_module_server()}} starts login or callback handling.
 }
 \examples{

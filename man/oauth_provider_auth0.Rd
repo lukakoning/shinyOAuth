@@ -11,7 +11,7 @@ oauth_provider_auth0(domain, name = "auth0", audience = NULL)
 
 \item{name}{Optional provider name (default "auth0")}
 
-\item{audience}{Optional audience to request in auth flows}
+\item{audience}{Optional audience value to send in authorization requests.}
 }
 \value{
 \link{OAuthProvider} object configured for the specified Auth0 domain

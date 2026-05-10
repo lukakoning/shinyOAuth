@@ -8,10 +8,10 @@
 #' Build an authorized httr2 request with an OAuth access token
 #'
 #' @description
-#' Convenience helper to reduce boilerplate when calling downstream APIs.
-#' It creates an [httr2::request()] for the given URL, attaches the
-#' appropriate `Authorization` header for the supplied token type, and applies
-#' the package's standard HTTP defaults (timeout and User-Agent).
+#' Small helper for calling downstream APIs with an access token.
+#' It creates an [httr2::request()] for the given URL, attaches the right
+#' authorization header for the token type, and applies shinyOAuth's standard
+#' HTTP defaults.
 #'
 #' Accepts either a raw access token string or an [OAuthToken] object.
 #'

@@ -12,12 +12,15 @@
 #' Discover and create an OpenID Connect (OIDC) [OAuthProvider]
 #'
 #' @description
-#' Uses the OpenID Connect discovery document at
-#' `/.well-known/openid-configuration` to auto-configure an [OAuthProvider].
-#' When present, `introspection_endpoint` is wired into the resulting provider
-#' for RFC 7662 support.
+#' Builds an [OAuthProvider] from the provider's OpenID Connect discovery
+#' document at `/.well-known/openid-configuration`. When present,
+#' `introspection_endpoint` is also wired into the resulting provider.
 #'
 #' @details
+#' Most users can accept the defaults here. The points below are mainly
+#' reference for advanced provider setups or for understanding why discovery
+#' might fail early.
+#'
 #' - ID token algorithms: by default this helper accepts common asymmetric
 #'   algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
 #'   provider advertises its supported ID token signing algorithms via
@@ -108,13 +111,13 @@
 #'   for public clients via `none`, discovery selects `"public"`. Otherwise,
 #'   the helper prefers `"header"` (client_secret_basic) when available, then
 #'   `"body"` (client_secret_post). JWT-based methods are not auto-selected
-#'   unless explicitly requested
+#'   unless explicitly requested.
 #' @param allowed_algs Character vector of allowed ID token signing algorithms.
 #'  Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
 #'  (ES*), and EdDSA. If the discovery document advertises
 #'  supported algorithms, the intersection of advertised and caller-provided
 #'  algorithms is used to avoid runtime mismatches. If there's no overlap,
-#'  discovery fails with a configuration error (no fallback)
+#'  discovery fails with a configuration error (no fallback).
 #' @param allowed_token_types Character vector of allowed token types for
 #'  access tokens issued by this provider. Defaults to 'Bearer'
 #' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
@@ -122,7 +125,7 @@
 #'  providers that serve JWKS from a different host, set
 #'  `jwks_host_allow_only` to the exact hostname instead of disabling this.
 #'  Disabling (`FALSE`) is not recommended unless you also pin JWKS via
-#'  `jwks_host_allow_only` or `jwks_pins`
+#'  `jwks_host_allow_only` or `jwks_pins`.
 #' @param issuer_match Character scalar controlling how strictly to validate the
 #'  discovery document's `issuer` against the input `issuer`.
 #'
@@ -135,7 +138,7 @@
 #'  when feasible.
 #' @param ... Additional fields passed to [oauth_provider()] (for example,
 #'   `pkce_method = "plain"` when a provider explicitly advertises only plain
-#'   PKCE support and you intentionally want to allow that downgrade)
+#'   PKCE support and you intentionally want to allow that downgrade).
 #'
 #' @return [OAuthProvider] object configured from discovery
 #'

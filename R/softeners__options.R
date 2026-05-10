@@ -59,9 +59,9 @@
 #' @description
 #' `r lifecycle::badge("deprecated")`
 #'
-#' This helper is deprecated because it only checks a narrow subset of
-#' shinyOAuth's security-relaxing opt-ins. Use explicit startup checks for the
-#' exact options your deployment permits or forbids instead.
+#' Deprecated helper that errors when a small subset of shinyOAuth's
+#' development and debugging softeners are enabled. Use explicit startup checks
+#' for the exact options your deployment permits or forbids instead.
 #'
 #' @details It only checks the following options:
 #' \itemize{
@@ -72,7 +72,8 @@
 #'  \item `shinyOAuth.allow_redirect`: Allows sensitive HTTP flows to follow redirects
 #'  }
 #'
-#' @return Invisible TRUE if no safety checks are disabled; otherwise, an error is thrown.
+#' @return Invisible `TRUE` if none of those options are enabled; otherwise an
+#'   error is thrown.
 #'
 #' @example inst/examples/error_on_softened.R
 #' @keywords internal

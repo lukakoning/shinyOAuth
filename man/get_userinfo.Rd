@@ -21,11 +21,11 @@ attributes. Used when calling from async workers that lack access to the
 reactive domain.}
 }
 \value{
-A list containing the user information as returned by the provider.
+A list containing the user information returned by the provider.
 }
 \description{
 Fetches user information from the provider's userinfo endpoint using the
-provided access token. Emits an audit event with redacted details.
+supplied access token. Emits an audit event with redacted details.
 }
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`

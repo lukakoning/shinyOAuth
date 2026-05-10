@@ -9,8 +9,9 @@
 #' OAuthClient S7 class
 #'
 #' @description
-#' S7 class representing an OAuth 2.0 client configuration, including a provider,
-#' client credentials, redirect URI, requested scopes, and state management.
+#' S7 class describing an OAuth 2.0 client configuration. It combines the
+#' provider, client credentials, redirect URI, requested scopes, and the state
+#' handling rules used during login and callback validation.
 #'
 #' This is a low-level constructor intended for advanced use. Most users should
 #' prefer the helper constructor [oauth_client()].
@@ -42,8 +43,7 @@
 #'   Ignored for other auth styles. Current outbound private-key JWT signing
 #'   supports RSA and EC private keys. For RSA keys, outbound signing is currently
 #'   limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`)
-#'   are not supported. Ed25519/Ed448 keys are also not currently supported for
-#'   client-side signing.
+#'   are not supported. Ed25519/Ed448 keys are also not currently supported.
 #'
 #' @param client_private_key_kid Optional key identifier (kid) to include in the JWT header
 #'   for `private_key_jwt` assertions. Useful when the authorization server uses kid to
@@ -90,7 +90,8 @@
 #'   - `"request"`: send a signed JWT-secured authorization request (JAR;
 #'     RFC 9101) via the `request` parameter.
 #'
-#'   Request mode requires signing material on the client. shinyOAuth prefers
+#'   Most users can keep the default. Request mode is an advanced option that
+#'   requires signing material on the client. shinyOAuth prefers
 #'   `client_private_key` when present; otherwise it falls back to HMAC signing
 #'   with `client_secret`.
 #'
@@ -126,7 +127,8 @@
 #'   supports RSA and EC private keys. For RSA keys, outbound signing is
 #'   currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
 #'   `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
-#'   currently supported for client-side signing.
+#'   currently supported. This is an advanced setting; most clients do not need
+#'   DPoP unless their provider or resource server asks for it.
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
 #'   the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -180,18 +182,16 @@
 #'    must implement cachem-like methods `$get(key, missing)`, `$set(key, value)`,
 #'    and `$remove(key)`; `$info()` is optional.
 #'
-#'    Trade-offs: `cache_mem` is in-memory and thus scoped to a single R process
-#'    (good default for a single Shiny process). For multi-process deployments,
-#'    use [custom_cache()] with an atomic `$take()` backed by a shared store
-#'    (e.g., Redis `GETDEL`, SQL `DELETE ... RETURNING`). Plain
-#'    `cachem::cache_disk()` is **not safe** as a shared state store because its
-#'    `$get()` + `$remove()` operations are not atomic; use it only if wrapped
-#'    in a [custom_cache()] that provides `$take()`.
-#'    See also `vignette("usage", package = "shinyOAuth")`.
+#'    `cachem::cache_mem()` is a good default for a single Shiny process. For
+#'    multi-process deployments, use [custom_cache()] with an atomic `$take()`
+#'    backed by a shared store (for example Redis `GETDEL` or SQL
+#'    `DELETE ... RETURNING`). Plain `cachem::cache_disk()` is **not safe** as
+#'    a shared state store because its `$get()` + `$remove()` operations are not
+#'    atomic.
 #'
 #'    The client automatically generates, persists (in `state_store`), and
 #'    validates the OAuth `state` parameter (and OIDC `nonce` when applicable)
-#'    during the authorization code flow
+#'    during the authorization code flow.
 #'
 #' @param claims OIDC claims request parameter (OIDC Core §5.5). Allows
 #'   requesting specific claims from the UserInfo Endpoint and/or in the ID
@@ -211,7 +211,7 @@
 #'     `acr = list(values = I("urn:mace:incommon:iap:silver"))` produces
 #'     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
 #'     are always encoded as arrays.
-#'   - A character string: pre-encoded JSON string (for advanced use). Must
+#'   - A character string: pre-encoded JSON string (advanced use). Must
 #'     be valid JSON. Use this when you need full control over JSON encoding.
 #'   Note: The `claims` parameter is OPTIONAL per OIDC Core §5.5. Not all
 #'   providers support it; consult your provider's documentation.
@@ -220,11 +220,9 @@
 #'   for the decrypted state payload's `issued_at` timestamp during callback
 #'   validation.
 #'
-#'   This value is an independent freshness backstop against replay attacks on
-#'   the encrypted `state` payload. It is intentionally decoupled from
-#'   `state_store` TTL (which controls how long the single-use state entry can
-#'   exist in the server-side cache, and also drives browser cookie max-age in
-#'   [oauth_module_server()]).
+#'   This is the freshness window for the sealed `state` payload itself. It is
+#'   separate from the `state_store` TTL, which controls how long the one-time
+#'   server-side state entry can exist.
 #'
 #'   Default is 300 seconds.
 #'
@@ -232,7 +230,7 @@
 #'   generated state parameter. Higher values provide more entropy and better
 #'   security against CSRF attacks. Must be between 22 and 128 (to align with
 #'   `validate_state()`'s default minimum which targets ~128 bits for base64url‑like
-#'   strings). Default is 64, which provides approximately 384 bits of entropy
+#'   strings). Default is 64.
 #'
 #' @param state_key Optional per-client secret used as the state sealing key
 #'   for AES-GCM AEAD (authenticated encryption) of the state payload that
@@ -247,15 +245,10 @@
 #'   external stores. Both forms are normalized internally by cryptographic
 #'   helpers.
 #'
-#'   Multi-process deployments: if your app runs with multiple R workers or behind
-#'   a non-sticky load balancer, you must configure a shared `state_store` and the
-#'   same `state_key` across all workers. Otherwise callbacks that land on a
-#'   different worker will be unable to decrypt/validate the state envelope and
-#'   authentication will fail. In such environments, do not rely on the random
-#'   per-process default: provide an explicit, high-entropy key (for example via
-#'   a secret store or environment variable). Prefer values with substantial
-#'   entropy (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
-#'   human‑memorable passphrases. See also `vignette("usage", package = "shinyOAuth")`.
+#'   Multi-process deployments: if your app runs with multiple R workers or
+#'   behind a non-sticky load balancer, configure a shared `state_store` and
+#'   the same `state_key` across all workers. Otherwise callbacks that land on
+#'   a different worker will fail state validation.
 #'
 #' @param scope_validation Controls how scope discrepancies are handled when
 #'   the authorization server grants fewer scopes than requested. RFC 6749
@@ -493,7 +486,7 @@ OAuthClient <- S7::new_class(
 
 #' Create generic [OAuthClient]
 #'
-#' Used by app setup code to build a validated client configuration before
+#' Main helper for creating a validated [OAuthClient] configuration before
 #' [oauth_module_server()] starts login or callback handling.
 #'
 #' @inheritParams OAuthClient

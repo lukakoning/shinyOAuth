@@ -7,14 +7,15 @@
 error_on_softened()
 }
 \value{
-Invisible TRUE if no safety checks are disabled; otherwise, an error is thrown.
+Invisible \code{TRUE} if none of those options are enabled; otherwise an
+error is thrown.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-This helper is deprecated because it only checks a narrow subset of
-shinyOAuth's security-relaxing opt-ins. Use explicit startup checks for the
-exact options your deployment permits or forbids instead.
+Deprecated helper that errors when a small subset of shinyOAuth's
+development and debugging softeners are enabled. Use explicit startup checks
+for the exact options your deployment permits or forbids instead.
 }
 \details{
 It only checks the following options:

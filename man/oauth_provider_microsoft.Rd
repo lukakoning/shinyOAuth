@@ -27,11 +27,15 @@ issuer}
 \link{OAuthProvider} object configured for Microsoft identity platform
 }
 \description{
-Pre-configured \link{OAuthProvider} for Microsoft Entra ID (formerly Azure AD)
-using the v2.0 endpoints. Accepts a tenant identifier and configures the
-authorization, token, and userinfo endpoints directly (no discovery).
+Ready-to-use \link{OAuthProvider} settings for Microsoft Entra ID (formerly Azure
+AD) using the v2.0 endpoints. Accepts a tenant identifier and configures the
+authorization, token, and userinfo endpoints directly.
 }
 \details{
+Most users only need to choose the tenant and decide whether to keep ID
+token validation enabled. The remaining details below explain how the helper
+behaves for Microsoft's different tenant styles.
+
 The \code{tenant} can be one of the special values "common", "organizations",
 or "consumers", or a specific directory (tenant) ID GUID
 (e.g., "00000000-0000-0000-0000-000000000000").

@@ -24,7 +24,8 @@ only these hosts are permitted. Supports globs}
 Logical indicator (TRUE if all URLs pass all checks; FALSE otherwise)
 }
 \description{
-Returns TRUE if every input URL is either:
+Returns \code{TRUE} if every input URL passes shinyOAuth's scheme and host
+policy. In practice, each URL must be either:
 \itemize{
 \item a syntactically valid HTTPS URL, and (if set) whose host matches \code{allowed_hosts}, or
 \item an HTTP URL whose host matches \code{allowed_non_https_hosts} (e.g. localhost, 127.0.0.1, ::1),
@@ -36,10 +37,10 @@ will first attempt to validate it as HTTP (useful for loopback development),
 and if that fails, as HTTPS. This mirrors how helpers normalize inputs for
 convenience while still enforcing the same host and scheme policies.
 
-\code{allowed_hosts} is thus an allowlist of hosts/domains that are permitted, while
-\code{allowed_non_https_hosts} defines which hosts are allowed to use HTTP instead of HTTPS.
-If \code{allowed_hosts} is NULL or length 0, all hosts are allowed (subject to scheme rules),
-but HTTPS is still required unless the host is in \code{allowed_non_https_hosts}.
+\code{allowed_hosts} is the allowlist of hosts or domains that are permitted,
+while \code{allowed_non_https_hosts} defines which hosts are allowed to use HTTP
+instead of HTTPS. If \code{allowed_hosts} is \code{NULL} or length 0, all hosts are
+allowed subject to the scheme rules above.
 
 Since \code{allowed_hosts} supports globs, a value like "*" matches any host
 and therefore effectively disables endpoint host restrictions. Only use a catch-all
@@ -54,10 +55,9 @@ Any non-URLs, NAs, or empty strings cause a FALSE result.
 }
 \details{
 This function is used internally to validate redirect URIs in OAuth clients,
-but can be used elsewhere to test if URLs would be allowed. Internally, it will always
-determine the default values for \code{allowed_non_https_hosts} and \code{allowed_hosts}
-from the options \code{shinyOAuth.allowed_non_https_hosts} and
-\code{shinyOAuth.allowed_hosts}, respectively.
+but can also be used directly to test whether URLs would be accepted.
+Internally, the defaults come from the options
+\code{shinyOAuth.allowed_non_https_hosts} and \code{shinyOAuth.allowed_hosts}.
 }
 \examples{
 # HTTPS allowed by default

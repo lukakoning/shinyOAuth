@@ -60,8 +60,8 @@ token, the refresh fails with an error. In \code{oauth_module_server()}, this
 clears the session and sets \code{authenticated = FALSE}.
 }
 \description{
-Refreshes an OAuth session by obtaining a fresh access token using the
-refresh token. When configured, also re-fetches userinfo and validates any
+Refreshes an OAuth session by obtaining a new access token with the refresh
+token. When configured, shinyOAuth also re-fetches userinfo and validates any
 new ID token returned by the provider.
 
 Per OIDC Core Section 12.2, providers may omit the ID token from refresh

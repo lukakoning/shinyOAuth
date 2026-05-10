@@ -14,15 +14,14 @@ head. This reduces the risk of leaking OAuth callback query parameters
 subresources during the initial callback page load.}
 }
 \value{
-A tagList containing a singleton dependency tag that ensures the JS
-file \code{inst/www/shinyOAuth.js} is loaded
+A \code{tagList} that loads the \code{inst/www/shinyOAuth.js} dependency once.
 }
 \description{
-Adds the package's client-side JavaScript helpers as an htmlDependency to
-your Shiny UI. This enables features such as redirection and setting
-the browser cookie token.
+Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
+This is required so the module can handle redirects and manage its
+browser-side session token.
 
-Without adding this to the UI of your app,  the \code{oauth_module_server()} will not function.
+Without this call in the UI, \code{\link[=oauth_module_server]{oauth_module_server()}} will not work.
 }
 \details{
 Place this near the top-level of your UI (e.g., inside \code{fluidPage()} or

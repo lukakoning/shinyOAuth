@@ -30,7 +30,7 @@ oauth_module_server(
 immediately initiate the OAuth flow by redirecting the browser to the
 authorization endpoint. If FALSE, the module will not auto-redirect;
 instead, the returned object exposes helpers for triggering login
-manually (use: \verb{$request_login()})}
+manually (use \verb{$request_login()}).}
 
 \item{async}{If TRUE, dispatches token exchange and refresh through
 shinyOAuth's async promise path and updates values when the promise
@@ -39,8 +39,8 @@ resolves. \link[mirai:mirai]{mirai::mirai} is preferred when daemons are configu
 the current \link[future:future]{future::future} plan is used. Non-sequential future plans run off
 the main R session; \code{future::sequential()} stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
-(which may block the Shiny event loop; it is thus strongly recommended to set
-\code{async = TRUE} in production apps)}
+(which may block the Shiny event loop). For production apps, \code{async = TRUE}
+is usually the better choice.}
 
 \item{indefinite_session}{If TRUE, the module will not automatically clear
 the token due to access-token expiry or the \code{reauth_after_seconds} window,
@@ -48,19 +48,19 @@ and it will not trigger automatic reauthentication when a token expires or
 a refresh fails. This effectively makes sessions "indefinite" from the
 module's perspective once a user has logged in. Note that your API calls
 may still fail once the provider considers the token expired; this option
-only affects the module's automatic clearing/redirect behavior}
+only affects the module's automatic clearing and redirect behavior.}
 
 \item{reauth_after_seconds}{Optional maximum session age in seconds. If set,
 the module will remove the token (and thus set \code{authenticated} to FALSE)
 after this many seconds have elapsed since authentication started. By
 default this is \code{NULL} (no forced re-authentication). If a value is
 provided, the timer is reset after each successful refresh so the knob is
-opt-in and counts rolling session age}
+opt-in and counts rolling session age.}
 
 \item{refresh_proactively}{If TRUE, will automatically refresh tokens
 before they expire (if refresh token is available). The refresh is
 scheduled adaptively so that it executes approximately at
-\code{expires_at - refresh_lead_seconds} rather than on a coarse polling loop}
+\code{expires_at - refresh_lead_seconds} rather than on a coarse polling loop.}
 
 \item{refresh_lead_seconds}{Number of seconds before expiry to attempt
 proactive refresh (default: 60)}
@@ -68,7 +68,7 @@ proactive refresh (default: 60)}
 \item{refresh_check_interval}{Fallback check interval in milliseconds for
 expiry/refresh (default: 10000 ms). When expiry is known, the module uses
 adaptive scheduling to wake up exactly when needed; this interval is used
-as a safety net or when expiry is unknown/infinite}
+as a safety net or when expiry is unknown/infinite.}
 
 \item{revoke_on_session_end}{If TRUE, automatically revokes provider tokens
 when the Shiny session ends (e.g., browser tab closed, session timeout).
@@ -131,15 +131,14 @@ This contains the access token, refresh token (if any), ID token (if
 any), userinfo (if fetched), and the decoded ID token claims via
 \code{token@id_token_claims} (a read-only named list exposing all JWT
 payload claims such as \code{sub}, \code{acr}, \code{amr}, \code{auth_time}, etc.).
-See \link{OAuthToken} for details.
-Note that since \link{OAuthToken} is a S7 object, you access its fields
+See \link{OAuthToken} for details. Because \link{OAuthToken} is a S7 object, you access its fields
 with \code{@}, e.g., \code{token@userinfo} or \code{token@id_token_claims$acr}.
 \item \code{error}: error code string when the OAuth flow fails.
-Be careful with exposing this directly to users, as it may
-contain sensitive information which could aid an attacker.
+Be careful about showing this directly to users, because it may contain
+sensitive information.
 \item \code{error_description}: human-readable error detail when available.
-Be extra careful with exposing this directly to users, as it may
-contain even more sensitive information which could aid an attacker.
+Be extra careful about showing this directly to users, because it may
+contain even more sensitive information.
 \item \code{error_uri}: URI identifying a human-readable web page with
 information about the error (per RFC 6749 section 4.1.2.1). Treat this
 as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
@@ -175,8 +174,8 @@ attempts when proactive refresh logic wakes up multiple times.
 }
 
 It also contains the following helper functions, mainly useful when
-\code{auto_redirect = FALSE} and you want to implement a manual login flow
-(e.g., with your own button):
+\code{auto_redirect = FALSE} and you want to start login from your own UI
+(for example, from a button):
 
 \itemize{
 \item \code{request_login()}: initiates login by redirecting to the
@@ -185,14 +184,13 @@ authorization endpoint, with cookie-ensure semantics: if
 the redirect until \code{browser_token} is present, then redirects.
 If the module is already authenticated, the request is ignored and no
 new OAuth state is created.
-This is the main entry point for login when \code{auto_redirect = FALSE}
-and you want to trigger login from your own UI
+This is the main entry point for login when \code{auto_redirect = FALSE}.
 \item \code{logout()}: if a token is present, makes best-effort revocation
 requests for the refresh token and access token when the provider exposes
 a revocation endpoint. This may perform network I/O, can revoke refresh
 tokens, and follows the module's \code{async} setting. It then clears the
 current token, sets \code{authenticated} to FALSE, and rotates the browser
-token cookie. You might call this when the user clicks a "logout" button
+token cookie. You might call this when the user clicks a logout button.
 \item \code{build_auth_url()}: internal; builds and returns the authorization URL,
 also storing the relevant state in the client's \code{state_store} (for
 validation during callback). Note that this requires \code{browser_token} to
@@ -229,6 +227,10 @@ Note: when using this module, you must include
 necessary JavaScript dependencies.
 }
 \details{
+Most apps only need to decide whether login starts automatically, whether to
+enable async mode, and whether token refresh should happen proactively. The
+remaining arguments are mainly for deployments that need tighter control over
+session lifetime, logout behavior, or browser cookie settings.
 \itemize{
 \item Blocking vs. async behavior: when \code{async = FALSE} (the default), network
 operations like token exchange and refresh are performed on the main R

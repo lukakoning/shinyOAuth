@@ -11,8 +11,8 @@
 #' Revoke an OAuth 2.0 token
 #'
 #' @description
-#' Attempts to revoke an access or refresh token using RFC 7009 when the
-#' provider exposes a revocation endpoint.
+#' Attempts to revoke an access or refresh token when the provider exposes a
+#' revocation endpoint (RFC 7009).
 #'
 #' Authentication mirrors the provider's `token_auth_style` (same as token
 #' exchange and introspection).
@@ -52,8 +52,7 @@
 #' @section Side effects:
 #' Performs network I/O when the provider exposes a revocation endpoint and the
 #' selected token exists. Emits best-effort audit events and OpenTelemetry span
-#' attributes. When `async = TRUE`, the work may run in a background worker and
-#' reads package options needed by the async/audit/HTTP helpers.
+#' attributes. When `async = TRUE`, the work may run in a background worker.
 #'
 #' @export
 revoke_token <- function(
@@ -276,10 +275,10 @@ revoke_token <- function(
 #' Introspect an OAuth 2.0 token
 #'
 #' @description
-#' Introspects an access or refresh token using RFC 7662 when the
-#' provider exposes an introspection endpoint. Returns a list including at least
-#' `supported` (logical) and `active` (logical|NA) and the parsed response (if
-#' any) under `raw`.
+#' Introspects an access or refresh token when the provider exposes an
+#' introspection endpoint (RFC 7662). Returns a small result object describing
+#' whether introspection is supported and, when known, whether the token is
+#' active.
 #'
 #' Authentication to the introspection endpoint mirrors the provider's
 #' `token_auth_style`:
@@ -335,8 +334,7 @@ revoke_token <- function(
 #' @section Side effects:
 #' Performs network I/O when the provider exposes an introspection endpoint and
 #' the selected token exists. Emits best-effort audit events and OpenTelemetry
-#' span attributes. When `async = TRUE`, the work may run in a background worker
-#' and reads package options needed by the async/audit/HTTP helpers.
+#' span attributes. When `async = TRUE`, the work may run in a background worker.
 #'
 #' @example inst/examples/token_methods.R
 #'
@@ -626,8 +624,8 @@ introspect_token <- function(
 #' Refresh an OAuth 2.0 token
 #'
 #' @description
-#' Refreshes an OAuth session by obtaining a fresh access token using the
-#' refresh token. When configured, also re-fetches userinfo and validates any
+#' Refreshes an OAuth session by obtaining a new access token with the refresh
+#' token. When configured, shinyOAuth also re-fetches userinfo and validates any
 #' new ID token returned by the provider.
 #'
 #' Per OIDC Core Section 12.2, providers may omit the ID token from refresh

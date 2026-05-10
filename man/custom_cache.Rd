@@ -8,12 +8,12 @@ custom_cache(get, set, remove, take = NULL, info = NULL)
 }
 \arguments{
 \item{get}{A function(key, missing = NULL) -> value. Required.
-Should return the stored value, or the \code{missing} argument if the key is not present.
-The \code{missing} parameter is mandatory because both \code{OAuthClient} and
-\code{OAuthProvider} validators will pass it explicitly.}
+Should return the stored value, or the \code{missing} argument if the key is not
+present. The \code{missing} parameter is required because shinyOAuth passes it
+explicitly.}
 
 \item{set}{A function(key, value) -> invisible(NULL). Required.
-Should store the value under the given key}
+Should store the value under the given key.}
 
 \item{remove}{A function(key) -> any. Required.
 
@@ -46,15 +46,16 @@ guarantee single-use under concurrent access in shared stores.}
 
 \item{info}{Function() -> list(max_age = seconds, ...). Optional
 
-This may be provided to because TTL information from \verb{$info()} is used to
-align browser cookie max age in \code{oauth_module_server()}}
+TTL information from \verb{$info()} is used to align browser cookie max age in
+\code{\link[=oauth_module_server]{oauth_module_server()}}.}
 }
 \value{
 An R6 object exposing cachem-like \verb{$get/$set/$remove/$info} methods
 }
 \description{
-Builds a minimal cachem-like cache backend object that exposes cachem-compatible methods:
-\verb{$get(key, missing)}, \verb{$set(key, value)}, \verb{$remove(key)}, and \verb{$info()}.
+Builds a small cachem-like backend object with methods compatible with what
+shinyOAuth needs: \verb{$get(key, missing)}, \verb{$set(key, value)}, \verb{$remove(key)},
+and optional \verb{$info()}.
 
 Use this helper when you want to plug a custom state store or JWKS cache
 into 'shinyOAuth', when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} is not suitable (e.g.,

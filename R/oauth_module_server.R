@@ -22,6 +22,11 @@
 #' necessary JavaScript dependencies.
 #'
 #' @details
+#' Most apps only need to decide whether login starts automatically, whether to
+#' enable async mode, and whether token refresh should happen proactively. The
+#' remaining arguments are mainly for deployments that need tighter control over
+#' session lifetime, logout behavior, or browser cookie settings.
+#'
 #' - Blocking vs. async behavior: when `async = FALSE` (the default), network
 #'   operations like token exchange and refresh are performed on the main R
 #'   thread. Transient errors are retried by the package's internal
@@ -60,7 +65,7 @@
 #'   immediately initiate the OAuth flow by redirecting the browser to the
 #'   authorization endpoint. If FALSE, the module will not auto-redirect;
 #'   instead, the returned object exposes helpers for triggering login
-#'   manually (use: `$request_login()`)
+#'   manually (use `$request_login()`).
 #'
 #' @param async If TRUE, dispatches token exchange and refresh through
 #'   shinyOAuth's async promise path and updates values when the promise
@@ -69,8 +74,8 @@
 #'   the current [future] plan is used. Non-sequential future plans run off
 #'   the main R session; `future::sequential()` stays in-process. If FALSE
 #'   (default), token exchange and refresh are performed synchronously
-#'   (which may block the Shiny event loop; it is thus strongly recommended to set
-#'   `async = TRUE` in production apps)
+#'   (which may block the Shiny event loop). For production apps, `async = TRUE`
+#'   is usually the better choice.
 #'
 #' @param indefinite_session If TRUE, the module will not automatically clear
 #'   the token due to access-token expiry or the `reauth_after_seconds` window,
@@ -78,25 +83,25 @@
 #'   a refresh fails. This effectively makes sessions "indefinite" from the
 #'   module's perspective once a user has logged in. Note that your API calls
 #'   may still fail once the provider considers the token expired; this option
-#'   only affects the module's automatic clearing/redirect behavior
+#'   only affects the module's automatic clearing and redirect behavior.
 #'
 #' @param reauth_after_seconds Optional maximum session age in seconds. If set,
 #'  the module will remove the token (and thus set `authenticated` to FALSE)
 #'  after this many seconds have elapsed since authentication started. By
 #'  default this is `NULL` (no forced re-authentication). If a value is
 #'  provided, the timer is reset after each successful refresh so the knob is
-#'  opt-in and counts rolling session age
+#'  opt-in and counts rolling session age.
 #'
 #' @param refresh_proactively If TRUE, will automatically refresh tokens
 #'  before they expire (if refresh token is available). The refresh is
 #'  scheduled adaptively so that it executes approximately at
-#'  `expires_at - refresh_lead_seconds` rather than on a coarse polling loop
+#'  `expires_at - refresh_lead_seconds` rather than on a coarse polling loop.
 #' @param refresh_lead_seconds Number of seconds before expiry to attempt
 #'  proactive refresh (default: 60)
 #' @param refresh_check_interval Fallback check interval in milliseconds for
 #'  expiry/refresh (default: 10000 ms). When expiry is known, the module uses
 #'  adaptive scheduling to wake up exactly when needed; this interval is used
-#'  as a safety net or when expiry is unknown/infinite
+#'  as a safety net or when expiry is unknown/infinite.
 #'
 #' @param revoke_on_session_end If TRUE, automatically revokes provider tokens
 #'   when the Shiny session ends (e.g., browser tab closed, session timeout).
@@ -156,15 +161,14 @@
 #'    any), userinfo (if fetched), and the decoded ID token claims via
 #'    `token@id_token_claims` (a read-only named list exposing all JWT
 #'    payload claims such as `sub`, `acr`, `amr`, `auth_time`, etc.).
-#'    See [OAuthToken] for details.
-#'    Note that since [OAuthToken] is a S7 object, you access its fields
+#'    See [OAuthToken] for details. Because [OAuthToken] is a S7 object, you access its fields
 #'    with `@`, e.g., `token@userinfo` or `token@id_token_claims$acr`.
 #'    \item `error`: error code string when the OAuth flow fails.
-#'    Be careful with exposing this directly to users, as it may
-#'    contain sensitive information which could aid an attacker.
+#'    Be careful about showing this directly to users, because it may contain
+#'    sensitive information.
 #'    \item `error_description`: human-readable error detail when available.
-#'    Be extra careful with exposing this directly to users, as it may
-#'    contain even more sensitive information which could aid an attacker.
+#'    Be extra careful about showing this directly to users, because it may
+#'    contain even more sensitive information.
 #'    \item `error_uri`: URI identifying a human-readable web page with
 #'    information about the error (per RFC 6749 section 4.1.2.1). Treat this
 #'    as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
@@ -200,8 +204,8 @@
 #'   }
 #'
 #'   It also contains the following helper functions, mainly useful when
-#'   `auto_redirect = FALSE` and you want to implement a manual login flow
-#'   (e.g., with your own button):
+#'   `auto_redirect = FALSE` and you want to start login from your own UI
+#'   (for example, from a button):
 #'
 #'   \itemize{
 #'    \item `request_login()`: initiates login by redirecting to the
@@ -210,14 +214,13 @@
 #'    the redirect until `browser_token` is present, then redirects.
 #'    If the module is already authenticated, the request is ignored and no
 #'    new OAuth state is created.
-#'    This is the main entry point for login when `auto_redirect = FALSE`
-#'    and you want to trigger login from your own UI
+#'    This is the main entry point for login when `auto_redirect = FALSE`.
 #'    \item `logout()`: if a token is present, makes best-effort revocation
 #'    requests for the refresh token and access token when the provider exposes
 #'    a revocation endpoint. This may perform network I/O, can revoke refresh
 #'    tokens, and follows the module's `async` setting. It then clears the
 #'    current token, sets `authenticated` to FALSE, and rotates the browser
-#'    token cookie. You might call this when the user clicks a "logout" button
+#'    token cookie. You might call this when the user clicks a logout button.
 #'    \item `build_auth_url()`: internal; builds and returns the authorization URL,
 #'    also storing the relevant state in the client's `state_store` (for
 #'    validation during callback). Note that this requires `browser_token` to

@@ -13,7 +13,7 @@ oauth_provider_github(name = "github")
 \link{OAuthProvider} object for use with a GitHub OAuth 2.0 app
 }
 \description{
-Pre-configured OAuth 2.0 provider for GitHub.
+Ready-to-use OAuth 2.0 provider settings for GitHub.
 }
 \details{
 You can register a new GitHub OAuth 2.0 app in your

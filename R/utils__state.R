@@ -129,7 +129,7 @@ state_policy_digest <- function(components) {
 
 #' Normalize one state-policy component into a stable string
 #'
-#' Used by [state_policy_digest()] before hashing policy components.
+#' Used by `state_policy_digest()` before hashing policy components.
 #'
 #' @param value Arbitrary policy component value.
 #' @return Canonical UTF-8 string.
@@ -147,7 +147,7 @@ state_policy_component_string <- function(value) {
 
 #' Normalize a state-policy value for canonical serialization
 #'
-#' Used by [state_policy_component_string()] to convert policy fields into a
+#' Used by `state_policy_component_string()` to convert policy fields into a
 #' JSON-serializable shape with stable ordering and explicit scalar encoding.
 #'
 #' @param value Arbitrary policy component value.
@@ -211,7 +211,7 @@ state_policy_normalize_value <- function(value) {
 
 #' Convert one scalar policy value to a stable string
 #'
-#' Used by [state_policy_normalize_value()] for atomic leaves.
+#' Used by `state_policy_normalize_value()` for atomic leaves.
 #'
 #' @param value Scalar policy value.
 #' @return Length-1 UTF-8 string.
@@ -274,7 +274,7 @@ state_policy_string_set <- function(value, transform = identity) {
 
 #' Compute a DPoP key thumbprint for state binding
 #'
-#' Used by [state_client_policy_fingerprint()] when a client enables DPoP.
+#' Used by `state_client_policy_fingerprint()` when a client enables DPoP.
 #'
 #' @param client OAuth client carrying DPoP configuration.
 #' @return RFC 7638 JWK thumbprint string, or `NA_character_` when DPoP is not
@@ -291,7 +291,7 @@ state_policy_dpop_key_thumbprint <- function(client) {
 
 #' Compute an mTLS certificate thumbprint for state binding
 #'
-#' Used by [state_client_policy_fingerprint()] when a client presents a TLS
+#' Used by `state_client_policy_fingerprint()` when a client presents a TLS
 #' certificate during token or protected-resource requests.
 #'
 #' @param client OAuth client carrying mTLS configuration.

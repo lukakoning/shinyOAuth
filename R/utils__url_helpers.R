@@ -11,7 +11,8 @@
 #' Check if URL(s) are HTTPS and/or in allowed hosts lists
 #'
 #' @description
-#' Returns TRUE if every input URL is either:
+#' Returns `TRUE` if every input URL passes shinyOAuth's scheme and host
+#' policy. In practice, each URL must be either:
 #' - a syntactically valid HTTPS URL, and (if set) whose host matches `allowed_hosts`, or
 #' - an HTTP URL whose host matches `allowed_non_https_hosts` (e.g. localhost, 127.0.0.1, ::1),
 #'   and (if set) also matches `allowed_hosts`.
@@ -21,10 +22,10 @@
 #' and if that fails, as HTTPS. This mirrors how helpers normalize inputs for
 #' convenience while still enforcing the same host and scheme policies.
 #'
-#' `allowed_hosts` is thus an allowlist of hosts/domains that are permitted, while
-#' `allowed_non_https_hosts` defines which hosts are allowed to use HTTP instead of HTTPS.
-#' If `allowed_hosts` is NULL or length 0, all hosts are allowed (subject to scheme rules),
-#' but HTTPS is still required unless the host is in `allowed_non_https_hosts`.
+#' `allowed_hosts` is the allowlist of hosts or domains that are permitted,
+#' while `allowed_non_https_hosts` defines which hosts are allowed to use HTTP
+#' instead of HTTPS. If `allowed_hosts` is `NULL` or length 0, all hosts are
+#' allowed subject to the scheme rules above.
 #'
 #' Since `allowed_hosts` supports globs, a value like "*" matches any host
 #' and therefore effectively disables endpoint host restrictions. Only use a catch-all
@@ -39,10 +40,9 @@
 #'
 #' @details
 #' This function is used internally to validate redirect URIs in OAuth clients,
-#' but can be used elsewhere to test if URLs would be allowed. Internally, it will always
-#' determine the default values for `allowed_non_https_hosts` and `allowed_hosts`
-#' from the options `shinyOAuth.allowed_non_https_hosts` and
-#' `shinyOAuth.allowed_hosts`, respectively.
+#' but can also be used directly to test whether URLs would be accepted.
+#' Internally, the defaults come from the options
+#' `shinyOAuth.allowed_non_https_hosts` and `shinyOAuth.allowed_hosts`.
 #'
 #' @param url Single URL or vector of URLs (character; length 1 or more)
 #' @param allowed_non_https_hosts Character vector of hostnames that are allowed

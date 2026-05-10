@@ -8,17 +8,16 @@
 
 #' Prepare a OAuth 2.0 authorization call and build an authorization URL
 #'
-#' This function prepares an OAuth 2.0 authorization call by generating necessary
-#' state, PKCE, and nonce values, storing them securely, and constructing
-#' the authorization URL to redirect the user to. The state and accompanying
-#' values are stored in the client's state store for later verification during
-#' the callback phase of the OAuth 2.0 flow.
+#' Prepares an OAuth 2.0 authorization request and returns the browser redirect
+#' URL. It generates the needed state, PKCE, and nonce values, stores the
+#' one-time callback data, and builds the final authorization URL.
 #'
-#' @param oauth_client An [OAuthClient] object representing the OAuth client configuration.
-#' @param browser_token A string token (e.g., from a browser cookie) to identify the user/session.
+#' @param oauth_client An [OAuthClient] object.
+#' @param browser_token Browser-bound token used to tie the login attempt to the
+#'   current browser session.
 #'
-#' @return A string containing the constructed authorization URL. This URL
-#'  should be used to redirect the user to the OAuth provider's authorization endpoint.
+#' @return A length-1 string containing the authorization URL to send the user
+#'   to.
 #'
 #' @example inst/examples/call_methods.R
 #'
@@ -764,12 +763,15 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 #' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 #'
-#' @param oauth_client An [OAuthClient] object representing the OAuth client configuration.
-#' @param code The authorization code received from the OAuth provider during the callback.
-#' @param payload The encrypted state payload received from the OAuth provider during the callback
-#' (this should be the same value that was generated and sent in `prepare_call()`).
-#' @param browser_token Browser token present in the user's session (this is managed
-#' by `oauth_module_server()` and should match the one used in `prepare_call()`).
+#' Completes the callback step of the login flow. It validates the callback
+#' state, exchanges the returned code for tokens, and verifies the result.
+#'
+#' @param oauth_client An [OAuthClient] object.
+#' @param code Authorization code received from the provider.
+#' @param payload Encrypted state payload returned by the provider. This should
+#'   be the same value that was originally sent in [prepare_call()].
+#' @param browser_token Browser token present in the user's session. This is
+#'   usually managed by [oauth_module_server()].
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
@@ -779,10 +781,8 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'   is `TRUE`, this parameter is required and must match the configured
 #'   provider issuer before any token exchange occurs.
 #'
-#' @return An [OAuthToken] object containing the access token, refresh token,
-#' expiration time, user information (if requested), and ID token (if applicable).
-#' If any step of the process fails (e.g., state verification, token exchange,
-#' token validation), an error is thrown indicating the failure reason.
+#' @return An [OAuthToken] object. If callback validation, token exchange, or
+#'   token verification fails, the function raises an error.
 #'
 #' @example inst/examples/call_methods.R
 #'

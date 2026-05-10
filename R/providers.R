@@ -10,7 +10,9 @@
 #' Create a generic OpenID Connect (OIDC) [OAuthProvider]
 #'
 #' @description
-#' Preconfigured [OAuthProvider] for OpenID Connect (OIDC) compliant providers.
+#' Helper for providers that follow a standard OpenID Connect endpoint layout.
+#' It builds the usual OIDC endpoints from one base URL and then calls
+#' [oauth_provider()] with OIDC-friendly defaults.
 #'
 #' @param name Friendly name for the provider
 #' @param base_url Base URL for OIDC endpoints
@@ -77,7 +79,7 @@ oauth_provider_oidc <- function(
 #' Create a GitHub [OAuthProvider]
 #'
 #' @description
-#' Pre-configured OAuth 2.0 provider for GitHub.
+#' Ready-to-use OAuth 2.0 provider settings for GitHub.
 #'
 #' @details
 #' You can register a new GitHub OAuth 2.0 app in your
@@ -118,7 +120,7 @@ oauth_provider_github <- function(name = "github") {
 #' Create a Google [OAuthProvider]
 #'
 #' @description
-#' Pre-configured [OAuthProvider] for Google.
+#' Ready-to-use [OAuthProvider] settings for Google.
 #'
 #' @param name Optional provider name (default "google")
 #'
@@ -162,11 +164,15 @@ oauth_provider_google <- function(name = "google") {
 #' Create a Microsoft (Entra ID) [OAuthProvider]
 #'
 #' @description
-#' Pre-configured [OAuthProvider] for Microsoft Entra ID (formerly Azure AD)
-#' using the v2.0 endpoints. Accepts a tenant identifier and configures the
-#' authorization, token, and userinfo endpoints directly (no discovery).
+#' Ready-to-use [OAuthProvider] settings for Microsoft Entra ID (formerly Azure
+#' AD) using the v2.0 endpoints. Accepts a tenant identifier and configures the
+#' authorization, token, and userinfo endpoints directly.
 #'
 #' @details
+#' Most users only need to choose the tenant and decide whether to keep ID
+#' token validation enabled. The remaining details below explain how the helper
+#' behaves for Microsoft's different tenant styles.
+#'
 #' The `tenant` can be one of the special values "common", "organizations",
 #' or "consumers", or a specific directory (tenant) ID GUID
 #' (e.g., "00000000-0000-0000-0000-000000000000").
@@ -287,8 +293,8 @@ oauth_provider_microsoft <- function(
 #' Create a Spotify [OAuthProvider]
 #'
 #' @description
-#' Pre-configured OAuth 2.0 provider for Spotify.
-#' Uses /v1/me as "userinfo". No ID token (not OIDC).
+#' Ready-to-use OAuth 2.0 provider settings for Spotify.
+#' It uses `/v1/me` as the user profile endpoint and does not expect ID tokens.
 #'
 #' @param name Optional provider name (default "spotify")
 #' @details
@@ -359,11 +365,10 @@ oauth_provider_slack <- function(name = "slack") {
 #'  method. One of "header" (client_secret_basic), "body"
 #'  (client_secret_post), "public" (send `client_id` only; `"none"` alias also
 #'  accepted), "private_key_jwt", or "client_secret_jwt". Defaults
-#'  to "body" for Keycloak, which works for confidential clients and for
-#'  public PKCE clients when no secret is configured. Use `"public"` if you
-#'  need to suppress `client_secret` even when it is set in the environment.
-#'  If you pass `NULL`, discovery will infer the method from the provider's
-#'  `token_endpoint_auth_methods_supported` metadata.
+#'  to "body" for Keycloak, which works for many common setups. Use `"public"`
+#'  if you need to suppress `client_secret` even when it is set in the
+#'  environment. If you pass `NULL`, discovery will infer the method from the
+#'  provider's `token_endpoint_auth_methods_supported` metadata.
 #'
 #' @return [OAuthProvider] object configured for the specified Keycloak realm
 #'
@@ -430,7 +435,7 @@ oauth_provider_okta <- function(
 #'
 #' @param domain Your Auth0 domain, e.g., "your-domain.auth0.com"
 #' @param name Optional provider name (default "auth0")
-#' @param audience Optional audience to request in auth flows
+#' @param audience Optional audience value to send in authorization requests.
 #'
 #' @return [OAuthProvider] object configured for the specified Auth0 domain
 #'

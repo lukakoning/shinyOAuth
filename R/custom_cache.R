@@ -13,8 +13,9 @@
 #' Create a custom cache backend (cachem-like)
 #'
 #' @description
-#' Builds a minimal cachem-like cache backend object that exposes cachem-compatible methods:
-#' `$get(key, missing)`, `$set(key, value)`, `$remove(key)`, and `$info()`.
+#' Builds a small cachem-like backend object with methods compatible with what
+#' shinyOAuth needs: `$get(key, missing)`, `$set(key, value)`, `$remove(key)`,
+#' and optional `$info()`.
 #'
 #' Use this helper when you want to plug a custom state store or JWKS cache
 #' into 'shinyOAuth', when [cachem::cache_mem()] is not suitable (e.g.,
@@ -31,12 +32,12 @@
 #' [oauth_module_server()] to that value.
 #'
 #' @param get A function(key, missing = NULL) -> value. Required.
-#' Should return the stored value, or the `missing` argument if the key is not present.
-#' The `missing` parameter is mandatory because both `OAuthClient` and
-#' `OAuthProvider` validators will pass it explicitly.
+#' Should return the stored value, or the `missing` argument if the key is not
+#' present. The `missing` parameter is required because shinyOAuth passes it
+#' explicitly.
 #'
 #' @param set A function(key, value) -> invisible(NULL). Required.
-#' Should store the value under the given key
+#' Should store the value under the given key.
 #'
 #' @param remove A function(key) -> any. Required.
 #'
@@ -69,8 +70,8 @@
 #'
 #' @param info Function() -> list(max_age = seconds, ...). Optional
 #'
-#'   This may be provided to because TTL information from `$info()` is used to
-#'   align browser cookie max age in `oauth_module_server()`
+#'   TTL information from `$info()` is used to align browser cookie max age in
+#'   [oauth_module_server()].
 #'
 #' @return An R6 object exposing cachem-like `$get/$set/$remove/$info` methods
 #'

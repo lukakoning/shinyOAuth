@@ -14,15 +14,15 @@ handle_callback(
 )
 }
 \arguments{
-\item{oauth_client}{An \link{OAuthClient} object representing the OAuth client configuration.}
+\item{oauth_client}{An \link{OAuthClient} object.}
 
-\item{code}{The authorization code received from the OAuth provider during the callback.}
+\item{code}{Authorization code received from the provider.}
 
-\item{payload}{The encrypted state payload received from the OAuth provider during the callback
-(this should be the same value that was generated and sent in \code{prepare_call()}).}
+\item{payload}{Encrypted state payload returned by the provider. This should
+be the same value that was originally sent in \code{\link[=prepare_call]{prepare_call()}}.}
 
-\item{browser_token}{Browser token present in the user's session (this is managed
-by \code{oauth_module_server()} and should match the one used in \code{prepare_call()}).}
+\item{browser_token}{Browser token present in the user's session. This is
+usually managed by \code{\link[=oauth_module_server]{oauth_module_server()}}.}
 
 \item{shiny_session}{Optional pre-captured Shiny session context (from
 \code{capture_shiny_session_context()}) to include in audit events. Used when
@@ -35,13 +35,12 @@ is \code{TRUE}, this parameter is required and must match the configured
 provider issuer before any token exchange occurs.}
 }
 \value{
-An \link{OAuthToken} object containing the access token, refresh token,
-expiration time, user information (if requested), and ID token (if applicable).
-If any step of the process fails (e.g., state verification, token exchange,
-token validation), an error is thrown indicating the failure reason.
+An \link{OAuthToken} object. If callback validation, token exchange, or
+token verification fails, the function raises an error.
 }
 \description{
-Handle OAuth 2.0 callback: verify state, swap code for token, verify token
+Completes the callback step of the login flow. It validates the callback
+state, exchanges the returned code for tokens, and verifies the result.
 }
 \examples{
 # Please note: `prepare_call()` & `handle_callback()` are typically

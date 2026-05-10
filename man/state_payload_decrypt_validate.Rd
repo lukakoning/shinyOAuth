@@ -18,8 +18,8 @@ calling from async workers that lack access to the reactive domain.}
 }
 \value{
 A named list payload (state, client_id, redirect_uri, scopes,
-provider, issued_at) on success; otherwise throws an error via
-\code{err_invalid_state()}.
+provider, client_policy, issued_at) on success; otherwise throws an error
+via \code{err_invalid_state()}.
 }
 \description{
 Internal utility that decrypts the encrypted \code{state} payload using the

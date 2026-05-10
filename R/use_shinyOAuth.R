@@ -10,11 +10,11 @@
 #' Add JavaScript dependency to the UI of a Shiny app
 #'
 #' @description
-#' Adds the package's client-side JavaScript helpers as an htmlDependency to
-#' your Shiny UI. This enables features such as redirection and setting
-#' the browser cookie token.
+#' Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
+#' This is required so the module can handle redirects and manage its
+#' browser-side session token.
 #'
-#' Without adding this to the UI of your app,  the `oauth_module_server()` will not function.
+#' Without this call in the UI, [oauth_module_server()] will not work.
 #'
 #' @details
 #' Place this near the top-level of your UI (e.g., inside `fluidPage()` or
@@ -26,8 +26,7 @@
 #'   (like `code` and `state`) via the `Referer` header to third-party
 #'   subresources during the initial callback page load.
 #'
-#' @return A tagList containing a singleton dependency tag that ensures the JS
-#'   file `inst/www/shinyOAuth.js` is loaded
+#' @return A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
 #'
 #' @export
 #'

@@ -68,10 +68,10 @@ change the request method or base URL after calling
 \code{\link[=client_bearer_req]{client_bearer_req()}} because the proof is already bound to those values.
 }
 \description{
-Convenience helper to reduce boilerplate when calling downstream APIs.
-It creates an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the
-appropriate \code{Authorization} header for the supplied token type, and applies
-the package's standard HTTP defaults (timeout and User-Agent).
+Small helper for calling downstream APIs with an access token.
+It creates an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right
+authorization header for the token type, and applies shinyOAuth's standard
+HTTP defaults.
 
 Accepts either a raw access token string or an \link{OAuthToken} object.
 }

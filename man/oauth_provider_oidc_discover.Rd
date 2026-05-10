@@ -42,14 +42,14 @@ from discovery. When PKCE is enabled and the provider advertises support
 for public clients via \code{none}, discovery selects \code{"public"}. Otherwise,
 the helper prefers \code{"header"} (client_secret_basic) when available, then
 \code{"body"} (client_secret_post). JWT-based methods are not auto-selected
-unless explicitly requested}
+unless explicitly requested.}
 
 \item{allowed_algs}{Character vector of allowed ID token signing algorithms.
 Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
 (ES*), and EdDSA. If the discovery document advertises
 supported algorithms, the intersection of advertised and caller-provided
 algorithms is used to avoid runtime mismatches. If there's no overlap,
-discovery fails with a configuration error (no fallback)}
+discovery fails with a configuration error (no fallback).}
 
 \item{allowed_token_types}{Character vector of allowed token types for
 access tokens issued by this provider. Defaults to 'Bearer'}
@@ -59,7 +59,7 @@ discovered from the provider matches the issuer host exactly. For
 providers that serve JWKS from a different host, set
 \code{jwks_host_allow_only} to the exact hostname instead of disabling this.
 Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
-\code{jwks_host_allow_only} or \code{jwks_pins}}
+\code{jwks_host_allow_only} or \code{jwks_pins}.}
 
 \item{issuer_match}{Character scalar controlling how strictly to validate the
 discovery document's \code{issuer} against the input \code{issuer}.
@@ -75,18 +75,20 @@ when feasible.}
 
 \item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}} (for example,
 \code{pkce_method = "plain"} when a provider explicitly advertises only plain
-PKCE support and you intentionally want to allow that downgrade)}
+PKCE support and you intentionally want to allow that downgrade).}
 }
 \value{
 \link{OAuthProvider} object configured from discovery
 }
 \description{
-Uses the OpenID Connect discovery document at
-\verb{/.well-known/openid-configuration} to auto-configure an \link{OAuthProvider}.
-When present, \code{introspection_endpoint} is wired into the resulting provider
-for RFC 7662 support.
+Builds an \link{OAuthProvider} from the provider's OpenID Connect discovery
+document at \verb{/.well-known/openid-configuration}. When present,
+\code{introspection_endpoint} is also wired into the resulting provider.
 }
 \details{
+Most users can accept the defaults here. The points below are mainly
+reference for advanced provider setups or for understanding why discovery
+might fail early.
 \itemize{
 \item ID token algorithms: by default this helper accepts common asymmetric
 algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
