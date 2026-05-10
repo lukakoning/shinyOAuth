@@ -73,6 +73,7 @@ short_desc_for_class <- function(class_vec) {
   known <- c(
     shinyOAuth_http_error = "HTTP request failed",
     shinyOAuth_transport_error = "Transport failure",
+    shinyOAuth_dpop_nonce_error = "DPoP nonce challenge",
     shinyOAuth_state_error = "Invalid OAuth state",
     shinyOAuth_pkce_error = "PKCE validation failed",
     shinyOAuth_token_error = "Token error",
@@ -383,6 +384,25 @@ err_pkce <- function(msg, context = list()) {
 #' @noRd
 err_token <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_token_error", context = context)
+}
+
+#' Raise a DPoP nonce challenge error
+#'
+#' Wraps `err_abort()` with classes for DPoP nonce challenges that cannot be
+#' replayed automatically. Used when a non-idempotent request would otherwise
+#' need to be retried with a fresh DPoP proof.
+#'
+#' @param msg Error message or cli-style bullet vector.
+#' @param context Named list of diagnostic fields attached to the condition.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
+err_dpop_nonce <- function(msg, context = list()) {
+  err_abort(
+    msg,
+    class = c("shinyOAuth_dpop_nonce_error", "shinyOAuth_token_error"),
+    context = context
+  )
 }
 
 #' Raise an ID token error

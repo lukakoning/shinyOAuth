@@ -179,8 +179,11 @@ Most users only need to configure the client correctly; shinyOAuth builds the
 right request from there.
 
 When the client is configured with `dpop_private_key`, shinyOAuth also attaches a
-DPoP proof to the token request and can regenerate it once if the authorization server
-responds with a `DPoP-Nonce` challenge. The response must include at least `access_token`.
+DPoP proof to the token request. For authorization-code exchange and refresh,
+shinyOAuth does not automatically replay a `DPoP-Nonce` challenge because those
+requests may consume a single-use credential. Instead it raises a typed error so
+the caller can decide whether replay is safe. The response must include at least
+`access_token`.
 Malformed or error responses abort the flow. 
 
 After a successful response, shinyOAuth also checks two basic things:
@@ -213,8 +216,9 @@ When the client is configured with `dpop_private_key`, shinyOAuth adds DPoP
 proofs to token requests and later protected-resource requests:
 
 - Authorization-code exchange and refresh calls to the token endpoint carry a DPoP proof.
-  If the authorization server responds with a `DPoP-Nonce` challenge, shinyOAuth can mint
-  a fresh proof once and retry the same request
+  If the authorization server responds with a `DPoP-Nonce` challenge, shinyOAuth
+  surfaces a typed nonce-challenge error instead of replaying the same
+  non-idempotent request automatically
 - Later `get_userinfo()` calls and downstream `client_bearer_req()` requests also attach
   DPoP proofs when the effective access-token type is `DPoP` and the caller supplies the
   corresponding `OAuthClient`

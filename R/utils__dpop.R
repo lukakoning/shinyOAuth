@@ -624,6 +624,25 @@ req_with_dpop_retry <- function(
     return(resp)
   }
 
+  if (!isTRUE(idempotent)) {
+    err_dpop_nonce(
+      c(
+        "x" = paste(
+          "Authorization server requested a fresh DPoP nonce for a non-idempotent request"
+        ),
+        "!" = paste(
+          "Automatic replay is disabled because it could consume a single-use authorization code or rotating refresh token"
+        ),
+        "i" = "Retry manually only if your provider guarantees the challenged credential was not consumed"
+      ),
+      context = compact_list(list(
+        request_url = url %||% NA_character_,
+        dpop_nonce = nonce,
+        idempotent = FALSE
+      ))
+    )
+  }
+
   resp <- req_with_retry(
     req_add_dpop_proof(
       req,
