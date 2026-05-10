@@ -86,6 +86,24 @@ test_that("validate_id_token rejects duplicate claim members", {
   )
 })
 
+test_that("duplicate guard rejects nested object members", {
+  expect_error(
+    shinyOAuth:::reject_duplicate_json_object_members(
+      '{"cnf":{"jkt":"thumb-1","jkt":"thumb-2"}}',
+      "JWT payload"
+    ),
+    regexp = "duplicate member name: jkt"
+  )
+
+  expect_error(
+    shinyOAuth:::reject_duplicate_json_object_members(
+      '{"keys":[{"kid":"key-1","kid":"key-2"}]}',
+      "JWKS JSON"
+    ),
+    regexp = "duplicate member name: kid"
+  )
+})
+
 test_that("get_userinfo rejects duplicate JOSE header members", {
   cli <- duplicate_userinfo_client()
   jwt <- make_raw_jwt(

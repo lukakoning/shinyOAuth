@@ -63,6 +63,10 @@ entries are scoped to the current `allowed_hosts` /
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
 
+* Duplicate-member detection for inbound JSON now applies to nested objects too,
+  not just top-level members. This hardens parsing of nested security objects
+  such as `cnf.jkt` and mTLS thumbprint confirmations.
+
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
   session is already authenticated.

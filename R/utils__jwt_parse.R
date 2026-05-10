@@ -353,7 +353,7 @@ jwt_validate_crit_field <- function(value, signal_error) {
   crit
 }
 
-#' Reject duplicate top-level JSON object members
+#' Reject duplicate JSON object members
 #'
 #' Used before JWT header and payload JSON is parsed.
 #'
@@ -369,9 +369,9 @@ reject_duplicate_json_object_members <- function(json_text, label) {
     return(invisible(NULL))
   }
 
-  depth <- 0L
   index <- 1L
-  seen <- character(0)
+  container_stack <- character(0)
+  seen_stack <- list()
 
   while (index <= length(chars)) {
     ch <- chars[[index]]
@@ -410,20 +410,31 @@ reject_duplicate_json_object_members <- function(json_text, label) {
       }
 
       if (
-        depth == 1L &&
+        length(container_stack) > 0L &&
+          identical(container_stack[[length(container_stack)]], "object") &&
           lookahead <= length(chars) &&
           identical(chars[[lookahead]], ":")
       ) {
         key <- jwt_decode_json_string_token(paste(token, collapse = ""))
+        level <- length(container_stack)
+        seen <- seen_stack[[level]] %||% character(0)
         if (key %in% seen) {
           err_parse(paste0(label, " contains duplicate member name: ", key))
         }
-        seen <- c(seen, key)
+        seen_stack[[level]] <- c(seen, key)
       }
-    } else if (identical(ch, "{") || identical(ch, "[")) {
-      depth <- depth + 1L
+    } else if (identical(ch, "{")) {
+      container_stack <- c(container_stack, "object")
+      seen_stack[[length(container_stack)]] <- character(0)
+    } else if (identical(ch, "[")) {
+      container_stack <- c(container_stack, "array")
+      seen_stack[[length(container_stack)]] <- NULL
     } else if (identical(ch, "}") || identical(ch, "]")) {
-      depth <- max(0L, depth - 1L)
+      if (length(container_stack) > 0L) {
+        last_index <- length(container_stack)
+        container_stack <- container_stack[-last_index]
+        seen_stack <- seen_stack[-last_index]
+      }
     }
 
     index <- index + 1L
