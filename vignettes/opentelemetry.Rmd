@@ -37,29 +37,16 @@ and how to enable/disable them.
 OTel log records are generated from the same structured events that shinyOAuth
 emits to its native R hook (`shinyOAuth.audit_hook`).
 The log content and event types mirror what is described in
-`vignette("audit-logging", package = "shinyOAuth")`; refer there for full
+`vignette("audit-logging", package = "shinyOAuth")`, so refer there for full
 details about the various events and their content.
-The OTel representation is flatter, though: nested objects are converted to
-scalar attributes where possible, so fields like `shiny_session` are not
-preserved verbatim as a nested payload. Instead, shinyOAuth emits derived
-scalar attributes such as `shiny.session_token_digest`,
-`shiny.session.is_async`, `shiny.session.main_process_id`,
-`shiny.session.process_id`, and, when request metadata is included,
-`http.request.method` plus `server.address`.
+
 The package's own audit correlation id is exported as the scalar attribute
-`shinyoauth.trace_id`; it is distinct from OpenTelemetry's trace/span ids.
+`shinyoauth.trace_id`. This is different from OpenTelemetry's trace/span ids.
 When a shinyOAuth operation-level correlation id is available, spans also carry
 the same `shinyoauth.trace_id` attribute for cross-redirect correlation.
 
-Because those request attributes are derived from the same captured
-`shiny_session$http` object used by audit events, setting
-`options(shinyOAuth.audit_include_http = FALSE)` removes them from OTel logs as
-well. By contrast, `options(shinyOAuth.audit_redact_http = FALSE)` only affects
-the raw nested HTTP summary on audit-hook events; it does not change the shape
-of the flattened OTel attributes.
-
-When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set, shinyOAuth
-stops creating OTel log records but the native R hooks still fire.
+When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set, 'shinyOAuth' stops
+emitting all OTel logs.
 
 ## Traces
 
@@ -71,41 +58,11 @@ All spans share these behaviors:
 - Top-level shinyOAuth operation spans are started with explicit root parenting
   where appropriate so they are not hidden under Shiny's internal
   `reactive_update` spans
-- When a callback can be matched back to the originating login request,
-  `shinyOAuth.callback` is parented to that original `shinyOAuth.login.request`
-  span even when the redirect returns in a different Shiny session; otherwise it
-  falls back to a root span
-- HTTP client spans record both `http.response.status_code` and
-  `http.response.content_type` on the `*.http` span itself once a response is
-  available; non-success HTTP responses mark that client span as `error`
 - Sensitive values (tokens, codes, state payloads, browser tokens) are never
   attached as span attributes
 
-When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set, 'shinyOAuth' stops
-emitting all OTel spans.
-
-For shinyOAuth-managed async work, the package captures the parent session's
-relevant `OTEL_*` / `OTEL_R_*` environment variables and reapplies them inside
-the async execution context before running OAuth logic. This keeps exporter
-selection and OTLP endpoints aligned across the main R process and async
-evaluation backends such as mirai workers and future-based execution. For
-long-lived workers that are reused across tasks this is best effort, because
-reconfiguring exporter/provider state depends on the installed `otel` package's
-cache reset hook. The robust path is still to set the desired `OTEL_*`
-configuration before dispatching the async work that should use it.
-
-shinyOAuth also propagates the effective
-`shinyOAuth.otel_tracing_enabled` / `shinyOAuth.otel_logging_enabled` option
-gates into async workers so they do not keep stale telemetry-disabled option
-state from an earlier task. When reused workers need an OTel cache reset and
-the installed `otel` stack cannot provide or run that reset cleanly,
-shinyOAuth emits a warning that exporter changes may not take effect until the
-workers are recreated.
-
-For async `refresh_token()`, `revoke_token()`, and `introspect_token()` calls,
-expect a four-span chain rather than just a parent span and a worker span:
-main-process operation span -> `*.worker` bridge span -> worker-side operation
-span with the same base name -> `*.http` client span.
+When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set, 
+'shinyOAuth' stops emitting all OTel spans.
 
 ### Span catalog
 
