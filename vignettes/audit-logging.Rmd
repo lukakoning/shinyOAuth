@@ -35,12 +35,6 @@ options(shinyOAuth.audit_hook = function(event) {
 
 Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry logging.
 Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
-OpenTelemetry logs are derived from the same underlying events as
-`shinyOAuth.audit_hook`, but they are flattened into scalar attributes.
-Nested structures like the full `shiny_session` object and the raw `timestamp`
-field are not preserved verbatim in the OTel log payload; instead, shinyOAuth
-exports derived scalar session/request attributes such as async/process ids,
-the digested Shiny session token, and selected HTTP request metadata.
 
 ## Event structure
 
@@ -172,7 +166,7 @@ To disable keying (legacy deterministic SHA-256 digests):
 options(shinyOAuth.audit_digest_key = FALSE)
 ```
 
-Note: unkeyed digests are pseudonymous, not anonymized—low-entropy identifiers (like
+Note: unkeyed digests are pseudonymous, so not anonymized—low-entropy identifiers (like
 email addresses) can be dictionary-attacked.
 
 ## Event catalog
