@@ -921,9 +921,28 @@ refresh_token <- function(
         )
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {
+          userinfo_baseline_id_token <- if (
+            isTRUE(token_set[[".id_token_validated"]]) &&
+              is_valid_string(token_set$id_token)
+          ) {
+            token_set$id_token
+          } else {
+            token@id_token
+          }
+          userinfo_baseline_id_token_validated <- if (
+            isTRUE(token_set[[".id_token_validated"]]) &&
+              is_valid_string(token_set$id_token)
+          ) {
+            TRUE
+          } else {
+            isTRUE(token@id_token_validated)
+          }
+
           userinfo_token <- OAuthToken(
             access_token = token_set$access_token,
             token_type = effective_token_type,
+            id_token = userinfo_baseline_id_token %||% NA_character_,
+            id_token_validated = userinfo_baseline_id_token_validated,
             userinfo = list(),
             cnf = resolve_token_cnf(
               cnf = token_set$cnf,

@@ -1292,6 +1292,8 @@ handle_callback_internal <- function(
         userinfo_token <- OAuthToken(
           access_token = token_set[["access_token"]],
           token_type = effective_token_type,
+          id_token = token_set$id_token %||% NA_character_,
+          id_token_validated = isTRUE(token_set[[".id_token_validated"]]),
           userinfo = list(),
           cnf = resolve_token_cnf(
             cnf = token_set$cnf,

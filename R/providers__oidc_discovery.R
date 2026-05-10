@@ -168,6 +168,18 @@ oauth_provider_oidc_discover <- function(
 ) {
   issuer_match <- match.arg(issuer_match)
 
+  # If callers explicitly turn off ID
+  # token validation and do not explicitly opt back into nonce handling,
+  # discovery should not require JWKS just because use_nonce's formal default
+  # is TRUE
+  if (
+    missing(use_nonce) &&
+      !missing(id_token_validation) &&
+      isFALSE(id_token_validation)
+  ) {
+    use_nonce <- FALSE
+  }
+
   # 1) Validate issuer input
   .discover_assert_valid_issuer(issuer)
 
@@ -195,6 +207,11 @@ oauth_provider_oidc_discover <- function(
   allowed_hosts_vec <- .discover_allowed_hosts(iss_host)
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
+  # 6a) Read caller overrides before any JWKS-dependent policy checks so
+  # both presence requirements and host pinning see the same values.
+  dots <- list(...)
+  jwks_host_allow_only <- dots$jwks_host_allow_only %||% NULL
+
   # 6b) Any mode that verifies ID-token or UserInfo JWT signatures needs JWKS.
   .discover_require_jwks_uri(
     disc = disc,
@@ -203,11 +220,6 @@ oauth_provider_oidc_discover <- function(
     use_nonce = use_nonce,
     userinfo_signed_jwt_required = isTRUE(dots$userinfo_signed_jwt_required)
   )
-
-  # 7) Read caller overrides before early JWKS validation so explicit host
-  # pins in ... can affect the pre-check.
-  dots <- list(...)
-  jwks_host_allow_only <- dots$jwks_host_allow_only %||% NULL
 
   # 8) Enforce JWKS host pinning if enabled or explicitly configured.
   if (isTRUE(jwks_host_issuer_match) || is_valid_string(jwks_host_allow_only)) {
