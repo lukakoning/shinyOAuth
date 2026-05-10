@@ -2,6 +2,11 @@
 
 ## shinyOAuth (development version)
 
+- PAR requests now reuse the DPoP proof helper, so DPoP-enabled clients
+  send a `DPoP` header on pushed authorization requests and
+  automatically retry once when the authorization server responds with a
+  `DPoP-Nonce` challenge.
+
 - Added DPoP token (RFC 9449) support:
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now take a DPoP private key, token exchange/refresh requests can
@@ -16,6 +21,11 @@
   Providers can now configure `par_url` directly or pick it up from OIDC
   discovery, and login flows will push the authorization request and
   redirect with the returned `request_uri`.
+
+- `oauth_provider(extra_auth_params = list(max_age = ...))` now
+  validates `max_age` eagerly. Invalid values fail configuration instead
+  of silently disabling local `auth_time` enforcement during ID-token
+  validation.
 
 - Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
@@ -66,6 +76,15 @@
     `shinyOAuth.print_traceback` options. Internal console error logging
     now uses explicit internal flags instead of package-wide option
     fallbacks.
+
+- Duplicate-member detection for inbound JSON now applies to nested
+  objects too, not just top-level members. This hardens parsing of
+  nested security objects such as `cnf.jkt` and mTLS thumbprint
+  confirmations.
+
+- Token introspection now uses `provider@userinfo_id_selector`
+  consistently when it checks the authenticated subject against fetched
+  UserInfo data.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now:

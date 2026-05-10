@@ -72,20 +72,21 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>‘shinyOAuth’ includes OpenTelemetry (OTel) instrumentation emitting
-logs and traces from key OAuth 2.0/OIDC operations.</p>
+<p>‘shinyOAuth’ can emit OpenTelemetry (OTel) logs and traces for key
+login steps. If you already collect OTel data in your apps, this lets
+shinyOAuth fit into the same observability setup.</p>
 <p>The <code>otel</code> package is installed automatically with
 <code>shinyOAuth</code>. Install <code>otelsdk</code> as well if you
-want the R SDK helpers/exporters used in the examples below.</p>
+want to use the SDK helpers and exporters shown in the examples
+below.</p>
 <p>OpenTelemetry is an open standard for telemetry data (logs, traces,
-metrics) and can be collected by various backends. It can be used as an
-alternative to the package’s native R hooks for auditing and tracing
-(see
+metrics) that many backends can collect. If you do not use it, you can
+skip this vignette and rely on the package’s native R hooks for auditing
+and tracing instead (see
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>).</p>
 <p>Please refer to the ‘<a href="https://otelsdk.r-lib.org/reference/collecting.html" class="external-link">otelsdk</a>’
-package to learn more about configuring your OpenTelemetry setup and
-exporters in R. Once configured, ‘shinyOAuth’ will automatically emit
-OTel signals.</p>
+package to learn more about configuring exporters in R. Once that is set
+up, ‘shinyOAuth’ will automatically emit OTel signals.</p>
 <p>All signals are emitted under the instrumentation scope
 <code>io.github.lukakoning.shinyOAuth</code>. Use this identifier when
 configuring collector routing rules or filtering ‘shinyOAuth’ telemetry
@@ -106,8 +107,8 @@ there for full details about the various events and their content.</p>
 attribute <code>shinyoauth.trace_id</code>. This is different from
 OpenTelemetry’s trace/span ids. When a shinyOAuth operation-level
 correlation id is available, spans also carry the same
-<code>shinyoauth.trace_id</code> attribute for cross-redirect
-correlation.</p>
+<code>shinyoauth.trace_id</code> attribute so you can connect the pieces
+of one login flow more easily.</p>
 <p>When <code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> is
 set, ‘shinyOAuth’ stops emitting all OTel logs.</p>
 </div>
@@ -120,9 +121,9 @@ the OAuth flows. All spans share these behaviors:</p>
 <li>Successful operations are marked with status <code>ok</code>; errors
 are marked <code>error</code> and include an <code>exception</code>
 event with the error class and message</li>
-<li>Top-level shinyOAuth operation spans are started with explicit root
-parenting where appropriate so they are not hidden under Shiny’s
-internal <code>reactive_update</code> spans</li>
+<li>Top-level shinyOAuth operation spans are often started as roots so
+they stay visible instead of being buried under Shiny’s internal
+<code>reactive_update</code> spans</li>
 <li>Sensitive values (tokens, codes, state payloads, browser tokens) are
 never attached as span attributes</li>
 </ul>

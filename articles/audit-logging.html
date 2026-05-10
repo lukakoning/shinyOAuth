@@ -72,9 +72,10 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>‘shinyOAuth’ emits structured audit events at key steps in the OAuth
-2.0/OIDC flow. These may help detect anomalous activity (e.g., brute
-force, replay, or configuration errors).</p>
+<p>‘shinyOAuth’ emits structured audit events as the OAuth 2.0/OIDC flow
+runs. These events can help you understand what happened during login
+and spot problems such as repeated failures, replay attempts, or
+configuration issues.</p>
 <p>This vignette covers:</p>
 <ul>
 <li>How to register audit hooks to export/store events</li>
@@ -89,8 +90,8 @@ each event</li>
 <p>You can use
 <code>options(shinyOAuth.audit_hook = function(event) { ... })</code> to
 register a hook function that will be called whenever shinyOAuth emits a
-structured audit or error event. The function you register should be
-fast, non-blocking, and never throw errors.</p>
+structured audit or error event. Keep this function fast, non-blocking,
+and safe: it should not throw errors.</p>
 <p>Example of printing audit events to console:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
@@ -123,32 +124,31 @@ catalog)</li>
 <p>For the interactive login flow, shinyOAuth propagates the same
 <code>trace_id</code> from redirect preparation through callback
 validation, token exchange, and login success or failure handling. The
-trace id is embedded inside the encrypted state payload so it survives
-the browser round-trip without exposing raw OAuth values.</p>
+trace id is stored inside the sealed state so it survives the browser
+round-trip without exposing raw OAuth values.</p>
 <p>This <code>trace_id</code> is shinyOAuth’s own application-level
 correlation id. When OTel logging is enabled it is exported as the
-<code>shinyoauth.trace_id</code> log attribute, which is distinct from
-the backend’s native OpenTelemetry trace/span ids.</p>
+<code>shinyoauth.trace_id</code> log attribute. It is separate from any
+trace/span ids created by your OpenTelemetry backend.</p>
 <p>When events are emitted from within a Shiny session, a JSON-friendly
-<code>shiny_session</code> list is attached to every event to correlate
-audit activity with the HTTP request and session. The structure is
-designed to be directly serializable with
+<code>shiny_session</code> list is attached to every event so you can
+tie the audit record back to the app session and HTTP request. The
+structure is designed to serialize cleanly with
 <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>:</p>
 <ul>
 <li>
 <code>shiny_session$token</code>: the Shiny per-session token
 (<code>session$token</code>) when available.</li>
 <li>
-<code>shiny_session$is_async</code>: a logical indicating whether
-the event was emitted from the main R process (<code>FALSE</code>) or
-from an async worker (<code>TRUE</code>). This helps distinguish logs
-produced by background tasks (e.g., async token exchange or refresh)
-from those in the main reactive flow.</li>
-<li>If you pre-capture a worker-intended context with
+<code>shiny_session$is_async</code>: <code>FALSE</code> for events
+emitted from the main R process and <code>TRUE</code> for events emitted
+from an async worker. This helps distinguish background work such as
+async token exchange or refresh from the main reactive flow.</li>
+<li>If you pre-capture worker context with
 <code>capture_shiny_session_context(is_async = TRUE)</code> but emit the
-event before any worker dispatch actually happens, shinyOAuth normalizes
-that borrowed context back to <code>FALSE</code> because the event was
-still emitted on the main process.</li>
+event before any worker work actually starts, shinyOAuth resets that
+borrowed context back to <code>FALSE</code> because the event still came
+from the main process.</li>
 <li>
 <code>shiny_session$process_id</code>: the process ID (PID) of the R
 process that emitted the event.</li>
@@ -277,14 +277,14 @@ captured data from the worker in tests.</p>
 <p>Many audit events include digest fields such as
 <code>client_id_digest</code>, <code>state_digest</code>,
 <code>code_digest</code>, <code>browser_token_digest</code>, and
-<code>sub_digest</code>. These are intended to let you correlate events
-without emitting raw sensitive values.</p>
+<code>sub_digest</code>. These let you connect related events without
+logging the raw sensitive values themselves.</p>
 <p>By default, these digests use HMAC-SHA256 with an auto-generated
 per-process key. If you do not configure
 <code>options(shinyOAuth.audit_digest_key = ...)</code>, each R process
-gets its own random key at runtime. This reduces the risk of correlation
-or dictionary reidentification if logs leak, but it also means digests
-are not stable across unrelated processes by default.</p>
+gets its own random key at runtime. That makes accidental cross-process
+matching harder if logs leak, but it also means digests are not stable
+across unrelated processes by default.</p>
 <p>For shinyOAuth-managed async work, the package propagates the
 effective digest key into its workers so main-process and worker events
 from the same app instance remain comparable. If you need digests to
@@ -297,8 +297,9 @@ comparable across them, configure a shared key:</p>
 <p>To disable keying (legacy deterministic SHA-256 digests):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>Note: unkeyed digests are pseudonymous, so not anonymized—low-entropy
-identifiers (like email addresses) can be dictionary-attacked.</p>
+<p>Note: unkeyed digests are easier to compare across systems, but they
+are also easier to guess for low-entropy values such as email
+addresses.</p>
 </div>
 </div>
 <div class="section level2">
@@ -415,11 +416,10 @@ this event</li>
 <div class="section level3">
 <h3 id="callback-validation">Callback validation<a class="anchor" aria-label="anchor" href="#callback-validation"></a>
 </h3>
-<p>Callback validation spans decryption + freshness + binding of the
-encrypted payload as well as subsequent checks of values bound to the
-state (browser token, PKCE code verifier, nonce). Each check emits
-either a success (only once for the payload) or a failure audit
-event.</p>
+<p>Callback validation covers both the sealed-state checks and the later
+checks of the values tied to that state, such as the browser token, PKCE
+code verifier, and nonce. Each stage emits either a success event or a
+failure event.</p>
 <div class="section level4">
 <h4 id="event-audit_callback_validation_success">Event: <code>audit_callback_validation_success</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_validation_success"></a>
 </h4>
