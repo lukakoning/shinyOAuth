@@ -1368,13 +1368,7 @@ handle_callback_internal <- function(
           sub_val <- NA_character_
           sub_source <- NA_character_
           if (!is.null(token@userinfo) && length(token@userinfo)) {
-            sel <- oauth_client@provider@userinfo_id_selector
-            if (!is.null(sel) && is.function(sel)) {
-              sub_val <- try(sel(token@userinfo), silent = TRUE)
-              if (inherits(sub_val, "try-error")) sub_val <- NA_character_
-            } else {
-              sub_val <- token@userinfo$sub %||% NA_character_
-            }
+            sub_val <- resolve_userinfo_subject(oauth_client, token@userinfo)
             if (is_valid_string(sub_val)) sub_source <- "userinfo"
           }
           if (!is_valid_string(sub_val)) {
@@ -1421,6 +1415,58 @@ handle_callback_internal <- function(
       return(token)
     }
   )
+}
+
+#' Resolve the authenticated subject from a userinfo payload
+#'
+#' Uses the provider's `userinfo_id_selector` when configured, falling back to
+#' `userinfo$sub` only when no selector is configured. Used by login auditing
+#' and token-introspection subject checks.
+#'
+#' @param oauth_client [OAuthClient] carrying the provider selector.
+#' @param userinfo Userinfo payload list.
+#' @return Scalar character subject, or `NA_character_` when unavailable.
+#' @keywords internal
+#' @noRd
+resolve_userinfo_subject <- function(oauth_client, userinfo) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!is.list(userinfo) || length(userinfo) == 0L) {
+    return(NA_character_)
+  }
+
+  selector <- oauth_client@provider@userinfo_id_selector
+  if (is.function(selector)) {
+    subject <- try(selector(userinfo), silent = TRUE)
+    if (
+      inherits(subject, "try-error") ||
+        is.null(subject) ||
+        length(subject) != 1L
+    ) {
+      return(NA_character_)
+    }
+
+    if (!is.character(subject)) {
+      subject <- try(as.character(subject), silent = TRUE)
+      if (inherits(subject, "try-error") || length(subject) != 1L) {
+        return(NA_character_)
+      }
+    }
+
+    subject <- subject[[1]]
+    if (is_valid_string(subject)) {
+      return(subject)
+    }
+
+    return(NA_character_)
+  }
+
+  subject <- userinfo$sub %||% NA_character_
+  if (!is_valid_string(subject)) {
+    return(NA_character_)
+  }
+
+  as.character(subject)[[1]]
 }
 
 #' Enforce the client's token-introspection policy
@@ -1520,7 +1566,7 @@ enforce_token_introspection_policy <- function(
     if (!is_valid_string(expected_sub)) {
       ui <- token@userinfo %||% list()
       if (is.list(ui)) {
-        expected_sub <- ui$sub %||% NA_character_
+        expected_sub <- resolve_userinfo_subject(oauth_client, ui)
       }
     }
 

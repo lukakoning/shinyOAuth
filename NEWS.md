@@ -67,6 +67,9 @@ entries are scoped to the current `allowed_hosts` /
   not just top-level members. This hardens parsing of nested security objects
   such as `cnf.jkt` and mTLS thumbprint confirmations.
 
+* Token introspection now uses `provider@userinfo_id_selector` consistently
+  when it checks the authenticated subject against fetched UserInfo data.
+
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
   session is already authenticated.
