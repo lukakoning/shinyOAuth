@@ -321,6 +321,25 @@ test_that("client_bearer_req signs DPoP proof with method and target URI", {
   )
 })
 
+test_that("dpop_target_uri normalizes scheme and host case and strips default ports", {
+  expect_identical(
+    shinyOAuth:::dpop_target_uri(
+      "HTTPS://API.EXAMPLE.COM:443/path?from=url#frag"
+    ),
+    "https://api.example.com/path"
+  )
+
+  expect_identical(
+    shinyOAuth:::dpop_target_uri("http://API.EXAMPLE.COM:80/path?a=1"),
+    "http://api.example.com/path"
+  )
+
+  expect_identical(
+    shinyOAuth:::dpop_target_uri("https://API.EXAMPLE.COM:8443/path?a=1"),
+    "https://api.example.com:8443/path"
+  )
+})
+
 test_that("build_dpop_proof creates a signed proof with bound claims", {
   key <- openssl::rsa_keygen()
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)

@@ -338,7 +338,8 @@ dpop_public_jwk <- function(key) {
 #' Used when DPoP proof claims are assembled.
 #'
 #' @param url Request URL to normalize.
-#' @return Absolute URL string without query string or fragment.
+#' @return Absolute URL string without query string or fragment, normalized for
+#'   scheme/host case and default HTTP(S) ports.
 #' @keywords internal
 #' @noRd
 dpop_target_uri <- function(url) {
@@ -353,6 +354,17 @@ dpop_target_uri <- function(url) {
 
   parsed$query <- NULL
   parsed$fragment <- NULL
+  parsed$scheme <- tolower(parsed$scheme %||% "")
+  parsed$hostname <- tolower(parsed$hostname %||% "")
+
+  port <- as.character(parsed$port %||% "")
+  if (identical(parsed$scheme, "https") && identical(port, "443")) {
+    parsed$port <- NULL
+  }
+  if (identical(parsed$scheme, "http") && identical(port, "80")) {
+    parsed$port <- NULL
+  }
+
   httr2::url_build(parsed)
 }
 
