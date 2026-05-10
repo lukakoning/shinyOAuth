@@ -795,24 +795,12 @@ bringing your app to production:</p>
 <ul>
 <li>Use HTTPS everywhere in production</li>
 <li>Verify issuer used in your provider is correct</li>
-<li>If one app can interact with multiple authorization servers, either
-give each issuer a distinct <code>redirect_uri</code> or set
-<code>enforce_callback_issuer = TRUE</code> for issuer-configured
-clients so callbacks without RFC 9207 <code>iss</code> are rejected
-before token exchange</li>
-<li>In your <code>OAuthProvider</code>, set as many of the security
-options as possible; for instance, keep
-<code>jwks_host_issuer_match = TRUE</code> and, if your provider serves
-JWKS from a different host, set <code>jwks_host_allow_only</code> to
-that exact host instead of broadening the trust boundary</li>
+<li>In your <code>OAuthClient</code> and <code>OAuthProvider</code>, set
+as many of the security options as your provider supports</li>
 <li>Have your <code>OAuthClient</code> request the minimum scopes
 necessary; give your app registration only the permissions it needs</li>
 <li>Do not show <code>$error_description</code> to your users; never
 expose tokens in UI or logs</li>
-<li>Treat <code>$error_uri</code> as untrusted navigation input.
-<code>shinyOAuth</code> only surfaces absolute HTTPS values here; if you
-render it as a link or pass it to <code><a href="https://rdrr.io/r/utils/browseURL.html" class="external-link">browseURL()</a></code>, keep it
-optional and consider your own allowlist.</li>
 <li>Keep secrets safe in environment variables (e.g.,
 <code>OAUTH_CLIENT_ID</code>, <code>OAUTH_CLIENT_SECRET</code>)</li>
 <li>Sanitize user inputs before rendering them in the UI (e.g., using
@@ -820,22 +808,6 @@ optional and consider your own allowlist.</li>
 <li>Make use of audit logging (see
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>) and
 monitor these logs</li>
-<li>Consider enabling automatic revocation on session end
-(<code>revoke_on_session_end = TRUE</code>) for providers that expose a
-revocation endpoint</li>
-<li>If your provider can return UserInfo as a signed JWT
-(<code>Content-Type: application/jwt</code>), set
-<code>userinfo_signed_jwt_required = TRUE</code> in your
-<code>OAuthProvider</code> to prevent downgrade to plain JSON. Without
-this flag, shinyOAuth verifies any JWT it receives, but a misconfigured
-provider or man-in-the-middle could return unsigned JSON claims instead,
-bypassing signature verification. If your provider can also emit
-encrypted UserInfo JWTs (JWE), configure it to return signed-only JWS
-instead; shinyOAuth does not decrypt JWE userinfo responses. Signature
-verification on this surface is limited to asymmetric algorithms from
-<code>allowed_algs</code>; <code>HS256</code>, <code>HS384</code>, and
-<code>HS512</code> are rejected for UserInfo JWTs even if you allow HS*
-for ID tokens.</li>
 <li>Use a provider which enforces strong authentication (e.g.,
 multi-factor authentication)</li>
 <li>Set Content Security Policy (CSP) headers to restrict resource

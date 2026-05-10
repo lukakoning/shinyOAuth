@@ -639,23 +639,12 @@ your app to production:
 
 - Use HTTPS everywhere in production
 - Verify issuer used in your provider is correct
-- If one app can interact with multiple authorization servers, either
-  give each issuer a distinct `redirect_uri` or set
-  `enforce_callback_issuer = TRUE` for issuer-configured clients so
-  callbacks without RFC 9207 `iss` are rejected before token exchange
-- In your `OAuthProvider`, set as many of the security options as
-  possible; for instance, keep `jwks_host_issuer_match = TRUE` and, if
-  your provider serves JWKS from a different host, set
-  `jwks_host_allow_only` to that exact host instead of broadening the
-  trust boundary
+- In your `OAuthClient` and `OAuthProvider`, set as many of the security
+  options as your provider supports
 - Have your `OAuthClient` request the minimum scopes necessary; give
   your app registration only the permissions it needs
 - Do not show `$error_description` to your users; never expose tokens in
   UI or logs
-- Treat `$error_uri` as untrusted navigation input. `shinyOAuth` only
-  surfaces absolute HTTPS values here; if you render it as a link or
-  pass it to [`browseURL()`](https://rdrr.io/r/utils/browseURL.html),
-  keep it optional and consider your own allowlist.
 - Keep secrets safe in environment variables (e.g., `OAUTH_CLIENT_ID`,
   `OAUTH_CLIENT_SECRET`)
 - Sanitize user inputs before rendering them in the UI (e.g., using
@@ -663,21 +652,6 @@ your app to production:
 - Make use of audit logging (see
   [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md))
   and monitor these logs
-- Consider enabling automatic revocation on session end
-  (`revoke_on_session_end = TRUE`) for providers that expose a
-  revocation endpoint
-- If your provider can return UserInfo as a signed JWT
-  (`Content-Type: application/jwt`), set
-  `userinfo_signed_jwt_required = TRUE` in your `OAuthProvider` to
-  prevent downgrade to plain JSON. Without this flag, shinyOAuth
-  verifies any JWT it receives, but a misconfigured provider or
-  man-in-the-middle could return unsigned JSON claims instead, bypassing
-  signature verification. If your provider can also emit encrypted
-  UserInfo JWTs (JWE), configure it to return signed-only JWS instead;
-  shinyOAuth does not decrypt JWE userinfo responses. Signature
-  verification on this surface is limited to asymmetric algorithms from
-  `allowed_algs`; `HS256`, `HS384`, and `HS512` are rejected for
-  UserInfo JWTs even if you allow HS\* for ID tokens.
 - Use a provider which enforces strong authentication (e.g.,
   multi-factor authentication)
 - Set Content Security Policy (CSP) headers to restrict resource loading
