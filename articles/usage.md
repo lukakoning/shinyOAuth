@@ -436,12 +436,7 @@ options:
 
 - `options(shinyOAuth.default_expires_in = 3600)` – fallback token
   lifetime (in seconds) when the provider omits `expires_in` from the
-  token response. Without this option the lifetime now defaults to
-  `3600` seconds. Set this explicitly in production if your provider
-  documents a different access-token lifetime, and use
-  `oauth_module_server(reauth_after_seconds = ...)` if you need a
-  stricter session cap than token expiry alone. A warning is emitted in
-  either case
+  token response
 
 ### HTTP settings (timeout, retries, user agent)
 
@@ -489,23 +484,6 @@ options:
   a one-time warning and allows the fallback to proceed. Not recommended
   for production without additional replay protection.
 
-### Development/debugging
-
-- `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie
-  binding in tests or interactive sessions
-- `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature
-  verification in tests or interactive sessions
-- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept
-  unsigned (`alg=none`) UserInfo JWTs in tests or interactive sessions;
-  outside those contexts shinyOAuth errors instead of honoring it
-- `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
-  exchange
-- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
-  HTTP bodies (may reveal details)
-
-Don’t enable these in production. They disable key security checks or
-alter error behavior, and are intended for local testing/debugging only.
-
 ### Size caps
 
 #### State envelope
@@ -544,6 +522,24 @@ CPU or memory usage during decoding and decryption.
 
 These apply before any hashing/auditing/state parsing, and exist to
 prevent memory/log amplification from extremely large callback URLs.
+
+### Development/debugging
+
+- `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie
+  binding in tests or interactive sessions
+- `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature
+  verification in tests or interactive sessions
+- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept
+  unsigned (`alg=none`) UserInfo JWTs in tests or interactive sessions;
+  outside those contexts shinyOAuth errors instead of honoring it
+- `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
+  exchange
+- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
+  HTTP bodies (may reveal details)
+
+Don’t enable these options in production. They disable key security
+checks or alter error behavior, and are intended for local
+testing/debugging only.
 
 ## Browser cookie & preventing XSS
 

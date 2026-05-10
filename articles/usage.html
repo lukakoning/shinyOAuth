@@ -544,13 +544,7 @@ Useful if worker diagnostics are too noisy or handled separately via
 <li>
 <code>options(shinyOAuth.default_expires_in = 3600)</code> –
 fallback token lifetime (in seconds) when the provider omits
-<code>expires_in</code> from the token response. Without this option the
-lifetime now defaults to <code>3600</code> seconds. Set this explicitly
-in production if your provider documents a different access-token
-lifetime, and use
-<code>oauth_module_server(reauth_after_seconds = ...)</code> if you need
-a stricter session cap than token expiry alone. A warning is emitted in
-either case</li>
+<code>expires_in</code> from the token response</li>
 </ul>
 </div>
 <div class="section level3">
@@ -613,32 +607,6 @@ window). Setting this option to <code>TRUE</code> downgrades the error
 to a one-time warning and allows the fallback to proceed. Not
 recommended for production without additional replay protection.</li>
 </ul>
-</div>
-<div class="section level3">
-<h3 id="developmentdebugging">Development/debugging<a class="anchor" aria-label="anchor" href="#developmentdebugging"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
-browser cookie binding in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
-signature verification in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
-– accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
-interactive sessions; outside those contexts shinyOAuth errors instead
-of honoring it</li>
-<li>
-<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
-during token exchange</li>
-<li>
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies (may reveal details)</li>
-</ul>
-<p>Don’t enable these in production. They disable key security checks or
-alter error behavior, and are intended for local testing/debugging
-only.</p>
 </div>
 <div class="section level3">
 <h3 id="size-caps">Size caps<a class="anchor" aria-label="anchor" href="#size-caps"></a>
@@ -705,6 +673,32 @@ accepted by <code><a href="../reference/handle_callback.html">handle_callback()<
 <p>These apply before any hashing/auditing/state parsing, and exist to
 prevent memory/log amplification from extremely large callback URLs.</p>
 </div>
+</div>
+<div class="section level3">
+<h3 id="developmentdebugging">Development/debugging<a class="anchor" aria-label="anchor" href="#developmentdebugging"></a>
+</h3>
+<ul>
+<li>
+<code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
+browser cookie binding in tests or interactive sessions</li>
+<li>
+<code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
+signature verification in tests or interactive sessions</li>
+<li>
+<code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
+– accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
+interactive sessions; outside those contexts shinyOAuth errors instead
+of honoring it</li>
+<li>
+<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
+during token exchange</li>
+<li>
+<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
+sanitized HTTP bodies (may reveal details)</li>
+</ul>
+<p>Don’t enable these options in production. They disable key security
+checks or alter error behavior, and are intended for local
+testing/debugging only.</p>
 </div>
 </div>
 <div class="section level2">
