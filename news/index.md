@@ -93,8 +93,8 @@
     URLs, so unsafe schemes like `javascript:` are no longer surfaced
     through `values$error_uri`.
   - Fails closed on malformed token introspection JSON. Non-object
-    responses and non-scalar `active` values are now rejected instead of
-    being normalized from the first parsed element.
+    responses are now rejected instead of being normalized from the
+    first parsed element.
 
 - `OAuthToken` and `OAuthClient` now print with redacted
   token/secret/key previews instead of exposing full credential material
