@@ -1,13 +1,5 @@
 # shinyOAuth (development version)
 
-* Security: direct `get_userinfo()` calls now enforce UserInfo subject binding
-against a validated ID token baseline when one is available, and fail closed
-when provider policy requires that baseline.
-
-* Security: mTLS clients configured for certificate-bound access tokens now
-reject access tokens that omit `cnf.x5t#S256`, instead of silently accepting an
-unbound bearer token.
-
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
