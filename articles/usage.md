@@ -157,8 +157,10 @@ Once authenticated, you may want to call an API on behalf of the user
 using the access token. Use
 [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
 to quickly build an authorized ‘httr2’ request with the correct
-authorization scheme for the current token type. See the example app
-below; it calls the GitHub API to obtain the user’s repositories.
+authorization scheme for the current token type.
+
+See the example app below, which calls the GitHub API to obtain the
+user’s repositories.
 
 ``` r
 library(shiny)
@@ -322,34 +324,6 @@ observeEvent(input$logout_btn, {
   auth$logout()
 })
 ```
-
-Revocation uses RFC 7009 and runs asynchronously when
-`oauth_module_server(async = TRUE)`. See
-[`?revoke_token`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
-for programmatic use outside the module.
-
-### Automatic revocation on session end
-
-To revoke tokens when the Shiny session ends (e.g., browser tab closed,
-timeout), set `revoke_on_session_end = TRUE`.
-
-This requires the provider to have a configured `revocation_url`.
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-validates that at startup and errors otherwise. The built-in GitHub
-provider used earlier in this vignette does not expose a revocation
-endpoint, so this setting only applies to providers that do:
-
-``` r
-auth <- oauth_module_server(
-  "auth",
-  client = client,
-  revoke_on_session_end = TRUE
-)
-```
-
-Note: this is a best-effort operation; network failures or provider
-unavailability may prevent revocation. Combine with appropriate token
-lifetimes on the provider side for defense in depth.
 
 ## Global options
 
