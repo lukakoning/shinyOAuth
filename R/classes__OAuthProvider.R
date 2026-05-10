@@ -924,6 +924,11 @@ oauth_provider_validate <- function(self) {
     return(response_mode_info$error)
   }
 
+  max_age_info <- inspect_auth_max_age(self@extra_auth_params)
+  if (!is.null(max_age_info$error)) {
+    return(max_age_info$error)
+  }
+
   default_reserved_auth_keys <- c(
     "response_type",
     "client_id",

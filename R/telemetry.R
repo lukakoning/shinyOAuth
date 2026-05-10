@@ -470,22 +470,7 @@ otel_requested_max_age <- function(provider) {
     return(NULL)
   }
 
-  max_age <- provider@extra_auth_params[["max_age"]] %||% NULL
-  if (is.null(max_age)) {
-    return(NULL)
-  }
-
-  max_age <- suppressWarnings(as.numeric(max_age[[1]]))
-  if (
-    length(max_age) != 1L ||
-      is.na(max_age) ||
-      !is.finite(max_age) ||
-      max_age < 0
-  ) {
-    return(NULL)
-  }
-
-  as.numeric(max_age)
+  inspect_auth_max_age(provider@extra_auth_params)$value
 }
 
 #' Read the client auth style for telemetry

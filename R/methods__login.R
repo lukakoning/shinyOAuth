@@ -2116,17 +2116,9 @@ verify_token_set <- function(
         # pass it to validate_id_token() so auth_time is enforced.
         requested_max_age <- NULL
         if (!isTRUE(is_refresh)) {
-          ma <- client@provider@extra_auth_params[["max_age"]]
-          if (!is.null(ma)) {
-            requested_max_age <- suppressWarnings(as.numeric(ma))
-            if (
-              is.na(requested_max_age) ||
-                !is.finite(requested_max_age) ||
-                requested_max_age < 0
-            ) {
-              requested_max_age <- NULL
-            }
-          }
+          requested_max_age <- inspect_auth_max_age(
+            client@provider@extra_auth_params
+          )$value
         }
         id_token_validation_result <- validate_id_token(
           client,

@@ -144,6 +144,64 @@ inspect_auth_response_mode <- function(extra_auth_params) {
   out
 }
 
+#' Inspect the configured OIDC max_age authorization parameter
+#'
+#' Used by provider validation, login-time ID token checks, and telemetry.
+#'
+#' @param extra_auth_params Provider `extra_auth_params` list.
+#' @return A list containing the matched index, normalized numeric value, and
+#'   optional error text.
+#' @keywords internal
+#' @noRd
+inspect_auth_max_age <- function(extra_auth_params) {
+  out <- list(index = integer(0), value = NULL, error = NULL)
+
+  if (!is.list(extra_auth_params) || length(extra_auth_params) == 0) {
+    return(out)
+  }
+
+  nms <- names(extra_auth_params)
+  if (is.null(nms)) {
+    return(out)
+  }
+
+  idx <- which(tolower(trimws(nms)) == "max_age")
+  if (!length(idx)) {
+    return(out)
+  }
+  if (length(idx) > 1L) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$max_age must be supplied at most once"
+    )
+    return(out)
+  }
+
+  out$index <- idx[[1]]
+  raw_max_age <- extra_auth_params[[out$index]]
+  if (length(raw_max_age) != 1L) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$max_age must be a single non-negative number of seconds"
+    )
+    return(out)
+  }
+
+  max_age <- suppressWarnings(as.numeric(raw_max_age[[1]]))
+  if (
+    length(max_age) != 1L ||
+      is.na(max_age) ||
+      !is.finite(max_age) ||
+      max_age < 0
+  ) {
+    out$error <- paste0(
+      "OAuthProvider: extra_auth_params$max_age must be a single non-negative number of seconds"
+    )
+    return(out)
+  }
+
+  out$value <- as.numeric(max_age)
+  out
+}
+
 ## 1.2 Claims request parsing and enforcement ----------------------------------
 
 #' Normalize a claims specification

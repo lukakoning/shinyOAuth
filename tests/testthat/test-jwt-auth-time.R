@@ -42,6 +42,31 @@ mk_client <- function(extra_auth_params = list()) {
 }
 
 
+test_that("oauth_provider validates extra_auth_params$max_age early", {
+  bad_values <- list(
+    "abc",
+    -1,
+    c("10", "20")
+  )
+
+  for (bad_value in bad_values) {
+    expect_error(
+      shinyOAuth::oauth_provider(
+        name = "test",
+        auth_url = "https://example.com/auth",
+        token_url = "https://example.com/token",
+        issuer = "https://issuer.example.com",
+        id_token_validation = TRUE,
+        id_token_required = TRUE,
+        allowed_algs = c("RS256", "ES256"),
+        extra_auth_params = list(max_age = bad_value)
+      ),
+      regexp = "extra_auth_params\\$max_age"
+    )
+  }
+})
+
+
 # --- validate_id_token: auth_time required when max_age is passed ---
 
 test_that("validate_id_token requires auth_time when max_age is passed", {
