@@ -45,17 +45,21 @@
 #'   should use `authorization_request_mode = "request"`.
 #' @param request_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
-#'   `request` parameter. `NA` means the provider did not say.
+#'   `request` parameter. `NA` means the provider did not say. Discovery-derived
+#'   providers apply the OpenID Connect default (`FALSE`) when this metadata is
+#'   omitted.
 #' @param request_uri_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
 #'   `request_uri` parameter for caller-managed request URIs. `NA` means the
-#'   provider did not say. PAR-issued `request_uri` handles remain valid even
-#'   when this metadata is `FALSE`.
+#'   provider did not say. Discovery-derived providers apply the OpenID Connect
+#'   default (`TRUE`) when this metadata is omitted. PAR-issued `request_uri`
+#'   handles remain valid even when this metadata is `FALSE`.
 #' @param require_request_uri_registration Logical or `NA`. Whether discovery
 #'   metadata says caller-managed `request_uri` values must be pre-registered.
-#'   `NA` means the provider did not say. shinyOAuth does not currently send
-#'   caller-managed `request_uri` values, but it keeps this metadata for early
-#'   validation and inspection.
+#'   `NA` means the provider did not say. Discovery-derived providers apply the
+#'   OpenID Connect default (`FALSE`) when this metadata is omitted.
+#'   shinyOAuth does not currently send caller-managed `request_uri` values,
+#'   but it keeps this metadata for early validation and inspection.
 #' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
 #'   JWS algorithms that the provider advertises for JWT-based client
 #'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token

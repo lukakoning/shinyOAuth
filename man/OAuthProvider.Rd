@@ -83,18 +83,23 @@ should use \code{authorization_request_mode = "request"}.}
 
 \item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request
-\code{request} parameter. \code{NA} means the provider did not say.}
+\code{request} parameter. \code{NA} means the provider did not say. Discovery-derived
+providers apply the OpenID Connect default (\code{FALSE}) when this metadata is
+omitted.}
 
 \item{request_uri_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request
 \code{request_uri} parameter for caller-managed request URIs. \code{NA} means the
-provider did not say. PAR-issued \code{request_uri} handles remain valid even when this metadata is \code{FALSE}.}
+provider did not say. Discovery-derived providers apply the OpenID Connect
+default (\code{TRUE}) when this metadata is omitted. PAR-issued \code{request_uri}
+handles remain valid even when this metadata is \code{FALSE}.}
 
 \item{require_request_uri_registration}{Logical or \code{NA}. Whether discovery
 metadata says caller-managed \code{request_uri} values must be pre-registered.
-\code{NA} means the provider did not say. shinyOAuth does not currently send
-caller-managed \code{request_uri} values, but it keeps this metadata for early
-validation and inspection.}
+\code{NA} means the provider did not say. Discovery-derived providers apply the
+OpenID Connect default (\code{FALSE}) when this metadata is omitted.
+shinyOAuth does not currently send caller-managed \code{request_uri} values,
+but it keeps this metadata for early validation and inspection.}
 
 \item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
 JWS algorithms that the provider advertises for JWT-based client

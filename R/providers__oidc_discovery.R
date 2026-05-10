@@ -59,7 +59,8 @@
 #'   `request_uri` values. When PAR is configured, shinyOAuth sends signed
 #'   Request Objects to the PAR endpoint and the browser redirect only carries
 #'   the PAR-issued `request_uri` handle, regardless of
-#'   `request_uri_parameter_supported`.
+#'   `request_uri_parameter_supported`. When discovery omits these booleans,
+#'   this helper applies the OpenID Connect defaults instead of storing `NA`.
 #'
 #' - Token endpoint JWT auth metadata: when the discovery document advertises
 #'   `token_endpoint_auth_signing_alg_values_supported`, the resulting provider
@@ -272,15 +273,18 @@ oauth_provider_oidc_discover <- function(
   )
   request_parameter_supported <- .discover_parse_nullable_boolean(
     disc,
-    "request_parameter_supported"
+    "request_parameter_supported",
+    default = FALSE
   )
   request_uri_parameter_supported <- .discover_parse_nullable_boolean(
     disc,
-    "request_uri_parameter_supported"
+    "request_uri_parameter_supported",
+    default = TRUE
   )
   require_request_uri_registration <- .discover_parse_nullable_boolean(
     disc,
-    "require_request_uri_registration"
+    "require_request_uri_registration",
+    default = FALSE
   )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
@@ -1038,20 +1042,25 @@ oauth_provider_oidc_discover <- function(
   value
 }
 
-#' Parse nullable discovery boolean metadata
+#' Parse discovery boolean metadata with an explicit default
 #'
-#' Used by [oauth_provider_oidc_discover()] for optional booleans where the
-#' distinction between explicit `FALSE` and omitted metadata matters.
+#' Used by [oauth_provider_oidc_discover()] for optional booleans whose
+#' omission has a defined OpenID Connect default.
 #'
 #' @param disc Parsed discovery document.
 #' @param field Field name to read.
-#' @return `TRUE`, `FALSE`, or `NA` when the metadata was omitted.
+#' @param default Logical scalar returned when the metadata is omitted.
+#' @return `TRUE` or `FALSE`.
 #' @keywords internal
 #' @noRd
-.discover_parse_nullable_boolean <- function(disc, field) {
+.discover_parse_nullable_boolean <- function(disc, field, default) {
+  if (!is.logical(default) || length(default) != 1L || is.na(default)) {
+    err_input("default must be a single non-NA logical")
+  }
+
   value <- disc[[field]]
   if (is.null(value)) {
-    return(NA)
+    return(default)
   }
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
     err_parse(sprintf("Discovery %s must be a JSON boolean", field))

@@ -124,7 +124,8 @@ the front-channel \code{request} transport used by JAR or caller-managed
 \code{request_uri} values. When PAR is configured, shinyOAuth sends signed
 Request Objects to the PAR endpoint and the browser redirect only carries
 the PAR-issued \code{request_uri} handle, regardless of
-\code{request_uri_parameter_supported}.
+\code{request_uri_parameter_supported}. When discovery omits these booleans,
+this helper applies the OpenID Connect defaults instead of storing \code{NA}.
 \item Token endpoint JWT auth metadata: when the discovery document advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client
