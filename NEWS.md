@@ -1,9 +1,5 @@
 # shinyOAuth (development version)
 
-- PAR requests now reuse the DPoP proof helper, so DPoP-enabled clients send a
-  `DPoP` header on pushed authorization requests and automatically retry once
-  when the authorization server responds with a `DPoP-Nonce` challenge.
-
 * Added DPoP token (RFC 9449) support: `oauth_client()` can
 now take a DPoP private key, token exchange/refresh requests can attach DPoP
 proofs with nonce retry, and downstream helpers now preserve and use
@@ -16,10 +12,6 @@ authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
-
-* `oauth_provider(extra_auth_params = list(max_age = ...))` now validates
-  `max_age` eagerly. Invalid values fail configuration instead of silently
-  disabling local `auth_time` enforcement during ID-token validation.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed Request Objects via
@@ -62,13 +54,6 @@ entries are scoped to the current `allowed_hosts` /
   - Removed the documented global `shinyOAuth.print_errors` /
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
-
-* Duplicate-member detection for inbound JSON now applies to nested objects too,
-  not just top-level members. This hardens parsing of nested security objects
-  such as `cnf.jkt` and mTLS thumbprint confirmations.
-
-* Token introspection now uses `provider@userinfo_id_selector` consistently
-  when it checks the authenticated subject against fetched UserInfo data.
 
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
@@ -188,6 +173,9 @@ issuer.
 * `validate_id_token()` now properly rejects `auth_time` claims set in the
 future (beyond leeway). Previously, a future `auth_time` produced a negative 
 elapsed value that always passed the `max_age` freshness check.
+
+* `introspect_token()` now uses `provider@userinfo_id_selector` consistently
+when it checks the authenticated subject against fetched UserInfo data.
 
 * `refresh_token()` now refuses to update userinfo unless it can verify the 
 refreshed identity against a new or preserved ID token subject, preventing
