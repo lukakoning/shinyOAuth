@@ -1,7 +1,7 @@
 # Get user info from OAuth 2.0 provider
 
 Fetches user information from the provider's userinfo endpoint using the
-provided access token. Emits an audit event with redacted details.
+supplied access token. Emits an audit event with redacted details.
 
 ## Usage
 
@@ -37,7 +37,7 @@ get_userinfo(oauth_client, token, token_type = NULL, shiny_session = NULL)
 
 ## Value
 
-A list containing the user information as returned by the provider.
+A list containing the user information returned by the provider.
 
 ## Examples
 

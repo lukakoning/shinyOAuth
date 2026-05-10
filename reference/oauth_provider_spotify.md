@@ -1,7 +1,7 @@
 # Create a Spotify [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Pre-configured OAuth 2.0 provider for Spotify. Uses /v1/me as
-"userinfo". No ID token (not OIDC).
+Ready-to-use OAuth 2.0 provider settings for Spotify. It uses `/v1/me`
+as the user profile endpoint and does not expect ID tokens.
 
 ## Usage
 

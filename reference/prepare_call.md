@@ -1,10 +1,9 @@
 # Prepare a OAuth 2.0 authorization call and build an authorization URL
 
-This function prepares an OAuth 2.0 authorization call by generating
-necessary state, PKCE, and nonce values, storing them securely, and
-constructing the authorization URL to redirect the user to. The state
-and accompanying values are stored in the client's state store for later
-verification during the callback phase of the OAuth 2.0 flow.
+Prepares an OAuth 2.0 authorization request and returns the browser
+redirect URL. It generates the needed state, PKCE, and nonce values,
+stores the one-time callback data, and builds the final authorization
+URL.
 
 ## Usage
 
@@ -18,18 +17,16 @@ prepare_call(oauth_client, browser_token)
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  object representing the OAuth client configuration.
+  object.
 
 - browser_token:
 
-  A string token (e.g., from a browser cookie) to identify the
-  user/session.
+  Browser-bound token used to tie the login attempt to the current
+  browser session.
 
 ## Value
 
-A string containing the constructed authorization URL. This URL should
-be used to redirect the user to the OAuth provider's authorization
-endpoint.
+A length-1 string containing the authorization URL to send the user to.
 
 ## Examples
 

@@ -1,6 +1,8 @@
 # Create generic [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 
-Used by app setup code to build a validated client configuration before
+Main helper for creating a validated
+[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+configuration before
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 starts login or callback handling.
 
@@ -142,11 +144,10 @@ oauth_client(
     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
     are always encoded as arrays.
 
-  - A character string: pre-encoded JSON string (for advanced use). Must
-    be valid JSON. Use this when you need full control over JSON
-    encoding. Note: The `claims` parameter is OPTIONAL per OIDC Core
-    §5.5. Not all providers support it; consult your provider's
-    documentation.
+  - A character string: pre-encoded JSON string (advanced use). Must be
+    valid JSON. Use this when you need full control over JSON encoding.
+    Note: The `claims` parameter is OPTIONAL per OIDC Core §5.5. Not all
+    providers support it; consult your provider's documentation.
 
 - state_store:
 
@@ -158,34 +159,28 @@ oauth_client(
   `$get(key, missing)`, `$set(key, value)`, and `$remove(key)`;
   `$info()` is optional.
 
-  Trade-offs: `cache_mem` is in-memory and thus scoped to a single R
-  process (good default for a single Shiny process). For multi-process
+  [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
+  is a good default for a single Shiny process. For multi-process
   deployments, use
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-  with an atomic `$take()` backed by a shared store (e.g., Redis
-  `GETDEL`, SQL `DELETE ... RETURNING`). Plain
+  with an atomic `$take()` backed by a shared store (for example Redis
+  `GETDEL` or SQL `DELETE ... RETURNING`). Plain
   [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
   is **not safe** as a shared state store because its `$get()` +
-  `$remove()` operations are not atomic; use it only if wrapped in a
-  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-  that provides `$take()`. See also
-  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+  `$remove()` operations are not atomic.
 
   The client automatically generates, persists (in `state_store`), and
   validates the OAuth `state` parameter (and OIDC `nonce` when
-  applicable) during the authorization code flow
+  applicable) during the authorization code flow.
 
 - state_payload_max_age:
 
   Positive number of seconds. Maximum allowed age for the decrypted
   state payload's `issued_at` timestamp during callback validation.
 
-  This value is an independent freshness backstop against replay attacks
-  on the encrypted `state` payload. It is intentionally decoupled from
-  `state_store` TTL (which controls how long the single-use state entry
-  can exist in the server-side cache, and also drives browser cookie
-  max-age in
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)).
+  This is the freshness window for the sealed `state` payload itself. It
+  is separate from the `state_store` TTL, which controls how long the
+  one-time server-side state entry can exist.
 
   Default is 300 seconds.
 
@@ -195,8 +190,7 @@ oauth_client(
   parameter. Higher values provide more entropy and better security
   against CSRF attacks. Must be between 22 and 128 (to align with
   `validate_state()`'s default minimum which targets ~128 bits for
-  base64url‑like strings). Default is 64, which provides approximately
-  384 bits of entropy
+  base64url‑like strings). Default is 64.
 
 - state_key:
 
@@ -214,16 +208,9 @@ oauth_client(
   helpers.
 
   Multi-process deployments: if your app runs with multiple R workers or
-  behind a non-sticky load balancer, you must configure a shared
-  `state_store` and the same `state_key` across all workers. Otherwise
-  callbacks that land on a different worker will be unable to
-  decrypt/validate the state envelope and authentication will fail. In
-  such environments, do not rely on the random per-process default:
-  provide an explicit, high-entropy key (for example via a secret store
-  or environment variable). Prefer values with substantial entropy
-  (e.g., 64–128 base64url characters or a raw 32+ byte key). Avoid
-  human‑memorable passphrases. See also
-  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+  behind a non-sticky load balancer, configure a shared `state_store`
+  and the same `state_key` across all workers. Otherwise callbacks that
+  land on a different worker will fail state validation.
 
 - client_private_key:
 
@@ -234,8 +221,7 @@ oauth_client(
   Current outbound private-key JWT signing supports RSA and EC private
   keys. For RSA keys, outbound signing is currently limited to `RS256`;
   `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
-  supported. Ed25519/Ed448 keys are also not currently supported for
-  client-side signing.
+  supported. Ed25519/Ed448 keys are also not currently supported.
 
 - client_private_key_kid:
 
@@ -305,9 +291,10 @@ oauth_client(
   - `"request"`: send a signed JWT-secured authorization request (JAR;
     RFC 9101) via the `request` parameter.
 
-  Request mode requires signing material on the client. shinyOAuth
-  prefers `client_private_key` when present; otherwise it falls back to
-  HMAC signing with `client_secret`.
+  Most users can keep the default. Request mode is an advanced option
+  that requires signing material on the client. shinyOAuth prefers
+  `client_private_key` when present; otherwise it falls back to HMAC
+  signing with `client_secret`.
 
 - authorization_request_signing_alg:
 
@@ -352,7 +339,8 @@ oauth_client(
   supports RSA and EC private keys. For RSA keys, outbound signing is
   currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
   `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
-  currently supported for client-side signing.
+  currently supported. This is an advanced setting; most clients do not
+  need DPoP unless their provider or resource server asks for it.
 
 - dpop_private_key_kid:
 

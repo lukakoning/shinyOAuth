@@ -2,9 +2,9 @@
 
 **\[deprecated\]**
 
-This helper is deprecated because it only checks a narrow subset of
-shinyOAuth's security-relaxing opt-ins. Use explicit startup checks for
-the exact options your deployment permits or forbids instead.
+Deprecated helper that errors when a small subset of shinyOAuth's
+development and debugging softeners are enabled. Use explicit startup
+checks for the exact options your deployment permits or forbids instead.
 
 ## Usage
 
@@ -14,8 +14,8 @@ error_on_softened()
 
 ## Value
 
-Invisible TRUE if no safety checks are disabled; otherwise, an error is
-thrown.
+Invisible `TRUE` if none of those options are enabled; otherwise an
+error is thrown.
 
 ## Details
 

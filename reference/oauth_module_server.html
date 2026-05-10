@@ -106,7 +106,7 @@ necessary JavaScript dependencies.</p>
 immediately initiate the OAuth flow by redirecting the browser to the
 authorization endpoint. If FALSE, the module will not auto-redirect;
 instead, the returned object exposes helpers for triggering login
-manually (use: <code>$request_login()</code>)</p></dd>
+manually (use <code>$request_login()</code>).</p></dd>
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
@@ -117,8 +117,8 @@ resolves. <a href="https://mirai.r-lib.org/reference/mirai.html" class="external
 the current <a href="https://future.futureverse.org/reference/future.html" class="external-link">future::future</a> plan is used. Non-sequential future plans run off
 the main R session; <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
-(which may block the Shiny event loop; it is thus strongly recommended to set
-<code>async = TRUE</code> in production apps)</p></dd>
+(which may block the Shiny event loop). For production apps, <code>async = TRUE</code>
+is usually the better choice.</p></dd>
 
 
 <dt id="arg-indefinite-session">indefinite_session<a class="anchor" aria-label="anchor" href="#arg-indefinite-session"></a></dt>
@@ -128,7 +128,7 @@ and it will not trigger automatic reauthentication when a token expires or
 a refresh fails. This effectively makes sessions "indefinite" from the
 module's perspective once a user has logged in. Note that your API calls
 may still fail once the provider considers the token expired; this option
-only affects the module's automatic clearing/redirect behavior</p></dd>
+only affects the module's automatic clearing and redirect behavior.</p></dd>
 
 
 <dt id="arg-reauth-after-seconds">reauth_after_seconds<a class="anchor" aria-label="anchor" href="#arg-reauth-after-seconds"></a></dt>
@@ -137,14 +137,14 @@ the module will remove the token (and thus set <code>authenticated</code> to FAL
 after this many seconds have elapsed since authentication started. By
 default this is <code>NULL</code> (no forced re-authentication). If a value is
 provided, the timer is reset after each successful refresh so the knob is
-opt-in and counts rolling session age</p></dd>
+opt-in and counts rolling session age.</p></dd>
 
 
 <dt id="arg-refresh-proactively">refresh_proactively<a class="anchor" aria-label="anchor" href="#arg-refresh-proactively"></a></dt>
 <dd><p>If TRUE, will automatically refresh tokens
 before they expire (if refresh token is available). The refresh is
 scheduled adaptively so that it executes approximately at
-<code>expires_at - refresh_lead_seconds</code> rather than on a coarse polling loop</p></dd>
+<code>expires_at - refresh_lead_seconds</code> rather than on a coarse polling loop.</p></dd>
 
 
 <dt id="arg-refresh-lead-seconds">refresh_lead_seconds<a class="anchor" aria-label="anchor" href="#arg-refresh-lead-seconds"></a></dt>
@@ -156,7 +156,7 @@ proactive refresh (default: 60)</p></dd>
 <dd><p>Fallback check interval in milliseconds for
 expiry/refresh (default: 10000 ms). When expiry is known, the module uses
 adaptive scheduling to wake up exactly when needed; this interval is used
-as a safety net or when expiry is unknown/infinite</p></dd>
+as a safety net or when expiry is unknown/infinite.</p></dd>
 
 
 <dt id="arg-revoke-on-session-end">revoke_on_session_end<a class="anchor" aria-label="anchor" href="#arg-revoke-on-session-end"></a></dt>
@@ -227,15 +227,14 @@ This contains the access token, refresh token (if any), ID token (if
 any), userinfo (if fetched), and the decoded ID token claims via
 <code>token@id_token_claims</code> (a read-only named list exposing all JWT
 payload claims such as <code>sub</code>, <code>acr</code>, <code>amr</code>, <code>auth_time</code>, etc.).
-See <a href="OAuthToken.html">OAuthToken</a> for details.
-Note that since <a href="OAuthToken.html">OAuthToken</a> is a S7 object, you access its fields
+See <a href="OAuthToken.html">OAuthToken</a> for details. Because <a href="OAuthToken.html">OAuthToken</a> is a S7 object, you access its fields
 with <code>@</code>, e.g., <code>token@userinfo</code> or <code>token@id_token_claims$acr</code>.</p></li>
 <li><p><code>error</code>: error code string when the OAuth flow fails.
-Be careful with exposing this directly to users, as it may
-contain sensitive information which could aid an attacker.</p></li>
+Be careful about showing this directly to users, because it may contain
+sensitive information.</p></li>
 <li><p><code>error_description</code>: human-readable error detail when available.
-Be extra careful with exposing this directly to users, as it may
-contain even more sensitive information which could aid an attacker.</p></li>
+Be extra careful about showing this directly to users, because it may
+contain even more sensitive information.</p></li>
 <li><p><code>error_uri</code>: URI identifying a human-readable web page with
 information about the error (per RFC 6749 section 4.1.2.1). Treat this
 as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
@@ -269,22 +268,21 @@ testing and diagnostics.</p></li>
 is currently in flight (async or sync). Used to prevent concurrent refresh
 attempts when proactive refresh logic wakes up multiple times.</p></li>
 </ul><p>It also contains the following helper functions, mainly useful when
-<code>auto_redirect = FALSE</code> and you want to implement a manual login flow
-(e.g., with your own button):</p>
+<code>auto_redirect = FALSE</code> and you want to start login from your own UI
+(for example, from a button):</p>
 <ul><li><p><code>request_login()</code>: initiates login by redirecting to the
 authorization endpoint, with cookie-ensure semantics: if
 <code>browser_token</code> is missing, the module sets the cookie and defers
 the redirect until <code>browser_token</code> is present, then redirects.
 If the module is already authenticated, the request is ignored and no
 new OAuth state is created.
-This is the main entry point for login when <code>auto_redirect = FALSE</code>
-and you want to trigger login from your own UI</p></li>
+This is the main entry point for login when <code>auto_redirect = FALSE</code>.</p></li>
 <li><p><code>logout()</code>: if a token is present, makes best-effort revocation
 requests for the refresh token and access token when the provider exposes
 a revocation endpoint. This may perform network I/O, can revoke refresh
 tokens, and follows the module's <code>async</code> setting. It then clears the
 current token, sets <code>authenticated</code> to FALSE, and rotates the browser
-token cookie. You might call this when the user clicks a "logout" button</p></li>
+token cookie. You might call this when the user clicks a logout button.</p></li>
 <li><p><code>build_auth_url()</code>: internal; builds and returns the authorization URL,
 also storing the relevant state in the client's <code>state_store</code> (for
 validation during callback). Note that this requires <code>browser_token</code> to
@@ -309,8 +307,10 @@ you would not call this directly</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-
-<ul><li><p>Blocking vs. async behavior: when <code>async = FALSE</code> (the default), network
+    <p>Most apps only need to decide whether login starts automatically, whether to
+enable async mode, and whether token refresh should happen proactively. The
+remaining arguments are mainly for deployments that need tighter control over
+session lifetime, logout behavior, or browser cookie settings.</p><ul><li><p>Blocking vs. async behavior: when <code>async = FALSE</code> (the default), network
 operations like token exchange and refresh are performed on the main R
 thread. Transient errors are retried by the package's internal
 <code>req_with_retry()</code> helper, which currently uses <code><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep()</a></code> for backoff.

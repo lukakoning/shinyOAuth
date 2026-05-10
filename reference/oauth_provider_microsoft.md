@@ -1,10 +1,10 @@
 # Create a Microsoft (Entra ID) [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Pre-configured
+Ready-to-use
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
-for Microsoft Entra ID (formerly Azure AD) using the v2.0 endpoints.
-Accepts a tenant identifier and configures the authorization, token, and
-userinfo endpoints directly (no discovery).
+settings for Microsoft Entra ID (formerly Azure AD) using the v2.0
+endpoints. Accepts a tenant identifier and configures the authorization,
+token, and userinfo endpoints directly.
 
 ## Usage
 
@@ -42,6 +42,10 @@ oauth_provider_microsoft(
 object configured for Microsoft identity platform
 
 ## Details
+
+Most users only need to choose the tenant and decide whether to keep ID
+token validation enabled. The remaining details below explain how the
+helper behaves for Microsoft's different tenant styles.
 
 The `tenant` can be one of the special values "common", "organizations",
 or "consumers", or a specific directory (tenant) ID GUID (e.g.,

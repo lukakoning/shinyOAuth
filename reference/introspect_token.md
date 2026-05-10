@@ -1,9 +1,9 @@
 # Introspect an OAuth 2.0 token
 
-Introspects an access or refresh token using RFC 7662 when the provider
-exposes an introspection endpoint. Returns a list including at least
-`supported` (logical) and `active` (logical\|NA) and the parsed response
-(if any) under `raw`.
+Introspects an access or refresh token when the provider exposes an
+introspection endpoint (RFC 7662). Returns a small result object
+describing whether introspection is supported and, when known, whether
+the token is active.
 
 Authentication to the introspection endpoint mirrors the provider's
 `token_auth_style`:
@@ -113,8 +113,7 @@ Best-effort semantics:
 Performs network I/O when the provider exposes an introspection endpoint
 and the selected token exists. Emits best-effort audit events and
 OpenTelemetry span attributes. When `async = TRUE`, the work may run in
-a background worker and reads package options needed by the
-async/audit/HTTP helpers.
+a background worker.
 
 ## Examples
 

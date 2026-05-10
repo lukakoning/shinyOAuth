@@ -1,6 +1,6 @@
 # Create a GitHub [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Pre-configured OAuth 2.0 provider for GitHub.
+Ready-to-use OAuth 2.0 provider settings for GitHub.
 
 ## Usage
 

@@ -49,8 +49,8 @@ oauth_module_server(
   If TRUE (default), unauthenticated sessions will immediately initiate
   the OAuth flow by redirecting the browser to the authorization
   endpoint. If FALSE, the module will not auto-redirect; instead, the
-  returned object exposes helpers for triggering login manually (use:
-  `$request_login()`)
+  returned object exposes helpers for triggering login manually (use
+  `$request_login()`).
 
 - async:
 
@@ -68,8 +68,8 @@ oauth_module_server(
   plan is used. Non-sequential future plans run off the main R session;
   [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
   stays in-process. If FALSE (default), token exchange and refresh are
-  performed synchronously (which may block the Shiny event loop; it is
-  thus strongly recommended to set `async = TRUE` in production apps)
+  performed synchronously (which may block the Shiny event loop). For
+  production apps, `async = TRUE` is usually the better choice.
 
 - indefinite_session:
 
@@ -79,8 +79,8 @@ oauth_module_server(
   refresh fails. This effectively makes sessions "indefinite" from the
   module's perspective once a user has logged in. Note that your API
   calls may still fail once the provider considers the token expired;
-  this option only affects the module's automatic clearing/redirect
-  behavior
+  this option only affects the module's automatic clearing and redirect
+  behavior.
 
 - reauth_after_seconds:
 
@@ -89,14 +89,14 @@ oauth_module_server(
   many seconds have elapsed since authentication started. By default
   this is `NULL` (no forced re-authentication). If a value is provided,
   the timer is reset after each successful refresh so the knob is opt-in
-  and counts rolling session age
+  and counts rolling session age.
 
 - refresh_proactively:
 
   If TRUE, will automatically refresh tokens before they expire (if
   refresh token is available). The refresh is scheduled adaptively so
   that it executes approximately at `expires_at - refresh_lead_seconds`
-  rather than on a coarse polling loop
+  rather than on a coarse polling loop.
 
 - refresh_lead_seconds:
 
@@ -108,7 +108,7 @@ oauth_module_server(
   Fallback check interval in milliseconds for expiry/refresh (default:
   10000 ms). When expiry is known, the module uses adaptive scheduling
   to wake up exactly when needed; this interval is used as a safety net
-  or when expiry is unknown/infinite
+  or when expiry is unknown/infinite.
 
 - revoke_on_session_end:
 
@@ -184,18 +184,18 @@ The returned reactiveValues contains the following fields:
   (a read-only named list exposing all JWT payload claims such as `sub`,
   `acr`, `amr`, `auth_time`, etc.). See
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  for details. Note that since
+  for details. Because
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   is a S7 object, you access its fields with `@`, e.g., `token@userinfo`
   or `token@id_token_claims$acr`.
 
-- `error`: error code string when the OAuth flow fails. Be careful with
-  exposing this directly to users, as it may contain sensitive
-  information which could aid an attacker.
+- `error`: error code string when the OAuth flow fails. Be careful about
+  showing this directly to users, because it may contain sensitive
+  information.
 
 - `error_description`: human-readable error detail when available. Be
-  extra careful with exposing this directly to users, as it may contain
-  even more sensitive information which could aid an attacker.
+  extra careful about showing this directly to users, because it may
+  contain even more sensitive information.
 
 - `error_uri`: URI identifying a human-readable web page with
   information about the error (per RFC 6749 section 4.1.2.1). Treat this
@@ -244,8 +244,8 @@ The returned reactiveValues contains the following fields:
   refresh attempts when proactive refresh logic wakes up multiple times.
 
 It also contains the following helper functions, mainly useful when
-`auto_redirect = FALSE` and you want to implement a manual login flow
-(e.g., with your own button):
+`auto_redirect = FALSE` and you want to start login from your own UI
+(for example, from a button):
 
 - `request_login()`: initiates login by redirecting to the authorization
   endpoint, with cookie-ensure semantics: if `browser_token` is missing,
@@ -253,7 +253,7 @@ It also contains the following helper functions, mainly useful when
   `browser_token` is present, then redirects. If the module is already
   authenticated, the request is ignored and no new OAuth state is
   created. This is the main entry point for login when
-  `auto_redirect = FALSE` and you want to trigger login from your own UI
+  `auto_redirect = FALSE`.
 
 - `logout()`: if a token is present, makes best-effort revocation
   requests for the refresh token and access token when the provider
@@ -261,7 +261,7 @@ It also contains the following helper functions, mainly useful when
   revoke refresh tokens, and follows the module's `async` setting. It
   then clears the current token, sets `authenticated` to FALSE, and
   rotates the browser token cookie. You might call this when the user
-  clicks a "logout" button
+  clicks a logout button.
 
 - `build_auth_url()`: internal; builds and returns the authorization
   URL, also storing the relevant state in the client's `state_store`
@@ -290,6 +290,12 @@ It also contains the following helper functions, mainly useful when
   not call this directly
 
 ## Details
+
+Most apps only need to decide whether login starts automatically,
+whether to enable async mode, and whether token refresh should happen
+proactively. The remaining arguments are mainly for deployments that
+need tighter control over session lifetime, logout behavior, or browser
+cookie settings.
 
 - Blocking vs. async behavior: when `async = FALSE` (the default),
   network operations like token exchange and refresh are performed on

@@ -1,7 +1,7 @@
 # Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 
-Handle OAuth 2.0 callback: verify state, swap code for token, verify
-token
+Completes the callback step of the login flow. It validates the callback
+state, exchanges the returned code for tokens, and verifies the result.
 
 ## Usage
 
@@ -22,26 +22,23 @@ handle_callback(
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  object representing the OAuth client configuration.
+  object.
 
 - code:
 
-  The authorization code received from the OAuth provider during the
-  callback.
+  Authorization code received from the provider.
 
 - payload:
 
-  The encrypted state payload received from the OAuth provider during
-  the callback (this should be the same value that was generated and
-  sent in
-  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)).
+  Encrypted state payload returned by the provider. This should be the
+  same value that was originally sent in
+  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md).
 
 - browser_token:
 
-  Browser token present in the user's session (this is managed by
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  and should match the one used in
-  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)).
+  Browser token present in the user's session. This is usually managed
+  by
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
 
 - shiny_session:
 
@@ -63,10 +60,8 @@ handle_callback(
 
 An
 [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-object containing the access token, refresh token, expiration time, user
-information (if requested), and ID token (if applicable). If any step of
-the process fails (e.g., state verification, token exchange, token
-validation), an error is thrown indicating the failure reason.
+object. If callback validation, token exchange, or token verification
+fails, the function raises an error.
 
 ## Examples
 

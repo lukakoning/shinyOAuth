@@ -1,8 +1,8 @@
 # Create a custom cache backend (cachem-like)
 
-Builds a minimal cachem-like cache backend object that exposes
-cachem-compatible methods: `$get(key, missing)`, `$set(key, value)`,
-`$remove(key)`, and `$info()`.
+Builds a small cachem-like backend object with methods compatible with
+what shinyOAuth needs: `$get(key, missing)`, `$set(key, value)`,
+`$remove(key)`, and optional `$info()`.
 
 Use this helper when you want to plug a custom state store or JWKS cache
 into 'shinyOAuth', when
@@ -38,13 +38,13 @@ custom_cache(get, set, remove, take = NULL, info = NULL)
 
   A function(key, missing = NULL) -\> value. Required. Should return the
   stored value, or the `missing` argument if the key is not present. The
-  `missing` parameter is mandatory because both `OAuthClient` and
-  `OAuthProvider` validators will pass it explicitly.
+  `missing` parameter is required because shinyOAuth passes it
+  explicitly.
 
 - set:
 
   A function(key, value) -\> invisible(NULL). Required. Should store the
-  value under the given key
+  value under the given key.
 
 - remove:
 
@@ -86,9 +86,9 @@ custom_cache(get, set, remove, take = NULL, info = NULL)
 
   Function() -\> list(max_age = seconds, ...). Optional
 
-  This may be provided to because TTL information from `$info()` is used
-  to align browser cookie max age in
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  TTL information from `$info()` is used to align browser cookie max age
+  in
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
 
 ## Value
 

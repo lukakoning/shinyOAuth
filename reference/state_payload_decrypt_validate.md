@@ -32,5 +32,5 @@ state_payload_decrypt_validate(client, encrypted_payload, shiny_session = NULL)
 ## Value
 
 A named list payload (state, client_id, redirect_uri, scopes, provider,
-issued_at) on success; otherwise throws an error via
+client_policy, issued_at) on success; otherwise throws an error via
 `err_invalid_state()`.

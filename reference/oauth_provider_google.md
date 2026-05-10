@@ -1,8 +1,8 @@
 # Create a Google [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Pre-configured
+Ready-to-use
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
-for Google.
+settings for Google.
 
 ## Usage
 

@@ -1,8 +1,10 @@
 # Create a generic OpenID Connect (OIDC) [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Preconfigured
-[OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
-for OpenID Connect (OIDC) compliant providers.
+Helper for providers that follow a standard OpenID Connect endpoint
+layout. It builds the usual OIDC endpoints from one base URL and then
+calls
+[`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+with OIDC-friendly defaults.
 
 ## Usage
 

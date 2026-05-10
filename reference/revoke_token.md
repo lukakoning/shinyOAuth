@@ -1,7 +1,7 @@
 # Revoke an OAuth 2.0 token
 
-Attempts to revoke an access or refresh token using RFC 7009 when the
-provider exposes a revocation endpoint.
+Attempts to revoke an access or refresh token when the provider exposes
+a revocation endpoint (RFC 7009).
 
 Authentication mirrors the provider's `token_auth_style` (same as token
 exchange and introspection).
@@ -89,5 +89,4 @@ A list with fields:
 Performs network I/O when the provider exposes a revocation endpoint and
 the selected token exists. Emits best-effort audit events and
 OpenTelemetry span attributes. When `async = TRUE`, the work may run in
-a background worker and reads package options needed by the
-async/audit/HTTP helpers.
+a background worker.

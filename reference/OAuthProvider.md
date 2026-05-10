@@ -1,8 +1,8 @@
 # OAuthProvider S7 class
 
-S7 class representing an OAuth 2.0 provider configuration. Includes
-endpoints, OIDC settings, and various security options which govern the
-OAuth and OIDC flows.
+S7 class describing an OAuth 2.0 or OpenID Connect provider. It stores
+the provider's endpoints and the rules shinyOAuth should follow during
+login, callback handling, token exchange, and optional OIDC checks.
 
 This is a low-level constructor intended for advanced use. Most users
 should prefer the helper constructors
@@ -91,27 +91,30 @@ OAuthProvider(
 
 - par_url:
 
-  Pushed Authorization Request (PAR) URL (optional; RFC 9126). When
-  configured, authorization request parameters are pushed directly to
-  the authorization server and the browser is redirected with the
-  returned `request_uri` instead of the full request payload.
+  Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
+  shinyOAuth first sends the authorization request from server to
+  provider and then redirects the browser with the returned
+  `request_uri` handle instead of the full request payload. Most users
+  only need this when their provider specifically supports or requires
+  PAR.
 
 - require_pushed_authorization_requests:
 
-  Logical. Whether the provider requires authorization request data to
-  be sent via PAR. When `TRUE`, `par_url` must be configured.
+  Logical. Whether the provider requires authorization requests to be
+  sent via PAR. When `TRUE`, `par_url` must also be configured.
 
 - request_object_signing_alg_values_supported:
 
-  Optional vector of JWS algorithms that the provider advertises for RFC
-  9101 Request Objects. When populated, this metadata is used for early
-  validation of `OAuthClient` configurations that set
-  `authorization_request_mode = "request"`.
+  Optional vector of JWS algorithms that the provider advertises for
+  signed Request Objects (RFC 9101). This is mainly used for early
+  validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  sends `authorization_request_mode = "request"`.
 
 - require_signed_request_object:
 
   Logical. Whether the provider requires signed Request Objects for
-  authorization requests. When `TRUE`, clients should opt into
+  authorization requests. When `TRUE`, clients should use
   `authorization_request_mode = "request"`.
 
 - request_parameter_supported:
@@ -131,17 +134,16 @@ OAuthProvider(
   Logical or `NA`. Whether discovery metadata says caller-managed
   `request_uri` values must be pre-registered. `NA` means the provider
   did not say. shinyOAuth does not currently send caller-managed
-  `request_uri` values, but it preserves this metadata for fail-fast
-  validation and inspection.
+  `request_uri` values, but it keeps this metadata for early validation
+  and inspection.
 
 - token_endpoint_auth_signing_alg_values_supported:
 
   Optional vector of JWS algorithms that the provider advertises for
   JWT-based client authentication (`client_secret_jwt` /
-  `private_key_jwt`) at the token endpoint. When populated, this
-  metadata is used for early validation of
-  `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
-  defaults.
+  `private_key_jwt`) at the token endpoint. This metadata is used for
+  early validation of `OAuthClient@client_assertion_alg` and inferred
+  JWT client-assertion defaults.
 
 - authorization_response_iss_parameter_supported:
 
@@ -155,13 +157,10 @@ OAuthProvider(
 
 - issuer:
 
-  OIDC issuer URL (optional; required for ID token validation). This is
-  the base URL that identifies the OpenID Provider (OP). It is used
-  during ID token validation to verify the `iss` claim in the ID token
-  matches the expected issuer. It is also used to fetch the provider's
-  JSON Web Key Set (JWKS) for verifying ID token signatures (typically
-  via the OIDC discovery document located at
-  `/.well-known/openid-configuration` relative to the issuer URL)
+  Optional OIDC issuer URL. You need this when you want ID token
+  validation. shinyOAuth uses it to verify the ID token `iss` claim and
+  to locate the provider's signing keys (JWKS), typically through the
+  OIDC discovery document at `/.well-known/openid-configuration`.
 
 - issuer_match:
 
@@ -176,35 +175,35 @@ OAuthProvider(
 
   - `"none"`: do not validate discovery issuer consistency.
 
-  Prefer `"url"` unless the provider publishes tenant-independent
-  metadata with a templated issuer (for example, Microsoft multi-tenant
-  aliases).
+  In most cases, keep the default `"url"`. Use `"host"` only for
+  providers that publish tenant-independent metadata with a templated
+  issuer, such as some Microsoft aliases.
 
 - use_nonce:
 
   Whether to use OIDC nonce. This adds a `nonce` parameter to the
   authorization request and validates the `nonce` claim in the ID token.
-  This is recommended for OIDC flows to mitigate replay attacks
+  For OIDC providers, leaving this enabled is usually the right choice.
 
 - use_pkce:
 
   Whether to use PKCE. This adds a `code_challenge` parameter to the
   authorization request and requires a `code_verifier` when exchanging
-  the authorization code for tokens. This is prevents authorization code
-  interception attacks
+  the authorization code for tokens. This helps protect against
+  authorization code interception attacks.
 
 - pkce_method:
 
   PKCE code challenge method ("S256" or "plain"). "S256" is recommended.
-  "plain" should only be used for non-compliant providers that do not
-  support "S256"
+  Use "plain" only if you are working with a provider that does not
+  support "S256".
 
 - userinfo_required:
 
   Whether to fetch userinfo after token exchange. User information will
   be stored in the `userinfo` field of the returned `OAuthToken` object.
-  This requires a valid `userinfo_url` to be set. If fetching the
-  userinfo fails, the token exchange will fail.
+  This requires a valid `userinfo_url` to be set. If fetching userinfo
+  fails, login fails.
 
   For the low-level constructor
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
@@ -236,8 +235,8 @@ OAuthProvider(
   Setting this field to `TRUE` additionally requires a validated ID
   token baseline whenever UserInfo is fetched. This requires
   `userinfo_required` plus either `id_token_validation` or `use_nonce`
-  to be `TRUE`, and the provider's `userinfo_id_selector` must be
-  configured to extract the user ID from the userinfo response.
+  to be `TRUE`, and the provider's `userinfo_id_selector` must be able
+  to extract a stable user ID from the userinfo response.
 
   For
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
@@ -249,7 +248,8 @@ OAuthProvider(
 
   Whether to require that the userinfo endpoint returns a signed JWT
   (`Content-Type: application/jwt`) whose signature can be verified
-  against the provider's JWKS. When `TRUE`:
+  against the provider's JWKS. This is an advanced hardening option.
+  When `TRUE`:
 
   - If the userinfo response is not `application/jwt`, authentication
     fails.
@@ -262,26 +262,24 @@ OAuthProvider(
   - If signature verification fails (JWKS fetch error, no compatible
     keys, or invalid signature), authentication fails.
 
-  This prevents an attacker or misconfigured provider from bypassing
-  signature verification by returning unsigned claims as plain JSON or
-  `alg=none` JWTs. Requires `userinfo_required = TRUE` and a valid
-  `issuer` (for JWKS). Defaults to `FALSE`.
+  This prevents unsigned or weakly signed userinfo payloads from being
+  treated as trusted identity data. Requires `userinfo_required = TRUE`
+  and a valid `issuer` (for JWKS). Defaults to `FALSE`.
 
   Note:
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   does not auto-enable this flag. Discovery's
   `userinfo_signing_alg_values_supported` indicates provider capability,
-  not that every client receives signed JWTs (this depends on per-client
-  configuration at the provider). Pass
+  not that every client actually receives signed JWTs. Pass
   `userinfo_signed_jwt_required = TRUE` explicitly if you need this
-  protection.
+  behavior.
 
 - id_token_required:
 
   Whether to require an ID token to be returned during token exchange.
-  If no ID token is returned, the token exchange will fail. This
-  requires the provider to be a valid OpenID Connect provider and may
-  require setting the client's scope to include "openid".
+  If no ID token is returned, the token exchange will fail. This only
+  makes sense for OpenID Connect providers and may require the client's
+  scope to include `openid`.
 
   Note: At the S7 class level, this defaults to FALSE so that pure OAuth
   2.0 providers can be configured without OIDC. Helper constructors like
@@ -296,7 +294,7 @@ OAuthProvider(
   Whether to perform ID token validation after token exchange. This
   requires the provider to be a valid OpenID Connect provider with a
   configured `issuer` and the token response to include an ID token (may
-  require setting the client's scope to include "openid").
+  require setting the client's scope to include `openid`).
 
   Note: At the S7 class level, this defaults to FALSE. Helper
   constructors like
@@ -311,8 +309,7 @@ OAuthProvider(
   token. When `TRUE`, login fails if the ID token does not contain an
   `at_hash` claim or if the claim does not match the access token. When
   `FALSE` (default), `at_hash` is validated only when present. Requires
-  `id_token_validation = TRUE`. See OIDC Core section 3.1.3.8 and
-  section 3.2.2.9.
+  `id_token_validation = TRUE`.
 
 - extra_auth_params:
 
@@ -334,21 +331,22 @@ OAuthProvider(
   Optional named list of RFC 8705 mTLS endpoint aliases. Names should
   follow the metadata keys such as `token_endpoint`,
   `userinfo_endpoint`, `introspection_endpoint`, or
-  `revocation_endpoint`, and values must be absolute URLs.
+  `revocation_endpoint`, and values must be absolute URLs. This is an
+  advanced setting used when a provider publishes separate mTLS-specific
+  endpoints.
 
 - tls_client_certificate_bound_access_tokens:
 
   Logical. Whether the authorization server advertises RFC 8705
-  capability to issue certificate-bound access tokens. This metadata
-  expresses server capability; the client's intent to use
-  certificate-bound tokens is configured separately by using mTLS with a
-  client certificate. When `TRUE`, token responses may include a `cnf`
-  claim with an `x5t#S256` thumbprint that protected-resource requests
-  must present with the same certificate.
+  capability to issue certificate-bound access tokens. This describes
+  server capability; the client still has to opt into mTLS separately.
+  When `TRUE`, token responses may include a `cnf` claim with an
+  `x5t#S256` thumbprint that downstream requests must match with the
+  same certificate.
 
 - token_auth_style:
 
-  How to authenticate when exchanging tokens. One of:
+  How the client authenticates at the token endpoint. One of:
 
   - "header": HTTP Basic (client_secret_basic)
 
@@ -373,33 +371,25 @@ OAuthProvider(
 
 - jwks_cache:
 
-  JWKS cache backend. If not provided, a
-  `cachem::cache_mem(max_age = 3600)` (1 hour) cache will be created.
-  May be any cachem‑compatible backend, including
-  [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-  for a filesystem cache shared across workers, or a custom
-  implementation created via
-  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-  (e.g., database/Redis backed).
+  Cache used for the provider's signing keys (JWKS). If not provided,
+  shinyOAuth creates an in-memory cache for 1 hour with
+  `cachem::cache_mem(max_age = 3600)`. You can also use another
+  cachem-compatible backend, including a shared cache created with
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md).
 
-  TTL guidance: Choose `max_age` in line with your identity platform’s
-  JWKS rotation and cache‑control cadence. A range of 15 minutes to 2
-  hours is typically sensible; the default is 1 hour. Shorter TTLs adopt
-  new keys faster at the cost of more JWKS traffic; longer TTLs reduce
-  traffic but may delay new keys slightly. Signature verification will
-  automatically perform a one‑time JWKS refresh when a new `kid` appears
-  in an ID token.
-
-  Cache keys are internal, hashed by issuer, issuer-match, and pinning
-  configuration. Cache values are internal lists and may include
-  diagnostics used for defense-in-depth re-validation.
+  In most cases, a TTL between 15 minutes and 2 hours is reasonable.
+  Shorter TTLs pick up new keys faster but do more network work; longer
+  TTLs reduce traffic but may take longer to notice key rotation. If a
+  new `kid` appears, shinyOAuth will also do a one-time refresh
+  automatically.
 
 - jwks_pins:
 
   Optional character vector of RFC 7638 JWK thumbprints (base64url) to
   pin against. If non-empty, fetched JWKS must contain keys whose
-  thumbprints match these values depending on `jwks_pin_mode`. Use to
-  reduce key substitution risks by pre-authorizing expected keys
+  thumbprints match these values depending on `jwks_pin_mode`. This is
+  an advanced hardening option that lets you pre-authorize expected
+  keys.
 
 - jwks_pin_mode:
 
@@ -420,9 +410,9 @@ OAuthProvider(
   will also automatically set this to TRUE when an `issuer` is provided
   and either `id_token_validation` or `id_token_required` is TRUE
   (OIDC-like configuration). Set explicitly to FALSE to opt out. For
-  providers that legitimately publish JWKS on a different host (e.g.,
-  Google), prefer setting `jwks_host_allow_only` to the exact hostname
-  rather than disabling this check
+  providers that legitimately publish JWKS on a different host (for
+  example Google), prefer setting `jwks_host_allow_only` to the exact
+  hostname rather than disabling this check.
 
 - jwks_host_allow_only:
 
@@ -432,7 +422,7 @@ OAuthProvider(
   only the host component will be used. If you need to include a port or
   an IPv6 literal, pass a full URL (e.g., `https://[::1]:8443`) — the
   port is ignored and only the hostname part is used for matching. Takes
-  precedence over `jwks_host_issuer_match`
+  precedence over `jwks_host_issuer_match`.
 
 - allowed_algs:
 
@@ -448,7 +438,6 @@ OAuthProvider(
   intentionally excludes HS\*. Only include `HS*` if you are certain the
   `client_secret` is stored strictly server-side and is never shipped
   to, or derivable by, the browser or other untrusted environments.
-  Prefer rotating secrets regularly when enabling this.
 
 - allowed_token_types:
 
@@ -472,7 +461,7 @@ OAuthProvider(
 
   Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
   checks and state payload `issued_at` future check. Default 30. Can be
-  globally overridden via option `shinyOAuth.leeway`
+  globally overridden via option `shinyOAuth.leeway`.
 
 ## Examples
 

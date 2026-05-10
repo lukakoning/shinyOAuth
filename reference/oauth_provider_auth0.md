@@ -22,7 +22,7 @@ oauth_provider_auth0(domain, name = "auth0", audience = NULL)
 
 - audience:
 
-  Optional audience to request in auth flows
+  Optional audience value to send in authorization requests.
 
 ## Value
 
