@@ -1,7 +1,10 @@
 # Get user info from OAuth 2.0 provider
 
 Fetches user information from the provider's userinfo endpoint using the
-supplied access token. Emits an audit event with redacted details.
+supplied access token. Emits an audit event with redacted details. When
+a validated ID token baseline is available, or when provider policy
+requires one, this helper also enforces OIDC UserInfo subject binding
+before returning.
 
 ## Usage
 
