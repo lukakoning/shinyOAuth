@@ -172,6 +172,60 @@ testthat::test_that("discovery requires jwks_uri when ID token validation is ena
       )
     )
   })
+
+  testthat::test_that("discovery requires jwks_uri when nonce or signed UserInfo JWT verification is enabled", {
+    testthat::skip_if_not_installed("webfakes")
+    testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
+    app <- webfakes::new_app()
+    app$get("/.well-known/openid-configuration", function(req, res) {
+      issuer_url <- paste0("http://", req$get_header("host"))
+      res$set_status(200)$set_type("application/json")$send(
+        jsonlite::toJSON(
+          list(
+            issuer = issuer_url,
+            authorization_endpoint = "https://127.0.0.1/auth",
+            token_endpoint = "https://127.0.0.1/token",
+            userinfo_endpoint = "https://127.0.0.1/userinfo"
+          ),
+          auto_unbox = TRUE
+        )
+      )
+    })
+    srv <- webfakes::local_app_process(app)
+    issuer <- srv$url()
+
+    testthat::expect_error(
+      oauth_provider_oidc_discover(
+        issuer = issuer,
+        id_token_validation = FALSE,
+        use_nonce = TRUE
+      ),
+      class = "shinyOAuth_config_error",
+      regexp = "jwks_uri"
+    )
+
+    testthat::expect_error(
+      oauth_provider_oidc_discover(
+        issuer = issuer,
+        id_token_validation = FALSE,
+        use_nonce = FALSE,
+        userinfo_signed_jwt_required = TRUE
+      ),
+      class = "shinyOAuth_config_error",
+      regexp = "jwks_uri"
+    )
+
+    prov <- NULL
+    testthat::expect_no_error({
+      prov <- oauth_provider_oidc_discover(
+        issuer = issuer,
+        id_token_validation = FALSE,
+        use_nonce = FALSE,
+        userinfo_signed_jwt_required = FALSE
+      )
+    })
+    testthat::expect_s3_class(prov, "S7_object")
+  })
   srv <- webfakes::local_app_process(app)
   issuer <- srv$url()
 

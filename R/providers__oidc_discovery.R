@@ -195,8 +195,14 @@ oauth_provider_oidc_discover <- function(
   allowed_hosts_vec <- .discover_allowed_hosts(iss_host)
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
-  # 6b) ID token validation requires a JWKS endpoint up front.
-  .discover_require_jwks_uri(disc, iss, id_token_validation)
+  # 6b) Any mode that verifies ID-token or UserInfo JWT signatures needs JWKS.
+  .discover_require_jwks_uri(
+    disc = disc,
+    iss = iss,
+    id_token_validation = id_token_validation,
+    use_nonce = use_nonce,
+    userinfo_signed_jwt_required = isTRUE(dots$userinfo_signed_jwt_required)
+  )
 
   # 7) Read caller overrides before early JWKS validation so explicit host
   # pins in ... can affect the pre-check.
@@ -607,20 +613,34 @@ oauth_provider_oidc_discover <- function(
 
 ## 2.4 Capability negotiation --------------------------------------------------
 
-#' Internal: require jwks_uri when ID token validation is enabled
+#' Internal: require jwks_uri when runtime verification depends on JWKS
 #'
-#' Used by [oauth_provider_oidc_discover()] when the resulting provider must validate ID tokens.
+#' Used by [oauth_provider_oidc_discover()] when the resulting provider will
+#' verify ID tokens or signed UserInfo JWTs via the provider's JWKS.
 #'
 #' @param disc Discovery document.
 #' @param iss Issuer string.
 #' @param id_token_validation Whether ID token validation is enabled.
+#' @param use_nonce Whether nonce-based ID token validation is enabled.
+#' @param userinfo_signed_jwt_required Whether signed UserInfo JWT verification
+#'   is required.
 #' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
 #'   configuration error.
 #'
 #' @keywords internal
 #' @noRd
-.discover_require_jwks_uri <- function(disc, iss, id_token_validation) {
-  if (!isTRUE(id_token_validation)) {
+.discover_require_jwks_uri <- function(
+  disc,
+  iss,
+  id_token_validation,
+  use_nonce,
+  userinfo_signed_jwt_required
+) {
+  needs_jwks <- isTRUE(id_token_validation) ||
+    isTRUE(use_nonce) ||
+    isTRUE(userinfo_signed_jwt_required)
+
+  if (!needs_jwks) {
     return(invisible(TRUE))
   }
 
@@ -640,12 +660,18 @@ oauth_provider_oidc_discover <- function(
         iss
       ),
       "i" = paste0(
-        "id_token_validation = TRUE requires jwks_uri to fetch signing keys for ID token validation"
+        paste(
+          "jwks_uri is required when discovery enables id_token_validation,",
+          "use_nonce, or userinfo_signed_jwt_required because those modes",
+          "verify signatures against the provider's JWKS"
+        )
       )
     ),
     context = list(
       issuer = iss,
-      id_token_validation = id_token_validation
+      id_token_validation = id_token_validation,
+      use_nonce = use_nonce,
+      userinfo_signed_jwt_required = userinfo_signed_jwt_required
     )
   )
 }
