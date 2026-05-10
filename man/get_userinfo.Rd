@@ -25,7 +25,10 @@ A list containing the user information returned by the provider.
 }
 \description{
 Fetches user information from the provider's userinfo endpoint using the
-supplied access token. Emits an audit event with redacted details.
+supplied access token. Emits an audit event with redacted details. When a
+validated ID token baseline is available, or when provider policy requires
+one, this helper also enforces OIDC UserInfo subject binding before
+returning.
 }
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`

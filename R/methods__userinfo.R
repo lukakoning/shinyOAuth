@@ -12,7 +12,10 @@
 #'
 #' @description
 #' Fetches user information from the provider's userinfo endpoint using the
-#' supplied access token. Emits an audit event with redacted details.
+#' supplied access token. Emits an audit event with redacted details. When a
+#' validated ID token baseline is available, or when provider policy requires
+#' one, this helper also enforces OIDC UserInfo subject binding before
+#' returning.
 #'
 #' @param oauth_client [OAuthClient] object. The client must have a
 #' `userinfo_url` configured in its [OAuthProvider].
@@ -39,7 +42,10 @@ get_userinfo <- function(
 
   S7::check_is_S7(oauth_client, OAuthClient)
 
+  baseline_token <- NULL
+
   if (S7::S7_inherits(token, class = OAuthToken)) {
+    baseline_token <- token
     access_token <- token@access_token
     if (is_valid_string(token@token_type)) {
       token_type <- token@token_type
@@ -298,6 +304,12 @@ get_userinfo <- function(
           status = "ok",
           sub = subject,
           shiny_session = shiny_session
+        )
+
+        enforce_userinfo_id_token_subject_match(
+          oauth_client,
+          userinfo = ui,
+          token = baseline_token
         )
 
         ui

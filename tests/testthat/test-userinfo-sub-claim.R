@@ -94,6 +94,69 @@ test_that("get_userinfo accepts JSON response with sub for OIDC provider", {
   expect_equal(result$sub, "user-123")
 })
 
+test_that("get_userinfo rejects direct OAuthToken calls with mismatched sub", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@userinfo_required <- TRUE
+  cli@provider@userinfo_id_token_match <- TRUE
+  token <- OAuthToken(
+    access_token = "access-token",
+    token_type = "Bearer",
+    id_token = build_dummy_jwt(list(sub = "id-token-sub")),
+    id_token_validated = TRUE,
+    userinfo = list()
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(
+          list(sub = "different-sub", name = "Wrong User"),
+          auto_unbox = TRUE
+        ))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = token),
+    class = "shinyOAuth_userinfo_mismatch",
+    regexp = "does not match"
+  )
+})
+
+test_that("get_userinfo fails closed for direct raw-token calls when required", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@userinfo_required <- TRUE
+  cli@provider@userinfo_id_token_match <- TRUE
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(
+          list(sub = "id-token-sub", name = "Bound User"),
+          auto_unbox = TRUE
+        ))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    get_userinfo(cli, token = "access-token"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "Cannot verify UserInfo subject against a validated ID token"
+  )
+})
+
 test_that("get_userinfo allows missing sub for non-OIDC provider (no issuer)", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
