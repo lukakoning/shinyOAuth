@@ -9,8 +9,9 @@ vignette: >
 
 ## Overview
 
-'shinyOAuth' emits structured audit events at key steps in the OAuth 2.0/OIDC flow.
-These may help detect anomalous activity (e.g., brute force, replay, or configuration errors).
+'shinyOAuth' emits structured audit events as the OAuth 2.0/OIDC flow runs.
+These events can help you understand what happened during login and spot
+problems such as repeated failures, replay attempts, or configuration issues.
 
 This vignette covers:
 
@@ -22,8 +23,8 @@ This vignette covers:
 
 You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a
 hook function that will be called whenever shinyOAuth emits a structured audit
-or error event.
-The function you register should be fast, non-blocking, and never throw errors.
+or error event. Keep this function fast, non-blocking, and safe: it should not
+throw errors.
 
 Example of printing audit events to console:
 ```r
@@ -48,21 +49,27 @@ All audit events share the following base shape:
 
 For the interactive login flow, shinyOAuth propagates the same `trace_id`
 from redirect preparation through callback validation, token exchange, and
-login success or failure handling. The trace id is embedded inside the
-encrypted state payload so it survives the browser round-trip without exposing
-raw OAuth values.
+login success or failure handling. The trace id is stored inside the sealed
+state so it survives the browser round-trip without exposing raw OAuth values.
 
 This `trace_id` is shinyOAuth's own application-level correlation id. When OTel
-logging is enabled it is exported as the `shinyoauth.trace_id` log attribute,
-which is distinct from the backend's native OpenTelemetry trace/span ids.
+logging is enabled it is exported as the `shinyoauth.trace_id` log attribute.
+It is separate from any trace/span ids created by your OpenTelemetry backend.
 
 When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
-is attached to every event to correlate audit activity with the HTTP request and session.
-The structure is designed to be directly serializable with `jsonlite::toJSON()`:
+is attached to every event so you can tie the audit record back to the app
+session and HTTP request. The structure is designed to serialize cleanly with
+`jsonlite::toJSON()`:
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
-- `shiny_session$is_async`: a logical indicating whether the event was emitted from the main R process (`FALSE`) or from an async worker (`TRUE`). This helps distinguish logs produced by background tasks (e.g., async token exchange or refresh) from those in the main reactive flow.
-- If you pre-capture a worker-intended context with `capture_shiny_session_context(is_async = TRUE)` but emit the event before any worker dispatch actually happens, shinyOAuth normalizes that borrowed context back to `FALSE` because the event was still emitted on the main process.
+- `shiny_session$is_async`: `FALSE` for events emitted from the main R process
+	and `TRUE` for events emitted from an async worker. This helps distinguish
+	background work such as async token exchange or refresh from the main
+	reactive flow.
+- If you pre-capture worker context with `capture_shiny_session_context(is_async = TRUE)`
+	but emit the event before any worker work actually starts, shinyOAuth resets
+	that borrowed context back to `FALSE` because the event still came from the
+	main process.
 - `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
 - `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
 - `mirai_error_type`: a top-level event field present only on async failure variants of `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session`. It classifies mirai transport-level failures separately from application-level errors. When present:
@@ -139,14 +146,14 @@ exporter, etc.) or explicitly return captured data from the worker in tests.
 ### Digest fields and keying
 
 Many audit events include digest fields such as `client_id_digest`, `state_digest`,
-`code_digest`, `browser_token_digest`, and `sub_digest`. These are intended to let you
-correlate events without emitting raw sensitive values.
+`code_digest`, `browser_token_digest`, and `sub_digest`. These let you connect
+related events without logging the raw sensitive values themselves.
 
 By default, these digests use HMAC-SHA256 with an auto-generated per-process key.
 If you do not configure `options(shinyOAuth.audit_digest_key = ...)`, each R
-process gets its own random key at runtime. This reduces the risk of correlation
-or dictionary reidentification if logs leak, but it also means digests are not
-stable across unrelated processes by default.
+process gets its own random key at runtime. That makes accidental cross-process
+matching harder if logs leak, but it also means digests are not stable across
+unrelated processes by default.
 
 For shinyOAuth-managed async work, the package propagates the effective digest
 key into its workers so main-process and worker events from the same app
@@ -166,8 +173,8 @@ To disable keying (legacy deterministic SHA-256 digests):
 options(shinyOAuth.audit_digest_key = FALSE)
 ```
 
-Note: unkeyed digests are pseudonymous, so not anonymized—low-entropy identifiers (like
-email addresses) can be dictionary-attacked.
+Note: unkeyed digests are easier to compare across systems, but they are also
+easier to guess for low-entropy values such as email addresses.
 
 ## Event catalog
 
@@ -223,7 +230,9 @@ email addresses) can be dictionary-attacked.
 
 ### Callback validation
 
-Callback validation spans decryption + freshness + binding of the encrypted payload as well as subsequent checks of values bound to the state (browser token, PKCE code verifier, nonce). Each check emits either a success (only once for the payload) or a failure audit event.
+Callback validation covers both the sealed-state checks and the later checks of
+the values tied to that state, such as the browser token, PKCE code verifier,
+and nonce. Each stage emits either a success event or a failure event.
 
 #### Event: `audit_callback_validation_success`
 
