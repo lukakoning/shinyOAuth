@@ -93,7 +93,7 @@
 <li>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
 <ul><li>Fails fast when metadata advertises PKCE methods but omits <code>S256</code>. shinyOAuth keeps <code>S256</code> as the default and only allows a downgrade to <code>plain</code> when you pass <code>pkce_method = "plain"</code> explicitly.</li>
-<li>Fails fast when <code>id_token_validation = TRUE</code> but the discovery document omits <code>jwks_uri</code>, surfacing a configuration error during provider setup instead of a later JWKS fetch failure.</li>
+<li>Fails fast when the discovery document omits <code>jwks_uri</code> but the selected policy still needs signing keys, including <code>id_token_validation = TRUE</code>, nonce-enabled OIDC flows, and signed UserInfo JWT validation. These misconfigurations now fail during provider setup instead of later during a JWKS fetch.</li>
 <li>Rejects issuer inputs that contain query strings or fragments before building the discovery URL, matching the stricter issuer validation already used by manually configured providers.</li>
 <li>Rejects non-scalar endpoint metadata values with a configuration error.</li>
 <li>Honors <code>jwks_host_allow_only</code> during its early <code>jwks_uri</code> host check, so explicitly pinned cross-host JWKS endpoints no longer require disabling issuer-host matching.</li>

@@ -217,6 +217,10 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `oauth.phase = "token.exchange"`
   - `oauth.used_pkce`
   - `oauth.client_auth_style`
+  - `oauth.dpop.configured`, `oauth.dpop.bound`,
+    `oauth.dpop.token_type_inferred`
+  - `oauth.mtls.client_auth`, `oauth.mtls.certificate_bound_tokens`,
+    `oauth.mtls.bound`
   - `oauth.extra_token_params_count`
   - `oauth.extra_token_headers_count`
   - `oauth.token_type`
@@ -239,6 +243,9 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `http.request.method = "POST"`
   - `server.address`
   - `oauth.phase`
+  - `oauth.mtls.endpoint_alias` when an RFC 8705 alias URL is selected
+  - `oauth.dpop.nonce_challenge`, `oauth.dpop.nonce_retry` when a DPoP
+    nonce challenge occurs
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
@@ -262,6 +269,8 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase`
+  - `oauth.dpop.bound`, `oauth.dpop.token_type_inferred`
+  - `oauth.mtls.bound`
   - `oauth.received_id_token`
   - `oauth.received_refresh_token`
   - `oauth.id_token.required`, `oauth.id_token.present`,
@@ -284,6 +293,9 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase = "userinfo"`
+  - `oauth.dpop.bound`, `oauth.dpop.token_type_inferred`
+  - `oauth.mtls.client_certificate`,
+    `oauth.mtls.certificate_bound_tokens`, `oauth.mtls.bound`
   - `oauth.userinfo.jwt_required`
   - `oauth.userinfo.jwt_response`
   - `oauth.userinfo.subject_present`
@@ -297,6 +309,9 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `http.request.method = "GET"`
   - `server.address`
   - `oauth.phase = "userinfo"`
+  - `oauth.mtls.endpoint_alias` when an RFC 8705 alias URL is selected
+  - `oauth.dpop.nonce_challenge`, `oauth.dpop.nonce_retry` when a DPoP
+    nonce challenge occurs
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
@@ -317,6 +332,10 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `oauth.async`
   - `oauth.phase = "refresh"`
   - `oauth.client_auth_style`
+  - `oauth.dpop.configured`, `oauth.dpop.bound`,
+    `oauth.dpop.token_type_inferred`
+  - `oauth.mtls.client_auth`, `oauth.mtls.certificate_bound_tokens`,
+    `oauth.mtls.bound`
   - `oauth.extra_token_params_count`
   - `oauth.extra_token_headers_count`
   - `oauth.token_type`

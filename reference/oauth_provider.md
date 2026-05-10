@@ -405,11 +405,12 @@ oauth_provider(
   Optional vector of allowed JWT algorithms for ID tokens. Use to
   restrict acceptable `alg` values on a per-provider basis. Supported
   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
-  `ES384`, `ES512`, and `EdDSA` (Ed25519/Ed448 via OKP). Symmetric HMAC
-  algorithms `HS256`, `HS384`, `HS512` are also supported but require
-  that you supply a `client_secret` and explicitly enable HMAC
-  verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
-  Defaults to
+  `ES384`, `ES512`, and `EdDSA` for OKP-backed signatures. When ID token
+  `at_hash` validation is in play, Ed25519 is supported but Ed448
+  currently is not. Symmetric HMAC algorithms `HS256`, `HS384`, `HS512`
+  are also supported but require that you supply a `client_secret` and
+  explicitly enable HMAC verification via the option
+  `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
   `c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")`, which
   intentionally excludes HS\*. Only include `HS*` if you are certain the
   `client_secret` is stored strictly server-side and is never shipped

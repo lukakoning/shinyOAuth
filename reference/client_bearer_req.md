@@ -89,7 +89,9 @@ client_bearer_req(
 
   Optional override for the access token type when `token` is supplied
   as a raw string. Supported values are `Bearer` and `DPoP`. Invalid or
-  multi-valued inputs are rejected.
+  multi-valued inputs are rejected. When omitted, shinyOAuth preserves
+  `OAuthToken@token_type` and also infers `DPoP` from a raw JWT access
+  token's `cnf.jkt` binding when `oauth_client` carries a DPoP key.
 
 - dpop_nonce:
 

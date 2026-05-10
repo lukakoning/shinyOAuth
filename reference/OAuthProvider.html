@@ -438,7 +438,9 @@ and only the hostname part is used for matching. Takes precedence over
 <dd><p>Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supported
 asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
-<code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> (Ed25519/Ed448 via OKP).
+<code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> for OKP-backed signatures. When ID token
+<code>at_hash</code> validation is in play, Ed25519 is supported but Ed448 currently
+is not.
 Symmetric HMAC algorithms <code>HS256</code>, <code>HS384</code>, <code>HS512</code> are also supported but
 require that you supply a <code>client_secret</code> and explicitly enable HMAC
 verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.

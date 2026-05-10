@@ -349,6 +349,12 @@ For state store events the digest reflects the plaintext state string.
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`,
   `error_class`
 
+Detailed sender-constraint diagnostics such as DPoP token-type
+inference, DPoP nonce retries, and mTLS endpoint-alias selection are
+emitted on the OpenTelemetry spans documented in
+[`vignette("opentelemetry")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
+rather than on the high-level audit events.
+
 ### Token introspection
 
 #### Event: `audit_token_introspection`

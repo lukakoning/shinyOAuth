@@ -176,9 +176,11 @@
   - Fails fast when metadata advertises PKCE methods but omits `S256`.
     shinyOAuth keeps `S256` as the default and only allows a downgrade
     to `plain` when you pass `pkce_method = "plain"` explicitly.
-  - Fails fast when `id_token_validation = TRUE` but the discovery
-    document omits `jwks_uri`, surfacing a configuration error during
-    provider setup instead of a later JWKS fetch failure.
+  - Fails fast when the discovery document omits `jwks_uri` but the
+    selected policy still needs signing keys, including
+    `id_token_validation = TRUE`, nonce-enabled OIDC flows, and signed
+    UserInfo JWT validation. These misconfigurations now fail during
+    provider setup instead of later during a JWKS fetch.
   - Rejects issuer inputs that contain query strings or fragments before
     building the discovery URL, matching the stricter issuer validation
     already used by manually configured providers.

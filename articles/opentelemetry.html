@@ -395,6 +395,15 @@ verification</li>
 <li><code>oauth.phase = "token.exchange"</code></li>
 <li><code>oauth.used_pkce</code></li>
 <li><code>oauth.client_auth_style</code></li>
+<li>
+<code>oauth.dpop.configured</code>, <code>oauth.dpop.bound</code>,
+<code>oauth.dpop.token_type_inferred</code>
+</li>
+<li>
+<code>oauth.mtls.client_auth</code>,
+<code>oauth.mtls.certificate_bound_tokens</code>,
+<code>oauth.mtls.bound</code>
+</li>
 <li><code>oauth.extra_token_params_count</code></li>
 <li><code>oauth.extra_token_headers_count</code></li>
 <li><code>oauth.token_type</code></li>
@@ -439,6 +448,13 @@ verification</li>
 <li><code>http.request.method = "POST"</code></li>
 <li><code>server.address</code></li>
 <li><code>oauth.phase</code></li>
+<li>
+<code>oauth.mtls.endpoint_alias</code> when an RFC 8705 alias URL is
+selected</li>
+<li>
+<code>oauth.dpop.nonce_challenge</code>,
+<code>oauth.dpop.nonce_retry</code> when a DPoP nonce challenge
+occurs</li>
 <li>
 <code>http.response.status_code</code>,
 <code>http.response.content_type</code> after a response is
@@ -485,6 +501,11 @@ applicable</li>
 </li>
 <li><code>oauth.client_id_digest</code></li>
 <li><code>oauth.phase</code></li>
+<li>
+<code>oauth.dpop.bound</code>,
+<code>oauth.dpop.token_type_inferred</code>
+</li>
+<li><code>oauth.mtls.bound</code></li>
 <li><code>oauth.received_id_token</code></li>
 <li><code>oauth.received_refresh_token</code></li>
 <li>
@@ -526,6 +547,15 @@ JWT-vs-JSON handling, and userinfo-level validation/auditing</li>
 </li>
 <li><code>oauth.client_id_digest</code></li>
 <li><code>oauth.phase = "userinfo"</code></li>
+<li>
+<code>oauth.dpop.bound</code>,
+<code>oauth.dpop.token_type_inferred</code>
+</li>
+<li>
+<code>oauth.mtls.client_certificate</code>,
+<code>oauth.mtls.certificate_bound_tokens</code>,
+<code>oauth.mtls.bound</code>
+</li>
 <li><code>oauth.userinfo.jwt_required</code></li>
 <li><code>oauth.userinfo.jwt_response</code></li>
 <li><code>oauth.userinfo.subject_present</code></li>
@@ -546,6 +576,13 @@ endpoint</li>
 <li><code>http.request.method = "GET"</code></li>
 <li><code>server.address</code></li>
 <li><code>oauth.phase = "userinfo"</code></li>
+<li>
+<code>oauth.mtls.endpoint_alias</code> when an RFC 8705 alias URL is
+selected</li>
+<li>
+<code>oauth.dpop.nonce_challenge</code>,
+<code>oauth.dpop.nonce_retry</code> when a DPoP nonce challenge
+occurs</li>
 <li>
 <code>http.response.status_code</code>,
 <code>http.response.content_type</code> after a response is
@@ -583,6 +620,15 @@ dispatch</li>
 <li><code>oauth.async</code></li>
 <li><code>oauth.phase = "refresh"</code></li>
 <li><code>oauth.client_auth_style</code></li>
+<li>
+<code>oauth.dpop.configured</code>, <code>oauth.dpop.bound</code>,
+<code>oauth.dpop.token_type_inferred</code>
+</li>
+<li>
+<code>oauth.mtls.client_auth</code>,
+<code>oauth.mtls.certificate_bound_tokens</code>,
+<code>oauth.mtls.bound</code>
+</li>
 <li><code>oauth.extra_token_params_count</code></li>
 <li><code>oauth.extra_token_headers_count</code></li>
 <li><code>oauth.token_type</code></li>
