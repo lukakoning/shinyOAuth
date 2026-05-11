@@ -22,10 +22,10 @@ client_has_dpop <- function(client) {
   !is.null(client@dpop_private_key)
 }
 
-# Cache DPoP nonces per target URI and client key so later requests can reuse
-# server-provided nonces without bleeding between different endpoints. Bound the
-# cache by age and entry count so long-lived apps do not accumulate unbounded
-# per-resource state.
+# Cache DPoP nonces per issuing server, request class, and client key so later
+# requests can reuse server-provided nonces across same-server endpoints without
+# mixing token-endpoint and protected-resource nonce state. Bound the cache by
+# age and entry count so long-lived apps do not accumulate unbounded state.
 dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
 
 #' Build a DPoP nonce cache key
@@ -33,12 +33,18 @@ dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
 #' Used when DPoP nonces are memoized between requests.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose target URI scopes the cached nonce.
+#' @param url Request URL whose issuing server scopes the cached nonce.
+#' @param request_kind Whether the nonce belongs to token-endpoint requests or
+#'   protected-resource requests.
 #' @return Cache key string, or `NA_character_` when no usable key can be
 #'   derived.
 #' @keywords internal
 #' @noRd
-dpop_nonce_cache_key <- function(client, url) {
+dpop_nonce_cache_key <- function(
+  client,
+  url,
+  request_kind = c("token", "resource")
+) {
   if (
     !S7::S7_inherits(client, class = OAuthClient) || !client_has_dpop(client)
   ) {
@@ -48,8 +54,28 @@ dpop_nonce_cache_key <- function(client, url) {
     return(NA_character_)
   }
 
-  target_uri <- try(dpop_target_uri(url), silent = TRUE)
-  if (inherits(target_uri, "try-error") || !is_valid_string(target_uri)) {
+  request_kind <- match.arg(request_kind)
+
+  parsed <- try(httr2::url_parse(url), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(NA_character_)
+  }
+  parsed$query <- NULL
+  parsed$fragment <- NULL
+  parsed$path <- "/"
+  parsed$scheme <- tolower(parsed$scheme %||% "")
+  parsed$hostname <- tolower(parsed$hostname %||% "")
+
+  port <- as.character(parsed$port %||% "")
+  if (identical(parsed$scheme, "https") && identical(port, "443")) {
+    parsed$port <- NULL
+  }
+  if (identical(parsed$scheme, "http") && identical(port, "80")) {
+    parsed$port <- NULL
+  }
+
+  server_uri <- try(httr2::url_build(parsed), silent = TRUE)
+  if (inherits(server_uri, "try-error") || !is_valid_string(server_uri)) {
     return(NA_character_)
   }
 
@@ -62,7 +88,13 @@ dpop_nonce_cache_key <- function(client, url) {
     return(NA_character_)
   }
 
-  cache_input <- paste(target_uri, client_id_key, dpop_jkt, sep = "::")
+  cache_input <- paste(
+    server_uri,
+    request_kind,
+    client_id_key,
+    dpop_jkt,
+    sep = "::"
+  )
   digest <- try(openssl::sha256(charToRaw(cache_input)), silent = TRUE)
   if (inherits(digest, "try-error")) {
     return(NA_character_)
@@ -76,12 +108,18 @@ dpop_nonce_cache_key <- function(client, url) {
 #' Used before building a DPoP proof when the caller did not supply a nonce.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose target URI scopes the cached nonce.
+#' @param url Request URL whose issuing server scopes the cached nonce.
+#' @param request_kind Whether the nonce belongs to token-endpoint requests or
+#'   protected-resource requests.
 #' @return Cached nonce string, or `NULL` when no usable cached nonce exists.
 #' @keywords internal
 #' @noRd
-dpop_nonce_cache_get <- function(client, url) {
-  cache_key <- dpop_nonce_cache_key(client, url)
+dpop_nonce_cache_get <- function(
+  client,
+  url,
+  request_kind = c("token", "resource")
+) {
+  cache_key <- dpop_nonce_cache_key(client, url, request_kind = request_kind)
   if (!is_valid_string(cache_key)) {
     return(NULL)
   }
@@ -102,13 +140,20 @@ dpop_nonce_cache_get <- function(client, url) {
 #' Used after a DPoP-protected response provides a fresh nonce.
 #'
 #' @param client OAuth client carrying DPoP configuration.
-#' @param url Request URL whose target URI scopes the cached nonce.
+#' @param url Request URL whose issuing server scopes the cached nonce.
+#' @param request_kind Whether the nonce belongs to token-endpoint requests or
+#'   protected-resource requests.
 #' @param nonce DPoP nonce to cache.
 #' @return Invisibly returns `nonce`.
 #' @keywords internal
 #' @noRd
-dpop_nonce_cache_set <- function(client, url, nonce) {
-  cache_key <- dpop_nonce_cache_key(client, url)
+dpop_nonce_cache_set <- function(
+  client,
+  url,
+  nonce,
+  request_kind = c("token", "resource")
+) {
+  cache_key <- dpop_nonce_cache_key(client, url, request_kind = request_kind)
   if (!(is_valid_string(cache_key) && is_valid_string(nonce))) {
     return(invisible(nonce))
   }
@@ -499,7 +544,13 @@ req_add_dpop_proof <- function(
     err_config("Request URL missing while building DPoP proof")
   }
   if (!is_valid_string(nonce)) {
-    nonce <- dpop_nonce_cache_get(client, url) %||% NULL
+    request_kind <- if (is_valid_string(access_token)) "resource" else "token"
+    nonce <- dpop_nonce_cache_get(
+      client,
+      url,
+      request_kind = request_kind
+    ) %||%
+      NULL
   }
 
   httr2::req_headers(
@@ -599,6 +650,7 @@ req_with_dpop_retry <- function(
   }
 
   url <- req[["url"]] %||% NA_character_
+  request_kind <- if (is_valid_string(access_token)) "resource" else "token"
 
   resp <- req_with_retry(
     req_add_dpop_proof(req, client, access_token = access_token),
@@ -607,7 +659,7 @@ req_with_dpop_retry <- function(
 
   nonce <- resp_get_dpop_nonce(resp)
   if (is_valid_string(nonce)) {
-    dpop_nonce_cache_set(client, url, nonce)
+    dpop_nonce_cache_set(client, url, nonce, request_kind = request_kind)
   }
 
   if (!resp_is_dpop_nonce_challenge(resp)) {
@@ -638,7 +690,12 @@ req_with_dpop_retry <- function(
 
   next_nonce <- resp_get_dpop_nonce(resp)
   if (is_valid_string(next_nonce)) {
-    dpop_nonce_cache_set(client, url, next_nonce)
+    dpop_nonce_cache_set(
+      client,
+      url,
+      next_nonce,
+      request_kind = request_kind
+    )
   }
 
   attr(resp, "shinyOAuth.otel_attributes") <- compact_list(c(

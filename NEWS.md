@@ -10,6 +10,10 @@ proofs with nonce retry, and downstream helpers now preserve and use
 authorization servers that require a nonce on the first token request work
 without manual retry handling.
 
+* DPoP nonce caching now reuses resource-server nonces across same-server
+resource endpoints while still keeping token-endpoint and resource-server nonce
+state separate.
+
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 
