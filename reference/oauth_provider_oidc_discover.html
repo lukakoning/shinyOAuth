@@ -186,8 +186,12 @@ advertises <code>request_parameter_supported</code>,
 <code>request_uri_parameter_supported</code>, or
 <code>require_request_uri_registration</code>, the resulting provider stores that
 metadata so shinyOAuth can fail fast when a provider explicitly disallows
-the <code>request</code> transport used by JAR or the <code>request_uri</code> transport used by
-PAR redirects.</p></li>
+the front-channel <code>request</code> transport used by JAR or caller-managed
+<code>request_uri</code> values. When PAR is configured, shinyOAuth sends signed
+Request Objects to the PAR endpoint and the browser redirect only carries
+the PAR-issued <code>request_uri</code> handle, regardless of
+<code>request_uri_parameter_supported</code>. When discovery omits these booleans,
+this helper applies the OpenID Connect defaults instead of storing <code>NA</code>.</p></li>
 <li><p>Token endpoint JWT auth metadata: when the discovery document advertises
 <code>token_endpoint_auth_signing_alg_values_supported</code>, the resulting provider
 stores that metadata so <code>OAuthClient</code> can fail fast when a JWT client

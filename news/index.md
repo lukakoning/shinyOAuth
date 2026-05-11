@@ -832,3 +832,8 @@ CRAN release: 2025-11-10
 CRAN release: 2025-11-09
 
 - Initial CRAN submission.
+- Fixed JAR-over-PAR validation for discovery-derived providers that
+  disable only the front-channel `request` transport.
+  `authorization_request_mode = "request"` now remains valid when
+  `par_url` is configured and the signed Request Object is sent to the
+  PAR endpoint.

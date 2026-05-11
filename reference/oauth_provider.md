@@ -112,21 +112,26 @@ oauth_provider(
 
   Logical or `NA`. Whether discovery metadata explicitly advertises
   support for the authorization-request `request` parameter. `NA` means
-  the provider did not say.
+  the provider did not say. Discovery-derived providers apply the OpenID
+  Connect default (`FALSE`) when this metadata is omitted.
 
 - request_uri_parameter_supported:
 
   Logical or `NA`. Whether discovery metadata explicitly advertises
-  support for the authorization-request `request_uri` parameter. `NA`
-  means the provider did not say.
+  support for the authorization-request `request_uri` parameter for
+  caller-managed request URIs. `NA` means the provider did not say.
+  Discovery-derived providers apply the OpenID Connect default (`TRUE`)
+  when this metadata is omitted. PAR-issued `request_uri` handles remain
+  valid even when this metadata is `FALSE`.
 
 - require_request_uri_registration:
 
   Logical or `NA`. Whether discovery metadata says caller-managed
   `request_uri` values must be pre-registered. `NA` means the provider
-  did not say. shinyOAuth does not currently send caller-managed
-  `request_uri` values, but it keeps this metadata for early validation
-  and inspection.
+  did not say. Discovery-derived providers apply the OpenID Connect
+  default (`FALSE`) when this metadata is omitted. shinyOAuth does not
+  currently send caller-managed `request_uri` values, but it keeps this
+  metadata for early validation and inspection.
 
 - token_endpoint_auth_signing_alg_values_supported:
 

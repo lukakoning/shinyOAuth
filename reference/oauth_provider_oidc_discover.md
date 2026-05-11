@@ -158,8 +158,13 @@ discovery might fail early.
   `request_uri_parameter_supported`, or
   `require_request_uri_registration`, the resulting provider stores that
   metadata so shinyOAuth can fail fast when a provider explicitly
-  disallows the `request` transport used by JAR or the `request_uri`
-  transport used by PAR redirects.
+  disallows the front-channel `request` transport used by JAR or
+  caller-managed `request_uri` values. When PAR is configured,
+  shinyOAuth sends signed Request Objects to the PAR endpoint and the
+  browser redirect only carries the PAR-issued `request_uri` handle,
+  regardless of `request_uri_parameter_supported`. When discovery omits
+  these booleans, this helper applies the OpenID Connect defaults
+  instead of storing `NA`.
 
 - Token endpoint JWT auth metadata: when the discovery document
   advertises `token_endpoint_auth_signing_alg_values_supported`, the

@@ -157,21 +157,27 @@ should use <code>authorization_request_mode = "request"</code>.</p></dd>
 <dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
 <dd><p>Logical or <code>NA</code>. Whether discovery
 metadata explicitly advertises support for the authorization-request
-<code>request</code> parameter. <code>NA</code> means the provider did not say.</p></dd>
+<code>request</code> parameter. <code>NA</code> means the provider did not say. Discovery-derived
+providers apply the OpenID Connect default (<code>FALSE</code>) when this metadata is
+omitted.</p></dd>
 
 
 <dt id="arg-request-uri-parameter-supported">request_uri_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-uri-parameter-supported"></a></dt>
 <dd><p>Logical or <code>NA</code>. Whether discovery
 metadata explicitly advertises support for the authorization-request
-<code>request_uri</code> parameter. <code>NA</code> means the provider did not say.</p></dd>
+<code>request_uri</code> parameter for caller-managed request URIs. <code>NA</code> means the
+provider did not say. Discovery-derived providers apply the OpenID Connect
+default (<code>TRUE</code>) when this metadata is omitted. PAR-issued <code>request_uri</code>
+handles remain valid even when this metadata is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-require-request-uri-registration">require_request_uri_registration<a class="anchor" aria-label="anchor" href="#arg-require-request-uri-registration"></a></dt>
 <dd><p>Logical or <code>NA</code>. Whether discovery
 metadata says caller-managed <code>request_uri</code> values must be pre-registered.
-<code>NA</code> means the provider did not say. shinyOAuth does not currently send
-caller-managed <code>request_uri</code> values, but it keeps this metadata for early
-validation and inspection.</p></dd>
+<code>NA</code> means the provider did not say. Discovery-derived providers apply the
+OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
+shinyOAuth does not currently send caller-managed <code>request_uri</code> values,
+but it keeps this metadata for early validation and inspection.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
