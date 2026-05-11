@@ -24,6 +24,38 @@
   `client_private_key` or `client_secret` signing depending on client
   configuration.
 
+- Fixed JAR-over-PAR validation for discovery-derived providers that
+  disable only the front-channel `request` transport.
+  `authorization_request_mode = "request"` now remains valid when
+  `par_url` is configured and the signed Request Object is sent to the
+  PAR endpoint.
+
+- Fixed PAR validation for providers that advertise
+  `request_uri_parameter_supported = FALSE`. shinyOAuth now treats that
+  metadata as applying only to caller-managed `request_uri` values, not
+  PAR-issued `request_uri` handles.
+
+- Fixed OpenID Connect discovery defaults for
+  `request_parameter_supported`, `request_uri_parameter_supported`, and
+  `require_request_uri_registration`. When a discovery document omits
+  those booleans, shinyOAuth now applies the specification defaults
+  instead of storing `NA`.
+
+- Fixed certificate-bound opaque-token login and refresh flows when
+  `introspect = TRUE`. Introspection can now backfill `cnf` before the
+  first strict certificate-binding check and before the first automatic
+  userinfo call.
+
+- Fixed DPoP nonce handling for non-idempotent token requests.
+  Authorization-code exchange and refresh now raise a typed
+  nonce-challenge error instead of automatically replaying the request.
+
+- Fixed two follow-up regressions in the new DPoP/PAR and refresh flows.
+  PAR requests now still answer a single DPoP nonce challenge, and
+  refresh flows that fetch userinfo no longer overwrite a newly returned
+  `id_token` while reusing the previous validated ID-token baseline for
+  subject matching.
+
 - Added OpenTelemetry (‘OTel’) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback
@@ -832,8 +864,3 @@ CRAN release: 2025-11-10
 CRAN release: 2025-11-09
 
 - Initial CRAN submission.
-- Fixed JAR-over-PAR validation for discovery-derived providers that
-  disable only the front-channel `request` transport.
-  `authorization_request_mode = "request"` now remains valid when
-  `par_url` is configured and the signed Request Object is sent to the
-  PAR endpoint.
