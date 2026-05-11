@@ -162,6 +162,56 @@ test_that("client_bearer_req infers DPoP from raw JWT access-token cnf.jkt", {
   expect_true(nzchar(payload$ath))
 })
 
+test_that("client_bearer_req keeps DPoP inference when cnf members span sources", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
+  key <- openssl::rsa_keygen()
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = key,
+    tls_client_cert_file = files$cert_file,
+    tls_client_key_file = files$key_file,
+    tls_client_key_password = "password",
+    tls_client_ca_file = files$ca_file
+  )
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+  tok <- OAuthToken(
+    access_token = build_dummy_jwt(list(
+      sub = "user-1",
+      cnf = list(jkt = jkt)
+    )),
+    userinfo = list(),
+    cnf = list(
+      `x5t#S256` = shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+    )
+  )
+
+  req <- client_bearer_req(
+    token = tok,
+    url = "https://resource.example.com/api",
+    oauth_client = cli
+  )
+
+  dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+  expect_identical(dry$headers$authorization, paste("DPoP", tok@access_token))
+  expect_true(nzchar(dry$headers$dpop))
+})
+
 test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(

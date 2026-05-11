@@ -66,6 +66,29 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
     shinyOAuth:::resolve_token_cnf(cnf = list(jkt = "jkt-thumbprint")),
     list(jkt = "jkt-thumbprint")
   )
+
+  mixed_access_token <- build_dummy_jwt(list(
+    sub = "user-1",
+    cnf = list(jkt = "jwt-jkt")
+  ))
+  expect_identical(
+    shinyOAuth:::resolve_token_cnf(
+      cnf = list(`x5t#S256` = "explicit-thumbprint"),
+      access_token = mixed_access_token,
+      introspection_result = list(
+        raw = list(
+          cnf = list(
+            `x5t#S256` = "intro-thumbprint",
+            jkt = "intro-jkt"
+          )
+        )
+      )
+    ),
+    list(
+      `x5t#S256` = "explicit-thumbprint",
+      jkt = "jwt-jkt"
+    )
+  )
 })
 
 test_that("certificate-bound sender constraint requires token binding or an mTLS client", {

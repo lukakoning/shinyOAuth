@@ -400,16 +400,19 @@ resolve_token_cnf <- function(
   introspection_result = NULL
 ) {
   normalized <- normalize_token_cnf(cnf)
-  if (length(normalized) > 0) {
-    return(normalized)
-  }
-
   jwt_cnf <- token_cnf_from_access_token(access_token)
-  if (length(jwt_cnf) > 0) {
-    return(jwt_cnf)
-  }
+  introspection_cnf <- token_cnf_from_introspection(introspection_result)
 
-  token_cnf_from_introspection(introspection_result)
+  compact_list(list(
+    `x5t#S256` = normalized[["x5t#S256"]] %||%
+      jwt_cnf[["x5t#S256"]] %||%
+      introspection_cnf[["x5t#S256"]] %||%
+      NULL,
+    jkt = normalized[["jkt"]] %||%
+      jwt_cnf[["jkt"]] %||%
+      introspection_cnf[["jkt"]] %||%
+      NULL
+  ))
 }
 
 #' Check whether mTLS sender constraints are required
