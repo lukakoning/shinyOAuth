@@ -180,9 +180,11 @@ right request from there.
 
 When the client is configured with `dpop_private_key`, shinyOAuth also attaches a
 DPoP proof to the token request. For authorization-code exchange and refresh,
-shinyOAuth does not automatically replay a `DPoP-Nonce` challenge because those
-requests may consume a single-use credential. Instead it raises a typed error so
-the caller can decide whether replay is safe. The response must include at least
+if the authorization server responds with a `DPoP-Nonce` challenge, shinyOAuth
+caches the supplied nonce and retries the token request once with a fresh DPoP
+proof that includes it. Generic transport and HTTP retries still stay disabled
+for these non-idempotent token requests, so the package does not replay them
+beyond that RFC 9449 nonce handshake. The response must include at least
 `access_token`.
 Malformed or error responses abort the flow. 
 
@@ -217,11 +219,18 @@ proofs to token requests and later protected-resource requests:
 
 - Authorization-code exchange and refresh calls to the token endpoint carry a DPoP proof.
   If the authorization server responds with a `DPoP-Nonce` challenge, shinyOAuth
-  surfaces a typed nonce-challenge error instead of replaying the same
-  non-idempotent request automatically
+  retries once with a fresh proof that includes the supplied nonce, then reuses
+  the most recently learned authorization-server nonce on later token requests
+  until the server rotates it
 - Later `get_userinfo()` calls and downstream `client_bearer_req()` requests also attach
   DPoP proofs when the effective access-token type is `DPoP` and the caller supplies the
   corresponding `OAuthClient`
+  - Resource-server nonces are cached per issuing server rather than per exact
+    endpoint, so same-server protected-resource paths can reuse a nonce while
+    token-endpoint and resource-server nonce state stay separate
+  - If an idempotent DPoP request is retried after a transient transport or HTTP
+    failure, shinyOAuth mints a fresh proof for the retry instead of replaying
+    the same proof JWT
 
 ### 9. Validate ID token (OIDC only)
 
@@ -384,6 +393,8 @@ directly, it performs an OAuth 2.0 refresh-token grant against the provider's
 token endpoint and updates the `OAuthToken` object. In short:
 
 - A token request is sent with `grant_type=refresh_token` and the current `refresh_token`
+- When DPoP is enabled and the token endpoint responds with `DPoP-Nonce`, shinyOAuth
+  retries the refresh request once with a fresh proof that includes that nonce
 - The response must include a new `access_token`. `expires_at` is updated from `expires_in` when present; otherwise shinyOAuth synthesizes a finite fallback lifetime (default `3600` seconds, configurable via `options(shinyOAuth.default_expires_in = ...)`)
 - If the provider rotates the refresh token (returns a new `refresh_token`), it is stored; otherwise the
   original is preserved
