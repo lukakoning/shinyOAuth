@@ -1,19 +1,5 @@
 # shinyOAuth (development version)
 
-* Added DPoP token (RFC 9449) support: `oauth_client()` can
-now take a DPoP private key, token exchange/refresh requests can attach DPoP
-proofs with nonce retry, and downstream helpers now preserve and use
-`token_type = "DPoP"` when the server returns it.
-
-* DPoP token exchange and refresh now automatically replay a
-`use_dpop_nonce` challenge once with the server-provided `DPoP-Nonce`, so
-authorization servers that require a nonce on the first token request work
-without manual retry handling.
-
-* DPoP nonce caching now reuses resource-server nonces across same-server
-resource endpoints while still keeping token-endpoint and resource-server nonce
-state separate.
-
 * Idempotent DPoP retries now mint a fresh proof for each transient retry
 attempt instead of replaying the same proof JWT.
 
