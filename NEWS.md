@@ -14,6 +14,9 @@ without manual retry handling.
 resource endpoints while still keeping token-endpoint and resource-server nonce
 state separate.
 
+* Idempotent DPoP retries now mint a fresh proof for each transient retry
+attempt instead of replaying the same proof JWT.
+
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
 

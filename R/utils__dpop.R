@@ -652,8 +652,13 @@ req_with_dpop_retry <- function(
   url <- req[["url"]] %||% NA_character_
   request_kind <- if (is_valid_string(access_token)) "resource" else "token"
 
+  req_with_proof <- req_add_dpop_proof(req, client, access_token = access_token)
+  req_with_proof$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
+    req_add_dpop_proof(attempt_req, client, access_token = access_token)
+  }
+
   resp <- req_with_retry(
-    req_add_dpop_proof(req, client, access_token = access_token),
+    req_with_proof,
     idempotent = idempotent
   )
 
@@ -678,15 +683,22 @@ req_with_dpop_retry <- function(
     return(resp)
   }
 
-  resp <- req_with_retry(
+  retry_req <- req_add_dpop_proof(
+    req,
+    client,
+    access_token = access_token,
+    nonce = nonce
+  )
+  retry_req$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
     req_add_dpop_proof(
-      req,
+      attempt_req,
       client,
       access_token = access_token,
       nonce = nonce
-    ),
-    idempotent = idempotent
-  )
+    )
+  }
+
+  resp <- req_with_retry(retry_req, idempotent = idempotent)
 
   next_nonce <- resp_get_dpop_nonce(resp)
   if (is_valid_string(next_nonce)) {

@@ -309,6 +309,8 @@ check_resp_body_size <- function(
 #'   replaying a POST that the server already committed, which would cause
 #'   `invalid_grant` errors or trigger refresh-token replay detection.
 #'   Default `TRUE` (retries enabled).
+#'   Callers may attach an internal `shinyOAuth_prepare_attempt` request field
+#'   to rebuild one-shot headers before each perform attempt.
 #'
 #' Config via options:
 #'  - shinyOAuth.retry_max_tries (default 3)
@@ -333,12 +335,26 @@ req_with_retry <- function(req, idempotent = TRUE) {
   # immediately returning non-retryable error responses to the caller.
   req <- httr2::req_error(req, is_error = \(resp) FALSE)
 
+  prepare_attempt <- req$shinyOAuth_prepare_attempt %||% NULL
+
+  prepare_attempt_req <- function(attempt) {
+    attempt_req <- req
+    if (is.function(prepare_attempt)) {
+      attempt_req <- prepare_attempt(req, attempt)
+    }
+    if (inherits(attempt_req, "httr2_request")) {
+      attempt_req$shinyOAuth_prepare_attempt <- NULL
+    }
+    attempt_req
+  }
+
   # Non-idempotent requests (token exchange, refresh) must not be retried
   # because the server may have already consumed the single-use credential.
   # A retry would replay an invalidated code/token, causing invalid_grant
   # or triggering refresh-token replay detection (full session revocation).
   if (!isTRUE(idempotent)) {
-    resp <- try(httr2::req_perform(req), silent = TRUE)
+    attempt_req <- prepare_attempt_req(1L)
+    resp <- try(httr2::req_perform(attempt_req), silent = TRUE)
     if (inherits(resp, "try-error")) {
       parent <- attr(resp, "condition")
       if (is.null(parent)) {
@@ -348,11 +364,11 @@ req_with_retry <- function(req, idempotent = TRUE) {
         "Transport error performing HTTP request",
         context = compact_list(list(
           method = tryCatch(
-            toupper(as.character(req$method)),
+            toupper(as.character(attempt_req$method)),
             error = function(...) NA_character_
           ),
           url = tryCatch(
-            as.character(req$url),
+            as.character(attempt_req$url),
             error = function(...) NA_character_
           )
         )),
@@ -394,8 +410,9 @@ req_with_retry <- function(req, idempotent = TRUE) {
 
   last_err <- NULL
   for (i in seq_len(max_tries)) {
+    attempt_req <- prepare_attempt_req(i)
     # Try perform; catch transport errors
-    resp <- try(httr2::req_perform(req), silent = TRUE)
+    resp <- try(httr2::req_perform(attempt_req), silent = TRUE)
     # Transport error -> retry
     if (inherits(resp, "try-error")) {
       last_err <- resp
