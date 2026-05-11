@@ -386,25 +386,6 @@ err_token <- function(msg, context = list()) {
   err_abort(msg, class = "shinyOAuth_token_error", context = context)
 }
 
-#' Raise a DPoP nonce challenge error
-#'
-#' Wraps `err_abort()` with classes for DPoP nonce challenges that cannot be
-#' replayed automatically. Used when a non-idempotent request would otherwise
-#' need to be retried with a fresh DPoP proof.
-#'
-#' @param msg Error message or cli-style bullet vector.
-#' @param context Named list of diagnostic fields attached to the condition.
-#' @return This function does not return; it raises a condition.
-#' @keywords internal
-#' @noRd
-err_dpop_nonce <- function(msg, context = list()) {
-  err_abort(
-    msg,
-    class = c("shinyOAuth_dpop_nonce_error", "shinyOAuth_token_error"),
-    context = context
-  )
-}
-
 #' Raise an ID token error
 #'
 #' Wraps `err_abort()` with the package ID-token-error class. Used when an OIDC
