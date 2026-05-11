@@ -645,7 +645,7 @@ test_that("DPoP nonce cache is bounded by age and entry count", {
   expect_identical(info$evict, "lru")
 })
 
-test_that("swap_code_for_token_set surfaces DPoP nonce challenges for non-idempotent requests", {
+test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
   state <- new.env(parent = emptyenv())
   state$count <- 0L
   state$first_has_nonce <- NA
@@ -681,36 +681,47 @@ test_that("swap_code_for_token_set surfaces DPoP nonce challenges for non-idempo
         state$second_nonce <- payload$nonce %||% NA_character_
       }
 
+      if (state$count == 1L) {
+        return(httr2::response(
+          url = as.character(req$url),
+          status = 400,
+          headers = list(
+            "content-type" = "application/json",
+            "www-authenticate" = 'DPoP error="use_dpop_nonce"',
+            "dpop-nonce" = "nonce-1"
+          ),
+          body = charToRaw('{"error":"use_dpop_nonce"}')
+        ))
+      }
+
       httr2::response(
         url = as.character(req$url),
-        status = 400,
+        status = 200,
         headers = list(
-          "content-type" = "application/json",
-          "www-authenticate" = 'DPoP error="use_dpop_nonce"',
-          "dpop-nonce" = "nonce-1"
+          "content-type" = "application/json"
         ),
-        body = charToRaw('{"error":"use_dpop_nonce"}')
+        body = charToRaw(
+          '{"access_token":"at-1","token_type":"DPoP","expires_in":60}'
+        )
       )
     },
     .package = "shinyOAuth"
   )
 
-  testthat::expect_error(
-    shinyOAuth:::swap_code_for_token_set(
-      cli,
-      code = "code-1",
-      code_verifier = "verifier-1"
-    ),
-    class = "shinyOAuth_dpop_nonce_error",
-    regexp = "fresh DPoP nonce"
+  token_set <- shinyOAuth:::swap_code_for_token_set(
+    cli,
+    code = "code-1",
+    code_verifier = "verifier-1"
   )
 
-  expect_identical(state$count, 1L)
+  expect_identical(token_set$access_token, "at-1")
+  expect_identical(token_set$token_type, "DPoP")
+  expect_identical(state$count, 2L)
   expect_false(isTRUE(state$first_has_nonce))
-  expect_identical(state$second_nonce, NA_character_)
+  expect_identical(state$second_nonce, "nonce-1")
 })
 
-test_that("req_with_dpop_retry surfaces nonce challenges for non-idempotent requests", {
+test_that("req_with_dpop_retry retries nonce challenges for non-idempotent requests", {
   state <- new.env(parent = emptyenv())
   state$count <- 0L
 
@@ -742,6 +753,21 @@ test_that("req_with_dpop_retry surfaces nonce challenges for non-idempotent requ
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(dry$headers$dpop)
 
+      if (state$count == 2L) {
+        return(httr2::response(
+          url = as.character(req$url),
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(jsonlite::toJSON(
+            list(
+              request_count = state$count,
+              proof_nonce = payload$nonce %||% NA_character_
+            ),
+            auto_unbox = TRUE
+          ))
+        ))
+      }
+
       httr2::response(
         url = as.character(req$url),
         status = 400,
@@ -763,13 +789,13 @@ test_that("req_with_dpop_retry surfaces nonce challenges for non-idempotent requ
     .package = "shinyOAuth"
   )
 
-  testthat::expect_error(
-    shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = FALSE),
-    class = "shinyOAuth_dpop_nonce_error",
-    regexp = "fresh DPoP nonce"
-  )
+  resp <- shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = FALSE)
 
-  expect_identical(state$count, 1L)
+  expect_identical(state$count, 2L)
+  expect_identical(
+    jsonlite::fromJSON(rawToChar(resp$body), simplifyVector = TRUE)$proof_nonce,
+    "nonce-1"
+  )
 })
 
 test_that("req_with_dpop_retry preserves the caller idempotency setting", {
@@ -840,22 +866,11 @@ test_that("req_with_dpop_retry preserves the caller idempotency setting", {
       .package = "shinyOAuth"
     )
 
-    result <- if (isTRUE(idempotent)) {
-      shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = idempotent)
-      NULL
-    } else {
-      testthat::expect_error(
-        shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = idempotent),
-        class = "shinyOAuth_dpop_nonce_error",
-        regexp = "fresh DPoP nonce"
-      )
-      NULL
-    }
+    shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = idempotent)
 
     list(
       idempotent = state$idempotent,
-      nonces = state$nonces,
-      result = result
+      nonces = state$nonces
     )
   }
 
@@ -864,8 +879,8 @@ test_that("req_with_dpop_retry preserves the caller idempotency setting", {
   expect_identical(idempotent_case$nonces, c("", "nonce-1"))
 
   non_idempotent_case <- run_case(FALSE)
-  expect_identical(non_idempotent_case$idempotent, FALSE)
-  expect_identical(non_idempotent_case$nonces, "")
+  expect_identical(non_idempotent_case$idempotent, c(FALSE, FALSE))
+  expect_identical(non_idempotent_case$nonces, c("", "nonce-1"))
 })
 
 test_that("req_with_dpop_retry reuses a nonce learned from a successful response", {
@@ -1108,9 +1123,11 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
   expect_identical(payload$htu, paste0(sub("/+$", "", srv$url()), "/token"))
 })
 
-test_that("refresh_token surfaces DPoP nonce challenges for non-idempotent requests", {
+test_that("refresh_token retries DPoP nonce challenges once", {
   state <- new.env(parent = emptyenv())
   state$count <- 0L
+  state$first_has_nonce <- NA
+  state$second_nonce <- NA_character_
 
   prov <- oauth_provider(
     name = "example",
@@ -1141,38 +1158,48 @@ test_that("refresh_token surfaces DPoP nonce challenges for non-idempotent reque
     req_with_retry = function(req, idempotent = TRUE) {
       state$count <- state$count + 1L
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      proof <- dry$headers$dpop %||% ""
+      payload <- decode_dpop_payload(dry$headers$dpop)
+      if (state$count == 1L) {
+        state$first_has_nonce <- "nonce" %in% names(payload)
+      } else {
+        state$second_nonce <- payload$nonce %||% NA_character_
+      }
 
-      if (!nzchar(proof)) {
+      if (state$count == 1L) {
         return(httr2::response(
           url = as.character(req$url),
           status = 400,
-          headers = list("content-type" = "application/json"),
-          body = charToRaw('{"error":"missing_dpop"}')
+          headers = list(
+            "content-type" = "application/json",
+            "www-authenticate" = 'DPoP error="use_dpop_nonce"',
+            "dpop-nonce" = "refresh-nonce-1"
+          ),
+          body = charToRaw('{"error":"use_dpop_nonce"}')
         ))
       }
 
       httr2::response(
         url = as.character(req$url),
-        status = 400,
-        headers = list(
-          "content-type" = "application/json",
-          "www-authenticate" = 'DPoP error="use_dpop_nonce"',
-          "dpop-nonce" = "refresh-nonce-1"
-        ),
-        body = charToRaw('{"error":"use_dpop_nonce"}')
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          paste0(
+            '{"access_token":"new-access","token_type":"DPoP",',
+            '"refresh_token":"new-refresh","expires_in":60}'
+          )
+        )
       )
     },
     .package = "shinyOAuth"
   )
 
-  testthat::expect_error(
-    refresh_token(cli, tok),
-    class = "shinyOAuth_dpop_nonce_error",
-    regexp = "fresh DPoP nonce"
-  )
+  refreshed <- refresh_token(cli, tok)
 
-  expect_identical(state$count, 1L)
+  expect_identical(refreshed@access_token, "new-access")
+  expect_identical(refreshed@refresh_token, "new-refresh")
+  expect_identical(state$count, 2L)
+  expect_false(isTRUE(state$first_has_nonce))
+  expect_identical(state$second_nonce, "refresh-nonce-1")
 })
 
 test_that("refresh_token reuses a nonce learned from a successful token exchange", {

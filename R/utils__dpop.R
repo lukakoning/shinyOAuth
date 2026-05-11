@@ -582,7 +582,9 @@ resp_is_dpop_nonce_challenge <- function(resp) {
 #' @param req httr2 request object.
 #' @param client OAuth client carrying DPoP configuration.
 #' @param access_token Optional access token used when building the DPoP proof.
-#' @param idempotent Whether the request may be retried safely.
+#' @param idempotent Whether generic transport/HTTP retries may run for the
+#'   request. DPoP nonce challenges are replayed once with the server-provided
+#'   nonce regardless, as required by RFC 9449.
 #' @return httr2 response object.
 #' @keywords internal
 #' @noRd
@@ -622,25 +624,6 @@ req_with_dpop_retry <- function(
 
   if (!is_valid_string(nonce)) {
     return(resp)
-  }
-
-  if (!isTRUE(idempotent)) {
-    err_dpop_nonce(
-      c(
-        "x" = paste(
-          "Authorization server requested a fresh DPoP nonce for a non-idempotent request"
-        ),
-        "!" = paste(
-          "Automatic replay is disabled because it could consume a single-use authorization code or rotating refresh token"
-        ),
-        "i" = "Retry manually only if your provider guarantees the challenged credential was not consumed"
-      ),
-      context = compact_list(list(
-        request_url = url %||% NA_character_,
-        dpop_nonce = nonce,
-        idempotent = FALSE
-      ))
-    )
   }
 
   resp <- req_with_retry(
