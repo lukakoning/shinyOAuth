@@ -115,7 +115,7 @@ test_that("prepare_call pushes authorization params and redirects with request_u
   expect_match(body_text, "code_challenge_method=S256")
 })
 
-test_that("PAR requests disable retries as non-idempotent POSTs", {
+test_that("PAR requests keep nonce-challenge retries enabled", {
   cli <- make_par_test_client()
   retry_idempotent <- NULL
 
@@ -141,7 +141,7 @@ test_that("PAR requests disable retries as non-idempotent POSTs", {
     auth_url,
     "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
   )
-  expect_identical(retry_idempotent, FALSE)
+  expect_identical(retry_idempotent, TRUE)
 })
 
 test_that("PAR attaches DPoP proof and retries once on nonce challenge", {

@@ -1009,16 +1009,21 @@ refresh_token <- function(
           } else {
             isTRUE(token@id_token_validated)
           }
+
           refreshed_token@id_token <- userinfo_baseline_id_token %||%
             NA_character_
           refreshed_token@id_token_validated <-
             userinfo_baseline_id_token_validated
+
           ui <- call_with_optional_shiny_session(
             get_userinfo,
             oauth_client = oauth_client,
             token = refreshed_token,
             shiny_session = shiny_session
           )
+
+          refreshed_token@id_token <- refreshed_id_token %||% NA_character_
+          refreshed_token@id_token_validated <- refreshed_id_token_validated
 
           enforce_userinfo_id_token_subject_match(
             oauth_client,

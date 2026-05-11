@@ -479,10 +479,10 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       resp <- with_otel_span(
         "shinyOAuth.login.par.http",
         {
-          # PAR is a non-idempotent POST. When DPoP is enabled, reuse the
-          # standard DPoP helper so the request can attach a proof and answer
-          # a single DPoP-Nonce challenge from the authorization server.
-          resp <- req_with_dpop_retry(req, client, idempotent = FALSE)
+          # PAR may allocate a fresh request_uri, but it does not consume the
+          # single-use credentials that make token exchange or refresh unsafe
+          # to replay after a nonce challenge.
+          resp <- req_with_dpop_retry(req, client, idempotent = TRUE)
           otel_record_http_result(resp)
           resp
         },

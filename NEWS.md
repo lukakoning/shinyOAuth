@@ -676,8 +676,3 @@ to further clarify this.
 # shinyOAuth 0.1.1
 
 * Initial CRAN submission.
-* Fixed JAR-over-PAR validation for discovery-derived providers that disable
-only the front-channel `request` transport. `authorization_request_mode =
-"request"` now remains valid when `par_url` is configured and the signed
-Request Object is sent to the PAR endpoint.
-
