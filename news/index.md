@@ -8,11 +8,6 @@
   attach DPoP proofs with nonce retry, and downstream helpers now
   preserve and use `token_type = "DPoP"` when the server returns it.
 
-- Mixed-source token `cnf` data is now merged per member instead of
-  taking the first non-empty source, so DPoP `jkt` and mTLS `x5t#S256`
-  bindings are preserved together across token responses, JWT claims,
-  and introspection.
-
 - Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client
   authentication, certificate-bound access tokens, and mTLS endpoint
   aliases.
