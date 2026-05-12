@@ -221,10 +221,17 @@ After a successful response, shinyOAuth also checks two basic things:
 
 When the provider uses mutual TLS
 (`token_auth_style = "tls_client_auth"` or
-`"self_signed_tls_client_auth"`) or advertises
-`tls_client_certificate_bound_access_tokens = TRUE`, shinyOAuth prefers
-the mTLS endpoints when available and treats the resulting tokens as
-certificate-bound:
+`"self_signed_tls_client_auth"`), shinyOAuth sends the configured client
+certificate on authorization-server requests and prefers any discovered
+`mtls_endpoint_aliases`.
+
+Certificate-bound access tokens are a separate RFC 8705 policy. When the
+provider advertises `tls_client_certificate_bound_access_tokens = TRUE`
+and the client opts in with
+`mtls_request_certificate_bound_access_tokens = TRUE`, shinyOAuth
+prefers the mTLS endpoints for authorization-server requests even when
+`token_auth_style` itself is not an mTLS auth style, and then treats the
+resulting access tokens as certificate-bound:
 
 - For authorization-server requests such as PAR, authorization-code
   exchange, refresh, introspection, and revocation, shinyOAuth sends the

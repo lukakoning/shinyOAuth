@@ -314,10 +314,18 @@ setting)</li>
 </h4>
 <p>When the provider uses mutual TLS
 (<code>token_auth_style = "tls_client_auth"</code> or
-<code>"self_signed_tls_client_auth"</code>) or advertises
-<code>tls_client_certificate_bound_access_tokens = TRUE</code>,
-shinyOAuth prefers the mTLS endpoints when available and treats the
-resulting tokens as certificate-bound:</p>
+<code>"self_signed_tls_client_auth"</code>), shinyOAuth sends the
+configured client certificate on authorization-server requests and
+prefers any discovered <code>mtls_endpoint_aliases</code>.</p>
+<p>Certificate-bound access tokens are a separate RFC 8705 policy. When
+the provider advertises
+<code>tls_client_certificate_bound_access_tokens = TRUE</code> and the
+client opts in with
+<code>mtls_request_certificate_bound_access_tokens = TRUE</code>,
+shinyOAuth prefers the mTLS endpoints for authorization-server requests
+even when <code>token_auth_style</code> itself is not an mTLS auth
+style, and then treats the resulting access tokens as
+certificate-bound:</p>
 <ul>
 <li>For authorization-server requests such as PAR, authorization-code
 exchange, refresh, introspection, and revocation, shinyOAuth sends the

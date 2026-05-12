@@ -195,14 +195,17 @@ discovery might fail early.
   (a private key for `private_key_jwt`, or a sufficiently strong
   `client_secret` for `client_secret_jwt`).
 
-- Host policy: by default, discovered endpoints must be absolute URLs
-  whose host matches the issuer host exactly. Subdomains are NOT
-  implicitly allowed. If you want to allow subdomains, add a leading-dot
-  or glob in `options(shinyOAuth.allowed_hosts)`, e.g., `.example.com`
-  or `*.example.com`. If a global whitelist is supplied via
-  `options(shinyOAuth.allowed_hosts)`, discovery will restrict endpoints
-  to that whitelist. Scheme policy (https/http for loopback) is
-  delegated to
+- Host policy: by default, discovered standard endpoints must be
+  absolute URLs whose host matches the issuer host exactly. Subdomains
+  are NOT implicitly allowed. If you want to allow subdomains, add a
+  leading-dot or glob in `options(shinyOAuth.allowed_hosts)`, e.g.,
+  `.example.com` or `*.example.com`. If a global whitelist is supplied
+  via `options(shinyOAuth.allowed_hosts)`, discovery will restrict
+  endpoints to that whitelist. RFC 8705 `mtls_endpoint_aliases` are
+  validated separately: they may use a different host or port by
+  default, but an explicit `shinyOAuth.allowed_hosts` whitelist still
+  constrains them. Scheme policy (https/http for loopback) is delegated
+  to
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md),
   so you may allow non-HTTPS hosts with
   `options(shinyOAuth.allowed_non_https_hosts)` (see
