@@ -12,8 +12,8 @@ oauth_client_mtls_registration(
 )
 }
 \arguments{
-\item{oauth_client}{\link{OAuthClient} configured for \code{tls_client_auth} or
-\code{self_signed_tls_client_auth}.}
+\item{oauth_client}{\link{OAuthClient} configured for RFC 8705 mutual TLS client
+authentication or for certificate-bound access tokens.}
 
 \item{tls_client_auth_type}{For \code{tls_client_auth}, which RFC 8705
 certificate identifier field to emit. One of \code{"subject_dn"}, \code{"san_dns"},
@@ -34,7 +34,8 @@ A JSON-ready list of RFC 7591/RFC 8705 client metadata.
 }
 \description{
 Returns a JSON-ready list of client metadata for registering an
-\link{OAuthClient} that uses RFC 8705 mutual TLS.
+\link{OAuthClient} that uses RFC 8705 mutual TLS or requests
+certificate-bound access tokens.
 
 For \code{token_auth_style = "tls_client_auth"}, this helper returns
 \code{token_endpoint_auth_method = "tls_client_auth"} plus exactly one RFC 8705
@@ -47,6 +48,12 @@ For \code{token_auth_style = "self_signed_tls_client_auth"}, this helper returns
 \code{token_endpoint_auth_method = "self_signed_tls_client_auth"} plus either an
 inline \code{jwks} document built from the configured client certificate and
 certificate chain (published via \code{x5c}), or a caller-supplied \code{jwks_uri}.
+
+For clients that request RFC 8705 certificate-bound access tokens without
+mTLS OAuth client authentication, this helper returns the runtime
+\code{token_auth_style} mapped back to the dynamic-registration metadata value
+(for example, \code{public} becomes \code{none}) and emits
+\code{tls_client_certificate_bound_access_tokens = TRUE}.
 
 This helper prepares metadata only. It does not make a registration HTTP
 call.

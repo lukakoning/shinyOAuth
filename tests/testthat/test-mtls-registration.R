@@ -1,4 +1,8 @@
-make_mtls_registration_client <- function(token_auth_style) {
+make_mtls_registration_client <- function(
+  token_auth_style,
+  tls_client_certificate_bound_access_tokens = FALSE,
+  mtls_request_certificate_bound_access_tokens = FALSE
+) {
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -7,7 +11,8 @@ make_mtls_registration_client <- function(token_auth_style) {
     use_pkce = TRUE,
     id_token_required = FALSE,
     id_token_validation = FALSE,
-    token_auth_style = token_auth_style
+    token_auth_style = token_auth_style,
+    tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens
   )
 
   oauth_client(
@@ -18,7 +23,8 @@ make_mtls_registration_client <- function(token_auth_style) {
     scopes = character(0),
     tls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
     tls_client_key_file = mtls_pem_fixture("client-key.pem"),
-    tls_client_ca_file = mtls_pem_fixture("ca-cert.pem")
+    tls_client_ca_file = mtls_pem_fixture("ca-cert.pem"),
+    mtls_request_certificate_bound_access_tokens = mtls_request_certificate_bound_access_tokens
   )
 }
 
@@ -68,6 +74,39 @@ test_that("oauth_client_mtls_registration supports explicit SAN identifiers", {
       identifiers[[identifier]]$value
     )
   }
+})
+
+test_that("oauth_client_mtls_registration emits certificate-bound token intent", {
+  client <- make_mtls_registration_client(
+    token_auth_style = "tls_client_auth",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_request_certificate_bound_access_tokens = TRUE
+  )
+
+  metadata <- shinyOAuth::oauth_client_mtls_registration(client)
+
+  expect_identical(metadata$token_endpoint_auth_method, "tls_client_auth")
+  expect_true(isTRUE(metadata$tls_client_certificate_bound_access_tokens))
+  expect_identical(
+    metadata$tls_client_auth_subject_dn,
+    "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,L=Local,ST=NA,C=US"
+  )
+})
+
+test_that("oauth_client_mtls_registration supports public certificate-bound clients", {
+  client <- make_mtls_registration_client(
+    token_auth_style = "public",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_request_certificate_bound_access_tokens = TRUE
+  )
+
+  metadata <- shinyOAuth::oauth_client_mtls_registration(client)
+
+  expect_identical(metadata$token_endpoint_auth_method, "none")
+  expect_true(isTRUE(metadata$tls_client_certificate_bound_access_tokens))
+  expect_false(any(grepl("^tls_client_auth_", names(metadata))))
+  expect_null(metadata[["jwks", exact = TRUE]])
+  expect_null(metadata[["jwks_uri", exact = TRUE]])
 })
 
 test_that("SAN helpers classify unique certificate alt names", {

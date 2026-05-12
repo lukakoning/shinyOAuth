@@ -9,7 +9,8 @@
 #'
 #' @description
 #' Returns a JSON-ready list of client metadata for registering an
-#' [OAuthClient] that uses RFC 8705 mutual TLS.
+#' [OAuthClient] that uses RFC 8705 mutual TLS or requests
+#' certificate-bound access tokens.
 #'
 #' For `token_auth_style = "tls_client_auth"`, this helper returns
 #' `token_endpoint_auth_method = "tls_client_auth"` plus exactly one RFC 8705
@@ -23,11 +24,17 @@
 #' inline `jwks` document built from the configured client certificate and
 #' certificate chain (published via `x5c`), or a caller-supplied `jwks_uri`.
 #'
+#' For clients that request RFC 8705 certificate-bound access tokens without
+#' mTLS OAuth client authentication, this helper returns the runtime
+#' `token_auth_style` mapped back to the dynamic-registration metadata value
+#' (for example, `public` becomes `none`) and emits
+#' `tls_client_certificate_bound_access_tokens = TRUE`.
+#'
 #' This helper prepares metadata only. It does not make a registration HTTP
 #' call.
 #'
-#' @param oauth_client [OAuthClient] configured for `tls_client_auth` or
-#'   `self_signed_tls_client_auth`.
+#' @param oauth_client [OAuthClient] configured for RFC 8705 mutual TLS client
+#'   authentication or for certificate-bound access tokens.
 #' @param tls_client_auth_type For `tls_client_auth`, which RFC 8705
 #'   certificate identifier field to emit. One of `"subject_dn"`, `"san_dns"`,
 #'   `"san_uri"`, `"san_ip"`, or `"san_email"`.
@@ -56,6 +63,9 @@ oauth_client_mtls_registration <- function(
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   tls_client_auth_type <- match.arg(tls_client_auth_type)
+  requests_certificate_bound_tokens <- client_requests_certificate_bound_tokens(
+    oauth_client
+  )
 
   if (
     !is.null(tls_client_auth_value) && !is_valid_string(tls_client_auth_value)
@@ -73,11 +83,14 @@ oauth_client_mtls_registration <- function(
   token_auth_style <- normalize_token_auth_style(
     oauth_client@provider@token_auth_style %||% "header"
   )
-  if (!(token_auth_style %in% MTLS_TOKEN_AUTH_STYLES)) {
+  if (
+    !(token_auth_style %in% MTLS_TOKEN_AUTH_STYLES) &&
+      !isTRUE(requests_certificate_bound_tokens)
+  ) {
     err_input(
       paste(
-        "{.arg oauth_client} must use provider@token_auth_style =",
-        "'tls_client_auth' or 'self_signed_tls_client_auth'."
+        "{.arg oauth_client} must use an RFC 8705 mTLS token_auth_style or",
+        "set mtls_request_certificate_bound_access_tokens = TRUE."
       )
     )
   }
@@ -90,6 +103,19 @@ oauth_client_mtls_registration <- function(
     )
   }
 
+  metadata <- compact_list(list(
+    token_endpoint_auth_method = mtls_registration_token_endpoint_auth_method(
+      token_auth_style
+    ),
+    tls_client_certificate_bound_access_tokens = if (
+      isTRUE(requests_certificate_bound_tokens)
+    ) {
+      TRUE
+    } else {
+      NULL
+    }
+  ))
+
   if (identical(token_auth_style, "self_signed_tls_client_auth")) {
     if (!is.null(tls_client_auth_value)) {
       err_input(
@@ -100,7 +126,6 @@ oauth_client_mtls_registration <- function(
       )
     }
 
-    metadata <- list(token_endpoint_auth_method = token_auth_style)
     if (is.null(jwks_uri)) {
       metadata$jwks <- build_self_signed_mtls_registration_jwks(oauth_client)
       return(metadata)
@@ -120,6 +145,19 @@ oauth_client_mtls_registration <- function(
     )
   }
 
+  if (!identical(token_auth_style, "tls_client_auth")) {
+    if (!is.null(tls_client_auth_value)) {
+      err_input(
+        paste(
+          "{.arg tls_client_auth_value} only applies when token_auth_style =",
+          "'tls_client_auth'."
+        )
+      )
+    }
+
+    return(metadata)
+  }
+
   field_name <- mtls_registration_field_name(tls_client_auth_type)
   field_value <- resolve_mtls_registration_identifier_value(
     oauth_client = oauth_client,
@@ -127,7 +165,6 @@ oauth_client_mtls_registration <- function(
     tls_client_auth_value = tls_client_auth_value
   )
 
-  metadata <- list(token_endpoint_auth_method = token_auth_style)
   metadata[[field_name]] <- field_value
   metadata
 }
@@ -136,6 +173,33 @@ oauth_client_mtls_registration <- function(
 # 2 Registration support helpers ----------------------------------------------
 
 ## 2.1 Resolve tls_client_auth identifiers ------------------------------------
+
+#' Map a runtime token auth style to registration metadata
+#'
+#' @description
+#' Converts shinyOAuth's normalized runtime auth styles to the corresponding
+#' `token_endpoint_auth_method` values used by OAuth dynamic registration.
+#'
+#' @param token_auth_style Normalized runtime token auth style.
+#' @return Character scalar registration auth method value.
+#' @keywords internal
+#' @noRd
+mtls_registration_token_endpoint_auth_method <- function(token_auth_style) {
+  switch(
+    token_auth_style,
+    header = "client_secret_basic",
+    body = "client_secret_post",
+    public = "none",
+    tls_client_auth = "tls_client_auth",
+    self_signed_tls_client_auth = "self_signed_tls_client_auth",
+    client_secret_jwt = "client_secret_jwt",
+    private_key_jwt = "private_key_jwt",
+    err_input(paste0(
+      "Unsupported token_auth_style for mTLS registration: ",
+      token_auth_style
+    ))
+  )
+}
 
 #' Resolve an RFC 8705 registration field name
 #'
