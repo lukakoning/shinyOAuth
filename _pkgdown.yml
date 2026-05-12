@@ -29,6 +29,7 @@ reference:
 - title: OAuth client configuration
 - contents:
   - oauth_client
+  - oauth_client_mtls_registration
   
 - title: Authentication flow
 - subtitle: Prepare & handle OAuth 2.0 calls; typically not needed by end users
