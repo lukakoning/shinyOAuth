@@ -181,6 +181,19 @@ test_that("request objects default to private-key signing and honor audience ove
   expect_identical(pl$aud, "https://example.com/custom-aud")
 })
 
+test_that("request objects omit aud when no provider issuer is configured", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(issuer = NA_character_)
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+
+  expect_null(shinyOAuth:::resolve_authorization_request_audience(cli))
+  expect_false("aud" %in% names(pl))
+})
+
 test_that("request objects honor ttl and optional nbf skew controls", {
   cli <- make_jar_test_client(
     authorization_request_ttl = 300,

@@ -256,8 +256,8 @@ signed authorization requests.}
 
 \item{authorization_request_audience}{Optional override for the \code{aud} claim
 used in signed authorization requests. By default, shinyOAuth uses the
-provider issuer when available and otherwise falls back to the authorization
-endpoint URL.}
+provider issuer when available. If the provider has no configured issuer,
+shinyOAuth omits the \code{aud} claim unless you supply an explicit override.}
 
 \item{authorization_request_ttl}{Positive number of seconds to keep signed
 authorization request objects (\code{request} JWTs) valid. Default is \code{120}.}

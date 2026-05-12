@@ -292,10 +292,14 @@ resolve_authorization_request_signing_alg <- function(client) {
 
 #' Resolve the audience (`aud`) value for a signed authorization request.
 #'
-#' Used when request objects are built for authorization requests.
+#' Uses an explicit client override when present. Otherwise, uses the provider
+#' issuer when available, per RFC 9101 Section 4. If no issuer is configured,
+#' returns `NULL` so the request object can omit `aud` rather than guessing the
+#' authorization endpoint URL.
 #'
 #' @param client OAuth client carrying request-object signing configuration.
-#' @return Audience string for the signed authorization request.
+#' @return Audience string for the signed authorization request, or `NULL` when
+#'   no issuer-based default is available.
 #' @keywords internal
 #' @noRd
 resolve_authorization_request_audience <- function(client) {
@@ -315,14 +319,7 @@ resolve_authorization_request_audience <- function(client) {
     return(provider_issuer)
   }
 
-  auth_url <- client@provider@auth_url %||% NA_character_
-  if (is_valid_string(auth_url)) {
-    return(auth_url)
-  }
-
-  err_config(
-    "Could not resolve an audience for the signed authorization request"
-  )
+  NULL
 }
 
 ## 1.3 Signing algorithm and key helpers ---------------------------------------
