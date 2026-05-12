@@ -274,74 +274,74 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
   testthat::expect_true(grepl("^https://api.example.com/token", prov@token_url))
 })
 
-testthat::test_that("discovery rejects separate-host mTLS aliases by default", {
-  testthat::skip_if_not_installed("webfakes")
-  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
-  app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
-      jsonlite::toJSON(
-        list(
-          issuer = issuer_url,
-          authorization_endpoint = paste0(issuer_url, "/auth"),
-          token_endpoint = paste0(issuer_url, "/token"),
-          jwks_uri = paste0(issuer_url, "/jwks"),
-          token_endpoint_auth_methods_supported = list("tls_client_auth"),
-          mtls_endpoint_aliases = list(
-            token_endpoint = "https://mtls.example.com/token",
-            introspection_endpoint = "https://mtls.example.com/introspect",
-            revocation_endpoint = "https://mtls.example.com/revoke"
-          )
-        ),
-        auto_unbox = TRUE
+testthat::test_that("discovery allows separate-host mTLS aliases by default", {
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://issuer.example.com/auth",
+        token_endpoint = "https://issuer.example.com/token",
+        jwks_uri = "https://issuer.example.com/jwks",
+        token_endpoint_auth_methods_supported = list("tls_client_auth"),
+        mtls_endpoint_aliases = list(
+          token_endpoint = "https://mtls.example.com/token",
+          introspection_endpoint = "https://mtls.example.com/introspect",
+          revocation_endpoint = "https://mtls.example.com/revoke"
+        )
       )
-    )
-  })
+    },
+    .package = "shinyOAuth"
+  )
 
-  srv <- webfakes::local_app_process(app)
-  testthat::expect_error(
-    oauth_provider_oidc_discover(
-      issuer = srv$url(),
-      token_auth_style = "tls_client_auth"
-    ),
-    class = "shinyOAuth_config_error",
-    regexp = "Allowed hosts"
+  prov <- oauth_provider_oidc_discover(
+    issuer = "https://issuer.example.com",
+    token_auth_style = "tls_client_auth"
+  )
+
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$token_endpoint,
+    "https://mtls.example.com/token"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$introspection_endpoint,
+    "https://mtls.example.com/introspect"
+  )
+  testthat::expect_identical(
+    prov@mtls_endpoint_aliases$revocation_endpoint,
+    "https://mtls.example.com/revoke"
   )
 })
 
 testthat::test_that("discovery allows separate-host mTLS aliases when allowed_hosts permits them", {
-  testthat::skip_if_not_installed("webfakes")
-  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
-  app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
-      jsonlite::toJSON(
-        list(
-          issuer = issuer_url,
-          authorization_endpoint = paste0(issuer_url, "/auth"),
-          token_endpoint = paste0(issuer_url, "/token"),
-          jwks_uri = paste0(issuer_url, "/jwks"),
-          token_endpoint_auth_methods_supported = list("tls_client_auth"),
-          mtls_endpoint_aliases = list(
-            token_endpoint = "https://mtls.example.com/token",
-            introspection_endpoint = "https://mtls.example.com/introspect",
-            revocation_endpoint = "https://mtls.example.com/revoke"
-          )
-        ),
-        auto_unbox = TRUE
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://issuer.example.com/auth",
+        token_endpoint = "https://issuer.example.com/token",
+        jwks_uri = "https://issuer.example.com/jwks",
+        token_endpoint_auth_methods_supported = list("tls_client_auth"),
+        mtls_endpoint_aliases = list(
+          token_endpoint = "https://mtls.example.com/token",
+          introspection_endpoint = "https://mtls.example.com/introspect",
+          revocation_endpoint = "https://mtls.example.com/revoke"
+        )
       )
-    )
-  })
-
-  srv <- webfakes::local_app_process(app)
+    },
+    .package = "shinyOAuth"
+  )
   withr::local_options(list(
-    shinyOAuth.allowed_hosts = c("127.0.0.1", "mtls.example.com")
+    shinyOAuth.allowed_hosts = c("issuer.example.com", "mtls.example.com")
   ))
 
   prov <- oauth_provider_oidc_discover(
-    issuer = srv$url(),
+    issuer = "https://issuer.example.com",
     token_auth_style = "tls_client_auth"
   )
 
@@ -360,34 +360,29 @@ testthat::test_that("discovery allows separate-host mTLS aliases when allowed_ho
 })
 
 testthat::test_that("explicit allowed_hosts still constrains discovered mTLS aliases", {
-  testthat::skip_if_not_installed("webfakes")
-  testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
-  app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
-      jsonlite::toJSON(
-        list(
-          issuer = issuer_url,
-          authorization_endpoint = paste0(issuer_url, "/auth"),
-          token_endpoint = paste0(issuer_url, "/token"),
-          jwks_uri = paste0(issuer_url, "/jwks"),
-          token_endpoint_auth_methods_supported = list("tls_client_auth"),
-          mtls_endpoint_aliases = list(
-            token_endpoint = "https://mtls.example.com/token"
-          )
-        ),
-        auto_unbox = TRUE
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://issuer.example.com/auth",
+        token_endpoint = "https://issuer.example.com/token",
+        jwks_uri = "https://issuer.example.com/jwks",
+        token_endpoint_auth_methods_supported = list("tls_client_auth"),
+        mtls_endpoint_aliases = list(
+          token_endpoint = "https://mtls.example.com/token"
+        )
       )
-    )
-  })
-
-  srv <- webfakes::local_app_process(app)
-  withr::local_options(list(shinyOAuth.allowed_hosts = "127.0.0.1"))
+    },
+    .package = "shinyOAuth"
+  )
+  withr::local_options(list(shinyOAuth.allowed_hosts = "issuer.example.com"))
 
   testthat::expect_error(
     oauth_provider_oidc_discover(
-      issuer = srv$url(),
+      issuer = "https://issuer.example.com",
       token_auth_style = "tls_client_auth"
     ),
     class = "shinyOAuth_config_error",

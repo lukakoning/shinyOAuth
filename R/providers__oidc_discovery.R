@@ -88,14 +88,18 @@
 #'   [OAuthClient] (a private key for `private_key_jwt`, or a sufficiently
 #'   strong `client_secret` for `client_secret_jwt`).
 #'
-#' - Host policy: by default, discovered endpoints must be absolute URLs whose
-#'   host matches the issuer host exactly. Subdomains are NOT implicitly allowed.
-#'   If you want to allow subdomains, add a leading-dot or glob in
-#'   `options(shinyOAuth.allowed_hosts)`, e.g., `.example.com` or `*.example.com`.
-#'   If a global whitelist is supplied via `options(shinyOAuth.allowed_hosts)`,
-#'   discovery will restrict endpoints to that whitelist. Scheme policy (https/http for
-#'   loopback) is delegated to `is_ok_host()`, so you may allow non-HTTPS hosts
-#'   with `options(shinyOAuth.allowed_non_https_hosts)` (see `?is_ok_host`).
+#' - Host policy: by default, discovered standard endpoints must be absolute
+#'   URLs whose host matches the issuer host exactly. Subdomains are NOT
+#'   implicitly allowed. If you want to allow subdomains, add a leading-dot or
+#'   glob in `options(shinyOAuth.allowed_hosts)`, e.g., `.example.com` or
+#'   `*.example.com`. If a global whitelist is supplied via
+#'   `options(shinyOAuth.allowed_hosts)`, discovery will restrict endpoints to
+#'   that whitelist. RFC 8705 `mtls_endpoint_aliases` are validated separately:
+#'   they may use a different host or port by default, but an explicit
+#'   `shinyOAuth.allowed_hosts` whitelist still constrains them. Scheme policy
+#'   (https/http for loopback) is delegated to `is_ok_host()`, so you may allow
+#'   non-HTTPS hosts with `options(shinyOAuth.allowed_non_https_hosts)` (see
+#'   `?is_ok_host`).
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
 #'   "https://login.example.com"
@@ -301,7 +305,7 @@ oauth_provider_oidc_discover <- function(
   mtls_endpoint_aliases <- .discover_extract_mtls_endpoint_aliases(disc)
   .discover_validate_endpoint_aliases(
     mtls_endpoint_aliases,
-    .discover_allowed_hosts(iss_host)
+    .discover_allowed_alias_hosts()
   )
   tls_client_certificate_bound_access_tokens <-
     .discover_parse_optional_boolean(
@@ -605,6 +609,28 @@ oauth_provider_oidc_discover <- function(
   }
 
   c(iss_host)
+}
+
+#' Internal: compute the host allowlist used for discovered mTLS aliases
+#'
+#' RFC 8705 allows `mtls_endpoint_aliases` to live on a different host or port
+#' than the issuer. Discovery therefore applies the explicit
+#' `shinyOAuth.allowed_hosts` allowlist when present, but otherwise falls back
+#' to the general `is_ok_host()` policy instead of implicitly pinning aliases to
+#' the issuer host.
+#'
+#' @return Host vector that discovered mTLS aliases are allowed to trust, or
+#'   `NULL` when the general host policy should apply.
+#' @keywords internal
+#' @noRd
+.discover_allowed_alias_hosts <- function() {
+  opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
+
+  if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
+    return(opt_allowed)
+  }
+
+  NULL
 }
 
 #' Internal: validate all endpoints against host policy
@@ -1071,11 +1097,14 @@ oauth_provider_oidc_discover <- function(
 
 #' Validate discovered mTLS endpoint aliases
 #'
-#' Applies the same endpoint host policy to discovered mTLS aliases that the
-#' package uses for other provider endpoints.
+#' Applies host validation to discovered mTLS aliases.
+#'
+#' By default this uses the package's general `is_ok_host()` policy so RFC 8705
+#' aliases may live on a different host or port than the issuer. When callers
+#' configure an explicit host allowlist, aliases must satisfy that allowlist.
 #'
 #' @param mtls_endpoint_aliases Named list of discovered mTLS alias URLs.
-#' @param allowed_hosts_vec Allowed host vector used for endpoint validation.
+#' @param allowed_hosts_vec Optional host vector used for endpoint validation.
 #' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
 #'   validation error.
 #' @keywords internal
@@ -1088,8 +1117,6 @@ oauth_provider_oidc_discover <- function(
     return(invisible(TRUE))
   }
 
-  # Keep discovered mTLS aliases pinned to the issuer host by default. Callers
-  # can still opt into alternate alias hosts via shinyOAuth.allowed_hosts.
   for (alias_url in unname(mtls_endpoint_aliases)) {
     validate_endpoint(alias_url, allowed_hosts_vec)
   }
