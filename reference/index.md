@@ -50,6 +50,8 @@
 
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   : Create generic OAuthClient
+- [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
+  : Build RFC 8705 mTLS registration metadata
 
 ## Authentication flow
 
