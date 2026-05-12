@@ -91,7 +91,7 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
   )
 })
 
-test_that("certificate-bound sender constraint requires token binding or an mTLS client", {
+test_that("certificate-bound sender constraint requires token binding or explicit client opt-in", {
   cert_file <- tempfile(fileext = ".pem")
   key_file <- tempfile(fileext = ".pem")
   ca_file <- tempfile(fileext = ".pem")
@@ -131,6 +131,17 @@ test_that("certificate-bound sender constraint requires token binding or an mTLS
     tls_client_key_file = key_file,
     tls_client_ca_file = ca_file
   )
+  requested_client <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0),
+    tls_client_cert_file = cert_file,
+    tls_client_key_file = key_file,
+    tls_client_ca_file = ca_file,
+    mtls_request_certificate_bound_access_tokens = TRUE
+  )
   plain_token <- OAuthToken(
     access_token = "at",
     token_type = "Bearer",
@@ -150,6 +161,12 @@ test_that("certificate-bound sender constraint requires token binding or an mTLS
     )
   )
   expect_true(
+    shinyOAuth:::token_requires_mtls_sender_constraint(
+      plain_token,
+      requested_client
+    )
+  )
+  expect_false(
     shinyOAuth:::token_requires_mtls_sender_constraint(
       plain_token,
       mtls_client
@@ -192,7 +209,8 @@ test_that("certificate-bound clients reject tokens missing cnf thumbprints", {
     scopes = character(0),
     tls_client_cert_file = cert_file,
     tls_client_key_file = key_file,
-    tls_client_ca_file = ca_file
+    tls_client_ca_file = ca_file,
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
 
   expect_error(
@@ -203,6 +221,67 @@ test_that("certificate-bound clients reject tokens missing cnf thumbprints", {
     ),
     class = "shinyOAuth_input_error",
     regexp = "required cnf x5t#S256 thumbprint"
+  )
+})
+
+test_that("requesting certificate-bound tokens requires provider support and certificate files", {
+  cert_file <- tempfile(fileext = ".pem")
+  key_file <- tempfile(fileext = ".pem")
+  ca_file <- tempfile(fileext = ".pem")
+  on.exit(unlink(c(cert_file, key_file, ca_file), force = TRUE), add = TRUE)
+
+  write_fake_pem(cert_file, "CERTIFICATE")
+  write_fake_pem(key_file, "PRIVATE KEY")
+  write_fake_pem(ca_file, "CERTIFICATE")
+
+  prov_without_capability <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body"
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov_without_capability,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = character(0),
+      tls_client_cert_file = cert_file,
+      tls_client_key_file = key_file,
+      tls_client_ca_file = ca_file,
+      mtls_request_certificate_bound_access_tokens = TRUE
+    ),
+    regexp = "requires provider@tls_client_certificate_bound_access_tokens = TRUE"
+  )
+
+  prov_with_capability <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov_with_capability,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = character(0),
+      mtls_request_certificate_bound_access_tokens = TRUE
+    ),
+    regexp = "requires tls_client_cert_file and tls_client_key_file"
   )
 })
 

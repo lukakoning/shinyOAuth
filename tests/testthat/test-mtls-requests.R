@@ -15,7 +15,8 @@ make_mtls_test_client <- function(
   cert_file,
   key_file,
   ca_file,
-  client_secret = "top-secret"
+  client_secret = "top-secret",
+  mtls_request_certificate_bound_access_tokens = FALSE
 ) {
   oauth_client(
     provider = provider,
@@ -26,7 +27,8 @@ make_mtls_test_client <- function(
     tls_client_cert_file = cert_file,
     tls_client_key_file = key_file,
     tls_client_key_password = "password",
-    tls_client_ca_file = ca_file
+    tls_client_ca_file = ca_file,
+    mtls_request_certificate_bound_access_tokens = mtls_request_certificate_bound_access_tokens
   )
 }
 
@@ -102,7 +104,62 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
   expect_identical(token_set$cnf$`x5t#S256`, thumbprint)
 })
 
-test_that("certificate-bound public clients use mTLS token aliases without mTLS auth style", {
+test_that("public clients keep the standard token endpoint by default", {
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = ""
+  )
+
+  captured_req <- NULL
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"at","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  token_set <- shinyOAuth:::swap_code_for_token_set(
+    client,
+    code = "code",
+    code_verifier = "verifier"
+  )
+
+  expect_identical(captured_req$url, "https://example.com/token")
+  expect_null(token_set$cnf)
+})
+
+test_that("public clients use mTLS token aliases when they explicitly request certificate-bound tokens", {
   files <- list(
     cert_file = mtls_pem_fixture("client-cert.pem"),
     key_file = mtls_pem_fixture("client-key.pem"),
@@ -129,7 +186,8 @@ test_that("certificate-bound public clients use mTLS token aliases without mTLS 
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
 
   captured_req <- NULL
@@ -175,7 +233,7 @@ test_that("certificate-bound public clients use mTLS token aliases without mTLS 
   expect_identical(token_set$cnf$`x5t#S256`, thumbprint)
 })
 
-test_that("certificate-bound public clients reject token responses missing cnf", {
+test_that("public clients reject missing cnf when they explicitly request certificate-bound tokens", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -198,7 +256,8 @@ test_that("certificate-bound public clients reject token responses missing cnf",
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
 
   testthat::local_mocked_bindings(
@@ -235,7 +294,7 @@ test_that("certificate-bound public clients reject token responses missing cnf",
   )
 })
 
-test_that("certificate-bound login can backfill cnf from introspection before userinfo", {
+test_that("requested certificate-bound login can backfill cnf from introspection before userinfo", {
   files <- list(
     cert_file = mtls_pem_fixture("client-cert.pem"),
     key_file = mtls_pem_fixture("client-key.pem"),
@@ -265,7 +324,8 @@ test_that("certificate-bound login can backfill cnf from introspection before us
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
   client@introspect <- TRUE
 
@@ -326,7 +386,7 @@ test_that("certificate-bound login can backfill cnf from introspection before us
   )
 })
 
-test_that("certificate-bound PAR uses mTLS alias without mTLS auth style", {
+test_that("PAR uses mTLS alias when the client explicitly requests certificate-bound tokens", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -350,7 +410,8 @@ test_that("certificate-bound PAR uses mTLS alias without mTLS auth style", {
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
 
   captured_req <- NULL
@@ -380,7 +441,7 @@ test_that("certificate-bound PAR uses mTLS alias without mTLS auth style", {
   expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
 })
 
-test_that("certificate-bound PAR accepts standard discovery alias name", {
+test_that("explicit certificate-bound requests honor the standard PAR alias name", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -404,7 +465,8 @@ test_that("certificate-bound PAR accepts standard discovery alias name", {
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
 
   captured_req <- NULL
@@ -626,7 +688,7 @@ test_that("refresh rejects mismatched certificate-bound token responses", {
   )
 })
 
-test_that("certificate-bound refresh uses mTLS token alias without mTLS auth style", {
+test_that("refresh uses the mTLS token alias when the client explicitly requests certificate-bound tokens", {
   files <- list(
     cert_file = mtls_pem_fixture("client-cert.pem"),
     key_file = mtls_pem_fixture("client-key.pem"),
@@ -653,7 +715,8 @@ test_that("certificate-bound refresh uses mTLS token alias without mTLS auth sty
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
   token <- OAuthToken(
     access_token = "old-at",
@@ -691,7 +754,7 @@ test_that("certificate-bound refresh uses mTLS token alias without mTLS auth sty
   expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
 })
 
-test_that("certificate-bound refresh rejects token responses missing cnf", {
+test_that("requested certificate-bound refresh rejects token responses missing cnf", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -714,7 +777,8 @@ test_that("certificate-bound refresh rejects token responses missing cnf", {
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
   token <- OAuthToken(
     access_token = "old-at",
@@ -744,7 +808,7 @@ test_that("certificate-bound refresh rejects token responses missing cnf", {
   )
 })
 
-test_that("certificate-bound refresh can backfill cnf from introspection", {
+test_that("requested certificate-bound refresh can backfill cnf from introspection", {
   files <- list(
     cert_file = mtls_pem_fixture("client-cert.pem"),
     key_file = mtls_pem_fixture("client-key.pem"),
@@ -773,7 +837,8 @@ test_that("certificate-bound refresh can backfill cnf from introspection", {
     cert_file = files$cert_file,
     key_file = files$key_file,
     ca_file = files$ca_file,
-    client_secret = ""
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
   )
   token <- OAuthToken(
     access_token = "old-at",

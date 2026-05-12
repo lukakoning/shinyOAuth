@@ -152,8 +152,9 @@ client_uses_mtls_auth <- function(oauth_client) {
 #' Used by mTLS endpoint-selection helpers.
 #'
 #' @param oauth_client OAuthClient-like object.
-#' @return `TRUE` when certificate-bound tokens are enabled and the client can
-#'   present a certificate; otherwise `FALSE`.
+#' @return `TRUE` when the client explicitly requests certificate-bound tokens,
+#'   the provider advertises that capability, and the client can present a
+#'   certificate; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 client_requests_certificate_bound_tokens <- function(oauth_client) {
@@ -161,7 +162,8 @@ client_requests_certificate_bound_tokens <- function(oauth_client) {
     return(FALSE)
   }
 
-  isTRUE(oauth_client@provider@tls_client_certificate_bound_access_tokens) &&
+  isTRUE(oauth_client@mtls_request_certificate_bound_access_tokens) &&
+    isTRUE(oauth_client@provider@tls_client_certificate_bound_access_tokens) &&
     client_has_mtls_certificate(oauth_client)
 }
 

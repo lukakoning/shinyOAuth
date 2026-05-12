@@ -81,6 +81,18 @@
 #'   the remote HTTPS server certificate when making mTLS requests. This is
 #'   mainly useful for local or test environments that use self-signed server
 #'   certificates.
+#' @param mtls_request_certificate_bound_access_tokens Logical. Whether this
+#'   client intends to request RFC 8705 certificate-bound access tokens when
+#'   the provider advertises that capability. Default is `FALSE`.
+#'
+#'   Set this to `TRUE` for clients that should prefer discovered
+#'   `mtls_endpoint_aliases` on authorization-server requests even when
+#'   `token_auth_style` itself is not an mTLS auth style, and that should fail
+#'   closed if the returned access token omits `cnf.x5t#S256`.
+#'
+#'   Requires `tls_client_cert_file` and `tls_client_key_file`, and the
+#'   provider must be configured with
+#'   `tls_client_certificate_bound_access_tokens = TRUE`.
 #'
 #' @param authorization_request_mode Controls how the authorization request is
 #'   transported to the provider.
@@ -379,6 +391,10 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    mtls_request_certificate_bound_access_tokens = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     # Authorization request transport: direct parameters or signed JAR request.
     authorization_request_mode = S7::new_property(
       S7::class_character,
@@ -517,6 +533,7 @@ oauth_client <- function(
   tls_client_key_file = NULL,
   tls_client_key_password = NULL,
   tls_client_ca_file = NULL,
+  mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
@@ -596,6 +613,18 @@ oauth_client <- function(
       "{.arg dpop_require_access_token} must be NULL or a single non-NA logical."
     )
   }
+  if (
+    !(is.logical(mtls_request_certificate_bound_access_tokens) &&
+      length(mtls_request_certificate_bound_access_tokens) == 1L &&
+      !is.na(mtls_request_certificate_bound_access_tokens))
+  ) {
+    err_input(
+      paste(
+        "{.arg mtls_request_certificate_bound_access_tokens}",
+        "must be a single non-NA logical."
+      )
+    )
+  }
 
   warn_about_unenforced_claim_requests(
     claims = claims,
@@ -645,6 +674,9 @@ oauth_client <- function(
     tls_client_key_file = tls_client_key_file %||% NA_character_,
     tls_client_key_password = tls_client_key_password %||% NA_character_,
     tls_client_ca_file = tls_client_ca_file %||% NA_character_,
+    mtls_request_certificate_bound_access_tokens = isTRUE(
+      mtls_request_certificate_bound_access_tokens
+    ),
     authorization_request_mode = authorization_request_mode,
     authorization_request_signing_alg = authorization_request_signing_alg %||%
       NA_character_,
@@ -1383,6 +1415,16 @@ oauth_client_validate <- function(self) {
       "OAuthClient: dpop_require_access_token = TRUE requires dpop_private_key"
     )
   }
+  if (
+    !(is.logical(self@mtls_request_certificate_bound_access_tokens) &&
+      length(self@mtls_request_certificate_bound_access_tokens) == 1L &&
+      !is.na(self@mtls_request_certificate_bound_access_tokens))
+  ) {
+    return(paste(
+      "OAuthClient: mtls_request_certificate_bound_access_tokens",
+      "must be a single non-NA logical"
+    ))
+  }
 
   tls_client_cert_file <- self@tls_client_cert_file %||% NA_character_
   tls_client_key_file <- self@tls_client_key_file %||% NA_character_
@@ -1396,6 +1438,28 @@ oauth_client_validate <- function(self) {
       "tls_client_auth",
       "self_signed_tls_client_auth"
     )
+  requests_certificate_bound_tokens <- isTRUE(
+    self@mtls_request_certificate_bound_access_tokens
+  )
+
+  if (
+    isTRUE(requests_certificate_bound_tokens) &&
+      !(has_tls_client_cert && has_tls_client_key)
+  ) {
+    return(paste(
+      "OAuthClient: mtls_request_certificate_bound_access_tokens = TRUE",
+      "requires tls_client_cert_file and tls_client_key_file"
+    ))
+  }
+  if (
+    isTRUE(requests_certificate_bound_tokens) &&
+      !isTRUE(self@provider@tls_client_certificate_bound_access_tokens)
+  ) {
+    return(paste(
+      "OAuthClient: mtls_request_certificate_bound_access_tokens = TRUE",
+      "requires provider@tls_client_certificate_bound_access_tokens = TRUE"
+    ))
+  }
 
   if (
     isTRUE(requires_tls_client_cert) &&

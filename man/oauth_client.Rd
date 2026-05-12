@@ -25,6 +25,7 @@ oauth_client(
   tls_client_key_file = NULL,
   tls_client_key_password = NULL,
   tls_client_ca_file = NULL,
+  mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
@@ -217,6 +218,19 @@ PEM private key referenced by \code{tls_client_key_file}.}
 the remote HTTPS server certificate when making mTLS requests. This is
 mainly useful for local or test environments that use self-signed server
 certificates.}
+
+\item{mtls_request_certificate_bound_access_tokens}{Logical. Whether this
+client intends to request RFC 8705 certificate-bound access tokens when
+the provider advertises that capability. Default is \code{FALSE}.
+
+Set this to \code{TRUE} for clients that should prefer discovered
+\code{mtls_endpoint_aliases} on authorization-server requests even when
+\code{token_auth_style} itself is not an mTLS auth style, and that should fail
+closed if the returned access token omits \code{cnf.x5t#S256}.
+
+Requires \code{tls_client_cert_file} and \code{tls_client_key_file}, and the
+provider must be configured with
+\code{tls_client_certificate_bound_access_tokens = TRUE}.}
 
 \item{authorization_request_mode}{Controls how the authorization request is
 transported to the provider.

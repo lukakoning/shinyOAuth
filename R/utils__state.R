@@ -343,6 +343,9 @@ state_client_policy_fingerprint <- function(client) {
     introspect = isTRUE(client@introspect),
     introspect_elements = state_policy_string_set(client@introspect_elements),
     dpop_require_access_token = isTRUE(client@dpop_require_access_token),
+    mtls_request_certificate_bound_access_tokens = isTRUE(
+      client@mtls_request_certificate_bound_access_tokens
+    ),
     dpop_signing_alg = if (client_has_dpop(client)) {
       resolve_dpop_alg(client)
     } else {
