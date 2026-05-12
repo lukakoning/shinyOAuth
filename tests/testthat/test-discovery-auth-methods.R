@@ -332,6 +332,51 @@ test_that("request mode remains available when PAR carries the request object", 
   testthat::expect_s3_class(cli, "shinyOAuth::OAuthClient")
 })
 
+test_that("discovery blocks request mode when request transport is unsupported and PAR is absent", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          request_parameter_supported = FALSE
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+
+  testthat::expect_identical(prov@request_parameter_supported, FALSE)
+  testthat::expect_error(
+    shinyOAuth::oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = paste(rep("s", 32), collapse = ""),
+      redirect_uri = "http://localhost:8100",
+      scopes = c("openid"),
+      state_store = cachem::cache_mem(max_age = 60),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      authorization_request_mode = "request"
+    ),
+    regexp = paste(
+      "provider discovery metadata says request parameter transport is not supported;",
+      "authorization_request_mode = 'request' cannot be used unless PAR is configured"
+    )
+  )
+})
+
 test_that("oidc discovery lets caller override request object signing algs", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
