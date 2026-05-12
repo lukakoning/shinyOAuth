@@ -72,7 +72,10 @@ current browser session.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A length-1 string containing the authorization URL to send the user
-to.</p>
+to. When PAR is used, the returned string also carries
+<code>shinyOAuth.par_request_uri</code>, <code>shinyOAuth.par_expires_in</code>, and
+<code>shinyOAuth.par_expires_at</code> attributes so callers can tell when the pushed
+authorization request should be regenerated.</p>
     </div>
 
     <div class="section level2">

@@ -27,6 +27,10 @@ prepare_call(oauth_client, browser_token)
 ## Value
 
 A length-1 string containing the authorization URL to send the user to.
+When PAR is used, the returned string also carries
+`shinyOAuth.par_request_uri`, `shinyOAuth.par_expires_in`, and
+`shinyOAuth.par_expires_at` attributes so callers can tell when the
+pushed authorization request should be regenerated.
 
 ## Examples
 
