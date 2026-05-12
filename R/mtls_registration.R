@@ -41,8 +41,9 @@
 #' @param tls_client_auth_value Optional explicit value for the selected
 #'   `tls_client_auth_type`. When omitted, shinyOAuth derives the subject DN
 #'   or, when possible, a unique matching SAN value from the configured client
-#'   certificate. If the certificate exposes no unambiguous SAN for the chosen
-#'   type, pass the exact registration value explicitly.
+#'   certificate. Auto-derived IP SAN values are normalized to dotted-decimal
+#'   IPv4 or RFC 5952 IPv6 text. If the certificate exposes no unambiguous SAN
+#'   for the chosen type, pass the exact registration value explicitly.
 #' @param jwks_uri Optional absolute URL of a JWKS document to publish for
 #'   `self_signed_tls_client_auth`. When omitted, the helper returns an inline
 #'   `jwks` object with the configured client certificate chain in `x5c`.
@@ -360,33 +361,347 @@ parse_certificate_alt_name <- function(alt_name) {
   for (type in names(prefixed_types)) {
     pattern <- prefixed_types[[type]]
     if (grepl(pattern, value, ignore.case = TRUE, perl = TRUE)) {
+      parsed_value <- trimws(sub(
+        pattern,
+        "",
+        value,
+        ignore.case = TRUE,
+        perl = TRUE
+      ))
+      if (!nzchar(parsed_value)) {
+        return(NULL)
+      }
+
       return(list(
         type = type,
-        value = trimws(sub(
-          pattern,
-          "",
-          value,
-          ignore.case = TRUE,
-          perl = TRUE
-        ))
+        value = normalize_mtls_registration_alt_name_value(
+          type,
+          parsed_value
+        )
       ))
     }
   }
 
-  if (grepl("://", value, fixed = TRUE)) {
+  ip_value <- try(normalize_mtls_registration_ip_literal(value), silent = TRUE)
+  if (!inherits(ip_value, "try-error")) {
+    return(list(type = "san_ip", value = ip_value))
+  }
+  if (grepl("^[A-Za-z][A-Za-z0-9+.-]*:[^[:space:]]+$", value, perl = TRUE)) {
     return(list(type = "san_uri", value = value))
   }
-  if (grepl("@", value, fixed = TRUE)) {
+  if (grepl("^[^@[:space:]]+@[^@[:space:]]+$", value, perl = TRUE)) {
     return(list(type = "san_email", value = value))
   }
-  if (
-    grepl("^([0-9]{1,3}\\.){3}[0-9]{1,3}$", value, perl = TRUE) ||
-      grepl(":", value, fixed = TRUE)
-  ) {
-    return(list(type = "san_ip", value = value))
+  if (grepl("^[A-Za-z0-9*.-]+$", value, perl = TRUE)) {
+    return(list(type = "san_dns", value = value))
   }
 
-  list(type = "san_dns", value = value)
+  NULL
+}
+
+#' Normalize a parsed SAN value for RFC 8705 registration
+#'
+#' @description
+#' Normalizes SAN values after type detection so auto-derived registration
+#' metadata uses the RFC-required IP text representation while preserving the
+#' original DNS, URI, and email strings.
+#'
+#' @param type Parsed SAN type.
+#' @param value Parsed SAN value.
+#' @return Character scalar SAN value.
+#' @keywords internal
+#' @noRd
+normalize_mtls_registration_alt_name_value <- function(type, value) {
+  normalized <- trimws(as.character(value %||% ""))
+  if (!nzchar(normalized)) {
+    err_input("Certificate SAN values must be non-empty strings")
+  }
+
+  if (!identical(type, "san_ip")) {
+    return(normalized)
+  }
+
+  normalize_mtls_registration_ip_literal(normalized)
+}
+
+#' Normalize a SAN IP literal for RFC 8705 registration
+#'
+#' @description
+#' Converts IPv4 literals to dotted-decimal form and IPv6 literals to RFC 5952
+#' text so `tls_client_auth_san_ip` values are serialized consistently.
+#'
+#' @param value Candidate SAN IP literal.
+#' @return Character scalar IP literal.
+#' @keywords internal
+#' @noRd
+normalize_mtls_registration_ip_literal <- function(value) {
+  normalized <- trimws(as.character(value %||% ""))
+  if (!nzchar(normalized)) {
+    err_input("Certificate SAN IP values must be non-empty strings")
+  }
+
+  ipv4 <- try(
+    normalize_mtls_registration_ipv4_literal(normalized),
+    silent = TRUE
+  )
+  if (!inherits(ipv4, "try-error")) {
+    return(ipv4)
+  }
+
+  ipv6 <- try(
+    normalize_mtls_registration_ipv6_literal(normalized),
+    silent = TRUE
+  )
+  if (!inherits(ipv6, "try-error")) {
+    return(ipv6)
+  }
+
+  err_input(paste(
+    "Could not normalize certificate SAN IP value to dotted-decimal IPv4 or",
+    "RFC 5952 IPv6 text; pass tls_client_auth_value explicitly."
+  ))
+}
+
+#' Normalize an IPv4 literal for RFC 8705 registration
+#'
+#' @description
+#' Parses a dotted-quad IPv4 literal and rewrites it without leading zeros.
+#'
+#' @param value Candidate IPv4 literal.
+#' @return Character scalar IPv4 literal.
+#' @keywords internal
+#' @noRd
+normalize_mtls_registration_ipv4_literal <- function(value) {
+  parts <- strsplit(value, ".", fixed = TRUE)[[1]]
+  if (length(parts) != 4L || !all(grepl("^[0-9]{1,3}$", parts, perl = TRUE))) {
+    err_input("Invalid IPv4 SAN literal")
+  }
+
+  octets <- as.integer(parts)
+  if (any(is.na(octets) | octets < 0L | octets > 255L)) {
+    err_input("Invalid IPv4 SAN literal")
+  }
+
+  paste(octets, collapse = ".")
+}
+
+#' Normalize an IPv6 literal for RFC 5952 registration
+#'
+#' @description
+#' Parses an IPv6 literal, expands it to eight 16-bit fields, and rewrites it
+#' using RFC 5952 zero-compression and lowercase rules.
+#'
+#' @param value Candidate IPv6 literal.
+#' @return Character scalar IPv6 literal.
+#' @keywords internal
+#' @noRd
+normalize_mtls_registration_ipv6_literal <- function(value) {
+  normalized <- tolower(trimws(as.character(value %||% "")))
+  if (!nzchar(normalized) || grepl("%", normalized, fixed = TRUE)) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  normalized <- expand_mtls_registration_ipv6_embedded_ipv4(normalized)
+  has_compression <- grepl("::", normalized, fixed = TRUE)
+  if (has_compression && grepl("::.*::", normalized, perl = TRUE)) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  if (has_compression) {
+    sides <- strsplit(normalized, "::", fixed = TRUE)[[1]]
+    if (length(sides) != 2L) {
+      err_input("Invalid IPv6 SAN literal")
+    }
+
+    left <- parse_mtls_registration_ipv6_hextets(sides[[1]])
+    right <- parse_mtls_registration_ipv6_hextets(sides[[2]])
+    zero_count <- 8L - length(left) - length(right)
+    if (zero_count < 1L) {
+      err_input("Invalid IPv6 SAN literal")
+    }
+
+    hextets <- c(left, rep.int(0L, zero_count), right)
+  } else {
+    hextets <- parse_mtls_registration_ipv6_hextets(normalized)
+    if (length(hextets) != 8L) {
+      err_input("Invalid IPv6 SAN literal")
+    }
+  }
+
+  if (length(hextets) != 8L) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  canonical <- vapply(
+    hextets,
+    function(hextet) as.character(as.hexmode(hextet)),
+    character(1)
+  )
+  zero_run <- locate_mtls_registration_ipv6_zero_run(hextets)
+  build_mtls_registration_ipv6_literal(canonical, zero_run)
+}
+
+#' Expand an embedded IPv4 suffix inside an IPv6 literal
+#'
+#' @description
+#' Converts mixed IPv6/IPv4 notation to pure 16-bit IPv6 fields so the caller
+#' can apply RFC 5952 compression rules consistently.
+#'
+#' @param value Candidate IPv6 literal.
+#' @return IPv6 literal with any embedded IPv4 suffix expanded to hexadecimal.
+#' @keywords internal
+#' @noRd
+expand_mtls_registration_ipv6_embedded_ipv4 <- function(value) {
+  if (!grepl("\\.", value)) {
+    return(value)
+  }
+  if (!grepl(":", value, fixed = TRUE)) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  ipv4_suffix <- sub("^.*:", "", value, perl = TRUE)
+  ipv4_normalized <- normalize_mtls_registration_ipv4_literal(ipv4_suffix)
+  octets <- as.integer(strsplit(ipv4_normalized, ".", fixed = TRUE)[[1]])
+  hex_tail <- c(
+    sprintf("%x", octets[[1]] * 256L + octets[[2]]),
+    sprintf("%x", octets[[3]] * 256L + octets[[4]])
+  )
+
+  paste0(sub("[^:]*$", "", value, perl = TRUE), paste(hex_tail, collapse = ":"))
+}
+
+#' Parse the explicit hextets from one side of an IPv6 literal
+#'
+#' @description
+#' Parses the non-compressed portion of an IPv6 literal into 16-bit integers.
+#'
+#' @param value One side of an IPv6 literal split around `::`.
+#' @return Integer vector of parsed hextets.
+#' @keywords internal
+#' @noRd
+parse_mtls_registration_ipv6_hextets <- function(value) {
+  if (!nzchar(value)) {
+    return(integer(0))
+  }
+
+  parts <- strsplit(value, ":", fixed = TRUE)[[1]]
+  if (!all(nzchar(parts))) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  vapply(
+    parts,
+    parse_mtls_registration_ipv6_hextet,
+    integer(1)
+  )
+}
+
+#' Parse a single IPv6 hextet
+#'
+#' @description
+#' Validates and parses one hexadecimal 16-bit field from an IPv6 literal.
+#'
+#' @param value Candidate IPv6 hextet.
+#' @return Integer scalar hextet value.
+#' @keywords internal
+#' @noRd
+parse_mtls_registration_ipv6_hextet <- function(value) {
+  if (!grepl("^[0-9a-f]{1,4}$", value, perl = TRUE)) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  parsed <- strtoi(value, base = 16L)
+  if (is.na(parsed) || parsed < 0L || parsed > 65535L) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
+  as.integer(parsed)
+}
+
+#' Locate the zero run to compress in an RFC 5952 IPv6 literal
+#'
+#' @description
+#' Finds the longest run of zero 16-bit fields and keeps the first run when
+#' there is a tie, matching RFC 5952 Section 4.2.3.
+#'
+#' @param hextets Integer vector of eight IPv6 hextets.
+#' @return `NULL` when no run should be compressed; otherwise a list with
+#'   `start` and `end` indices.
+#' @keywords internal
+#' @noRd
+locate_mtls_registration_ipv6_zero_run <- function(hextets) {
+  best_start <- NA_integer_
+  best_length <- 0L
+  current_start <- NA_integer_
+  current_length <- 0L
+
+  for (index in seq_along(hextets)) {
+    if (identical(hextets[[index]], 0L)) {
+      if (identical(current_length, 0L)) {
+        current_start <- index
+      }
+      current_length <- current_length + 1L
+      next
+    }
+
+    if (current_length > best_length) {
+      best_start <- current_start
+      best_length <- current_length
+    }
+    current_start <- NA_integer_
+    current_length <- 0L
+  }
+
+  if (current_length > best_length) {
+    best_start <- current_start
+    best_length <- current_length
+  }
+
+  if (best_length < 2L) {
+    return(NULL)
+  }
+
+  list(start = best_start, end = best_start + best_length - 1L)
+}
+
+#' Build an RFC 5952 IPv6 literal from parsed hextets
+#'
+#' @description
+#' Serializes canonicalized IPv6 hextets, applying `::` compression only to the
+#' zero run selected by `locate_mtls_registration_ipv6_zero_run()`.
+#'
+#' @param hextets Character vector of canonicalized IPv6 hextets.
+#' @param zero_run Optional zero-run metadata.
+#' @return Character scalar IPv6 literal.
+#' @keywords internal
+#' @noRd
+build_mtls_registration_ipv6_literal <- function(hextets, zero_run = NULL) {
+  if (is.null(zero_run)) {
+    return(paste(hextets, collapse = ":"))
+  }
+
+  left <- if (zero_run$start > 1L) {
+    paste(hextets[seq_len(zero_run$start - 1L)], collapse = ":")
+  } else {
+    ""
+  }
+  right <- if (zero_run$end < length(hextets)) {
+    paste(hextets[(zero_run$end + 1L):length(hextets)], collapse = ":")
+  } else {
+    ""
+  }
+
+  if (nzchar(left) && nzchar(right)) {
+    return(paste0(left, "::", right))
+  }
+  if (nzchar(left)) {
+    return(paste0(left, "::"))
+  }
+  if (nzchar(right)) {
+    return(paste0("::", right))
+  }
+
+  "::"
 }
 
 ## 2.2 Build self-signed registration JWKS ------------------------------------

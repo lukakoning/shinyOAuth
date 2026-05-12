@@ -145,6 +145,26 @@ test_that("SAN helpers classify unique certificate alt names", {
   )
 })
 
+test_that("SAN helpers normalize IP literals for registration metadata", {
+  expect_identical(
+    shinyOAuth:::parse_certificate_alt_name("IP Address:192.000.002.010"),
+    list(type = "san_ip", value = "192.0.2.10")
+  )
+  expect_identical(
+    shinyOAuth:::parse_certificate_alt_name(
+      "IP Address:2001:0DB8:0000:0000:0001:0000:0000:0001"
+    ),
+    list(type = "san_ip", value = "2001:db8::1:0:0:1")
+  )
+  expect_identical(
+    shinyOAuth:::resolve_certificate_alt_name_value(
+      list(alt_names = c("IP Address:2001:0DB8:0000:0000:0001:0000:0000:0001")),
+      "san_ip"
+    ),
+    "2001:db8::1:0:0:1"
+  )
+})
+
 test_that("oauth_client_mtls_registration builds inline self-signed jwks", {
   client <- make_mtls_registration_client("self_signed_tls_client_auth")
 

@@ -22,8 +22,9 @@ certificate identifier field to emit. One of \code{"subject_dn"}, \code{"san_dns
 \item{tls_client_auth_value}{Optional explicit value for the selected
 \code{tls_client_auth_type}. When omitted, shinyOAuth derives the subject DN
 or, when possible, a unique matching SAN value from the configured client
-certificate. If the certificate exposes no unambiguous SAN for the chosen
-type, pass the exact registration value explicitly.}
+certificate. Auto-derived IP SAN values are normalized to dotted-decimal
+IPv4 or RFC 5952 IPv6 text. If the certificate exposes no unambiguous SAN
+for the chosen type, pass the exact registration value explicitly.}
 
 \item{jwks_uri}{Optional absolute URL of a JWKS document to publish for
 \code{self_signed_tls_client_auth}. When omitted, the helper returns an inline
