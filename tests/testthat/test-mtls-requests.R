@@ -939,6 +939,10 @@ test_that("refresh uses token cnf to choose mTLS alias without provider metadata
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(refreshed@access_token, "new-at")
+  expect_identical(refreshed@cnf$`x5t#S256`, "thumbprint")
+  expect_true(
+    shinyOAuth:::token_requires_mtls_sender_constraint(refreshed, client)
+  )
 })
 
 test_that("revoke uses token cnf to choose mTLS alias without local thumbprint validation", {

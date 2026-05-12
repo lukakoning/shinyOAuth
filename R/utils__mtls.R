@@ -417,6 +417,41 @@ resolve_token_cnf <- function(
   ))
 }
 
+#' Resolve cnf for a refreshed token
+#'
+#' @param prior_cnf cnf from the pre-refresh token.
+#' @param cnf Optional explicit cnf data returned by the refresh response.
+#' @param access_token Optional raw refreshed access-token string.
+#' @param introspection_result Optional introspection payload for the refreshed
+#'   token.
+#' @return Normalized cnf list. When the refreshed token does not expose any
+#'   new cnf binding, this preserves the prior certificate thumbprint so later
+#'   mTLS resource requests do not silently lose sender-constraint state.
+#' @keywords internal
+#' @noRd
+resolve_refresh_token_cnf <- function(
+  prior_cnf = NULL,
+  cnf = NULL,
+  access_token = NULL,
+  introspection_result = NULL
+) {
+  resolved <- resolve_token_cnf(
+    cnf = cnf,
+    access_token = access_token,
+    introspection_result = introspection_result
+  )
+  if (length(resolved) > 0L) {
+    return(resolved)
+  }
+
+  prior_thumbprint <- token_cnf_x5t_s256(cnf = prior_cnf)
+  if (!is_valid_string(prior_thumbprint)) {
+    return(resolved)
+  }
+
+  list(`x5t#S256` = prior_thumbprint)
+}
+
 #' Check whether mTLS sender constraints are required
 #'
 #' @param token Optional token or token string.

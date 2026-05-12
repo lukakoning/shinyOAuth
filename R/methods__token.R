@@ -949,6 +949,11 @@ refresh_token <- function(
         } else {
           isTRUE(token@id_token_validated)
         }
+        refreshed_cnf <- resolve_refresh_token_cnf(
+          prior_cnf = token@cnf,
+          cnf = token_set$cnf,
+          access_token = token_set$access_token
+        )
 
         refreshed_token <- OAuthToken(
           access_token = token_set$access_token,
@@ -958,10 +963,7 @@ refresh_token <- function(
           id_token = refreshed_id_token %||% NA_character_,
           id_token_validated = refreshed_id_token_validated,
           userinfo = token@userinfo %||% list(),
-          cnf = resolve_token_cnf(
-            cnf = token_set$cnf,
-            access_token = token_set$access_token
-          ),
+          cnf = refreshed_cnf,
           granted_scopes = token_set$granted_scopes %||% character(0),
           granted_scopes_verified = isTRUE(token_set$granted_scopes_verified)
         )
@@ -976,8 +978,9 @@ refresh_token <- function(
             async = FALSE,
             shiny_session = shiny_session
           )
-          refreshed_token@cnf <- resolve_token_cnf(
-            cnf = refreshed_token@cnf,
+          refreshed_token@cnf <- resolve_refresh_token_cnf(
+            prior_cnf = token@cnf,
+            cnf = token_set$cnf,
             access_token = refreshed_token@access_token,
             introspection_result = intro_res
           )
