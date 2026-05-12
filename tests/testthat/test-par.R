@@ -103,6 +103,19 @@ test_that("prepare_call pushes authorization params and redirects with request_u
     "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
   )
   expect_match(auth_url, "client_id=abc")
+  expect_identical(
+    attr(auth_url, "shinyOAuth.par_request_uri"),
+    "urn:ietf:params:oauth:request_uri:test"
+  )
+  expect_identical(
+    attr(auth_url, "shinyOAuth.par_expires_in"),
+    90L
+  )
+  expect_s3_class(
+    attr(auth_url, "shinyOAuth.par_expires_at"),
+    "POSIXct"
+  )
+  expect_true(attr(auth_url, "shinyOAuth.par_expires_at") > Sys.time())
   expect_false(grepl("[?&]state=", auth_url))
   expect_false(grepl("[?&]redirect_uri=", auth_url))
   expect_false(grepl("[?&]code_challenge=", auth_url))

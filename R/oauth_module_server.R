@@ -226,9 +226,12 @@
 #'    validation during callback). Note that this requires `browser_token` to
 #'    be present, so it will throw an error if called too early. When the
 #'    module is already authenticated it returns `NA` and does not mint new
-#'    state
-#'    (verify with `has_browser_token()` first). Typically you would not call
-#'    this directly, but use `request_login()` instead, which calls it internally.
+#'    state (verify with `has_browser_token()` first). When PAR is used, the
+#'    returned string keeps `shinyOAuth.par_request_uri`,
+#'    `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at` attributes
+#'    so manual link-style flows can decide when to regenerate it. Typically
+#'    you would not call this directly, but use `request_login()` instead,
+#'    which calls it internally.
 #'    \item `set_browser_token()`: internal; injects JS to set the browser token
 #'    cookie if missing. Normally called automatically on first load,
 #'    but you can call it manually if needed. If a token is already present,

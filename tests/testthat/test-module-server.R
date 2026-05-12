@@ -48,6 +48,59 @@ testthat::test_that("manual login flow yields authenticated TRUE on success", {
   )
 })
 
+testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@par_url <- "https://example.com/par"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- testthat::with_mocked_bindings(
+        req_with_retry = function(req, ...) {
+          httr2::response(
+            url = as.character(req$url),
+            status = 201,
+            headers = list("content-type" = "application/json"),
+            body = charToRaw(
+              '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+            )
+          )
+        },
+        .package = "shinyOAuth",
+        {
+          values$build_auth_url()
+        }
+      )
+
+      testthat::expect_true(is.character(url) && nzchar(url))
+      testthat::expect_match(url, "[?&]request_uri=")
+      testthat::expect_identical(
+        attr(url, "shinyOAuth.par_request_uri"),
+        "urn:ietf:params:oauth:request_uri:test"
+      )
+      testthat::expect_identical(
+        attr(url, "shinyOAuth.par_expires_in"),
+        90L
+      )
+      testthat::expect_s3_class(
+        attr(url, "shinyOAuth.par_expires_at"),
+        "POSIXct"
+      )
+      testthat::expect_true(attr(url, "shinyOAuth.par_expires_at") > Sys.time())
+    }
+  )
+})
+
 testthat::test_that("manual sync login succeeds with browser-token protection enabled", {
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 

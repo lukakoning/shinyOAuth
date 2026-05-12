@@ -17,7 +17,10 @@
 #'   current browser session.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
-#'   to.
+#'   to. When PAR is used, the returned string also carries
+#'   `shinyOAuth.par_request_uri`, `shinyOAuth.par_expires_in`, and
+#'   `shinyOAuth.par_expires_at` attributes so callers can tell when the pushed
+#'   authorization request should be regenerated.
 #'
 #' @example inst/examples/call_methods.R
 #'
@@ -592,6 +595,63 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
   )
 }
 
+#' Attach PAR metadata to a browser authorization URL
+#'
+#' Preserves the PAR response lifetime alongside the returned redirect URL so
+#' manual callers can regenerate stale request URIs before sending the browser.
+#' Used by `build_auth_url()` after a successful pushed authorization request.
+#'
+#' @param auth_url Length-1 authorization URL string.
+#' @param par_resp List returned by `push_authorization_request()`.
+#' @param issued_at Optional numeric timestamp in seconds since the Unix epoch.
+#'   Defaults to the current time.
+#' @return `auth_url`, with PAR metadata attributes attached when possible.
+#' @keywords internal
+#' @noRd
+attach_par_auth_url_metadata <- function(
+  auth_url,
+  par_resp,
+  issued_at = as.numeric(Sys.time())
+) {
+  if (!is_valid_string(auth_url) || !is.list(par_resp)) {
+    return(auth_url)
+  }
+
+  request_uri <- par_resp$request_uri %||% NULL
+  expires_in <- par_resp$expires_in %||% NULL
+
+  if (!is_valid_string(request_uri)) {
+    return(auth_url)
+  }
+  if (
+    !is.numeric(expires_in) ||
+      length(expires_in) != 1L ||
+      !is.finite(expires_in) ||
+      expires_in <= 0
+  ) {
+    return(auth_url)
+  }
+
+  expires_in <- as.integer(expires_in)
+  issued_at_num <- suppressWarnings(as.numeric(issued_at))
+  expires_at <- if (length(issued_at_num) == 1L && is.finite(issued_at_num)) {
+    structure(
+      issued_at_num + as.numeric(expires_in),
+      class = c("POSIXct", "POSIXt"),
+      tzone = "UTC"
+    )
+  } else {
+    NULL
+  }
+
+  structure(
+    auth_url,
+    `shinyOAuth.par_request_uri` = request_uri,
+    `shinyOAuth.par_expires_in` = expires_in,
+    `shinyOAuth.par_expires_at` = expires_at
+  )
+}
+
 #' Build the browser authorization URL
 #'
 #' Chooses between plain query parameters, signed request objects, and PAR, then
@@ -604,7 +664,10 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
 #' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
 #' @param pkce_method PKCE method when PKCE is enabled.
 #' @param nonce OIDC nonce when required.
-#' @return A length-1 authorization URL string.
+#' @return A length-1 authorization URL string. When PAR is used, the string
+#'   also carries `shinyOAuth.par_request_uri`,
+#'   `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at`
+#'   attributes.
 #' @keywords internal
 #' @noRd
 build_auth_url <- function(
@@ -651,13 +714,15 @@ build_auth_url <- function(
         err_config("build_auth_url: PAR response missing valid request_uri")
       }
 
-      return(url_append_query_params(
+      auth_url <- url_append_query_params(
         oauth_client@provider@auth_url,
         list(
           client_id = oauth_client@client_id,
           request_uri = par_resp$request_uri
         )
-      ))
+      )
+
+      return(attach_par_auth_url_metadata(auth_url, par_resp))
     }
 
     return(url_append_query_params(
@@ -679,13 +744,15 @@ build_auth_url <- function(
       err_config("build_auth_url: PAR response missing valid request_uri")
     }
 
-    return(url_append_query_params(
+    auth_url <- url_append_query_params(
       oauth_client@provider@auth_url,
       list(
         client_id = oauth_client@client_id,
         request_uri = par_resp$request_uri
       )
-    ))
+    )
+
+    return(attach_par_auth_url_metadata(auth_url, par_resp))
   }
 
   url_append_query_params(oauth_client@provider@auth_url, params)

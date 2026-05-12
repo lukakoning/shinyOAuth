@@ -14,7 +14,10 @@ current browser session.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user
-to.
+to. When PAR is used, the returned string also carries
+\code{shinyOAuth.par_request_uri}, \code{shinyOAuth.par_expires_in}, and
+\code{shinyOAuth.par_expires_at} attributes so callers can tell when the pushed
+authorization request should be regenerated.
 }
 \description{
 Prepares an OAuth 2.0 authorization request and returns the browser redirect
