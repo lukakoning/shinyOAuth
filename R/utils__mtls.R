@@ -281,6 +281,22 @@ req_apply_authorization_server_mtls <- function(
   if (!client_uses_mtls_endpoint(oauth_client, token = token)) {
     return(req)
   }
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
+    err_input(
+      paste(
+        "oauth_client must be an OAuthClient when an authorization-server",
+        "request requires mTLS"
+      )
+    )
+  }
+  if (!client_has_mtls_certificate(oauth_client)) {
+    err_input(
+      paste(
+        "oauth_client must include tls_client_cert_file and tls_client_key_file",
+        "when an authorization-server request requires mTLS"
+      )
+    )
+  }
 
   # RFC 8705 applies the certificate-thumbprint check when a certificate-bound
   # access token is presented to a protected resource, not when calling AS

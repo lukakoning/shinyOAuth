@@ -1079,6 +1079,45 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
   expect_identical(inspected$status, "ok")
 })
 
+test_that("authorization-server mTLS requests fail closed when certificate files are missing", {
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token"
+    )
+  )
+  client <- oauth_client(
+    provider = provider,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = character(0)
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    token_type = "Bearer",
+    userinfo = list(),
+    cnf = list(`x5t#S256` = "thumbprint")
+  )
+
+  expect_error(
+    shinyOAuth:::req_apply_authorization_server_mtls(
+      httr2::request("https://example.com/token"),
+      client,
+      token = token
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "authorization-server request requires mTLS"
+  )
+})
+
 test_that("client bearer requests still enforce certificate thumbprint binding", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
