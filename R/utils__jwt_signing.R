@@ -528,6 +528,20 @@ build_authorization_request_object <- function(client, params) {
     )
   }
 
+  # RFC 9101 Section 10.8 recommends avoiding client_id as Request Object sub
+  # so the JWT cannot be repurposed as a client authentication assertion.
+  if (
+    is_valid_string(params$sub %||% NULL) &&
+      identical(params$sub, client@client_id)
+  ) {
+    err_config(
+      paste(
+        "Authorization request object sub must not equal client_id;",
+        "omit sub or use a distinct subject value"
+      )
+    )
+  }
+
   alg <- resolve_authorization_request_signing_alg(client)
   aud <- resolve_authorization_request_audience(client)
   now <- floor(as.numeric(Sys.time()))

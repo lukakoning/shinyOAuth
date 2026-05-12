@@ -629,7 +629,7 @@ test_that("request object preserves safe provider extra auth params", {
   expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
 })
 
-test_that("request mode preserves sub while overriding managed JWT claims", {
+test_that("request mode preserves non-client-id sub while overriding managed JWT claims", {
   cli <- make_jar_test_client(
     provider = make_jar_test_provider(
       extra_auth_params = list(
@@ -659,6 +659,22 @@ test_that("request mode preserves sub while overriding managed JWT claims", {
   expect_true(is.numeric(pl$exp) && pl$exp != 1)
   expect_true(
     is.character(pl$jti) && nzchar(pl$jti) && pl$jti != "user-supplied-jti"
+  )
+})
+
+test_that("request mode rejects client_id as request object sub", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      extra_auth_params = list(sub = "abc")
+    )
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = paste(
+      "Authorization request object sub must not equal client_id;",
+      "omit sub or use a distinct subject value"
+    )
   )
 })
 
