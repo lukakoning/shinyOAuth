@@ -200,7 +200,8 @@ OAuthClient(
 
   Optional override for the `aud` claim used in signed authorization
   requests. By default, shinyOAuth uses the provider issuer when
-  available and otherwise falls back to the authorization endpoint URL.
+  available. If the provider has no configured issuer, shinyOAuth omits
+  the `aud` claim unless you supply an explicit override.
 
 - authorization_request_ttl:
 

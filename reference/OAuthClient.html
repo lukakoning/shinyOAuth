@@ -231,8 +231,8 @@ signed authorization requests.</p></dd>
 <dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
 <dd><p>Optional override for the <code>aud</code> claim
 used in signed authorization requests. By default, shinyOAuth uses the
-provider issuer when available and otherwise falls back to the authorization
-endpoint URL.</p></dd>
+provider issuer when available. If the provider has no configured issuer,
+shinyOAuth omits the <code>aud</code> claim unless you supply an explicit override.</p></dd>
 
 
 <dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>

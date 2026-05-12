@@ -2,7 +2,8 @@
 
 Returns a JSON-ready list of client metadata for registering an
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-that uses RFC 8705 mutual TLS.
+that uses RFC 8705 mutual TLS or requests certificate-bound access
+tokens.
 
 For `token_auth_style = "tls_client_auth"`, this helper returns
 `token_endpoint_auth_method = "tls_client_auth"` plus exactly one RFC
@@ -15,6 +16,12 @@ returns `token_endpoint_auth_method = "self_signed_tls_client_auth"`
 plus either an inline `jwks` document built from the configured client
 certificate and certificate chain (published via `x5c`), or a
 caller-supplied `jwks_uri`.
+
+For clients that request RFC 8705 certificate-bound access tokens
+without mTLS OAuth client authentication, this helper returns the
+runtime `token_auth_style` mapped back to the dynamic-registration
+metadata value (for example, `public` becomes `none`) and emits
+`tls_client_certificate_bound_access_tokens = TRUE`.
 
 This helper prepares metadata only. It does not make a registration HTTP
 call.
@@ -35,7 +42,8 @@ oauth_client_mtls_registration(
 - oauth_client:
 
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  configured for `tls_client_auth` or `self_signed_tls_client_auth`.
+  configured for RFC 8705 mutual TLS client authentication or for
+  certificate-bound access tokens.
 
 - tls_client_auth_type:
 
@@ -47,9 +55,10 @@ oauth_client_mtls_registration(
 
   Optional explicit value for the selected `tls_client_auth_type`. When
   omitted, shinyOAuth derives the subject DN or, when possible, a unique
-  matching SAN value from the configured client certificate. If the
-  certificate exposes no unambiguous SAN for the chosen type, pass the
-  exact registration value explicitly.
+  matching SAN value from the configured client certificate.
+  Auto-derived IP SAN values are normalized to dotted-decimal IPv4 or
+  RFC 5952 IPv6 text. If the certificate exposes no unambiguous SAN for
+  the chosen type, pass the exact registration value explicitly.
 
 - jwks_uri:
 
