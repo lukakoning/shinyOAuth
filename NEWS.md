@@ -57,6 +57,10 @@ entries are scoped to the current `allowed_hosts` /
   `oauth_error_description` text by default and keep only `oauth_error`,
   `oauth_error_uri`, and `body_digest`. The raw description is emitted only
   when `options(shinyOAuth.expose_error_body = TRUE)` is enabled for debugging.
+  - OTEL exception span events now use standard `exception.type` /
+  `exception.message` keys, omit raw exception messages by default, and set
+  span status descriptions from the error class instead of provider-controlled
+  text.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a separate
   documented event sink. Prefer `options(shinyOAuth.audit_hook = ...)`; the
   old `trace_hook` option now remains only as a backward-compatible alias when

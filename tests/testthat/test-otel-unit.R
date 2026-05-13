@@ -715,13 +715,58 @@ testthat::test_that("otel_note_error sets error status and adds exception event"
 
   testthat::expect_true(length(add_event_calls) >= 1L)
   testthat::expect_identical(add_event_calls[[1]]$name, "exception")
+  testthat::expect_identical(
+    add_event_calls[[1]]$attrs[["exception.type"]],
+    "simpleError"
+  )
+  testthat::expect_null(add_event_calls[[1]]$attrs[["exception.message"]])
+  testthat::expect_null(add_event_calls[[1]]$attrs[["error.type"]])
+  testthat::expect_null(add_event_calls[[1]]$attrs[["error.message"]])
 
   testthat::expect_true(length(set_status_calls) >= 1L)
   testthat::expect_identical(set_status_calls[[1]]$status, "error")
   testthat::expect_identical(
     set_status_calls[[1]]$description,
+    "simpleError"
+  )
+})
+
+testthat::test_that("otel_note_error only exposes exception.message when enabled", {
+  withr::local_options(list(
+    shinyOAuth.otel_tracing_enabled = TRUE,
+    shinyOAuth.expose_error_body = TRUE
+  ))
+
+  add_event_calls <- list()
+  set_status_calls <- list()
+
+  mock_span <- list(
+    set_attribute = function(nm, val) {},
+    add_event = function(name, attributes = NULL) {
+      add_event_calls[[length(add_event_calls) + 1L]] <<- list(
+        name = name,
+        attrs = attributes
+      )
+    },
+    set_status = function(status, description = NULL) {
+      set_status_calls[[length(set_status_calls) + 1L]] <<- list(
+        status = status,
+        description = description
+      )
+    }
+  )
+
+  err <- simpleError("something went wrong")
+  shinyOAuth:::otel_note_error(err, span = mock_span)
+
+  testthat::expect_true(length(add_event_calls) >= 1L)
+  testthat::expect_identical(
+    add_event_calls[[1]]$attrs[["exception.message"]],
     "something went wrong"
   )
+
+  testthat::expect_true(length(set_status_calls) >= 1L)
+  testthat::expect_identical(set_status_calls[[1]]$description, "simpleError")
 })
 
 # ===========================================================================

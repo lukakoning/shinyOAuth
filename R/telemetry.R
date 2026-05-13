@@ -1025,26 +1025,48 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
     return(invisible(NULL))
   }
 
-  err_attrs <- compact_list(c(
+  error_classes <- class(error)
+  error_type <- if (
+    is.character(error_classes) &&
+      length(error_classes) >= 1L &&
+      is_valid_string(error_classes[[1]])
+  ) {
+    error_classes[[1]]
+  } else {
+    "error"
+  }
+  exception_message <- if (isTRUE(allow_expose_error_body())) {
+    conditionMessage(error)
+  } else {
+    NULL
+  }
+
+  span_attrs <- compact_list(c(
     list(
-      error.type = paste(class(error), collapse = ", "),
-      error.message = conditionMessage(error)
+      error.type = error_type
+    ),
+    attributes
+  ))
+  event_attrs <- compact_list(c(
+    list(
+      exception.type = error_type,
+      exception.message = exception_message
     ),
     attributes
   ))
 
-  otel_set_span_attributes(span = span, attributes = err_attrs)
+  otel_set_span_attributes(span = span, attributes = span_attrs)
   try(
     span$add_event(
       "exception",
-      attributes = otel_attributes(err_attrs)
+      attributes = otel_attributes(event_attrs)
     ),
     silent = TRUE
   )
   try(
     span$set_status(
       "error",
-      description = conditionMessage(error)
+      description = error_type
     ),
     silent = TRUE
   )
