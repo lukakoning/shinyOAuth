@@ -306,7 +306,8 @@
 #'   Default is `character(0)`, which means these claims are validated only when
 #'   present. Set, for example, `userinfo_jwt_required_temporal_claims = "exp"`
 #'   to require an expiry on signed UserInfo JWTs, or pass multiple values to
-#'   require additional temporal claims.
+#'   require additional temporal claims. For security-sensitive deployments that
+#'   accept signed UserInfo JWTs, prefer requiring at least `"exp"`.
 #'
 #' @param required_acr_values Optional character vector of acceptable
 #'   Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).

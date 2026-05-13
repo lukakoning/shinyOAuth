@@ -28,6 +28,10 @@ token exchange/refresh, userinfo/introspection/revocation, and session-end
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
 
+* Documentation now recommends
+`userinfo_jwt_required_temporal_claims = "exp"` for security-sensitive
+deployments that accept signed UserInfo JWT responses.
+
 * JWKS caching now respects tightened global host policy immediately. Cached
 entries are scoped to the current `allowed_hosts` /
 `allowed_non_https_hosts` settings, and cache hits re-check the stored
