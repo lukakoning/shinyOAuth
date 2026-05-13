@@ -11,7 +11,9 @@
 #' Small helper for calling downstream APIs with an access token.
 #' It creates an [httr2::request()] for the given URL, attaches the right
 #' authorization header for the token type, and applies shinyOAuth's standard
-#' HTTP defaults.
+#' HTTP defaults. Use [perform_client_bearer_req()] when you want
+#' shinyOAuth to also perform the request and handle DPoP nonce challenges for
+#' you.
 #'
 #' Accepts either a raw access token string or an [OAuthToken] object.
 #'
@@ -123,6 +125,99 @@ client_bearer_req <- function(
   }
 
   req
+}
+
+#' Perform an authorized httr2 request with an OAuth access token
+#'
+#' @description
+#' Companion to [client_bearer_req()] for callers who want shinyOAuth to both
+#' build and perform the request. For DPoP-bound access tokens, this helper
+#' reuses shinyOAuth's existing nonce-challenge handling and retries one
+#' `use_dpop_nonce` response with a fresh proof that includes the supplied
+#' `DPoP-Nonce`, as described by RFC 9449.
+#'
+#' @inheritParams client_bearer_req
+#' @param idempotent Optional logical controlling generic transport and
+#'   transient-HTTP retries in `req_with_retry()`. When `NULL` (the default),
+#'   shinyOAuth infers this from the final request method using standard HTTP
+#'   idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`,
+#'   `DELETE`). DPoP nonce challenges are replayed once regardless, as required
+#'   by RFC 9449.
+#'
+#' @return An httr2 response object.
+#'
+#' @section Side effects:
+#' Performs network I/O, may retry idempotent requests through shinyOAuth's
+#' HTTP retry helpers, and when the effective token type is `DPoP` may mint a
+#' second proof and replay the request once after a server-provided nonce
+#' challenge.
+#'
+#' @example inst/examples/client_bearer_req.R
+#'
+#' @export
+perform_client_bearer_req <- function(
+  token,
+  url,
+  method = "GET",
+  headers = NULL,
+  query = NULL,
+  follow_redirect = FALSE,
+  check_url = TRUE,
+  oauth_client = NULL,
+  token_type = NULL,
+  dpop_nonce = NULL,
+  idempotent = NULL
+) {
+  req <- client_bearer_req(
+    token = token,
+    url = url,
+    method = method,
+    headers = headers,
+    query = query,
+    follow_redirect = follow_redirect,
+    check_url = check_url,
+    oauth_client = oauth_client,
+    token_type = token_type,
+    dpop_nonce = dpop_nonce
+  )
+
+  token_info <- resolve_client_bearer_token(
+    token = token,
+    token_type = token_type,
+    oauth_client = oauth_client
+  )
+
+  if (is.null(idempotent)) {
+    request_method <- tryCatch(
+      toupper(as.character(req$method %||% method)[[1]]),
+      error = function(...) "GET"
+    )
+    idempotent <- request_method %in%
+      c(
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "TRACE",
+        "PUT",
+        "DELETE"
+      )
+  } else if (
+    !(is.logical(idempotent) && length(idempotent) == 1L && !is.na(idempotent))
+  ) {
+    err_input("idempotent must be NULL or a single non-NA logical")
+  }
+
+  if (is_dpop_token_type(token_info$token_type)) {
+    return(req_with_dpop_retry(
+      req,
+      oauth_client,
+      access_token = token_info$access_token,
+      idempotent = isTRUE(idempotent),
+      nonce = dpop_nonce
+    ))
+  }
+
+  req_with_retry(req, idempotent = isTRUE(idempotent))
 }
 
 

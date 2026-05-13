@@ -636,6 +636,8 @@ resp_is_dpop_nonce_challenge <- function(resp) {
 #' @param idempotent Whether generic transport/HTTP retries may run for the
 #'   request. DPoP nonce challenges are replayed once with the server-provided
 #'   nonce regardless, as required by RFC 9449.
+#' @param nonce Optional nonce to use for the initial DPoP proof before any
+#'   server challenge is received.
 #' @return httr2 response object.
 #' @keywords internal
 #' @noRd
@@ -643,7 +645,8 @@ req_with_dpop_retry <- function(
   req,
   client,
   access_token = NULL,
-  idempotent = TRUE
+  idempotent = TRUE,
+  nonce = NULL
 ) {
   if (!client_has_dpop(client)) {
     return(req_with_retry(req, idempotent = idempotent))
@@ -652,9 +655,19 @@ req_with_dpop_retry <- function(
   url <- req[["url"]] %||% NA_character_
   request_kind <- if (is_valid_string(access_token)) "resource" else "token"
 
-  req_with_proof <- req_add_dpop_proof(req, client, access_token = access_token)
+  req_with_proof <- req_add_dpop_proof(
+    req,
+    client,
+    access_token = access_token,
+    nonce = nonce
+  )
   req_with_proof$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
-    req_add_dpop_proof(attempt_req, client, access_token = access_token)
+    req_add_dpop_proof(
+      attempt_req,
+      client,
+      access_token = access_token,
+      nonce = nonce
+    )
   }
 
   resp <- req_with_retry(

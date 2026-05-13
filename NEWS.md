@@ -61,6 +61,10 @@ entries are scoped to the current `allowed_hosts` /
   `exception.message` keys, omit raw exception messages by default, and set
   span status descriptions from the error class instead of provider-controlled
   text.
+  - Added `perform_client_bearer_req()` as a public helper for downstream API
+  calls. It performs the request and, for DPoP-bound access tokens, replays one
+  `use_dpop_nonce` challenge with the server-provided nonce while preserving
+  the existing `client_bearer_req()` builder for advanced callers.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a separate
   documented event sink. Prefer `options(shinyOAuth.audit_hook = ...)`; the
   old `trace_hook` option now remains only as a backward-compatible alias when

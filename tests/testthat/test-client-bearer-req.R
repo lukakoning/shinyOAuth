@@ -1,3 +1,19 @@
+make_client_bearer_req_dpop_client <- function() {
+  oauth_client(
+    provider = make_test_provider(use_pkce = TRUE, use_nonce = FALSE),
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen()
+  )
+}
+
 test_that("client_bearer_req builds request metadata without network", {
   req <- client_bearer_req(
     token = "tok",
@@ -199,4 +215,107 @@ test_that("client_bearer_req follows redirects when follow_redirect = TRUE", {
   expect_equal(httr2::resp_status(resp), 200L)
   j <- httr2::resp_body_json(resp)
   expect_true(j$reached)
+})
+
+test_that("perform_client_bearer_req infers idempotency from method", {
+  run_case <- function(method = "GET", idempotent = NULL) {
+    seen <- new.env(parent = emptyenv())
+    seen$idempotent <- NULL
+
+    testthat::local_mocked_bindings(
+      req_with_retry = function(req, idempotent = TRUE) {
+        seen$idempotent <- idempotent
+        httr2::response(
+          url = as.character(req$url),
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        )
+      },
+      req_with_dpop_retry = function(...) {
+        testthat::fail("DPoP retry helper should not be called for Bearer")
+      },
+      .package = "shinyOAuth"
+    )
+
+    resp <- perform_client_bearer_req(
+      token = "tok",
+      url = "https://example.com/base",
+      method = method,
+      idempotent = idempotent
+    )
+
+    list(resp = resp, idempotent = seen$idempotent)
+  }
+
+  expect_s3_class(run_case()$resp, "httr2_response")
+  expect_identical(run_case()$idempotent, TRUE)
+  expect_identical(run_case(method = "POST")$idempotent, FALSE)
+  expect_identical(run_case(method = "DELETE")$idempotent, TRUE)
+  expect_identical(
+    run_case(method = "POST", idempotent = TRUE)$idempotent,
+    TRUE
+  )
+
+  expect_error(
+    perform_client_bearer_req(
+      token = "tok",
+      url = "https://example.com/base",
+      idempotent = NA
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "idempotent"
+  )
+})
+
+test_that("perform_client_bearer_req uses DPoP retry helper for DPoP tokens", {
+  cli <- make_client_bearer_req_dpop_client()
+  seen <- new.env(parent = emptyenv())
+  seen$client <- NULL
+  seen$access_token <- NULL
+  seen$idempotent <- NULL
+  seen$nonce <- NULL
+  seen$authorization <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(
+      req,
+      client,
+      access_token = NULL,
+      idempotent = TRUE,
+      nonce = NULL
+    ) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      seen$client <- client
+      seen$access_token <- access_token
+      seen$idempotent <- idempotent
+      seen$nonce <- nonce
+      seen$authorization <- dry$headers$authorization
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_retry = function(...) {
+      testthat::fail("Bearer retry helper should not be called for DPoP")
+    },
+    .package = "shinyOAuth"
+  )
+
+  resp <- perform_client_bearer_req(
+    token = "at-1",
+    url = "https://resource.example.com/api",
+    oauth_client = cli,
+    token_type = "DPoP",
+    dpop_nonce = "resource-nonce-1"
+  )
+
+  expect_s3_class(resp, "httr2_response")
+  expect_true(S7::S7_inherits(seen$client, OAuthClient))
+  expect_identical(seen$access_token, "at-1")
+  expect_identical(seen$idempotent, TRUE)
+  expect_identical(seen$nonce, "resource-nonce-1")
+  expect_identical(seen$authorization, "DPoP at-1")
 })

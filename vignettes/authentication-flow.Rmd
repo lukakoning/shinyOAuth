@@ -229,9 +229,12 @@ proofs to token requests and later protected-resource requests:
   retries once with a fresh proof that includes the supplied nonce, then reuses
   the most recently learned authorization-server nonce on later token requests
   until the server rotates it
-- Later `get_userinfo()` calls and downstream `client_bearer_req()` requests also attach
-  DPoP proofs when the effective access-token type is `DPoP` and the caller supplies the
-  corresponding `OAuthClient`
+- Later `get_userinfo()` calls and downstream `perform_client_bearer_req()` requests also
+  attach DPoP proofs when the effective access-token type is `DPoP` and the caller supplies
+  the corresponding `OAuthClient`
+  - `perform_client_bearer_req()` also retries one protected-resource
+    `use_dpop_nonce` challenge with the supplied `DPoP-Nonce`; plain
+    `client_bearer_req()` only builds the request object
   - Resource-server nonces are cached per issuing server rather than per exact
     endpoint, so same-server protected-resource paths can reuse a nonce while
     token-endpoint and resource-server nonce state stay separate

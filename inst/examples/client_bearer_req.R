@@ -5,13 +5,19 @@ if (interactive()) {
   # (typically provided as reactive return value by `oauth_module_server()`)
   token <- OAuthToken()
 
-  # Build request
+  # Recommended for most callers: build + perform in one step.
+  response <- perform_client_bearer_req(
+    token,
+    "https://api.example.com/resource",
+    query = list(limit = 5)
+  )
+
+  # Advanced callers can still build first and perform later.
   request <- client_bearer_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)
   )
 
-  # Perform request
   response <- httr2::req_perform(request)
 }
