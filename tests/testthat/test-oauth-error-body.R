@@ -157,6 +157,40 @@ test_that("err_http propagates RFC 6749 §5.2 fields to trace event", {
   expect_true(length(events) >= 1)
   ev <- events[[1]]
   expect_identical(ev$oauth_error, "invalid_grant")
+  expect_null(ev$oauth_error_description)
+  expect_null(ev$oauth_error_uri)
+})
+
+test_that("err_http only exposes oauth_error_description in events when enabled", {
+  events <- list()
+  withr::local_options(list(
+    shinyOAuth.expose_error_body = TRUE,
+    shinyOAuth.audit_hook = function(ev) {
+      events[[length(events) + 1]] <<- ev
+    }
+  ))
+
+  resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 400,
+    headers = list("content-type" = "application/json"),
+    body = charToRaw(
+      '{"error":"invalid_grant","error_description":"Code expired"}'
+    )
+  )
+
+  tryCatch(
+    shinyOAuth:::err_http(
+      "Token exchange failed",
+      resp,
+      context = list(phase = "exchange_code")
+    ),
+    error = function(e) NULL
+  )
+
+  expect_true(length(events) >= 1)
+  ev <- events[[1]]
+  expect_identical(ev$oauth_error, "invalid_grant")
   expect_identical(ev$oauth_error_description, "Code expired")
   expect_null(ev$oauth_error_uri)
 })

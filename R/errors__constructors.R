@@ -221,6 +221,12 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     }
   }
 
+  event_oauth_error_description <- if (isTRUE(expose)) {
+    oauth_error_description
+  } else {
+    NULL
+  }
+
   event <- c(
     list(
       type = "http_error",
@@ -230,7 +236,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
       url = url,
       body_digest = body_digest,
       oauth_error = oauth_error,
-      oauth_error_description = oauth_error_description,
+      oauth_error_description = event_oauth_error_description,
       oauth_error_uri = oauth_error_uri
     ),
     context

@@ -53,6 +53,10 @@ entries are scoped to the current `allowed_hosts` /
   failures; and error-state consumption events use the logical state digest when
   available for better correlation. See 
   `vignette("audit-logging", package = "shinyOAuth")` for more information.
+  - `http_error` audit/trace events now omit raw provider
+  `oauth_error_description` text by default and keep only `oauth_error`,
+  `oauth_error_uri`, and `body_digest`. The raw description is emitted only
+  when `options(shinyOAuth.expose_error_body = TRUE)` is enabled for debugging.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a separate
   documented event sink. Prefer `options(shinyOAuth.audit_hook = ...)`; the
   old `trace_hook` option now remains only as a backward-compatible alias when
