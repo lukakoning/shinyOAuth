@@ -44,7 +44,10 @@ reference:
   - refresh_token
   - revoke_token
   - introspect_token
+  - resource_req
+  - perform_resource_req
   - client_bearer_req
+  - perform_client_bearer_req
   
 - title: Miscellaneous
 - contents:
