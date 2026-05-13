@@ -65,7 +65,7 @@ test_that("prepare_call includes dpop_jkt in authorization request parameters", 
   expect_identical(dpop_jkt, expected_jkt)
 })
 
-test_that("client_bearer_req builds DPoP authorization and proof headers", {
+test_that("resource_req builds DPoP authorization and proof headers", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
   tok <- OAuthToken(
@@ -74,7 +74,7 @@ test_that("client_bearer_req builds DPoP authorization and proof headers", {
     userinfo = list()
   )
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = tok,
     url = "https://resource.example.com/api",
     oauth_client = cli
@@ -90,7 +90,7 @@ test_that("client_bearer_req builds DPoP authorization and proof headers", {
   expect_true(nzchar(payload$ath))
 })
 
-test_that("client_bearer_req rejects non-ASCII DPoP access tokens", {
+test_that("resource_req rejects non-ASCII DPoP access tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
   tok <- OAuthToken(
@@ -100,7 +100,7 @@ test_that("client_bearer_req rejects non-ASCII DPoP access tokens", {
   )
 
   expect_error(
-    client_bearer_req(
+    resource_req(
       token = tok,
       url = "https://resource.example.com/api",
       oauth_client = cli
@@ -110,7 +110,7 @@ test_that("client_bearer_req rejects non-ASCII DPoP access tokens", {
   )
 })
 
-test_that("client_bearer_req rejects DPoP cnf.jkt mismatches", {
+test_that("resource_req rejects DPoP cnf.jkt mismatches", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
   wrong_key <- openssl::rsa_keygen()
@@ -125,7 +125,7 @@ test_that("client_bearer_req rejects DPoP cnf.jkt mismatches", {
   )
 
   expect_error(
-    client_bearer_req(
+    resource_req(
       token = tok,
       url = "https://resource.example.com/api",
       oauth_client = cli
@@ -135,7 +135,7 @@ test_that("client_bearer_req rejects DPoP cnf.jkt mismatches", {
   )
 })
 
-test_that("client_bearer_req infers DPoP from raw JWT access-token cnf.jkt", {
+test_that("resource_req infers DPoP from raw JWT access-token cnf.jkt", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   key <- openssl::rsa_keygen()
   cli <- make_dpop_test_client(prov, dpop_private_key = key)
@@ -147,7 +147,7 @@ test_that("client_bearer_req infers DPoP from raw JWT access-token cnf.jkt", {
     cnf = list(jkt = jkt)
   ))
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = raw_token,
     url = "https://resource.example.com/api",
     oauth_client = cli
@@ -162,7 +162,7 @@ test_that("client_bearer_req infers DPoP from raw JWT access-token cnf.jkt", {
   expect_true(nzchar(payload$ath))
 })
 
-test_that("client_bearer_req keeps DPoP inference when cnf members span sources", {
+test_that("resource_req keeps DPoP inference when cnf members span sources", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   files <- list(
     cert_file = mtls_pem_fixture("client-cert.pem"),
@@ -201,7 +201,7 @@ test_that("client_bearer_req keeps DPoP inference when cnf members span sources"
     )
   )
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = tok,
     url = "https://resource.example.com/api",
     oauth_client = cli
@@ -212,7 +212,7 @@ test_that("client_bearer_req keeps DPoP inference when cnf members span sources"
   expect_true(nzchar(dry$headers$dpop))
 })
 
-test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
+test_that("resource_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(
     access_token = "access-token",
@@ -221,7 +221,7 @@ test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   )
 
   expect_error(
-    client_bearer_req(
+    resource_req(
       token = tok,
       url = "https://resource.example.com/api"
     ),
@@ -243,7 +243,7 @@ test_that("client_bearer_req requires a DPoP-capable client for DPoP tokens", {
   )
 
   expect_error(
-    client_bearer_req(
+    resource_req(
       token = tok,
       url = "https://resource.example.com/api",
       oauth_client = cli_no_dpop
@@ -298,7 +298,7 @@ test_that("oauth_client does not warn when Bearer fallback is explicit for DPoP"
   expect_false(isTRUE(cli@dpop_require_access_token))
 })
 
-test_that("client_bearer_req ignores custom Authorization and DPoP headers", {
+test_that("resource_req ignores custom Authorization and DPoP headers", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
   tok <- OAuthToken(
@@ -308,7 +308,7 @@ test_that("client_bearer_req ignores custom Authorization and DPoP headers", {
   )
 
   expect_warning(
-    req <- client_bearer_req(
+    req <- resource_req(
       token = tok,
       url = "https://resource.example.com/api",
       oauth_client = cli,
@@ -337,7 +337,7 @@ test_that("client_bearer_req ignores custom Authorization and DPoP headers", {
   )
 })
 
-test_that("client_bearer_req signs DPoP proof with method and target URI", {
+test_that("resource_req signs DPoP proof with method and target URI", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
   tok <- OAuthToken(
@@ -346,7 +346,7 @@ test_that("client_bearer_req signs DPoP proof with method and target URI", {
     userinfo = list()
   )
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = tok,
     url = "https://resource.example.com/api?from=url",
     method = "patch",

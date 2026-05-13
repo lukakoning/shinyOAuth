@@ -1,4 +1,4 @@
-make_client_bearer_req_dpop_client <- function() {
+make_resource_req_dpop_client <- function() {
   oauth_client(
     provider = make_test_provider(use_pkce = TRUE, use_nonce = FALSE),
     client_id = "abc",
@@ -14,8 +14,8 @@ make_client_bearer_req_dpop_client <- function() {
   )
 }
 
-test_that("client_bearer_req builds request metadata without network", {
-  req <- client_bearer_req(
+test_that("resource_req builds request metadata without network", {
+  req <- resource_req(
     token = "tok",
     url = "https://example.com/base",
     method = "post",
@@ -32,7 +32,7 @@ test_that("client_bearer_req builds request metadata without network", {
   expect_equal(dry$headers$`x-test`, "1")
 })
 
-test_that("client_bearer_req builds authorized request from string", {
+test_that("resource_req builds authorized request from string", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
@@ -51,7 +51,7 @@ test_that("client_bearer_req builds authorized request from string", {
   srv <- webfakes::local_app_process(app)
   base <- srv$url()
 
-  req <- client_bearer_req(
+  req <- resource_req(
     "tok",
     paste0(base, "/v1/items"),
     query = list(limit = 5)
@@ -67,7 +67,7 @@ test_that("client_bearer_req builds authorized request from string", {
   expect_true(nzchar(j$ua))
 })
 
-test_that("client_bearer_req accepts OAuthToken and sets headers/query/method", {
+test_that("resource_req accepts OAuthToken and sets headers/query/method", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
@@ -87,7 +87,7 @@ test_that("client_bearer_req accepts OAuthToken and sets headers/query/method", 
   base <- srv$url()
 
   tok <- OAuthToken(access_token = "abc", userinfo = list())
-  req <- client_bearer_req(
+  req <- resource_req(
     tok,
     paste0(base, "/resource"),
     method = "post",
@@ -106,9 +106,25 @@ test_that("client_bearer_req accepts OAuthToken and sets headers/query/method", 
   expect_identical(j$xt, "1")
 })
 
-test_that("custom Authorization header is ignored and warned", {
+test_that("client_bearer_req is a deprecated alias for resource_req", {
+  withr::local_options(lifecycle_verbosity = "warning")
+
   expect_warning(
     req <- client_bearer_req(
+      token = "tok",
+      url = "https://example.com/base",
+      query = list(a = 1)
+    ),
+    class = "lifecycle_warning_deprecated"
+  )
+
+  expect_s3_class(req, "httr2_request")
+  expect_equal(req$url, "https://example.com/base?a=1")
+})
+
+test_that("custom Authorization header is ignored and warned", {
+  expect_warning(
+    req <- resource_req(
       token = "tok",
       url = "https://example.com/base",
       headers = list(Authorization = "Basic xyz", `X-Other` = "ok")
@@ -123,9 +139,9 @@ test_that("custom Authorization header is ignored and warned", {
   expect_equal(dry$headers$`x-other`, "ok")
 })
 
-test_that("client_bearer_req rejects non-scalar token_type overrides", {
+test_that("resource_req rejects non-scalar token_type overrides", {
   expect_error(
-    client_bearer_req(
+    resource_req(
       token = "tok",
       url = "https://example.com/base",
       token_type = c("DPoP", "Bearer")
@@ -135,8 +151,8 @@ test_that("client_bearer_req rejects non-scalar token_type overrides", {
   )
 })
 
-test_that("client_bearer_req disables redirects by default", {
-  req <- client_bearer_req(
+test_that("resource_req disables redirects by default", {
+  req <- resource_req(
     token = "tok",
     url = "https://example.com/resource"
   )
@@ -144,8 +160,8 @@ test_that("client_bearer_req disables redirects by default", {
   expect_false(req$options$followlocation)
 })
 
-test_that("client_bearer_req allows redirects when follow_redirect = TRUE", {
-  req <- client_bearer_req(
+test_that("resource_req allows redirects when follow_redirect = TRUE", {
+  req <- resource_req(
     token = "tok",
     url = "https://example.com/resource",
     follow_redirect = TRUE
@@ -154,7 +170,7 @@ test_that("client_bearer_req allows redirects when follow_redirect = TRUE", {
   expect_null(req$options$followlocation)
 })
 
-test_that("client_bearer_req does not follow redirects by default (token leak prevention)", {
+test_that("resource_req does not follow redirects by default (token leak prevention)", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
@@ -175,7 +191,7 @@ test_that("client_bearer_req does not follow redirects by default (token leak pr
   })
   srv <- webfakes::local_app_process(app)
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = "secret-token",
     url = paste0(srv$url(), "/redirect-me")
   )
@@ -186,7 +202,7 @@ test_that("client_bearer_req does not follow redirects by default (token leak pr
   expect_equal(httr2::resp_header(resp, "location"), "/final")
 })
 
-test_that("client_bearer_req follows redirects when follow_redirect = TRUE", {
+test_that("resource_req follows redirects when follow_redirect = TRUE", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
@@ -204,7 +220,7 @@ test_that("client_bearer_req follows redirects when follow_redirect = TRUE", {
   })
   srv <- webfakes::local_app_process(app)
 
-  req <- client_bearer_req(
+  req <- resource_req(
     token = "secret-token",
     url = paste0(srv$url(), "/redirect-me"),
     follow_redirect = TRUE
@@ -217,7 +233,7 @@ test_that("client_bearer_req follows redirects when follow_redirect = TRUE", {
   expect_true(j$reached)
 })
 
-test_that("perform_client_bearer_req infers idempotency from method", {
+test_that("perform_resource_req infers idempotency from method", {
   run_case <- function(method = "GET", idempotent = NULL) {
     seen <- new.env(parent = emptyenv())
     seen$idempotent <- NULL
@@ -238,7 +254,7 @@ test_that("perform_client_bearer_req infers idempotency from method", {
       .package = "shinyOAuth"
     )
 
-    resp <- perform_client_bearer_req(
+    resp <- perform_resource_req(
       token = "tok",
       url = "https://example.com/base",
       method = method,
@@ -258,7 +274,7 @@ test_that("perform_client_bearer_req infers idempotency from method", {
   )
 
   expect_error(
-    perform_client_bearer_req(
+    perform_resource_req(
       token = "tok",
       url = "https://example.com/base",
       idempotent = NA
@@ -268,8 +284,37 @@ test_that("perform_client_bearer_req infers idempotency from method", {
   )
 })
 
-test_that("perform_client_bearer_req uses DPoP retry helper for DPoP tokens", {
-  cli <- make_client_bearer_req_dpop_client()
+test_that("perform_client_bearer_req is a deprecated alias for perform_resource_req", {
+  withr::local_options(lifecycle_verbosity = "warning")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, idempotent = TRUE) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_dpop_retry = function(...) {
+      testthat::fail("DPoP retry helper should not be called for Bearer")
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_warning(
+    resp <- perform_client_bearer_req(
+      token = "tok",
+      url = "https://example.com/base"
+    ),
+    class = "lifecycle_warning_deprecated"
+  )
+
+  expect_s3_class(resp, "httr2_response")
+})
+
+test_that("perform_resource_req uses DPoP retry helper for DPoP tokens", {
+  cli <- make_resource_req_dpop_client()
   seen <- new.env(parent = emptyenv())
   seen$client <- NULL
   seen$access_token <- NULL
@@ -304,7 +349,7 @@ test_that("perform_client_bearer_req uses DPoP retry helper for DPoP tokens", {
     .package = "shinyOAuth"
   )
 
-  resp <- perform_client_bearer_req(
+  resp <- perform_resource_req(
     token = "at-1",
     url = "https://resource.example.com/api",
     oauth_client = cli,

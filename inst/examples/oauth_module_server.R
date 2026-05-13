@@ -141,8 +141,10 @@ if (
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
-      req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
-      resp <- httr2::req_perform(req)
+      resp <- perform_resource_req(
+        auth$token,
+        "https://api.github.com/user/repos"
+      )
 
       if (httr2::resp_is_error(resp)) {
         repositories(NULL)

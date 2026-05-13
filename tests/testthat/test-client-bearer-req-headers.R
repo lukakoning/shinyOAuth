@@ -1,5 +1,5 @@
-test_that("client_bearer_req accepts named character vector headers", {
-  req <- client_bearer_req(
+test_that("resource_req accepts named character vector headers", {
+  req <- resource_req(
     token = "tok",
     url = "https://example.com/base",
     headers = c(Accept = "application/json", `X-Test` = "1")
@@ -11,9 +11,9 @@ test_that("client_bearer_req accepts named character vector headers", {
   expect_equal(dry$headers$`x-test`, "1")
 })
 
-test_that("client_bearer_req ignores invalid headers input with warning", {
+test_that("resource_req ignores invalid headers input with warning", {
   expect_warning(
-    req <- client_bearer_req(
+    req <- resource_req(
       token = "tok",
       url = "https://example.com/base",
       headers = c("application/json")

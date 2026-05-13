@@ -214,7 +214,7 @@ as certificate-bound:
   refresh, introspection, and revocation, shinyOAuth sends the configured
   client certificate on the TLS connection and prefers any discovered
   `mtls_endpoint_aliases`
-- For protected-resource requests such as `client_bearer_req()` calls to
+- For protected-resource requests such as `resource_req()` calls to
   downstream APIs, and for userinfo when it is acting as a certificate-bound
   resource, shinyOAuth checks that the token's `cnf.x5t#S256` thumbprint
   matches the configured certificate before sending the request
@@ -229,12 +229,12 @@ proofs to token requests and later protected-resource requests:
   retries once with a fresh proof that includes the supplied nonce, then reuses
   the most recently learned authorization-server nonce on later token requests
   until the server rotates it
-- Later `get_userinfo()` calls and downstream `perform_client_bearer_req()` requests also
+- Later `get_userinfo()` calls and downstream `perform_resource_req()` requests also
   attach DPoP proofs when the effective access-token type is `DPoP` and the caller supplies
   the corresponding `OAuthClient`
-  - `perform_client_bearer_req()` also retries one protected-resource
+  - `perform_resource_req()` also retries one protected-resource
     `use_dpop_nonce` challenge with the supplied `DPoP-Nonce`; plain
-    `client_bearer_req()` only builds the request object
+    `resource_req()` only builds the request object
   - Resource-server nonces are cached per issuing server rather than per exact
     endpoint, so same-server protected-resource paths can reuse a nonce while
     token-endpoint and resource-server nonce state stay separate

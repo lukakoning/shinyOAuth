@@ -84,7 +84,7 @@ get_userinfo <- function(
         # Main logic ---------------------------------------------------------------
 
         # Define request; disable redirects to prevent leaking the access token.
-        req <- client_bearer_req(
+        req <- resource_req(
           token = token,
           url = userinfo_url,
           oauth_client = oauth_client,

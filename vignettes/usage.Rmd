@@ -151,10 +151,10 @@ runApp(
 ## Making authenticated API calls
 
 After login succeeds, you can use the access token to call an API on the
-user's behalf. `perform_client_bearer_req()` is the easiest option for most
+user's behalf. `perform_resource_req()` is the easiest option for most
 call sites: it builds an authorized `httr2` request, performs it, and when the
 token type is `DPoP` it also handles a one-time `DPoP-Nonce` challenge retry.
-Use `client_bearer_req()` when you need to inspect or customize the `httr2`
+Use `resource_req()` when you need to inspect or customize the `httr2`
 request before sending it yourself.
 
 The example below calls the GitHub API to fetch the user's repositories.
@@ -192,7 +192,7 @@ server <- function(input, output, session) {
 
     # Example additional API request using the access token
     # (e.g., fetch user repositories from GitHub)
-    resp <- perform_client_bearer_req(
+    resp <- perform_resource_req(
       auth$token,
       "https://api.github.com/user/repos"
     )

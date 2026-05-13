@@ -1155,7 +1155,7 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
   )
 
   testthat::expect_error(
-    shinyOAuth::client_bearer_req(
+    shinyOAuth::resource_req(
       token,
       url = "https://example.com/resource",
       oauth_client = client
@@ -1198,7 +1198,7 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
     .package = "shinyOAuth"
   )
 
-  req <- shinyOAuth::client_bearer_req(
+  req <- shinyOAuth::resource_req(
     raw_token,
     url = "https://example.com/resource",
     oauth_client = client
@@ -1485,7 +1485,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
   expect_identical(refreshed@cnf$`x5t#S256`, "thumbprint")
 })
 
-test_that("client_bearer_req rejects certificate-bound tokens when thumbprint mismatches", {
+test_that("resource_req rejects certificate-bound tokens when thumbprint mismatches", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -1518,7 +1518,7 @@ test_that("client_bearer_req rejects certificate-bound tokens when thumbprint mi
   )
 
   expect_error(
-    shinyOAuth::client_bearer_req(
+    shinyOAuth::resource_req(
       token = token,
       url = "https://resource.example.com/api",
       oauth_client = client
@@ -1527,7 +1527,7 @@ test_that("client_bearer_req rejects certificate-bound tokens when thumbprint mi
   )
 })
 
-test_that("client_bearer_req enforces certificate binding from JWT cnf", {
+test_that("resource_req enforces certificate binding from JWT cnf", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -1561,7 +1561,7 @@ test_that("client_bearer_req enforces certificate binding from JWT cnf", {
   )
 
   expect_error(
-    shinyOAuth::client_bearer_req(
+    shinyOAuth::resource_req(
       token = token,
       url = "https://resource.example.com/api",
       oauth_client = client

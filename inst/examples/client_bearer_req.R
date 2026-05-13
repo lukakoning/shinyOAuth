@@ -6,14 +6,14 @@ if (interactive()) {
   token <- OAuthToken()
 
   # Recommended for most callers: build + perform in one step.
-  response <- perform_client_bearer_req(
+  response <- perform_resource_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)
   )
 
   # Advanced callers can still build first and perform later.
-  request <- client_bearer_req(
+  request <- resource_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)

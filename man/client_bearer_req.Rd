@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__client_bearer_req.R
 \name{client_bearer_req}
 \alias{client_bearer_req}
-\title{Build an authorized httr2 request with an OAuth access token}
+\title{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}}
 \usage{
 client_bearer_req(
   token,
@@ -63,59 +63,8 @@ request. This is primarily useful after a resource server challenges with
 \code{DPoP-Nonce}.}
 }
 \value{
-An httr2 request object, ready to be performed with
-\code{\link[httr2:req_perform]{httr2::req_perform()}}. Callers may still add headers or query
-parameters, but when the effective token type is \code{DPoP} they must not
-change the request method or base URL after calling
-\code{\link[=client_bearer_req]{client_bearer_req()}} because the proof is already bound to those values.
+Same value as \code{\link[=resource_req]{resource_req()}}.
 }
 \description{
-Small helper for calling downstream APIs with an access token.
-It creates an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right
-authorization header for the token type, and applies shinyOAuth's standard
-HTTP defaults. Use \code{\link[=perform_client_bearer_req]{perform_client_bearer_req()}} when you want
-shinyOAuth to also perform the request and handle DPoP nonce challenges for
-you.
-
-Accepts either a raw access token string or an \link{OAuthToken} object.
-}
-\section{Side effects}{
-
-This function does not perform network I/O. It reads shinyOAuth package
-options through \code{\link[=is_ok_host]{is_ok_host()}} and HTTP-default helpers, may emit warnings
-when unsafe custom auth headers are ignored, and may read configured mTLS
-certificate files when validating certificate-bound access tokens.
-}
-
-\section{DPoP note}{
-
-DPoP proofs bind the current HTTP method and target URI (without query or
-fragment). Adding query parameters after \code{\link[=client_bearer_req]{client_bearer_req()}} is fine, but
-changing the method, scheme, host, or path invalidates the proof.
-}
-
-\examples{
-# Make request using OAuthToken object
-# (code is not run because it requires a real token from user interaction)
-if (interactive()) {
-  # Get an OAuthToken
-  # (typically provided as reactive return value by `oauth_module_server()`)
-  token <- OAuthToken()
-
-  # Recommended for most callers: build + perform in one step.
-  response <- perform_client_bearer_req(
-    token,
-    "https://api.example.com/resource",
-    query = list(limit = 5)
-  )
-
-  # Advanced callers can still build first and perform later.
-  request <- client_bearer_req(
-    token,
-    "https://api.example.com/resource",
-    query = list(limit = 5)
-  )
-
-  response <- httr2::req_perform(request)
-}
+Deprecated alias for \code{\link[=resource_req]{resource_req()}}.
 }

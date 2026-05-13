@@ -1,73 +1,73 @@
 # --- Relative URLs -----------------------------------------------------------
 
-test_that("client_bearer_req rejects relative URLs", {
+test_that("resource_req rejects relative URLs", {
   expect_error(
-    client_bearer_req(token = "tok", url = "/api/resource"),
+    resource_req(token = "tok", url = "/api/resource"),
     class = "shinyOAuth_input_error"
   )
 
   expect_error(
-    client_bearer_req(token = "tok", url = "api/resource"),
+    resource_req(token = "tok", url = "api/resource"),
     class = "shinyOAuth_input_error"
   )
 
   expect_error(
-    client_bearer_req(token = "tok", url = ""),
+    resource_req(token = "tok", url = ""),
     class = "shinyOAuth_input_error"
   )
 })
 
 # --- Schemeless URLs ---------------------------------------------------------
 
-test_that("client_bearer_req rejects schemeless URLs", {
+test_that("resource_req rejects schemeless URLs", {
   # Schemeless hostname (would pass is_ok_host via normalization, but
-  # client_bearer_req requires an explicit scheme)
+  # resource_req requires an explicit scheme)
   expect_error(
-    client_bearer_req(token = "tok", url = "api.example.com/resource"),
+    resource_req(token = "tok", url = "api.example.com/resource"),
     class = "shinyOAuth_input_error"
   )
 
   # Schemeless localhost (would pass is_ok_host via http:// normalization)
   expect_error(
-    client_bearer_req(token = "tok", url = "localhost:8080/api"),
+    resource_req(token = "tok", url = "localhost:8080/api"),
     class = "shinyOAuth_input_error"
   )
 
   # Non-HTTP scheme
   expect_error(
-    client_bearer_req(token = "tok", url = "ftp://files.example.com/data"),
+    resource_req(token = "tok", url = "ftp://files.example.com/data"),
     class = "shinyOAuth_input_error"
   )
 })
 
 # --- Insecure HTTP hosts ----------------------------------------------------
 
-test_that("client_bearer_req rejects plain HTTP to non-loopback hosts", {
+test_that("resource_req rejects plain HTTP to non-loopback hosts", {
   expect_error(
-    client_bearer_req(token = "tok", url = "http://evil.example.com/leak"),
+    resource_req(token = "tok", url = "http://evil.example.com/leak"),
     class = "shinyOAuth_input_error"
   )
 
   expect_error(
-    client_bearer_req(token = "tok", url = "http://api.example.com/v1"),
+    resource_req(token = "tok", url = "http://api.example.com/v1"),
     class = "shinyOAuth_input_error"
   )
 })
 
 # --- Allowed HTTP loopback hosts --------------------------------------------
 
-test_that("client_bearer_req allows HTTP to localhost/loopback", {
-  req <- client_bearer_req(token = "tok", url = "http://localhost:8080/api")
+test_that("resource_req allows HTTP to localhost/loopback", {
+  req <- resource_req(token = "tok", url = "http://localhost:8080/api")
   expect_s3_class(req, "httr2_request")
 
-  req2 <- client_bearer_req(token = "tok", url = "http://127.0.0.1:3000/api")
+  req2 <- resource_req(token = "tok", url = "http://127.0.0.1:3000/api")
   expect_s3_class(req2, "httr2_request")
 })
 
 # --- HTTPS always allowed ---------------------------------------------------
 
-test_that("client_bearer_req allows HTTPS URLs", {
-  req <- client_bearer_req(
+test_that("resource_req allows HTTPS URLs", {
+  req <- resource_req(
     token = "tok",
     url = "https://api.example.com/resource"
   )
@@ -76,11 +76,11 @@ test_that("client_bearer_req allows HTTPS URLs", {
 
 # --- Disallowed hosts via option --------------------------------------------
 
-test_that("client_bearer_req rejects hosts not in allowed_hosts option", {
+test_that("resource_req rejects hosts not in allowed_hosts option", {
   withr::local_options(shinyOAuth.allowed_hosts = c("trusted.example.com"))
 
   # Allowed host passes
-  req <- client_bearer_req(
+  req <- resource_req(
     token = "tok",
     url = "https://trusted.example.com/api"
   )
@@ -88,16 +88,16 @@ test_that("client_bearer_req rejects hosts not in allowed_hosts option", {
 
   # Disallowed host is rejected
   expect_error(
-    client_bearer_req(token = "tok", url = "https://evil.example.com/steal"),
+    resource_req(token = "tok", url = "https://evil.example.com/steal"),
     class = "shinyOAuth_input_error"
   )
 })
 
 # --- check_url = FALSE override ---------------------------------------------
 
-test_that("client_bearer_req skips validation when check_url = FALSE", {
+test_that("resource_req skips validation when check_url = FALSE", {
   # Even a blatantly bad URL is accepted
-  req <- client_bearer_req(
+  req <- resource_req(
     token = "tok",
     url = "http://evil.example.com/leak",
     check_url = FALSE
@@ -107,14 +107,14 @@ test_that("client_bearer_req skips validation when check_url = FALSE", {
 
 # --- Non-string / NULL URL --------------------------------------------------
 
-test_that("client_bearer_req rejects NULL and non-string URLs", {
+test_that("resource_req rejects NULL and non-string URLs", {
   expect_error(
-    client_bearer_req(token = "tok", url = NULL),
+    resource_req(token = "tok", url = NULL),
     class = "shinyOAuth_input_error"
   )
 
   expect_error(
-    client_bearer_req(token = "tok", url = 42),
+    resource_req(token = "tok", url = 42),
     class = "shinyOAuth_input_error"
   )
 })

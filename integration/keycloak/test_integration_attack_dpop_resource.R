@@ -69,7 +69,7 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
   resource <- start_dpop_protected_resource()
   on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
 
-  valid_resp <- shinyOAuth::client_bearer_req(
+  valid_resp <- shinyOAuth::resource_req(
     login$token,
     resource$url,
     oauth_client = client
@@ -104,7 +104,7 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
     dpop_private_key = make_dpop_private_key()
   )
   testthat::expect_error(
-    shinyOAuth::client_bearer_req(
+    shinyOAuth::resource_req(
       login$token,
       resource$url,
       oauth_client = attacker_client
@@ -113,7 +113,7 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
     regexp = "cnf\\.jkt thumbprint"
   )
 
-  replay_req <- shinyOAuth::client_bearer_req(
+  replay_req <- shinyOAuth::resource_req(
     login$token,
     resource$url,
     oauth_client = client

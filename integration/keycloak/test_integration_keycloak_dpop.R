@@ -234,7 +234,7 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
     dpop_private_key = make_dpop_private_key()
   )
   testthat::expect_error(
-    shinyOAuth::client_bearer_req(
+    shinyOAuth::resource_req(
       login$token,
       prov@userinfo_url,
       oauth_client = attacker_client

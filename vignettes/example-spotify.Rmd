@@ -69,8 +69,7 @@ client <- oauth_client(
 spotify_get <- function(token, path, query = list()) {
   url <- paste0("https://api.spotify.com", path)
 
-  req <- client_bearer_req(token, url, query = query)
-  resp <- httr2::req_perform(req)
+  resp <- perform_resource_req(token, url, query = query)
 
   if (httr2::resp_is_error(resp)) {
     msg <- sprintf("Spotify API error: HTTP %s", httr2::resp_status(resp))
@@ -83,15 +82,14 @@ spotify_get <- function(token, path, query = list()) {
 # Specialized helper for endpoints that may return 204 (e.g., currently-playing)
 spotify_get_maybe_empty <- function(token, path, query = list()) {
   url <- paste0("https://api.spotify.com", path)
-  
-  req <- client_bearer_req(token, url, query = query)
-  resp <- httr2::req_perform(req)
-  
+
+  resp <- perform_resource_req(token, url, query = query)
+
   status <- httr2::resp_status(resp)
   if (status == 204L) {
     return(NULL)
   }
-  
+
   if (httr2::resp_is_error(resp)) {
     msg <- sprintf("Spotify API error: HTTP %s", status)
     stop(msg, call. = FALSE)
