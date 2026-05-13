@@ -563,10 +563,7 @@ build_authorization_request_object <- function(client, params) {
     }
   }
 
-  managed_claim_names <- c("iss", "aud", "iat", "exp", "jti")
-  if (!is.na(nbf_skew)) {
-    managed_claim_names <- c(managed_claim_names, "nbf")
-  }
+  managed_claim_names <- c("iss", "aud", "iat", "exp", "nbf", "jti")
 
   params[intersect(
     names(params) %||% character(0),

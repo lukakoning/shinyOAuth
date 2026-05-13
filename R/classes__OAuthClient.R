@@ -125,8 +125,9 @@
 #'   seconds. When provided, shinyOAuth adds an `nbf` claim set to
 #'   `iat - authorization_request_nbf_skew` so deployments can tolerate small
 #'   clock skew while still emitting bounded request-object validity windows.
-#'   Leave `NULL` (the default) to omit `nbf` unless you supply one explicitly
-#'   through extra authorization parameters.
+#'   Leave `NULL` (the default) to omit `nbf`. Request-object `nbf` is reserved
+#'   by shinyOAuth and cannot be supplied through extra authorization
+#'   parameters.
 #'
 #' @param dpop_private_key Optional private key used to generate DPoP proofs
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an

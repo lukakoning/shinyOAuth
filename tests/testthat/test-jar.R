@@ -649,7 +649,7 @@ test_that("request mode preserves non-client-id sub while overriding managed JWT
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
   expect_identical(pl$sub, "248289761001")
-  expect_identical(pl$nbf, 2L)
+  expect_null(pl$nbf)
   expect_identical(pl$iss, cli@client_id)
   expect_identical(
     pl$aud,
@@ -660,6 +660,27 @@ test_that("request mode preserves non-client-id sub while overriding managed JWT
   expect_true(
     is.character(pl$jti) && nzchar(pl$jti) && pl$jti != "user-supplied-jti"
   )
+})
+
+test_that("request mode only emits nbf from authorization_request_nbf_skew", {
+  fixed_now <- as.POSIXct("2026-05-13 12:00:00", tz = "UTC")
+  cli <- make_jar_test_client(
+    authorization_request_nbf_skew = 30,
+    provider = make_jar_test_provider(
+      extra_auth_params = list(nbf = 9999999999)
+    )
+  )
+
+  auth_url <- testthat::with_mocked_bindings(
+    Sys.time = function() fixed_now,
+    .package = "base",
+    shinyOAuth:::prepare_call(cli, valid_browser_token())
+  )
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+
+  expect_identical(pl$nbf, 1778673570L)
+  expect_identical(pl$iat, 1778673600L)
 })
 
 test_that("request mode rejects client_id as request object sub", {

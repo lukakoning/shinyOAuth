@@ -164,8 +164,9 @@ authorization request objects (\code{request} JWTs) valid. Default is \code{120}
 seconds. When provided, shinyOAuth adds an \code{nbf} claim set to
 \code{iat - authorization_request_nbf_skew} so deployments can tolerate small
 clock skew while still emitting bounded request-object validity windows.
-Leave \code{NULL} (the default) to omit \code{nbf} unless you supply one explicitly
-through extra authorization parameters.}
+Leave \code{NULL} (the default) to omit \code{nbf}. Request-object \code{nbf} is reserved
+by shinyOAuth and cannot be supplied through extra authorization
+parameters.}
 
 \item{dpop_private_key}{Optional private key used to generate DPoP proofs
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
