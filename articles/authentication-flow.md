@@ -238,7 +238,7 @@ resulting access tokens as certificate-bound:
   configured client certificate on the TLS connection and prefers any
   discovered `mtls_endpoint_aliases`
 - For protected-resource requests such as
-  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
   calls to downstream APIs, and for userinfo when it is acting as a
   certificate-bound resource, shinyOAuth checks that the token’s
   `cnf.x5t#S256` thumbprint matches the configured certificate before
@@ -258,9 +258,14 @@ DPoP proofs to token requests and later protected-resource requests:
 - Later
   [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   calls and downstream
-  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
   requests also attach DPoP proofs when the effective access-token type
   is `DPoP` and the caller supplies the corresponding `OAuthClient`
+  - [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+    also retries one protected-resource `use_dpop_nonce` challenge with
+    the supplied `DPoP-Nonce`; plain
+    [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+    only builds the request object
   - Resource-server nonces are cached per issuing server rather than per
     exact endpoint, so same-server protected-resource paths can reuse a
     nonce while token-endpoint and resource-server nonce state stay

@@ -38,8 +38,11 @@
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_slack.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/prepare_call.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/refresh_token.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/resource_req.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/revoke_token.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/shinyOAuth-package.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/state_payload_decrypt_validate.html</loc></url>

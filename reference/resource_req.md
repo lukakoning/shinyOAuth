@@ -1,12 +1,22 @@
-# **\[deprecated\]**
+# Build an authenticated httr2 request for a protected resource
 
-Deprecated alias for
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+Small helper for calling downstream APIs with an access token. It
+creates an
+[`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
+the given URL, attaches the right authorization header for the token
+type, and applies shinyOAuth's standard HTTP defaults. Use
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+when you want shinyOAuth to also perform the request and handle DPoP
+nonce challenges for you.
+
+Accepts either a raw access token string or an
+[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+object.
 
 ## Usage
 
 ``` r
-client_bearer_req(
+resource_req(
   token,
   url,
   method = "GET",
@@ -93,5 +103,52 @@ client_bearer_req(
 
 ## Value
 
-Same value as
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+An httr2 request object, ready to be performed with
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
+Callers may still add headers or query parameters, but when the
+effective token type is `DPoP` they must not change the request method
+or base URL after calling `resource_req()` because the proof is already
+bound to those values.
+
+## Side effects
+
+This function does not perform network I/O. It reads shinyOAuth package
+options through
+[`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
+and HTTP-default helpers, may emit warnings when unsafe custom auth
+headers are ignored, and may read configured mTLS certificate files when
+validating certificate-bound access tokens.
+
+## DPoP note
+
+DPoP proofs bind the current HTTP method and target URI (without query
+or fragment). Adding query parameters after `resource_req()` is fine,
+but changing the method, scheme, host, or path invalidates the proof.
+
+## Examples
+
+``` r
+# Make request using OAuthToken object
+# (code is not run because it requires a real token from user interaction)
+if (interactive()) {
+  # Get an OAuthToken
+  # (typically provided as reactive return value by `oauth_module_server()`)
+  token <- OAuthToken()
+
+  # Recommended for most callers: build + perform in one step.
+  response <- perform_resource_req(
+    token,
+    "https://api.example.com/resource",
+    query = list(limit = 5)
+  )
+
+  # Advanced callers can still build first and perform later.
+  request <- resource_req(
+    token,
+    "https://api.example.com/resource",
+    query = list(limit = 5)
+  )
+
+  response <- httr2::req_perform(request)
+}
+```

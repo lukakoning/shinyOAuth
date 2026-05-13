@@ -332,11 +332,11 @@ exchange, refresh, introspection, and revocation, shinyOAuth sends the
 configured client certificate on the TLS connection and prefers any
 discovered <code>mtls_endpoint_aliases</code>
 </li>
-<li>For protected-resource requests such as
-<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> calls to downstream APIs, and for
-userinfo when it is acting as a certificate-bound resource, shinyOAuth
-checks that the token’s <code>cnf.x5t#S256</code> thumbprint matches the
-configured certificate before sending the request</li>
+<li>For protected-resource requests such as <code><a href="../reference/resource_req.html">resource_req()</a></code>
+calls to downstream APIs, and for userinfo when it is acting as a
+certificate-bound resource, shinyOAuth checks that the token’s
+<code>cnf.x5t#S256</code> thumbprint matches the configured certificate
+before sending the request</li>
 </ul>
 </div>
 <div class="section level4">
@@ -353,10 +353,15 @@ proof that includes the supplied nonce, then reuses the most recently
 learned authorization-server nonce on later token requests until the
 server rotates it</li>
 <li>Later <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> calls and downstream
-<code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> requests also attach DPoP proofs when
-the effective access-token type is <code>DPoP</code> and the caller
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> requests also attach DPoP proofs
+when the effective access-token type is <code>DPoP</code> and the caller
 supplies the corresponding <code>OAuthClient</code>
 <ul>
+<li>
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> also retries one
+protected-resource <code>use_dpop_nonce</code> challenge with the
+supplied <code>DPoP-Nonce</code>; plain <code><a href="../reference/resource_req.html">resource_req()</a></code> only
+builds the request object</li>
 <li>Resource-server nonces are cached per issuing server rather than per
 exact endpoint, so same-server protected-resource paths can reuse a
 nonce while token-endpoint and resource-server nonce state stay

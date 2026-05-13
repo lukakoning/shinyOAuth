@@ -180,7 +180,12 @@ PAR capability and policy metadata so authorization requests can use RFC
 <code>request_object_signing_alg_values_supported</code> or
 <code>require_signed_request_object</code>, the resulting provider stores that
 metadata so <code>OAuthClient</code> can fail fast when a request-object algorithm is
-unsupported or when the provider requires signed Request Objects.</p></li>
+unsupported or when the provider requires signed Request Objects. When the
+discovery document also advertises
+<code>request_object_encryption_alg_values_supported</code> or
+<code>request_object_encryption_enc_values_supported</code>, the resulting provider
+stores that encryption metadata so Request Object JWE configuration can be
+validated early as well.</p></li>
 <li><p>Authorization request transport metadata: when the discovery document
 advertises <code>request_parameter_supported</code>,
 <code>request_uri_parameter_supported</code>, or

@@ -153,9 +153,13 @@ runApp(
 
 After login succeeds, you can use the access token to call an API on the
 user’s behalf.
-[`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-builds an authorized `httr2` request with the correct authorization
-scheme for the current token type.
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+is the easiest option for most call sites: it builds an authorized
+`httr2` request, performs it, and when the token type is `DPoP` it also
+handles a one-time `DPoP-Nonce` challenge retry. Use
+[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+when you need to inspect or customize the `httr2` request before sending
+it yourself.
 
 The example below calls the GitHub API to fetch the user’s repositories.
 
@@ -192,8 +196,10 @@ server <- function(input, output, session) {
 
     # Example additional API request using the access token
     # (e.g., fetch user repositories from GitHub)
-    req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
-    resp <- httr2::req_perform(req)
+    resp <- perform_resource_req(
+      auth$token,
+      "https://api.github.com/user/repos"
+    )
 
     if (httr2::resp_is_error(resp)) {
       repositories(NULL)

@@ -75,6 +75,9 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  authorization_request_mode <span class="op">=</span> <span class="st">"parameters"</span>,</span>
 <span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  authorization_request_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  authorization_request_encryption_enc <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  authorization_request_encryption_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  authorization_request_ttl <span class="op">=</span> <span class="fl">120</span>,</span>
 <span>  authorization_request_nbf_skew <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -215,7 +218,8 @@ RFC 9101) via the <code>request</code> parameter.</p></li>
 </ul><p>Most users can keep the default. Request mode is an advanced option that
 requires signing material on the client. shinyOAuth prefers
 <code>client_private_key</code> when present; otherwise it falls back to HMAC signing
-with <code>client_secret</code>.</p></dd>
+with <code>client_secret</code>. When Request Object encryption is configured,
+shinyOAuth signs first and then wraps the signed Request Object in a JWE.</p></dd>
 
 
 <dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>
@@ -233,6 +237,28 @@ signed authorization requests.</p></dd>
 used in signed authorization requests. By default, shinyOAuth uses the
 provider issuer when available. If the provider has no configured issuer,
 shinyOAuth omits the <code>aud</code> claim unless you supply an explicit override.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-alg">authorization_request_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-alg"></a></dt>
+<dd><p>Optional JWE key-management
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to <code>RSA-OAEP</code>. When set, you must also set
+<code>authorization_request_encryption_enc</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-enc">authorization_request_encryption_enc<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-enc"></a></dt>
+<dd><p>Optional JWE content-encryption
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
+<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When set, you must also set
+<code>authorization_request_encryption_alg</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-kid">authorization_request_encryption_kid<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-kid"></a></dt>
+<dd><p>Optional key identifier (<code>kid</code>)
+used to select one provider encryption key and emit the outer JWE <code>kid</code>
+header. This is mainly useful when the provider publishes more than one
+Request Object encryption key.</p></dd>
 
 
 <dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>
@@ -642,8 +668,10 @@ introspection responses.)</p></li>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="co"># Example additional API request using the access token</span></span></span>
 <span class="r-in"><span>      <span class="co"># (e.g., fetch user repositories from GitHub)</span></span></span>
-<span class="r-in"><span>      <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span>, <span class="st">"https://api.github.com/user/repos"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span></span>
+<span class="r-in"><span>      <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>        <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span></span>
+<span class="r-in"><span>        <span class="st">"https://api.github.com/user/repos"</span></span></span>
+<span class="r-in"><span>      <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>        <span class="fu">repositories</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span></span>

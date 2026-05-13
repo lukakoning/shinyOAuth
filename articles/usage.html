@@ -218,9 +218,12 @@ button before starting login.</p>
 <h2 id="making-authenticated-api-calls">Making authenticated API calls<a class="anchor" aria-label="anchor" href="#making-authenticated-api-calls"></a>
 </h2>
 <p>After login succeeds, you can use the access token to call an API on
-the user’s behalf. <code><a href="../reference/client_bearer_req.html">client_bearer_req()</a></code> builds an authorized
-<code>httr2</code> request with the correct authorization scheme for the
-current token type.</p>
+the user’s behalf. <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> is the easiest
+option for most call sites: it builds an authorized <code>httr2</code>
+request, performs it, and when the token type is <code>DPoP</code> it
+also handles a one-time <code>DPoP-Nonce</code> challenge retry. Use
+<code><a href="../reference/resource_req.html">resource_req()</a></code> when you need to inspect or customize the
+<code>httr2</code> request before sending it yourself.</p>
 <p>The example below calls the GitHub API to fetch the user’s
 repositories.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -256,8 +259,10 @@ repositories.</p>
 <span></span>
 <span>    <span class="co"># Example additional API request using the access token</span></span>
 <span>    <span class="co"># (e.g., fetch user repositories from GitHub)</span></span>
-<span>    <span class="va">req</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/client_bearer_req.html">client_bearer_req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span>, <span class="st">"https://api.github.com/user/repos"</span><span class="op">)</span></span>
-<span>    <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">req</span><span class="op">)</span></span>
+<span>    <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
+<span>      <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
+<span>      <span class="st">"https://api.github.com/user/repos"</span></span>
+<span>    <span class="op">)</span></span>
 <span></span>
 <span>    <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>      <span class="fu">repositories</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>

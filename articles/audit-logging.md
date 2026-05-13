@@ -643,9 +643,13 @@ These let you log failures to the same sink as audit events.
   - `url`: the request URL
   - `body_digest`: SHA-256 hex digest of the response body (for
     correlation without leaking content)
-  - `oauth_error`, `oauth_error_description`, `oauth_error_uri`: RFC
-    6749 §5.2 structured error fields extracted from JSON error
-    responses (e.g., from the token endpoint)
+  - `oauth_error`, `oauth_error_uri`: RFC 6749 §5.2 structured error
+    fields extracted from JSON error responses (e.g., from the token
+    endpoint)
+  - `oauth_error_description`: included only when
+    `options(shinyOAuth.expose_error_body = TRUE)` is enabled for
+    debugging, because provider-controlled text can contain
+    request-specific details
   - Plus any `context` fields from the call site
 
 #### Event: `transport_error`

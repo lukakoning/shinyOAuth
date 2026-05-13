@@ -63,6 +63,9 @@ used by the built-in provider helpers.</p>
 <span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  require_pushed_authorization_requests <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_jwk <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  require_signed_request_object <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
@@ -146,6 +149,28 @@ requires authorization requests to be sent via PAR. When <code>TRUE</code>,
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an <a href="OAuthClient.html">OAuthClient</a>
 sends <code>authorization_request_mode = "request"</code>.</p></dd>
+
+
+<dt id="arg-request-object-encryption-alg-values-supported">request_object_encryption_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg-values-supported"></a></dt>
+<dd><p>Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
+
+
+<dt id="arg-request-object-encryption-enc-values-supported">request_object_encryption_enc_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-enc-values-supported"></a></dt>
+<dd><p>Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
+
+
+<dt id="arg-request-object-encryption-jwk">request_object_encryption_jwk<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-jwk"></a></dt>
+<dd><p>Optional explicit recipient public key
+used to encrypt Request Objects when discovery-backed JWKS selection is not
+available or when you need to pin one specific encryption key. Accepts an
+OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+JSON string.</p></dd>
 
 
 <dt id="arg-require-signed-request-object">require_signed_request_object<a class="anchor" aria-label="anchor" href="#arg-require-signed-request-object"></a></dt>

@@ -63,6 +63,30 @@
     available for better correlation. See
     [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
     for more information.
+  - `http_error` audit/trace events now omit raw provider
+    `oauth_error_description` text by default and keep only
+    `oauth_error`, `oauth_error_uri`, and `body_digest`. The raw
+    description is emitted only when
+    `options(shinyOAuth.expose_error_body = TRUE)` is enabled for
+    debugging.
+  - OTEL exception span events now use standard `exception.type` /
+    `exception.message` keys, omit raw exception messages by default,
+    and set span status descriptions from the error class instead of
+    provider-controlled text.
+  - Renamed the downstream resource-request helpers to
+    [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+    and
+    [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
+    The old
+    [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+    and
+    [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
+    names remain available as deprecated aliases.
+    [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+    performs the request and, for DPoP-bound access tokens, replays one
+    `use_dpop_nonce` challenge with the server-provided nonce while
+    [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+    remains the lower-level builder for advanced callers.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a
     separate documented event sink. Prefer
     `options(shinyOAuth.audit_hook = ...)`; the old `trace_hook` option

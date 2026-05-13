@@ -1,12 +1,17 @@
-# **\[deprecated\]**
+# Perform an authenticated httr2 request for a protected resource
 
-Deprecated alias for
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+Companion to
+[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+for callers who want shinyOAuth to both build and perform the request.
+For DPoP-bound access tokens, this helper reuses shinyOAuth's existing
+nonce-challenge handling and retries one `use_dpop_nonce` response with
+a fresh proof that includes the supplied `DPoP-Nonce`, as described by
+RFC 9449.
 
 ## Usage
 
 ``` r
-client_bearer_req(
+perform_resource_req(
   token,
   url,
   method = "GET",
@@ -16,7 +21,8 @@ client_bearer_req(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  idempotent = NULL
 )
 ```
 
@@ -91,7 +97,50 @@ client_bearer_req(
   Optional DPoP nonce to embed in the proof for this request. This is
   primarily useful after a resource server challenges with `DPoP-Nonce`.
 
+- idempotent:
+
+  Optional logical controlling generic transport and transient-HTTP
+  retries in `req_with_retry()`. When `NULL` (the default), shinyOAuth
+  infers this from the final request method using standard HTTP
+  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`,
+  `DELETE`). DPoP nonce challenges are replayed once regardless, as
+  required by RFC 9449.
+
 ## Value
 
-Same value as
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+An httr2 response object.
+
+## Side effects
+
+Performs network I/O, may retry idempotent requests through shinyOAuth's
+HTTP retry helpers, and when the effective token type is `DPoP` may mint
+a second proof and replay the request once after a server-provided nonce
+challenge.
+
+## Examples
+
+``` r
+# Make request using OAuthToken object
+# (code is not run because it requires a real token from user interaction)
+if (interactive()) {
+  # Get an OAuthToken
+  # (typically provided as reactive return value by `oauth_module_server()`)
+  token <- OAuthToken()
+
+  # Recommended for most callers: build + perform in one step.
+  response <- perform_resource_req(
+    token,
+    "https://api.example.com/resource",
+    query = list(limit = 5)
+  )
+
+  # Advanced callers can still build first and perform later.
+  request <- resource_req(
+    token,
+    "https://api.example.com/resource",
+    query = list(limit = 5)
+  )
+
+  response <- httr2::req_perform(request)
+}
+```

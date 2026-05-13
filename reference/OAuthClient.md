@@ -27,6 +27,9 @@ OAuthClient(
   authorization_request_mode = "parameters",
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
+  authorization_request_encryption_alg = NA_character_,
+  authorization_request_encryption_enc = NA_character_,
+  authorization_request_encryption_kid = NA_character_,
   authorization_request_ttl = 120,
   authorization_request_nbf_skew = NA_real_,
   dpop_private_key = NULL,
@@ -184,7 +187,9 @@ OAuthClient(
   Most users can keep the default. Request mode is an advanced option
   that requires signing material on the client. shinyOAuth prefers
   `client_private_key` when present; otherwise it falls back to HMAC
-  signing with `client_secret`.
+  signing with `client_secret`. When Request Object encryption is
+  configured, shinyOAuth signs first and then wraps the signed Request
+  Object in a JWE.
 
 - authorization_request_signing_alg:
 
@@ -202,6 +207,26 @@ OAuthClient(
   requests. By default, shinyOAuth uses the provider issuer when
   available. If the provider has no configured issuer, shinyOAuth omits
   the `aud` claim unless you supply an explicit override.
+
+- authorization_request_encryption_alg:
+
+  Optional JWE key-management algorithm override for encrypted Request
+  Objects. Current outbound support is limited to `RSA-OAEP`. When set,
+  you must also set `authorization_request_encryption_enc`.
+
+- authorization_request_encryption_enc:
+
+  Optional JWE content-encryption algorithm override for encrypted
+  Request Objects. Current outbound support is limited to the
+  AES-CBC-HMAC family (`A128CBC-HS256`, `A192CBC-HS384`,
+  `A256CBC-HS512`). When set, you must also set
+  `authorization_request_encryption_alg`.
+
+- authorization_request_encryption_kid:
+
+  Optional key identifier (`kid`) used to select one provider encryption
+  key and emit the outer JWE `kid` header. This is mainly useful when
+  the provider publishes more than one Request Object encryption key.
 
 - authorization_request_ttl:
 
@@ -649,8 +674,10 @@ if (
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
-      req <- client_bearer_req(auth$token, "https://api.github.com/user/repos")
-      resp <- httr2::req_perform(req)
+      resp <- perform_resource_req(
+        auth$token,
+        "https://api.github.com/user/repos"
+      )
 
       if (httr2::resp_is_error(resp)) {
         repositories(NULL)

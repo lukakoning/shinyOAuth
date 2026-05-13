@@ -151,7 +151,11 @@ discovery might fail early.
   `require_signed_request_object`, the resulting provider stores that
   metadata so `OAuthClient` can fail fast when a request-object
   algorithm is unsupported or when the provider requires signed Request
-  Objects.
+  Objects. When the discovery document also advertises
+  `request_object_encryption_alg_values_supported` or
+  `request_object_encryption_enc_values_supported`, the resulting
+  provider stores that encryption metadata so Request Object JWE
+  configuration can be validated early as well.
 
 - Authorization request transport metadata: when the discovery document
   advertises `request_parameter_supported`,

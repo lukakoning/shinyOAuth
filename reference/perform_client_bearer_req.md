@@ -1,12 +1,12 @@
 # **\[deprecated\]**
 
 Deprecated alias for
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
 
 ## Usage
 
 ``` r
-client_bearer_req(
+perform_client_bearer_req(
   token,
   url,
   method = "GET",
@@ -16,7 +16,8 @@ client_bearer_req(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  idempotent = NULL
 )
 ```
 
@@ -91,7 +92,16 @@ client_bearer_req(
   Optional DPoP nonce to embed in the proof for this request. This is
   primarily useful after a resource server challenges with `DPoP-Nonce`.
 
+- idempotent:
+
+  Optional logical controlling generic transport and transient-HTTP
+  retries in `req_with_retry()`. When `NULL` (the default), shinyOAuth
+  infers this from the final request method using standard HTTP
+  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`,
+  `DELETE`). DPoP nonce challenges are replayed once regardless, as
+  required by RFC 9449.
+
 ## Value
 
 Same value as
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
