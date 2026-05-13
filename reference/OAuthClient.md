@@ -214,8 +214,8 @@ OAuthClient(
   adds an `nbf` claim set to `iat - authorization_request_nbf_skew` so
   deployments can tolerate small clock skew while still emitting bounded
   request-object validity windows. Leave `NULL` (the default) to omit
-  `nbf` unless you supply one explicitly through extra authorization
-  parameters.
+  `nbf`. Request-object `nbf` is reserved by shinyOAuth and cannot be
+  supplied through extra authorization parameters.
 
 - dpop_private_key:
 
@@ -447,7 +447,8 @@ OAuthClient(
   when present. Set, for example,
   `userinfo_jwt_required_temporal_claims = "exp"` to require an expiry
   on signed UserInfo JWTs, or pass multiple values to require additional
-  temporal claims.
+  temporal claims. For security-sensitive deployments that accept signed
+  UserInfo JWTs, prefer requiring at least `"exp"`.
 
 - required_acr_values:
 

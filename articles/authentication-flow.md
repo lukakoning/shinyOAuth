@@ -356,6 +356,13 @@ algorithms from the provider’s `allowed_algs` (`RS*`, `ES*`, or
 `EdDSA`); `HS256`, `HS384`, and `HS512` are rejected on this surface
 even if HS\* is otherwise enabled for ID tokens.
 
+For security-sensitive deployments that rely on signed UserInfo JWTs,
+consider requiring at least an expiry claim with
+`oauth_client(userinfo_jwt_required_temporal_claims = "exp")`. OIDC Core
+does not require `exp` on signed UserInfo responses, so shinyOAuth
+leaves that policy opt-in and validates `exp`, `iat`, and `nbf` whenever
+they are present.
+
 - Subject match: whenever shinyOAuth has both userinfo and a validated
   ID token baseline, it checks that `sub` in userinfo equals `sub` in
   the ID token. Setting `oauth_provider(userinfo_id_token_match = TRUE)`

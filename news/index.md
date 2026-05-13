@@ -21,6 +21,11 @@
   `client_private_key` or `client_secret` signing depending on client
   configuration.
 
+  - Request-object temporal claims are now fully reserved by shinyOAuth.
+    Caller-supplied `nbf` values from `extra_auth_params` are ignored,
+    and `nbf` is only emitted when configured through
+    `authorization_request_nbf_skew`.
+
 - Added OpenTelemetry (‘OTel’) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback
@@ -28,6 +33,10 @@
   and session-end cleanup. See
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
   for more information.
+
+- Documentation now recommends
+  `userinfo_jwt_required_temporal_claims = "exp"` for security-sensitive
+  deployments that accept signed UserInfo JWT responses.
 
 - JWKS caching now respects tightened global host policy immediately.
   Cached entries are scoped to the current `allowed_hosts` /
