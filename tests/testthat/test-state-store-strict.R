@@ -202,6 +202,137 @@ test_that("state_store_get_remove errors on missing required fields", {
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
+test_that("state_store_get_remove accepts omitted optional fields when disabled", {
+  mem <- new.env(parent = emptyenv())
+  store <- shinyOAuth::custom_cache(
+    get = function(key, missing = NULL) {
+      base::get0(key, envir = mem, ifnotfound = missing, inherits = FALSE)
+    },
+    set = function(key, value) {
+      assign(key, value, envir = mem)
+      invisible(NULL)
+    },
+    remove = function(key) {
+      if (exists(key, envir = mem, inherits = FALSE)) {
+        rm(list = key, envir = mem)
+      }
+      invisible(NULL)
+    },
+    take = function(key, missing = NULL) {
+      value <- base::get0(
+        key,
+        envir = mem,
+        ifnotfound = missing,
+        inherits = FALSE
+      )
+      if (exists(key, envir = mem, inherits = FALSE)) {
+        rm(list = key, envir = mem)
+      }
+      value
+    },
+    info = function() list(max_age = 60)
+  )
+
+  client <- shinyOAuth::oauth_client(
+    make_test_provider(use_pkce = FALSE, use_nonce = FALSE),
+    client_id = "id",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    state_store = store,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  st <- "missing-optional-fields-state"
+  key <- shinyOAuth:::state_cache_key(st)
+  store$set(key, list(browser_token = "bt"))
+
+  out <- shinyOAuth:::state_store_get_remove(client, st)
+
+  expect_equal(out$browser_token, "bt")
+  expect_null(out$pkce_code_verifier)
+  expect_null(out$nonce)
+})
+
+test_that("state_store_get_remove still requires policy-enabled fields", {
+  mem <- new.env(parent = emptyenv())
+  store <- shinyOAuth::custom_cache(
+    get = function(key, missing = NULL) {
+      base::get0(key, envir = mem, ifnotfound = missing, inherits = FALSE)
+    },
+    set = function(key, value) {
+      assign(key, value, envir = mem)
+      invisible(NULL)
+    },
+    remove = function(key) {
+      if (exists(key, envir = mem, inherits = FALSE)) {
+        rm(list = key, envir = mem)
+      }
+      invisible(NULL)
+    },
+    take = function(key, missing = NULL) {
+      value <- base::get0(
+        key,
+        envir = mem,
+        ifnotfound = missing,
+        inherits = FALSE
+      )
+      if (exists(key, envir = mem, inherits = FALSE)) {
+        rm(list = key, envir = mem)
+      }
+      value
+    },
+    info = function() list(max_age = 60)
+  )
+
+  pkce_client <- shinyOAuth::oauth_client(
+    make_test_provider(use_pkce = TRUE, use_nonce = FALSE),
+    client_id = "id",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    state_store = store,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  st_pkce <- "missing-pkce-field-state"
+  key_pkce <- shinyOAuth:::state_cache_key(st_pkce)
+  store$set(key_pkce, list(browser_token = "bt"))
+
+  expect_error(
+    shinyOAuth:::state_store_get_remove(pkce_client, st_pkce),
+    regexp = "pkce_code_verifier",
+    class = "shinyOAuth_state_error"
+  )
+
+  nonce_client <- shinyOAuth::oauth_client(
+    make_test_provider(use_pkce = FALSE, use_nonce = TRUE),
+    client_id = "id",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    state_store = store,
+    scopes = "openid",
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  st_nonce <- "missing-nonce-field-state"
+  key_nonce <- shinyOAuth:::state_cache_key(st_nonce)
+  store$set(key_nonce, list(browser_token = "bt"))
+
+  expect_error(
+    shinyOAuth:::state_store_get_remove(nonce_client, st_nonce),
+    regexp = "nonce",
+    class = "shinyOAuth_state_error"
+  )
+})
+
 test_that("state_store_get_remove errors on invalid browser_token value", {
   # Capture audit events
   events <- list()

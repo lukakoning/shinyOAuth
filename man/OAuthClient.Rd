@@ -260,6 +260,11 @@ method for replay-safe single-use state consumption. The backend
 must implement cachem-like methods \verb{$get(key, missing)}, \verb{$set(key, value)},
 and \verb{$remove(key)}; \verb{$info()} is optional.
 
+Stored values must round-trip \code{browser_token} as a non-empty string.
+\code{pkce_code_verifier} and \code{nonce} are required only when the provider
+enables PKCE or nonce validation; otherwise backends may keep those
+fields as \code{NULL} or omit them.
+
 \code{cachem::cache_mem()} is a good default for a single Shiny process. For
 multi-process deployments, use \code{\link[=custom_cache]{custom_cache()}} with an atomic \verb{$take()}
 backed by a shared store (for example Redis \code{GETDEL} or SQL

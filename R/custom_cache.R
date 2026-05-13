@@ -27,6 +27,12 @@
 #' - OAuthClient@state_store (requires `$get`, `$set`, `$remove`; optional `$info`)
 #' - OAuthProvider@jwks_cache (requires `$get`, `$set`; optional `$remove`, `$info`)
 #'
+#' For `OAuthClient@state_store`, stored values are small lists. `browser_token`
+#' must always round-trip as a non-empty string. `pkce_code_verifier` and
+#' `nonce` are required only when the provider enables PKCE or nonce
+#' validation; otherwise stores may preserve them as `NULL` or omit them when
+#' serializing.
+#'
 #' The `$info()` method is optional, but if provided and it returns a list with
 #' `max_age` (seconds), shinyOAuth will align browser cookie max-age in
 #' [oauth_module_server()] to that value.

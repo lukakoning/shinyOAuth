@@ -69,6 +69,12 @@ The resulting object can be used in both places where 'shinyOAuth' accepts a cac
 \item OAuthProvider@jwks_cache (requires \verb{$get}, \verb{$set}; optional \verb{$remove}, \verb{$info})
 }
 
+For \code{OAuthClient@state_store}, stored values are small lists. \code{browser_token}
+must always round-trip as a non-empty string. \code{pkce_code_verifier} and
+\code{nonce} are required only when the provider enables PKCE or nonce
+validation; otherwise stores may preserve them as \code{NULL} or omit them when
+serializing.
+
 The \verb{$info()} method is optional, but if provided and it returns a list with
 \code{max_age} (seconds), shinyOAuth will align browser cookie max-age in
 \code{\link[=oauth_module_server]{oauth_module_server()}} to that value.

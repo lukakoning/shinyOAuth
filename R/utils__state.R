@@ -679,7 +679,7 @@ state_store_consume_atomic <- function(
       ssv <- store$take(key, missing = NULL)
       # Validate the returned value in the same tryCatch so failures are
       # audited consistently
-      validate_state_store_value(ssv)
+      ssv <- validate_state_store_value(ssv, client)
     },
     error = function(e) {
       consume_error_class <<- paste(class(e), collapse = ", ")
@@ -751,7 +751,7 @@ state_store_consume_fallback <- function(
   tryCatch(
     {
       ssv <- store$get(key, missing = NULL)
-      validate_state_store_value(ssv)
+      ssv <- validate_state_store_value(ssv, client)
       get_succeeded <- TRUE
     },
     error = function(e) {
@@ -838,19 +838,31 @@ state_store_consume_fallback <- function(
 #' Validate a retrieved state-store value
 #'
 #' @param ssv Retrieved state-store value.
+#' @param client OAuth client whose policy determines whether PKCE and nonce
+#'   values are required.
 #' @return Invisibly returns `ssv` on success. Otherwise this function raises a
 #'   state error.
 #' @keywords internal
 #' @noRd
-validate_state_store_value <- function(ssv) {
+validate_state_store_value <- function(ssv, client) {
   if (is.null(ssv) || !is.list(ssv)) {
     rlang::abort(
       "State store entry is missing or malformed",
       class = c("shinyOAuth_state_error", "shinyOAuth_error")
     )
   }
-  expected_keys <- c("browser_token", "pkce_code_verifier", "nonce")
-  missing_keys <- setdiff(expected_keys, names(ssv))
+
+  # Custom stores may serialize away unused NULLs. Only require the fields
+  # that the current client policy can actually consume later.
+  required_keys <- "browser_token"
+  if (isTRUE(client@provider@use_pkce)) {
+    required_keys <- c(required_keys, "pkce_code_verifier")
+  }
+  if (isTRUE(client@provider@use_nonce)) {
+    required_keys <- c(required_keys, "nonce")
+  }
+
+  missing_keys <- setdiff(required_keys, names(ssv))
   if (length(missing_keys) > 0) {
     rlang::abort(
       c(
@@ -866,5 +878,29 @@ validate_state_store_value <- function(ssv) {
       class = c("shinyOAuth_state_error", "shinyOAuth_error")
     )
   }
+
+  if (
+    isTRUE(client@provider@use_pkce) &&
+      !is_valid_string(ssv$pkce_code_verifier)
+  ) {
+    rlang::abort(
+      paste0(
+        "State store entry is malformed: pkce_code_verifier must be ",
+        "a non-empty string when PKCE is enabled"
+      ),
+      class = c("shinyOAuth_state_error", "shinyOAuth_error")
+    )
+  }
+
+  if (isTRUE(client@provider@use_nonce) && !is_valid_string(ssv$nonce)) {
+    rlang::abort(
+      paste0(
+        "State store entry is malformed: nonce must be a non-empty string ",
+        "when nonce validation is enabled"
+      ),
+      class = c("shinyOAuth_state_error", "shinyOAuth_error")
+    )
+  }
+
   invisible(ssv)
 }
