@@ -14,6 +14,9 @@ OAuthProvider(
   par_url = NA_character_,
   require_pushed_authorization_requests = FALSE,
   request_object_signing_alg_values_supported = character(0),
+  request_object_encryption_alg_values_supported = character(0),
+  request_object_encryption_enc_values_supported = character(0),
+  request_object_encryption_jwk = NULL,
   require_signed_request_object = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
@@ -76,6 +79,22 @@ requires authorization requests to be sent via PAR. When \code{TRUE},
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an \link{OAuthClient}
 sends \code{authorization_request_mode = "request"}.}
+
+\item{request_object_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+\link{OAuthClient} enables Request Object encryption.}
+
+\item{request_object_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+\link{OAuthClient} enables Request Object encryption.}
+
+\item{request_object_encryption_jwk}{Optional explicit recipient public key
+used to encrypt Request Objects when discovery-backed JWKS selection is not
+available or when you need to pin one specific encryption key. Accepts an
+OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+JSON string.}
 
 \item{require_signed_request_object}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients

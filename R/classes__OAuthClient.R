@@ -105,7 +105,8 @@
 #'   Most users can keep the default. Request mode is an advanced option that
 #'   requires signing material on the client. shinyOAuth prefers
 #'   `client_private_key` when present; otherwise it falls back to HMAC signing
-#'   with `client_secret`.
+#'   with `client_secret`. When Request Object encryption is configured,
+#'   shinyOAuth signs first and then wraps the signed Request Object in a JWE.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode = "request"`.
@@ -119,6 +120,19 @@
 #'   used in signed authorization requests. By default, shinyOAuth uses the
 #'   provider issuer when available. If the provider has no configured issuer,
 #'   shinyOAuth omits the `aud` claim unless you supply an explicit override.
+#' @param authorization_request_encryption_alg Optional JWE key-management
+#'   algorithm override for encrypted Request Objects. Current outbound support
+#'   is limited to `RSA-OAEP`. When set, you must also set
+#'   `authorization_request_encryption_enc`.
+#' @param authorization_request_encryption_enc Optional JWE content-encryption
+#'   algorithm override for encrypted Request Objects. Current outbound support
+#'   is limited to the AES-CBC-HMAC family (`A128CBC-HS256`,
+#'   `A192CBC-HS384`, `A256CBC-HS512`). When set, you must also set
+#'   `authorization_request_encryption_alg`.
+#' @param authorization_request_encryption_kid Optional key identifier (`kid`)
+#'   used to select one provider encryption key and emit the outer JWE `kid`
+#'   header. This is mainly useful when the provider publishes more than one
+#'   Request Object encryption key.
 #' @param authorization_request_ttl Positive number of seconds to keep signed
 #'   authorization request objects (`request` JWTs) valid. Default is `120`.
 #' @param authorization_request_nbf_skew Optional non-negative number of
@@ -417,6 +431,21 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    # Optional override for the Request Object JWE alg.
+    authorization_request_encryption_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the Request Object JWE enc.
+    authorization_request_encryption_enc = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional recipient-key selection hint for Request Object JWE.
+    authorization_request_encryption_kid = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     # Signed authorization request lifetime in seconds.
     authorization_request_ttl = S7::new_property(
       S7::class_numeric,
@@ -544,6 +573,9 @@ oauth_client <- function(
   authorization_request_mode = c("parameters", "request"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
+  authorization_request_encryption_alg = NULL,
+  authorization_request_encryption_enc = NULL,
+  authorization_request_encryption_kid = NULL,
   authorization_request_ttl = 120,
   authorization_request_nbf_skew = NULL,
   dpop_private_key = NULL,
@@ -689,6 +721,12 @@ oauth_client <- function(
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
       NA_character_,
+    authorization_request_encryption_alg =
+      authorization_request_encryption_alg %||% NA_character_,
+    authorization_request_encryption_enc =
+      authorization_request_encryption_enc %||% NA_character_,
+    authorization_request_encryption_kid =
+      authorization_request_encryption_kid %||% NA_character_,
     authorization_request_ttl = authorization_request_ttl,
     authorization_request_nbf_skew = authorization_request_nbf_skew %||%
       NA_real_,
@@ -1116,6 +1154,60 @@ oauth_client_validate <- function(self) {
     )
   }
 
+  area <- self@authorization_request_encryption_alg %||% NA_character_
+  if (!is.character(area) || length(area) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_alg must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(area) && !nzchar(area)) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_alg must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  arec <- self@authorization_request_encryption_enc %||% NA_character_
+  if (!is.character(arec) || length(arec) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_enc must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(arec) && !nzchar(arec)) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_enc must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  arek <- self@authorization_request_encryption_kid %||% NA_character_
+  if (!is.character(arek) || length(arek) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_kid must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(arek) && !nzchar(arek)) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_kid must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
   arttl <- self@authorization_request_ttl %||% NA_real_
   if (!(is.numeric(arttl) && length(arttl) == 1L && is.finite(arttl))) {
     return(
@@ -1293,6 +1385,94 @@ oauth_client_validate <- function(self) {
           "' is not supported by provider request_object_signing_alg_values_supported"
         ))
       }
+    }
+  }
+
+  encryption_alg <- canonicalize_jwe_alg(area)
+  encryption_enc <- canonicalize_jwe_enc(arec)
+  encryption_enabled <- nzchar(encryption_alg) || nzchar(encryption_enc)
+
+  if (isTRUE(encryption_enabled) && !identical(arm, "request")) {
+    return(
+      paste(
+        "OAuthClient: Request Object encryption requires",
+        "authorization_request_mode = 'request'"
+      )
+    )
+  }
+  if (nzchar(encryption_alg) != nzchar(encryption_enc)) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_encryption_alg and",
+        "authorization_request_encryption_enc must both be provided"
+      )
+    )
+  }
+  if (isTRUE(encryption_enabled)) {
+    supported_encryption_algs <- c("RSA-OAEP")
+    supported_encryption_encs <- c(
+      "A128CBC-HS256",
+      "A192CBC-HS384",
+      "A256CBC-HS512"
+    )
+
+    if (!(encryption_alg %in% supported_encryption_algs)) {
+      return(paste0(
+        "OAuthClient: authorization_request_encryption_alg '",
+        encryption_alg,
+        "' is not supported for outbound Request Object encryption"
+      ))
+    }
+    if (!(encryption_enc %in% supported_encryption_encs)) {
+      return(paste0(
+        "OAuthClient: authorization_request_encryption_enc '",
+        encryption_enc,
+        "' is not supported for outbound Request Object encryption"
+      ))
+    }
+
+    provider_encryption_algs <- toupper(as.character(
+      self@provider@request_object_encryption_alg_values_supported %||%
+        character(0)
+    ))
+    if (
+      length(provider_encryption_algs) > 0 &&
+        !(toupper(encryption_alg) %in% provider_encryption_algs)
+    ) {
+      return(paste0(
+        "OAuthClient: authorization_request_encryption_alg '",
+        encryption_alg,
+        "' is not supported by provider request_object_encryption_alg_values_supported"
+      ))
+    }
+
+    provider_encryption_encs <- toupper(as.character(
+      self@provider@request_object_encryption_enc_values_supported %||%
+        character(0)
+    ))
+    if (
+      length(provider_encryption_encs) > 0 &&
+        !(toupper(encryption_enc) %in% provider_encryption_encs)
+    ) {
+      return(paste0(
+        "OAuthClient: authorization_request_encryption_enc '",
+        encryption_enc,
+        "' is not supported by provider request_object_encryption_enc_values_supported"
+      ))
+    }
+
+    provider_request_object_encryption_key <-
+      self@provider@request_object_encryption_jwk %||% NULL
+    if (
+      is.null(provider_request_object_encryption_key) &&
+        !is_valid_string(self@provider@issuer %||% NA_character_)
+    ) {
+      return(
+        paste(
+          "OAuthClient: Request Object encryption requires provider issuer or",
+          "provider request_object_encryption_jwk"
+        )
+      )
     }
   }
 

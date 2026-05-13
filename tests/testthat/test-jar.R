@@ -48,23 +48,32 @@ make_jar_test_provider <- function(
   extra_auth_params = list(),
   id_token_validation = FALSE,
   request_object_signing_alg_values_supported = character(0),
+  request_object_encryption_alg_values_supported = character(0),
+  request_object_encryption_enc_values_supported = character(0),
+  request_object_encryption_jwk = NULL,
   require_signed_request_object = FALSE
 ) {
-  oauth_provider(
-    name = "example",
-    auth_url = "https://example.com/auth",
-    token_url = "https://example.com/token",
-    issuer = issuer,
-    par_url = par_url,
-    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
-    require_signed_request_object = require_signed_request_object,
-    use_nonce = use_nonce,
-    use_pkce = TRUE,
-    token_auth_style = token_auth_style,
-    id_token_required = FALSE,
-    id_token_validation = id_token_validation,
-    extra_auth_params = extra_auth_params,
-    allowed_token_types = character()
+  do.call(
+    shinyOAuth::oauth_provider,
+    list(
+      name = "example",
+      auth_url = "https://example.com/auth",
+      token_url = "https://example.com/token",
+      issuer = issuer,
+      par_url = par_url,
+      request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
+      request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
+      request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
+      request_object_encryption_jwk = request_object_encryption_jwk,
+      require_signed_request_object = require_signed_request_object,
+      use_nonce = use_nonce,
+      use_pkce = TRUE,
+      token_auth_style = token_auth_style,
+      id_token_required = FALSE,
+      id_token_validation = id_token_validation,
+      extra_auth_params = extra_auth_params,
+      allowed_token_types = character()
+    )
   )
 }
 
@@ -78,6 +87,9 @@ make_jar_test_client <- function(
   dpop_signing_alg = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
+  authorization_request_encryption_alg = NULL,
+  authorization_request_encryption_enc = NULL,
+  authorization_request_encryption_kid = NULL,
   authorization_request_ttl = 120,
   authorization_request_nbf_skew = NULL,
   scopes = c("openid", "profile"),
@@ -86,31 +98,37 @@ make_jar_test_client <- function(
   claims_validation = "none",
   required_acr_values = character(0)
 ) {
-  oauth_client(
-    provider = provider,
-    client_id = "abc",
-    client_secret = client_secret,
-    redirect_uri = "http://localhost:8100",
-    scopes = scopes,
-    state_store = cachem::cache_mem(max_age = 60),
-    state_key = paste0(
-      "0123456789abcdefghijklmnopqrstuvwxyz",
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    ),
-    client_private_key = client_private_key,
-    client_private_key_kid = client_private_key_kid,
-    dpop_private_key = dpop_private_key,
-    dpop_private_key_kid = dpop_private_key_kid,
-    dpop_signing_alg = dpop_signing_alg,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = authorization_request_signing_alg,
-    authorization_request_audience = authorization_request_audience,
-    authorization_request_ttl = authorization_request_ttl,
-    authorization_request_nbf_skew = authorization_request_nbf_skew,
-    resource = resource,
-    claims = claims,
-    claims_validation = claims_validation,
-    required_acr_values = required_acr_values
+  do.call(
+    shinyOAuth::oauth_client,
+    list(
+      provider = provider,
+      client_id = "abc",
+      client_secret = client_secret,
+      redirect_uri = "http://localhost:8100",
+      scopes = scopes,
+      state_store = cachem::cache_mem(max_age = 60),
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      ),
+      client_private_key = client_private_key,
+      client_private_key_kid = client_private_key_kid,
+      dpop_private_key = dpop_private_key,
+      dpop_private_key_kid = dpop_private_key_kid,
+      dpop_signing_alg = dpop_signing_alg,
+      authorization_request_mode = "request",
+      authorization_request_signing_alg = authorization_request_signing_alg,
+      authorization_request_audience = authorization_request_audience,
+      authorization_request_encryption_alg = authorization_request_encryption_alg,
+      authorization_request_encryption_enc = authorization_request_encryption_enc,
+      authorization_request_encryption_kid = authorization_request_encryption_kid,
+      authorization_request_ttl = authorization_request_ttl,
+      authorization_request_nbf_skew = authorization_request_nbf_skew,
+      resource = resource,
+      claims = claims,
+      claims_validation = claims_validation,
+      required_acr_values = required_acr_values
+    )
   )
 }
 
@@ -179,6 +197,41 @@ test_that("request objects default to private-key signing and honor audience ove
   expect_identical(hdr$alg, "RS256")
   expect_identical(hdr$kid, "kid-123")
   expect_identical(pl$aud, "https://example.com/custom-aud")
+})
+
+test_that("prepare_call encrypts signed request objects when configured", {
+  encryption_key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A256CBC-HS512",
+      request_object_encryption_jwk = encryption_key$pubkey
+    ),
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512",
+    authorization_request_encryption_kid = "enc-kid"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request"))
+  expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
+
+  outer <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
+  inner_hdr <- shinyOAuth:::parse_jwt_header(outer$plaintext)
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+
+  expect_identical(outer$header$alg, "RSA-OAEP")
+  expect_identical(outer$header$enc, "A256CBC-HS512")
+  expect_identical(outer$header$kid, "enc-kid")
+  expect_identical(outer$header$typ, "oauth-authz-req+jwt")
+  expect_identical(outer$header$cty, "JWT")
+  expect_identical(inner_hdr$alg, "HS256")
+  expect_identical(inner_hdr$typ, "oauth-authz-req+jwt")
+  expect_identical(inner_pl$iss, "abc")
+  expect_identical(inner_pl$aud, "https://issuer.example.com")
+  expect_identical(inner_pl$client_id, "abc")
 })
 
 test_that("request objects omit aud when no provider issuer is configured", {
@@ -342,6 +395,100 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
   expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
   expect_false("dpop_jkt" %in% names(body_data))
   expect_identical(pl$dpop_jkt, expected_jkt)
+})
+
+test_that("request mode through PAR pushes encrypted request objects", {
+  encryption_key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A256CBC-HS512",
+      request_object_encryption_jwk = encryption_key$pubkey
+    ),
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512"
+  )
+  body_data <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_data <<- req$body$data %||% list()
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  outer <- shinyOAuth:::jwe_compact_decrypt(body_data$request, encryption_key)
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_length(strsplit(body_data$request, ".", fixed = TRUE)[[1]], 5L)
+  expect_identical(outer$header$alg, "RSA-OAEP")
+  expect_identical(outer$header$enc, "A256CBC-HS512")
+  expect_identical(outer$header$cty, "JWT")
+  expect_identical(inner_pl$client_id, "abc")
+  expect_identical(inner_pl$redirect_uri, "http://localhost:8100")
+})
+
+
+# 2. request object encryption validation -------------------------------------
+
+test_that("oauth_client validates request-object encryption configuration", {
+  encryption_key <- openssl::rsa_keygen()
+  provider_with_key <- make_jar_test_provider(
+    request_object_encryption_alg_values_supported = "RSA-OAEP",
+    request_object_encryption_enc_values_supported = "A256CBC-HS512",
+    request_object_encryption_jwk = encryption_key$pubkey
+  )
+
+  expect_error(
+    make_jar_test_client(
+      provider = provider_with_key,
+      authorization_request_encryption_alg = "RSA-OAEP"
+    ),
+    regexp = paste(
+      "authorization_request_encryption_alg and",
+      "authorization_request_encryption_enc must both be provided"
+    )
+  )
+
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(issuer = NA_character_),
+      authorization_request_encryption_alg = "RSA-OAEP",
+      authorization_request_encryption_enc = "A256CBC-HS512"
+    ),
+    regexp = paste(
+      "Request Object encryption requires provider issuer or",
+      "provider request_object_encryption_jwk"
+    )
+  )
+
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(
+        request_object_encryption_alg_values_supported = "RSA1_5",
+        request_object_encryption_enc_values_supported = "A256CBC-HS512",
+        request_object_encryption_jwk = encryption_key$pubkey
+      ),
+      authorization_request_encryption_alg = "RSA-OAEP",
+      authorization_request_encryption_enc = "A256CBC-HS512"
+    ),
+    regexp = paste(
+      "authorization_request_encryption_alg 'RSA-OAEP' is not supported by",
+      "provider request_object_encryption_alg_values_supported"
+    )
+  )
 })
 
 test_that("request mode through PAR keeps client_id in the body for header auth", {

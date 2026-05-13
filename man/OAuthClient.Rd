@@ -20,6 +20,9 @@ OAuthClient(
   authorization_request_mode = "parameters",
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
+  authorization_request_encryption_alg = NA_character_,
+  authorization_request_encryption_enc = NA_character_,
+  authorization_request_encryption_kid = NA_character_,
   authorization_request_ttl = 120,
   authorization_request_nbf_skew = NA_real_,
   dpop_private_key = NULL,
@@ -142,7 +145,8 @@ RFC 9101) via the \code{request} parameter.
 Most users can keep the default. Request mode is an advanced option that
 requires signing material on the client. shinyOAuth prefers
 \code{client_private_key} when present; otherwise it falls back to HMAC signing
-with \code{client_secret}.}
+with \code{client_secret}. When Request Object encryption is configured,
+shinyOAuth signs first and then wraps the signed Request Object in a JWE.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode = "request"}.
@@ -156,6 +160,22 @@ signed authorization requests.}
 used in signed authorization requests. By default, shinyOAuth uses the
 provider issuer when available. If the provider has no configured issuer,
 shinyOAuth omits the \code{aud} claim unless you supply an explicit override.}
+
+\item{authorization_request_encryption_alg}{Optional JWE key-management
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to \code{RSA-OAEP}. When set, you must also set
+\code{authorization_request_encryption_enc}.}
+
+\item{authorization_request_encryption_enc}{Optional JWE content-encryption
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to the AES-CBC-HMAC family (\code{A128CBC-HS256},
+\code{A192CBC-HS384}, \code{A256CBC-HS512}). When set, you must also set
+\code{authorization_request_encryption_alg}.}
+
+\item{authorization_request_encryption_kid}{Optional key identifier (\code{kid})
+used to select one provider encryption key and emit the outer JWE \code{kid}
+header. This is mainly useful when the provider publishes more than one
+Request Object encryption key.}
 
 \item{authorization_request_ttl}{Positive number of seconds to keep signed
 authorization request objects (\code{request} JWTs) valid. Default is \code{120}.}

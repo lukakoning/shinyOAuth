@@ -505,11 +505,12 @@ encode_hmac_jwt_with_header <- function(
 
 ## 1.4 Authorization request object signing ------------------------------------
 
-#' Build and sign a JWT-secured authorization request (RFC 9101).
+#' Build, sign, and optionally encrypt a Request Object (RFC 9101).
 #'
 #' @param client OAuth client carrying request-object signing configuration.
 #' @param params Authorization request parameters to embed as claims.
-#' @return Compact signed authorization-request object JWT.
+#' @return Compact signed authorization-request object JWT, or a nested compact
+#'   JWE when Request Object encryption is configured.
 #' @keywords internal
 #' @noRd
 build_authorization_request_object <- function(client, params) {
@@ -596,46 +597,67 @@ build_authorization_request_object <- function(client, params) {
 
   clm <- do.call(jose::jwt_claim, claims)
 
-  if (alg %in% c("HS256", "HS384", "HS512")) {
+  signed_request_object <- if (alg %in% c("HS256", "HS384", "HS512")) {
     size <- min_hmac_key_bytes(alg) * 8L
 
-    return(encode_hmac_jwt_with_header(
+    encode_hmac_jwt_with_header(
       claims = claims,
       secret = client@client_secret,
       header = header,
       size = size,
       alg = alg
-    ))
+    )
+  } else {
+    key <- normalize_private_key_input(client@client_private_key)
+    if (!private_key_can_sign_jws_alg(key, alg, typ = "oauth-authz-req+jwt")) {
+      err_config(
+        c(
+          "x" = paste0(
+            "authorization_request_signing_alg '",
+            alg,
+            "' is incompatible with the provided private key"
+          )
+        ),
+        context = list(alg = alg)
+      )
+    }
+    jwt <- try(
+      jose::jwt_encode_sig(clm, key = key, header = header),
+      silent = TRUE
+    )
+    if (inherits(jwt, "try-error")) {
+      err_config(
+        c(
+          "x" = "Failed to sign authorization request object",
+          "i" = paste0("Tried alg '", alg, "' with the configured private key")
+        ),
+        context = list(alg = alg)
+      )
+    }
+
+    jwt
   }
 
-  key <- normalize_private_key_input(client@client_private_key)
-  if (!private_key_can_sign_jws_alg(key, alg, typ = "oauth-authz-req+jwt")) {
-    err_config(
-      c(
-        "x" = paste0(
-          "authorization_request_signing_alg '",
-          alg,
-          "' is incompatible with the provided private key"
-        )
-      ),
-      context = list(alg = alg)
-    )
+  encryption_config <- resolve_authorization_request_encryption_config(client)
+  if (is.null(encryption_config)) {
+    return(signed_request_object)
   }
-  jwt <- try(
-    jose::jwt_encode_sig(clm, key = key, header = header),
-    silent = TRUE
+
+  encryption_key <- resolve_authorization_request_encryption_public_key(
+    client = client,
+    alg = encryption_config$alg,
+    kid = encryption_config$kid
   )
-  if (inherits(jwt, "try-error")) {
-    err_config(
-      c(
-        "x" = "Failed to sign authorization request object",
-        "i" = paste0("Tried alg '", alg, "' with the configured private key")
-      ),
-      context = list(alg = alg)
-    )
-  }
 
-  jwt
+  jwe_compact_encrypt(
+    plaintext = signed_request_object,
+    public_key = encryption_key$public_key,
+    alg = encryption_config$alg,
+    enc = encryption_config$enc,
+    kid = encryption_key$kid,
+    typ = "oauth-authz-req+jwt",
+    cty = "JWT"
+  )
 }
 
 ## 1.5 Private key normalization -----------------------------------------------

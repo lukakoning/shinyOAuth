@@ -240,6 +240,36 @@ get_jwks <- function(force = FALSE) {
   keycloak_cache$jwks
 }
 
+get_request_object_encryption_kid <- function(alg = "RSA-OAEP") {
+  candidates <- try(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      jwks_or_keys = get_jwks(),
+      alg = alg
+    ),
+    silent = TRUE
+  )
+  if (inherits(candidates, "try-error") || length(candidates) == 0L) {
+    return(NA_character_)
+  }
+
+  candidate_scores <- vapply(
+    candidates,
+    shinyOAuth:::rank_request_object_encryption_jwk,
+    integer(1),
+    alg = alg
+  )
+  candidates <- candidates[candidate_scores == max(candidate_scores)]
+
+  for (candidate in candidates) {
+    kid <- candidate$kid %||% NA_character_
+    if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
+      return(kid)
+    }
+  }
+
+  NA_character_
+}
+
 keycloak_reachable <- function() {
   ok <- tryCatch(
     {
@@ -942,6 +972,29 @@ make_private_key_jar_client <- function(prov) {
   )
 }
 
+make_private_key_jar_jwe_client <- function(prov) {
+  key <- get_pjwt_key()
+  if (is.null(key)) {
+    return(NULL)
+  }
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = "shiny-jar-pjwt-jwe",
+    client_secret = "",
+    redirect_uri = "http://localhost:3000/callback",
+    scopes = c("openid"),
+    client_private_key = key,
+    client_private_key_kid = NA_character_,
+    client_assertion_alg = NA_character_,
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "RS256",
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512",
+    authorization_request_encryption_kid = get_request_object_encryption_kid()
+  )
+}
+
 make_hmac_jar_client <- function(prov) {
   shinyOAuth::oauth_client(
     provider = prov,
@@ -951,6 +1004,21 @@ make_hmac_jar_client <- function(prov) {
     scopes = c("openid"),
     authorization_request_mode = "request",
     authorization_request_signing_alg = "HS256"
+  )
+}
+
+make_hmac_jar_jwe_client <- function(prov) {
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = "shiny-jar-hmac-jwe",
+    client_secret = "hs256-request-object-secret-32b!",
+    redirect_uri = "http://localhost:3000/callback",
+    scopes = c("openid"),
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "HS256",
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512",
+    authorization_request_encryption_kid = get_request_object_encryption_kid()
   )
 }
 

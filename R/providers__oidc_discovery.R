@@ -48,7 +48,12 @@
 #'   `request_object_signing_alg_values_supported` or
 #'   `require_signed_request_object`, the resulting provider stores that
 #'   metadata so `OAuthClient` can fail fast when a request-object algorithm is
-#'   unsupported or when the provider requires signed Request Objects.
+#'   unsupported or when the provider requires signed Request Objects. When the
+#'   discovery document also advertises
+#'   `request_object_encryption_alg_values_supported` or
+#'   `request_object_encryption_enc_values_supported`, the resulting provider
+#'   stores that encryption metadata so Request Object JWE configuration can be
+#'   validated early as well.
 #'
 #' - Authorization request transport metadata: when the discovery document
 #'   advertises `request_parameter_supported`,
@@ -271,6 +276,20 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
+  request_object_encryption_alg_values_supported <- toupper(as.character(
+    unlist(
+      disc[["request_object_encryption_alg_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  ))
+  request_object_encryption_enc_values_supported <- toupper(as.character(
+    unlist(
+      disc[["request_object_encryption_enc_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  ))
   require_signed_request_object <- .discover_parse_optional_boolean(
     disc,
     "require_signed_request_object"
@@ -336,6 +355,8 @@ oauth_provider_oidc_discover <- function(
     par_url = endpoints$par_url,
     require_pushed_authorization_requests = require_pushed_authorization_requests,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
+    request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
+    request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
     require_signed_request_object = require_signed_request_object,
     request_parameter_supported = request_parameter_supported,
     request_uri_parameter_supported = request_uri_parameter_supported,

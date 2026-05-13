@@ -40,6 +40,19 @@
 #'   algorithms that the provider advertises for signed Request Objects (RFC
 #'   9101). This is mainly used for early validation when an [OAuthClient]
 #'   sends `authorization_request_mode = "request"`.
+#' @param request_object_encryption_alg_values_supported Optional vector of JWE
+#'   key-management algorithms that the provider advertises for encrypted
+#'   Request Objects. This metadata is used for early validation when an
+#'   [OAuthClient] enables Request Object encryption.
+#' @param request_object_encryption_enc_values_supported Optional vector of JWE
+#'   content-encryption algorithms that the provider advertises for encrypted
+#'   Request Objects. This metadata is used for early validation when an
+#'   [OAuthClient] enables Request Object encryption.
+#' @param request_object_encryption_jwk Optional explicit recipient public key
+#'   used to encrypt Request Objects when discovery-backed JWKS selection is not
+#'   available or when you need to pin one specific encryption key. Accepts an
+#'   OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+#'   JSON string.
 #' @param require_signed_request_object Logical. Whether the provider requires
 #'   signed Request Objects for authorization requests. When `TRUE`, clients
 #'   should use `authorization_request_mode = "request"`.
@@ -320,6 +333,18 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    request_object_encryption_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    request_object_encryption_enc_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    request_object_encryption_jwk = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
     require_signed_request_object = S7::new_property(
       S7::class_logical,
       default = FALSE
@@ -486,6 +511,9 @@ oauth_provider <- function(
   par_url = NA_character_,
   require_pushed_authorization_requests = FALSE,
   request_object_signing_alg_values_supported = character(),
+  request_object_encryption_alg_values_supported = character(),
+  request_object_encryption_enc_values_supported = character(),
+  request_object_encryption_jwk = NULL,
   require_signed_request_object = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
@@ -561,6 +589,24 @@ oauth_provider <- function(
   }
   request_object_signing_alg_values_supported <- toupper(as.character(
     unlist(request_object_signing_alg_values_supported, use.names = FALSE)
+  ))
+  if (is.null(request_object_encryption_alg_values_supported)) {
+    request_object_encryption_alg_values_supported <- character()
+  }
+  request_object_encryption_alg_values_supported <- toupper(as.character(
+    unlist(
+      request_object_encryption_alg_values_supported,
+      use.names = FALSE
+    )
+  ))
+  if (is.null(request_object_encryption_enc_values_supported)) {
+    request_object_encryption_enc_values_supported <- character()
+  }
+  request_object_encryption_enc_values_supported <- toupper(as.character(
+    unlist(
+      request_object_encryption_enc_values_supported,
+      use.names = FALSE
+    )
   ))
   request_parameter_supported <- normalize_optional_provider_boolean(
     request_parameter_supported,
@@ -730,6 +776,9 @@ oauth_provider <- function(
       require_pushed_authorization_requests
     ),
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
+    request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
+    request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
+    request_object_encryption_jwk = request_object_encryption_jwk,
     require_signed_request_object = isTRUE(require_signed_request_object),
     request_parameter_supported = request_parameter_supported,
     request_uri_parameter_supported = request_uri_parameter_supported,
@@ -1190,6 +1239,72 @@ oauth_provider_validate <- function(self) {
         paste(
           "OAuthProvider: request_object_signing_alg_values_supported",
           "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  request_object_encryption_algs <-
+    self@request_object_encryption_alg_values_supported
+  if (length(request_object_encryption_algs) > 0) {
+    if (!is.character(request_object_encryption_algs)) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(request_object_encryption_algs) ||
+        !all(nzchar(request_object_encryption_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  request_object_encryption_encs <-
+    self@request_object_encryption_enc_values_supported
+  if (length(request_object_encryption_encs) > 0) {
+    if (!is.character(request_object_encryption_encs)) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_enc_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(request_object_encryption_encs) ||
+        !all(nzchar(request_object_encryption_encs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_enc_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  if (!is.null(self@request_object_encryption_jwk)) {
+    parsed_request_object_encryption_key <- try(
+      normalize_jwe_recipient_public_key(
+        self@request_object_encryption_jwk,
+        arg_name = "request_object_encryption_jwk"
+      ),
+      silent = TRUE
+    )
+    if (inherits(parsed_request_object_encryption_key, "try-error")) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_jwk must be a parseable",
+          "JWK object, JWK JSON string, openssl::key, or PEM public key"
         )
       )
     }
