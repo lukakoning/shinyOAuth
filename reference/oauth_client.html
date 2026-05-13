@@ -182,6 +182,10 @@ Alternative backends should use <code><a href="custom_cache.html">custom_cache()
 method for replay-safe single-use state consumption. The backend
 must implement cachem-like methods <code>$get(key, missing)</code>, <code>$set(key, value)</code>,
 and <code>$remove(key)</code>; <code>$info()</code> is optional.</p>
+<p>Stored values must round-trip <code>browser_token</code> as a non-empty string.
+<code>pkce_code_verifier</code> and <code>nonce</code> are required only when the provider
+enables PKCE or nonce validation; otherwise backends may keep those
+fields as <code>NULL</code> or omit them.</p>
 <p><code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> is a good default for a single Shiny process. For
 multi-process deployments, use <code><a href="custom_cache.html">custom_cache()</a></code> with an atomic <code>$take()</code>
 backed by a shared store (for example Redis <code>GETDEL</code> or SQL

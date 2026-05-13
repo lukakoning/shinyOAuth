@@ -116,6 +116,10 @@
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   (`OAuthClient`) now:
 
+  - Accepts custom state-store entries that omit unused
+    `pkce_code_verifier` and `nonce` fields when the provider does not
+    require them, while still rejecting missing PKCE or nonce values
+    when those checks are enabled.
   - Supports `enforce_callback_issuer = TRUE` to require the RFC 9207
     `iss` callback parameter for shared-redirect multi-issuer
     deployments. Relatedly,

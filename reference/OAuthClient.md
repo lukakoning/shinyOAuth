@@ -338,6 +338,11 @@ OAuthClient(
   `$get(key, missing)`, `$set(key, value)`, and `$remove(key)`;
   `$info()` is optional.
 
+  Stored values must round-trip `browser_token` as a non-empty string.
+  `pkce_code_verifier` and `nonce` are required only when the provider
+  enables PKCE or nonce validation; otherwise backends may keep those
+  fields as `NULL` or omit them.
+
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
   is a good default for a single Shiny process. For multi-process
   deployments, use

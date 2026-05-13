@@ -12,6 +12,11 @@ OAuthClient@state_store (requires $get, $set, $remove; optional $info)
 OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
 
+For OAuthClient@state_store, stored values are small lists. browser_token
+must always round-trip as a non-empty string. pkce_code_verifier and
+nonce are required only when the provider enables PKCE or nonce
+validation; otherwise stores may preserve them as NULL or omit them when
+serializing.
 The $info() method is optional, but if provided and it returns a list with
 max_age (seconds), shinyOAuth will align browser cookie max-age in
 oauth_module_server() to that value."><meta property="og:description" content="Builds a small cachem-like backend object with methods compatible with what
@@ -27,6 +32,11 @@ OAuthClient@state_store (requires $get, $set, $remove; optional $info)
 OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
 
+For OAuthClient@state_store, stored values are small lists. browser_token
+must always round-trip as a non-empty string. pkce_code_verifier and
+nonce are required only when the provider enables PKCE or nonce
+validation; otherwise stores may preserve them as NULL or omit them when
+serializing.
 The $info() method is optional, but if provided and it returns a list with
 max_age (seconds), shinyOAuth will align browser cookie max-age in
 oauth_module_server() to that value."></head><body>
@@ -82,7 +92,12 @@ In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).</p>
 <p>The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:</p><ul><li><p>OAuthClient@state_store (requires <code>$get</code>, <code>$set</code>, <code>$remove</code>; optional <code>$info</code>)</p></li>
 <li><p>OAuthProvider@jwks_cache (requires <code>$get</code>, <code>$set</code>; optional <code>$remove</code>, <code>$info</code>)</p></li>
-</ul><p>The <code>$info()</code> method is optional, but if provided and it returns a list with
+</ul><p>For <code>OAuthClient@state_store</code>, stored values are small lists. <code>browser_token</code>
+must always round-trip as a non-empty string. <code>pkce_code_verifier</code> and
+<code>nonce</code> are required only when the provider enables PKCE or nonce
+validation; otherwise stores may preserve them as <code>NULL</code> or omit them when
+serializing.</p>
+<p>The <code>$info()</code> method is optional, but if provided and it returns a list with
 <code>max_age</code> (seconds), shinyOAuth will align browser cookie max-age in
 <code><a href="oauth_module_server.html">oauth_module_server()</a></code> to that value.</p>
     </div>
