@@ -111,22 +111,6 @@
   scopes instead of widening back to the client’s configured scopes when
   a refresh response omits `scope`.
 
-- Renamed the resource-request helpers to
-  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  and
-  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
-  The old
-  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  and
-  [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
-  names remain available as deprecated aliases.
-  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-  performs the request and, for DPoP-bound access tokens, replays one
-  `use_dpop_nonce` challenge with the server-provided nonce while
-  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  remains the lower-level request builder for making authenticated
-  resource requests.
-
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   (`OAuthClient`) now:
 
@@ -330,6 +314,22 @@
   It remains a narrow guard for a few dev/debug softeners, but the docs
   now stop presenting it as a comprehensive deployment-hardening check
   and show explicit option checks instead.
+
+- Renamed the resource-request helpers to
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+  and
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
+  The old
+  [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
+  and
+  [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
+  names remain available as deprecated aliases.
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+  performs the request and, for DPoP-bound access tokens, replays one
+  `use_dpop_nonce` challenge with the server-provided nonce while
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+  remains the lower-level request builder for making authenticated
+  resource requests.
 
 ## shinyOAuth 0.4.0
 
