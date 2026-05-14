@@ -408,13 +408,157 @@ token_cnf_from_introspection <- function(introspection_result) {
   normalize_token_cnf(raw$cnf %||% NULL)
 }
 
+#' Collect observable cnf data by token surface
+#'
+#' @param cnf Optional explicit cnf data.
+#' @param access_token Optional raw access-token string.
+#' @param introspection_result Optional introspection payload.
+#' @return Named list of normalized cnf values by token surface.
+#' @keywords internal
+#' @noRd
+token_cnf_sources <- function(
+  cnf = NULL,
+  access_token = NULL,
+  introspection_result = NULL
+) {
+  list(
+    token_response = normalize_token_cnf(cnf),
+    introspection = token_cnf_from_introspection(introspection_result),
+    access_token = token_cnf_from_access_token(access_token)
+  )
+}
+
+#' Detect conflicting cnf values across token surfaces
+#'
+#' @param sources Named list returned by `token_cnf_sources()`.
+#' @return Named list of conflicting cnf members.
+#' @keywords internal
+#' @noRd
+token_cnf_conflicts <- function(sources) {
+  if (!is.list(sources)) {
+    return(list())
+  }
+
+  conflicts <- list()
+  for (field in c("x5t#S256", "jkt")) {
+    observed <- lapply(sources, function(source) {
+      value <- source[[field]] %||% NA_character_
+      if (is_valid_string(value)) {
+        as.character(value)[[1]]
+      } else {
+        NULL
+      }
+    })
+    observed <- compact_list(observed)
+
+    if (length(unique(unname(unlist(observed, use.names = FALSE)))) > 1L) {
+      conflicts[[field]] <- observed
+    }
+  }
+
+  conflicts
+}
+
+#' Summarize conflicting cnf observations
+#'
+#' @param conflicts Named list returned by `token_cnf_conflicts()`.
+#' @return Scalar summary string, or `NA_character_` when no conflicts exist.
+#' @keywords internal
+#' @noRd
+token_cnf_conflict_summary <- function(conflicts) {
+  if (!length(conflicts)) {
+    return(NA_character_)
+  }
+
+  details <- vapply(
+    names(conflicts),
+    function(field) {
+      observed <- conflicts[[field]]
+      paste0(
+        field,
+        ": ",
+        paste(
+          vapply(
+            names(observed),
+            function(source_name) {
+              paste0(source_name, "=", observed[[source_name]])
+            },
+            character(1)
+          ),
+          collapse = ", "
+        )
+      )
+    },
+    character(1)
+  )
+
+  paste(details, collapse = "; ")
+}
+
+#' Reject conflicting cnf values across token surfaces
+#'
+#' @param token Optional [OAuthToken] object or raw access-token string.
+#' @param access_token Optional raw access-token string.
+#' @param cnf Optional explicit cnf claim data.
+#' @param introspection_result Optional introspection payload.
+#' @param error_context Whether conflicts should raise input or token errors.
+#' @param phase Optional token-processing phase for token errors.
+#' @return Invisibly returns `TRUE` when cnf observations agree.
+#' @keywords internal
+#' @noRd
+validate_token_cnf_consistency <- function(
+  token = NULL,
+  access_token = NULL,
+  cnf = NULL,
+  introspection_result = NULL,
+  error_context = c("input", "token"),
+  phase = NULL
+) {
+  error_context <- match.arg(error_context)
+
+  if (S7::S7_inherits(token, class = OAuthToken)) {
+    cnf <- token@cnf
+    access_token <- token@access_token
+  } else if (is_valid_string(token)) {
+    access_token <- token
+  }
+
+  conflicts <- token_cnf_conflicts(
+    token_cnf_sources(
+      cnf = cnf,
+      access_token = access_token,
+      introspection_result = introspection_result
+    )
+  )
+  if (!length(conflicts)) {
+    return(invisible(TRUE))
+  }
+
+  fail <- switch(
+    error_context,
+    input = function(message) err_input(message),
+    token = function(message) {
+      err_token(message, context = compact_list(list(phase = phase)))
+    }
+  )
+
+  fail(c(
+    "x" = "Conflicting token cnf values were observed across token surfaces",
+    "!" = token_cnf_conflict_summary(conflicts),
+    "i" = paste(
+      "Reject tokens whose confirmation metadata disagrees between the token",
+      "response, access token, and introspection."
+    )
+  ))
+}
+
 #' Resolve the effective cnf claim
 #'
 #' @param cnf Optional explicit cnf data.
 #' @param access_token Optional raw access-token string.
 #' @param introspection_result Optional introspection payload.
-#' @return Normalized cnf list. Preference order is explicit token-response
-#'   `cnf`, then introspection `cnf`, then locally observed JWT `cnf`.
+#' @return Normalized cnf list. Preference order is introspection `cnf`, then
+#'   explicit token-response `cnf`, then locally observed JWT `cnf`.
 #' @keywords internal
 #' @noRd
 resolve_token_cnf <- function(
@@ -422,18 +566,20 @@ resolve_token_cnf <- function(
   access_token = NULL,
   introspection_result = NULL
 ) {
-  normalized <- normalize_token_cnf(cnf)
-  jwt_cnf <- token_cnf_from_access_token(access_token)
-  introspection_cnf <- token_cnf_from_introspection(introspection_result)
+  sources <- token_cnf_sources(
+    cnf = cnf,
+    access_token = access_token,
+    introspection_result = introspection_result
+  )
 
   compact_list(list(
-    `x5t#S256` = normalized[["x5t#S256"]] %||%
-      introspection_cnf[["x5t#S256"]] %||%
-      jwt_cnf[["x5t#S256"]] %||%
+    `x5t#S256` = sources$introspection[["x5t#S256"]] %||%
+      sources$token_response[["x5t#S256"]] %||%
+      sources$access_token[["x5t#S256"]] %||%
       NULL,
-    jkt = normalized[["jkt"]] %||%
-      introspection_cnf[["jkt"]] %||%
-      jwt_cnf[["jkt"]] %||%
+    jkt = sources$introspection[["jkt"]] %||%
+      sources$token_response[["jkt"]] %||%
+      sources$access_token[["jkt"]] %||%
       NULL
   ))
 }
@@ -679,6 +825,14 @@ validate_token_certificate_binding <- function(
     token = function(message) {
       err_token(message, context = compact_list(list(phase = phase)))
     }
+  )
+
+  validate_token_cnf_consistency(
+    token = token,
+    access_token = access_token,
+    cnf = cnf,
+    error_context = error_context,
+    phase = phase
   )
 
   expected_thumbprint <- token_cnf_x5t_s256(

@@ -1519,10 +1519,24 @@ handle_callback_internal <- function(
           async = FALSE,
           shiny_session = shiny_session
         )
+        validate_token_cnf_consistency(
+          access_token = token@access_token,
+          cnf = token_set$cnf,
+          introspection_result = intro_res,
+          error_context = "token",
+          phase = "exchange_code"
+        )
         token@cnf <- resolve_token_cnf(
-          cnf = token@cnf,
+          cnf = token_set$cnf,
           access_token = token@access_token,
           introspection_result = intro_res
+        )
+        token@token_type <- resolve_effective_access_token_type(
+          oauth_client,
+          token_set = token_set,
+          prior_token_type = token@token_type,
+          introspection_result = intro_res,
+          phase = "exchange_code"
         )
         validate_token_dpop_binding(
           oauth_client = oauth_client,
@@ -1588,7 +1602,9 @@ handle_callback_internal <- function(
           token = token,
           introspection_result = intro_res,
           requested_scopes = payload$scopes %||%
-            effective_client_scopes(oauth_client)
+            effective_client_scopes(oauth_client),
+          phase = "exchange_code",
+          token_response_cnf = token_set$cnf
         )
       }
 
@@ -1711,18 +1727,26 @@ resolve_userinfo_subject <- function(oauth_client, userinfo) {
 #' @param token [OAuthToken] being validated.
 #' @param introspection_result Normalized result list returned by
 #'   [introspect_token()].
+#' @param phase Optional token-processing phase used in structured token
+#'   errors.
+#' @param token_response_cnf Optional raw `cnf` claim returned by the token or
+#'   refresh response. When supplied, this preserves token-surface provenance
+#'   so conflicts with introspection can be rejected before `cnf` values are
+#'   collapsed.
 #' @param requested_scopes Optional scope baseline to enforce when
 #'   `"scope"` is listed in `client@introspect_elements`. Defaults to the
 #'   client's effective scopes.
-#' @return The updated [OAuthToken], with `cnf` augmented from the
-#'   introspection response when available.
+#' @return The updated [OAuthToken], with `cnf` and `token_type` augmented from
+#'   the introspection response when available.
 #' @keywords internal
 #' @noRd
 enforce_token_introspection_policy <- function(
   oauth_client,
   token,
   introspection_result,
-  requested_scopes = NULL
+  requested_scopes = NULL,
+  phase = NULL,
+  token_response_cnf = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   S7::check_is_S7(token, class = OAuthToken)
@@ -1748,8 +1772,16 @@ enforce_token_introspection_policy <- function(
     ))
   }
 
+  token_cnf_input <- token_response_cnf %||% token@cnf
+  validate_token_cnf_consistency(
+    access_token = token@access_token,
+    cnf = token_cnf_input,
+    introspection_result = introspection_result,
+    error_context = "token",
+    phase = phase
+  )
   token@cnf <- resolve_token_cnf(
-    cnf = token@cnf,
+    cnf = token_cnf_input,
     access_token = token@access_token,
     introspection_result = introspection_result
   )
@@ -1760,6 +1792,30 @@ enforce_token_introspection_policy <- function(
   }
 
   introspect_elements <- oauth_client@introspect_elements %||% character(0)
+  intro_token_type <- token_type_from_introspection(introspection_result)
+  token@token_type <- resolve_effective_access_token_type(
+    oauth_client,
+    token_set = list(
+      token_type = token@token_type,
+      access_token = token@access_token,
+      cnf = token_cnf_input
+    ),
+    prior_token_type = token@token_type,
+    introspection_result = introspection_result,
+    phase = phase
+  )
+
+  if ("token_type" %in% introspect_elements) {
+    if (!is_valid_string(intro_token_type)) {
+      err_token(c(
+        "x" = "Token introspection response missing required token_type",
+        "i" = paste(
+          "Disable this check or ensure your provider returns token_type in",
+          "introspection."
+        )
+      ))
+    }
+  }
 
   if ("client_id" %in% introspect_elements) {
     cid <- raw$client_id %||% NA_character_
@@ -2696,6 +2752,33 @@ verify_token_type_allowlist <- function(client, token_set) {
   invisible(TRUE)
 }
 
+#' Parse token_type data from an introspection result
+#'
+#' @param introspection_result Introspection result object or raw payload list.
+#' @return Scalar token type string, or `NA_character_` when absent.
+#' @keywords internal
+#' @noRd
+token_type_from_introspection <- function(introspection_result) {
+  if (!is.list(introspection_result)) {
+    return(NA_character_)
+  }
+
+  raw <- introspection_result$raw %||% introspection_result
+  if (is.data.frame(raw)) {
+    raw <- as.list(raw)
+  }
+  if (!is.list(raw)) {
+    return(NA_character_)
+  }
+
+  token_type <- raw$token_type %||% NA_character_
+  if (!is_valid_string(token_type)) {
+    return(NA_character_)
+  }
+
+  as.character(token_type)[[1]]
+}
+
 #' Resolve the effective access token type
 #'
 #' Used after token-response policy checks so later UserInfo and resource
@@ -2707,6 +2790,10 @@ verify_token_type_allowlist <- function(client, token_set) {
 #'   `access_token`, and optional `cnf`.
 #' @param prior_token_type Optional prior token type to carry forward when the
 #'   current token response omits `token_type`.
+#' @param introspection_result Optional introspection payload whose
+#'   `token_type` may backfill or validate the effective token type.
+#' @param phase Optional token-processing phase used in structured token
+#'   errors.
 #' @return Scalar token type string, or `NA_character_` when no effective type
 #'   can be derived.
 #' @keywords internal
@@ -2714,7 +2801,9 @@ verify_token_type_allowlist <- function(client, token_set) {
 resolve_effective_access_token_type <- function(
   oauth_client,
   token_set,
-  prior_token_type = NULL
+  prior_token_type = NULL,
+  introspection_result = NULL,
+  phase = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -2722,9 +2811,41 @@ resolve_effective_access_token_type <- function(
     err_token("Invalid token set: must be a list")
   }
 
+  intro_token_type <- token_type_from_introspection(introspection_result)
   effective_token_type <- token_set$token_type %||% NA_character_
   if (!is_valid_string(effective_token_type)) {
     effective_token_type <- prior_token_type %||% NA_character_
+  }
+  if (
+    is_valid_string(effective_token_type) &&
+      is_valid_string(intro_token_type) &&
+      !identical(
+        tolower(as.character(effective_token_type)[[1]]),
+        tolower(as.character(intro_token_type)[[1]])
+      )
+  ) {
+    err_token(
+      c(
+        "x" = "Token introspection token_type conflicts with the token response",
+        "!" = paste0(
+          "Token response: ",
+          as.character(effective_token_type)[[1]],
+          "; introspection: ",
+          as.character(intro_token_type)[[1]]
+        ),
+        "i" = "Reject tokens whose sender-constraint metadata disagrees across token surfaces."
+      ),
+      context = compact_list(list(phase = phase))
+    )
+  }
+  if (
+    !is_valid_string(effective_token_type) && is_valid_string(intro_token_type)
+  ) {
+    verify_token_type_allowlist(
+      oauth_client,
+      token_set = list(token_type = intro_token_type)
+    )
+    effective_token_type <- intro_token_type
   }
   if (
     !is_valid_string(effective_token_type) &&

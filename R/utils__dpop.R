@@ -382,6 +382,14 @@ validate_observed_dpop_cnf_required <- function(
     }
   )
 
+  validate_token_cnf_consistency(
+    access_token = access_token,
+    cnf = cnf,
+    introspection_result = introspection_result,
+    error_context = error_context,
+    phase = phase
+  )
+
   resolved_cnf <- resolve_token_cnf(
     cnf = cnf,
     access_token = access_token,
@@ -426,6 +434,14 @@ validate_token_dpop_binding <- function(
   phase = NULL
 ) {
   error_context <- match.arg(error_context)
+
+  validate_token_cnf_consistency(
+    token = token,
+    access_token = access_token,
+    cnf = cnf,
+    error_context = error_context,
+    phase = phase
+  )
 
   expected_jkt <- token_cnf_jkt(
     token = token,

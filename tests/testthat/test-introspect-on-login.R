@@ -974,6 +974,104 @@ test_that("introspect_elements errors when required fields are missing", {
   )
 })
 
+test_that("handle_callback rejects conflicting introspection cnf values", {
+  key <- openssl::rsa_keygen()
+  correct_jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@dpop_private_key <- key
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = .build_dummy_jwt(list(
+          sub = "u1",
+          cnf = list(jkt = correct_jkt)
+        )),
+        expires_in = 3600,
+        token_type = "DPoP"
+      )
+    },
+    introspect_token = function(oauth_client, oauth_token, which, async, ...) {
+      list(
+        supported = TRUE,
+        active = TRUE,
+        raw = list(
+          token_type = "DPoP",
+          cnf = list(jkt = "intro-jkt")
+        ),
+        status = "ok"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        shinyOAuth:::handle_callback(
+          cli,
+          code = "abc",
+          payload = enc,
+          browser_token = tok
+        ),
+        class = "shinyOAuth_token_error",
+        regexp = "Conflicting token cnf values"
+      )
+    }
+  )
+})
+
+test_that("introspect_elements can require token_type and backfill DPoP", {
+  key <- openssl::rsa_keygen()
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@dpop_private_key <- key
+  cli@introspect_elements <- "token_type"
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "opaque-dpop-at",
+        expires_in = 3600
+      )
+    },
+    introspect_token = function(oauth_client, oauth_token, which, async, ...) {
+      list(
+        supported = TRUE,
+        active = TRUE,
+        raw = list(
+          token_type = "DPoP",
+          cnf = list(jkt = jkt)
+        ),
+        status = "ok"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      tok_ok <- shinyOAuth:::handle_callback(
+        cli,
+        code = "abc",
+        payload = enc,
+        browser_token = tok
+      )
+
+      testthat::expect_identical(tok_ok@token_type, "DPoP")
+      testthat::expect_identical(tok_ok@cnf$jkt, jkt)
+    }
+  )
+})
+
 test_that("handle_callback with introspect=TRUE fails on introspection http error", {
   cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
 

@@ -77,10 +77,7 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
       access_token = mixed_access_token,
       introspection_result = list(
         raw = list(
-          cnf = list(
-            `x5t#S256` = "intro-thumbprint",
-            jkt = "intro-jkt"
-          )
+          cnf = list(jkt = "intro-jkt")
         )
       )
     ),
@@ -88,6 +85,20 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
       `x5t#S256` = "explicit-thumbprint",
       jkt = "intro-jkt"
     )
+  )
+
+  expect_error(
+    shinyOAuth:::validate_token_cnf_consistency(
+      access_token = build_dummy_jwt(list(
+        sub = "user-1",
+        cnf = list(jkt = "jwt-jkt")
+      )),
+      introspection_result = list(
+        raw = list(cnf = list(jkt = "intro-jkt"))
+      )
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "Conflicting token cnf values"
   )
 })
 

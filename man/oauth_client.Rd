@@ -435,6 +435,9 @@ requirements to enforce on the introspection response when
 client id.
 \item \code{"scope"}: validate introspected \code{scope} against requested scopes
 (respects the client's \code{scope_validation} mode).
+\item \code{"token_type"}: require introspection to return \code{token_type}. This is
+useful for sender-constrained deployments such as DPoP, where
+introspection can authoritatively report \code{token_type = "DPoP"}.
 Default is \code{character(0)}.
 (Note that not all providers may return each of these fields in
 introspection responses.)

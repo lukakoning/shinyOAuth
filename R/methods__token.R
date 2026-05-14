@@ -982,12 +982,26 @@ refresh_token <- function(
             async = FALSE,
             shiny_session = shiny_session
           )
+          validate_token_cnf_consistency(
+            access_token = refreshed_token@access_token,
+            cnf = token_set$cnf,
+            introspection_result = intro_res,
+            error_context = "token",
+            phase = "refresh_token"
+          )
           refreshed_token@cnf <- resolve_refresh_token_cnf(
             prior_cnf = token@cnf,
             cnf = token_set$cnf,
             access_token = refreshed_token@access_token,
             introspection_result = intro_res,
             preserve_prior_thumbprint = FALSE
+          )
+          refreshed_token@token_type <- resolve_effective_access_token_type(
+            oauth_client,
+            token_set = token_set,
+            prior_token_type = refreshed_token@token_type,
+            introspection_result = intro_res,
+            phase = "refresh_token"
           )
           validate_token_dpop_binding(
             oauth_client = oauth_client,
@@ -1063,7 +1077,9 @@ refresh_token <- function(
             oauth_client = oauth_client,
             token = refreshed_token,
             introspection_result = intro_res,
-            requested_scopes = effective_client_scopes(oauth_client)
+            requested_scopes = effective_client_scopes(oauth_client),
+            phase = "refresh_token",
+            token_response_cnf = token_set$cnf
           )
         }
 

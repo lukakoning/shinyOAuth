@@ -384,6 +384,9 @@
 #'     client id.
 #'   - `"scope"`: validate introspected `scope` against requested scopes
 #'     (respects the client's `scope_validation` mode).
+#'   - `"token_type"`: require introspection to return `token_type`. This is
+#'     useful for sender-constrained deployments such as DPoP, where
+#'     introspection can authoritatively report `token_type = "DPoP"`.
 #'   Default is `character(0)`.
 #'   (Note that not all providers may return each of these fields in
 #'   introspection responses.)
@@ -2025,7 +2028,7 @@ oauth_client_validate <- function(self) {
     )
   }
   if (isTRUE(self@introspect) && length(ie) > 0) {
-    allowed_ie <- c("sub", "client_id", "scope")
+    allowed_ie <- c("sub", "client_id", "scope", "token_type")
     bad <- setdiff(ie, allowed_ie)
     if (length(bad) > 0) {
       return(

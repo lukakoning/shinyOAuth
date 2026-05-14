@@ -333,6 +333,57 @@ testthat::test_that("refresh_token fails when introspection omits required scope
   )
 })
 
+testthat::test_that("refresh_token rejects introspection token_type conflicts", {
+  key <- openssl::rsa_keygen()
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(
+    shinyOAuth:::dpop_public_jwk(key)
+  )
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  cli@dpop_private_key <- key
+
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  testthat::with_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"new_at","token_type":"Bearer","expires_in":120}'
+        )
+      )
+    },
+    introspect_token = function(oauth_client, oauth_token, which, async, ...) {
+      list(
+        supported = TRUE,
+        active = TRUE,
+        raw = list(
+          token_type = "DPoP",
+          cnf = list(jkt = jkt)
+        ),
+        status = "ok"
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      testthat::expect_error(
+        refresh_token(cli, token, async = FALSE, introspect = TRUE),
+        class = "shinyOAuth_token_error",
+        regexp = "token_type conflicts"
+      )
+    }
+  )
+})
+
 testthat::test_that("refresh_token validates token_type before fetching userinfo", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@allowed_token_types <- c("Bearer")
