@@ -70,9 +70,9 @@
 #' @param async If TRUE, dispatches token exchange and refresh through
 #'   shinyOAuth's async promise path and updates values when the promise
 #'   resolves. [mirai] is preferred when daemons are configured with
-#'   [mirai::daemons()]. Otherwise, if [promises] and [future] are installed,
-#'   the current [future] plan is used. Non-sequential future plans run off
-#'   the main R session; `future::sequential()` stays in-process. If FALSE
+#'   [mirai::daemons()]. Otherwise, if [promises][promises::promises] and [future][future::future] 
+#'   are installed, the current [future] plan is used. Non-sequential future plans 
+#'   run off the main R session; `future::sequential()` stays in-process. If FALSE
 #'   (default), token exchange and refresh are performed synchronously
 #'   (which may block the Shiny event loop). For production apps, `async = TRUE`
 #'   is usually the better choice.

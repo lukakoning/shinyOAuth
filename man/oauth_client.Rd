@@ -102,7 +102,7 @@ requesting specific claims from the UserInfo Endpoint and/or in the ID
 Token. Can be:
 \itemize{
 \item \code{NULL} (default): no claims parameter is sent
-\item A list: automatically JSON-encoded (via \code{\link[jsonlite:fromJSON]{jsonlite::toJSON()}} with
+\item A list: automatically JSON-encoded (via \code{\link[jsonlite:toJSON]{jsonlite::toJSON()}} with
 \code{auto_unbox = TRUE}) and URL-encoded into the authorization request.
 The list should have top-level members \code{userinfo} and/or \code{id_token},
 each containing named lists of claims.

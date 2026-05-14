@@ -20,5 +20,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Luka Koning \email{koningluka@gmail.com} [copyright holder]
 
+Authors:
+\itemize{
+  \item Luka Koning \email{koningluka@gmail.com} [copyright holder]
+}
+
 }
 \keyword{internal}

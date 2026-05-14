@@ -35,10 +35,10 @@ manually (use \verb{$request_login()}).}
 
 \item{async}{If TRUE, dispatches token exchange and refresh through
 shinyOAuth's async promise path and updates values when the promise
-resolves. \link[mirai:mirai]{mirai::mirai} is preferred when daemons are configured with
-\code{\link[mirai:daemons]{mirai::daemons()}}. Otherwise, if \link[promises:promises-package]{promises::promises} and \link[future:future]{future::future} are installed,
-the current \link[future:future]{future::future} plan is used. Non-sequential future plans run off
-the main R session; \code{future::sequential()} stays in-process. If FALSE
+resolves. \link[mirai:mirai]{mirai} is preferred when daemons are configured with
+\code{\link[mirai:daemons]{mirai::daemons()}}. Otherwise, if \link[promises:promises]{promises} and \link[future:future]{future}
+are installed, the current \link[future:future]{future} plan is used. Non-sequential future plans
+run off the main R session; \code{future::sequential()} stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop). For production apps, \code{async = TRUE}
 is usually the better choice.}
@@ -255,8 +255,8 @@ In Shiny, \code{Sys.sleep()} blocks the event loop for the entire worker
 process, potentially freezing UI updates for all sessions on that worker
 during slow provider responses or retry backoff. To keep the UI
 responsive: set \code{async = TRUE} and configure an async backend that runs
-off the main process, such as \link[mirai:mirai]{mirai::mirai} daemons (\code{mirai::daemons(n)}) or a
-non-sequential \link[future:future]{future::future} plan, or reduce/block retries (see
+off the main process, such as \link[mirai:mirai]{mirai} daemons (\code{mirai::daemons(n)}) or a
+non-sequential \link[future:future]{future} plan, or reduce/block retries (see
 \code{vignette("usage", package = "shinyOAuth")}).
 \item Browser requirements: the module relies on the browser's Web Crypto API to
 generate a secure, per-session browser token used for state double-submit
