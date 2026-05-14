@@ -103,7 +103,8 @@ oauth_provider(
   signed Request Objects (RFC 9101). This is mainly used for early
   validation when an
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  sends `authorization_request_mode = "request"`.
+  sends `authorization_request_mode = "request"` or
+  `authorization_request_mode = "request_uri"`.
 
 - request_object_encryption_alg_values_supported:
 
@@ -132,7 +133,8 @@ oauth_provider(
 
   Logical. Whether the provider requires signed Request Objects for
   authorization requests. When `TRUE`, clients should use
-  `authorization_request_mode = "request"`.
+  `authorization_request_mode = "request"` or
+  `authorization_request_mode = "request_uri"`.
 
 - request_parameter_supported:
 
@@ -155,9 +157,11 @@ oauth_provider(
   Logical or `NA`. Whether discovery metadata says caller-managed
   `request_uri` values must be pre-registered. `NA` means the provider
   did not say. Discovery-derived providers apply the OpenID Connect
-  default (`FALSE`) when this metadata is omitted. shinyOAuth does not
-  currently send caller-managed `request_uri` values, but it keeps this
-  metadata for early validation and inspection.
+  default (`FALSE`) when this metadata is omitted. shinyOAuth can
+  publish caller-managed `request_uri` values through
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+  but the current implementation fails fast when a provider requires
+  pre-registration.
 
 - token_endpoint_auth_signing_alg_values_supported:
 

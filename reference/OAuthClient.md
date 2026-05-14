@@ -184,6 +184,9 @@ OAuthClient(
   - `"request"`: send a signed JWT-secured authorization request (JAR;
     RFC 9101) via the `request` parameter.
 
+  - `"request_uri"`: publish a signed Request Object by reference and
+    send its URL via the `request_uri` parameter.
+
   Most users can keep the default. Request mode is an advanced option
   that requires signing material on the client. shinyOAuth prefers
   `client_private_key` when present; otherwise it falls back to HMAC
@@ -194,12 +197,12 @@ OAuthClient(
 - authorization_request_signing_alg:
 
   Optional JWS algorithm override for signed authorization requests when
-  `authorization_request_mode = "request"`. When omitted, shinyOAuth
-  chooses `HS256` for HMAC-based signing or a compatible asymmetric
-  default based on `client_private_key` (for example `RS256`, `ES256`,
-  `ES384`, or `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and
-  `EdDSA` are not currently supported for outbound signed authorization
-  requests.
+  `authorization_request_mode` uses a Request Object (`"request"` or
+  `"request_uri"`). When omitted, shinyOAuth chooses `HS256` for
+  HMAC-based signing or a compatible asymmetric default based on
+  `client_private_key` (for example `RS256`, `ES256`, `ES384`, or
+  `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are
+  not currently supported for outbound signed authorization requests.
 
 - authorization_request_audience:
 

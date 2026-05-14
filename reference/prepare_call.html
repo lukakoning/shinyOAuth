@@ -53,7 +53,7 @@ one-time callback data, and builds the final authorization URL.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prepare_call</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">browser_token</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prepare_call</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">browser_token</span>, request_uri_publisher <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -67,6 +67,13 @@ one-time callback data, and builds the final authorization URL.</p>
 <dt id="arg-browser-token">browser_token<a class="anchor" aria-label="anchor" href="#arg-browser-token"></a></dt>
 <dd><p>Browser-bound token used to tie the login attempt to the
 current browser session.</p></dd>
+
+
+<dt id="arg-request-uri-publisher">request_uri_publisher<a class="anchor" aria-label="anchor" href="#arg-request-uri-publisher"></a></dt>
+<dd><p>Optional function used when
+<code>authorization_request_mode = "request_uri"</code>. It must accept
+<code>request_object</code>, <code>request_handle_id</code>, <code>expires_at</code>, and <code>oauth_client</code>
+arguments and return an absolute request-object URL.</p></dd>
 
 </dl></div>
     <div class="section level2">

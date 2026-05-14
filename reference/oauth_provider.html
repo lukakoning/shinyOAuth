@@ -148,7 +148,8 @@ requires authorization requests to be sent via PAR. When <code>TRUE</code>,
 <dd><p>Optional vector of JWS
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an <a href="OAuthClient.html">OAuthClient</a>
-sends <code>authorization_request_mode = "request"</code>.</p></dd>
+sends <code>authorization_request_mode = "request"</code> or
+<code>authorization_request_mode = "request_uri"</code>.</p></dd>
 
 
 <dt id="arg-request-object-encryption-alg-values-supported">request_object_encryption_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg-values-supported"></a></dt>
@@ -176,7 +177,8 @@ JSON string.</p></dd>
 <dt id="arg-require-signed-request-object">require_signed_request_object<a class="anchor" aria-label="anchor" href="#arg-require-signed-request-object"></a></dt>
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
-should use <code>authorization_request_mode = "request"</code>.</p></dd>
+should use <code>authorization_request_mode = "request"</code> or
+<code>authorization_request_mode = "request_uri"</code>.</p></dd>
 
 
 <dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
@@ -201,8 +203,9 @@ handles remain valid even when this metadata is <code>FALSE</code>.</p></dd>
 metadata says caller-managed <code>request_uri</code> values must be pre-registered.
 <code>NA</code> means the provider did not say. Discovery-derived providers apply the
 OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
-shinyOAuth does not currently send caller-managed <code>request_uri</code> values,
-but it keeps this metadata for early validation and inspection.</p></dd>
+shinyOAuth can publish caller-managed <code>request_uri</code> values through
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>, but the current implementation fails fast when a
+provider requires pre-registration.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>

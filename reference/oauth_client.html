@@ -72,7 +72,7 @@ oauth_module_server() starts login or callback handling."></head><body>
 <span>  tls_client_key_password <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tls_client_ca_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mtls_request_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  authorization_request_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span><span class="op">)</span>,</span>
+<span>  authorization_request_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span>, <span class="st">"request_uri"</span><span class="op">)</span>,</span>
 <span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -320,6 +320,8 @@ transported to the provider.</p><ul><li><p><code>"parameters"</code> (default): 
 redirect URL.</p></li>
 <li><p><code>"request"</code>: send a signed JWT-secured authorization request (JAR;
 RFC 9101) via the <code>request</code> parameter.</p></li>
+<li><p><code>"request_uri"</code>: publish a signed Request Object by reference and send
+its URL via the <code>request_uri</code> parameter.</p></li>
 </ul><p>Most users can keep the default. Request mode is an advanced option that
 requires signing material on the client. shinyOAuth prefers
 <code>client_private_key</code> when present; otherwise it falls back to HMAC signing
@@ -329,7 +331,8 @@ shinyOAuth signs first and then wraps the signed Request Object in a JWE.</p></d
 
 <dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>
 <dd><p>Optional JWS algorithm override for
-signed authorization requests when <code>authorization_request_mode = "request"</code>.
+signed authorization requests when <code>authorization_request_mode</code> uses a
+Request Object (<code>"request"</code> or <code>"request_uri"</code>).
 When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
 compatible asymmetric default based on <code>client_private_key</code> (for example
 <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or <code>ES512</code>). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
