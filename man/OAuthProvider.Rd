@@ -338,8 +338,10 @@ and only the hostname part is used for matching. Takes precedence over
 Use to restrict acceptable \code{alg} values on a per-provider basis. Supported
 asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES256},
 \code{ES384}, \code{ES512}, and \code{EdDSA} for OKP-backed signatures. When ID token
-\code{at_hash} validation is in play, Ed25519 is supported but Ed448 currently
-is not.
+\code{at_hash} validation is in play, Ed25519 is supported. Ed448 \code{at_hash}
+cannot be validated with the current crypto bindings, so shinyOAuth skips
+that optional check unless \code{id_token_at_hash_required = TRUE}, in which
+case Ed448 ID tokens fail fast.
 Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
 require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
