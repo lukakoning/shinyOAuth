@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__client_bearer_req.R
 \name{client_bearer_req}
 \alias{client_bearer_req}
-\title{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}}
+\title{Alias for \code{resource_req()}}
 \usage{
 client_bearer_req(
   token,
@@ -68,5 +68,8 @@ request. This is primarily useful after a resource server challenges with
 Same value as \code{\link[=resource_req]{resource_req()}}.
 }
 \description{
-Deprecated alias for \code{\link[=resource_req]{resource_req()}}.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+Deprecated alias for \code{resource_req()} to avoid a breaking change in the public API.
+Use \code{resource_req()} for Bearer, DPoP, and mTLS-protected resource requests instead.
 }
