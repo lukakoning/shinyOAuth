@@ -55,12 +55,12 @@ revoke_token(
   the operation is dispatched through shinyOAuth's async promise path
   and this function returns a promise-compatible async result that
   resolves to the result list.
-  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) is
-  preferred when daemons are configured via
+  [mirai](https://mirai.r-lib.org/reference/mirai.html) is preferred
+  when daemons are configured via
   [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html);
   otherwise the current
-  [future::future](https://future.futureverse.org/reference/future.html)
-  plan is used. Non-sequential future plans run off the main R session;
+  [future](https://future.futureverse.org/reference/future.html) plan is
+  used. Non-sequential future plans run off the main R session;
   [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
   stays in-process.
 

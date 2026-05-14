@@ -22,3 +22,7 @@ Useful links:
 ## Author
 
 **Maintainer**: Luka Koning <koningluka@gmail.com> \[copyright holder\]
+
+Authors:
+
+- Luka Koning <koningluka@gmail.com> \[copyright holder\]

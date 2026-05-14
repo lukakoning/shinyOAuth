@@ -57,16 +57,14 @@ oauth_module_server(
 
   If TRUE, dispatches token exchange and refresh through shinyOAuth's
   async promise path and updates values when the promise resolves.
-  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) is
-  preferred when daemons are configured with
+  [mirai](https://mirai.r-lib.org/reference/mirai.html) is preferred
+  when daemons are configured with
   [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
-  Otherwise, if
-  [promises::promises](https://rstudio.github.io/promises/reference/promises-package.html)
-  and
-  [future::future](https://future.futureverse.org/reference/future.html)
-  are installed, the current
-  [future::future](https://future.futureverse.org/reference/future.html)
-  plan is used. Non-sequential future plans run off the main R session;
+  Otherwise, if [promises](https://rdrr.io/r/base/delayedAssign.html)
+  and [future](https://future.futureverse.org/reference/future.html) are
+  installed, the current
+  [future](https://future.futureverse.org/reference/future.html) plan is
+  used. Non-sequential future plans run off the main R session;
   [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
   stays in-process. If FALSE (default), token exchange and refresh are
   performed synchronously (which may block the Shiny event loop). For
@@ -327,10 +325,10 @@ cookie settings.
   updates for all sessions on that worker during slow provider responses
   or retry backoff. To keep the UI responsive: set `async = TRUE` and
   configure an async backend that runs off the main process, such as
-  [mirai::mirai](https://mirai.r-lib.org/reference/mirai.html) daemons
+  [mirai](https://mirai.r-lib.org/reference/mirai.html) daemons
   (`mirai::daemons(n)`) or a non-sequential
-  [future::future](https://future.futureverse.org/reference/future.html)
-  plan, or reduce/block retries (see
+  [future](https://future.futureverse.org/reference/future.html) plan,
+  or reduce/block retries (see
   [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)).
 
 - Browser requirements: the module relies on the browser's Web Crypto
