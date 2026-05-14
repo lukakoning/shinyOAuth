@@ -28,6 +28,7 @@ oauth_module_server(
   revoke_on_session_end = FALSE,
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
+  request_uri_base_url = NULL,
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 )
@@ -132,6 +133,19 @@ oauth_module_server(
   Optional character string to explicitly set the browser tab title
   after the OAuth callback. If provided, it takes precedence over
   `tab_title_cleaning`
+
+- request_uri_base_url:
+
+  Optional absolute base URL used when
+  `authorization_request_mode = "request_uri"` publishes Request Objects
+  through Shiny. By default (`NULL`), shinyOAuth derives the base URL
+  from the current browser-visible app origin. Set this when the
+  authorization server must fetch the published Request Object through a
+  different public host or proxy address than the browser uses. The
+  value must not include a query string or fragment. Non-HTTPS hosts
+  still follow the same
+  [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
+  policy as other package URLs.
 
 - browser_cookie_path:
 

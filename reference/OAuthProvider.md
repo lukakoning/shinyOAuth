@@ -168,9 +168,9 @@ OAuthProvider(
   did not say. Discovery-derived providers apply the OpenID Connect
   default (`FALSE`) when this metadata is omitted. shinyOAuth can
   publish caller-managed `request_uri` values through
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
-  but the current implementation fails fast when a provider requires
-  pre-registration.
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+  When this is `TRUE`, make sure the provider has a matching public
+  request URI or wildcard prefix registered for the client.
 
 - token_endpoint_auth_signing_alg_values_supported:
 

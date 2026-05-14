@@ -84,6 +84,7 @@ necessary JavaScript dependencies.</p>
 <span>  revoke_on_session_end <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  tab_title_cleaning <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  tab_title_replacement <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_uri_base_url <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  browser_cookie_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  browser_cookie_samesite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Strict"</span>, <span class="st">"Lax"</span>, <span class="st">"None"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -181,6 +182,17 @@ from the browser tab title after the OAuth callback, so titles like
 <dd><p>Optional character string to explicitly set the
 browser tab title after the OAuth callback. If provided, it takes
 precedence over <code>tab_title_cleaning</code></p></dd>
+
+
+<dt id="arg-request-uri-base-url">request_uri_base_url<a class="anchor" aria-label="anchor" href="#arg-request-uri-base-url"></a></dt>
+<dd><p>Optional absolute base URL used when
+<code>authorization_request_mode = "request_uri"</code> publishes Request Objects
+through Shiny. By default (<code>NULL</code>), shinyOAuth derives the base URL from
+the current browser-visible app origin. Set this when the authorization
+server must fetch the published Request Object through a different public
+host or proxy address than the browser uses. The value must not include a
+query string or fragment. Non-HTTPS hosts still follow the same
+<code><a href="is_ok_host.html">?is_ok_host</a></code> policy as other package URLs.</p></dd>
 
 
 <dt id="arg-browser-cookie-path">browser_cookie_path<a class="anchor" aria-label="anchor" href="#arg-browser-cookie-path"></a></dt>

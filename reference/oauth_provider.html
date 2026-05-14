@@ -204,8 +204,8 @@ metadata says caller-managed <code>request_uri</code> values must be pre-registe
 <code>NA</code> means the provider did not say. Discovery-derived providers apply the
 OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
 shinyOAuth can publish caller-managed <code>request_uri</code> values through
-<code><a href="oauth_module_server.html">oauth_module_server()</a></code>, but the current implementation fails fast when a
-provider requires pre-registration.</p></dd>
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>. When this is <code>TRUE</code>, make sure the provider has a
+matching public request URI or wildcard prefix registered for the client.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
