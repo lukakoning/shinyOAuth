@@ -45,10 +45,10 @@ It only checks the following options:
 error_on_softened()
 #> Warning: `error_on_softened()` was deprecated in shinyOAuth 0.4.0.9000.
 #> ✖ This helper only checks a small subset of shinyOAuth's security-relaxing
-#>   options.
+#>   options
 #> ℹ Use explicit startup checks for options like
 #>   `shinyOAuth.allow_non_atomic_state_store` and
-#>   `shinyOAuth.unblock_auth_params` when they matter to your deployment.
+#>   `shinyOAuth.unblock_auth_params` when they matter to your deployment
 
 # Below call would error (is therefore not run):
 if (interactive()) {
