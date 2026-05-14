@@ -114,9 +114,9 @@ manually (use <code>$request_login()</code>).</p></dd>
 <dd><p>If TRUE, dispatches token exchange and refresh through
 shinyOAuth's async promise path and updates values when the promise
 resolves. <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai</a> is preferred when daemons are configured with
-<code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>. Otherwise, if <a href="https://rdrr.io/r/base/delayedAssign.html" class="external-link">promises</a> and <a href="https://future.futureverse.org/reference/future.html" class="external-link">future</a> are installed,
-the current <a href="https://future.futureverse.org/reference/future.html" class="external-link">future</a> plan is used. Non-sequential future plans run off
-the main R session; <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> stays in-process. If FALSE
+<code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>. Otherwise, if <a href="https://rstudio.github.io/promises/reference/promises-package.html" class="external-link">promises</a> and <a href="https://future.futureverse.org/reference/future.html" class="external-link">future</a>
+are installed, the current <a href="https://future.futureverse.org/reference/future.html" class="external-link">future</a> plan is used. Non-sequential future plans
+run off the main R session; <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop). For production apps, <code>async = TRUE</code>
 is usually the better choice.</p></dd>

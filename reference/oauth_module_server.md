@@ -60,7 +60,8 @@ oauth_module_server(
   [mirai](https://mirai.r-lib.org/reference/mirai.html) is preferred
   when daemons are configured with
   [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
-  Otherwise, if [promises](https://rdrr.io/r/base/delayedAssign.html)
+  Otherwise, if
+  [promises](https://rstudio.github.io/promises/reference/promises-package.html)
   and [future](https://future.futureverse.org/reference/future.html) are
   installed, the current
   [future](https://future.futureverse.org/reference/future.html) plan is
