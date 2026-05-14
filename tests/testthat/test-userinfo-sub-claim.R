@@ -99,6 +99,14 @@ test_that("get_userinfo rejects direct OAuthToken calls with mismatched sub", {
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@userinfo_required <- TRUE
   cli@provider@userinfo_id_token_match <- TRUE
+  events <- list()
+
+  old_hook <- getOption("shinyOAuth.audit_hook")
+  options(shinyOAuth.audit_hook = function(event) {
+    events <<- c(events, list(event))
+  })
+  on.exit(options(shinyOAuth.audit_hook = old_hook), add = TRUE)
+
   token <- OAuthToken(
     access_token = "access-token",
     token_type = "Bearer",
@@ -127,6 +135,14 @@ test_that("get_userinfo rejects direct OAuthToken calls with mismatched sub", {
     class = "shinyOAuth_userinfo_mismatch",
     regexp = "does not match"
   )
+
+  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  statuses <- vapply(
+    ui_events,
+    function(e) e$status %||% NA_character_,
+    character(1)
+  )
+  expect_false(any(statuses == "ok"))
 })
 
 test_that("get_userinfo fails closed for direct raw-token calls when required", {

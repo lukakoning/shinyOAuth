@@ -306,25 +306,27 @@ get_userinfo <- function(
           }
         }
 
-        # Emit audit event for userinfo fetch (redacted)
-        subject <- try(
-          oauth_client@provider@userinfo_id_selector(ui),
-          silent = TRUE
+        enforce_userinfo_id_token_subject_match(
+          oauth_client,
+          userinfo = ui,
+          token = baseline_token
         )
-        if (inherits(subject, "try-error")) {
-          subject <- ui$sub %||% NA_character_
-        }
+
+        # Emit the success audit event only after any required UserInfo / ID
+        # token subject binding has passed, and normalize selector output the
+        # same way the strict match path does.
+        subject <- normalize_userinfo_subject_value(
+          try(
+            oauth_client@provider@userinfo_id_selector(ui),
+            silent = TRUE
+          ),
+          strict = FALSE
+        )
         audit_userinfo_event(
           oauth_client,
           status = "ok",
           sub = subject,
           shiny_session = shiny_session
-        )
-
-        enforce_userinfo_id_token_subject_match(
-          oauth_client,
-          userinfo = ui,
-          token = baseline_token
         )
 
         ui
@@ -1005,6 +1007,68 @@ fail_signed_userinfo_claim_validation <- function(
 #'   UserInfo error.
 #' @keywords internal
 #' @noRd
+normalize_userinfo_subject_value <- function(ui_val, strict = FALSE) {
+  if (inherits(ui_val, "try-error") || is.null(ui_val) || length(ui_val) == 0) {
+    if (isTRUE(strict)) {
+      err_userinfo(c(
+        "x" = "userinfo_id_selector returned no value",
+        "i" = "Expected a scalar string"
+      ))
+    }
+    return(NA_character_)
+  }
+
+  if (length(ui_val) > 1) {
+    if (isTRUE(strict)) {
+      err_userinfo(c(
+        "x" = "userinfo_id_selector returned multiple values",
+        "i" = "Expected a scalar string"
+      ))
+    }
+    return(NA_character_)
+  }
+
+  if (!is.character(ui_val)) {
+    ui_val <- try(as.character(ui_val), silent = TRUE)
+    if (inherits(ui_val, "try-error")) {
+      if (isTRUE(strict)) {
+        err_userinfo(c(
+          "x" = paste(
+            "userinfo_id_selector returned a value that could not be",
+            "coerced to character"
+          ),
+          "i" = "Expected a scalar string"
+        ))
+      }
+      return(NA_character_)
+    }
+  }
+
+  ui_sub <- ui_val[[1]]
+  if (!is_valid_string(ui_sub)) {
+    if (isTRUE(strict)) {
+      err_userinfo("Missing sub claim in id_token or invalid userinfo subject")
+    }
+    return(NA_character_)
+  }
+
+  ui_sub
+}
+
+#' Verify UserInfo and ID token subject consistency
+#'
+#' Used once both the ID token and UserInfo payload are available. The
+#' comparison uses the provider's `userinfo_id_selector`, so custom selector
+#' policies also define the subject that gets matched against the validated ID
+#' token baseline.
+#'
+#' @param oauth_client OAuth client carrying provider policy.
+#' @param userinfo UserInfo claim list.
+#' @param id_token Raw ID token string.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   UserInfo error.
+#' @keywords internal
+#' @noRd
 verify_userinfo_id_token_subject_match <- function(
   oauth_client,
   userinfo,
@@ -1044,34 +1108,7 @@ verify_userinfo_id_token_subject_match <- function(
 
   id_sub <- id_payload$sub
   ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
-
-  ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
-
-  if (is.null(ui_val) || length(ui_val) == 0) {
-    err_userinfo(c(
-      "x" = "userinfo_id_selector returned no value",
-      "i" = "Expected a scalar string"
-    ))
-  }
-
-  if (length(ui_val) > 1) {
-    err_userinfo(c(
-      "x" = "userinfo_id_selector returned multiple values",
-      "i" = "Expected a scalar string"
-    ))
-  }
-
-  if (!is.character(ui_val)) {
-    ui_val <- try(as.character(ui_val), silent = TRUE)
-    if (inherits(ui_val, "try-error")) {
-      err_userinfo(c(
-        "x" = "userinfo_id_selector returned a value that could not be coerced to character",
-        "i" = "Expected a scalar string"
-      ))
-    }
-  }
-
-  ui_sub <- ui_val[[1]]
+  ui_sub <- normalize_userinfo_subject_value(ui_val, strict = TRUE)
 
   if (!is_valid_string(id_sub) || !is_valid_string(ui_sub)) {
     err_userinfo("Missing sub claim in id_token or invalid userinfo subject")
