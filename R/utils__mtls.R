@@ -363,7 +363,11 @@ normalize_token_cnf <- function(cnf) {
   normalized
 }
 
-#' Parse cnf data from an access token
+#' Parse observable cnf data from an access token
+#'
+#' Used only to observe `cnf` on self-contained JWT access tokens. This does
+#' not verify the access-token signature and therefore is not independent proof
+#' that the token was issued by the authorization server.
 #'
 #' @param access_token Raw access-token string.
 #' @return Normalized cnf list.
@@ -409,7 +413,8 @@ token_cnf_from_introspection <- function(introspection_result) {
 #' @param cnf Optional explicit cnf data.
 #' @param access_token Optional raw access-token string.
 #' @param introspection_result Optional introspection payload.
-#' @return Normalized cnf list.
+#' @return Normalized cnf list. Preference order is explicit token-response
+#'   `cnf`, then introspection `cnf`, then locally observed JWT `cnf`.
 #' @keywords internal
 #' @noRd
 resolve_token_cnf <- function(
@@ -423,12 +428,12 @@ resolve_token_cnf <- function(
 
   compact_list(list(
     `x5t#S256` = normalized[["x5t#S256"]] %||%
-      jwt_cnf[["x5t#S256"]] %||%
       introspection_cnf[["x5t#S256"]] %||%
+      jwt_cnf[["x5t#S256"]] %||%
       NULL,
     jkt = normalized[["jkt"]] %||%
-      jwt_cnf[["jkt"]] %||%
       introspection_cnf[["jkt"]] %||%
+      jwt_cnf[["jkt"]] %||%
       NULL
   ))
 }
@@ -442,7 +447,10 @@ resolve_token_cnf <- function(
 #'   token.
 #' @return Normalized cnf list. When the refreshed token does not expose any
 #'   new cnf binding, this preserves the prior certificate thumbprint so later
-#'   mTLS resource requests do not silently lose sender-constraint state.
+#'   mTLS resource requests do not silently lose sender-constraint state. Treat
+#'   that preserved thumbprint as continuity state rather than fresh proof of
+#'   binding for the new token; for strong assurance on opaque refresh
+#'   responses, prefer refresh-time introspection.
 #' @keywords internal
 #' @noRd
 resolve_refresh_token_cnf <- function(

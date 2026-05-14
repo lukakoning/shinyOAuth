@@ -86,7 +86,7 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
     ),
     list(
       `x5t#S256` = "explicit-thumbprint",
-      jkt = "jwt-jkt"
+      jkt = "intro-jkt"
     )
   )
 })

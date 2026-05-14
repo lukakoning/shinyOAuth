@@ -693,7 +693,11 @@ introspect_token <- function(
 #'     otherwise the original from login is preserved
 #'   - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise preserved
 #'   - `cnf`: Updated from the token response when present, and may be
-#'     backfilled from refresh-time introspection when enabled
+#'     backfilled from refresh-time introspection when enabled. When neither
+#'     surface exposes new certificate-binding data, shinyOAuth may preserve a
+#'     prior `x5t#S256` thumbprint so later mTLS requests keep their
+#'     sender-constraint routing, but that preserved thumbprint is continuity
+#'     state rather than fresh proof for the new token
 #'
 #'   **Validation failures cause errors:** If the provider returns a new ID
 #'   token that fails validation (wrong issuer, audience, expired, or subject
