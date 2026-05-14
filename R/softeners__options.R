@@ -85,12 +85,12 @@ error_on_softened <- function() {
     details = c(
       x = paste(
         "This helper only checks a small subset of shinyOAuth's",
-        "security-relaxing options."
+        "security-relaxing options"
       ),
       i = paste(
         "Use explicit startup checks for options like",
         "`shinyOAuth.allow_non_atomic_state_store` and",
-        "`shinyOAuth.unblock_auth_params` when they matter to your deployment."
+        "`shinyOAuth.unblock_auth_params` when they matter to your deployment"
       )
     )
   )

@@ -153,7 +153,7 @@ client_bearer_req <- function(
     what = "client_bearer_req()",
     with = "resource_req()",
     details = paste(
-      "Use resource_req() for Bearer, DPoP, and mTLS-protected resource requests."
+      "Use resource_req() for Bearer, DPoP, and mTLS-protected resource requests"
     )
   )
 
@@ -289,7 +289,7 @@ perform_client_bearer_req <- function(
     what = "perform_client_bearer_req()",
     with = "perform_resource_req()",
     details = paste(
-      "Use perform_resource_req() for Bearer, DPoP, and mTLS-protected resource requests."
+      "Use perform_resource_req() for Bearer, DPoP, and mTLS-protected resource requests"
     )
   )
 
