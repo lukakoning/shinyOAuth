@@ -127,8 +127,12 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
           expires_at,
           base_url
         ) {
-          testthat::expect_true(is.character(request_object) && nzchar(request_object))
-          testthat::expect_true(is.character(request_handle_id) && nzchar(request_handle_id))
+          testthat::expect_true(
+            is.character(request_object) && nzchar(request_object)
+          )
+          testthat::expect_true(
+            is.character(request_handle_id) && nzchar(request_handle_id)
+          )
           testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
           testthat::expect_null(base_url)
           "https://client.example.com/request-object"
@@ -180,8 +184,12 @@ testthat::test_that("manual build_auth_url forwards request_uri_base_url through
           expires_at,
           base_url
         ) {
-          testthat::expect_true(is.character(request_object) && nzchar(request_object))
-          testthat::expect_true(is.character(request_handle_id) && nzchar(request_handle_id))
+          testthat::expect_true(
+            is.character(request_object) && nzchar(request_object)
+          )
+          testthat::expect_true(
+            is.character(request_handle_id) && nzchar(request_handle_id)
+          )
           testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
           testthat::expect_identical(base_url, "https://public.example.com/app")
           "https://public.example.com/app/request-object"

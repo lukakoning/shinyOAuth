@@ -724,12 +724,12 @@ oauth_client <- function(
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
       NA_character_,
-    authorization_request_encryption_alg =
-      authorization_request_encryption_alg %||% NA_character_,
-    authorization_request_encryption_enc =
-      authorization_request_encryption_enc %||% NA_character_,
-    authorization_request_encryption_kid =
-      authorization_request_encryption_kid %||% NA_character_,
+    authorization_request_encryption_alg = authorization_request_encryption_alg %||%
+      NA_character_,
+    authorization_request_encryption_enc = authorization_request_encryption_enc %||%
+      NA_character_,
+    authorization_request_encryption_kid = authorization_request_encryption_kid %||%
+      NA_character_,
     authorization_request_ttl = authorization_request_ttl,
     authorization_request_nbf_skew = authorization_request_nbf_skew %||%
       NA_real_,

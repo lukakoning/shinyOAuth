@@ -111,14 +111,22 @@ shiny_request_uri_base_url <- function(session, base_url = NULL) {
     error = function(...) NA_character_
   )
 
-  if (!is_valid_string(protocol) || !grepl("^[A-Za-z][A-Za-z0-9+.-]*:$", protocol)) {
-    err_config("Could not determine the Shiny app URL protocol for request_uri publishing")
+  if (
+    !is_valid_string(protocol) || !grepl("^[A-Za-z][A-Za-z0-9+.-]*:$", protocol)
+  ) {
+    err_config(
+      "Could not determine the Shiny app URL protocol for request_uri publishing"
+    )
   }
   if (!is_valid_string(hostname)) {
-    err_config("Could not determine the Shiny app hostname for request_uri publishing")
+    err_config(
+      "Could not determine the Shiny app hostname for request_uri publishing"
+    )
   }
   if (!is_valid_string(pathname) || !startsWith(pathname, "/")) {
-    err_config("Could not determine the Shiny app path for request_uri publishing")
+    err_config(
+      "Could not determine the Shiny app path for request_uri publishing"
+    )
   }
 
   base_path <- sub("/[^/]*$", "", pathname)

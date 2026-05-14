@@ -350,14 +350,20 @@ select_candidate_jwks_for_encryption <- function(
     )
   }
 
-  keys <- Filter(function(key) {
-    jwk_is_compatible_with_jwe_alg(key, alg)
-  }, keys)
+  keys <- Filter(
+    function(key) {
+      jwk_is_compatible_with_jwe_alg(key, alg)
+    },
+    keys
+  )
 
-  Filter(function(key) {
-    key_alg <- canonicalize_jwe_alg(key$alg %||% "")
-    !nzchar(key_alg) || identical(key_alg, canonicalize_jwe_alg(alg))
-  }, keys)
+  Filter(
+    function(key) {
+      key_alg <- canonicalize_jwe_alg(key$alg %||% "")
+      !nzchar(key_alg) || identical(key_alg, canonicalize_jwe_alg(alg))
+    },
+    keys
+  )
 }
 
 #' Rank one Request Object encryption JWK candidate
@@ -466,7 +472,10 @@ resolve_authorization_request_encryption_public_key <- function(
         )
       )
     }
-    if (nzchar(explicit_alg) && !identical(explicit_alg, canonicalize_jwe_alg(alg))) {
+    if (
+      nzchar(explicit_alg) &&
+        !identical(explicit_alg, canonicalize_jwe_alg(alg))
+    ) {
       err_config(
         paste0(
           "provider request_object_encryption_jwk advertises JWE alg '",
@@ -730,7 +739,9 @@ jwe_compact_encrypt <- function(
     silent = TRUE
   )
   if (inherits(encrypted_key_raw, "try-error")) {
-    err_config("Failed to encrypt compact JWE CEK with the recipient public key")
+    err_config(
+      "Failed to encrypt compact JWE CEK with the recipient public key"
+    )
   }
   iv_raw <- openssl::rand_bytes(spec$iv_bytes)
   ciphertext_raw <- openssl::aes_cbc_encrypt(
