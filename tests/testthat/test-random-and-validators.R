@@ -25,25 +25,25 @@ test_that("gen_oidc_nonce and validate_oidc_nonce work and enforce constraints",
   # Too short
   expect_error(
     shinyOAuth:::validate_oidc_nonce("short"),
-    class = "shinyOAuth_pkce_error"
+    class = "shinyOAuth_oidc_nonce_error"
   )
   # Invalid chars
   expect_error(
     shinyOAuth:::validate_oidc_nonce("abc!defghijklmnopqrstuvwxyz"),
-    class = "shinyOAuth_pkce_error"
+    class = "shinyOAuth_oidc_nonce_error"
   )
   # Type/length issues
   expect_error(
     shinyOAuth:::validate_oidc_nonce(123),
-    class = "shinyOAuth_pkce_error"
+    class = "shinyOAuth_oidc_nonce_error"
   )
   expect_error(
     shinyOAuth:::validate_oidc_nonce(c("a", "b")),
-    class = "shinyOAuth_pkce_error"
+    class = "shinyOAuth_oidc_nonce_error"
   )
   expect_error(
     shinyOAuth:::validate_oidc_nonce(NA_character_),
-    class = "shinyOAuth_pkce_error"
+    class = "shinyOAuth_oidc_nonce_error"
   )
 })
 

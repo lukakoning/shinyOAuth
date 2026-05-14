@@ -67,18 +67,18 @@ gen_oidc_nonce <- function(length = 32) {
 #' @noRd
 validate_oidc_nonce <- function(nonce, min_chars = 22, max_chars = 255) {
   if (length(nonce) != 1) {
-    err_pkce("nonce must be a length-1 string")
+    err_oidc_nonce("nonce must be a length-1 string")
   }
   if (!is.character(nonce)) {
-    err_pkce("nonce must be character")
+    err_oidc_nonce("nonce must be character")
   }
   if (!is_valid_string(nonce)) {
-    err_pkce("nonce missing or empty")
+    err_oidc_nonce("nonce missing or empty")
   }
 
   n <- nchar(nonce, type = "bytes")
   if (n < min_chars || n > max_chars) {
-    err_pkce(sprintf(
+    err_oidc_nonce(sprintf(
       "nonce length must be between %d and %d characters",
       min_chars,
       max_chars
@@ -87,7 +87,9 @@ validate_oidc_nonce <- function(nonce, min_chars = 22, max_chars = 255) {
 
   # Unreserved characters per RFC 3986
   if (!grepl('^[A-Za-z0-9._~-]+$', nonce)) {
-    err_pkce("nonce contains invalid characters (allowed: A-Z a-z 0-9 - . _ ~)")
+    err_oidc_nonce(
+      "nonce contains invalid characters (allowed: A-Z a-z 0-9 - . _ ~)"
+    )
   }
 
   invisible(TRUE)

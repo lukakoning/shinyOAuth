@@ -469,7 +469,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
           payload = enc,
           browser_token = tok
         ),
-        class = "shinyOAuth_pkce_error",
+        class = "shinyOAuth_oidc_nonce_error",
         regexp = "nonce|length"
       )
     }
@@ -504,7 +504,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
           payload = enc2,
           browser_token = tok
         ),
-        class = "shinyOAuth_pkce_error",
+        class = "shinyOAuth_oidc_nonce_error",
         regexp = "nonce|invalid characters"
       )
     }
