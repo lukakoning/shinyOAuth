@@ -106,6 +106,7 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_audience <- "https://issuer.example.com"
   cli@authorization_request_mode <- "request_uri"
 
   shiny::testServer(
@@ -162,6 +163,7 @@ testthat::test_that("manual build_auth_url forwards request_uri_base_url through
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_audience <- "https://issuer.example.com"
   cli@authorization_request_mode <- "request_uri"
 
   shiny::testServer(
