@@ -381,6 +381,69 @@ test_that("request_uri mode publishes signed request objects", {
   )
 })
 
+test_that("request_uri mode publishes encrypted request objects", {
+  published <- NULL
+  encryption_key <- openssl::rsa_keygen()
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A256CBC-HS512",
+      request_object_encryption_jwk = encryption_key$pubkey
+    ),
+    authorization_request_mode = "request_uri",
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512",
+    authorization_request_encryption_kid = "enc-kid"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    cli,
+    valid_browser_token(),
+    request_uri_publisher = function(
+      request_object,
+      request_handle_id,
+      expires_at,
+      oauth_client
+    ) {
+      published <<- list(
+        request_object = request_object,
+        request_handle_id = request_handle_id,
+        expires_at = expires_at,
+        client_id = oauth_client@client_id
+      )
+      "https://client.example.com/encrypted-request-object"
+    }
+  )
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_identical(
+    parse_query_param(auth_url, "request_uri", decode = TRUE),
+    "https://client.example.com/encrypted-request-object"
+  )
+  expect_true(is.list(published))
+  expect_identical(published$client_id, "abc")
+  expect_length(strsplit(published$request_object, ".", fixed = TRUE)[[1]], 5L)
+
+  outer <- shinyOAuth:::jwe_compact_decrypt(
+    published$request_object,
+    encryption_key
+  )
+  inner_hdr <- shinyOAuth:::parse_jwt_header(outer$plaintext)
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+
+  expect_identical(outer$header$alg, "RSA-OAEP")
+  expect_identical(outer$header$enc, "A256CBC-HS512")
+  expect_identical(outer$header$kid, "enc-kid")
+  expect_identical(outer$header$typ, "oauth-authz-req+jwt")
+  expect_identical(outer$header$cty, "JWT")
+  expect_identical(inner_hdr$alg, "HS256")
+  expect_identical(inner_hdr$typ, "oauth-authz-req+jwt")
+  expect_identical(inner_pl$iss, "abc")
+  expect_identical(inner_pl$aud, "https://issuer.example.com")
+  expect_identical(inner_pl$client_id, "abc")
+})
+
 test_that("request_uri mode requires a publisher", {
   cli <- make_jar_test_client(
     authorization_request_mode = "request_uri"
