@@ -274,6 +274,55 @@ otel_e2e("prepare_call emits login.request span with attributes", {
   testthat::expect_true(nzchar(s$attributes[["shinyoauth.trace_id"]] %||% ""))
 })
 
+otel_e2e("prepare_call emits PAR spans when PAR is used", {
+  r <- otelsdk::with_otel_record({
+    cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+    cli@provider@par_url <- "https://example.com/par"
+
+    testthat::with_mocked_bindings(
+      req_with_dpop_retry = function(req, client, idempotent = TRUE) {
+        testthat::expect_true(isTRUE(idempotent))
+        httr2::response(
+          url = req$url,
+          status = 201,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            '{"request_uri":"urn:ietf:params:oauth:request_uri:test-handle","expires_in":90}'
+          )
+        )
+      },
+      .package = "shinyOAuth",
+      shinyOAuth::prepare_call(cli, browser_token = valid_browser_token())
+    )
+  })
+
+  login_span <- r$traces[["shinyOAuth.login.request"]]
+  par_span <- r$traces[["shinyOAuth.login.par"]]
+  par_http_span <- r$traces[["shinyOAuth.login.par.http"]]
+
+  testthat::expect_false(is.null(login_span))
+  testthat::expect_false(is.null(par_span))
+  testthat::expect_false(is.null(par_http_span))
+
+  if (
+    is.null(login_span) ||
+      is.null(par_span) ||
+      is.null(par_http_span)
+  ) {
+    return(invisible(NULL))
+  }
+
+  testthat::expect_identical(par_span$parent, login_span$span_id)
+  testthat::expect_identical(par_span$trace_id, login_span$trace_id)
+  testthat::expect_identical(par_http_span$parent, par_span$span_id)
+  testthat::expect_identical(par_http_span$trace_id, par_span$trace_id)
+  testthat::expect_identical(par_span$attributes[["oauth.phase"]], "login.par")
+  testthat::expect_identical(
+    as.integer(par_http_span$attributes[["http.response.status_code"]]),
+    201L
+  )
+})
+
 # ---------------------------------------------------------------------------
 # prepare_call + handle_callback — shared trace_id and span hierarchy
 # ---------------------------------------------------------------------------

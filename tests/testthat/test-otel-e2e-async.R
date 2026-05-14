@@ -920,6 +920,17 @@ otel_async_daemon("async module callback/login success exports correct main and 
   assert_shinyoauth_available_in_daemon()
 
   app <- webfakes::new_app()
+  app$post("/par", function(req, res) {
+    res$set_status(201L)
+    res$set_type("application/json")
+    res$send_json(
+      list(
+        request_uri = "urn:ietf:params:oauth:request_uri:async-daemon-par",
+        expires_in = 90
+      ),
+      auto_unbox = TRUE
+    )
+  })
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
@@ -947,6 +958,7 @@ otel_async_daemon("async module callback/login success exports correct main and 
   withr::defer(reset_test_otel_cache())
 
   cli <- make_async_otel_client(srv$url("/token"))
+  cli@provider@par_url <- srv$url("/par")
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -981,6 +993,8 @@ otel_async_daemon("async module callback/login success exports correct main and 
     function() {
       spans <- otel_scope_spans(otel_file)
       length(otel_find_spans(spans, "shinyOAuth.login.request")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.login.par")) >= 1L &&
+        length(otel_find_spans(spans, "shinyOAuth.login.par.http")) >= 1L &&
         length(otel_find_spans(spans, "shinyOAuth.callback")) >= 1L &&
         length(otel_find_spans(spans, "shinyOAuth.callback.worker")) >= 1L &&
         length(otel_find_phase_spans(
@@ -1002,6 +1016,8 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
   spans <- otel_scope_spans(otel_file)
   login_span <- otel_find_spans(spans, "shinyOAuth.login.request")
+  par_span <- otel_find_spans(spans, "shinyOAuth.login.par")
+  par_http_span <- otel_find_spans(spans, "shinyOAuth.login.par.http")
   callback_span <- otel_find_spans(spans, "shinyOAuth.callback")
   worker_span <- otel_find_spans(spans, "shinyOAuth.callback.worker")
   state_payload_span <- otel_find_phase_spans(
@@ -1018,6 +1034,8 @@ otel_async_daemon("async module callback/login success exports correct main and 
   token_http_span <- otel_find_spans(spans, "shinyOAuth.token.exchange.http")
 
   testthat::expect_length(login_span, 1L)
+  testthat::expect_length(par_span, 1L)
+  testthat::expect_length(par_http_span, 1L)
   testthat::expect_length(callback_span, 1L)
   testthat::expect_length(worker_span, 1L)
   testthat::expect_length(state_payload_span, 1L)
@@ -1027,6 +1045,8 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
   if (
     length(login_span) != 1L ||
+      length(par_span) != 1L ||
+      length(par_http_span) != 1L ||
       length(callback_span) != 1L ||
       length(worker_span) != 1L ||
       length(state_payload_span) != 1L ||
@@ -1038,6 +1058,8 @@ otel_async_daemon("async module callback/login success exports correct main and 
   }
 
   login_span <- login_span[[1L]]
+  par_span <- par_span[[1L]]
+  par_http_span <- par_http_span[[1L]]
   callback_span <- callback_span[[1L]]
   worker_span <- worker_span[[1L]]
   state_payload_span <- state_payload_span[[1L]]
@@ -1045,6 +1067,18 @@ otel_async_daemon("async module callback/login success exports correct main and 
   token_exchange_span <- token_exchange_span[[1L]]
   token_http_span <- token_http_span[[1L]]
 
+  testthat::expect_identical(par_span$trace_id, login_span$trace_id)
+  testthat::expect_identical(par_span$parent_span_id, login_span$span_id)
+  testthat::expect_identical(par_http_span$trace_id, par_span$trace_id)
+  testthat::expect_identical(par_http_span$parent_span_id, par_span$span_id)
+  testthat::expect_identical(
+    otel_span_attribute(par_span, "oauth.phase"),
+    "login.par"
+  )
+  testthat::expect_identical(
+    as.integer(otel_span_attribute(par_http_span, "http.response.status_code")),
+    201L
+  )
   testthat::expect_identical(callback_span$trace_id, login_span$trace_id)
   testthat::expect_identical(callback_span$parent_span_id, login_span$span_id)
   testthat::expect_identical(worker_span$trace_id, callback_span$trace_id)
