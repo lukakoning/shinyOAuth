@@ -360,10 +360,10 @@ with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, or explicit
 happens if the returned ID token or userinfo response does not satisfy
 those requests.
 \itemize{
-\item \code{"none"} (default): Skips claims validation entirely. If you leave this
-default while requesting \code{essential}, \code{value}, or \code{values}
-constraints, \code{\link[=oauth_client]{oauth_client()}} warns because providers may still
-complete login without satisfying those claim requests.
+\item \code{"none"}: Skips claims validation entirely. This remains the effective
+default when the supplied \code{claims} request has no enforceable
+\code{essential}, \code{value}, or \code{values} constraints, and when you explicitly
+set \code{claims_validation = "none"}.
 \item \code{"warn"}: Emits a warning but continues authentication if requested
 essential claims are missing or requested claim values are not
 satisfied.
@@ -371,6 +371,11 @@ satisfied.
 missing or requested claim \code{value} / \code{values} constraints are not
 satisfied by the response.
 }
+
+If \code{claims_validation} is omitted and the supplied \code{claims} request does
+include enforceable \code{essential}, \code{value}, or \code{values} constraints,
+\code{\link[=oauth_client]{oauth_client()}} promotes the effective default to \code{"warn"} so those
+mismatches are surfaced by default.
 
 Enforceable requests under \code{claims$id_token} require a validated ID token.
 Configure the provider with \code{id_token_validation = TRUE} or \code{use_nonce = TRUE}

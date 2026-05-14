@@ -311,16 +311,21 @@
 #'   happens if the returned ID token or userinfo response does not satisfy
 #'   those requests.
 #'
-#'   - `"none"` (default): Skips claims validation entirely. If you leave this
-#'     default while requesting `essential`, `value`, or `values`
-#'     constraints, [oauth_client()] warns because providers may still
-#'     complete login without satisfying those claim requests.
+#'   - `"none"`: Skips claims validation entirely. This remains the effective
+#'     default when the supplied `claims` request has no enforceable
+#'     `essential`, `value`, or `values` constraints, and when you explicitly
+#'     set `claims_validation = "none"`.
 #'   - `"warn"`: Emits a warning but continues authentication if requested
 #'     essential claims are missing or requested claim values are not
 #'     satisfied.
 #'   - `"strict"`: Throws an error if any requested essential claims are
 #'     missing or requested claim `value` / `values` constraints are not
 #'     satisfied by the response.
+#'
+#'   If `claims_validation` is omitted and the supplied `claims` request does
+#'   include enforceable `essential`, `value`, or `values` constraints,
+#'   [oauth_client()] promotes the effective default to `"warn"` so those
+#'   mismatches are surfaced by default.
 #'
 #'   Enforceable requests under `claims$id_token` require a validated ID token.
 #'   Configure the provider with `id_token_validation = TRUE` or `use_nonce = TRUE`
@@ -648,6 +653,12 @@ oauth_client <- function(
   }
 
   scope_validation <- match.arg(scope_validation)
+  if (
+    isTRUE(claims_validation_missing) &&
+      claims_request_has_enforceable_requirements(claims)
+  ) {
+    claims_validation <- "warn"
+  }
   claims_validation <- match.arg(claims_validation)
   authorization_request_mode <- match.arg(authorization_request_mode)
 
@@ -673,12 +684,6 @@ oauth_client <- function(
       )
     )
   }
-
-  warn_about_unenforced_claim_requests(
-    claims = claims,
-    claims_validation = claims_validation,
-    claims_validation_missing = claims_validation_missing
-  )
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees
