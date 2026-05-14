@@ -416,6 +416,38 @@ test_that("request_uri mode validates provider request_uri metadata", {
   )
 })
 
+test_that("request_uri mode warns when request_uri exceeds RFC 9101 guidance", {
+  cli <- make_jar_test_client(
+    authorization_request_mode = "request_uri"
+  )
+  long_request_uri <- paste0(
+    "https://client.example.com/",
+    strrep("request-object/", 40)
+  )
+  auth_url <- NULL
+
+  expect_warning(
+    auth_url <- shinyOAuth:::prepare_call(
+      cli,
+      valid_browser_token(),
+      request_uri_publisher = function(
+        request_object,
+        request_handle_id,
+        expires_at,
+        oauth_client
+      ) {
+        long_request_uri
+      }
+    ),
+    regexp = "512 ASCII characters"
+  )
+
+  expect_identical(
+    parse_query_param(auth_url, "request_uri", decode = TRUE),
+    long_request_uri
+  )
+})
+
 test_that("request mode pushes signed request objects through PAR when available", {
   cli <- make_jar_test_client(
     provider = make_jar_test_provider(par_url = "https://example.com/par")

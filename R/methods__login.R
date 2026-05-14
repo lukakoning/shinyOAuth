@@ -699,6 +699,33 @@ build_auth_url <- function(
   request_uri_publisher = NULL,
   request_handle_id = NULL
 ) {
+  warn_if_request_uri_is_long <- function(request_uri) {
+    request_uri_len <- nchar(enc2utf8(request_uri), type = "bytes")
+
+    if (!isTRUE(request_uri_len > 512L)) {
+      return(invisible(NULL))
+    }
+
+    rlang::warn(
+      c(
+        "[{.pkg shinyOAuth}] - request_uri exceeds RFC 9101 guidance",
+        "!" = paste0(
+          "The published {.code request_uri} is ",
+          request_uri_len,
+          " bytes long."
+        ),
+        "i" = paste(
+          "RFC 9101 Section 5.2 recommends keeping request_uri values at or",
+          "below 512 ASCII characters for interoperability."
+        )
+      ),
+      .frequency = "once",
+      .frequency_id = "shinyOAuth_request_uri_over_512"
+    )
+
+    invisible(NULL)
+  }
+
   request_mode <- oauth_client@authorization_request_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
@@ -790,6 +817,7 @@ build_auth_url <- function(
         request_uri,
         getOption("shinyOAuth.allowed_hosts", default = NULL)
       )
+      warn_if_request_uri_is_long(request_uri)
 
       return(url_append_query_params(
         oauth_client@provider@auth_url,
@@ -812,6 +840,7 @@ build_auth_url <- function(
       if (!is_valid_string(par_resp$request_uri)) {
         err_config("build_auth_url: PAR response missing valid request_uri")
       }
+      warn_if_request_uri_is_long(par_resp$request_uri)
 
       auth_url <- url_append_query_params(
         oauth_client@provider@auth_url,
