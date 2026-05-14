@@ -234,7 +234,30 @@ if (!exists("make_provider", mode = "function")) {
   process <- callr::r_bg(
     func = function(repo_root, app_port, public_base_url, app_url) {
       setwd(repo_root)
-      devtools::load_all(quiet = TRUE)
+      if (requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(
+          repo_root,
+          quiet = TRUE,
+          helpers = FALSE,
+          attach_testthat = FALSE
+        )
+      } else if (requireNamespace("devtools", quietly = TRUE)) {
+        devtools::load_all(
+          repo_root,
+          quiet = TRUE,
+          helpers = FALSE,
+          attach_testthat = FALSE
+        )
+      } else if (!requireNamespace("shinyOAuth", quietly = TRUE)) {
+        stop(
+          paste(
+            "Could not load shinyOAuth for the request_uri background app.",
+            "Install pkgload or devtools, or install shinyOAuth into this library.",
+            sep = " "
+          ),
+          call. = FALSE
+        )
+      }
       source("integration/keycloak/helper-keycloak.R")
 
       parsed_public_base <- httr2::url_parse(public_base_url)
