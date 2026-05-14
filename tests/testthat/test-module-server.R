@@ -102,7 +102,15 @@ testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
 })
 
 testthat::test_that("manual build_auth_url wires request_uri mode through the module publisher", {
-  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.allowed_hosts = c(
+      "example.com",
+      "app.example.com",
+      "client.example.com",
+      "localhost"
+    )
+  ))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
@@ -155,6 +163,33 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
         "https://client.example.com/request-object"
       )
     }
+  )
+})
+
+testthat::test_that("request_uri mode requires a pinned public origin policy", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.allowed_hosts = NULL
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_audience <- "https://issuer.example.com"
+  cli@authorization_request_mode <- "request_uri"
+
+  testthat::expect_error(
+    shiny::testServer(
+      app = oauth_module_server,
+      args = list(
+        id = "auth",
+        client = cli,
+        auto_redirect = FALSE,
+        indefinite_session = TRUE
+      ),
+      expr = {
+      }
+    ),
+    regexp = "request_uri_base_url|allowed_hosts"
   )
 })
 

@@ -122,11 +122,13 @@
 #' @param request_uri_base_url Optional absolute base URL used when
 #'   `authorization_request_mode = "request_uri"` publishes Request Objects
 #'   through Shiny. By default (`NULL`), shinyOAuth derives the base URL from
-#'   the current browser-visible app origin. Set this when the authorization
-#'   server must fetch the published Request Object through a different public
-#'   host or proxy address than the browser uses. The value must not include a
-#'   query string or fragment. Non-HTTPS hosts still follow the same
-#'   `?is_ok_host` policy as other package URLs.
+#'   the current browser-visible app origin, but only when
+#'   `options(shinyOAuth.allowed_hosts = ...)` pins the permitted public host.
+#'   Set this when the authorization server must fetch the published Request
+#'   Object through a different public host or proxy address than the browser
+#'   uses, or when you prefer to declare the public origin explicitly. The
+#'   value must not include a query string or fragment. Non-HTTPS hosts still
+#'   follow the same `?is_ok_host` policy as other package URLs.
 #'
 #' @param browser_cookie_path Optional cookie Path to scope the browser token
 #'   cookie. By default (`NULL`), the path is fixed to "/" for reliable
@@ -387,6 +389,35 @@ oauth_module_server <- function(
     request_uri_base_url,
     arg = "request_uri_base_url"
   )
+
+  allowed_hosts <- getOption("shinyOAuth.allowed_hosts", default = NULL)
+  has_request_uri_host_policy <-
+    is.character(allowed_hosts) &&
+    length(allowed_hosts) > 0L &&
+    any(vapply(allowed_hosts, is_valid_string, logical(1)))
+
+  if (
+    identical(client@authorization_request_mode %||% "parameters", "request_uri") &&
+      is.null(request_uri_base_url) &&
+      !isTRUE(has_request_uri_host_policy)
+  ) {
+    err_config(c(
+      paste(
+        "oauth_module_server() with authorization_request_mode =",
+        "'request_uri' requires either request_uri_base_url or",
+        "options(shinyOAuth.allowed_hosts = ...) so the published",
+        "Request Object origin is pinned explicitly."
+      ),
+      "i" = paste(
+        "Set request_uri_base_url to the public HTTPS origin that the",
+        "authorization server should fetch."
+      ),
+      "i" = paste(
+        "Or configure shinyOAuth.allowed_hosts so the browser-derived origin",
+        "must match your deployment policy."
+      )
+    ))
+  }
 
   ## 1.2 Browser and async prerequisites ---------------------------------------
 
