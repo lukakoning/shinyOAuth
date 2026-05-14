@@ -1,7 +1,12 @@
-# **\[deprecated\]**
+# Alias for `perform_resource_req()`
+
+**\[deprecated\]**
 
 Deprecated alias for
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+to avoid a breaking change in the public API. Use
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+for Bearer, DPoP, and mTLS-protected resource requests instead.
 
 ## Usage
 

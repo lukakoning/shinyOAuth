@@ -87,14 +87,16 @@
   : Perform an authenticated httr2 request for a protected resource
 
 - [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
-  :
+  **\[deprecated\]** :
 
-  **\[deprecated\]**
+  Alias for
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 
 - [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
-  :
+  **\[deprecated\]** :
 
-  **\[deprecated\]**
+  Alias for
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 
 ## Miscellaneous
 
