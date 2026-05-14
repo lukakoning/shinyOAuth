@@ -91,14 +91,6 @@ explicitly returned and ones that were carried forward when the provider omitted
 `scope`. Refresh now preserves prior granted scopes instead of widening back to
 the client's configured scopes when a refresh response omits `scope`.
 
-- Renamed the resource-request helpers to `resource_req()` and
-`perform_resource_req()`. The old `client_bearer_req()` and
-`perform_client_bearer_req()` names remain available as deprecated aliases.
-`perform_resource_req()` performs the request and, for DPoP-bound access
-tokens, replays one `use_dpop_nonce` challenge with the server-provided
-nonce while `resource_req()` remains the lower-level request builder for making
-authenticated resource requests.
-
 * `oauth_client()` (`OAuthClient`) now:
   - Accepts custom state-store entries that omit unused `pkce_code_verifier`
   and `nonce` fields when the provider does not require them, while still
@@ -266,6 +258,14 @@ fail closed.
 * Deprecated `error_on_softened()`. It remains a narrow guard for a few
 dev/debug softeners, but the docs now stop presenting it as a comprehensive
 deployment-hardening check and show explicit option checks instead.
+
+- Renamed the resource-request helpers to `resource_req()` and
+`perform_resource_req()`. The old `client_bearer_req()` and
+`perform_client_bearer_req()` names remain available as deprecated aliases.
+`perform_resource_req()` performs the request and, for DPoP-bound access
+tokens, replays one `use_dpop_nonce` challenge with the server-provided
+nonce while `resource_req()` remains the lower-level request builder for making
+authenticated resource requests.
 
 # shinyOAuth 0.4.0
 
