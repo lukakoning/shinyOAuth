@@ -464,6 +464,61 @@ test_that("build_dpop_proof creates a signed proof with bound claims", {
   expect_lte(abs(as.numeric(Sys.time()) - as.numeric(payload$iat)), 5)
 })
 
+test_that("build_dpop_proof rejects invalid nonce syntax", {
+  key <- openssl::rsa_keygen()
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(
+    prov,
+    dpop_private_key = key,
+    dpop_private_key_kid = "dpop-kid-1"
+  )
+
+  expect_error(
+    shinyOAuth:::build_dpop_proof(
+      cli,
+      method = "POST",
+      url = "https://resource.example.com/api",
+      nonce = "bad nonce"
+    ),
+    regexp = "DPoP nonce",
+    class = "shinyOAuth_input_error"
+  )
+})
+
+test_that("resp_get_dpop_nonce enforces RFC 9449 syntax and size bounds", {
+  valid_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 400,
+    headers = list("dpop-nonce" = "nonce-1"),
+    body = charToRaw("{}")
+  )
+  invalid_space_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 400,
+    headers = list("dpop-nonce" = "nonce with space"),
+    body = charToRaw("{}")
+  )
+  invalid_backslash_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 400,
+    headers = list("dpop-nonce" = "nonce\\value"),
+    body = charToRaw("{}")
+  )
+  oversized_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 400,
+    headers = list(
+      "dpop-nonce" = paste(rep("a", 513L), collapse = "")
+    ),
+    body = charToRaw("{}")
+  )
+
+  expect_identical(shinyOAuth:::resp_get_dpop_nonce(valid_resp), "nonce-1")
+  expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(invalid_space_resp)))
+  expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(invalid_backslash_resp)))
+  expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(oversized_resp)))
+})
+
 test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
 

@@ -27,6 +27,44 @@ client_has_dpop <- function(client) {
 # mixing token-endpoint and protected-resource nonce state. Bound the cache by
 # age and entry count so long-lived apps do not accumulate unbounded state.
 dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
+dpop_nonce_max_bytes <- 512L
+
+#' Normalize a DPoP nonce value
+#'
+#' Used when DPoP nonces are read from headers, caches, or caller input.
+#' RFC 9449 reuses the OAuth `scope-token` syntax (`1*NQCHAR`), so valid
+#' values are ASCII visible characters excluding space, `"`, and `\\`.
+#'
+#' @param nonce Candidate DPoP nonce value.
+#' @return A validated scalar nonce string, or `NA_character_` when invalid.
+#' @keywords internal
+#' @noRd
+normalize_dpop_nonce <- function(nonce) {
+  if (!is.character(nonce) || length(nonce) != 1L || is.na(nonce)) {
+    return(NA_character_)
+  }
+
+  nonce <- as.character(nonce[[1]])
+  if (!nzchar(nonce) || nchar(nonce, type = "bytes") > dpop_nonce_max_bytes) {
+    return(NA_character_)
+  }
+
+  chars <- utf8ToInt(enc2utf8(nonce))
+  if (!length(chars)) {
+    return(NA_character_)
+  }
+
+  valid_chars <-
+    chars == 0x21L |
+    (chars >= 0x23L & chars <= 0x5BL) |
+    (chars >= 0x5DL & chars <= 0x7EL)
+
+  if (!all(valid_chars)) {
+    return(NA_character_)
+  }
+
+  nonce
+}
 
 #' Build a DPoP nonce cache key
 #'
@@ -128,6 +166,7 @@ dpop_nonce_cache_get <- function(
   }
 
   nonce <- dpop_nonce_cache$get(cache_key)
+  nonce <- normalize_dpop_nonce(nonce)
   if (!is_valid_string(nonce)) {
     return(NULL)
   }
@@ -154,6 +193,7 @@ dpop_nonce_cache_set <- function(
   request_kind = c("token", "resource")
 ) {
   cache_key <- dpop_nonce_cache_key(client, url, request_kind = request_kind)
+  nonce <- normalize_dpop_nonce(nonce)
   if (!(is_valid_string(cache_key) && is_valid_string(nonce))) {
     return(invisible(nonce))
   }
@@ -571,6 +611,20 @@ build_dpop_proof <- function(
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
+  nonce_supplied <- !(is.null(nonce) ||
+    (is.character(nonce) && length(nonce) == 1L && is.na(nonce)))
+  nonce <- normalize_dpop_nonce(nonce)
+  if (isTRUE(nonce_supplied) && !is_valid_string(nonce)) {
+    err_input(
+      paste(
+        "DPoP nonce must be a single RFC 9449 nonce using visible ASCII",
+        "without spaces, double quotes, or backslashes, and no more than",
+        dpop_nonce_max_bytes,
+        "bytes"
+      )
+    )
+  }
+
   key <- resolve_dpop_private_key(client)
   alg <- resolve_dpop_alg(client)
   if (!private_key_can_sign_jws_alg(key, alg, typ = "dpop+jwt")) {
@@ -690,10 +744,11 @@ req_add_dpop_proof <- function(
 #' @noRd
 resp_get_dpop_nonce <- function(resp) {
   nonce <- try(httr2::resp_header(resp, "dpop-nonce"), silent = TRUE)
-  if (inherits(nonce, "try-error") || !is_valid_string(nonce)) {
+  if (inherits(nonce, "try-error")) {
     return(NA_character_)
   }
-  as.character(nonce)[1]
+
+  normalize_dpop_nonce(as.character(nonce)[1])
 }
 
 #' Detect a DPoP nonce challenge
