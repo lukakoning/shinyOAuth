@@ -7,12 +7,11 @@
 library(shiny)
 library(shinyOAuth)
 
-# Provider and client configured via env vars.
-#
+# Provider and client configured via env vars
 # Cloud Run will fail the deployment if the process exits during startup.
 # In practice, missing/invalid OAuth env vars can cause `oauth_client()` to
 # throw (e.g., empty client_id), which would crash the container before it
-# starts listening on $PORT.
+# starts listening on $PORT
 provider <- oauth_provider_github()
 
 client_id <- Sys.getenv("GITHUB_OAUTH_CLIENT_ID", "")
@@ -29,7 +28,7 @@ client_or_error <- tryCatch(
       client_id = client_id,
       client_secret = client_secret,
       redirect_uri = redirect_uri,
-      scopes = character(0) # add scopes if you need more than public user info
+      scopes = character(0) # Add scopes if you need more than public user info
     )
   },
   error = function(e) {
@@ -142,6 +141,8 @@ if (inherits(client_or_error, "error")) {
       auth$token@userinfo
     })
 
+    # Note: in a real app, you don't want to expose error details to your users;
+    # this is just for demonstration & debugging purposes
     output$oauth_error <- renderUI({
       if (!is.null(auth$error)) {
         msg <- auth$error
