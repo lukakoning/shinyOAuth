@@ -186,8 +186,7 @@ testthat::test_that("request_uri mode requires a pinned public origin policy", {
         auto_redirect = FALSE,
         indefinite_session = TRUE
       ),
-      expr = {
-      }
+      expr = {}
     ),
     regexp = "request_uri_base_url|allowed_hosts"
   )

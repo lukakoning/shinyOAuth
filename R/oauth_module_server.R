@@ -397,7 +397,10 @@ oauth_module_server <- function(
     any(vapply(allowed_hosts, is_valid_string, logical(1)))
 
   if (
-    identical(client@authorization_request_mode %||% "parameters", "request_uri") &&
+    identical(
+      client@authorization_request_mode %||% "parameters",
+      "request_uri"
+    ) &&
       is.null(request_uri_base_url) &&
       !isTRUE(has_request_uri_host_policy)
   ) {

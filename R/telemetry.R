@@ -1649,14 +1649,15 @@ otel_is_sensitive_event_field <- function(name) {
 
   normalized_name <- tolower(gsub("[^A-Za-z0-9]+", "_", trimws(name)))
 
-  normalized_name %in% c(
-    "access_token",
-    "refresh_token",
-    "id_token",
-    "code",
-    "state",
-    "browser_token"
-  ) ||
+  normalized_name %in%
+    c(
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "code",
+      "state",
+      "browser_token"
+    ) ||
     grepl("(^|_)client_secret$", normalized_name) ||
     grepl("(^|_)client_assertion$", normalized_name) ||
     grepl("(^|_)code_verifier$", normalized_name) ||
