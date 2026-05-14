@@ -78,7 +78,8 @@ requires authorization requests to be sent via PAR. When \code{TRUE},
 \item{request_object_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an \link{OAuthClient}
-sends \code{authorization_request_mode = "request"}.}
+sends \code{authorization_request_mode = "request"} or
+\code{authorization_request_mode = "request_uri"}.}
 
 \item{request_object_encryption_alg_values_supported}{Optional vector of JWE
 key-management algorithms that the provider advertises for encrypted
@@ -98,7 +99,8 @@ JSON string.}
 
 \item{require_signed_request_object}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients
-should use \code{authorization_request_mode = "request"}.}
+should use \code{authorization_request_mode = "request"} or
+\code{authorization_request_mode = "request_uri"}.}
 
 \item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request
@@ -117,8 +119,9 @@ handles remain valid even when this metadata is \code{FALSE}.}
 metadata says caller-managed \code{request_uri} values must be pre-registered.
 \code{NA} means the provider did not say. Discovery-derived providers apply the
 OpenID Connect default (\code{FALSE}) when this metadata is omitted.
-shinyOAuth does not currently send caller-managed \code{request_uri} values,
-but it keeps this metadata for early validation and inspection.}
+shinyOAuth can publish caller-managed \code{request_uri} values through
+\code{oauth_module_server()}, but the current implementation fails fast when a
+provider requires pre-registration.}
 
 \item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
 JWS algorithms that the provider advertises for JWT-based client

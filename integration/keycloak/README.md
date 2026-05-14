@@ -54,6 +54,7 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
 - `test_integration_keycloak.R` — discovery and client_credentials + introspection
 - `test_integration_module_shiny.R` — full authorization code flow against Keycloak, driving `oauth_module_server()` inside a Shiny test server and posting credentials to the Keycloak login form (requires the R packages `xml2` and `rvest`)
 - `test_integration_module_shiny_browser.R` — end-to-end flow with a real headless browser (Chromium via {shinytest2}/{chromote}): clicks the Login button, completes the Keycloak login form, and verifies redirect back to the app and authenticated state.
+- `test_integration_module_shiny_browser_request_uri.R` — end-to-end `request_uri` flow with a real Shiny app and headless browser, proving Keycloak can fetch the published Request Object through a public base-URL override while the browser still uses the local app URL.
  - `test_integration_keycloak_auth_styles.R` — parametric introspection using different token endpoint client auth styles: header (client_secret_basic), body (client_secret_post), client_secret_jwt and private_key_jwt (pre-provisioned in realm).
  - `test_integration_keycloak_auth_styles_unhappy.R` — negative-path coverage: wrong client_secret for CSJWT, mismatched algorithm, wrong private key for PJWT (server rejection), and incompatible alg for the provided key (local config error).
 - `test_integration_keycloak_par.R` — PAR discovery and end-to-end code flow coverage, including the standard localhost HTTP host-policy path used by the local Keycloak setup.
@@ -85,3 +86,12 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 | `test_integration_attack_cross_client.R` | **Cross-client code swap** — code issued for one client_id exchanged by another | Keycloak server-side client_id binding; state payload client_id binding |
 | `test_integration_attack_redirect_uri.R` | **Redirect URI manipulation** — attacker changes redirect_uri to steal authorization code | Keycloak redirect URI allowlist; state payload redirect_uri binding |
 | `test_integration_attack_concurrent_flows.R` | **Concurrent flow isolation** — multiple simultaneous flows and cross-session callback swaps | State store entry keying; per-session isolation; multi-user independence |
+
+For the browser `request_uri` integration test, the Shiny app listens on all
+interfaces but the browser uses `127.0.0.1` so redirect cookies stay on one
+origin. Keycloak fetches the published Request Object through
+`SHINYOAUTH_E2E_REQUEST_URI_BASE_URL`. When unset, the test defaults to
+`http://host.docker.internal:${SHINYOAUTH_E2E_PORT}` and the compose file maps
+`host.docker.internal` back to the host on Linux runners via `host-gateway`.
+If you override that URL, the matching public `request_uri` prefix must also be
+registered on the Keycloak client.

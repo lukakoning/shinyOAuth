@@ -119,6 +119,14 @@
 #' @param tab_title_replacement Optional character string to explicitly set the
 #'   browser tab title after the OAuth callback. If provided, it takes
 #'   precedence over `tab_title_cleaning`
+#' @param request_uri_base_url Optional absolute base URL used when
+#'   `authorization_request_mode = "request_uri"` publishes Request Objects
+#'   through Shiny. By default (`NULL`), shinyOAuth derives the base URL from
+#'   the current browser-visible app origin. Set this when the authorization
+#'   server must fetch the published Request Object through a different public
+#'   host or proxy address than the browser uses. The value must not include a
+#'   query string or fragment. Non-HTTPS hosts still follow the same
+#'   `?is_ok_host` policy as other package URLs.
 #'
 #' @param browser_cookie_path Optional cookie Path to scope the browser token
 #'   cookie. By default (`NULL`), the path is fixed to "/" for reliable
@@ -265,6 +273,7 @@ oauth_module_server <- function(
   revoke_on_session_end = FALSE,
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
+  request_uri_base_url = NULL,
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
@@ -323,6 +332,14 @@ oauth_module_server <- function(
     )
   }
   if (
+    !(is.null(request_uri_base_url) ||
+      is_valid_string(request_uri_base_url))
+  ) {
+    err_input(
+      "{.arg request_uri_base_url} must be NULL or a non-empty string."
+    )
+  }
+  if (
     !(is.logical(auto_redirect) &&
       length(auto_redirect) == 1 &&
       !is.na(auto_redirect))
@@ -365,6 +382,11 @@ oauth_module_server <- function(
   ) {
     err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
   }
+
+  request_uri_base_url <- normalize_request_uri_base_url(
+    request_uri_base_url,
+    arg = "request_uri_base_url"
+  )
 
   ## 1.2 Browser and async prerequisites ---------------------------------------
 
@@ -1074,7 +1096,21 @@ oauth_module_server <- function(
       tryCatch(
         prepare_call(
           client,
-          browser_token = values$browser_token
+          browser_token = values$browser_token,
+          request_uri_publisher = function(
+            request_object,
+            request_handle_id,
+            expires_at,
+            oauth_client
+          ) {
+            publish_shiny_request_object(
+              session = session,
+              request_object = request_object,
+              request_handle_id = request_handle_id,
+              expires_at = expires_at,
+              base_url = request_uri_base_url
+            )
+          }
         ),
         error = function(e) {
           .set_error("auth_url_error", e, phase = "build_auth_url")

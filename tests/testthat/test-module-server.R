@@ -101,6 +101,111 @@ testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
   )
 })
 
+testthat::test_that("manual build_auth_url wires request_uri mode through the module publisher", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_mode <- "request_uri"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- testthat::with_mocked_bindings(
+        publish_shiny_request_object = function(
+          session,
+          request_object,
+          request_handle_id,
+          expires_at,
+          base_url
+        ) {
+          testthat::expect_true(is.character(request_object) && nzchar(request_object))
+          testthat::expect_true(is.character(request_handle_id) && nzchar(request_handle_id))
+          testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
+          testthat::expect_null(base_url)
+          "https://client.example.com/request-object"
+        },
+        .package = "shinyOAuth",
+        {
+          values$build_auth_url()
+        }
+      )
+
+      testthat::expect_true(is.character(url) && nzchar(url))
+      query_names <- names(shiny::parseQueryString(sub("^[^?]*\\?", "", url)))
+      testthat::expect_setequal(
+        query_names,
+        c("client_id", "request_uri")
+      )
+      testthat::expect_identical(
+        parse_query_param(url, "request_uri", decode = TRUE),
+        "https://client.example.com/request-object"
+      )
+    }
+  )
+})
+
+testthat::test_that("manual build_auth_url forwards request_uri_base_url through the module publisher", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_mode <- "request_uri"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE,
+      request_uri_base_url = "https://public.example.com/app/"
+    ),
+    expr = {
+      testthat::expect_true(values$has_browser_token())
+
+      url <- testthat::with_mocked_bindings(
+        publish_shiny_request_object = function(
+          session,
+          request_object,
+          request_handle_id,
+          expires_at,
+          base_url
+        ) {
+          testthat::expect_true(is.character(request_object) && nzchar(request_object))
+          testthat::expect_true(is.character(request_handle_id) && nzchar(request_handle_id))
+          testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
+          testthat::expect_identical(base_url, "https://public.example.com/app")
+          "https://public.example.com/app/request-object"
+        },
+        .package = "shinyOAuth",
+        {
+          values$build_auth_url()
+        }
+      )
+
+      testthat::expect_true(is.character(url) && nzchar(url))
+      query_names <- names(shiny::parseQueryString(sub("^[^?]*\\?", "", url)))
+      testthat::expect_setequal(
+        query_names,
+        c("client_id", "request_uri")
+      )
+      testthat::expect_identical(
+        parse_query_param(url, "request_uri", decode = TRUE),
+        "https://public.example.com/app/request-object"
+      )
+    }
+  )
+})
+
 testthat::test_that("manual sync login succeeds with browser-token protection enabled", {
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 

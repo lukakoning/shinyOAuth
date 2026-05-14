@@ -172,7 +172,10 @@ testthat::test_that("Keycloak encrypted request-object happy path (private_key_j
       outer <- shinyOAuth:::jwe_compact_parts(request_jwe)
 
       testthat::expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
-      testthat::expect_identical(outer$protected_header$typ, "oauth-authz-req+jwt")
+      testthat::expect_identical(
+        outer$protected_header$typ,
+        "oauth-authz-req+jwt"
+      )
       testthat::expect_identical(outer$protected_header$cty, "JWT")
       testthat::expect_identical(outer$protected_header$alg, "RSA-OAEP")
       testthat::expect_identical(outer$protected_header$enc, "A256CBC-HS512")
@@ -225,7 +228,10 @@ testthat::test_that("Keycloak encrypted request-object happy path (HS256)", {
       outer <- shinyOAuth:::jwe_compact_parts(request_jwe)
 
       testthat::expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
-      testthat::expect_identical(outer$protected_header$typ, "oauth-authz-req+jwt")
+      testthat::expect_identical(
+        outer$protected_header$typ,
+        "oauth-authz-req+jwt"
+      )
       testthat::expect_identical(outer$protected_header$cty, "JWT")
       testthat::expect_identical(outer$protected_header$alg, "RSA-OAEP")
       testthat::expect_identical(outer$protected_header$enc, "A256CBC-HS512")

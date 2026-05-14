@@ -19,6 +19,8 @@ services:
     ports:
       - "8080:8080"
       - "8443:8443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./realm-shinyoauth.json:/opt/keycloak/data/import/realm-shinyoauth.json:ro
       - ./tls:/opt/keycloak/conf/tls:ro

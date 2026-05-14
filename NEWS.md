@@ -16,6 +16,11 @@ with the returned `request_uri`.
 `authorization_request_mode = "request"`, using either
 `client_private_key` or `client_secret` signing depending on client
 configuration.
+  - Request Objects can now also be sent by reference with
+  `authorization_request_mode = "request_uri"`. `oauth_module_server()` serves
+  the signed or encrypted Request Object through a short-lived Shiny data-object
+  endpoint, and `request_uri_base_url` can point authorization servers at a
+  public/proxy URL when it differs from the browser's local app URL.
   - Request-object temporal claims are now fully reserved by shinyOAuth.
   Caller-supplied `nbf` values from `extra_auth_params` are ignored, and
   `nbf` is only emitted when configured through

@@ -51,6 +51,8 @@ make_jar_test_provider <- function(
   request_object_encryption_alg_values_supported = character(0),
   request_object_encryption_enc_values_supported = character(0),
   request_object_encryption_jwk = NULL,
+  request_uri_parameter_supported = NA,
+  require_request_uri_registration = NA,
   require_signed_request_object = FALSE
 ) {
   do.call(
@@ -65,6 +67,8 @@ make_jar_test_provider <- function(
       request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
       request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
       request_object_encryption_jwk = request_object_encryption_jwk,
+      request_uri_parameter_supported = request_uri_parameter_supported,
+      require_request_uri_registration = require_request_uri_registration,
       require_signed_request_object = require_signed_request_object,
       use_nonce = use_nonce,
       use_pkce = TRUE,
@@ -85,6 +89,7 @@ make_jar_test_client <- function(
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
+  authorization_request_mode = "request",
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -116,7 +121,7 @@ make_jar_test_client <- function(
       dpop_private_key = dpop_private_key,
       dpop_private_key_kid = dpop_private_key_kid,
       dpop_signing_alg = dpop_signing_alg,
-      authorization_request_mode = "request",
+      authorization_request_mode = authorization_request_mode,
       authorization_request_signing_alg = authorization_request_signing_alg,
       authorization_request_audience = authorization_request_audience,
       authorization_request_encryption_alg = authorization_request_encryption_alg,
@@ -318,7 +323,92 @@ test_that("request mode requires signing material", {
       ),
       authorization_request_mode = "request"
     ),
-    regexp = "authorization_request_mode = 'request' requires client_private_key or client_secret"
+    regexp = paste(
+      "authorization_request_mode = 'request' or 'request_uri' requires",
+      "client_private_key or client_secret"
+    )
+  )
+})
+
+test_that("request_uri mode publishes signed request objects", {
+  published <- NULL
+  cli <- make_jar_test_client(
+    authorization_request_mode = "request_uri"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    cli,
+    valid_browser_token(),
+    request_uri_publisher = function(
+      request_object,
+      request_handle_id,
+      expires_at,
+      oauth_client
+    ) {
+      published <<- list(
+        request_object = request_object,
+        request_handle_id = request_handle_id,
+        expires_at = expires_at,
+        client_id = oauth_client@client_id
+      )
+      "https://client.example.com/session/request-object"
+    }
+  )
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_identical(
+    parse_query_param(auth_url, "request_uri", decode = TRUE),
+    "https://client.example.com/session/request-object"
+  )
+  expect_true(is.list(published))
+  expect_true(
+    is.character(published$request_handle_id) &&
+      length(published$request_handle_id) == 1L &&
+      !is.na(published$request_handle_id) &&
+      nzchar(published$request_handle_id)
+  )
+  expect_identical(published$client_id, "abc")
+
+  request_payload <- shinyOAuth:::parse_jwt_payload(published$request_object)
+  expect_identical(request_payload$client_id, "abc")
+  expect_identical(request_payload$redirect_uri, "http://localhost:8100")
+})
+
+test_that("request_uri mode requires a publisher", {
+  cli <- make_jar_test_client(
+    authorization_request_mode = "request_uri"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(cli, valid_browser_token()),
+    regexp = "request_uri_publisher"
+  )
+})
+
+test_that("request_uri mode validates provider request_uri metadata", {
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(
+        request_uri_parameter_supported = FALSE
+      ),
+      authorization_request_mode = "request_uri"
+    ),
+    regexp = paste(
+      "request_uri parameter transport is not supported;",
+      "authorization_request_mode = 'request_uri' cannot be used"
+    )
+  )
+
+  registered_cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      require_request_uri_registration = TRUE
+    ),
+    authorization_request_mode = "request_uri"
+  )
+
+  expect_true(
+    S7::S7_inherits(registered_cli, shinyOAuth::OAuthClient)
   )
 })
 
@@ -1021,7 +1111,7 @@ test_that("providers requiring signed request objects reject parameters mode", {
     ),
     regexp = paste(
       "provider requires signed request objects;",
-      "set authorization_request_mode = 'request'"
+      "set authorization_request_mode = 'request' or 'request_uri'"
     )
   )
 })

@@ -15,6 +15,10 @@
 #' @param oauth_client An [OAuthClient] object.
 #' @param browser_token Browser-bound token used to tie the login attempt to the
 #'   current browser session.
+#' @param request_uri_publisher Optional function used when
+#'   `authorization_request_mode = "request_uri"`. It must accept
+#'   `request_object`, `request_handle_id`, `expires_at`, and `oauth_client`
+#'   arguments and return an absolute request-object URL.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -27,7 +31,8 @@
 #' @export
 prepare_call <- function(
   oauth_client,
-  browser_token
+  browser_token,
+  request_uri_publisher = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -52,10 +57,15 @@ prepare_call <- function(
     is.character(request_mode) &&
     length(request_mode) == 1L &&
     !is.na(request_mode) &&
-    identical(request_mode, "request")
-  par_used <- is_valid_string(
-    oauth_client@provider@par_url %||% NA_character_
-  )
+    request_mode %in% c("request", "request_uri")
+  request_uri_used <-
+    is.character(request_mode) &&
+    length(request_mode) == 1L &&
+    !is.na(request_mode) &&
+    identical(request_mode, "request_uri")
+  par_used <-
+    is_valid_string(oauth_client@provider@par_url %||% NA_character_) &&
+    !isTRUE(request_uri_used)
   with_trace_id(
     flow_trace_id,
     with_otel_span(
@@ -174,7 +184,9 @@ prepare_call <- function(
               scopes = effective_scopes,
               pkce_code_challenge = pkce_code_challenge,
               pkce_method = pkce_method,
-              nonce = nonce
+              nonce = nonce,
+              request_uri_publisher = request_uri_publisher,
+              request_handle_id = state_cache_key(state)
             )
           },
           error = function(e) {
@@ -200,6 +212,7 @@ prepare_call <- function(
                 pkce_method = pkce_method %||% NA_character_,
                 par_used = isTRUE(par_used),
                 request_object_used = isTRUE(request_object_used),
+                request_uri_used = isTRUE(request_uri_used),
                 nonce_present = isTRUE(oauth_client@provider@use_nonce),
                 scopes_count = length(effective_scopes),
                 redirect_uri = oauth_client@redirect_uri %||% NA_character_
@@ -231,6 +244,7 @@ prepare_call <- function(
             oauth_client@provider
           ),
           oauth.request_object_used = isTRUE(request_object_used),
+          oauth.request_uri_used = isTRUE(request_uri_used),
           oauth.extra_auth_params_count = otel_count_items(
             oauth_client@provider@extra_auth_params
           )
@@ -654,8 +668,9 @@ attach_par_auth_url_metadata <- function(
 
 #' Build the browser authorization URL
 #'
-#' Chooses between plain query parameters, signed request objects, and PAR, then
-#' returns the final browser redirect URL for the login step. Used by
+#' Chooses between plain query parameters, by-value Request Objects,
+#' caller-managed `request_uri` values, and PAR, then returns the final browser
+#' redirect URL for the login step. Used by
 #' [prepare_call()] and module login helpers before the browser is redirected.
 #'
 #' @param oauth_client [OAuthClient] configuration.
@@ -664,6 +679,10 @@ attach_par_auth_url_metadata <- function(
 #' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
 #' @param pkce_method PKCE method when PKCE is enabled.
 #' @param nonce OIDC nonce when required.
+#' @param request_uri_publisher Optional function used to publish Request
+#'   Objects when `authorization_request_mode = "request_uri"`.
+#' @param request_handle_id Optional stable handle identifier for
+#'   `request_uri_publisher` implementations.
 #' @return A length-1 authorization URL string. When PAR is used, the string
 #'   also carries `shinyOAuth.par_request_uri`,
 #'   `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at`
@@ -676,15 +695,35 @@ build_auth_url <- function(
   scopes,
   pkce_code_challenge,
   pkce_method,
-  nonce
+  nonce,
+  request_uri_publisher = NULL,
+  request_handle_id = NULL
 ) {
   request_mode <- oauth_client@authorization_request_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
     length(request_mode) == 1L &&
     !is.na(request_mode) &&
-    identical(request_mode, "request")
-  par_used <- is_valid_string(oauth_client@provider@par_url %||% NA_character_)
+    request_mode %in% c("request", "request_uri")
+  request_uri_used <-
+    is.character(request_mode) &&
+    length(request_mode) == 1L &&
+    !is.na(request_mode) &&
+    identical(request_mode, "request_uri")
+  if (
+    isTRUE(request_uri_used) &&
+      isTRUE(oauth_client@provider@require_pushed_authorization_requests)
+  ) {
+    err_config(
+      paste(
+        "build_auth_url: authorization_request_mode = 'request_uri' cannot",
+        "be used when the provider requires PAR"
+      )
+    )
+  }
+  par_used <-
+    is_valid_string(oauth_client@provider@par_url %||% NA_character_) &&
+    !isTRUE(request_uri_used)
 
   params <- build_authorization_params(
     oauth_client = oauth_client,
@@ -700,6 +739,66 @@ build_auth_url <- function(
       oauth_client,
       params
     )
+
+    if (isTRUE(request_uri_used)) {
+      if (!is.function(request_uri_publisher)) {
+        err_config(
+          paste(
+            "build_auth_url: authorization_request_mode = 'request_uri'",
+            "requires a request_uri_publisher"
+          )
+        )
+      }
+
+      request_expires_at <- Sys.time() +
+        (oauth_client@authorization_request_ttl %||% 120)
+      request_uri <- tryCatch(
+        {
+          request_uri_publisher(
+            request_object = request_object,
+            request_handle_id = request_handle_id,
+            expires_at = request_expires_at,
+            oauth_client = oauth_client
+          )
+        },
+        error = function(e) {
+          err_config(c(
+            "x" = "Failed to publish request_uri authorization request",
+            "i" = conditionMessage(e)
+          ))
+        }
+      )
+
+      if (!is_valid_string(request_uri)) {
+        err_config(
+          "build_auth_url: request_uri_publisher must return a non-empty absolute URL"
+        )
+      }
+
+      parsed_request_uri <- try(httr2::url_parse(request_uri), silent = TRUE)
+      if (
+        inherits(parsed_request_uri, "try-error") ||
+          !nzchar(parsed_request_uri$scheme %||% "") ||
+          !nzchar(parsed_request_uri$hostname %||% "")
+      ) {
+        err_config(
+          "build_auth_url: request_uri_publisher must return a non-empty absolute URL"
+        )
+      }
+
+      validate_endpoint(
+        request_uri,
+        getOption("shinyOAuth.allowed_hosts", default = NULL)
+      )
+
+      return(url_append_query_params(
+        oauth_client@provider@auth_url,
+        list(
+          client_id = oauth_client@client_id,
+          request_uri = request_uri
+        )
+      ))
+    }
 
     if (isTRUE(par_used)) {
       par_resp <- push_authorization_request(

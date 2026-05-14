@@ -245,14 +245,18 @@ resolve_authorization_request_signing_alg <- function(client) {
     }
     if (!is_valid_string(client@client_secret)) {
       err_config(
-        "authorization_request_mode = 'request' requires client_private_key or client_secret"
+        paste(
+          "authorization_request_mode = 'request' or 'request_uri' requires",
+          "client_private_key or client_secret"
+        )
       )
     }
     if (nchar(client@client_secret, type = "bytes") < 32) {
       err_config(
         paste(
-          "authorization_request_mode = 'request' requires client_secret >= 32 bytes",
-          "when no client_private_key is configured"
+          "authorization_request_mode = 'request' or 'request_uri' requires",
+          "client_secret >= 32 bytes when no client_private_key is",
+          "configured"
         )
       )
     }

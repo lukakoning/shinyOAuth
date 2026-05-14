@@ -26,7 +26,7 @@ oauth_client(
   tls_client_key_password = NULL,
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
-  authorization_request_mode = c("parameters", "request"),
+  authorization_request_mode = c("parameters", "request", "request_uri"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -247,6 +247,8 @@ transported to the provider.
 redirect URL.
 \item \code{"request"}: send a signed JWT-secured authorization request (JAR;
 RFC 9101) via the \code{request} parameter.
+\item \code{"request_uri"}: publish a signed Request Object by reference and send
+its URL via the \code{request_uri} parameter.
 }
 
 Most users can keep the default. Request mode is an advanced option that
@@ -256,7 +258,8 @@ with \code{client_secret}. When Request Object encryption is configured,
 shinyOAuth signs first and then wraps the signed Request Object in a JWE.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
-signed authorization requests when \code{authorization_request_mode = "request"}.
+signed authorization requests when \code{authorization_request_mode} uses a
+Request Object (\code{"request"} or \code{"request_uri"}).
 When omitted, shinyOAuth chooses \code{HS256} for HMAC-based signing or a
 compatible asymmetric default based on \code{client_private_key} (for example
 \code{RS256}, \code{ES256}, \code{ES384}, or \code{ES512}). \code{RS384}, \code{RS512}, \code{PS256},

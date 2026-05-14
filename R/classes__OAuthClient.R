@@ -101,6 +101,8 @@
 #'     redirect URL.
 #'   - `"request"`: send a signed JWT-secured authorization request (JAR;
 #'     RFC 9101) via the `request` parameter.
+#'   - `"request_uri"`: publish a signed Request Object by reference and send
+#'     its URL via the `request_uri` parameter.
 #'
 #'   Most users can keep the default. Request mode is an advanced option that
 #'   requires signing material on the client. shinyOAuth prefers
@@ -109,7 +111,8 @@
 #'   shinyOAuth signs first and then wraps the signed Request Object in a JWE.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
-#'   signed authorization requests when `authorization_request_mode = "request"`.
+#'   signed authorization requests when `authorization_request_mode` uses a
+#'   Request Object (`"request"` or `"request_uri"`).
 #'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
 #'   compatible asymmetric default based on `client_private_key` (for example
 #'   `RS256`, `ES256`, `ES384`, or `ES512`). `RS384`, `RS512`, `PS256`,
@@ -570,7 +573,7 @@ oauth_client <- function(
   tls_client_key_password = NULL,
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
-  authorization_request_mode = c("parameters", "request"),
+  authorization_request_mode = c("parameters", "request", "request_uri"),
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -1098,9 +1101,14 @@ oauth_client_validate <- function(self) {
       "OAuthClient: authorization_request_mode must be a scalar character string"
     )
   }
-  if (!(arm %in% c("parameters", "request"))) {
+  request_object_modes <- c("request", "request_uri")
+
+  if (!(arm %in% c("parameters", request_object_modes))) {
     return(
-      "OAuthClient: authorization_request_mode must be one of 'parameters' or 'request'"
+      paste(
+        "OAuthClient: authorization_request_mode must be one of 'parameters',",
+        "'request', or 'request_uri'"
+      )
     )
   }
   if (
@@ -1119,13 +1127,25 @@ oauth_client_validate <- function(self) {
     )
   }
   if (
-    !identical(arm, "request") &&
+    identical(arm, "request_uri") &&
+      identical(self@provider@request_uri_parameter_supported, FALSE)
+  ) {
+    return(
+      paste(
+        "OAuthClient: provider discovery metadata says request_uri parameter",
+        "transport is not supported; authorization_request_mode =",
+        "'request_uri' cannot be used"
+      )
+    )
+  }
+  if (
+    !(arm %in% request_object_modes) &&
       isTRUE(self@provider@require_signed_request_object)
   ) {
     return(
       paste(
         "OAuthClient: provider requires signed request objects;",
-        "set authorization_request_mode = 'request'"
+        "set authorization_request_mode = 'request' or 'request_uri'"
       )
     )
   }
@@ -1245,7 +1265,7 @@ oauth_client_validate <- function(self) {
     )
   }
 
-  if (identical(arm, "request")) {
+  if (arm %in% request_object_modes) {
     allowed_hmac <- c("HS256", "HS384", "HS512")
     allowed_asym <- c(
       "RS256",
@@ -1289,7 +1309,10 @@ oauth_client_validate <- function(self) {
       }
       if (!isTRUE(has_private_key) && !isTRUE(has_secret)) {
         return(
-          "OAuthClient: authorization_request_mode = 'request' requires client_private_key or client_secret"
+          paste(
+            "OAuthClient: authorization_request_mode = 'request' or",
+            "'request_uri' requires client_private_key or client_secret"
+          )
         )
       }
       if (
@@ -1298,7 +1321,11 @@ oauth_client_validate <- function(self) {
             min_hmac_key_bytes("HS256")
       ) {
         return(
-          "OAuthClient: authorization_request_mode = 'request' requires client_secret >= 32 bytes when no client_private_key is configured"
+          paste(
+            "OAuthClient: authorization_request_mode = 'request' or",
+            "'request_uri' requires client_secret >= 32 bytes when no",
+            "client_private_key is configured"
+          )
         )
       }
     } else if (alg %in% allowed_hmac) {
@@ -1392,11 +1419,11 @@ oauth_client_validate <- function(self) {
   encryption_enc <- canonicalize_jwe_enc(arec)
   encryption_enabled <- nzchar(encryption_alg) || nzchar(encryption_enc)
 
-  if (isTRUE(encryption_enabled) && !identical(arm, "request")) {
+  if (isTRUE(encryption_enabled) && !(arm %in% request_object_modes)) {
     return(
       paste(
         "OAuthClient: Request Object encryption requires",
-        "authorization_request_mode = 'request'"
+        "authorization_request_mode = 'request' or 'request_uri'"
       )
     )
   }
