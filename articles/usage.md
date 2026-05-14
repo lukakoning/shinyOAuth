@@ -22,7 +22,8 @@ For a detailed explanation of audit logging key events during the flow,
 see:
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md).
 
-For a dedicated description of shinyOAuth’s OpenTelemetry support, see:
+For a dedicated description of OpenTelemetry support in ‘shinyOAuth’,
+see:
 [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md).
 
 ## Minimal Shiny module example
@@ -258,8 +259,9 @@ provider or retry delay can temporarily block the Shiny worker handling
 the session.
 
 To avoid blocking, enable async mode and configure an async backend.
-shinyOAuth supports both `mirai` and `future` and auto-detects whichever
-one you have configured. If both are set up, `mirai` takes precedence.
+‘shinyOAuth’ supports both `mirai` and `future` and auto-detects
+whichever one you have configured. If both are set up, `mirai` takes
+precedence.
 
 For the `future` backend, use a non-sequential plan such as
 [`future::multisession()`](https://future.futureverse.org/reference/multisession.html)
@@ -341,14 +343,14 @@ you want to tune logging, networking, or a specific advanced behavior.
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
   redaction of sensitive data in audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_digest_key = ...)` – shared key for
-  HMAC-SHA256 digests used in audit/OTel attributes. By default
-  shinyOAuth generates a random per-process key when this is not
+  HMAC-SHA256 digests used in audit/OTel attributes. By default,
+  ‘shinyOAuth’ generates a random per-process key when this is not
   configured
 - `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable
-  shinyOAuth OpenTelemetry span creation and async trace-context
+  ‘shinyOAuth’ OpenTelemetry span creation and async trace-context
   propagation. Default: `TRUE`
 - `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable
-  shinyOAuth OpenTelemetry log emission. Default: `TRUE`
+  ‘shinyOAuth’ OpenTelemetry log emission. Default: `TRUE`
 
 See
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
@@ -392,7 +394,7 @@ truly intend to accept any host; prefer pinning to your domain(s), e.g.,
 
 ### Extra parameter overrides
 
-Most users can ignore this section. By default, shinyOAuth blocks
+Most users can ignore this section. By default, ‘shinyOAuth’ blocks
 certain security-critical parameters from being passed via
 `extra_auth_params`, `extra_token_params`, and `extra_token_headers`.
 This helps prevent accidental misconfiguration that could break state
@@ -407,10 +409,10 @@ options:
   blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
   `request_uri`, `request`, `scope`, `code_challenge`,
   `code_challenge_method`, `nonce`, `claims`
-- `request` and `request_uri` stay blocked by default because shinyOAuth
-  manages them internally for PAR and Request Object flows; leave them
-  reserved unless you are intentionally taking responsibility for a
-  fully custom advanced flow.
+- `request` and `request_uri` stay blocked by default because
+  ‘shinyOAuth’ manages them internally for PAR and Request Object flows;
+  leave them reserved unless you are intentionally taking responsibility
+  for a fully custom advanced flow.
 - `options(shinyOAuth.unblock_token_params = c(...))` – allows
   overriding the specified token exchange parameters. Default blocked:
   `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
@@ -479,7 +481,8 @@ options:
   non-atomic `$get()` + `$remove()` fallback for shared state stores
   (e.g.,
   [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html))
-  that do not implement `$take()`. By default, shinyOAuth errors when a
+  that do not implement `$take()`. By default, ‘shinyOAuth’ errors when
+  a
   non-[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
   store lacks `$take()`, because the non-atomic fallback cannot
   guarantee single-use state consumption under concurrent access (TOCTOU
@@ -534,7 +537,7 @@ prevent memory/log amplification from extremely large callback URLs.
   verification in tests or interactive sessions
 - `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept
   unsigned (`alg=none`) UserInfo JWTs in tests or interactive sessions;
-  outside those contexts shinyOAuth errors instead of honoring it
+  outside those contexts ‘shinyOAuth’ errors instead of honoring it
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
   exchange
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized

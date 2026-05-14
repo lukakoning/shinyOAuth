@@ -3,11 +3,11 @@
 shinyOAuth needs: $get(key, missing), $set(key, value), $remove(key),
 and optional $info().
 Use this helper when you want to plug a custom state store or JWKS cache
-into 'shinyOAuth', when cachem::cache_mem() is not suitable (e.g.,
+into shinyOAuth, when cachem::cache_mem() is not suitable (e.g.,
 multi-process deployments with non-sticky workers).
 In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).
-The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:
+The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
 OAuthClient@state_store (requires $get, $set, $remove; optional $info)
 OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
@@ -23,11 +23,11 @@ oauth_module_server() to that value."><meta property="og:description" content="B
 shinyOAuth needs: $get(key, missing), $set(key, value), $remove(key),
 and optional $info().
 Use this helper when you want to plug a custom state store or JWKS cache
-into 'shinyOAuth', when cachem::cache_mem() is not suitable (e.g.,
+into shinyOAuth, when cachem::cache_mem() is not suitable (e.g.,
 multi-process deployments with non-sticky workers).
 In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).
-The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:
+The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
 OAuthClient@state_store (requires $get, $set, $remove; optional $info)
 OAuthProvider@jwks_cache (requires $get, $set; optional $remove, $info)
 
@@ -86,11 +86,11 @@ oauth_module_server() to that value."></head><body>
 shinyOAuth needs: <code>$get(key, missing)</code>, <code>$set(key, value)</code>, <code>$remove(key)</code>,
 and optional <code>$info()</code>.</p>
 <p>Use this helper when you want to plug a custom state store or JWKS cache
-into 'shinyOAuth', when <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> is not suitable (e.g.,
+into shinyOAuth, when <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> is not suitable (e.g.,
 multi-process deployments with non-sticky workers).
 In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).</p>
-<p>The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:</p><ul><li><p>OAuthClient@state_store (requires <code>$get</code>, <code>$set</code>, <code>$remove</code>; optional <code>$info</code>)</p></li>
+<p>The resulting object can be used in both places where shinyOAuth accepts a cache-like object:</p><ul><li><p>OAuthClient@state_store (requires <code>$get</code>, <code>$set</code>, <code>$remove</code>; optional <code>$info</code>)</p></li>
 <li><p>OAuthProvider@jwks_cache (requires <code>$get</code>, <code>$set</code>; optional <code>$remove</code>, <code>$info</code>)</p></li>
 </ul><p>For <code>OAuthClient@state_store</code>, stored values are small lists. <code>browser_token</code>
 must always round-trip as a non-empty string. <code>pkce_code_verifier</code> and
@@ -127,7 +127,7 @@ Should store the value under the given key.</p></dd>
 <dd><p>A function(key) -&gt; any. Required.</p>
 <p>Deletes the entry for <code>key</code>. When <code>$take()</code> is provided, <code>$remove()</code> serves
 only as a best-effort cleanup and its return value is ignored. When
-<code>$take()</code> is not provided, 'shinyOAuth' falls back to
+<code>$take()</code> is not provided, shinyOAuth falls back to
 <code>$get()</code> + <code>$remove()</code> followed by a post-removal absence check via
 <code>$get(key, missing = NA)</code>. In this fallback path the return value of
 <code>$remove()</code> is not relied upon; the post-check is authoritative.</p></dd>
@@ -135,7 +135,7 @@ only as a best-effort cleanup and its return value is ignored. When
 
 <dt id="arg-take">take<a class="anchor" aria-label="anchor" href="#arg-take"></a></dt>
 <dd><p>A function(key, missing = NULL) -&gt; value. Optional.</p>
-<p>An atomic get-and-delete operation. When provided, 'shinyOAuth' uses
+<p>An atomic get-and-delete operation. When provided, shinyOAuth uses
 <code>$take()</code> instead of separate <code>$get()</code> + <code>$remove()</code> calls to enforce
 single-use state consumption. This prevents TOCTOU (time-of-check /
 time-of-use) replay attacks in multi-worker deployments with shared state
@@ -146,7 +146,7 @@ return the <code>missing</code> argument (default <code>NULL</code>) if the key 
 (e.g., Redis <code>GETDEL</code>, SQL <code>DELETE ... RETURNING</code>), wire it through this
 parameter for replay-safe state stores.</p>
 <p>When <code>take</code> is not provided and the state store is not a per-process cache
-(like <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>), 'shinyOAuth' will <strong>error</strong> at state
+(like <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>), shinyOAuth will <strong>error</strong> at state
 consumption time because non-atomic <code>$get()</code> + <code>$remove()</code> cannot
 guarantee single-use under concurrent access in shared stores.</p></dd>
 

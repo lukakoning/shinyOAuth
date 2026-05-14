@@ -3,7 +3,7 @@
 ## Overview
 
 This vignette demonstrates the code for an example Shiny application
-that uses the `shinyOAuth` package to authenticate users via Spotify’s
+that uses the ‘shinyOAuth’ package to authenticate users via Spotify’s
 OAuth 2.0 service.
 
 After logging in, the app fetches and displays data about the user and
@@ -19,9 +19,9 @@ features, see:
 ## Code
 
 ``` r
-# Example Shiny app using shinyOAuth to connect to Spotify API
+# Example Shiny app using 'shinyOAuth' to connect to Spotify API
 #
-# This app demonstrates logging into Spotify with shinyOAuth and fetching
+# This app demonstrates logging into Spotify with 'shinyOAuth' and fetching
 # various user statistics via the Spotify Web API. We then build a simple
 # dashboard to display this information
 #

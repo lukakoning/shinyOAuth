@@ -74,11 +74,10 @@
 </h2>
 <p>‘shinyOAuth’ can emit OpenTelemetry (OTel) logs and traces for key
 login steps. If you already collect OTel data in your apps, this lets
-shinyOAuth fit into the same observability setup.</p>
+‘shinyOAuth’ fit into the same observability setup.</p>
 <p>The <code>otel</code> package is installed automatically with
-<code>shinyOAuth</code>. Install <code>otelsdk</code> as well if you
-want to use the SDK helpers and exporters shown in the examples
-below.</p>
+‘shinyOAuth’. Install <code>otelsdk</code> as well if you want to use
+the SDK helpers and exporters shown in the examples below.</p>
 <p>OpenTelemetry is an open standard for telemetry data (logs, traces,
 metrics) that many backends can collect. If you do not use it, you can
 skip this vignette and rely on the package’s native R hooks for auditing
@@ -104,14 +103,14 @@ their content, and how to enable/disable them.</p>
 <h2 id="logs">Logs<a class="anchor" aria-label="anchor" href="#logs"></a>
 </h2>
 <p>OTel log records are generated from the same structured events that
-shinyOAuth emits to its native R hook
+‘shinyOAuth’ emits to its native R hook
 (<code>shinyOAuth.audit_hook</code>). The log content and event types
 mirror what is described in
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>, so refer
 there for full details about the various events and their content.</p>
 <p>The package’s own audit correlation id is exported as the scalar
 attribute <code>shinyoauth.trace_id</code>. This is different from
-OpenTelemetry’s trace/span ids. When a shinyOAuth operation-level
+OpenTelemetry’s trace/span ids. When a package operation-level
 correlation id is available, spans also carry the same
 <code>shinyoauth.trace_id</code> attribute so you can connect the pieces
 of one login flow more easily.</p>
@@ -127,7 +126,7 @@ the OAuth flows. All spans share these behaviors:</p>
 <li>Successful operations are marked with status <code>ok</code>; errors
 are marked <code>error</code> and include an <code>exception</code>
 event with the error class and message</li>
-<li>Top-level shinyOAuth operation spans are often started as roots so
+<li>Top-level ‘shinyOAuth’ operation spans are often started as roots so
 they stay visible instead of being buried under Shiny’s internal
 <code>reactive_update</code> spans</li>
 <li>Sensitive values (tokens, codes, state payloads, browser tokens) are
@@ -178,7 +177,7 @@ Shiny session</li>
 <h4 id="span-shinyoauth-login-request">Span: <code>shinyOAuth.login.request</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-login-request"></a>
 </h4>
 <ul>
-<li>When: when shinyOAuth prepares the authorization redirect in
+<li>When: when ‘shinyOAuth’ prepares the authorization redirect in
 <code><a href="../reference/prepare_call.html">prepare_call()</a></code>
 </li>
 <li>Represents: generation of state, PKCE material, nonce, state-store
@@ -479,7 +478,7 @@ available</li>
 <h4 id="span-shinyoauth-token-verify">Span: <code>shinyOAuth.token.verify</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-token-verify"></a>
 </h4>
 <ul>
-<li>When: after a token response is available and shinyOAuth verifies
+<li>When: after a token response is available and ‘shinyOAuth’ verifies
 the token set</li>
 <li>Represents:
 <ul>
@@ -708,7 +707,7 @@ token/session clear, browser-token reset, and logout audit emission</li>
 </h4>
 <ul>
 <li>When: when a Shiny session ends with
-<code>revoke_on_session_end = TRUE</code> and shinyOAuth starts
+<code>revoke_on_session_end = TRUE</code> and ‘shinyOAuth’ starts
 best-effort token revocation</li>
 <li>Represents: the session-end revocation orchestration span around the
 paired <code><a href="../reference/revoke_token.html">revoke_token()</a></code> calls</li>

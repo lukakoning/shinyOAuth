@@ -89,9 +89,9 @@ each event</li>
 </h2>
 <p>You can use
 <code>options(shinyOAuth.audit_hook = function(event) { ... })</code> to
-register a hook function that will be called whenever shinyOAuth emits a
-structured audit or error event. Keep this function fast, non-blocking,
-and safe: it should not throw errors.</p>
+register a hook function that will be called whenever ‘shinyOAuth’ emits
+a structured audit or error event. Keep this function fast,
+non-blocking, and safe: it should not throw errors.</p>
 <p>Example of printing audit events to console:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
@@ -121,13 +121,13 @@ records from the same operation or auth flow</li>
 <li>Additional key/value fields depending on the event (see event
 catalog)</li>
 </ul>
-<p>For the interactive login flow, shinyOAuth propagates the same
+<p>For the interactive login flow, ‘shinyOAuth’ propagates the same
 <code>trace_id</code> from redirect preparation through callback
 validation, token exchange, and login success or failure handling. The
 trace id is stored inside the sealed state so it survives the browser
 round-trip without exposing raw OAuth values.</p>
-<p>This <code>trace_id</code> is shinyOAuth’s own application-level
-correlation id. When OTel logging is enabled it is exported as the
+<p>This <code>trace_id</code> is the application-level correlation id
+used by ‘shinyOAuth’. When OTel logging is enabled it is exported as the
 <code>shinyoauth.trace_id</code> log attribute. It is separate from any
 trace/span ids created by your OpenTelemetry backend.</p>
 <p>When events are emitted from within a Shiny session, a JSON-friendly
@@ -146,7 +146,7 @@ from an async worker. This helps distinguish background work such as
 async token exchange or refresh from the main reactive flow.</li>
 <li>If you pre-capture worker context with
 <code>capture_shiny_session_context(is_async = TRUE)</code> but emit the
-event before any worker work actually starts, shinyOAuth resets that
+event before any worker work actually starts, ‘shinyOAuth’ resets that
 borrowed context back to <code>FALSE</code> because the event still came
 from the main process.</li>
 <li>
@@ -245,13 +245,13 @@ can disable redaction:</p>
 </h3>
 <p>When <code>async = TRUE</code> is configured in
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, token exchange, refresh, and
-revocation run through shinyOAuth’s async dispatch layer. With mirai
-daemons and future multisession plans this means background worker
+revocation run through the async dispatch layer in ‘shinyOAuth’. With
+mirai daemons and future multisession plans this means background worker
 processes; with <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential</a></code> the code stays
 in-process but still uses the async promise path. The package
 automatically propagates your <code>shinyOAuth.audit_hook</code> option
-to these async executions, so audit events fire there as well. For
-shinyOAuth-managed async work, the package also replays the parent
+to these async executions, so audit events fire there as well. For async
+work managed by ‘shinyOAuth’, the package also replays the parent
 session’s relevant <code>OTEL_*</code> / <code>OTEL_R_*</code>
 environment variables inside the async execution context so exporter
 configuration stays aligned with the main R process. It also propagates
@@ -262,8 +262,8 @@ task.</p>
 <p>Note that your audit hook function (and any objects referenced in its
 closure) must be serializable. If your hook writes to a database
 connection, file handle, or other non-serializable resource, it will
-fail in the worker process and shinyOAuth will surface that failure as a
-warning (captured and replayed to the main process when using async
+fail in the worker process and ‘shinyOAuth’ will surface that failure as
+a warning (captured and replayed to the main process when using async
 workers). Use hooks that create connections on demand (e.g., open a
 database connection inside the hook body) rather than capturing an
 existing connection in the closure.</p>
@@ -288,7 +288,7 @@ per-process key. If you do not configure
 gets its own random key at runtime. That makes accidental cross-process
 matching harder if logs leak, but it also means digests are not stable
 across unrelated processes by default.</p>
-<p>For shinyOAuth-managed async work, the package propagates the
+<p>For async work managed by ‘shinyOAuth’, the package propagates the
 effective digest key into its workers so main-process and worker events
 from the same app instance remain comparable. If you need digests to
 stay comparable across multiple app processes or separate R sessions,
@@ -808,7 +808,7 @@ was not <code>application/jwt</code>. Additional fields:
 </li>
 <li>
 <code>"userinfo_jwt_encrypted"</code> – userinfo response was a JWE,
-which shinyOAuth does not decrypt</li>
+which ‘shinyOAuth’ does not decrypt</li>
 <li>
 <code>"userinfo_jwt_header_parse_failed"</code> – JWT header could
 not be parsed</li>

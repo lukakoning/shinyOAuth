@@ -4,9 +4,9 @@
 
 ‘shinyOAuth’ can emit OpenTelemetry (OTel) logs and traces for key login
 steps. If you already collect OTel data in your apps, this lets
-shinyOAuth fit into the same observability setup.
+‘shinyOAuth’ fit into the same observability setup.
 
-The `otel` package is installed automatically with `shinyOAuth`. Install
+The `otel` package is installed automatically with ‘shinyOAuth’. Install
 `otelsdk` as well if you want to use the SDK helpers and exporters shown
 in the examples below.
 
@@ -39,15 +39,15 @@ content, and how to enable/disable them.
 ## Logs
 
 OTel log records are generated from the same structured events that
-shinyOAuth emits to its native R hook (`shinyOAuth.audit_hook`). The log
-content and event types mirror what is described in
+‘shinyOAuth’ emits to its native R hook (`shinyOAuth.audit_hook`). The
+log content and event types mirror what is described in
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md),
 so refer there for full details about the various events and their
 content.
 
 The package’s own audit correlation id is exported as the scalar
 attribute `shinyoauth.trace_id`. This is different from OpenTelemetry’s
-trace/span ids. When a shinyOAuth operation-level correlation id is
+trace/span ids. When a package operation-level correlation id is
 available, spans also carry the same `shinyoauth.trace_id` attribute so
 you can connect the pieces of one login flow more easily.
 
@@ -62,7 +62,7 @@ OAuth flows. All spans share these behaviors:
 - Successful operations are marked with status `ok`; errors are marked
   `error` and include an `exception` event with the error class and
   message
-- Top-level shinyOAuth operation spans are often started as roots so
+- Top-level ‘shinyOAuth’ operation spans are often started as roots so
   they stay visible instead of being buried under Shiny’s internal
   `reactive_update` spans
 - Sensitive values (tokens, codes, state payloads, browser tokens) are
@@ -93,7 +93,7 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
 
 #### Span: `shinyOAuth.login.request`
 
-- When: when shinyOAuth prepares the authorization redirect in
+- When: when ‘shinyOAuth’ prepares the authorization redirect in
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
 
 - Represents: generation of state, PKCE material, nonce, state-store
@@ -261,8 +261,8 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
 
 #### Span: `shinyOAuth.token.verify`
 
-- When: after a token response is available and shinyOAuth verifies the
-  token set
+- When: after a token response is available and ‘shinyOAuth’ verifies
+  the token set
 - Represents:
   - scope reconciliation
   - token type allowlist validation
@@ -380,7 +380,7 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
 #### Span: `shinyOAuth.session.end.revoke`
 
 - When: when a Shiny session ends with `revoke_on_session_end = TRUE`
-  and shinyOAuth starts best-effort token revocation
+  and ‘shinyOAuth’ starts best-effort token revocation
 - Represents: the session-end revocation orchestration span around the
   paired
   [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
