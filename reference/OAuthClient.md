@@ -286,7 +286,9 @@ OAuthClient(
   `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are not
   currently supported for outbound DPoP proofs. If an explicit value is
   provided but incompatible with the key, validation fails early with a
-  configuration error.
+  configuration error. When the provider advertises
+  `dpop_signing_alg_values_supported`, both explicit values and inferred
+  defaults must be included in that set.
 
 - dpop_require_access_token:
 
@@ -546,9 +548,13 @@ OAuthClient(
     OAuth client id.
 
   - `"scope"`: validate introspected `scope` against requested scopes
-    (respects the client's `scope_validation` mode). Default is
-    `character(0)`. (Note that not all providers may return each of
-    these fields in introspection responses.)
+    (respects the client's `scope_validation` mode).
+
+  - `"token_type"`: require introspection to return `token_type`. This
+    is useful for sender-constrained deployments such as DPoP, where
+    introspection can authoritatively report `token_type = "DPoP"`.
+    Default is `character(0)`. (Note that not all providers may return
+    each of these fields in introspection responses.)
 
 ## Examples
 

@@ -35,6 +35,7 @@ OAuthProvider(
   request_uri_parameter_supported = NA,
   require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(0),
+  dpop_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
@@ -181,6 +182,13 @@ OAuthProvider(
   `private_key_jwt`) at the token endpoint. This metadata is used for
   early validation of `OAuthClient@client_assertion_alg` and inferred
   JWT client-assertion defaults.
+
+- dpop_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  DPoP proof JWTs (RFC 9449). This metadata is used for early validation
+  of `OAuthClient@dpop_signing_alg` and inferred outbound DPoP signing
+  defaults.
 
 - authorization_response_iss_parameter_supported:
 

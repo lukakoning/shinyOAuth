@@ -86,6 +86,7 @@ presence of an issuer and available endpoints.</p>
 <span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  require_request_uri_registration <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  issuer_match <span class="op">=</span> <span class="st">"url"</span>,</span>
@@ -232,6 +233,13 @@ authentication (<code>client_secret_jwt</code> / <code>private_key_jwt</code>) a
 endpoint. This metadata is used for early validation of
 <code>OAuthClient@client_assertion_alg</code> and inferred JWT client-assertion
 defaults.</p></dd>
+
+
+<dt id="arg-dpop-signing-alg-values-supported">dpop_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg-values-supported"></a></dt>
+<dd><p>Optional vector of JWS algorithms
+that the provider advertises for DPoP proof JWTs (RFC 9449). This
+metadata is used for early validation of <code>OAuthClient@dpop_signing_alg</code>
+and inferred outbound DPoP signing defaults.</p></dd>
 
 
 <dt id="arg-authorization-response-iss-parameter-supported">authorization_response_iss_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-authorization-response-iss-parameter-supported"></a></dt>

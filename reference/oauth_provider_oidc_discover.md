@@ -180,6 +180,11 @@ discovery might fail early.
   resulting provider stores that metadata so `OAuthClient` can fail fast
   when a JWT client assertion algorithm is unsupported.
 
+- DPoP metadata: when the discovery document advertises
+  `dpop_signing_alg_values_supported`, the resulting provider stores
+  that metadata so `OAuthClient` can fail fast when an explicit or
+  inferred DPoP proof signing algorithm is unsupported.
+
 - RFC 9207 callback issuer metadata: when the discovery document
   advertises `authorization_response_iss_parameter_supported = true`,
   the resulting provider stores that metadata so

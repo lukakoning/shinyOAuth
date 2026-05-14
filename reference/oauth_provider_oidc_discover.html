@@ -206,6 +206,10 @@ this helper applies the OpenID Connect defaults instead of storing <code>NA</cod
 <code>token_endpoint_auth_signing_alg_values_supported</code>, the resulting provider
 stores that metadata so <code>OAuthClient</code> can fail fast when a JWT client
 assertion algorithm is unsupported.</p></li>
+<li><p>DPoP metadata: when the discovery document advertises
+<code>dpop_signing_alg_values_supported</code>, the resulting provider stores that
+metadata so <code>OAuthClient</code> can fail fast when an explicit or inferred DPoP
+proof signing algorithm is unsupported.</p></li>
 <li><p>RFC 9207 callback issuer metadata: when the discovery document advertises
 <code>authorization_response_iss_parameter_supported = true</code>, the resulting
 provider stores that metadata so <code><a href="oauth_client.html">oauth_client()</a></code> can auto-enable callback

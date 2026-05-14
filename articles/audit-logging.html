@@ -206,11 +206,14 @@ to keep the event JSON-serializable and concise.</p>
 automatically sanitized before being attached to events. This prevents
 accidental secret leakage when forwarding events to log sinks:</p>
 <ul>
-<li>OAuth query parameters are redacted: <code>code</code>,
-<code>state</code>, <code>access_token</code>,
+<li>OAuth query parameters are redacted: callback credentials such as
+<code>code</code>, <code>state</code>, <code>access_token</code>,
 <code>refresh_token</code>, <code>id_token</code>, <code>token</code>,
 <code>session_state</code>, <code>code_verifier</code>, and
-<code>nonce</code> are replaced with <code>[REDACTED]</code>.</li>
+<code>nonce</code>, plus credential-bearing token-endpoint parameters
+such as <code>client_secret</code>, <code>client_assertion</code>,
+<code>assertion</code>, <code>username</code>, and
+<code>password</code>, are replaced with <code>[REDACTED]</code>.</li>
 <li>Sensitive headers are removed: <code>Cookie</code>,
 <code>Set-Cookie</code>, <code>Authorization</code>,
 <code>Proxy_Authorization</code>, <code>Proxy_Authenticate</code>, and
