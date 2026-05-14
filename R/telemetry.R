@@ -226,7 +226,76 @@ otel_http_host <- function(url) {
     return(NULL)
   }
 
-  host
+  tolower(host)
+}
+
+#' Extract an HTTP port for telemetry
+#'
+#' Used by HTTP attribute builders.
+#'
+#' @param url URL string to inspect.
+#' @return Integer port number, or `NULL` when the URL cannot be parsed.
+#' @keywords internal
+#' @noRd
+otel_http_port <- function(url) {
+  if (!is_valid_string(url)) {
+    return(NULL)
+  }
+
+  parsed <- tryCatch(httr2::url_parse(url), error = function(...) NULL)
+  if (is.null(parsed)) {
+    return(NULL)
+  }
+
+  port <- parsed$port %||% NULL
+  if (!is.null(port) && !is.na(port) && nzchar(as.character(port))) {
+    return(as.integer(port))
+  }
+
+  scheme <- tolower(as.character(parsed$scheme %||% ""))
+  if (identical(scheme, "https")) {
+    return(443L)
+  }
+  if (identical(scheme, "http")) {
+    return(80L)
+  }
+
+  NULL
+}
+
+#' Sanitize an HTTP URL for telemetry
+#'
+#' Used by HTTP attribute builders to preserve the request target without
+#' logging query strings, fragments, or userinfo.
+#'
+#' @param url URL string to inspect.
+#' @return Sanitized absolute URL string, or `NULL` when the URL cannot be
+#'   parsed.
+#' @keywords internal
+#' @noRd
+otel_http_url_full <- function(url) {
+  if (!is_valid_string(url)) {
+    return(NULL)
+  }
+
+  parsed <- tryCatch(httr2::url_parse(url), error = function(...) NULL)
+  if (is.null(parsed)) {
+    return(NULL)
+  }
+
+  parsed$query <- NULL
+  parsed$fragment <- NULL
+  parsed$username <- NULL
+  parsed$password <- NULL
+  parsed$scheme <- tolower(parsed$scheme %||% "")
+  parsed$hostname <- tolower(parsed$hostname %||% "")
+
+  sanitized <- tryCatch(httr2::url_build(parsed), error = function(...) NULL)
+  if (!is_valid_string(sanitized)) {
+    return(NULL)
+  }
+
+  sanitized
 }
 
 #' Count telemetry items
@@ -943,11 +1012,13 @@ otel_http_attributes <- function(
   compact_list(c(
     list(
       http.request.method = method,
+      url.full = otel_http_url_full(url),
       http.response.status_code = as.integer(status_code %||% NA_integer_),
       http.response.content_type = otel_http_content_type(
         content_type = content_type
       ),
-      server.address = otel_http_host(url)
+      server.address = otel_http_host(url),
+      server.port = otel_http_port(url)
     ),
     extra
   ))
@@ -1563,6 +1634,38 @@ otel_translate_event_key <- function(name) {
   )
 }
 
+#' Detect sensitive OTEL event field names
+#'
+#' Used to keep secrets and request artifacts out of OTEL log attributes.
+#'
+#' @param name Event field name.
+#' @return `TRUE` when the field name should be filtered; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+otel_is_sensitive_event_field <- function(name) {
+  if (!is_valid_string(name)) {
+    return(FALSE)
+  }
+
+  normalized_name <- tolower(gsub("[^A-Za-z0-9]+", "_", trimws(name)))
+
+  normalized_name %in% c(
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "code",
+    "state",
+    "browser_token"
+  ) ||
+    grepl("(^|_)client_secret$", normalized_name) ||
+    grepl("(^|_)client_assertion$", normalized_name) ||
+    grepl("(^|_)code_verifier$", normalized_name) ||
+    grepl("(^|_)nonce$", normalized_name) ||
+    grepl("(^|_)dpop_proof$", normalized_name) ||
+    grepl("(^|_)request_uri$", normalized_name) ||
+    grepl("(^|_)request$", normalized_name)
+}
+
 #' Build OTEL-safe event attributes
 #'
 #' Used by OTEL log emission helpers.
@@ -1577,21 +1680,12 @@ otel_event_attributes <- function(event) {
     return(NULL)
   }
 
-  sensitive_names <- c(
-    "access_token",
-    "refresh_token",
-    "id_token",
-    "code",
-    "state",
-    "browser_token"
-  )
-
   attrs <- list()
   for (nm in names(event)) {
     if (!is_valid_string(nm) || nm %in% c("timestamp", "shiny_session")) {
       next
     }
-    if (nm %in% sensitive_names) {
+    if (otel_is_sensitive_event_field(nm)) {
       next
     }
     if (is.list(event[[nm]])) {

@@ -225,6 +225,14 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
     code = "secret_code",
     state = "secret_state",
     browser_token = "secret_bt",
+    client_secret = "secret_client_secret",
+    Client_Secret = "secret_client_secret_upper",
+    client_assertion = "secret_assertion",
+    pkce_code_verifier = "secret_verifier",
+    nonce = "secret_nonce",
+    dpop_proof = "secret_proof",
+    request = "secret_request",
+    request_uri = "https://client.example.com/request.jwt",
     status = "ok"
   )
 
@@ -236,7 +244,15 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
     "id_token",
     "code",
     "state",
-    "browser_token"
+    "browser_token",
+    "client_secret",
+    "Client_Secret",
+    "client_assertion",
+    "pkce_code_verifier",
+    "nonce",
+    "dpop_proof",
+    "request",
+    "request_uri"
   )) {
     testthat::expect_false(
       key %in% names(attrs),
@@ -327,15 +343,17 @@ testthat::test_that("otel_event_attributes returns NULL for empty/null input", {
 testthat::test_that("otel_http_attributes extracts host from URL", {
   attrs <- shinyOAuth:::otel_http_attributes(
     method = "POST",
-    url = "https://example.com/token"
+    url = "https://example.com/token?secret=1#frag"
   )
   testthat::expect_identical(attrs$http.request.method, "POST")
+  testthat::expect_identical(attrs$url.full, "https://example.com/token")
   testthat::expect_identical(attrs$server.address, "example.com")
+  testthat::expect_identical(attrs$server.port, 443L)
 })
 
 testthat::test_that("otel_http_attributes extracts from httr2 response", {
   resp <- httr2::response(
-    url = "https://provider.example.com/token",
+    url = "https://provider.example.com:8443/token?code=secret#frag",
     status = 200,
     headers = list("content-type" = "application/json"),
     body = charToRaw("{}")
@@ -347,7 +365,12 @@ testthat::test_that("otel_http_attributes extracts from httr2 response", {
     attrs$http.response.content_type,
     "application/json"
   )
+  testthat::expect_identical(
+    attrs$url.full,
+    "https://provider.example.com:8443/token"
+  )
   testthat::expect_identical(attrs$server.address, "provider.example.com")
+  testthat::expect_identical(attrs$server.port, 8443L)
 })
 
 testthat::test_that("otel_http_content_type normalizes media type", {
