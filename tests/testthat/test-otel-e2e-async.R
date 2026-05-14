@@ -921,11 +921,20 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
   app <- webfakes::new_app()
   app$post("/par", function(req, res) {
+    par_body <- rawToChar(if (is.null(req$.body)) raw() else req$.body)
+    par_state <- sub("(^|.*&)state=([^&]*).*$", "\\2", par_body)
+    if (identical(par_state, par_body)) {
+      par_state <- NA_character_
+    }
     res$set_status(201L)
     res$set_type("application/json")
     res$send_json(
       list(
-        request_uri = "urn:ietf:params:oauth:request_uri:async-daemon-par",
+        request_uri = paste(
+          "urn:ietf:params:oauth:request_uri:async-daemon-par",
+          par_state,
+          sep = ":"
+        ),
         expires_in = 90
       ),
       auto_unbox = TRUE
@@ -972,7 +981,12 @@ otel_async_daemon("async module callback/login success exports correct main and 
     expr = {
       testthat::expect_true(values$has_browser_token())
       auth_url <- values$build_auth_url()
-      enc <- parse_query_param(auth_url, "state")
+      request_uri <- parse_query_param(auth_url, "request_uri", decode = TRUE)
+      enc <- sub(
+        "^urn:ietf:params:oauth:request_uri:async-daemon-par:",
+        "",
+        request_uri
+      )
       testthat::expect_true(is.character(enc) && nzchar(enc))
 
       values$.process_query(paste0("?code=ok&state=", enc))

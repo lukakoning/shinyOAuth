@@ -110,12 +110,7 @@ emit_trace_event <- function(event) {
         warn_pkg(
           paste0("Configured shinyOAuth ", hook_name, " failed"),
           c(
-            "!" = paste0(
-              "The configured ",
-              hook_name,
-              " raised an error: ",
-              conditionMessage(e)
-            )
+            "!" = paste0(hook_name, " error: ", conditionMessage(e))
           )
         )
       }

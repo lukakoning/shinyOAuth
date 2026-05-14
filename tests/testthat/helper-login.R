@@ -26,6 +26,10 @@ parse_query_param <- function(url, name, decode = FALSE) {
     )
     names(vals) <- vapply(kv, function(p) p[1], "")
   }
+  if (!name %in% names(vals)) {
+    return(NA_character_)
+  }
+
   vals[[name]] %||% NA_character_
 }
 
