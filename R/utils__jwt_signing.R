@@ -180,9 +180,13 @@ build_client_assertion <- function(client, aud) {
 #' Uses an explicit client override when present. For PAR requests, this then
 #' prefers the provider issuer when known, matching RFC 9126 guidance for
 #' resolving the audience ambiguity at the pushed authorization request
-#' endpoint. Otherwise it uses the exact URL on the httr2 request (so any URL
-#' normalization/modification stays consistent with the audience claim). Falls
-#' back to the provider token_url for non-httr2 request doubles used in tests.
+#' endpoint, even when the request itself is sent to an RFC 8705 mTLS alias.
+#' Without an issuer, PAR requests fall back to the provider's canonical
+#' `par_url` so the audience stays stable across conventional and mTLS alias
+#' endpoints. Non-PAR requests use the exact URL on the httr2 request (so any
+#' URL normalization/modification stays consistent with the audience claim).
+#' Falls back to the provider token_url for non-httr2 request doubles used in
+#' tests.
 #' Used by `build_client_assertion()`.
 #'
 #' @param client OAuth client carrying the assertion configuration.
@@ -208,6 +212,29 @@ resolve_client_assertion_audience <- function(client, req) {
     url_chr <- as.character(url0[[1]])
     if (!is.na(url_chr) && nzchar(url_chr)) {
       provider_issuer <- client@provider@issuer %||% NA_character_
+      par_urls <- c(
+        client@provider@par_url %||% NA_character_,
+        client@provider@mtls_endpoint_aliases[["par_endpoint"]] %||%
+          NA_character_,
+        client@provider@mtls_endpoint_aliases[[
+          "pushed_authorization_request_endpoint"
+        ]] %||%
+          NA_character_
+      )
+      par_urls <- unique(par_urls[vapply(
+        par_urls,
+        is_valid_string,
+        logical(1)
+      )])
+
+      if (url_chr %in% par_urls) {
+        if (is_valid_string(provider_issuer)) {
+          return(provider_issuer)
+        }
+
+        return(client@provider@par_url)
+      }
+
       if (
         identical(url_chr, client@provider@par_url %||% NA_character_) &&
           is_valid_string(provider_issuer)

@@ -441,6 +441,72 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
   expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
 })
 
+test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", {
+  files <- make_mtls_test_files()
+  on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
+
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    par_url = "https://example.com/par",
+    issuer = "https://issuer.example.com",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "client_secret_jwt",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      par_endpoint = "https://example.com/mtls/par"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = paste(rep("s", 32), collapse = ""),
+    mtls_request_certificate_bound_access_tokens = TRUE
+  )
+
+  captured_req <- NULL
+  captured_form <- NULL
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured_form <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      captured_req <<- req
+      httr2::response(
+        url = req$url,
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  result <- shinyOAuth:::push_authorization_request(
+    client,
+    params = list(response_type = "code", client_id = client@client_id)
+  )
+
+  expect_identical(captured_req$url, "https://example.com/mtls/par")
+  expect_identical(
+    shinyOAuth:::parse_jwt_payload(captured_form$client_assertion)$aud,
+    provider@issuer
+  )
+  expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
+})
+
 test_that("explicit certificate-bound requests honor the standard PAR alias name", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
