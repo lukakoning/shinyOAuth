@@ -190,6 +190,11 @@ test_that("redact_query_string handles all sensitive param types", {
     "session_state=sess1",
     "code_verifier=cv1",
     "nonce=n1",
+    "client_secret=sec1",
+    "client_assertion=jwt1",
+    "assertion=jwt2",
+    "username=user1",
+    "password=pass1",
     "safe_param=keep_me",
     sep = "&"
   )
@@ -203,6 +208,11 @@ test_that("redact_query_string handles all sensitive param types", {
   expect_no_match(result, "sess1")
   expect_no_match(result, "cv1")
   expect_no_match(result, "n1")
+  expect_no_match(result, "sec1")
+  expect_no_match(result, "jwt1")
+  expect_no_match(result, "jwt2")
+  expect_no_match(result, "user1")
+  expect_no_match(result, "pass1")
   # Safe param should remain
   expect_match(result, "keep_me")
 })

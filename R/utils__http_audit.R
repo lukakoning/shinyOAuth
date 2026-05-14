@@ -135,7 +135,8 @@ redact_query_string <- function(qs) {
     return(qs)
   }
 
-  # OAuth-related params that may contain secrets or single-use tokens
+  # OAuth-related params that may contain secrets, assertions, or
+  # single-use credentials.
   sensitive_params <- c(
     "code",
     "state",
@@ -145,7 +146,12 @@ redact_query_string <- function(qs) {
     "token",
     "session_state",
     "code_verifier",
-    "nonce"
+    "nonce",
+    "client_secret",
+    "client_assertion",
+    "assertion",
+    "username",
+    "password"
   )
 
   # Parse query string into named list

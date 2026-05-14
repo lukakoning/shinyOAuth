@@ -94,7 +94,14 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   req <- list(
     REQUEST_METHOD = "GET",
     PATH_INFO = "/callback",
-    QUERY_STRING = "code=authcode123&state=mystate&safe=keep_me",
+    QUERY_STRING = paste(
+      "code=authcode123",
+      "state=mystate",
+      "client_secret=super-secret",
+      "client_assertion=jwt-assertion",
+      "safe=keep_me",
+      sep = "&"
+    ),
     HTTP_HOST = "example.com",
     HTTP_COOKIE = "session=secret123",
     HTTP_AUTHORIZATION = "Bearer token123",
@@ -133,6 +140,8 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   testthat::expect_match(http$query_string, "safe=keep_me")
   testthat::expect_no_match(http$query_string, "authcode123")
   testthat::expect_no_match(http$query_string, "mystate")
+  testthat::expect_no_match(http$query_string, "super-secret")
+  testthat::expect_no_match(http$query_string, "jwt-assertion")
   testthat::expect_null(http$headers$cookie)
   testthat::expect_null(http$headers$authorization)
   testthat::expect_equal(http$headers$user_agent, "TestClient/1.0")
@@ -189,6 +198,8 @@ testthat::test_that("raw query fallback redacts sensitive callback values", {
       paste(
         "code=authcode123%ZZ",
         "state=mystate%ZZ",
+        "client_secret=super-secret%ZZ",
+        "client_assertion=jwt-assertion%ZZ",
         "safe=keep_me",
         sep = "&"
       ),
@@ -201,10 +212,22 @@ testthat::test_that("raw query fallback redacts sensitive callback values", {
         "token",
         "session_state",
         "code_verifier",
-        "nonce"
+        "nonce",
+        "client_secret",
+        "client_assertion",
+        "assertion",
+        "username",
+        "password"
       )
     ),
-    "code=[REDACTED]&state=[REDACTED]&safe=keep_me"
+    paste(
+      "code=[REDACTED]",
+      "state=[REDACTED]",
+      "client_secret=[REDACTED]",
+      "client_assertion=[REDACTED]",
+      "safe=keep_me",
+      sep = "&"
+    )
   )
 })
 
