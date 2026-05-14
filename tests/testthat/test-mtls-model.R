@@ -102,6 +102,23 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
   )
 })
 
+test_that("opaque access-token cnf probes stay silent", {
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(event) {
+    events[[length(events) + 1L]] <<- event
+  })
+  on.exit(options(old), add = TRUE)
+
+  expect_length(
+    shinyOAuth:::resolve_token_cnf(access_token = "opaque-access-token"),
+    0L
+  )
+  expect_false(
+    shinyOAuth:::token_dpop_cnf_observable(access_token = "opaque-access-token")
+  )
+  expect_length(events, 0L)
+})
+
 test_that("certificate-bound sender constraint requires token binding or explicit client opt-in", {
   cert_file <- tempfile(fileext = ".pem")
   key_file <- tempfile(fileext = ".pem")

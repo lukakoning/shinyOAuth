@@ -309,8 +309,8 @@ token_dpop_cnf_observable <- function(
   }
 
   if (is_valid_string(access_token)) {
-    payload <- try(parse_jwt_payload(access_token), silent = TRUE)
-    if (!inherits(payload, "try-error") && is.list(payload)) {
+    payload <- parse_jwt_payload_or_null(access_token)
+    if (is.list(payload)) {
       return(TRUE)
     }
   }

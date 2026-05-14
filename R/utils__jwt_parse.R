@@ -194,6 +194,144 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   text
 }
 
+#' Probe one compact JWT segment without signaling
+#'
+#' Used by best-effort JWT observation helpers that must treat opaque tokens as
+#' ordinary input rather than as reportable parse failures.
+#'
+#' @param segment Encoded compact-JWT segment.
+#' @param allow_empty Whether an empty segment is allowed.
+#' @return Raw decoded segment bytes, or `NULL` when the segment is absent or
+#'   invalid.
+#' @keywords internal
+#' @noRd
+jwt_probe_segment_raw <- function(segment, allow_empty = FALSE) {
+  if (
+    !is.character(segment) ||
+      length(segment) != 1L ||
+      is.na(segment)
+  ) {
+    return(NULL)
+  }
+
+  if (!nzchar(segment)) {
+    if (isTRUE(allow_empty)) {
+      return(raw())
+    }
+    return(NULL)
+  }
+
+  if (!grepl("^[A-Za-z0-9_-]+$", segment)) {
+    return(NULL)
+  }
+
+  if ((nchar(segment) %% 4L) == 1L) {
+    return(NULL)
+  }
+
+  decoded <- tryCatch(base64url_decode_raw(segment), error = function(...) NULL)
+  if (is.null(decoded) || !is.raw(decoded)) {
+    return(NULL)
+  }
+
+  decoded
+}
+
+#' Best-effort split of a compact JWT
+#'
+#' Used by non-validating JWT probes that should return `NULL` instead of
+#' signaling parse errors for opaque access tokens.
+#'
+#' @param jwt Compact JWT candidate string.
+#' @param allow_empty_signature Whether an empty signature segment is allowed.
+#' @return List matching `jwt_compact_parts()`, or `NULL` when `jwt` is not a
+#'   clean compact JWT.
+#' @keywords internal
+#' @noRd
+jwt_compact_parts_or_null <- function(jwt, allow_empty_signature = TRUE) {
+  if (!is.character(jwt) || length(jwt) != 1L || is.na(jwt)) {
+    return(NULL)
+  }
+
+  dot_pos <- gregexpr(".", jwt, fixed = TRUE)[[1]]
+  if (length(dot_pos) != 2L || identical(dot_pos[[1]], -1L)) {
+    return(NULL)
+  }
+
+  header <- substr(jwt, 1L, dot_pos[1] - 1L)
+  payload <- substr(jwt, dot_pos[1] + 1L, dot_pos[2] - 1L)
+  signature <- substr(jwt, dot_pos[2] + 1L, nchar(jwt))
+
+  header_raw <- jwt_probe_segment_raw(header)
+  payload_raw <- jwt_probe_segment_raw(payload)
+  signature_raw <- jwt_probe_segment_raw(
+    signature,
+    allow_empty = allow_empty_signature
+  )
+  if (
+    is.null(header_raw) ||
+      is.null(payload_raw) ||
+      is.null(signature_raw)
+  ) {
+    return(NULL)
+  }
+
+  list(
+    header = header,
+    payload = payload,
+    signature = signature,
+    signing_input = substr(jwt, 1L, dot_pos[2] - 1L),
+    header_raw = header_raw,
+    payload_raw = payload_raw,
+    signature_raw = signature_raw
+  )
+}
+
+#' Best-effort parse of a compact JWT payload
+#'
+#' Used by token-binding observation helpers that need to inspect self-
+#' contained JWT access tokens without reporting opaque access tokens as parse
+#' errors.
+#'
+#' @param jwt Compact JWT candidate string.
+#' @return Parsed payload list, or `NULL` when `jwt` is opaque or malformed.
+#' @keywords internal
+#' @noRd
+parse_jwt_payload_or_null <- function(jwt) {
+  parts <- jwt_compact_parts_or_null(jwt)
+  if (is.null(parts)) {
+    return(NULL)
+  }
+
+  if (any(parts$payload_raw == as.raw(0))) {
+    return(NULL)
+  }
+
+  payload_text <- tryCatch(rawToChar(parts$payload_raw), error = function(...) {
+    NULL
+  })
+  if (
+    !is_valid_string(payload_text) ||
+      !isTRUE(validUTF8(payload_text)) ||
+      !isTRUE(json_text_is_object(payload_text))
+  ) {
+    return(NULL)
+  }
+
+  payload <- tryCatch(
+    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
+    error = function(...) NULL
+  )
+  if (is.data.frame(payload)) {
+    payload <- as.list(payload)
+  }
+  if (!is.list(payload)) {
+    return(NULL)
+  }
+
+  payload
+}
+
 #' Internal: decode one JSON string token
 #'
 #' Used by `reject_duplicate_json_object_members()` so duplicate-key detection

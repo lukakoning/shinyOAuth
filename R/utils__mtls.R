@@ -378,8 +378,8 @@ token_cnf_from_access_token <- function(access_token) {
     return(list())
   }
 
-  payload <- try(parse_jwt_payload(access_token), silent = TRUE)
-  if (inherits(payload, "try-error") || !is.list(payload)) {
+  payload <- parse_jwt_payload_or_null(access_token)
+  if (!is.list(payload)) {
     return(list())
   }
 
