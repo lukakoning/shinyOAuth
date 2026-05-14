@@ -364,8 +364,8 @@ client opts in with
 <code>mtls_request_certificate_bound_access_tokens = TRUE</code>,
 shinyOAuth prefers the mTLS endpoints for authorization-server requests
 even when <code>token_auth_style</code> itself is not an mTLS auth
-style, and then treats the resulting access tokens as
-certificate-bound:</p>
+style, and then treats the resulting access tokens as sender-constrained
+when the binding is observable:</p>
 <ul>
 <li>For authorization-server requests such as PAR, authorization-code
 exchange, refresh, introspection, and revocation, shinyOAuth sends the
@@ -378,6 +378,12 @@ certificate-bound resource, shinyOAuth checks that the token’s
 <code>cnf.x5t#S256</code> thumbprint matches the configured certificate
 before sending the request</li>
 </ul>
+<p>If shinyOAuth learns <code>cnf</code> by locally parsing a
+self-contained JWT access token, it is only observing the token payload
+that the authorization server returned; it is not independently
+verifying the access-token signature. For strict assurance of
+sender-constrained access tokens, prefer introspection or another
+provider-specific proof surface.</p>
 </div>
 <div class="section level4">
 <h4 id="what-changes-when-dpop-is-enabled-rfc-9449">What changes when DPoP is enabled (RFC 9449)<a class="anchor" aria-label="anchor" href="#what-changes-when-dpop-is-enabled-rfc-9449"></a>
@@ -505,6 +511,13 @@ userinfo call as protected-resource access: it uses the mTLS alias for
 certificate on the TLS connection, and requires the token’s
 <code>cnf.x5t#S256</code> thumbprint to match that certificate before
 making the request.</p>
+<p>When a refresh response omits any new observable <code>cnf</code>,
+shinyOAuth may preserve the previous <code>x5t#S256</code> thumbprint so
+later mTLS resource requests keep using the same sender-constrained
+path. Treat that preserved thumbprint as continuity state rather than
+fresh proof of binding for the new token; enable
+<code>oauth_client(introspect = TRUE)</code> if you need stronger
+assurance for opaque refresh responses.</p>
 <p>The userinfo endpoint may return either a standard JSON response or,
 less commonly, a JWT response (per OIDC Core section 5.3.2). When the
 endpoint returns <code>Content-Type: application/jwt</code>, the body is
@@ -678,6 +691,11 @@ is re-fetched using the fresh access token</li>
 access token is introspected through the same client policy before the
 session is updated</li>
 </ul>
+<p>When neither the refresh response nor introspection exposes new
+<code>cnf</code>, shinyOAuth may preserve a prior certificate thumbprint
+so mTLS-bound resource requests do not silently lose their routing
+state. This is not fresh proof that the new access token is still
+sender-constrained; use introspection when that assurance matters.</p>
 <p>If you are running a security-sensitive app, set
 <code>options(shinyOAuth.default_expires_in = ...)</code> to the
 provider’s documented lifetime instead of relying on the package

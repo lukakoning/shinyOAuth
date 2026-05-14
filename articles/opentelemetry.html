@@ -86,7 +86,13 @@ and tracing instead (see
 <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>).</p>
 <p>Please refer to the ‘<a href="https://otelsdk.r-lib.org/reference/collecting.html" class="external-link">otelsdk</a>’
 package to learn more about configuring exporters in R. Once that is set
-up, ‘shinyOAuth’ will automatically emit OTel signals.</p>
+up, ‘shinyOAuth’ will emit OTel signals from that R process.</p>
+<p>When <code>oauth_module_server(async = TRUE)</code> runs work in
+background workers, ‘shinyOAuth’ automatically replays relevant OTel
+environment variables there, including <code>OTEL_*</code> and
+<code>OTEL_R_*</code> exporter settings. Exporter or SDK setup performed
+from R code is not replayed automatically; rerun that setup in each
+worker or recreate workers after changing it.</p>
 <p>All signals are emitted under the instrumentation scope
 <code>io.github.lukakoning.shinyOAuth</code>. Use this identifier when
 configuring collector routing rules or filtering ‘shinyOAuth’ telemetry

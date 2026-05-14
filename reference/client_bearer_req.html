@@ -111,16 +111,18 @@ the security implications.</p></dd>
 token type is <code>DPoP</code>, because the client carries the configured DPoP proof
 key, and also when using sender-constrained mTLS / certificate-bound
 tokens so shinyOAuth can attach the configured client certificate and
-validate any <code>cnf</code> thumbprint from an <a href="OAuthToken.html">OAuthToken</a> or raw JWT access
-token string.</p></dd>
+validate any <code>cnf</code> thumbprint from an <a href="OAuthToken.html">OAuthToken</a> and observe any <code>cnf</code>
+thumbprint carried on a raw JWT access-token string.</p></dd>
 
 
 <dt id="arg-token-type">token_type<a class="anchor" aria-label="anchor" href="#arg-token-type"></a></dt>
 <dd><p>Optional override for the access token type when <code>token</code>
 is supplied as a raw string. Supported values are <code>Bearer</code> and <code>DPoP</code>.
 Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
-preserves <code>OAuthToken@token_type</code> and also infers <code>DPoP</code> from a raw JWT
-access token's <code>cnf.jkt</code> binding when <code>oauth_client</code> carries a DPoP key.</p></dd>
+preserves <code>OAuthToken@token_type</code> and also infers <code>DPoP</code> from an observed
+raw JWT access token <code>cnf.jkt</code> binding when <code>oauth_client</code> carries a DPoP
+key. This local JWT parse does not independently verify the access-token
+signature.</p></dd>
 
 
 <dt id="arg-dpop-nonce">dpop_nonce<a class="anchor" aria-label="anchor" href="#arg-dpop-nonce"></a></dt>

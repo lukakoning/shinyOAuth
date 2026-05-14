@@ -296,12 +296,12 @@ when <code>userinfo_url</code> is omitted (since it is optional).</p></dd>
 <dt id="arg-userinfo-id-token-match">userinfo_id_token_match<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-token-match"></a></dt>
 <dd><p>Whether to fail closed if UserInfo cannot be
 bound to a validated ID token subject. Whenever both UserInfo and a
-validated ID token are available, shinyOAuth always verifies that their
-<code>sub</code> values match. Setting this field to <code>TRUE</code> additionally requires a
-validated ID token baseline whenever UserInfo is fetched. This requires
-<code>userinfo_required</code> plus either <code>id_token_validation</code> or <code>use_nonce</code> to be
-<code>TRUE</code>, and the provider's <code>userinfo_id_selector</code> must be able to extract a
-stable user ID from the userinfo response.</p>
+validated ID token are available, shinyOAuth compares the validated ID token
+<code>sub</code> to the value returned by <code>userinfo_id_selector(userinfo)</code>. Setting
+this field to <code>TRUE</code> additionally requires a validated ID token baseline
+whenever UserInfo is fetched. This requires <code>userinfo_required</code>, a
+configured <code>userinfo_id_selector</code>, plus either <code>id_token_validation</code> or
+<code>use_nonce</code> to be <code>TRUE</code>.</p>
 <p>For <code>oauth_provider()</code>, when not explicitly supplied, this is inferred as
 <code>TRUE</code> when <code>userinfo_required</code> is <code>TRUE</code> and either
 <code>id_token_validation</code> or <code>use_nonce</code> is <code>TRUE</code>; otherwise it defaults to
@@ -333,10 +333,12 @@ capability, not that every client actually receives signed JWTs. Pass
 <dd><p>A function that extracts the user ID from the userinfo response.
 Should take a single argument (the userinfo list) and return the user ID
 as a string.</p>
-<p>This is used when <code>userinfo_id_token_match</code> is TRUE.
-Optional otherwise; when not supplied, some features (like subject matching)
-will be unavailable. Helper constructors like <code>oauth_provider()</code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code>
-provide a default selector that extracts the <code>sub</code> field.</p></dd>
+<p>This is used for helpers that need a provider-specific user identifier, such
+as audit fields and UserInfo-to-ID-token subject matching. If you configure a
+selector other than <code>function(x) x$sub</code>, that selector also defines which
+UserInfo value is compared against the validated ID token <code>sub</code>. Helper
+constructors like <code>oauth_provider()</code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> provide a
+default selector that extracts the <code>sub</code> field.</p></dd>
 
 
 <dt id="arg-id-token-required">id_token_required<a class="anchor" aria-label="anchor" href="#arg-id-token-required"></a></dt>
@@ -450,8 +452,10 @@ and only the hostname part is used for matching. Takes precedence over
 Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supported
 asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
 <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> for OKP-backed signatures. When ID token
-<code>at_hash</code> validation is in play, Ed25519 is supported but Ed448 currently
-is not.
+<code>at_hash</code> validation is in play, Ed25519 is supported. Ed448 <code>at_hash</code>
+cannot be validated with the current crypto bindings, so shinyOAuth skips
+that optional check unless <code>id_token_at_hash_required = TRUE</code>, in which
+case Ed448 ID tokens fail fast.
 Symmetric HMAC algorithms <code>HS256</code>, <code>HS384</code>, <code>HS512</code> are also supported but
 require that you supply a <code>client_secret</code> and explicitly enable HMAC
 verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.

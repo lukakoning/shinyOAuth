@@ -76,15 +76,18 @@ client_bearer_req(
   attach the configured client certificate and validate any `cnf`
   thumbprint from an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  or raw JWT access token string.
+  and observe any `cnf` thumbprint carried on a raw JWT access-token
+  string.
 
 - token_type:
 
   Optional override for the access token type when `token` is supplied
   as a raw string. Supported values are `Bearer` and `DPoP`. Invalid or
   multi-valued inputs are rejected. When omitted, shinyOAuth preserves
-  `OAuthToken@token_type` and also infers `DPoP` from a raw JWT access
-  token's `cnf.jkt` binding when `oauth_client` carries a DPoP key.
+  `OAuthToken@token_type` and also infers `DPoP` from an observed raw
+  JWT access token `cnf.jkt` binding when `oauth_client` carries a DPoP
+  key. This local JWT parse does not independently verify the
+  access-token signature.
 
 - dpop_nonce:
 

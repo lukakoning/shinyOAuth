@@ -139,11 +139,13 @@ oauth_module_server(
   Optional absolute base URL used when
   `authorization_request_mode = "request_uri"` publishes Request Objects
   through Shiny. By default (`NULL`), shinyOAuth derives the base URL
-  from the current browser-visible app origin. Set this when the
-  authorization server must fetch the published Request Object through a
-  different public host or proxy address than the browser uses. The
-  value must not include a query string or fragment. Non-HTTPS hosts
-  still follow the same
+  from the current browser-visible app origin, but only when
+  `options(shinyOAuth.allowed_hosts = ...)` pins the permitted public
+  host. Set this when the authorization server must fetch the published
+  Request Object through a different public host or proxy address than
+  the browser uses, or when you prefer to declare the public origin
+  explicitly. The value must not include a query string or fragment.
+  Non-HTTPS hosts still follow the same
   [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   policy as other package URLs.
 

@@ -254,9 +254,11 @@ OAuthProvider(
   Should take a single argument (the userinfo list) and return the user
   ID as a string.
 
-  This is used when `userinfo_id_token_match` is TRUE. Optional
-  otherwise; when not supplied, some features (like subject matching)
-  will be unavailable. Helper constructors like
+  This is used for helpers that need a provider-specific user
+  identifier, such as audit fields and UserInfo-to-ID-token subject
+  matching. If you configure a selector other than `function(x) x$sub`,
+  that selector also defines which UserInfo value is compared against
+  the validated ID token `sub`. Helper constructors like
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
   and
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
@@ -266,12 +268,12 @@ OAuthProvider(
 
   Whether to fail closed if UserInfo cannot be bound to a validated ID
   token subject. Whenever both UserInfo and a validated ID token are
-  available, shinyOAuth always verifies that their `sub` values match.
-  Setting this field to `TRUE` additionally requires a validated ID
-  token baseline whenever UserInfo is fetched. This requires
-  `userinfo_required` plus either `id_token_validation` or `use_nonce`
-  to be `TRUE`, and the provider's `userinfo_id_selector` must be able
-  to extract a stable user ID from the userinfo response.
+  available, shinyOAuth compares the validated ID token `sub` to the
+  value returned by `userinfo_id_selector(userinfo)`. Setting this field
+  to `TRUE` additionally requires a validated ID token baseline whenever
+  UserInfo is fetched. This requires `userinfo_required`, a configured
+  `userinfo_id_selector`, plus either `id_token_validation` or
+  `use_nonce` to be `TRUE`.
 
   For
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
@@ -465,11 +467,13 @@ OAuthProvider(
   restrict acceptable `alg` values on a per-provider basis. Supported
   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
   `ES384`, `ES512`, and `EdDSA` for OKP-backed signatures. When ID token
-  `at_hash` validation is in play, Ed25519 is supported but Ed448
-  currently is not. Symmetric HMAC algorithms `HS256`, `HS384`, `HS512`
-  are also supported but require that you supply a `client_secret` and
-  explicitly enable HMAC verification via the option
-  `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
+  `at_hash` validation is in play, Ed25519 is supported. Ed448 `at_hash`
+  cannot be validated with the current crypto bindings, so shinyOAuth
+  skips that optional check unless `id_token_at_hash_required = TRUE`,
+  in which case Ed448 ID tokens fail fast. Symmetric HMAC algorithms
+  `HS256`, `HS384`, `HS512` are also supported but require that you
+  supply a `client_secret` and explicitly enable HMAC verification via
+  the option `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
   `c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")`, which
   intentionally excludes HS\*. Only include `HS*` if you are certain the
   `client_secret` is stored strictly server-side and is never shipped
