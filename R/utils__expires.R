@@ -111,9 +111,9 @@ client_state_store_max_age <- function(client, default = 300) {
     } else {
       NULL
     }
-    rlang::warn(
+    warn_pkg(
+      "State store TTL not detected",
       c(
-        format_header("State store TTL not detected"),
         "!" = paste0(
           "client@state_store$info()$max_age was not a finite positive number; ",
           "falling back to default cookie lifetime of ",
@@ -195,9 +195,9 @@ resolve_missing_expires_in <- function(phase = NULL) {
     }
   }
 
-  rlang::warn(
+  warn_pkg(
+    "Token response missing expires_in",
     c(
-      format_header("Token response missing expires_in"),
       "!" = paste0(
         "The token response did not include an expires_in value",
         phase_msg
@@ -253,9 +253,9 @@ warn_about_nonpositive_expires_in <- function(expires_in, phase = NULL) {
     ""
   }
 
-  rlang::warn(
+  warn_pkg(
+    "Token expires immediately",
     c(
-      format_header("Token expires immediately"),
       "!" = paste0(
         "Token response returned expires_in = ",
         expires_in,

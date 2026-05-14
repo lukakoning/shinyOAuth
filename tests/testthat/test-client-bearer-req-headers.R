@@ -18,7 +18,7 @@ test_that("resource_req ignores invalid headers input with warning", {
       url = "https://example.com/base",
       headers = c("application/json")
     ),
-    regexp = "Ignoring 'headers'"
+    regexp = "Ignoring invalid client bearer headers"
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)

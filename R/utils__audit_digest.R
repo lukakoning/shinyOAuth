@@ -85,10 +85,11 @@ get_audit_digest_key <- function() {
       return(opt)
     }
     # Invalid type: fall through to auto-generate with warning
-    rlang::warn(
+    warn_pkg(
+      "Invalid `shinyOAuth.audit_digest_key` option",
       c(
-        "Invalid `shinyOAuth.audit_digest_key` type; must be character or raw.",
-        i = "Falling back to auto-generated per-process key."
+        "!" = "`shinyOAuth.audit_digest_key` must be a character scalar or raw vector.",
+        "i" = "Falling back to an auto-generated per-process key."
       ),
       .frequency = "once",
       .frequency_id = "shinyOAuth.audit_digest_key_invalid"

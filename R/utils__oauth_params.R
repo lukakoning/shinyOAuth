@@ -568,7 +568,8 @@ validate_essential_claims <- function(client, claims_present, target) {
       ))
     }
   } else if (identical(mode, "warn")) {
-    rlang::warn(
+    warn_pkg(
+      "Requested claims could not be validated",
       c(
         "!" = msg,
         "i" = "Set claims_validation = 'none' to suppress this warning"

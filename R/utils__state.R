@@ -597,10 +597,10 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
     # safeguards.
     if (!inherits(store, "cache_mem")) {
       if (isTRUE(getOption("shinyOAuth.allow_non_atomic_state_store"))) {
-        rlang::warn(
+        warn_pkg(
+          "Using non-atomic get()+remove() state store fallback",
           c(
-            "Using non-atomic get()+remove() state store fallback",
-            "i" = paste0(
+            "!" = paste0(
               "Single-use state enforcement uses a non-atomic get+remove fallback. ",
               "This cannot guarantee single-use under concurrent access and may ",
               "allow replay attacks in multi-worker deployments with shared stores."

@@ -132,9 +132,9 @@ allow_skip_browser_token <- function() {
 
   if (.is_test_or_interactive()) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "Browser cookie presence check is disabled",
         c(
-          "Browser cookie presence check is disabled",
           "x" = "`options(shinyOAuth.skip_browser_token = TRUE)` is active",
           "!" = "This bypasses a key security check and is intended only for local testing"
         )
@@ -162,9 +162,9 @@ allow_skip_signature <- function() {
 
   if (.is_test_or_interactive()) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "ID token signature verification is disabled",
         c(
-          "ID token signature verification is disabled",
           "x" = "`options(shinyOAuth.skip_id_sig = TRUE)` is active",
           "!" = "This bypasses cryptographic verification and is intended only for local testing"
         )
@@ -192,9 +192,9 @@ allow_expose_error_body <- function() {
 
   if (.is_test_or_interactive()) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "Exposing HTTP response bodies in errors is enabled",
         c(
-          "Exposing HTTP response bodies in errors is enabled",
           "x" = "`options(shinyOAuth.expose_error_body = TRUE)` is active",
           "!" = "This may leak sensitive information to the console"
         )
@@ -220,9 +220,9 @@ allow_redirect <- function() {
 
   if (.is_test_or_interactive()) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "HTTP redirect following is enabled for sensitive OAuth flows",
         c(
-          "HTTP redirect following is enabled for sensitive OAuth flows",
           "x" = "`options(shinyOAuth.allow_redirect = TRUE)` is active",
           "!" = paste(
             "This disables anti-redirect protections;",
@@ -251,9 +251,9 @@ allow_unsigned_userinfo_jwt <- function() {
 
   if (.is_test_or_interactive()) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "Unsigned UserInfo JWT acceptance is enabled",
         c(
-          "Unsigned UserInfo JWT acceptance is enabled",
           "x" = "`options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` is active",
           "!" = "This bypasses JWT signature verification and is intended only for local testing"
         )

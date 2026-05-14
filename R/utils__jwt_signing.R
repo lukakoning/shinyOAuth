@@ -65,9 +65,10 @@ build_client_assertion <- function(client, aud) {
   } else if (ttl < 60L) {
     ttl <- 60L
   } else if (ttl > 300L) {
-    rlang::warn(
+    warn_pkg(
+      "Client assertion TTL clamped to 300 seconds",
       c(
-        "!" = "shinyOAuth.client_assertion_ttl above 300 seconds is not allowed; clamping to 300 seconds",
+        "!" = "`shinyOAuth.client_assertion_ttl` above 300 seconds is not allowed; clamping to 300 seconds.",
         "i" = paste0("Configured value: ", ttl)
       ),
       .frequency = "once",

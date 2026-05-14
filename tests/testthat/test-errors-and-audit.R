@@ -122,6 +122,49 @@ test_that("normalize_bullets preserves named types and defaults unnamed", {
   expect_identical(names(b3), c("!", "i"))
 })
 
+test_that("package condition helpers build consistent headers", {
+  msg <- shinyOAuth:::format_condition_message(
+    "Browser warning",
+    list("!" = "detail", "hint"),
+    footer = c("i" = "footer")
+  )
+
+  expect_identical(
+    unname(msg),
+    c(
+      "[{.pkg shinyOAuth}] - {.strong Browser warning}",
+      "detail",
+      "hint",
+      "footer"
+    )
+  )
+  expect_identical(names(msg), c("", "!", "!", "i"))
+
+  warning_cnd <- rlang::catch_cnd(
+    shinyOAuth:::warn_pkg(
+      "Browser warning",
+      c("!" = "detail"),
+      class = "shinyOAuth_test_warning"
+    ),
+    classes = "warning"
+  )
+  expect_s3_class(warning_cnd, "shinyOAuth_test_warning")
+  expect_match(conditionMessage(warning_cnd), "Browser warning", fixed = TRUE)
+  expect_match(conditionMessage(warning_cnd), "detail", fixed = TRUE)
+
+  inform_cnd <- rlang::catch_cnd(
+    shinyOAuth:::inform_pkg(
+      "Async backend",
+      c("i" = "using future"),
+      class = "shinyOAuth_test_inform"
+    ),
+    classes = "message"
+  )
+  expect_s3_class(inform_cnd, "shinyOAuth_test_inform")
+  expect_match(conditionMessage(inform_cnd), "Async backend", fixed = TRUE)
+  expect_match(conditionMessage(inform_cnd), "using future", fixed = TRUE)
+})
+
 # HTTP summary sanitization tests -----------------------------------------
 
 test_that("redact_query_string redacts sensitive OAuth params", {

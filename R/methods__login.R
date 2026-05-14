@@ -706,9 +706,9 @@ build_auth_url <- function(
       return(invisible(NULL))
     }
 
-    rlang::warn(
+    warn_pkg(
+      "request_uri exceeds RFC 9101 guidance",
       c(
-        "[{.pkg shinyOAuth}] - request_uri exceeds RFC 9101 guidance",
         "!" = paste0(
           "The published {.code request_uri} is ",
           request_uri_len,
@@ -1840,7 +1840,8 @@ enforce_token_introspection_policy <- function(
             "i" = "Set scope_validation = 'warn' or 'none', or disable the scope introspection requirement"
           ))
         } else if (identical(scope_validation_mode, "warn")) {
-          rlang::warn(
+          warn_pkg(
+            "Unable to validate requested scopes from token introspection",
             c(
               "!" = msg,
               "i" = "Set scope_validation = 'none' to suppress this warning"
@@ -1864,7 +1865,8 @@ enforce_token_introspection_policy <- function(
               "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
             ))
           } else if (identical(scope_validation_mode, "warn")) {
-            rlang::warn(
+            warn_pkg(
+              "Introspected scopes missing requested entries",
               c(
                 "!" = msg,
                 "i" = "Set scope_validation = 'none' to suppress this warning"
@@ -2282,7 +2284,8 @@ verify_token_set <- function(
               "i" = "Set scope_validation = 'warn' or 'none' to allow empty scope in response"
             ))
           } else if (identical(scope_validation_mode, "warn")) {
-            rlang::warn(
+            warn_pkg(
+              "Unable to validate requested scopes from token response",
               c(
                 "!" = msg,
                 "i" = "Set scope_validation = 'none' to suppress this warning"
@@ -2304,7 +2307,8 @@ verify_token_set <- function(
                 "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
               ))
             } else if (identical(scope_validation_mode, "warn")) {
-              rlang::warn(
+              warn_pkg(
+                "Granted scopes missing requested entries",
                 c(
                   "!" = msg,
                   "i" = "Set scope_validation = 'none' to suppress this warning"

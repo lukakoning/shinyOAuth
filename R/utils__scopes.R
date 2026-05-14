@@ -200,10 +200,16 @@ ensure_openid_scope <- function(scopes, provider) {
     return(scopes)
   }
 
-  rlang::warn(
+  provider_name <- provider@name %||% "(unnamed)"
+
+  warn_pkg(
+    "Missing `openid` scope for OIDC provider",
     c(
-      "[{.pkg shinyOAuth}] - {.strong Missing `openid` scope for OIDC provider}",
-      "!" = "Provider {.val {provider@name}} has an issuer set, indicating OIDC, but {.val openid} was not in the requested scopes.",
+      "!" = paste0(
+        "Provider ",
+        provider_name,
+        " has an issuer set, indicating OIDC, but {.val openid} was not in the requested scopes."
+      ),
       "i" = "Auto-prepending {.val openid} to scopes per OIDC Core \u00a73.1.2.1.",
       "i" = "Add {.val openid} to your {.code oauth_client(scopes = ...)} to silence this warning."
     ),

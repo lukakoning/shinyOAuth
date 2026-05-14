@@ -232,9 +232,9 @@ warn_about_async_otel_cache_reset <- function(
     )
   }
 
-  rlang::warn(
+  warn_pkg(
+    "Async OpenTelemetry exporter changes may not take effect in reused workers",
     c(
-      "[{.pkg shinyOAuth}] - {.strong Async OpenTelemetry exporter changes may not take effect in reused workers}",
       "!" = detail,
       "i" = paste(
         "Reused Mirai workers may keep stale tracer, logger, or exporter",

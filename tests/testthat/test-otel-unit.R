@@ -892,7 +892,7 @@ testthat::test_that("emit_trace_event warns on otel_emit_log failure", {
     {
       testthat::expect_warning(
         shinyOAuth:::emit_trace_event(list(type = "test")),
-        "otel telemetry error"
+        "Failed to emit OpenTelemetry log"
       )
     }
   )
@@ -904,7 +904,7 @@ testthat::test_that("otel_telemetry_warning uses rlang::warn", {
       "test context",
       simpleError("boom")
     ),
-    "OpenTelemetry test context disabled"
+    "OpenTelemetry disabled for this operation"
   )
 })
 

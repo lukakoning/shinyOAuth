@@ -70,8 +70,8 @@
 #' @param async If TRUE, dispatches token exchange and refresh through
 #'   shinyOAuth's async promise path and updates values when the promise
 #'   resolves. [mirai] is preferred when daemons are configured with
-#'   [mirai::daemons()]. Otherwise, if [promises][promises::promises] and [future][future::future] 
-#'   are installed, the current [future] plan is used. Non-sequential future plans 
+#'   [mirai::daemons()]. Otherwise, if [promises][promises::promises] and [future][future::future]
+#'   are installed, the current [future] plan is used. Non-sequential future plans
 #'   run off the main R session; `future::sequential()` stays in-process. If FALSE
 #'   (default), token exchange and refresh are performed synchronously
 #'   (which may block the Shiny event loop). For production apps, `async = TRUE`
@@ -445,9 +445,9 @@ oauth_module_server <- function(
   }
 
   if (!.is_test()) {
-    rlang::warn(
+    warn_pkg(
+      "Open your Shiny app in a regular browser",
       c(
-        "[{.pkg shinyOAuth}] - {.strong Open your Shiny app in a regular browser}",
         "!" = "{.code oauth_module_server()} was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
         "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows"
       ),
@@ -460,25 +460,29 @@ oauth_module_server <- function(
 
   browser_cookie_samesite <- match.arg(browser_cookie_samesite)
   if (identical(browser_cookie_samesite, "Lax")) {
-    rlang::warn(c(
-      "[{.pkg shinyOAuth}] - {.strong Verify browser token cookie settings}",
-      "!" = "`browser_cookie_samesite = \"Lax\"` relaxes cross-site protections for the session-binding cookie",
-      "i" = "Ensure this mode is strictly required for your deployment"
-    ))
+    warn_pkg(
+      "Verify browser token cookie settings",
+      c(
+        "!" = "`browser_cookie_samesite = \"Lax\"` relaxes cross-site protections for the session-binding cookie",
+        "i" = "Ensure this mode is strictly required for your deployment"
+      )
+    )
   }
   if (identical(browser_cookie_samesite, "None")) {
-    rlang::inform(c(
-      "[{.pkg shinyOAuth}] - {.strong Enforcing Secure for SameSite=None cookie}",
-      "i" = "`browser_cookie_samesite = \"None\"` requires HTTPS. The browser cookie writer will force `Secure` and error on non-HTTPS origins"
-    ))
+    inform_pkg(
+      "Enforcing Secure for SameSite=None cookie",
+      c(
+        "i" = "`browser_cookie_samesite = \"None\"` requires HTTPS. The browser cookie writer will force `Secure` and error on non-HTTPS origins"
+      )
+    )
   }
 
   # Validate async settings
   if (!isTRUE(async)) {
     if (!.is_test()) {
-      rlang::warn(
+      warn_pkg(
+        "Consider using `async = TRUE` for responsive UIs",
         c(
-          "[{.pkg shinyOAuth}] - {.strong Consider using `async = TRUE` for responsive UIs}",
           "!" = "{.code oauth_module_server(async = FALSE)} may block the Shiny event loop during network calls, potentially freezing the UI",
           "i" = "Consider setting `async = TRUE` and configuring {.pkg mirai} daemons (e.g., {.code mirai::daemons(2)})"
         ),
@@ -494,21 +498,25 @@ oauth_module_server <- function(
     if (is.null(backend)) {
       # No backend available - check what's missing to provide helpful message
       if (rlang::is_installed("mirai")) {
-        rlang::warn(c(
-          "[{.pkg shinyOAuth}] - {.strong No async backend configured}",
-          "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg mirai} daemons are connected",
-          "i" = "Set up daemons: {.code mirai::daemons(2)} at the top of your app",
-          "i" = "Or configure a future plan: {.code future::plan(future::multisession)}"
-        ))
+        warn_pkg(
+          "No async backend configured",
+          c(
+            "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg mirai} daemons are connected",
+            "i" = "Set up daemons: {.code mirai::daemons(2)} at the top of your app",
+            "i" = "Or configure a future plan: {.code future::plan(future::multisession)}"
+          )
+        )
       } else if (
         rlang::is_installed("future") && rlang::is_installed("promises")
       ) {
-        rlang::warn(c(
-          "[{.pkg shinyOAuth}] - {.strong No async backend configured}",
-          "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} plan is set",
-          "i" = "Set up a future plan: {.code future::plan(future::multisession)}",
-          "i" = "Or use mirai (preferred): {.code mirai::daemons(2)}"
-        ))
+        warn_pkg(
+          "No async backend configured",
+          c(
+            "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} plan is set",
+            "i" = "Set up a future plan: {.code future::plan(future::multisession)}",
+            "i" = "Or use mirai (preferred): {.code mirai::daemons(2)}"
+          )
+        )
       } else {
         rlang::check_installed(
           "mirai",
@@ -519,17 +527,19 @@ oauth_module_server <- function(
       # mirai is available - check if we have enough daemons
       n_connections <- mirai_connection_count()
       if (n_connections == 1 && !.is_test()) {
-        rlang::warn(c(
-          "[{.pkg shinyOAuth}] - {.strong Consider using multiple mirai daemons for concurrency}",
-          "!" = "{.code oauth_module_server(async = TRUE)} but with a single mirai daemon",
-          "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more daemons"
-        ))
+        warn_pkg(
+          "Consider using multiple mirai daemons for concurrency",
+          c(
+            "!" = "{.code oauth_module_server(async = TRUE)} but with a single mirai daemon",
+            "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more daemons"
+          )
+        )
       }
     } else if (backend == "future" && !.is_test()) {
       # future is available - inform user that mirai is preferred
-      rlang::inform(
+      inform_pkg(
+        "Using {.pkg future} async backend",
         c(
-          "[{.pkg shinyOAuth}] - Using {.pkg future} async backend",
           "i" = "Consider migrating to {.pkg mirai} for lower overhead and non-blocking dispatch",
           "i" = "See {.url https://github.com/shikokuchuo/mirai} for migration guide"
         ),
@@ -1081,9 +1091,9 @@ oauth_module_server <- function(
     # @param action Helper name that attempted to start login.
     # @return Invisibly returns `FALSE` after emitting a warning.
     .warn_about_authenticated_login_request <- function(action) {
-      rlang::warn(
+      warn_pkg(
+        "Ignoring OAuth login request while already authenticated",
         c(
-          "Ignoring OAuth login request while already authenticated",
           "i" = paste0(
             "`",
             action,
@@ -2028,9 +2038,10 @@ oauth_module_server <- function(
                         async_fallback <- is.null(client_for_worker)
 
                         if (async_fallback) {
-                          rlang::warn(
+                          warn_pkg(
+                            "Async callback fell back to synchronous execution",
                             c(
-                              "Async callback dispatch failed: client object contains non-serializable components",
+                              "!" = "Client object contains non-serializable components, so async callback dispatch could not proceed.",
                               "i" = "Falling back to synchronous callback execution",
                               "i" = "Custom state_store or JWKS cache backends must be serializable for async mode",
                               "i" = "Consider using cachem::cache_mem() or cachem::cache_disk() for async compatibility"

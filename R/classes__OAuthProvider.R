@@ -745,9 +745,9 @@ oauth_provider <- function(
   ) {
     allowed_hosts_opt <- getOption("shinyOAuth.allowed_hosts", NULL)
     if (is.null(allowed_hosts_opt) || length(allowed_hosts_opt) == 0) {
-      rlang::warn(
+      warn_pkg(
+        "Configure allowed hosts for production",
         c(
-          "[{.pkg shinyOAuth}] - {.strong Configure allowed hosts for production}",
           "!" = paste0(
             "No host allowlist configured via ",
             "{.code options(shinyOAuth.allowed_hosts = c(\".example.com\", \"api.example.com\"))}."

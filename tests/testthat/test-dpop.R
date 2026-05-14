@@ -338,7 +338,7 @@ test_that("resource_req ignores custom Authorization and DPoP headers", {
         `X-Test` = "ok"
       )
     ),
-    regexp = "Ignoring custom 'Authorization' or 'DPoP' header",
+    regexp = "Ignoring custom authentication headers",
     fixed = TRUE
   )
 

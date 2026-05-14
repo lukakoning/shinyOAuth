@@ -22,12 +22,15 @@ otel_tracer_name <- "io.github.lukakoning.shinyOAuth" # nolint
 #' @keywords internal
 #' @noRd
 otel_telemetry_warning <- function(context, error) {
-  rlang::warn(
-    paste0(
-      "[shinyOAuth] OpenTelemetry ",
-      context,
-      " disabled for this operation: ",
-      conditionMessage(error)
+  warn_pkg(
+    "OpenTelemetry disabled for this operation",
+    c(
+      "!" = paste0(
+        "OpenTelemetry ",
+        context,
+        " was disabled for this operation: ",
+        conditionMessage(error)
+      )
     )
   )
 }
@@ -75,9 +78,9 @@ warn_about_async_otel_workers <- function() {
     return(invisible(FALSE))
   }
 
-  rlang::warn(
+  warn_pkg(
+    "Verify OpenTelemetry is configured in async workers",
     c(
-      "[{.pkg shinyOAuth}] - {.strong Verify OpenTelemetry is configured in async workers}",
       "!" = paste(
         "{.code oauth_module_server(async = TRUE)} will emit telemetry from",
         "background worker processes as well as the main R process"

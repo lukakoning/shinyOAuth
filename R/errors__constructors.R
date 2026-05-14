@@ -33,12 +33,10 @@ err_abort <- function(
     context
   ))
   primary <- short_desc_for_class(c(class, "shinyOAuth_error"))
-  # Allow rlang-style bullets in `msg`: a character vector with optional names
-  bullets <- normalize_bullets(msg, default_type = "!")
-  message <- c(
-    format_header(primary),
-    bullets,
-    "i" = paste0("Trace ID: ", trace_id)
+  message <- format_condition_message(
+    primary,
+    msg,
+    footer = c("i" = paste0("Trace ID: ", trace_id))
   )
   rlang::abort(
     message = message,
@@ -48,17 +46,120 @@ err_abort <- function(
   )
 }
 
-#' Format the standard error header
+#' Format the standard shinyOAuth condition header
 #'
-#' Used by the error constructors in this file when they build the final error
-#' message shown to the caller.
+#' Used by errors, warnings, and informs that present a concise shinyOAuth
+#' title line before their bullet details.
 #'
-#' @param short Short description shown in the error header.
+#' @param short Short description shown in the condition header.
+#' @param strong Whether to render `short` in bold via cli markup.
 #' @return A formatted header string.
 #' @keywords internal
 #' @noRd
-format_header <- function(short) {
-  paste0("[{.pkg shinyOAuth}] - {.strong ", short, "}")
+format_header <- function(short, strong = TRUE) {
+  short <- as.character(short %||% "")
+
+  if (isTRUE(strong)) {
+    return(paste0("[{.pkg shinyOAuth}] - {.strong ", short, "}"))
+  }
+
+  paste0("[{.pkg shinyOAuth}] - ", short)
+}
+
+#' Build a standard shinyOAuth condition message
+#'
+#' Combines the package header, normalized bullet body, and any footer bullets
+#' into the character vector expected by `rlang` condition helpers.
+#'
+#' @param short Short description shown in the condition header.
+#' @param msg Condition body as a string, bullet vector, or one-level list.
+#' @param default_type Bullet type assigned to unnamed body entries.
+#' @param footer Optional footer bullets appended after the main body.
+#' @param strong Whether to render `short` in bold via cli markup.
+#' @return A named character vector suitable for `rlang::abort()`/
+#'   `rlang::warn()`/`rlang::inform()`.
+#' @keywords internal
+#' @noRd
+format_condition_message <- function(
+  short,
+  msg = NULL,
+  default_type = "!",
+  footer = NULL,
+  strong = TRUE
+) {
+  c(
+    format_header(short, strong = strong),
+    normalize_bullets(msg, default_type = default_type),
+    normalize_bullets(footer, default_type = "i")
+  )
+}
+
+#' Warn with standard shinyOAuth formatting
+#'
+#' Used by package helpers that emit advisory warnings with the same header and
+#' bullet structure used by shinyOAuth errors.
+#'
+#' @param short Short description shown in the condition header.
+#' @param msg Warning body as a string, bullet vector, or one-level list.
+#' @param ... Additional arguments forwarded to [rlang::warn()].
+#' @param default_type Bullet type assigned to unnamed body entries.
+#' @param footer Optional footer bullets appended after the main body.
+#' @param strong Whether to render `short` in bold via cli markup.
+#' @return No meaningful return value; emits a warning side effect.
+#' @keywords internal
+#' @noRd
+warn_pkg <- function(
+  short,
+  msg = NULL,
+  ...,
+  default_type = "!",
+  footer = NULL,
+  strong = TRUE
+) {
+  rlang::warn(
+    format_condition_message(
+      short,
+      msg,
+      default_type = default_type,
+      footer = footer,
+      strong = strong
+    ),
+    ...
+  )
+}
+
+#' Inform with standard shinyOAuth formatting
+#'
+#' Used by package helpers that emit non-error operational notices while
+#' keeping the same header structure as other shinyOAuth conditions.
+#'
+#' @param short Short description shown in the condition header.
+#' @param msg Inform body as a string, bullet vector, or one-level list.
+#' @param ... Additional arguments forwarded to [rlang::inform()].
+#' @param default_type Bullet type assigned to unnamed body entries.
+#' @param footer Optional footer bullets appended after the main body.
+#' @param strong Whether to render `short` in bold via cli markup.
+#' @return No meaningful return value; emits an inform side effect.
+#' @keywords internal
+#' @noRd
+inform_pkg <- function(
+  short,
+  msg = NULL,
+  ...,
+  default_type = "i",
+  footer = NULL,
+  strong = TRUE
+) {
+  rlang::inform(
+    format_condition_message(
+      short,
+      msg,
+      default_type = default_type,
+      footer = footer,
+      strong = strong
+    ),
+    ...
+  )
 }
 
 #' Resolve an error header description from condition classes
@@ -244,8 +345,6 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   )
   emit_trace_event(event)
 
-  # Allow named bullets for msg and ensure subsequent lines are named bullets too
-  bullets <- normalize_bullets(msg, default_type = "!")
   status_msg <- if (length(status) == 1 && !is.na(status)) {
     if (is_valid_string(desc)) {
       stats::setNames(paste0("Status ", status, ": ", desc, "."), "x")
@@ -281,15 +380,10 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   } else {
     character()
   }
-  message <- c(
-    format_header("HTTP request failed"),
-    bullets,
-    status_msg,
-    oauth_error_msg,
-    oauth_error_uri_msg,
-    url_msg,
-    trace_msg,
-    body_msg
+  message <- format_condition_message(
+    "HTTP request failed",
+    c(msg, status_msg, oauth_error_msg, oauth_error_uri_msg, url_msg),
+    footer = c(trace_msg, body_msg)
   )
 
   rlang::abort(
@@ -329,12 +423,10 @@ err_transport <- function(
     list(type = "transport_error", trace_id = trace_id, message = msg),
     context
   ))
-  bullets <- normalize_bullets(msg, default_type = "!")
-  message <- c(
-    format_header("Transport failure"),
-    bullets,
-    "x" = "No HTTP response was received.",
-    "i" = paste0("Trace ID: ", trace_id)
+  message <- format_condition_message(
+    "Transport failure",
+    c(msg, "x" = "No HTTP response was received."),
+    footer = c("i" = paste0("Trace ID: ", trace_id))
   )
   rlang::abort(
     message = message,

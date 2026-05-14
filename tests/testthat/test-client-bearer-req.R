@@ -129,7 +129,7 @@ test_that("custom Authorization header is ignored and warned", {
       url = "https://example.com/base",
       headers = list(Authorization = "Basic xyz", `X-Other` = "ok")
     ),
-    regexp = "Ignoring custom 'Authorization' header",
+    regexp = "Ignoring custom authentication headers",
     fixed = TRUE
   )
 

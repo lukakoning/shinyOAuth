@@ -624,8 +624,11 @@ normalize_client_bearer_headers <- function(headers = NULL) {
     return(as.list(headers))
   }
 
-  cli::cli_warn(
-    "Ignoring 'headers' because it must be a named list or named character vector"
+  warn_pkg(
+    "Ignoring invalid client bearer headers",
+    c(
+      "!" = "The {.arg headers} argument must be a named list or named character vector."
+    )
   )
   NULL
 }
@@ -660,12 +663,18 @@ drop_client_bearer_auth_headers <- function(headers) {
   }
 
   if (any(is_dpop, na.rm = TRUE)) {
-    cli::cli_warn(
-      "Ignoring custom 'Authorization' or 'DPoP' header; token authentication is already set"
+    warn_pkg(
+      "Ignoring custom authentication headers",
+      c(
+        "!" = "Custom {.code Authorization} or {.code DPoP} headers were ignored because token authentication is already set."
+      )
     )
   } else {
-    cli::cli_warn(
-      "Ignoring custom 'Authorization' header; bearer token is already set"
+    warn_pkg(
+      "Ignoring custom authentication headers",
+      c(
+        "!" = "Custom {.code Authorization} header was ignored because the bearer token is already set."
+      )
     )
   }
 

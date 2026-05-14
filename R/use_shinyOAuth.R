@@ -109,9 +109,9 @@ warn_about_missing_js_dependency <- function() {
     return(invisible(NULL))
   }
 
-  rlang::warn(
+  warn_pkg(
+    "JavaScript dependency not called",
     c(
-      "[{.pkg shinyOAuth}] - {.strong JavaScript dependency not called}",
       "!" = "{.code oauth_module_server()} was called, but no previous call to {.code use_shinyOAuth()} was detected",
       "i" = paste0(
         "You must add {.code use_shinyOAuth()} to your UI (e.g., inside {.code fluidPage()}) ",

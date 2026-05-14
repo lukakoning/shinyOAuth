@@ -2074,7 +2074,6 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
   }
 
   bullets <- c(
-    "[{.pkg shinyOAuth}] - OAuthClient created inside Shiny",
     "!" = paste0(
       "Detected OAuth client construction while a Shiny session is active. ",
       "This is usually a bug: the OAuth login flow involves a redirect which creates a new session."
@@ -2099,7 +2098,8 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
     )
   }
 
-  rlang::warn(
+  warn_pkg(
+    "OAuthClient created inside Shiny",
     bullets,
     .frequency = "once",
     .frequency_id = "oauth-client-created-in-shiny"

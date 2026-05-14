@@ -90,10 +90,15 @@ emit_trace_event <- function(event) {
       otel_emit_log(event)
     },
     error = function(e) {
-      rlang::warn(paste0(
-        "[shinyOAuth] otel telemetry error: ",
-        conditionMessage(e)
-      ))
+      warn_pkg(
+        "Failed to emit OpenTelemetry log",
+        c(
+          "!" = paste0(
+            "OpenTelemetry logging failed while handling an internal shinyOAuth event: ",
+            conditionMessage(e)
+          )
+        )
+      )
     }
   )
   if (is.function(audit_hook)) {
@@ -102,12 +107,17 @@ emit_trace_event <- function(event) {
     tryCatch(
       audit_hook(event),
       error = function(e) {
-        rlang::warn(paste0(
-          "[shinyOAuth] ",
-          hook_name,
-          " error: ",
-          conditionMessage(e)
-        ))
+        warn_pkg(
+          paste0("Configured shinyOAuth ", hook_name, " failed"),
+          c(
+            "!" = paste0(
+              "The configured ",
+              hook_name,
+              " raised an error: ",
+              conditionMessage(e)
+            )
+          )
+        )
       }
     )
   }
