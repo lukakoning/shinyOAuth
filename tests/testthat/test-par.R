@@ -38,11 +38,13 @@ make_par_test_client <- function(
   token_auth_style = "body",
   client_id = "abc",
   client_secret = "",
+  scopes = character(0),
   resource = character(0),
   extra_auth_params = list(),
   extra_token_headers = character(),
   client_assertion_audience = NULL,
   par_url = "https://example.com/par",
+  issuer = NA_character_,
   dpop_private_key = NULL
 ) {
   prov <- oauth_provider(
@@ -50,6 +52,7 @@ make_par_test_client <- function(
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
     par_url = par_url,
+    issuer = issuer,
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = token_auth_style,
@@ -65,7 +68,7 @@ make_par_test_client <- function(
     client_id = client_id,
     client_secret = client_secret,
     redirect_uri = "http://localhost:8100",
-    scopes = character(0),
+    scopes = scopes,
     resource = resource,
     client_assertion_audience = client_assertion_audience,
     dpop_private_key = dpop_private_key,
@@ -854,6 +857,44 @@ test_that("PAR JWT client assertions target par_url by default and allow audienc
     captured_override$client_assertion
   )
   expect_identical(payload_override$aud, "https://example.com/custom-par-aud")
+})
+
+test_that("PAR JWT client assertions prefer issuer when available", {
+  cli <- make_par_test_client(
+    token_auth_style = "client_secret_jwt",
+    client_secret = paste(rep("s", 32), collapse = ""),
+    scopes = c("openid"),
+    issuer = "https://example.com"
+  )
+  captured <- NULL
+
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_identical(
+    shinyOAuth:::parse_jwt_payload(captured$client_assertion)$aud,
+    cli@provider@issuer
+  )
 })
 
 test_that("OIDC discovery wires PAR metadata into provider", {

@@ -177,10 +177,11 @@ build_client_assertion <- function(client, aud) {
 
 #' Resolve the audience (`aud`) value for a JWT client assertion.
 #'
-#' Uses an explicit client override when present, otherwise uses the exact URL
-#' on the httr2 request (so any URL normalization/modification stays consistent
-#' with the audience claim). Falls back to the provider token_url for non-httr2
-#' request doubles used in tests. Used by `build_client_assertion()`.
+#' Uses an explicit client override when present, otherwise prefers the
+#' provider issuer when available. Falls back to the exact URL on the httr2
+#' request (so any URL normalization/modification stays consistent with the
+#' audience claim), then to the provider token_url for non-httr2 request
+#' doubles used in tests. Used by `build_client_assertion()`.
 #'
 #' @param client OAuth client carrying the assertion configuration.
 #' @param req httr2 request object or request double.
@@ -198,6 +199,11 @@ resolve_client_assertion_audience <- function(client, req) {
   override_chr <- as.character(override)
   if (!is.na(override_chr) && nzchar(override_chr)) {
     return(override_chr)
+  }
+
+  provider_issuer <- client@provider@issuer %||% NA_character_
+  if (is_valid_string(provider_issuer)) {
+    return(provider_issuer)
   }
 
   if (inherits(req, "httr2_request")) {
