@@ -43,6 +43,7 @@ request_body_text <- function(req) {
 make_jar_test_provider <- function(
   issuer = "https://issuer.example.com",
   par_url = NA_character_,
+  require_pushed_authorization_requests = FALSE,
   token_auth_style = "body",
   use_nonce = FALSE,
   extra_auth_params = list(),
@@ -63,6 +64,7 @@ make_jar_test_provider <- function(
       token_url = "https://example.com/token",
       issuer = issuer,
       par_url = par_url,
+      require_pushed_authorization_requests = require_pushed_authorization_requests,
       request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
       request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
       request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
@@ -413,6 +415,73 @@ test_that("request_uri mode validates provider request_uri metadata", {
 
   expect_true(
     S7::S7_inherits(registered_cli, shinyOAuth::OAuthClient)
+  )
+})
+
+test_that("request_uri mode bypasses optional PAR and publishes by reference", {
+  published <- NULL
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(par_url = "https://example.com/par"),
+    authorization_request_mode = "request_uri"
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      stop("PAR should not be called for caller-managed request_uri mode")
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    cli,
+    valid_browser_token(),
+    request_uri_publisher = function(
+      request_object,
+      request_handle_id,
+      expires_at,
+      oauth_client
+    ) {
+      published <<- list(
+        request_object = request_object,
+        request_handle_id = request_handle_id,
+        expires_at = expires_at,
+        client_id = oauth_client@client_id
+      )
+      "https://client.example.com/published-request-object"
+    }
+  )
+
+  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_false(grepl("[?&]request=", auth_url))
+  expect_identical(
+    parse_query_param(auth_url, "request_uri", decode = TRUE),
+    "https://client.example.com/published-request-object"
+  )
+  expect_true(is.list(published))
+  expect_identical(published$client_id, "abc")
+})
+
+test_that("request_uri mode rejects providers that require PAR", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      par_url = "https://example.com/par",
+      require_pushed_authorization_requests = TRUE
+    ),
+    authorization_request_mode = "request_uri"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(
+      cli,
+      valid_browser_token(),
+      request_uri_publisher = function(...) {
+        "https://client.example.com/request-object"
+      }
+    ),
+    regexp = paste(
+      "authorization_request_mode = 'request_uri' cannot",
+      "be used when the provider requires PAR"
+    )
   )
 })
 
