@@ -84,21 +84,40 @@ derived key based on the plain state value:
 These values are used later during callback validation.
 
 If the client has `authorization_request_mode = "request"`, shinyOAuth
-switches from plain query parameters to a signed JWT-based authorization
+switches from plain query parameters to a JWT-based authorization
 request. This is the JAR pattern (RFC 9101). In that mode, the package
 builds a Request Object JWT containing the OAuth authorization
-parameters that would otherwise appear directly on the browser URL.
-shinyOAuth signs these Request Objects, but does not encrypt them as
-JWE, so they are protected from tampering but their contents are not
-hidden.
+parameters that would otherwise appear directly on the browser URL. By
+default, shinyOAuth signs these Request Objects, which protects them
+from tampering. When Request Object encryption is configured, shinyOAuth
+signs first and then wraps the signed Request Object in a JWE, as RFC
+9101 requires for nested JWTs, so the request gains confidentiality as
+well.
 
-If the provider has a `par_url` configured, the module uses Pushed
-Authorization Requests (PAR, RFC 9126) before redirecting the browser.
-In that mode, the authorization request is first sent server-to-server
-to the provider’s PAR endpoint as a form-encoded POST. The browser is
-then redirected with only `client_id` and a `request_uri` handle, so the
-sealed `state`, `redirect_uri`, and other authorization parameters do
-not need to appear in the browser URL.
+If the client has `authorization_request_mode = "request_uri"`,
+shinyOAuth builds the same Request Object but publishes it by reference
+and redirects the browser with a `request_uri` instead of an inline
+`request` JWT. In
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+the default publisher serves that Request Object from the current Shiny
+app origin, and `request_uri_base_url` lets you override the public base
+URL when the authorization server must fetch it through a different host
+or proxy. This is the caller-managed Request Object URI path from RFC
+9101, so the provider fetches the Request Object directly from the
+published URL.
+
+If the provider has a `par_url` configured and the client is not using
+caller-managed `authorization_request_mode = "request_uri"`, the module
+uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
+the browser. In that mode, the authorization request is first sent
+server-to-server to the provider’s PAR endpoint as a form-encoded POST.
+The browser is then redirected with only `client_id` and a
+provider-issued `request_uri` handle, so the sealed `state`,
+`redirect_uri`, and other authorization parameters do not need to appear
+in the browser URL. If the provider requires PAR,
+`authorization_request_mode = "request_uri"` is not allowed, because RFC
+9126 assigns the `request_uri` handle to the PAR response and the PAR
+request itself must not include a `request_uri` parameter.
 
 ### 4. App redirects to the provider
 
@@ -111,15 +130,27 @@ parameters: `response_type=code`, `client_id`, `redirect_uri`,
 plus any configured extra parameters.
 
 With JAR enabled but without PAR, the browser is still redirected to the
-provider’s authorization endpoint, but the URL now carries the signed
-Request Object instead of the raw authorization parameters. In practice,
-the redirect contains `client_id` plus `request=<signed JWT>`.
+provider’s authorization endpoint, but the URL now carries the Request
+Object instead of the raw authorization parameters. In practice, the
+redirect contains `client_id` plus `request=<Request Object JWT>`. That
+value is signed by default, or signed first and then encrypted as a
+nested JWT when Request Object encryption is configured.
 
-With PAR enabled, the browser is still redirected to the provider’s
-authorization endpoint, but the front-channel URL contains only the PAR
-handle: `client_id` and `request_uri`. If JAR is also enabled, the
-signed Request Object is what gets pushed to the PAR endpoint, and the
-browser still sees only `client_id` plus `request_uri`.
+With caller-managed `request_uri` mode, the browser is redirected with
+`client_id` plus `request_uri=<absolute URL>`. The authorization server
+then fetches the Request Object from that URL. This is different from
+PAR: the `request_uri` points at a client-managed published Request
+Object, not a provider-issued PAR handle. The published object still
+follows the same JAR rules as above: signed by default, or signed first
+and then encrypted when Request Object encryption is configured.
+
+With PAR enabled and selected, the browser is still redirected to the
+provider’s authorization endpoint, but the front-channel URL contains
+only the PAR handle: `client_id` and `request_uri`. If JAR request mode
+is also enabled, the Request Object pushed to the PAR endpoint follows
+the same rule: signed by default, or signed first and then encrypted
+when Request Object encryption is configured. The browser still sees
+only `client_id` plus `request_uri`.
 
 ### 5. User authenticates and authorizes
 
