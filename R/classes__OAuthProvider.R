@@ -276,8 +276,10 @@
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
 #'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
 #'   `ES384`, `ES512`, and `EdDSA` for OKP-backed signatures. When ID token
-#'   `at_hash` validation is in play, Ed25519 is supported but Ed448 currently
-#'   is not.
+#'   `at_hash` validation is in play, Ed25519 is supported. Ed448 `at_hash`
+#'   cannot be validated with the current crypto bindings, so shinyOAuth skips
+#'   that optional check unless `id_token_at_hash_required = TRUE`, in which
+#'   case Ed448 ID tokens fail fast.
 #'   Symmetric HMAC algorithms `HS256`, `HS384`, `HS512` are also supported but
 #'   require that you supply a `client_secret` and explicitly enable HMAC
 #'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.

@@ -311,6 +311,111 @@ test_that("compute_at_hash rejects unsupported Ed448 mapping", {
   )
 })
 
+test_that("at_hash validation skips optional Ed448 claims after verified curve resolution", {
+  client <- mk_client()
+  client@provider@allowed_algs <- c("EdDSA")
+  now <- floor(as.numeric(Sys.time()))
+  access_token <- "access-token"
+  pub_jwk <- list(
+    kty = "OKP",
+    crv = "Ed448",
+    x = "AQ",
+    kid = "ed448-at-hash"
+  )
+
+  jwt <- build_jwt(
+    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      at_hash = "bogus-ed448-at-hash"
+    )
+  )
+
+  expect_silent(testthat::with_mocked_bindings(
+    fetch_jwks = function(
+      issuer,
+      jwks_cache,
+      force_refresh = FALSE,
+      pins = NULL,
+      pin_mode = c("any", "all"),
+      provider = NULL
+    ) {
+      list(keys = list(pub_jwk))
+    },
+    jwk_to_pubkey = function(jwk) {
+      structure(list(), class = "ed448")
+    },
+    verify_jws_signature_no_time = function(id_token, pub, alg) {
+      TRUE
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::validate_id_token(
+      client,
+      jwt,
+      expected_access_token = access_token
+    )
+  ))
+})
+
+test_that("at_hash validation rejects required Ed448 claims when mapping is unavailable", {
+  client <- mk_client()
+  client@provider@allowed_algs <- c("EdDSA")
+  client@provider@id_token_at_hash_required <- TRUE
+  now <- floor(as.numeric(Sys.time()))
+  access_token <- "access-token"
+  pub_jwk <- list(
+    kty = "OKP",
+    crv = "Ed448",
+    x = "AQ",
+    kid = "ed448-at-hash"
+  )
+
+  jwt <- build_jwt(
+    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "user-1",
+      exp = now + 300,
+      iat = now - 1,
+      at_hash = "bogus-ed448-at-hash"
+    )
+  )
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(
+        issuer,
+        jwks_cache,
+        force_refresh = FALSE,
+        pins = NULL,
+        pin_mode = c("any", "all"),
+        provider = NULL
+      ) {
+        list(keys = list(pub_jwk))
+      },
+      jwk_to_pubkey = function(jwk) {
+        structure(list(), class = "ed448")
+      },
+      verify_jws_signature_no_time = function(id_token, pub, alg) {
+        TRUE
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::validate_id_token(
+        client,
+        jwt,
+        expected_access_token = access_token
+      )
+    ),
+    class = "shinyOAuth_id_token_error",
+    regexp = "Ed448"
+  )
+})
+
 test_that("at_hash validation rejects EdDSA tokens when signature verification is skipped", {
   client <- mk_client()
   client@provider@allowed_algs <- c("EdDSA")

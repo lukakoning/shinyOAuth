@@ -475,15 +475,28 @@ validate_id_token <- function(
         "i" = "Exact EdDSA at_hash validation requires a verified key or JWK to resolve the concrete curve"
       ))
     }
-    computed <- compute_at_hash(
-      expected_access_token,
-      alg,
-      eddsa_curve = verified_eddsa_curve
-    )
-    if (!constant_time_compare(computed, payload$at_hash)) {
-      err_id_token(
-        "at_hash claim does not match the access token (OIDC Core 3.1.3.8)"
+    if (
+      identical(alg, "EDDSA") &&
+        identical(canonicalize_eddsa_curve(verified_eddsa_curve), "Ed448")
+    ) {
+      if (at_hash_required) {
+        err_id_token(c(
+          "x" = "Cannot validate required Ed448 at_hash with the current crypto bindings",
+          "i" = "OIDC code flow only makes at_hash validation optional unless id_token_at_hash_required = TRUE",
+          "i" = "Current crypto bindings do not expose the exact SHAKE256 mapping needed for Ed448"
+        ))
+      }
+    } else {
+      computed <- compute_at_hash(
+        expected_access_token,
+        alg,
+        eddsa_curve = verified_eddsa_curve
       )
+      if (!constant_time_compare(computed, payload$at_hash)) {
+        err_id_token(
+          "at_hash claim does not match the access token (OIDC Core 3.1.3.8)"
+        )
+      }
     }
   }
 
