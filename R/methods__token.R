@@ -984,6 +984,19 @@ refresh_token <- function(
             access_token = refreshed_token@access_token,
             introspection_result = intro_res
           )
+          validate_token_dpop_binding(
+            oauth_client = oauth_client,
+            token = refreshed_token,
+            error_context = "token",
+            phase = "refresh_token"
+          )
+          validate_observed_dpop_cnf_required(
+            oauth_client = oauth_client,
+            token = refreshed_token,
+            introspection_result = intro_res,
+            error_context = "token",
+            phase = "refresh_token"
+          )
 
           if (isTRUE(defer_certificate_binding)) {
             validate_token_certificate_binding(

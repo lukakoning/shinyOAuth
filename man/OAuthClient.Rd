@@ -226,11 +226,15 @@ configuration error.}
 \item{dpop_require_access_token}{Logical or \code{NULL}. When \code{TRUE} and
 \code{dpop_private_key} is configured, shinyOAuth requires the authorization
 server to return \code{token_type = "DPoP"} for access tokens and fails fast
-otherwise. In \code{\link[=oauth_client]{oauth_client()}}, the default \code{NULL} resolves to \code{TRUE}
-when \code{dpop_private_key} is configured and to \code{FALSE} otherwise. Set
-\code{FALSE} explicitly only when you intentionally want to allow Bearer
-access tokens, such as deployments where DPoP is used only to bind refresh
-tokens.}
+otherwise. When shinyOAuth can observe token binding data from a JWT
+access token or an introspection response, this strict mode also requires
+\code{cnf$jkt} to be present and match the configured \code{dpop_private_key}.
+Opaque access tokens that expose no \code{cnf} data still pass this check unless
+introspection later reveals the binding. In \code{\link[=oauth_client]{oauth_client()}}, the default
+\code{NULL} resolves to \code{TRUE} when \code{dpop_private_key} is configured and to
+\code{FALSE} otherwise. Set \code{FALSE} explicitly only when you intentionally want
+to allow Bearer access tokens, such as deployments where DPoP is used only
+to bind refresh tokens.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 

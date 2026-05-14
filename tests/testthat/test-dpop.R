@@ -67,7 +67,7 @@ test_that("prepare_call includes dpop_jkt in authorization request parameters", 
 
 test_that("resource_req builds DPoP authorization and proof headers", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  cli <- make_dpop_test_client(prov)
+  cli <- make_dpop_test_client(prov, dpop_require_access_token = FALSE)
   tok <- OAuthToken(
     access_token = "access-token",
     token_type = "DPoP",
@@ -132,6 +132,26 @@ test_that("resource_req rejects DPoP cnf.jkt mismatches", {
     ),
     class = "shinyOAuth_input_error",
     regexp = "cnf\\.jkt thumbprint"
+  )
+})
+
+test_that("resource_req rejects strict DPoP JWTs without cnf.jkt", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov, dpop_require_access_token = TRUE)
+  tok <- OAuthToken(
+    access_token = build_dummy_jwt(list(sub = "user-1")),
+    token_type = "DPoP",
+    userinfo = list()
+  )
+
+  expect_error(
+    resource_req(
+      token = tok,
+      url = "https://resource.example.com/api",
+      oauth_client = cli
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "cnf\\.jkt"
   )
 })
 
@@ -635,6 +655,65 @@ test_that("verify_token_set rejects DPoP cnf.jkt mismatches during exchange and 
 
   expect_mismatch(FALSE)
   expect_mismatch(TRUE)
+})
+
+test_that("verify_token_set rejects JWT DPoP access tokens without cnf.jkt in strict mode", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  raw_token <- build_dummy_jwt(list(sub = "user-1"))
+
+  expect_error(
+    shinyOAuth:::verify_token_set(
+      make_dpop_test_client(prov, dpop_require_access_token = TRUE),
+      token_set = list(
+        access_token = raw_token,
+        token_type = "DPoP",
+        expires_in = 60
+      ),
+      nonce = NULL,
+      is_refresh = FALSE,
+      requested_scopes = character(0),
+      prior_granted_scopes = character(0)
+    ),
+    class = "shinyOAuth_token_error",
+    regexp = "cnf\\.jkt"
+  )
+
+  expect_silent(
+    shinyOAuth:::verify_token_set(
+      make_dpop_test_client(prov, dpop_require_access_token = FALSE),
+      token_set = list(
+        access_token = raw_token,
+        token_type = "DPoP",
+        expires_in = 60
+      ),
+      nonce = NULL,
+      is_refresh = FALSE,
+      requested_scopes = character(0),
+      prior_granted_scopes = character(0)
+    )
+  )
+})
+
+test_that("strict DPoP rejects introspection results without cnf.jkt", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov, dpop_require_access_token = TRUE)
+  tok <- OAuthToken(
+    access_token = "opaque-access-token",
+    token_type = "DPoP",
+    userinfo = list()
+  )
+
+  expect_error(
+    shinyOAuth:::validate_observed_dpop_cnf_required(
+      oauth_client = cli,
+      token = tok,
+      introspection_result = list(raw = list(active = TRUE)),
+      error_context = "token",
+      phase = "exchange_code"
+    ),
+    class = "shinyOAuth_token_error",
+    regexp = "cnf\\.jkt"
+  )
 })
 
 test_that("DPoP nonce cache is bounded by age and entry count", {
@@ -1249,7 +1328,7 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
     userinfo_id_token_match = FALSE,
     token_auth_style = "body"
   )
-  cli <- make_dpop_test_client(prov)
+  cli <- make_dpop_test_client(prov, dpop_require_access_token = FALSE)
   tok <- OAuthToken(
     access_token = "old-access",
     token_type = "DPoP",

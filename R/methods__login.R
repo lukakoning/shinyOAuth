@@ -1524,6 +1524,19 @@ handle_callback_internal <- function(
           access_token = token@access_token,
           introspection_result = intro_res
         )
+        validate_token_dpop_binding(
+          oauth_client = oauth_client,
+          token = token,
+          error_context = "token",
+          phase = "exchange_code"
+        )
+        validate_observed_dpop_cnf_required(
+          oauth_client = oauth_client,
+          token = token,
+          introspection_result = intro_res,
+          error_context = "token",
+          phase = "exchange_code"
+        )
 
         if (isTRUE(defer_certificate_binding)) {
           validate_token_certificate_binding(
@@ -2217,6 +2230,13 @@ verify_token_set <- function(
     {
       verify_token_type_allowlist(client, token_set)
       validate_token_dpop_binding(
+        oauth_client = client,
+        access_token = token_set[["access_token"]],
+        cnf = token_set[["cnf"]] %||% NULL,
+        error_context = "token",
+        phase = phase
+      )
+      validate_observed_dpop_cnf_required(
         oauth_client = client,
         access_token = token_set[["access_token"]],
         cnf = token_set[["cnf"]] %||% NULL,

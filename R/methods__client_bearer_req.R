@@ -437,6 +437,12 @@ validate_client_bearer_sender_constraints <- function(
     access_token = access_token,
     error_context = "input"
   )
+  validate_observed_dpop_cnf_required(
+    oauth_client = oauth_client,
+    token = token,
+    access_token = access_token,
+    error_context = "input"
+  )
 
   invisible(TRUE)
 }
