@@ -22,6 +22,7 @@ OAuthProvider(
   request_uri_parameter_supported = NA,
   require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(0),
+  dpop_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
@@ -131,6 +132,11 @@ authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
 endpoint. This metadata is used for early validation of
 \code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
 defaults.}
+
+\item{dpop_signing_alg_values_supported}{Optional vector of JWS algorithms
+that the provider advertises for DPoP proof JWTs (RFC 9449). This
+metadata is used for early validation of \code{OAuthClient@dpop_signing_alg}
+and inferred outbound DPoP signing defaults.}
 
 \item{authorization_response_iss_parameter_supported}{Logical. Whether the
 provider advertises RFC 9207 support for returning an \code{iss} parameter on

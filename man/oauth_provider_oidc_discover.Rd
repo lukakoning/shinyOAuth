@@ -140,6 +140,10 @@ this helper applies the OpenID Connect defaults instead of storing \code{NA}.
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client
 assertion algorithm is unsupported.
+\item DPoP metadata: when the discovery document advertises
+\code{dpop_signing_alg_values_supported}, the resulting provider stores that
+metadata so \code{OAuthClient} can fail fast when an explicit or inferred DPoP
+proof signing algorithm is unsupported.
 \item RFC 9207 callback issuer metadata: when the discovery document advertises
 \code{authorization_response_iss_parameter_supported = true}, the resulting
 provider stores that metadata so \code{\link[=oauth_client]{oauth_client()}} can auto-enable callback

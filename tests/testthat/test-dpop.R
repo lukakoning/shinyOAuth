@@ -566,6 +566,43 @@ test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
   )
 })
 
+test_that("oauth_client enforces provider-advertised DPoP signing algs", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@dpop_signing_alg_values_supported <- "ES256"
+
+  expect_error(
+    make_dpop_test_client(
+      prov,
+      dpop_signing_alg = "RS256"
+    ),
+    regexp = paste0(
+      "dpop_signing_alg 'RS256' is not supported by provider ",
+      "dpop_signing_alg_values_supported"
+    )
+  )
+
+  expect_error(
+    make_dpop_test_client(prov),
+    regexp = paste0(
+      "dpop_signing_alg 'RS256' is not supported by provider ",
+      "dpop_signing_alg_values_supported"
+    )
+  )
+
+  key_ec <- try(openssl::ec_keygen(curve = "P-256"), silent = TRUE)
+  if (inherits(key_ec, "try-error")) {
+    testthat::skip("EC key generation not supported on this platform")
+  }
+
+  cli <- make_dpop_test_client(
+    prov,
+    dpop_private_key = key_ec,
+    dpop_signing_alg = "ES256"
+  )
+
+  testthat::expect_s3_class(cli, "shinyOAuth::OAuthClient")
+})
+
 test_that("build_dpop_proof rejects incompatible resolved algs", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)

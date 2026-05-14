@@ -41,7 +41,8 @@ test_that("OAuthProvider accepts advertised JWS algorithm supersets", {
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
     request_object_signing_alg_values_supported = c("RS256", "ES256K"),
-    token_endpoint_auth_signing_alg_values_supported = c("RS256", "ES256K")
+    token_endpoint_auth_signing_alg_values_supported = c("RS256", "ES256K"),
+    dpop_signing_alg_values_supported = c("RS256", "ES256K")
   )
 
   expect_identical(
@@ -50,6 +51,10 @@ test_that("OAuthProvider accepts advertised JWS algorithm supersets", {
   )
   expect_identical(
     p@token_endpoint_auth_signing_alg_values_supported,
+    c("RS256", "ES256K")
+  )
+  expect_identical(
+    p@dpop_signing_alg_values_supported,
     c("RS256", "ES256K")
   )
 })

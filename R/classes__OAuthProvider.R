@@ -84,6 +84,10 @@
 #'   endpoint. This metadata is used for early validation of
 #'   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
 #'   defaults.
+#' @param dpop_signing_alg_values_supported Optional vector of JWS algorithms
+#'   that the provider advertises for DPoP proof JWTs (RFC 9449). This
+#'   metadata is used for early validation of `OAuthClient@dpop_signing_alg`
+#'   and inferred outbound DPoP signing defaults.
 #' @param authorization_response_iss_parameter_supported Logical. Whether the
 #'   provider advertises RFC 9207 support for returning an `iss` parameter on
 #'   the authorization response. When `TRUE`, the [oauth_client()] helper can
@@ -375,6 +379,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    dpop_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
     authorization_response_iss_parameter_supported = S7::new_property(
       S7::class_logical,
       default = FALSE
@@ -529,6 +537,7 @@ oauth_provider <- function(
   request_uri_parameter_supported = NA,
   require_request_uri_registration = NA,
   token_endpoint_auth_signing_alg_values_supported = character(),
+  dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
@@ -636,6 +645,15 @@ oauth_provider <- function(
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       token_endpoint_auth_signing_alg_values_supported,
+      use.names = FALSE
+    )
+  ))
+  if (is.null(dpop_signing_alg_values_supported)) {
+    dpop_signing_alg_values_supported <- character()
+  }
+  dpop_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      dpop_signing_alg_values_supported,
       use.names = FALSE
     )
   ))
@@ -794,6 +812,7 @@ oauth_provider <- function(
     request_uri_parameter_supported = request_uri_parameter_supported,
     require_request_uri_registration = require_request_uri_registration,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = isTRUE(
       authorization_response_iss_parameter_supported
     ),
@@ -1370,6 +1389,26 @@ oauth_provider_validate <- function(self) {
       return(
         paste(
           "OAuthProvider: token_endpoint_auth_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  dpop_signing_algs <- self@dpop_signing_alg_values_supported
+  if (length(dpop_signing_algs) > 0) {
+    if (!is.character(dpop_signing_algs)) {
+      return(
+        paste(
+          "OAuthProvider: dpop_signing_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (anyNA(dpop_signing_algs) || !all(nzchar(dpop_signing_algs))) {
+      return(
+        paste(
+          "OAuthProvider: dpop_signing_alg_values_supported",
           "must contain only non-empty strings"
         )
       )

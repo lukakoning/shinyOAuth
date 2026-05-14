@@ -180,7 +180,9 @@
 #'   `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are
 #'   not currently supported for outbound DPoP proofs. If an explicit value is
 #'   provided but incompatible with the key, validation fails early with a
-#'   configuration error.
+#'   configuration error. When the provider advertises
+#'   `dpop_signing_alg_values_supported`, both explicit values and inferred
+#'   defaults must be included in that set.
 #'
 #' @param dpop_require_access_token Logical or `NULL`. When `TRUE` and
 #'   `dpop_private_key` is configured, shinyOAuth requires the authorization
@@ -1570,6 +1572,7 @@ oauth_client_validate <- function(self) {
   }
 
   dpop_alg_raw <- self@dpop_signing_alg %||% NA_character_
+  resolved_dpop_alg <- NA_character_
   if (!is.character(dpop_alg_raw) || length(dpop_alg_raw) != 1L) {
     return(
       "OAuthClient: dpop_signing_alg must be a scalar character string (or NULL/NA to omit)"
@@ -1582,6 +1585,7 @@ oauth_client_validate <- function(self) {
       )
     }
     dpop_alg <- canonicalize_jws_alg(dpop_alg_raw)
+    resolved_dpop_alg <- dpop_alg
     allowed_dpop_algs <- c(
       "RS256",
       "ES256",
@@ -1644,6 +1648,20 @@ oauth_client_validate <- function(self) {
         "OAuthClient: could not determine a compatible default",
         "dpop_signing_alg from dpop_private_key",
         "(outbound DPoP proofs currently support RSA and ECDSA private keys only)"
+      ))
+    }
+    resolved_dpop_alg <- toupper(as.character(inferred_alg))
+  }
+
+  provider_dpop_algs <- toupper(as.character(
+    self@provider@dpop_signing_alg_values_supported %||% character(0)
+  ))
+  if (length(provider_dpop_algs) > 0 && !is.null(self@dpop_private_key)) {
+    if (!(toupper(resolved_dpop_alg) %in% provider_dpop_algs)) {
+      return(paste0(
+        "OAuthClient: dpop_signing_alg '",
+        resolved_dpop_alg,
+        "' is not supported by provider dpop_signing_alg_values_supported"
       ))
     }
   }

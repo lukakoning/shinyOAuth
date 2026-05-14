@@ -332,7 +332,9 @@ the private key type/curve (for example \code{RS256}, \code{ES256}, \code{ES384}
 \code{ES512}). \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, \code{PS512}, and \code{EdDSA} are
 not currently supported for outbound DPoP proofs. If an explicit value is
 provided but incompatible with the key, validation fails early with a
-configuration error.}
+configuration error. When the provider advertises
+\code{dpop_signing_alg_values_supported}, both explicit values and inferred
+defaults must be included in that set.}
 
 \item{dpop_require_access_token}{Logical or \code{NULL}. When \code{TRUE} and
 \code{dpop_private_key} is configured, shinyOAuth requires the authorization

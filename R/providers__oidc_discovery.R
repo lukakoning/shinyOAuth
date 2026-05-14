@@ -77,6 +77,11 @@
 #'   stores that metadata so `OAuthClient` can fail fast when a JWT client
 #'   assertion algorithm is unsupported.
 #'
+#' - DPoP metadata: when the discovery document advertises
+#'   `dpop_signing_alg_values_supported`, the resulting provider stores that
+#'   metadata so `OAuthClient` can fail fast when an explicit or inferred DPoP
+#'   proof signing algorithm is unsupported.
+#'
 #' - RFC 9207 callback issuer metadata: when the discovery document advertises
 #'   `authorization_response_iss_parameter_supported = true`, the resulting
 #'   provider stores that metadata so [oauth_client()] can auto-enable callback
@@ -321,6 +326,12 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
+  dpop_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      disc[["dpop_signing_alg_values_supported"]] %||% character(0),
+      use.names = FALSE
+    )
+  ))
   authorization_response_iss_parameter_supported <-
     .discover_parse_optional_boolean(
       disc,
@@ -367,6 +378,7 @@ oauth_provider_oidc_discover <- function(
     request_uri_parameter_supported = request_uri_parameter_supported,
     require_request_uri_registration = require_request_uri_registration,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
     tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,

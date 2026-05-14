@@ -665,6 +665,35 @@ testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
   )
 })
 
+testthat::test_that("discovery stores RFC 9449 DPoP metadata", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req$get_header("host"))
+    res$set_status(200)$set_type("application/json")$send(
+      jsonlite::toJSON(
+        list(
+          issuer = issuer_url,
+          authorization_endpoint = paste0(issuer_url, "/auth"),
+          token_endpoint = paste0(issuer_url, "/token"),
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          dpop_signing_alg_values_supported = list("ES256", "RS256")
+        ),
+        auto_unbox = TRUE
+      )
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+
+  testthat::expect_identical(
+    prov@dpop_signing_alg_values_supported,
+    c("ES256", "RS256")
+  )
+})
+
 testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
