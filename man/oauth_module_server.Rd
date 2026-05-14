@@ -92,11 +92,13 @@ precedence over \code{tab_title_cleaning}}
 \item{request_uri_base_url}{Optional absolute base URL used when
 \code{authorization_request_mode = "request_uri"} publishes Request Objects
 through Shiny. By default (\code{NULL}), shinyOAuth derives the base URL from
-the current browser-visible app origin. Set this when the authorization
-server must fetch the published Request Object through a different public
-host or proxy address than the browser uses. The value must not include a
-query string or fragment. Non-HTTPS hosts still follow the same
-\code{?is_ok_host} policy as other package URLs.}
+the current browser-visible app origin, but only when
+\code{options(shinyOAuth.allowed_hosts = ...)} pins the permitted public host.
+Set this when the authorization server must fetch the published Request
+Object through a different public host or proxy address than the browser
+uses, or when you prefer to declare the public origin explicitly. The
+value must not include a query string or fragment. Non-HTTPS hosts still
+follow the same \code{?is_ok_host} policy as other package URLs.}
 
 \item{browser_cookie_path}{Optional cookie Path to scope the browser token
 cookie. By default (\code{NULL}), the path is fixed to "/" for reliable

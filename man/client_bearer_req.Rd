@@ -49,14 +49,16 @@ the security implications.}
 token type is \code{DPoP}, because the client carries the configured DPoP proof
 key, and also when using sender-constrained mTLS / certificate-bound
 tokens so shinyOAuth can attach the configured client certificate and
-validate any \code{cnf} thumbprint from an \link{OAuthToken} or raw JWT access
-token string.}
+validate any \code{cnf} thumbprint from an \link{OAuthToken} and observe any \code{cnf}
+thumbprint carried on a raw JWT access-token string.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
 Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
-preserves \code{OAuthToken@token_type} and also infers \code{DPoP} from a raw JWT
-access token's \code{cnf.jkt} binding when \code{oauth_client} carries a DPoP key.}
+preserves \code{OAuthToken@token_type} and also infers \code{DPoP} from an observed
+raw JWT access token \code{cnf.jkt} binding when \code{oauth_client} carries a DPoP
+key. This local JWT parse does not independently verify the access-token
+signature.}
 
 \item{dpop_nonce}{Optional DPoP nonce to embed in the proof for this
 request. This is primarily useful after a resource server challenges with

@@ -184,10 +184,11 @@ when \code{userinfo_url} is omitted (since it is optional).}
 Should take a single argument (the userinfo list) and return the user ID
 as a string.
 
-This is used when \code{userinfo_id_token_match} is TRUE.
-Optional otherwise; when not supplied, some features (like subject matching)
-will be unavailable. Helper constructors like \code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}}
-provide a default selector that extracts the \code{sub} field.}
+This is used for helpers that need a provider-specific user identifier, such
+as audit fields and userinfo-derived subject fallbacks outside the OIDC Core
+\code{sub} binding check. Helper constructors like \code{\link[=oauth_provider]{oauth_provider()}} and
+\code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} provide a default selector that extracts the \code{sub}
+field.}
 
 \item{userinfo_id_token_match}{Whether to fail closed if UserInfo cannot be
 bound to a validated ID token subject. Whenever both UserInfo and a
@@ -195,8 +196,7 @@ validated ID token are available, shinyOAuth always verifies that their
 \code{sub} values match. Setting this field to \code{TRUE} additionally requires a
 validated ID token baseline whenever UserInfo is fetched. This requires
 \code{userinfo_required} plus either \code{id_token_validation} or \code{use_nonce} to be
-\code{TRUE}, and the provider's \code{userinfo_id_selector} must be able to extract a
-stable user ID from the userinfo response.
+\code{TRUE}.
 
 For \code{\link[=oauth_provider]{oauth_provider()}}, when not explicitly supplied, this is inferred as
 \code{TRUE} when \code{userinfo_required} is \code{TRUE} and either

@@ -33,11 +33,14 @@ token expires. \code{Inf} for non-expiring tokens}
 userinfo endpoint (if fetched)}
 
 \item{cnf}{Optional confirmation claim set returned alongside a
-sender-constrained access token. For RFC 8705 certificate-bound tokens,
-this may contain \code{x5t#S256} with the SHA-256 thumbprint of the client
-certificate that must accompany later requests. For DPoP-bound tokens,
-this may contain \code{jkt} with the RFC 7638 thumbprint of the public JWK
-bound to the token.}
+sender-constrained access token or observed on another token surface. For
+RFC 8705 certificate-bound tokens, this may contain \code{x5t#S256} with the
+SHA-256 thumbprint of the client certificate that must accompany later
+requests. For DPoP-bound tokens, this may contain \code{jkt} with the RFC 7638
+thumbprint of the public JWK bound to the token. When \code{cnf} is learned by
+locally parsing a raw JWT access token, shinyOAuth is observing the token
+payload and is not independently verifying the access-token signature;
+introspection or another provider proof surface is stronger assurance.}
 
 \item{granted_scopes}{Normalized scope tokens currently associated with the
 access token. When a provider omits \code{scope} in a token response,
