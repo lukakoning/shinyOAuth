@@ -760,7 +760,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     trimws() |>
     jsonlite::fromJSON()
 
-  testthat::expect_identical(request_object_meta$segment_count, 5)
+  testthat::expect_identical(request_object_meta$segment_count, 5L)
   testthat::expect_identical(
     request_object_meta$header$typ,
     "oauth-authz-req+jwt"
