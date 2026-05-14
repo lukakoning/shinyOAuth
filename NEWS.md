@@ -1,30 +1,17 @@
 # shinyOAuth (development version)
 
-* Idempotent DPoP retries now mint a fresh proof for each transient retry
-attempt instead of replaying the same proof JWT.
-
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
 authentication, certificate-bound access tokens, and mTLS endpoint aliases.
+
+* Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
+`oauth_client()` can now send signed and encrypted Request Objects via
+`authorization_request_mode = "request"` (sent as parameter) or 
+via `authorization_request_mode = "request_uri"` (served from your Shiny app).
 
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
 Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
-
-* Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
-`oauth_client()` can now send signed Request Objects via
-`authorization_request_mode = "request"`, using either
-`client_private_key` or `client_secret` signing depending on client
-configuration.
-  - Request Objects can now also be sent by reference with
-  `authorization_request_mode = "request_uri"`. `oauth_module_server()` serves
-  the signed or encrypted Request Object through a short-lived Shiny data-object
-  endpoint, and `request_uri_base_url` can point authorization servers at a
-  public/proxy URL when it differs from the browser's local app URL.
-  - Request-object temporal claims are now fully reserved by shinyOAuth.
-  Caller-supplied `nbf` values from `extra_auth_params` are ignored, and
-  `nbf` is only emitted when configured through
-  `authorization_request_nbf_skew`.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces
@@ -32,15 +19,6 @@ key OAuth operations such as module initialization, login/callback handling,
 token exchange/refresh, userinfo/introspection/revocation, and session-end 
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
-
-* Documentation now recommends
-`userinfo_jwt_required_temporal_claims = "exp"` for security-sensitive
-deployments that accept signed UserInfo JWT responses.
-
-* JWKS caching now respects tightened global host policy immediately. Cached
-entries are scoped to the current `allowed_hosts` /
-`allowed_non_https_hosts` settings, and cache hits re-check the stored
-`jwks_uri` before a JWKS is trusted.
 
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
@@ -58,21 +36,6 @@ entries are scoped to the current `allowed_hosts` /
   failures; and error-state consumption events use the logical state digest when
   available for better correlation. See 
   `vignette("audit-logging", package = "shinyOAuth")` for more information.
-  - `http_error` audit/trace events now omit raw provider
-  `oauth_error_description` text by default and keep only `oauth_error`,
-  `oauth_error_uri`, and `body_digest`. The raw description is emitted only
-  when `options(shinyOAuth.expose_error_body = TRUE)` is enabled for debugging.
-  - OTEL exception span events now use standard `exception.type` /
-  `exception.message` keys, omit raw exception messages by default, and set
-  span status descriptions from the error class instead of provider-controlled
-  text.
-  - Renamed the downstream resource-request helpers to `resource_req()` and
-  `perform_resource_req()`. The old `client_bearer_req()` and
-  `perform_client_bearer_req()` names remain available as deprecated aliases.
-  `perform_resource_req()` performs the request and, for DPoP-bound access
-  tokens, replays one `use_dpop_nonce` challenge with the server-provided
-  nonce while `resource_req()` remains the lower-level builder for advanced
-  callers.
   - `options(shinyOAuth.trace_hook = ...)` is no longer treated as a separate
   documented event sink. Prefer `options(shinyOAuth.audit_hook = ...)`; the
   old `trace_hook` option now remains only as a backward-compatible alias when
@@ -80,6 +43,10 @@ entries are scoped to the current `allowed_hosts` /
   - Removed the documented global `shinyOAuth.print_errors` /
   `shinyOAuth.print_traceback` options. Internal console error logging
   now uses explicit internal flags instead of package-wide option fallbacks.
+  - `http_error` audit events now omit raw provider `oauth_error_description` 
+  text by default and keep only `oauth_error`, `oauth_error_uri`, and 
+  `body_digest`. The raw description is emitted only when 
+  `options(shinyOAuth.expose_error_body = TRUE)` is enabled for debugging.
 
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 
@@ -115,6 +82,14 @@ previews instead of exposing full credential material in default console output.
 explicitly returned and ones that were carried forward when the provider omitted
 `scope`. Refresh now preserves prior granted scopes instead of widening back to
 the client's configured scopes when a refresh response omits `scope`.
+
+- Renamed the resource-request helpers to `resource_req()` and
+`perform_resource_req()`. The old `client_bearer_req()` and
+`perform_client_bearer_req()` names remain available as deprecated aliases.
+`perform_resource_req()` performs the request and, for DPoP-bound access
+tokens, replays one `use_dpop_nonce` challenge with the server-provided
+nonce while `resource_req()` remains the lower-level request builder for making
+authenticated resource requests.
 
 * `oauth_client()` (`OAuthClient`) now:
   - Accepts custom state-store entries that omit unused `pkce_code_verifier`
@@ -248,6 +223,11 @@ trusting `jwks_uri`. This policy is now stored on `OAuthProvider` via
 `issuer_match`, so both provider discovery and runtime JWKS fetches apply the 
 same rule: `url` for exact issuer URL matching, `host` for scheme-and-host 
 matching, or `none` to skip the discovery issuer check.
+
+* JWKS caching now respects global host policy immediately. Cached
+entries are scoped to the current `allowed_hosts` /
+`allowed_non_https_hosts` settings, and cache hits re-check the stored
+`jwks_uri` before a JWKS is trusted.
 
 * Scope validation now treats an omitted `scope` in the initial token response
 as unchanged from the requested scope, matching RFC 6749 section 5.1 instead
