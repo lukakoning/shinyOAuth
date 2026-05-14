@@ -2285,7 +2285,20 @@ verify_token_set <- function(
 
   with_otel_span(
     "shinyOAuth.token.verify",
-    {
+    local({
+      # Emit these decision attributes once on span exit so exporters do not
+      # receive duplicate keys when final values replace the initial defaults.
+      on.exit(
+        otel_set_span_attributes(
+          attributes = compact_list(list(
+            oauth.id_token.validated = isTRUE(id_token_validated),
+            oauth.scopes.granted = granted_scope_string,
+            oauth.scopes.granted_count = granted_scope_count
+          ))
+        ),
+        add = TRUE
+      )
+
       verify_token_type_allowlist(client, token_set)
       validate_token_dpop_binding(
         oauth_client = client,
@@ -2623,44 +2636,34 @@ verify_token_set <- function(
         }
       }
 
-      # Attach the validation flag so callers can propagate it to OAuthToken.
-      otel_set_span_attributes(
-        attributes = compact_list(list(
-          oauth.id_token.validated = isTRUE(id_token_validated),
-          oauth.scopes.granted = granted_scope_string,
-          oauth.scopes.granted_count = granted_scope_count
-        ))
-      )
-
       token_set
-    },
+    }),
     attributes = otel_client_attributes(
       client = client,
       shiny_session = shiny_session,
       phase = if (isTRUE(is_refresh)) "refresh.verify" else "callback.verify",
-      extra = list(
-        oauth.received_id_token = id_token_present,
-        oauth.received_refresh_token = isTRUE(is_valid_string(token_set[[
-          "refresh_token"
-        ]])),
-        oauth.id_token.required = isTRUE(id_token_required),
-        oauth.id_token.present = isTRUE(id_token_present),
-        oauth.id_token.validated = FALSE,
-        oauth.nonce.required = isTRUE(client@provider@use_nonce) ||
-          isTRUE(is_valid_string(nonce)),
-        oauth.scope.validation_mode = scope_validation_mode,
-        oauth.scopes.requested = requested_scope_string,
-        oauth.scopes.requested_count = as.integer(length(requested_scopes)),
-        oauth.scopes.granted = granted_scope_string,
-        oauth.scopes.granted_count = granted_scope_count,
-        oauth.required_acr_values = otel_required_acr_values(racr),
-        oauth.required_acr_values_count = otel_count_items(racr),
-        oauth.refresh_flow = isTRUE(is_refresh)
+      extra = c(
+        list(
+          oauth.received_id_token = id_token_present,
+          oauth.received_refresh_token = isTRUE(is_valid_string(token_set[[
+            "refresh_token"
+          ]])),
+          oauth.id_token.required = isTRUE(id_token_required),
+          oauth.id_token.present = isTRUE(id_token_present),
+          oauth.nonce.required = isTRUE(client@provider@use_nonce) ||
+            isTRUE(is_valid_string(nonce)),
+          oauth.scope.validation_mode = scope_validation_mode,
+          oauth.scopes.requested = requested_scope_string,
+          oauth.scopes.requested_count = as.integer(length(requested_scopes)),
+          oauth.required_acr_values = otel_required_acr_values(racr),
+          oauth.required_acr_values_count = otel_count_items(racr),
+          oauth.refresh_flow = isTRUE(is_refresh)
+        ),
+        otel_sender_constraint_token_attributes(
+          client = client,
+          token_set = token_set
+        )
       ),
-      otel_sender_constraint_token_attributes(
-        client = client,
-        token_set = token_set
-      )
     )
   )
 }

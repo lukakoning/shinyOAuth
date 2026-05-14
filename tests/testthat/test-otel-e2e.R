@@ -90,6 +90,71 @@ otel_log_attribute <- function(log_record, key) {
   otel_log_attr_value(log_record$attributes, key)
 }
 
+otel_exported_spans <- function(path) {
+  if (!file.exists(path)) {
+    return(list())
+  }
+
+  docs <- lapply(
+    readLines(path, warn = FALSE),
+    jsonlite::fromJSON,
+    simplifyVector = FALSE
+  )
+
+  spans <- list()
+  for (doc in docs) {
+    for (resource_span in doc$resourceSpans %||% list()) {
+      for (scope_span in resource_span$scopeSpans %||% list()) {
+        scope_name <- scope_span$scope$name %||% NA_character_
+        for (span in scope_span$spans %||% list()) {
+          spans[[length(spans) + 1L]] <- list(
+            name = span$name %||% NA_character_,
+            trace_id = span$traceId %||% NA_character_,
+            span_id = span$spanId %||% NA_character_,
+            parent_span_id = span$parentSpanId %||% NA_character_,
+            scope_name = scope_name,
+            attributes = span$attributes %||% list()
+          )
+        }
+      }
+    }
+  }
+
+  spans
+}
+
+otel_scope_spans <- function(path) {
+  Filter(
+    function(span) {
+      identical(span$scope_name, "io.github.lukakoning.shinyOAuth")
+    },
+    otel_exported_spans(path)
+  )
+}
+
+otel_attr_values <- function(attributes, key) {
+  if (is.null(attributes) || !length(attributes)) {
+    return(list())
+  }
+
+  values <- list()
+  for (attr in attributes) {
+    if (!identical(attr$key %||% NA_character_, key)) {
+      next
+    }
+
+    value <- attr$value %||% list()
+    for (field in c("stringValue", "intValue", "boolValue", "doubleValue")) {
+      if (!is.null(value[[field]])) {
+        values[[length(values) + 1L]] <- value[[field]]
+        break
+      }
+    }
+  }
+
+  values
+}
+
 otel_temp_jsonl_path <- function(prefix) {
   stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
   file.path(
@@ -959,6 +1024,112 @@ otel_e2e("token.verify span captures validation decision attributes", {
   )
   testthat::expect_identical(s$attributes[["oauth.refresh_flow"]], FALSE)
   testthat::expect_identical(s$attributes[["shiny.session.is_async"]], TRUE)
+})
+
+otel_e2e("token.verify exports final decision attributes once", {
+  trace_file <- otel_temp_jsonl_path("shinyoauth-otel-token-verify-traces")
+  if (file.exists(trace_file)) {
+    file.remove(trace_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = trace_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  cli <- make_test_client(
+    use_nonce = TRUE,
+    scopes = c("openid", "profile")
+  )
+  cli@provider@id_token_validation <- TRUE
+  cli@required_acr_values <- "loa2"
+  shiny_session <- list(
+    token = "async-session-token",
+    http = NULL,
+    is_async = TRUE,
+    process_id = 4321L,
+    main_process_id = 1234L
+  )
+
+  testthat::with_mocked_bindings(
+    validate_id_token = function(...) invisible(TRUE),
+    parse_jwt_payload = function(...) list(sub = "user-1", acr = "loa2"),
+    .package = "shinyOAuth",
+    {
+      shinyOAuth:::verify_token_set(
+        cli,
+        token_set = list(
+          access_token = "at",
+          refresh_token = "rt",
+          id_token = "jwt",
+          token_type = "Bearer",
+          scope = "openid profile"
+        ),
+        nonce = "nonce-1",
+        is_refresh = FALSE,
+        shiny_session = shiny_session
+      )
+    }
+  )
+
+  poll_for_async(
+    function() {
+      length(Filter(
+        function(span) identical(span$name, "shinyOAuth.token.verify"),
+        otel_scope_spans(trace_file)
+      )) >=
+        1L
+    },
+    timeout = 5
+  )
+
+  exported_verify_spans <- Filter(
+    function(span) identical(span$name, "shinyOAuth.token.verify"),
+    otel_scope_spans(trace_file)
+  )
+  testthat::expect_length(exported_verify_spans, 1L)
+  if (length(exported_verify_spans) != 1L) {
+    return(invisible(NULL))
+  }
+
+  exported_verify_span <- exported_verify_spans[[1L]]
+  for (key in c(
+    "oauth.id_token.validated",
+    "oauth.scopes.granted",
+    "oauth.scopes.granted_count"
+  )) {
+    values <- otel_attr_values(exported_verify_span$attributes, key)
+    testthat::expect_length(values, 1L)
+  }
+
+  testthat::expect_identical(
+    otel_attr_values(
+      exported_verify_span$attributes,
+      "oauth.id_token.validated"
+    )[[1L]],
+    TRUE
+  )
+  testthat::expect_identical(
+    otel_attr_values(
+      exported_verify_span$attributes,
+      "oauth.scopes.granted"
+    )[[1L]],
+    "openid profile"
+  )
+  testthat::expect_identical(
+    as.integer(otel_attr_values(
+      exported_verify_span$attributes,
+      "oauth.scopes.granted_count"
+    )[[1L]]),
+    2L
+  )
 })
 
 # ---------------------------------------------------------------------------
