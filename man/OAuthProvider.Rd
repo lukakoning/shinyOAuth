@@ -267,9 +267,10 @@ authorization-server calls.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},
-\code{userinfo_endpoint}, \code{introspection_endpoint}, or \code{revocation_endpoint},
-and values must be absolute URLs. This is an advanced setting used when a
-provider publishes separate mTLS-specific endpoints.}
+\code{userinfo_endpoint}, \code{introspection_endpoint}, \code{revocation_endpoint},
+\code{par_endpoint}, or \code{pushed_authorization_request_endpoint}, and values
+must be absolute URLs. This is an advanced setting used when a provider
+publishes separate mTLS-specific endpoints.}
 
 \item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
 authorization server advertises RFC 8705 capability to issue

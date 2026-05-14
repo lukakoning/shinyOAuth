@@ -92,9 +92,10 @@
 #'   `issuer`.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
-#'   `userinfo_endpoint`, `introspection_endpoint`, or `revocation_endpoint`,
-#'   and values must be absolute URLs. This is an advanced setting used when a
-#'   provider publishes separate mTLS-specific endpoints.
+#'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
+#'   `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
+#'   must be absolute URLs. This is an advanced setting used when a provider
+#'   publishes separate mTLS-specific endpoints.
 #' @param tls_client_certificate_bound_access_tokens Logical. Whether the
 #'   authorization server advertises RFC 8705 capability to issue
 #'   certificate-bound access tokens. This describes server capability; the
