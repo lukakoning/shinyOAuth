@@ -147,9 +147,11 @@
   - Also enforces OIDC claim request `value` and `values` constraints
     when `claims_validation` is enabled, not just presence of
     `essential = TRUE` claims.
-  - Warns when callers request `essential` or value-constrained OIDC
-    claims but leave `claims_validation` at its default `"none"`, since
-    those claim requests are otherwise not checked client-side.
+  - Defaults enforceable OIDC claim requests to
+    `claims_validation = "warn"` when callers request `essential` or
+    value-constrained claims and do not set `claims_validation`
+    explicitly, so claim mismatches are surfaced by default unless
+    callers opt out with `claims_validation = "none"`.
   - Carries the same effective requested scopes through the whole login
     flow. If `openid` is auto-added to the authorization request, the
     sealed state payload, token-response scope validation, and

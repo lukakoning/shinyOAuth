@@ -339,8 +339,10 @@ oauth_client(
 
   Optional override for the `aud` claim used in signed authorization
   requests. By default, shinyOAuth uses the provider issuer when
-  available. If the provider has no configured issuer, shinyOAuth omits
-  the `aud` claim unless you supply an explicit override.
+  available. When `authorization_request_mode = "request"` or
+  `"request_uri"`, the provider must have a configured issuer or you
+  must supply an explicit override so the signed Request Object remains
+  audience-bound to the intended authorization server.
 
 - authorization_request_encryption_alg:
 
@@ -448,10 +450,10 @@ oauth_client(
   what happens if the returned ID token or userinfo response does not
   satisfy those requests.
 
-  - `"none"` (default): Skips claims validation entirely. If you leave
-    this default while requesting `essential`, `value`, or `values`
-    constraints, `oauth_client()` warns because providers may still
-    complete login without satisfying those claim requests.
+  - `"none"`: Skips claims validation entirely. This remains the
+    effective default when the supplied `claims` request has no
+    enforceable `essential`, `value`, or `values` constraints, and when
+    you explicitly set `claims_validation = "none"`.
 
   - `"warn"`: Emits a warning but continues authentication if requested
     essential claims are missing or requested claim values are not
@@ -460,6 +462,11 @@ oauth_client(
   - `"strict"`: Throws an error if any requested essential claims are
     missing or requested claim `value` / `values` constraints are not
     satisfied by the response.
+
+  If `claims_validation` is omitted and the supplied `claims` request
+  does include enforceable `essential`, `value`, or `values`
+  constraints, `oauth_client()` promotes the effective default to
+  `"warn"` so those mismatches are surfaced by default.
 
   Enforceable requests under `claims$id_token` require a validated ID
   token. Configure the provider with `id_token_validation = TRUE` or

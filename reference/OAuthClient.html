@@ -238,8 +238,11 @@ signed authorization requests.</p></dd>
 <dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
 <dd><p>Optional override for the <code>aud</code> claim
 used in signed authorization requests. By default, shinyOAuth uses the
-provider issuer when available. If the provider has no configured issuer,
-shinyOAuth omits the <code>aud</code> claim unless you supply an explicit override.</p></dd>
+provider issuer when available. When
+<code>authorization_request_mode = "request"</code> or <code>"request_uri"</code>, the provider
+must have a configured issuer or you must supply an explicit override so
+the signed Request Object remains audience-bound to the intended
+authorization server.</p></dd>
 
 
 <dt id="arg-authorization-request-encryption-alg">authorization_request_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-alg"></a></dt>
@@ -459,17 +462,21 @@ the <code>claims</code> parameter (OIDC Core §5.5). When <code>claims</code> in
 with <code>essential = TRUE</code> for <code>id_token</code> or <code>userinfo</code>, or explicit <code>value</code>
 / <code>values</code> constraints for individual claims, this setting determines what
 happens if the returned ID token or userinfo response does not satisfy
-those requests.</p><ul><li><p><code>"none"</code> (default): Skips claims validation entirely. If you leave this
-default while requesting <code>essential</code>, <code>value</code>, or <code>values</code>
-constraints, <code><a href="oauth_client.html">oauth_client()</a></code> warns because providers may still
-complete login without satisfying those claim requests.</p></li>
+those requests.</p><ul><li><p><code>"none"</code>: Skips claims validation entirely. This remains the effective
+default when the supplied <code>claims</code> request has no enforceable
+<code>essential</code>, <code>value</code>, or <code>values</code> constraints, and when you explicitly
+set <code>claims_validation = "none"</code>.</p></li>
 <li><p><code>"warn"</code>: Emits a warning but continues authentication if requested
 essential claims are missing or requested claim values are not
 satisfied.</p></li>
 <li><p><code>"strict"</code>: Throws an error if any requested essential claims are
 missing or requested claim <code>value</code> / <code>values</code> constraints are not
 satisfied by the response.</p></li>
-</ul><p>Enforceable requests under <code>claims$id_token</code> require a validated ID token.
+</ul><p>If <code>claims_validation</code> is omitted and the supplied <code>claims</code> request does
+include enforceable <code>essential</code>, <code>value</code>, or <code>values</code> constraints,
+<code><a href="oauth_client.html">oauth_client()</a></code> promotes the effective default to <code>"warn"</code> so those
+mismatches are surfaced by default.</p>
+<p>Enforceable requests under <code>claims$id_token</code> require a validated ID token.
 Configure the provider with <code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>
 so shinyOAuth validates the ID token before checking those claims.</p></dd>
 
