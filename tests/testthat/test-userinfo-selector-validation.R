@@ -38,7 +38,6 @@ test_that("userinfo_id_selector must yield scalar string", {
   )
   token <- jose::jwt_encode_hmac(claim, cli@client_secret, header = header)
 
-  # Build fake userinfo where selector would return a non-scalar
   ui <- list(sub = c("123", "456"))
 
   expect_error(
@@ -61,15 +60,40 @@ test_that("userinfo subject mismatch still errors specifically", {
   claim <- jose::jwt_claim(
     iss = prov@issuer,
     aud = cli@client_id,
-    sub = "id-token-sub",
+    sub = "123",
     exp = now + 3600,
     iat = now
   )
   token <- jose::jwt_encode_hmac(claim, cli@client_secret, header = header)
+
   ui <- list(sub = "different-sub")
+
   expect_error(
     verify_userinfo_id_token_subject_match(cli, ui, token),
     regexp = "does not match",
     class = "shinyOAuth_userinfo_mismatch"
   )
+})
+
+test_that("custom selector also drives the UserInfo OIDC comparison", {
+  prov <- make_provider(
+    id_token_validation = TRUE,
+    userinfo_id_token_match = TRUE,
+    userinfo_id_selector = function(x) x$id
+  )
+  cli <- make_client(prov)
+  withr::local_options(list(shinyOAuth.allow_hs = TRUE))
+  header <- list(alg = "HS256")
+  now <- as.numeric(Sys.time())
+  claim <- jose::jwt_claim(
+    iss = prov@issuer,
+    aud = cli@client_id,
+    sub = "id-token-sub",
+    exp = now + 3600,
+    iat = now
+  )
+  token <- jose::jwt_encode_hmac(claim, cli@client_secret, header = header)
+  ui <- list(sub = "different-sub", id = "id-token-sub")
+
+  expect_true(isTRUE(verify_userinfo_id_token_subject_match(cli, ui, token)))
 })

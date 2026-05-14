@@ -993,7 +993,10 @@ fail_signed_userinfo_claim_validation <- function(
 
 #' Verify UserInfo and ID token subject consistency
 #'
-#' Used once both the ID token and UserInfo payload are available.
+#' Used once both the ID token and UserInfo payload are available. The
+#' comparison uses the provider's `userinfo_id_selector`, so custom selector
+#' policies also define the subject that gets matched against the validated ID
+#' token baseline.
 #'
 #' @param oauth_client OAuth client carrying provider policy.
 #' @param userinfo UserInfo claim list.
@@ -1042,33 +1045,32 @@ verify_userinfo_id_token_subject_match <- function(
   id_sub <- id_payload$sub
   ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
 
-  # Validate selector output before comparison; coerce safely and fail with
-  # a targeted message if inappropriate
+  ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
+
   if (is.null(ui_val) || length(ui_val) == 0) {
     err_userinfo(c(
       "x" = "userinfo_id_selector returned no value",
       "i" = "Expected a scalar string"
     ))
   }
-  # If selector returns a vector/list, take the first element but require it's
-  # a non-empty scalar character after coercion. If multiple, raise a
-  # targeted error to aid debugging rather than silently truncating.
+
   if (length(ui_val) > 1) {
     err_userinfo(c(
       "x" = "userinfo_id_selector returned multiple values",
       "i" = "Expected a scalar string"
     ))
   }
-  # Coerce to character(1) where possible (e.g., numeric ids)
+
   if (!is.character(ui_val)) {
     ui_val <- try(as.character(ui_val), silent = TRUE)
     if (inherits(ui_val, "try-error")) {
       err_userinfo(c(
-        "x" = "userinfo_id_selector returned non-coercible value",
-        "i" = "Must be coercible to character(1)"
+        "x" = "userinfo_id_selector returned a value that could not be coerced to character",
+        "i" = "Expected a scalar string"
       ))
     }
   }
+
   ui_sub <- ui_val[[1]]
 
   if (!is_valid_string(id_sub) || !is_valid_string(ui_sub)) {

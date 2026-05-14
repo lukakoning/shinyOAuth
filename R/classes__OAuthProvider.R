@@ -141,12 +141,12 @@
 #'
 #' @param userinfo_id_token_match Whether to fail closed if UserInfo cannot be
 #' bound to a validated ID token subject. Whenever both UserInfo and a
-#' validated ID token are available, shinyOAuth always verifies that their
-#' `sub` values match. Setting this field to `TRUE` additionally requires a
-#' validated ID token baseline whenever UserInfo is fetched. This requires
-#' `userinfo_required` plus either `id_token_validation` or `use_nonce` to be
-#' `TRUE`, and the provider's `userinfo_id_selector` must be able to extract a
-#' stable user ID from the userinfo response.
+#' validated ID token are available, shinyOAuth compares the validated ID token
+#' `sub` to the value returned by `userinfo_id_selector(userinfo)`. Setting
+#' this field to `TRUE` additionally requires a validated ID token baseline
+#' whenever UserInfo is fetched. This requires `userinfo_required`, a
+#' configured `userinfo_id_selector`, plus either `id_token_validation` or
+#' `use_nonce` to be `TRUE`.
 #'
 #' For [oauth_provider()], when not explicitly supplied, this is inferred as
 #' `TRUE` when `userinfo_required` is `TRUE` and either
@@ -180,10 +180,12 @@
 #' Should take a single argument (the userinfo list) and return the user ID
 #' as a string.
 #'
-#' This is used when `userinfo_id_token_match` is TRUE.
-#' Optional otherwise; when not supplied, some features (like subject matching)
-#' will be unavailable. Helper constructors like [oauth_provider()] and [oauth_provider_oidc()]
-#' provide a default selector that extracts the `sub` field.
+#' This is used for helpers that need a provider-specific user identifier, such
+#' as audit fields and UserInfo-to-ID-token subject matching. If you configure a
+#' selector other than `function(x) x$sub`, that selector also defines which
+#' UserInfo value is compared against the validated ID token `sub`. Helper
+#' constructors like [oauth_provider()] and [oauth_provider_oidc()] provide a
+#' default selector that extracts the `sub` field.
 #'
 #' @param id_token_required Whether to require an ID token to be returned
 #' during token exchange. If no ID token is returned, the token exchange
@@ -1446,7 +1448,7 @@ oauth_provider_validate <- function(self) {
         !is.function(self@userinfo_id_selector)
     ) {
       return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires a configured userinfo_id_selector function"
+        "OAuthProvider: userinfo_id_token_match = TRUE requires userinfo_id_selector to be a function"
       )
     }
   }
