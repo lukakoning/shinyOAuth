@@ -129,13 +129,13 @@ resource_req <- function(
   req
 }
 
-#' @title 
+#' @title
 #' Alias for `resource_req()`
-#' 
+#'
 #' @description
 #' `r lifecycle::badge("deprecated")`
-#' 
-#' Deprecated alias for `resource_req()` to avoid a breaking change in the public API. 
+#'
+#' Deprecated alias for `resource_req()` to avoid a breaking change in the public API.
 #' Use `resource_req()` for Bearer, DPoP, and mTLS-protected resource requests instead.
 #'
 #' @inheritParams resource_req
@@ -269,12 +269,12 @@ perform_resource_req <- function(
   req_with_retry(req, idempotent = isTRUE(idempotent))
 }
 
-#' @title 
+#' @title
 #' Alias for `perform_resource_req()`
-#' 
+#'
 #' @description
 #' `r lifecycle::badge("deprecated")`
-#' 
+#'
 #' Deprecated alias for `perform_resource_req()` to avoid a breaking change in the public API.
 #' Use `perform_resource_req()` for Bearer, DPoP, and mTLS-protected resource requests instead.
 #'
