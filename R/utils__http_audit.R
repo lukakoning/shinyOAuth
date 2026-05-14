@@ -150,11 +150,15 @@ redact_query_string <- function(qs) {
 
   # Parse query string into named list
   parsed <- tryCatch(
-    httr2::url_query_parse(qs),
+    url_query_parse(qs),
     error = function(...) NULL
   )
 
-  if (is.null(parsed) || length(parsed) == 0) {
+  if (is.null(parsed)) {
+    return(redact_query_string_fallback(qs, sensitive_params))
+  }
+
+  if (length(parsed) == 0) {
     return(qs)
   }
 
@@ -192,6 +196,56 @@ redact_query_string <- function(qs) {
     }),
     use.names = FALSE
   )
+  paste(parts, collapse = "&")
+}
+
+#' Redact query-string segments without parsing
+#'
+#' Used by `redact_query_string()` when the query parser rejects the raw string
+#' but the original `key=value` segments can still be inspected safely enough to
+#' hide known OAuth secrets.
+#'
+#' @param qs Raw query string.
+#' @param sensitive_params Lower-cased parameter names to redact.
+#' @return Redacted query string.
+#' @keywords internal
+#' @noRd
+redact_query_string_fallback <- function(qs, sensitive_params) {
+  parts <- strsplit(qs, "&", fixed = TRUE)[[1]]
+  if (length(parts) == 0L) {
+    return(qs)
+  }
+
+  parts <- vapply(
+    parts,
+    function(part) {
+      if (!nzchar(part)) {
+        return(part)
+      }
+
+      eq_pos <- regexpr("=", part, fixed = TRUE)[[1]]
+      if (eq_pos < 0L) {
+        param_name <- part
+        has_value <- FALSE
+      } else {
+        param_name <- substr(part, 1L, eq_pos - 1L)
+        has_value <- TRUE
+      }
+
+      if (!(tolower(param_name) %in% sensitive_params)) {
+        return(part)
+      }
+
+      if (!has_value) {
+        return(param_name)
+      }
+
+      paste0(param_name, "=[REDACTED]")
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+
   paste(parts, collapse = "&")
 }
 
