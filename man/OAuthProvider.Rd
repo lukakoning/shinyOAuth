@@ -120,8 +120,8 @@ metadata says caller-managed \code{request_uri} values must be pre-registered.
 \code{NA} means the provider did not say. Discovery-derived providers apply the
 OpenID Connect default (\code{FALSE}) when this metadata is omitted.
 shinyOAuth can publish caller-managed \code{request_uri} values through
-\code{oauth_module_server()}, but the current implementation fails fast when a
-provider requires pre-registration.}
+\code{oauth_module_server()}. When this is \code{TRUE}, make sure the provider has a
+matching public request URI or wildcard prefix registered for the client.}
 
 \item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
 JWS algorithms that the provider advertises for JWT-based client
