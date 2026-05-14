@@ -166,7 +166,7 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
   expect_identical(hdr$kid, "kid-123")
   expect_identical(pl$iss, "abc")
   expect_identical(pl$sub, "abc")
-  expect_identical(pl$aud, prov@issuer)
+  expect_identical(pl$aud, prov@token_url)
   expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
   expect_true(is.character(pl$jti) && nzchar(pl$jti))
 })

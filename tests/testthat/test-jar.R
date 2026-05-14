@@ -888,7 +888,7 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
   expect_false("response_type" %in% names(body_data))
   expect_false("redirect_uri" %in% names(body_data))
   expect_identical(request_payload$client_id, "abc")
-  expect_identical(assertion_payload$aud, cli@provider@par_url)
+  expect_identical(assertion_payload$aud, cli@provider@issuer)
 })
 
 test_that("request mode through PAR supports private_key_jwt client auth", {
@@ -949,7 +949,7 @@ test_that("request mode through PAR supports private_key_jwt client auth", {
   expect_identical(assertion_header$kid, "kid-123")
   expect_identical(assertion_payload$iss, "abc")
   expect_identical(assertion_payload$sub, "abc")
-  expect_identical(assertion_payload$aud, cli@provider@par_url)
+  expect_identical(assertion_payload$aud, cli@provider@issuer)
 })
 
 test_that("request object preserves repeated resource indicators", {

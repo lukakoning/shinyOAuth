@@ -177,11 +177,13 @@ build_client_assertion <- function(client, aud) {
 
 #' Resolve the audience (`aud`) value for a JWT client assertion.
 #'
-#' Uses an explicit client override when present, otherwise prefers the
-#' provider issuer when available. Falls back to the exact URL on the httr2
-#' request (so any URL normalization/modification stays consistent with the
-#' audience claim), then to the provider token_url for non-httr2 request
-#' doubles used in tests. Used by `build_client_assertion()`.
+#' Uses an explicit client override when present. For PAR requests, this then
+#' prefers the provider issuer when known, matching RFC 9126 guidance for
+#' resolving the audience ambiguity at the pushed authorization request
+#' endpoint. Otherwise it uses the exact URL on the httr2 request (so any URL
+#' normalization/modification stays consistent with the audience claim). Falls
+#' back to the provider token_url for non-httr2 request doubles used in tests.
+#' Used by `build_client_assertion()`.
 #'
 #' @param client OAuth client carrying the assertion configuration.
 #' @param req httr2 request object or request double.
@@ -201,15 +203,18 @@ resolve_client_assertion_audience <- function(client, req) {
     return(override_chr)
   }
 
-  provider_issuer <- client@provider@issuer %||% NA_character_
-  if (is_valid_string(provider_issuer)) {
-    return(provider_issuer)
-  }
-
   if (inherits(req, "httr2_request")) {
     url0 <- req$url %||% NA_character_
     url_chr <- as.character(url0[[1]])
     if (!is.na(url_chr) && nzchar(url_chr)) {
+      provider_issuer <- client@provider@issuer %||% NA_character_
+      if (
+        identical(url_chr, client@provider@par_url %||% NA_character_) &&
+          is_valid_string(provider_issuer)
+      ) {
+        return(provider_issuer)
+      }
+
       return(url_chr)
     }
   }
