@@ -101,7 +101,11 @@ the current Shiny app origin, and `request_uri_base_url` lets you override the
 public base URL when the authorization server must fetch it through a different
 host or proxy. This is the caller-managed Request Object URI path from RFC
 9101, so the provider fetches the Request Object directly from the published
-URL.
+URL. Because Shiny data-object URLs include session-routing path segments,
+that published `request_uri` can also appear in authorization-server,
+reverse-proxy, or access logs. `request_uri_base_url` changes the public
+origin but not the underlying Shiny path layout, so prefer PAR when you need
+provider-facing opaque handles.
 
 If the provider has a `par_url` configured and the client is not using
 caller-managed `authorization_request_mode = "request_uri"`, the module uses
@@ -138,7 +142,9 @@ fetches the Request Object from that URL. This is different from PAR: the
 `request_uri` points at a client-managed published Request Object, not a
 provider-issued PAR handle. The published object still follows the same JAR
 rules as above: signed by default, or signed first and then encrypted when
-Request Object encryption is configured.
+Request Object encryption is configured. In shinyOAuth's default Shiny-backed
+publisher, that URL also embeds Shiny session-routing path segments, so it is
+not as log-opaque as a provider-issued PAR handle.
 
 With PAR enabled and selected, the browser is still redirected to the
 provider's authorization endpoint, but the front-channel URL contains only the

@@ -210,7 +210,10 @@ serve_shiny_request_object <- function(data, req) {
 #' Publish a Request Object on the current Shiny app origin
 #'
 #' Registers a session data-object endpoint, then returns the absolute URL that
-#' an authorization server can fetch via `request_uri`.
+#' an authorization server can fetch via `request_uri`. The default Shiny data-
+#' object URL includes session-routing path segments, so deployments that do
+#' not want provider-facing logs to see those URLs should prefer PAR or place
+#' an opaque rewriting layer in front of the published endpoint.
 #'
 #' @param session Active Shiny session.
 #' @param request_object Compact Request Object JWT or JWE.
