@@ -445,19 +445,24 @@ resolve_token_cnf <- function(
 #' @param access_token Optional raw refreshed access-token string.
 #' @param introspection_result Optional introspection payload for the refreshed
 #'   token.
+#' @param preserve_prior_thumbprint Logical, default `TRUE`. When `TRUE` and no
+#'   refreshed-token cnf is observable, preserve the prior certificate
+#'   thumbprint as continuity state. Set to `FALSE` once refresh-time
+#'   introspection has supplied the authoritative metadata for the new token so
+#'   stale sender-constraining proof is not carried forward.
 #' @return Normalized cnf list. When the refreshed token does not expose any
-#'   new cnf binding, this preserves the prior certificate thumbprint so later
-#'   mTLS resource requests do not silently lose sender-constraint state. Treat
-#'   that preserved thumbprint as continuity state rather than fresh proof of
-#'   binding for the new token; for strong assurance on opaque refresh
-#'   responses, prefer refresh-time introspection.
+#'   new cnf binding and `preserve_prior_thumbprint = TRUE`, this preserves the
+#'   prior certificate thumbprint so later mTLS routing can keep continuity
+#'   state. Treat that preserved thumbprint as continuity state rather than
+#'   fresh proof of binding for the new token.
 #' @keywords internal
 #' @noRd
 resolve_refresh_token_cnf <- function(
   prior_cnf = NULL,
   cnf = NULL,
   access_token = NULL,
-  introspection_result = NULL
+  introspection_result = NULL,
+  preserve_prior_thumbprint = TRUE
 ) {
   resolved <- resolve_token_cnf(
     cnf = cnf,
@@ -465,6 +470,10 @@ resolve_refresh_token_cnf <- function(
     introspection_result = introspection_result
   )
   if (length(resolved) > 0L) {
+    return(resolved)
+  }
+
+  if (!isTRUE(preserve_prior_thumbprint)) {
     return(resolved)
   }
 

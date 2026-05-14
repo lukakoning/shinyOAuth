@@ -948,6 +948,75 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
   expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
 })
 
+test_that("requested certificate-bound refresh rejects stale prior cnf after introspection", {
+  files <- list(
+    cert_file = mtls_pem_fixture("client-cert.pem"),
+    key_file = mtls_pem_fixture("client-key.pem"),
+    ca_file = mtls_pem_fixture("ca-cert.pem")
+  )
+
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  provider <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    introspection_url = "https://example.com/introspect",
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    token_auth_style = "body",
+    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_endpoint_aliases = list(
+      token_endpoint = "https://example.com/mtls/token",
+      introspection_endpoint = "https://example.com/mtls/introspect"
+    )
+  )
+  client <- make_mtls_test_client(
+    provider,
+    cert_file = files$cert_file,
+    key_file = files$key_file,
+    ca_file = files$ca_file,
+    client_secret = "",
+    mtls_request_certificate_bound_access_tokens = TRUE
+  )
+  token <- OAuthToken(
+    access_token = "old-at",
+    refresh_token = "old-rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    userinfo = list(),
+    cnf = list(`x5t#S256` = thumbprint)
+  )
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(req, ...) {
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600,"token_type":"Bearer"}'
+        )
+      )
+    },
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = req$url,
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth::refresh_token(client, token, introspect = TRUE),
+    class = "shinyOAuth_token_error",
+    regexp = "required cnf x5t#S256 thumbprint"
+  )
+})
+
 test_that("refresh uses token cnf to choose mTLS alias without provider metadata", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)

@@ -195,6 +195,15 @@ test_that("refresh cnf resolution preserves prior mTLS binding only as a fallbac
     ),
     list(jkt = "fresh-jkt")
   )
+
+  expect_length(
+    shinyOAuth:::resolve_refresh_token_cnf(
+      prior_cnf = list(`x5t#S256` = "prior-thumbprint"),
+      introspection_result = list(active = TRUE),
+      preserve_prior_thumbprint = FALSE
+    ),
+    0L
+  )
 })
 
 test_that("certificate-bound clients reject tokens missing cnf thumbprints", {
