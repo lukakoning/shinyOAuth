@@ -24,7 +24,13 @@ auditing and tracing instead (see `vignette("audit-logging", package = "shinyOAu
 
 Please refer to the '[otelsdk](https://otelsdk.r-lib.org/reference/collecting.html)'
 package to learn more about configuring exporters in R. Once that is set up,
-'shinyOAuth' will automatically emit OTel signals.
+'shinyOAuth' will emit OTel signals from that R process.
+
+When `oauth_module_server(async = TRUE)` runs work in background workers,
+'shinyOAuth' automatically replays relevant OTel environment variables there,
+including `OTEL_*` and `OTEL_R_*` exporter settings. Exporter or SDK setup
+performed from R code is not replayed automatically; rerun that setup in each
+worker or recreate workers after changing it.
 
 All signals are emitted under the instrumentation scope
 `io.github.lukakoning.shinyOAuth`. Use this identifier when configuring
