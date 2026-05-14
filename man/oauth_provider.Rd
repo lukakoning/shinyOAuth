@@ -121,7 +121,9 @@ metadata says caller-managed \code{request_uri} values must be pre-registered.
 OpenID Connect default (\code{FALSE}) when this metadata is omitted.
 shinyOAuth can publish caller-managed \code{request_uri} values through
 \code{oauth_module_server()}. When this is \code{TRUE}, make sure the provider has a
-matching public request URI or wildcard prefix registered for the client.}
+matching public request URI or wildcard prefix registered for the client.
+shinyOAuth stores this metadata for caller awareness, but it cannot verify
+provider-side registration state automatically.}
 
 \item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
 JWS algorithms that the provider advertises for JWT-based client

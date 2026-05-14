@@ -255,7 +255,11 @@ Most users can keep the default. Request mode is an advanced option that
 requires signing material on the client. shinyOAuth prefers
 \code{client_private_key} when present; otherwise it falls back to HMAC signing
 with \code{client_secret}. When Request Object encryption is configured,
-shinyOAuth signs first and then wraps the signed Request Object in a JWE.}
+shinyOAuth signs first and then wraps the signed Request Object in a JWE.
+If the provider advertises \code{require_request_uri_registration = TRUE},
+caller-managed \code{request_uri} publication still depends on the provider
+having that URI or a matching wildcard prefix registered for the client;
+shinyOAuth cannot verify that server-side registration automatically.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a

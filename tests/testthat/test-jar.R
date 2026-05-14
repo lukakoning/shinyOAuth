@@ -466,7 +466,7 @@ test_that("request_uri mode requires a publisher", {
   )
 })
 
-test_that("request_uri mode validates provider request_uri metadata", {
+test_that("request_uri mode rejects unsupported transport but allows registered deployments", {
   expect_error(
     make_jar_test_client(
       provider = make_jar_test_provider(
@@ -487,6 +487,7 @@ test_that("request_uri mode validates provider request_uri metadata", {
     authorization_request_mode = "request_uri"
   )
 
+  expect_true(isTRUE(registered_cli@provider@require_request_uri_registration))
   expect_true(
     S7::S7_inherits(registered_cli, shinyOAuth::OAuthClient)
   )

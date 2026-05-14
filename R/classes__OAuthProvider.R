@@ -76,6 +76,8 @@
 #'   shinyOAuth can publish caller-managed `request_uri` values through
 #'   `oauth_module_server()`. When this is `TRUE`, make sure the provider has a
 #'   matching public request URI or wildcard prefix registered for the client.
+#'   shinyOAuth stores this metadata for caller awareness, but it cannot verify
+#'   provider-side registration state automatically.
 #' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
 #'   JWS algorithms that the provider advertises for JWT-based client
 #'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token

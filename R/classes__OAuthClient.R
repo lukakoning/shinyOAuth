@@ -109,6 +109,10 @@
 #'   `client_private_key` when present; otherwise it falls back to HMAC signing
 #'   with `client_secret`. When Request Object encryption is configured,
 #'   shinyOAuth signs first and then wraps the signed Request Object in a JWE.
+#'   If the provider advertises `require_request_uri_registration = TRUE`,
+#'   caller-managed `request_uri` publication still depends on the provider
+#'   having that URI or a matching wildcard prefix registered for the client;
+#'   shinyOAuth cannot verify that server-side registration automatically.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a
