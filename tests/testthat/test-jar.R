@@ -95,7 +95,7 @@ make_jar_test_client <- function(
   authorization_request_encryption_alg = NULL,
   authorization_request_encryption_enc = NULL,
   authorization_request_encryption_kid = NULL,
-  authorization_request_ttl = 120,
+  authorization_request_ttl = 45,
   authorization_request_nbf_skew = NULL,
   scopes = c("openid", "profile"),
   resource = character(0),
@@ -373,6 +373,10 @@ test_that("request_uri mode publishes signed request objects", {
   request_payload <- shinyOAuth:::parse_jwt_payload(published$request_object)
   expect_identical(request_payload$client_id, "abc")
   expect_identical(request_payload$redirect_uri, "http://localhost:8100")
+  expect_lt(
+    as.numeric(difftime(published$expires_at, Sys.time(), units = "secs")),
+    60
+  )
 })
 
 test_that("request_uri mode requires a publisher", {

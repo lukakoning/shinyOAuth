@@ -751,7 +751,7 @@ build_auth_url <- function(
       }
 
       request_expires_at <- Sys.time() +
-        (oauth_client@authorization_request_ttl %||% 120)
+        (oauth_client@authorization_request_ttl %||% 45)
       request_uri <- tryCatch(
         {
           request_uri_publisher(

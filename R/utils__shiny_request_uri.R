@@ -159,6 +159,10 @@ serve_shiny_request_object <- function(data, req) {
     "Pragma" = "no-cache",
     "X-Content-Type-Options" = "nosniff"
   )
+  gone_headers <- c(
+    headers[names(headers) != "Content-Type"],
+    "Content-Type" = "text/plain; charset=utf-8"
+  )
 
   if (!(method %in% c("GET", "HEAD"))) {
     return(list(
@@ -168,16 +172,30 @@ serve_shiny_request_object <- function(data, req) {
     ))
   }
 
+  usage_state <- data$usage_state %||% NULL
+  if (is.environment(usage_state) && isTRUE(usage_state$consumed)) {
+    return(list(
+      status = 410L,
+      headers = gone_headers,
+      body = if (identical(method, "HEAD")) {
+        ""
+      } else {
+        "Request Object already used"
+      }
+    ))
+  }
+
   expires_at <- data$expires_at %||% NULL
   if (!is.null(expires_at) && isTRUE(Sys.time() > expires_at)) {
     return(list(
       status = 410L,
-      headers = c(
-        headers[names(headers) != "Content-Type"],
-        "Content-Type" = "text/plain; charset=utf-8"
-      ),
+      headers = gone_headers,
       body = if (identical(method, "HEAD")) "" else "Request Object expired"
     ))
+  }
+
+  if (identical(method, "GET") && is.environment(usage_state)) {
+    usage_state$consumed <- TRUE
   }
 
   list(
@@ -219,6 +237,8 @@ publish_shiny_request_object <- function(
   } else {
     paste0("oauth-request-", random_urlsafe(32))
   }
+  usage_state <- new.env(parent = emptyenv())
+  usage_state$consumed <- FALSE
 
   relative_url <- tryCatch(
     {
@@ -226,7 +246,8 @@ publish_shiny_request_object <- function(
         object_name,
         list(
           request_object = request_object,
-          expires_at = expires_at
+          expires_at = expires_at,
+          usage_state = usage_state
         ),
         serve_shiny_request_object
       )

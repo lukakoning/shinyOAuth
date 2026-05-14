@@ -137,7 +137,10 @@
 #'   header. This is mainly useful when the provider publishes more than one
 #'   Request Object encryption key.
 #' @param authorization_request_ttl Positive number of seconds to keep signed
-#'   authorization request objects (`request` JWTs) valid. Default is `120`.
+#'   authorization request objects (`request` JWTs) valid. When
+#'   `authorization_request_mode = "request_uri"`, shinyOAuth also uses this
+#'   value as the default publication window for the referenced Request Object
+#'   URI. Default is `45`.
 #' @param authorization_request_nbf_skew Optional non-negative number of
 #'   seconds. When provided, shinyOAuth adds an `nbf` claim set to
 #'   `iat - authorization_request_nbf_skew` so deployments can tolerate small
@@ -452,7 +455,7 @@ OAuthClient <- S7::new_class(
     # Signed authorization request lifetime in seconds.
     authorization_request_ttl = S7::new_property(
       S7::class_numeric,
-      default = 120
+      default = 45
     ),
     # Optional request-object nbf skew in seconds; NA means omit nbf.
     authorization_request_nbf_skew = S7::new_property(
@@ -579,7 +582,7 @@ oauth_client <- function(
   authorization_request_encryption_alg = NULL,
   authorization_request_encryption_enc = NULL,
   authorization_request_encryption_kid = NULL,
-  authorization_request_ttl = 120,
+  authorization_request_ttl = 45,
   authorization_request_nbf_skew = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,

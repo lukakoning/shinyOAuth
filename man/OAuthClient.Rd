@@ -23,7 +23,7 @@ OAuthClient(
   authorization_request_encryption_alg = NA_character_,
   authorization_request_encryption_enc = NA_character_,
   authorization_request_encryption_kid = NA_character_,
-  authorization_request_ttl = 120,
+  authorization_request_ttl = 45,
   authorization_request_nbf_skew = NA_real_,
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
@@ -181,7 +181,10 @@ header. This is mainly useful when the provider publishes more than one
 Request Object encryption key.}
 
 \item{authorization_request_ttl}{Positive number of seconds to keep signed
-authorization request objects (\code{request} JWTs) valid. Default is \code{120}.}
+authorization request objects (\code{request} JWTs) valid. When
+\code{authorization_request_mode = "request_uri"}, shinyOAuth also uses this
+value as the default publication window for the referenced Request Object
+URI. Default is \code{45}.}
 
 \item{authorization_request_nbf_skew}{Optional non-negative number of
 seconds. When provided, shinyOAuth adds an \code{nbf} claim set to

@@ -550,7 +550,7 @@ build_authorization_request_object <- function(client, params) {
   alg <- resolve_authorization_request_signing_alg(client)
   aud <- resolve_authorization_request_audience(client)
   now <- floor(as.numeric(Sys.time()))
-  ttl <- as.numeric(client@authorization_request_ttl %||% 120)
+  ttl <- as.numeric(client@authorization_request_ttl %||% 45)
   nbf_skew <- as.numeric(client@authorization_request_nbf_skew %||% NA_real_)
 
   claims_param <- params$claims %||% NULL

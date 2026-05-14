@@ -90,10 +90,14 @@ test_that("request_uri base URL overrides reject query strings and fragments", {
 })
 
 test_that("serve_shiny_request_object serves JWT bodies and expiry responses", {
+  usage_state <- new.env(parent = emptyenv())
+  usage_state$consumed <- FALSE
+
   fresh <- shinyOAuth:::serve_shiny_request_object(
     data = list(
       request_object = "header.payload.signature",
-      expires_at = Sys.time() + 60
+      expires_at = Sys.time() + 60,
+      usage_state = usage_state
     ),
     req = list(REQUEST_METHOD = "GET")
   )
@@ -104,6 +108,18 @@ test_that("serve_shiny_request_object serves JWT bodies and expiry responses", {
     "application/oauth-authz-req+jwt"
   )
   expect_identical(fresh$body, "header.payload.signature")
+
+  replay <- shinyOAuth:::serve_shiny_request_object(
+    data = list(
+      request_object = "header.payload.signature",
+      expires_at = Sys.time() + 60,
+      usage_state = usage_state
+    ),
+    req = list(REQUEST_METHOD = "GET")
+  )
+
+  expect_identical(replay$status, 410L)
+  expect_match(replay$body, "already used", ignore.case = TRUE)
 
   expired <- shinyOAuth:::serve_shiny_request_object(
     data = list(
