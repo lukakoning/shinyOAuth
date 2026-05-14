@@ -52,28 +52,6 @@ canonicalize_jwe_enc <- function(enc) {
   toupper(enc_chr)
 }
 
-#' Return the supported outbound Request Object JWE alg values
-#'
-#' Used by OAuthClient validation and Request Object encryption helpers.
-#'
-#' @return Character vector of supported JOSE key-management algorithms.
-#' @keywords internal
-#' @noRd
-supported_request_object_encryption_algs <- function() {
-  c("RSA-OAEP")
-}
-
-#' Return the supported outbound Request Object JWE enc values
-#'
-#' Used by OAuthClient validation and Request Object encryption helpers.
-#'
-#' @return Character vector of supported JOSE content-encryption algorithms.
-#' @keywords internal
-#' @noRd
-supported_request_object_encryption_encs <- function() {
-  c("A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512")
-}
-
 #' Resolve AES-CBC-HMAC parameters for a JWE enc value
 #'
 #' Used by compact JWE encryption/decryption helpers for the supported
