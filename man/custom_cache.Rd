@@ -19,14 +19,14 @@ Should store the value under the given key.}
 
 Deletes the entry for \code{key}. When \verb{$take()} is provided, \verb{$remove()} serves
 only as a best-effort cleanup and its return value is ignored. When
-\verb{$take()} is not provided, 'shinyOAuth' falls back to
+\verb{$take()} is not provided, shinyOAuth falls back to
 \verb{$get()} + \verb{$remove()} followed by a post-removal absence check via
 \verb{$get(key, missing = NA)}. In this fallback path the return value of
 \verb{$remove()} is not relied upon; the post-check is authoritative.}
 
 \item{take}{A function(key, missing = NULL) -> value. Optional.
 
-An atomic get-and-delete operation. When provided, 'shinyOAuth' uses
+An atomic get-and-delete operation. When provided, shinyOAuth uses
 \verb{$take()} instead of separate \verb{$get()} + \verb{$remove()} calls to enforce
 single-use state consumption. This prevents TOCTOU (time-of-check /
 time-of-use) replay attacks in multi-worker deployments with shared state
@@ -40,7 +40,7 @@ If your backend supports atomic get-and-delete natively
 parameter for replay-safe state stores.
 
 When \code{take} is not provided and the state store is not a per-process cache
-(like \code{\link[cachem:cache_mem]{cachem::cache_mem()}}), 'shinyOAuth' will \strong{error} at state
+(like \code{\link[cachem:cache_mem]{cachem::cache_mem()}}), shinyOAuth will \strong{error} at state
 consumption time because non-atomic \verb{$get()} + \verb{$remove()} cannot
 guarantee single-use under concurrent access in shared stores.}
 
@@ -58,12 +58,12 @@ shinyOAuth needs: \verb{$get(key, missing)}, \verb{$set(key, value)}, \verb{$rem
 and optional \verb{$info()}.
 
 Use this helper when you want to plug a custom state store or JWKS cache
-into 'shinyOAuth', when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} is not suitable (e.g.,
+into shinyOAuth, when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} is not suitable (e.g.,
 multi-process deployments with non-sticky workers).
 In such cases, you may want to use a shared external cache (e.g., database,
 Redis, Memcached).
 
-The resulting object can be used in both places where 'shinyOAuth' accepts a cache-like object:
+The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
 \itemize{
 \item OAuthClient@state_store (requires \verb{$get}, \verb{$set}, \verb{$remove}; optional \verb{$info})
 \item OAuthProvider@jwks_cache (requires \verb{$get}, \verb{$set}; optional \verb{$remove}, \verb{$info})

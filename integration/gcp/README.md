@@ -1,6 +1,6 @@
-# shinyOAuth on Google Cloud Run (GitHub OAuth)
+# 'shinyOAuth' on Google Cloud Run (GitHub OAuth)
 
-This folder contains a minimal Shiny app and Dockerfile to run `shinyOAuth` on Google Cloud Run, configured against a GitHub OAuth app.
+This folder contains a minimal Shiny app and Dockerfile to run 'shinyOAuth' on Google Cloud Run, configured against a GitHub OAuth app.
 
 ## 1) Create a GitHub OAuth app
 

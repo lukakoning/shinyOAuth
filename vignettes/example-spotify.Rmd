@@ -10,7 +10,7 @@ vignette: >
 ## Overview
 
 This vignette demonstrates the code for an example Shiny application that uses 
-the `shinyOAuth` package to authenticate users via Spotify's OAuth 2.0 service. 
+the 'shinyOAuth' package to authenticate users via Spotify's OAuth 2.0 service. 
 
 After logging in, the app fetches and displays data about the user and their listening behaviour in the
 form of a simple dashboard built with 'bslib'. It shows the user's profile information with their avatar,
@@ -22,9 +22,9 @@ see: `vignette("usage", package = "shinyOAuth")`.
 ## Code
 
 ```{r, eval = FALSE}
-# Example Shiny app using shinyOAuth to connect to Spotify API
+# Example Shiny app using 'shinyOAuth' to connect to Spotify API
 #
-# This app demonstrates logging into Spotify with shinyOAuth and fetching
+# This app demonstrates logging into Spotify with 'shinyOAuth' and fetching
 # various user statistics via the Spotify Web API. We then build a simple
 # dashboard to display this information
 #
