@@ -241,17 +241,28 @@ test_that("prepare_call encrypts signed request objects when configured", {
   expect_identical(inner_pl$client_id, "abc")
 })
 
-test_that("request objects omit aud when no provider issuer is configured", {
+test_that("request objects require issuer or explicit audience binding", {
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(issuer = NA_character_)
+    ),
+    "authorization_request_audience|issuer"
+  )
+
   cli <- make_jar_test_client(
-    provider = make_jar_test_provider(issuer = NA_character_)
+    provider = make_jar_test_provider(issuer = NA_character_),
+    authorization_request_audience = "https://issuer.example.com"
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_null(shinyOAuth:::resolve_authorization_request_audience(cli))
-  expect_false("aud" %in% names(pl))
+  expect_identical(
+    shinyOAuth:::resolve_authorization_request_audience(cli),
+    "https://issuer.example.com"
+  )
+  expect_identical(pl$aud, "https://issuer.example.com")
 })
 
 test_that("request objects honor ttl and optional nbf skew controls", {
@@ -723,6 +734,7 @@ test_that("oauth_client validates request-object encryption configuration", {
   expect_error(
     make_jar_test_client(
       provider = make_jar_test_provider(issuer = NA_character_),
+      authorization_request_audience = "https://issuer.example.com",
       authorization_request_encryption_alg = "RSA-OAEP",
       authorization_request_encryption_enc = "A256CBC-HS512"
     ),

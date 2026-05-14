@@ -268,8 +268,11 @@ signed authorization requests.}
 
 \item{authorization_request_audience}{Optional override for the \code{aud} claim
 used in signed authorization requests. By default, shinyOAuth uses the
-provider issuer when available. If the provider has no configured issuer,
-shinyOAuth omits the \code{aud} claim unless you supply an explicit override.}
+provider issuer when available. When
+\code{authorization_request_mode = "request"} or \code{"request_uri"}, the provider
+must have a configured issuer or you must supply an explicit override so
+the signed Request Object remains audience-bound to the intended
+authorization server.}
 
 \item{authorization_request_encryption_alg}{Optional JWE key-management
 algorithm override for encrypted Request Objects. Current outbound support

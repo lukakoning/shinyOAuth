@@ -297,13 +297,13 @@ resolve_authorization_request_signing_alg <- function(client) {
 #' Resolve the audience (`aud`) value for a signed authorization request.
 #'
 #' Uses an explicit client override when present. Otherwise, uses the provider
-#' issuer when available, per RFC 9101 Section 4. If no issuer is configured,
-#' returns `NULL` so the request object can omit `aud` rather than guessing the
-#' authorization endpoint URL.
+#' issuer when available, per RFC 9101 Section 4. OAuthClient validation is
+#' expected to reject request-object modes that have neither source configured.
 #'
 #' @param client OAuth client carrying request-object signing configuration.
 #' @return Audience string for the signed authorization request, or `NULL` when
-#'   no issuer-based default is available.
+#'   called on an invalid client lacking both an explicit override and provider
+#'   issuer.
 #' @keywords internal
 #' @noRd
 resolve_authorization_request_audience <- function(client) {
@@ -549,6 +549,14 @@ build_authorization_request_object <- function(client, params) {
 
   alg <- resolve_authorization_request_signing_alg(client)
   aud <- resolve_authorization_request_audience(client)
+  if (!is_valid_string(aud)) {
+    err_config(
+      paste(
+        "authorization_request_mode = 'request' or 'request_uri' requires either",
+        "provider issuer or authorization_request_audience so Request Objects stay audience-bound"
+      )
+    )
+  }
   now <- floor(as.numeric(Sys.time()))
   ttl <- as.numeric(client@authorization_request_ttl %||% 45)
   nbf_skew <- as.numeric(client@authorization_request_nbf_skew %||% NA_real_)

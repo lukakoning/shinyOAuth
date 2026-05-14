@@ -121,8 +121,11 @@
 #'
 #' @param authorization_request_audience Optional override for the `aud` claim
 #'   used in signed authorization requests. By default, shinyOAuth uses the
-#'   provider issuer when available. If the provider has no configured issuer,
-#'   shinyOAuth omits the `aud` claim unless you supply an explicit override.
+#'   provider issuer when available. When
+#'   `authorization_request_mode = "request"` or `"request_uri"`, the provider
+#'   must have a configured issuer or you must supply an explicit override so
+#'   the signed Request Object remains audience-bound to the intended
+#'   authorization server.
 #' @param authorization_request_encryption_alg Optional JWE key-management
 #'   algorithm override for encrypted Request Objects. Current outbound support
 #'   is limited to `RSA-OAEP`. When set, you must also set
@@ -1174,6 +1177,19 @@ oauth_client_validate <- function(self) {
   if (!is.na(ara) && !nzchar(ara)) {
     return(
       "OAuthClient: authorization_request_audience must be non-empty when provided (use NULL or NA to omit)"
+    )
+  }
+  if (
+    arm %in%
+      request_object_modes &&
+      is.na(ara) &&
+      !is_valid_string(self@provider@issuer %||% NA_character_)
+  ) {
+    return(
+      paste(
+        "OAuthClient: authorization_request_mode = 'request' or 'request_uri' requires either",
+        "provider issuer or authorization_request_audience so Request Objects stay audience-bound"
+      )
     )
   }
 
