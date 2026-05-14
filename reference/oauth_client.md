@@ -37,7 +37,7 @@ oauth_client(
   authorization_request_encryption_alg = NULL,
   authorization_request_encryption_enc = NULL,
   authorization_request_encryption_kid = NULL,
-  authorization_request_ttl = 120,
+  authorization_request_ttl = 45,
   authorization_request_nbf_skew = NULL,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
@@ -365,7 +365,10 @@ oauth_client(
 - authorization_request_ttl:
 
   Positive number of seconds to keep signed authorization request
-  objects (`request` JWTs) valid. Default is `120`.
+  objects (`request` JWTs) valid. When
+  `authorization_request_mode = "request_uri"`, shinyOAuth also uses
+  this value as the default publication window for the referenced
+  Request Object URI. Default is `45`.
 
 - authorization_request_nbf_skew:
 

@@ -78,7 +78,7 @@ oauth_module_server() starts login or callback handling."></head><body>
 <span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_encryption_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_encryption_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_ttl <span class="op">=</span> <span class="fl">120</span>,</span>
+<span>  authorization_request_ttl <span class="op">=</span> <span class="fl">45</span>,</span>
 <span>  authorization_request_nbf_skew <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -371,7 +371,10 @@ Request Object encryption key.</p></dd>
 
 <dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>
 <dd><p>Positive number of seconds to keep signed
-authorization request objects (<code>request</code> JWTs) valid. Default is <code>120</code>.</p></dd>
+authorization request objects (<code>request</code> JWTs) valid. When
+<code>authorization_request_mode = "request_uri"</code>, shinyOAuth also uses this
+value as the default publication window for the referenced Request Object
+URI. Default is <code>45</code>.</p></dd>
 
 
 <dt id="arg-authorization-request-nbf-skew">authorization_request_nbf_skew<a class="anchor" aria-label="anchor" href="#arg-authorization-request-nbf-skew"></a></dt>
