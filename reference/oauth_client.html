@@ -426,11 +426,15 @@ configuration error.</p></dd>
 <dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
 <code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
 server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
-otherwise. In <code>oauth_client()</code>, the default <code>NULL</code> resolves to <code>TRUE</code>
-when <code>dpop_private_key</code> is configured and to <code>FALSE</code> otherwise. Set
-<code>FALSE</code> explicitly only when you intentionally want to allow Bearer
-access tokens, such as deployments where DPoP is used only to bind refresh
-tokens.</p></dd>
+otherwise. When shinyOAuth can observe token binding data from a JWT
+access token or an introspection response, this strict mode also requires
+<code>cnf$jkt</code> to be present and match the configured <code>dpop_private_key</code>.
+Opaque access tokens that expose no <code>cnf</code> data still pass this check unless
+introspection later reveals the binding. In <code>oauth_client()</code>, the default
+<code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
+<code>FALSE</code> otherwise. Set <code>FALSE</code> explicitly only when you intentionally want
+to allow Bearer access tokens, such as deployments where DPoP is used only
+to bind refresh tokens.</p></dd>
 
 
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>

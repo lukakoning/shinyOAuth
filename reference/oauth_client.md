@@ -417,12 +417,16 @@ oauth_client(
 
   Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
   shinyOAuth requires the authorization server to return
-  `token_type = "DPoP"` for access tokens and fails fast otherwise. In
-  `oauth_client()`, the default `NULL` resolves to `TRUE` when
-  `dpop_private_key` is configured and to `FALSE` otherwise. Set `FALSE`
-  explicitly only when you intentionally want to allow Bearer access
-  tokens, such as deployments where DPoP is used only to bind refresh
-  tokens.
+  `token_type = "DPoP"` for access tokens and fails fast otherwise. When
+  shinyOAuth can observe token binding data from a JWT access token or
+  an introspection response, this strict mode also requires `cnf$jkt` to
+  be present and match the configured `dpop_private_key`. Opaque access
+  tokens that expose no `cnf` data still pass this check unless
+  introspection later reveals the binding. In `oauth_client()`, the
+  default `NULL` resolves to `TRUE` when `dpop_private_key` is
+  configured and to `FALSE` otherwise. Set `FALSE` explicitly only when
+  you intentionally want to allow Bearer access tokens, such as
+  deployments where DPoP is used only to bind refresh tokens.
 
 - scope_validation:
 
