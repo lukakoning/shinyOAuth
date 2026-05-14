@@ -6,17 +6,17 @@
   authentication, certificate-bound access tokens, and mTLS endpoint
   aliases.
 
-- Added Pushed Authorization Request (‘PAR’, RFC 9126) support.
-  Providers can now configure `par_url` directly or pick it up from OIDC
-  discovery, and login flows will push the authorization request and
-  redirect with the returned `request_uri`.
-
 - Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now send signed and encrypted Request Objects via
   `authorization_request_mode = "request"` (sent as parameter) or via
   `authorization_request_mode = "request_uri"` (served from your Shiny
   app).
+
+- Added Pushed Authorization Request (‘PAR’, RFC 9126) support.
+  Providers can now configure `par_url` directly or pick it up from OIDC
+  discovery, and login flows will push the authorization request and
+  redirect with the returned `request_uri`.
 
 - Added OpenTelemetry (‘OTel’) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
