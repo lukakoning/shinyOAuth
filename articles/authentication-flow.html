@@ -513,11 +513,13 @@ certificate on the TLS connection, and requires the token’s
 making the request.</p>
 <p>When a refresh response omits any new observable <code>cnf</code>,
 shinyOAuth may preserve the previous <code>x5t#S256</code> thumbprint so
-later mTLS resource requests keep using the same sender-constrained
-path. Treat that preserved thumbprint as continuity state rather than
-fresh proof of binding for the new token; enable
-<code>oauth_client(introspect = TRUE)</code> if you need stronger
-assurance for opaque refresh responses.</p>
+later mTLS resource requests keep using the same sender-constrained path
+only when refresh-time introspection is not being used. Treat that
+preserved thumbprint as continuity state rather than fresh proof of
+binding for the new token. When
+<code>oauth_client(introspect = TRUE)</code>, shinyOAuth keeps mTLS
+binding only if the new token or its introspection response supplies
+fresh <code>cnf</code> data.</p>
 <p>The userinfo endpoint may return either a standard JSON response or,
 less commonly, a JWT response (per OIDC Core section 5.3.2). When the
 endpoint returns <code>Content-Type: application/jwt</code>, the body is
@@ -691,11 +693,14 @@ is re-fetched using the fresh access token</li>
 access token is introspected through the same client policy before the
 session is updated</li>
 </ul>
-<p>When neither the refresh response nor introspection exposes new
-<code>cnf</code>, shinyOAuth may preserve a prior certificate thumbprint
-so mTLS-bound resource requests do not silently lose their routing
-state. This is not fresh proof that the new access token is still
-sender-constrained; use introspection when that assurance matters.</p>
+<p>When the refresh response omits new <code>cnf</code> and refresh-time
+introspection is not enabled, shinyOAuth may preserve a prior
+certificate thumbprint so mTLS-bound resource requests do not silently
+lose their routing state. This is not fresh proof that the new access
+token is still sender-constrained. When
+<code>oauth_client(introspect = TRUE)</code>, shinyOAuth keeps mTLS
+binding only if the new token or its introspection response supplies
+fresh <code>cnf</code>.</p>
 <p>If you are running a security-sensitive app, set
 <code>options(shinyOAuth.default_expires_in = ...)</code> to the
 provider’s documented lifetime instead of relying on the package

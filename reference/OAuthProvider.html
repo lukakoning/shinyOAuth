@@ -220,7 +220,9 @@ metadata says caller-managed <code>request_uri</code> values must be pre-registe
 OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
 shinyOAuth can publish caller-managed <code>request_uri</code> values through
 <code><a href="oauth_module_server.html">oauth_module_server()</a></code>. When this is <code>TRUE</code>, make sure the provider has a
-matching public request URI or wildcard prefix registered for the client.</p></dd>
+matching public request URI or wildcard prefix registered for the client.
+shinyOAuth stores this metadata for caller awareness, but it cannot verify
+provider-side registration state automatically.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
@@ -387,9 +389,10 @@ authorization-server calls.</p></dd>
 <dt id="arg-mtls-endpoint-aliases">mtls_endpoint_aliases<a class="anchor" aria-label="anchor" href="#arg-mtls-endpoint-aliases"></a></dt>
 <dd><p>Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as <code>token_endpoint</code>,
-<code>userinfo_endpoint</code>, <code>introspection_endpoint</code>, or <code>revocation_endpoint</code>,
-and values must be absolute URLs. This is an advanced setting used when a
-provider publishes separate mTLS-specific endpoints.</p></dd>
+<code>userinfo_endpoint</code>, <code>introspection_endpoint</code>, <code>revocation_endpoint</code>,
+<code>par_endpoint</code>, or <code>pushed_authorization_request_endpoint</code>, and values
+must be absolute URLs. This is an advanced setting used when a provider
+publishes separate mTLS-specific endpoints.</p></dd>
 
 
 <dt id="arg-tls-client-certificate-bound-access-tokens">tls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-tls-client-certificate-bound-access-tokens"></a></dt>

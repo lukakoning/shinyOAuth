@@ -170,7 +170,9 @@ OAuthProvider(
   publish caller-managed `request_uri` values through
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
   When this is `TRUE`, make sure the provider has a matching public
-  request URI or wildcard prefix registered for the client.
+  request URI or wildcard prefix registered for the client. shinyOAuth
+  stores this metadata for caller awareness, but it cannot verify
+  provider-side registration state automatically.
 
 - token_endpoint_auth_signing_alg_values_supported:
 
@@ -367,10 +369,10 @@ OAuthProvider(
 
   Optional named list of RFC 8705 mTLS endpoint aliases. Names should
   follow the metadata keys such as `token_endpoint`,
-  `userinfo_endpoint`, `introspection_endpoint`, or
-  `revocation_endpoint`, and values must be absolute URLs. This is an
-  advanced setting used when a provider publishes separate mTLS-specific
-  endpoints.
+  `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
+  `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
+  must be absolute URLs. This is an advanced setting used when a
+  provider publishes separate mTLS-specific endpoints.
 
 - tls_client_certificate_bound_access_tokens:
 

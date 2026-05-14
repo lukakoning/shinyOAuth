@@ -397,10 +397,12 @@ match that certificate before making the request.
 
 When a refresh response omits any new observable `cnf`, shinyOAuth may
 preserve the previous `x5t#S256` thumbprint so later mTLS resource
-requests keep using the same sender-constrained path. Treat that
-preserved thumbprint as continuity state rather than fresh proof of
-binding for the new token; enable `oauth_client(introspect = TRUE)` if
-you need stronger assurance for opaque refresh responses.
+requests keep using the same sender-constrained path only when
+refresh-time introspection is not being used. Treat that preserved
+thumbprint as continuity state rather than fresh proof of binding for
+the new token. When `oauth_client(introspect = TRUE)`, shinyOAuth keeps
+mTLS binding only if the new token or its introspection response
+supplies fresh `cnf` data.
 
 The userinfo endpoint may return either a standard JSON response or,
 less commonly, a JWT response (per OIDC Core section 5.3.2). When the
@@ -544,11 +546,13 @@ provider’s token endpoint and updates the `OAuthToken` object. In short:
   introspected through the same client policy before the session is
   updated
 
-When neither the refresh response nor introspection exposes new `cnf`,
-shinyOAuth may preserve a prior certificate thumbprint so mTLS-bound
-resource requests do not silently lose their routing state. This is not
-fresh proof that the new access token is still sender-constrained; use
-introspection when that assurance matters.
+When the refresh response omits new `cnf` and refresh-time introspection
+is not enabled, shinyOAuth may preserve a prior certificate thumbprint
+so mTLS-bound resource requests do not silently lose their routing
+state. This is not fresh proof that the new access token is still
+sender-constrained. When `oauth_client(introspect = TRUE)`, shinyOAuth
+keeps mTLS binding only if the new token or its introspection response
+supplies fresh `cnf`.
 
 If you are running a security-sensitive app, set
 `options(shinyOAuth.default_expires_in = ...)` to the provider’s
