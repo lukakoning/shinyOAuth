@@ -1,7 +1,15 @@
 # shinyOAuth (development version)
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
-authentication, certificate-bound access tokens, and mTLS endpoint aliases.
+authentication, certificate-bound access tokens, mTLS endpoint aliases, and
+the exported `oauth_client_mtls_registration()` helper for RFC 8705 client
+metadata.
+
+* Added Demonstrating Proof-of-Possession ('DPoP', RFC 9449) support.
+Clients configured with `dpop_private_key` now send DPoP proofs on token and
+protected-resource requests, include `dpop_jkt` in authorization requests,
+can require `token_type = "DPoP"` plus `cnf.jkt` binding, and replay one
+`DPoP-Nonce` challenge on token and protected-resource requests.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed and encrypted Request Objects via
@@ -108,9 +116,6 @@ authenticated resource requests.
   down to manual extra params.
   - Rejects impossible JOSE alg/private-key combinations for JWT client
   assertions and DPoP proofs before emitting invalid JOSE headers.
-  * Warns when callers configure `dpop_private_key` but leave
-  `dpop_require_access_token` at its implicit default `FALSE`, since that
-  still allows Bearer access-token responses.
   * Also enforces OIDC claim request `value` and `values` constraints when 
   `claims_validation` is enabled, not just presence of `essential = TRUE` 
   claims.
@@ -144,6 +149,10 @@ authenticated resource requests.
   apps can trap provider validation failures consistently.
   - Validates custom `jwks_cache$get()` signatures without calling the cache 
   during construction, avoiding side effects in duck-typed cache backends.
+  - Validates `allowed_algs` against shinyOAuth's actual inbound verifier
+  support and no longer accepts RSA-PSS (`PS256`, `PS384`, `PS512`) entries,
+  which were previously present in the generic helper's defaults despite
+  lacking verifier support.
   - Reserves the `refresh_token` parameter name in `extra_token_params` to 
   prevent duplicate refresh-token parameters during token refresh requests.
   
