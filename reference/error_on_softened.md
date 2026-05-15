@@ -43,7 +43,8 @@ It only checks the following options:
 # protections are enabled
 # Below call does not error if run with default options:
 error_on_softened()
-#> Warning: `error_on_softened()` was deprecated in shinyOAuth 0.4.0.9000.
+#> Warning: [shinyOAuth] - Deprecated API
+#> ! `error_on_softened()` was deprecated in shinyOAuth 0.4.0.9000.
 #> ✖ This helper only checks a small subset of shinyOAuth's security-relaxing
 #>   options
 #> ℹ Use explicit startup checks for options like
