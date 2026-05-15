@@ -108,13 +108,6 @@ Best-effort semantics:
   These are normalized to logical `TRUE`/`FALSE` when possible;
   otherwise `active` is set to `NA`.
 
-## Side effects
-
-Performs network I/O when the provider exposes an introspection endpoint
-and the selected token exists. Emits best-effort audit events and
-OpenTelemetry span attributes. When `async = TRUE`, the work may run in
-a background worker.
-
 ## Examples
 
 ``` r

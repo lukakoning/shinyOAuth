@@ -1,4 +1,4 @@
-# Perform an authenticated httr2 request for a protected resource
+# Build and perform an authenticated httr2 request for a protected resource
 
 Companion to
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
@@ -111,14 +111,8 @@ perform_resource_req(
 
 ## Value
 
-An httr2 response object.
-
-## Side effects
-
-Performs network I/O, may retry idempotent requests through shinyOAuth's
-HTTP retry helpers, and when the effective token type is `DPoP` may mint
-a second proof and replay the request once after a server-provided nonce
-challenge.
+An [httr2](https://httr2.r-lib.org/reference/httr2-package.html)
+response object.
 
 ## Examples
 

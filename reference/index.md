@@ -84,7 +84,8 @@
   : Build an authenticated httr2 request for a protected resource
 
 - [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-  : Perform an authenticated httr2 request for a protected resource
+  : Build and perform an authenticated httr2 request for a protected
+  resource
 
 - [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
   **\[deprecated\]** :

@@ -83,10 +83,3 @@ A list with fields:
 
 - `status`: machine-readable status such as `"ok"`, `"missing_token"`,
   `"revocation_unsupported"`, or `"http_<code>"`.
-
-## Side effects
-
-Performs network I/O when the provider exposes a revocation endpoint and
-the selected token exists. Emits best-effort audit events and
-OpenTelemetry span attributes. When `async = TRUE`, the work may run in
-a background worker.

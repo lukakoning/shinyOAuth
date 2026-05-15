@@ -1,6 +1,6 @@
 # Build an authenticated httr2 request for a protected resource
 
-Small helper for calling downstream APIs with an access token. It
+This is a helper for calling downstream APIs with an access token. It
 creates an
 [`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
 the given URL, attaches the right authorization header for the token
@@ -106,21 +106,13 @@ resource_req(
 
 ## Value
 
-An httr2 request object, ready to be performed with
+An [httr2](https://httr2.r-lib.org/reference/httr2-package.html) request
+object, ready to be performed with
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
 Callers may still add headers or query parameters, but when the
 effective token type is `DPoP` they must not change the request method
 or base URL after calling `resource_req()` because the proof is already
 bound to those values.
-
-## Side effects
-
-This function does not perform network I/O. It reads shinyOAuth package
-options through
-[`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-and HTTP-default helpers, may emit warnings when unsafe custom auth
-headers are ignored, and may read configured mTLS certificate files when
-validating certificate-bound access tokens.
 
 ## DPoP note
 

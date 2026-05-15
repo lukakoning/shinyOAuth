@@ -157,14 +157,6 @@ numeric, or character variants like "true"/"false", 1/0). These are
 normalized to logical <code>TRUE</code>/<code>FALSE</code> when possible; otherwise <code>active</code> is
 set to <code>NA</code>.</p></li>
 </ul></div>
-    <div class="section level2">
-    <h2 id="side-effects">Side effects<a class="anchor" aria-label="anchor" href="#side-effects"></a></h2>
-
-
-<p>Performs network I/O when the provider exposes an introspection endpoint and
-the selected token exists. Emits best-effort audit events and OpenTelemetry
-span attributes. When <code>async = TRUE</code>, the work may run in a background worker.</p>
-    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
