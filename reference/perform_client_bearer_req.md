@@ -36,7 +36,12 @@ perform_client_bearer_req(
 
 - url:
 
-  The absolute URL to call.
+  Either the absolute URL to call or an
+  [`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
+  object to authorize and perform. When you pass a request object,
+  shinyOAuth uses it as the base request, still applies token
+  authentication and request defaults, and then layers any explicit
+  `method`, `headers`, `query`, and `follow_redirect` overrides on top.
 
 - method:
 

@@ -77,7 +77,11 @@ Use <code><a href="perform_resource_req.html">perform_resource_req()</a></code> 
 
 
 <dt id="arg-url">url<a class="anchor" aria-label="anchor" href="#arg-url"></a></dt>
-<dd><p>The absolute URL to call.</p></dd>
+<dd><p>Either the absolute URL to call or an <code><a href="https://httr2.r-lib.org/reference/request.html" class="external-link">httr2::request()</a></code> object
+to authorize and perform. When you pass a request object, shinyOAuth uses
+it as the base request, still applies token authentication and request
+defaults, and then layers any explicit <code>method</code>, <code>headers</code>, <code>query</code>, and
+<code>follow_redirect</code> overrides on top.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>

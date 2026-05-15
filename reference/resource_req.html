@@ -179,14 +179,22 @@ changing the method, scheme, host, or path invalidates the proof.</p>
 <span class="r-in"><span>    query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Advanced callers can still build first and perform later.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Build only when you need to inspect the request yourself.</span></span></span>
 <span class="r-in"><span>  <span class="va">request</span> <span class="op">&lt;-</span> <span class="fu">resource_req</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">token</span>,</span></span>
 <span class="r-in"><span>    <span class="st">"https://api.example.com/resource"</span>,</span></span>
 <span class="r-in"><span>    query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">req_perform</a></span><span class="op">(</span><span class="va">request</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_dry_run.html" class="external-link">req_dry_run</a></span><span class="op">(</span><span class="va">request</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="co"># Or start from your own httr2 request and still let shinyOAuth perform it</span></span></span>
+<span class="r-in"><span>  <span class="co"># so DPoP nonce retries remain available.</span></span></span>
+<span class="r-in"><span>  <span class="va">custom_request</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/request.html" class="external-link">request</a></span><span class="op">(</span><span class="st">"https://api.example.com/resource"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>    <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_headers.html" class="external-link">req_headers</a></span><span class="op">(</span>Accept <span class="op">=</span> <span class="st">"application/json"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>    <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_url.html" class="external-link">req_url_query</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span><span class="va">token</span>, <span class="va">custom_request</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

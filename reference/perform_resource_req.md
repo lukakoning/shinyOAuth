@@ -5,8 +5,11 @@ creates an
 [`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
 the given URL, attaches the right authorization header for the token
 type, applies shinyOAuth's standard HTTP defaults, and performs the
-request with
-[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
+request. You can also provide a prebuilt
+[`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
+object as the `url` argument, in which case this helper will layer token
+authentication and any explicit overrides on top of the provided request
+before performing it.
 
 Use
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
@@ -48,7 +51,12 @@ perform_resource_req(
 
 - url:
 
-  The absolute URL to call.
+  Either the absolute URL to call or an
+  [`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
+  object to authorize and perform. When you pass a request object,
+  shinyOAuth uses it as the base request, still applies token
+  authentication and request defaults, and then layers any explicit
+  `method`, `headers`, `query`, and `follow_redirect` overrides on top.
 
 - method:
 
@@ -143,13 +151,21 @@ if (interactive()) {
     query = list(limit = 5)
   )
 
-  # Advanced callers can still build first and perform later.
+  # Build only when you need to inspect the request yourself.
   request <- resource_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)
   )
 
-  response <- httr2::req_perform(request)
+  httr2::req_dry_run(request)
+
+  # Or start from your own httr2 request and still let shinyOAuth perform it
+  # so DPoP nonce retries remain available.
+  custom_request <- httr2::request("https://api.example.com/resource") |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_url_query(limit = 5)
+
+  response <- perform_resource_req(token, custom_request)
 }
 ```
