@@ -65,21 +65,20 @@ request. This is primarily useful after a resource server challenges with
 \code{DPoP-Nonce}.}
 }
 \value{
-An httr2 request object, ready to be performed with
+An \link[httr2:httr2]{httr2} request object, ready to be performed with
 \code{\link[httr2:req_perform]{httr2::req_perform()}}. Callers may still add headers or query
 parameters, but when the effective token type is \code{DPoP} they must not
 change the request method or base URL after calling
 \code{\link[=resource_req]{resource_req()}} because the proof is already bound to those values.
 }
 \description{
-Small helper for calling downstream APIs with an access token.
-It creates an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right
-authorization header for the token type, and applies shinyOAuth's standard
-HTTP defaults. Use \code{\link[=perform_resource_req]{perform_resource_req()}} when you want
-shinyOAuth to also perform the request and handle DPoP nonce challenges for
-you.
+This is a helper for calling downstream APIs with an access token. It creates an
+\code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right authorization header
+for the token type, and applies shinyOAuth's standard HTTP defaults.
 
-Accepts either a raw access token string or an \link{OAuthToken} object.
+Use \code{\link[=perform_resource_req]{perform_resource_req()}} when you want shinyOAuth to also perform the request
+and handle DPoP nonce challenges for you (which \code{\link[httr2:req_perform]{httr2::req_perform()}}
+would not do on its own).
 }
 \section{DPoP note}{
 

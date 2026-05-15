@@ -8,14 +8,13 @@
 #' Build an authenticated httr2 request for a protected resource
 #'
 #' @description
-#' Small helper for calling downstream APIs with an access token.
-#' It creates an [httr2::request()] for the given URL, attaches the right
-#' authorization header for the token type, and applies shinyOAuth's standard
-#' HTTP defaults. Use [perform_resource_req()] when you want
-#' shinyOAuth to also perform the request and handle DPoP nonce challenges for
-#' you.
-#'
-#' Accepts either a raw access token string or an [OAuthToken] object.
+#' This is a helper for calling downstream APIs with an access token. It creates an
+#' [httr2::request()] for the given URL, attaches the right authorization header
+#' for the token type, and applies shinyOAuth's standard HTTP defaults. 
+#' 
+#' Use [perform_resource_req()] when you want shinyOAuth to also perform the request
+#' and handle DPoP nonce challenges for you (which [httr2::req_perform()]
+#' would not do on its own).
 #'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call.
@@ -54,7 +53,7 @@
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
 #'
-#' @return An httr2 request object, ready to be performed with
+#' @return An [httr2] request object, ready to be performed with
 #'   [httr2::req_perform()]. Callers may still add headers or query
 #'   parameters, but when the effective token type is `DPoP` they must not
 #'   change the request method or base URL after calling
@@ -170,14 +169,21 @@ client_bearer_req <- function(
   )
 }
 
-#' Perform an authenticated httr2 request for a protected resource
+#' Build and perform an authenticated httr2 request for a protected resource
 #'
 #' @description
-#' Companion to [resource_req()] for callers who want shinyOAuth to both
-#' build and perform the request. For DPoP-bound access tokens, this helper
-#' reuses shinyOAuth's existing nonce-challenge handling and retries one
-#' `use_dpop_nonce` response with a fresh proof that includes the supplied
-#' `DPoP-Nonce`, as described by RFC 9449.
+#' This is a helper for calling downstream APIs with an access token. It creates
+#' an [httr2::request()] for the given URL, attaches the right authorization
+#' header for the token type, applies shinyOAuth's standard HTTP defaults, and
+#' performs the request with [httr2::req_perform()]. 
+#' 
+#' Use [resource_req()] if you want to only build the request (and perform it later).
+#' 
+#' Compared to [httr2::req_perform()], this helper adds shinyOAuth-specific 
+#' handling for DPoP-bound tokens, including retrying once with a fresh proof when 
+#' a `DPoP-Nonce` challenge is encountered. For non-DPoP tokens, this helper behaves 
+#' similarly to [httr2::req_perform()] but with the package's standard defaults 
+#' for retries and redirects.
 #'
 #' @inheritParams resource_req
 #' @param idempotent Optional logical controlling generic transport and
@@ -187,7 +193,7 @@ client_bearer_req <- function(
 #'   `DELETE`). DPoP nonce challenges are replayed once regardless, as required
 #'   by RFC 9449.
 #'
-#' @return An httr2 response object.
+#' @return An [httr2] response object.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'

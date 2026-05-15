@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__client_bearer_req.R
 \name{perform_resource_req}
 \alias{perform_resource_req}
-\title{Perform an authenticated httr2 request for a protected resource}
+\title{Build and perform an authenticated httr2 request for a protected resource}
 \usage{
 perform_resource_req(
   token,
@@ -73,14 +73,21 @@ idempotency semantics (\code{GET}, \code{HEAD}, \code{OPTIONS}, \code{TRACE}, \c
 by RFC 9449.}
 }
 \value{
-An httr2 response object.
+An \link[httr2:httr2]{httr2} response object.
 }
 \description{
-Companion to \code{\link[=resource_req]{resource_req()}} for callers who want shinyOAuth to both
-build and perform the request. For DPoP-bound access tokens, this helper
-reuses shinyOAuth's existing nonce-challenge handling and retries one
-\code{use_dpop_nonce} response with a fresh proof that includes the supplied
-\code{DPoP-Nonce}, as described by RFC 9449.
+This is a helper for calling downstream APIs with an access token. It creates
+an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right authorization
+header for the token type, applies shinyOAuth's standard HTTP defaults, and
+performs the request with \code{\link[httr2:req_perform]{httr2::req_perform()}}.
+
+Use \code{\link[=resource_req]{resource_req()}} if you want to only build the request (and perform it later).
+
+Compared to \code{\link[httr2:req_perform]{httr2::req_perform()}}, this helper adds shinyOAuth-specific
+handling for DPoP-bound tokens, including retrying once with a fresh proof when
+a \code{DPoP-Nonce} challenge is encountered. For non-DPoP tokens, this helper behaves
+similarly to \code{\link[httr2:req_perform]{httr2::req_perform()}} but with the package's standard defaults
+for retries and redirects.
 }
 \examples{
 # Make request using OAuthToken object
