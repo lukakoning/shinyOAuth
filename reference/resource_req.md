@@ -4,14 +4,14 @@ This is a helper for calling downstream APIs with an access token. It
 creates an
 [`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
 the given URL, attaches the right authorization header for the token
-type, and applies shinyOAuth's standard HTTP defaults. Use
+type, and applies shinyOAuth's standard HTTP defaults.
+
+Use
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 when you want shinyOAuth to also perform the request and handle DPoP
-nonce challenges for you.
-
-Accepts either a raw access token string or an
-[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-object.
+nonce challenges for you (which
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
+would not do on its own).
 
 ## Usage
 
