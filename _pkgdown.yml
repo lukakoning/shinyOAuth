@@ -52,5 +52,5 @@ reference:
 - title: Miscellaneous
 - contents:
   - is_ok_host
-  - error_on_softened
   - custom_cache
+  - error_on_softened
