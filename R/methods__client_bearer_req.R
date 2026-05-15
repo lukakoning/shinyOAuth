@@ -146,8 +146,8 @@ client_bearer_req <- function(
 #' This is a helper for calling downstream APIs with an access token. It creates
 #' an [httr2::request()] for the given URL, attaches the right authorization
 #' header for the token type, applies shinyOAuth's standard HTTP defaults, and
-#' performs the request. You can also provide a prebuilt [httr2::request()] object 
-#' as the `url` argument, in which case this helper will layer token authentication 
+#' performs the request. You can also provide a prebuilt [httr2::request()] object
+#' as the `url` argument, in which case this helper will layer token authentication
 #' and any explicit overrides on top of the provided request before performing it.
 #'
 #' Use [resource_req()] if you want to only build the request (and perform it later).
