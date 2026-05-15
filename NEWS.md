@@ -67,20 +67,17 @@ information.
   token is available and treating browser-token mismatches as `invalid_state`
   instead of surfacing provider-controlled error text.
   - Forwards `oauth_client(introspect = TRUE)` to its proactive refresh path, so
-  refreshed access tokens follow the same introspection policy as the initial 
-  login.
-  - Enforces refresh-time token introspection instead of treating it as
-  best-effort metadata enrichment, so proactive refresh now fails when
-  introspection is unsupported, inactive, or missing required
-  `introspect_elements` such as `sub`, `client_id`, or `scope`.
+  proactive refresh now follows the same refresh-time token introspection
+  policy as direct `refresh_token(..., introspect = TRUE)` calls.
   - Preserves `invalid_state` in its callback error state for 
   CSRF/state/browser-token validation failures instead of flattening those paths 
   into `token_exchange_error`.
   - Drops provider `error_uri` values unless they are absolute HTTPS URLs, so 
   unsafe schemes like `javascript:` are no longer surfaced through 
   `values$error_uri`.
-  - Fails closed on malformed token introspection JSON. Non-object responses
-  are now rejected instead of being normalized from the first parsed element.
+  - Validates `browser_cookie_path` more strictly, requiring a leading `/` and
+  rejecting semicolons or control characters so unsafe cookie attributes cannot
+  be injected through the configured cookie Path.
 
 * `OAuthToken` and `OAuthClient` now print with redacted token/secret/key
 previews instead of exposing full credential material in default console output.
@@ -131,8 +128,8 @@ the client's configured scopes when a refresh response omits `scope`.
   
 * `oauth_provider()` (`OAuthProvider`) now:
   - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs 
-  reject POST requests, so `response_mode = "form_post"` was previously allowed 
-  but led to abroken callback round-trip instead of a clear configuration error.
+  reject POST requests, so `response_mode = "form_post"` or `"fragment"` now
+  fails during provider setup instead of later in a broken callback round-trip.
   - Treats nonce-enabled OIDC flows as sufficient validation context for
   `userinfo_id_token_match`, and shinyOAuth now always binds userinfo to a
   validated ID token subject when that baseline exists.
@@ -144,7 +141,8 @@ the client's configured scopes when a refresh response omits `scope`.
   - Validates `allowed_algs` against shinyOAuth's actual inbound verifier
   support and no longer accepts RSA-PSS (`PS256`, `PS384`, `PS512`) entries,
   which were previously present in the generic helper's defaults despite
-  lacking verifier support.
+  lacking verifier support. Older configs that explicitly allowed those
+  algorithms must switch to supported verifier algorithms.
   - Reserves the `refresh_token` parameter name in `extra_token_params` to 
   prevent duplicate refresh-token parameters during token refresh requests.
   
@@ -184,11 +182,18 @@ future (beyond leeway). Previously, a future `auth_time` produced a negative
 elapsed value that always passed the `max_age` freshness check.
 
 * `introspect_token()` now uses `provider@userinfo_id_selector` consistently
-when it checks the authenticated subject against fetched UserInfo data.
+when it checks the authenticated subject against fetched UserInfo data, and now
+fails closed on malformed introspection JSON. Non-object responses are rejected
+instead of being normalized from the first parsed element.
 
-* `refresh_token()` now refuses to update userinfo unless it can verify the 
-refreshed identity against a new or preserved ID token subject, preventing
-identity confusion when providers omit `id_token` from refresh responses.
+* `refresh_token()` now:
+  - Refuses to update userinfo unless it can verify the refreshed identity
+  against a new or preserved ID token subject, preventing identity confusion
+  when providers omit `id_token` from refresh responses.
+  - When called with `introspect = TRUE`, enforces token introspection as a
+  hard policy check instead of best-effort metadata enrichment. Refresh now
+  fails when introspection is unsupported, inactive, malformed, or missing
+  required `introspect_elements` such as `sub`, `client_id`, or `scope`.
 
 * Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
 refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
@@ -260,12 +265,13 @@ dev/debug softeners, but the docs now stop presenting it as a comprehensive
 deployment-hardening check and show explicit option checks instead.
 
 - Renamed the resource-request helpers to `resource_req()` and
-`perform_resource_req()`. The old `client_bearer_req()` and
-`perform_client_bearer_req()` names remain available as deprecated aliases.
-`perform_resource_req()` performs the request and, for DPoP-bound access
-tokens, replays one `use_dpop_nonce` challenge with the server-provided
-nonce while `resource_req()` remains the lower-level request builder for making
-authenticated resource requests.
+`perform_resource_req()`. The existing public `client_bearer_req()` name
+remains available as a deprecated alias, and `perform_client_bearer_req()` is
+also exported as a deprecated compatibility alias. `perform_resource_req()`
+performs the request and, for DPoP-bound access tokens, replays one
+`use_dpop_nonce` challenge with the server-provided nonce while `resource_req()`
+remains the lower-level request builder for making authenticated resource
+requests.
 
 # shinyOAuth 0.4.0
 
