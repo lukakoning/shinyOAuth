@@ -1187,7 +1187,6 @@ annotate_token_revocation_span_result <- function(which, result) {
   revoked <- result$revoked %||% NA
   otel_set_span_attributes(
     attributes = compact_list(list(
-      oauth.token.which = which,
       oauth.supported = isTRUE(result$supported),
       oauth.revoked = if (length(revoked) == 1L && !is.na(revoked)) {
         isTRUE(revoked)
@@ -1291,7 +1290,6 @@ annotate_token_introspection_span_result <- function(which, result) {
   active <- result$active %||% NA
   otel_set_span_attributes(
     attributes = compact_list(list(
-      oauth.token.which = which,
       oauth.supported = isTRUE(result$supported),
       oauth.active = if (length(active) == 1L && !is.na(active)) {
         isTRUE(active)

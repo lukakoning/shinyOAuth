@@ -155,6 +155,21 @@ otel_attr_values <- function(attributes, key) {
   values
 }
 
+expect_unique_exported_span_attributes <- function(span, keys) {
+  for (key in keys) {
+    testthat::expect_length(otel_attr_values(span$attributes, key), 1L)
+  }
+}
+
+otel_first_attr_value <- function(span, key) {
+  values <- otel_attr_values(span$attributes, key)
+  if (!length(values)) {
+    return(NULL)
+  }
+
+  values[[1L]]
+}
+
 otel_temp_jsonl_path <- function(prefix) {
   stamp <- gsub("[^0-9]", "", format(Sys.time(), "%Y%m%d%H%M%OS6"))
   file.path(
@@ -426,6 +441,101 @@ otel_e2e("prepare_call and callback share shinyOAuth trace_id", {
   # token.verify is a child of callback
   verify_span <- r$traces[["shinyOAuth.token.verify"]]
   testthat::expect_false(is.null(verify_span))
+})
+
+otel_e2e("handle_callback exports shinyOAuth trace_id once", {
+  trace_file <- otel_temp_jsonl_path("shinyoauth-otel-callback-trace-id")
+  if (file.exists(trace_file)) {
+    file.remove(trace_file)
+  }
+
+  withr::local_envvar(c(
+    OTEL_R_TRACES_EXPORTER = "otlp/file",
+    OTEL_TRACES_EXPORTER = "otlp/file",
+    OTEL_R_LOGS_EXPORTER = "none",
+    OTEL_LOGS_EXPORTER = "none",
+    OTEL_R_METRICS_EXPORTER = "none",
+    OTEL_METRICS_EXPORTER = "none",
+    OTEL_EXPORTER_OTLP_TRACES_FILE = trace_file,
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_TRACES_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::defer(reset_test_otel_cache())
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  btok <- valid_browser_token()
+  url <- shinyOAuth::prepare_call(cli, browser_token = btok)
+  enc <- parse_query_param(url, "state")
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "test_at", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shinyOAuth::handle_callback(
+        cli,
+        code = "test_code",
+        payload = enc,
+        browser_token = btok
+      )
+    }
+  )
+
+  poll_for_async(
+    function() {
+      spans <- otel_scope_spans(trace_file)
+      length(Filter(
+        function(span) identical(span$name, "shinyOAuth.callback"),
+        spans
+      )) >=
+        1L &&
+        length(Filter(
+          function(span) {
+            identical(span$name, "shinyOAuth.callback.validate") &&
+              identical(
+                otel_first_attr_value(span, "oauth.phase"),
+                "callback.state_payload"
+              )
+          },
+          spans
+        )) >=
+          1L
+    },
+    timeout = 5
+  )
+
+  spans <- otel_scope_spans(trace_file)
+  callback_spans <- Filter(
+    function(span) identical(span$name, "shinyOAuth.callback"),
+    spans
+  )
+  state_payload_spans <- Filter(
+    function(span) {
+      identical(span$name, "shinyOAuth.callback.validate") &&
+        identical(
+          otel_first_attr_value(span, "oauth.phase"),
+          "callback.state_payload"
+        )
+    },
+    spans
+  )
+
+  testthat::expect_length(callback_spans, 1L)
+  testthat::expect_length(state_payload_spans, 1L)
+  if (length(callback_spans) != 1L || length(state_payload_spans) != 1L) {
+    return(invisible(NULL))
+  }
+
+  expect_unique_exported_span_attributes(
+    callback_spans[[1L]],
+    c("shinyoauth.trace_id")
+  )
+  expect_unique_exported_span_attributes(
+    state_payload_spans[[1L]],
+    c("shinyoauth.trace_id")
+  )
 })
 
 otel_e2e("prepare_call roots itself and callback parents to login span", {

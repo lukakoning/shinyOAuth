@@ -1187,6 +1187,15 @@ otel_async_daemon("async module callback/login success exports correct main and 
   )
 
   expect_unique_span_attributes(
+    callback_span,
+    c("shinyoauth.trace_id")
+  )
+  expect_unique_span_attributes(
+    state_payload_span,
+    c("shinyoauth.trace_id")
+  )
+
+  expect_unique_span_attributes(
     worker_span,
     c(
       "shiny.session.is_async",
@@ -1731,11 +1740,19 @@ otel_async_daemon("revoke_token async exports correlated spans from a real daemo
     timeout = 10
   )
 
-  expect_async_operation_spans(
+  span_tree <- expect_async_operation_spans(
     otel_scope_spans(otel_file),
     operation_name = "shinyOAuth.token.revoke",
     worker_name = "shinyOAuth.token.revoke.worker",
     http_name = "shinyOAuth.token.revoke.http"
+  )
+  if (is.null(span_tree)) {
+    return(invisible(NULL))
+  }
+
+  expect_unique_span_attributes(
+    span_tree$worker_operation,
+    c("oauth.token.which")
   )
 })
 
@@ -1816,10 +1833,18 @@ otel_async_daemon("introspect_token async exports correlated spans from a real d
     timeout = 10
   )
 
-  expect_async_operation_spans(
+  span_tree <- expect_async_operation_spans(
     otel_scope_spans(otel_file),
     operation_name = "shinyOAuth.token.introspect",
     worker_name = "shinyOAuth.token.introspect.worker",
     http_name = "shinyOAuth.token.introspect.http"
+  )
+  if (is.null(span_tree)) {
+    return(invisible(NULL))
+  }
+
+  expect_unique_span_attributes(
+    span_tree$worker_operation,
+    c("oauth.token.which")
   )
 })

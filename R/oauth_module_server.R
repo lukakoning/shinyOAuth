@@ -1955,11 +1955,17 @@ oauth_module_server <- function(
                             state,
                             shiny_session = captured_shiny_session
                           )
-                          otel_set_span_attributes(
-                            attributes = list(
-                              shinyoauth.trace_id = payload$trace_id %||% NULL
+                          if (
+                            !is_valid_string(
+                              callback_hint$trace_id %||% NA_character_
                             )
-                          )
+                          ) {
+                            otel_set_span_attributes(
+                              attributes = list(
+                                shinyoauth.trace_id = payload$trace_id %||% NULL
+                              )
+                            )
+                          }
                           payload
                         },
                         attributes = otel_client_attributes(
@@ -1989,12 +1995,18 @@ oauth_module_server <- function(
                     with_trace_id(
                       captured_trace_id,
                       {
-                        otel_set_span_attributes(
-                          span = callback_parent$span,
-                          attributes = list(
-                            shinyoauth.trace_id = captured_trace_id
+                        if (
+                          !is_valid_string(
+                            callback_hint$trace_id %||% NA_character_
                           )
-                        )
+                        ) {
+                          otel_set_span_attributes(
+                            span = callback_parent$span,
+                            attributes = list(
+                              shinyoauth.trace_id = captured_trace_id
+                            )
+                          )
+                        }
 
                         pre_state <- tryCatch(
                           with_otel_span(

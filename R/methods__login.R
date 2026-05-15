@@ -1055,6 +1055,9 @@ handle_callback <- function(
           browser_token = browser_token,
           decrypted_payload = NULL,
           state_store_values = NULL,
+          trace_id_seeded = is_valid_string(
+            callback_hint$trace_id %||% NA_character_
+          ),
           shiny_session = shiny_session
         )
       },
@@ -1107,6 +1110,8 @@ handle_callback <- function(
 #'   state.
 #' @param decrypted_payload Optional pre-decrypted state payload.
 #' @param state_store_values Optional pre-fetched state-store record.
+#' @param trace_id_seeded Whether the surrounding callback span already started
+#'   with the recovered shinyOAuth trace id.
 #' @param shiny_session Optional Shiny session context.
 #' @return An [OAuthToken] object on success. Otherwise this function raises a
 #'   typed error.
@@ -1119,6 +1124,7 @@ handle_callback_internal <- function(
   browser_token,
   decrypted_payload = NULL,
   state_store_values = NULL,
+  trace_id_seeded = FALSE,
   shiny_session = NULL
 ) {
   # Type checks ----------------------------------------------------------------
@@ -1184,11 +1190,13 @@ handle_callback_internal <- function(
           payload,
           shiny_session = shiny_session
         )
-        otel_set_span_attributes(
-          attributes = list(
-            shinyoauth.trace_id = payload$trace_id %||% NULL
+        if (!isTRUE(trace_id_seeded)) {
+          otel_set_span_attributes(
+            attributes = list(
+              shinyoauth.trace_id = payload$trace_id %||% NULL
+            )
           )
-        )
+        }
         payload
       },
       attributes = otel_client_attributes(
@@ -1202,7 +1210,7 @@ handle_callback_internal <- function(
   with_trace_id(
     payload$trace_id %||% NULL,
     {
-      if (is.null(decrypted_payload)) {
+      if (is.null(decrypted_payload) && !isTRUE(trace_id_seeded)) {
         otel_set_span_attributes(
           attributes = list(
             shinyoauth.trace_id = payload$trace_id %||% NULL
