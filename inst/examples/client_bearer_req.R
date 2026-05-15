@@ -12,12 +12,20 @@ if (interactive()) {
     query = list(limit = 5)
   )
 
-  # Advanced callers can still build first and perform later.
+  # Build only when you need to inspect the request yourself.
   request <- resource_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)
   )
 
-  response <- httr2::req_perform(request)
+  httr2::req_dry_run(request)
+
+  # Or start from your own httr2 request and still let shinyOAuth perform it
+  # so DPoP nonce retries remain available.
+  custom_request <- httr2::request("https://api.example.com/resource") |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_url_query(limit = 5)
+
+  response <- perform_resource_req(token, custom_request)
 }

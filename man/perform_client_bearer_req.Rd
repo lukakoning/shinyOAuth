@@ -21,7 +21,11 @@ perform_client_bearer_req(
 \arguments{
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
 
-\item{url}{The absolute URL to call.}
+\item{url}{Either the absolute URL to call or an \code{\link[httr2:request]{httr2::request()}} object
+to authorize and perform. When you pass a request object, shinyOAuth uses
+it as the base request, still applies token authentication and request
+defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
+\code{follow_redirect} overrides on top.}
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method

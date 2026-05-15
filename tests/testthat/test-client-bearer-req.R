@@ -298,6 +298,110 @@ test_that("perform_resource_req infers idempotency from method", {
   )
 })
 
+test_that("perform_resource_req accepts prebuilt httr2 requests", {
+  seen <- new.env(parent = emptyenv())
+  seen$idempotent <- NULL
+  seen$method <- NULL
+  seen$url <- NULL
+  seen$authorization <- NULL
+  seen$x_from_req <- NULL
+  seen$x_extra <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, idempotent = TRUE) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      seen$idempotent <- idempotent
+      seen$method <- req$method
+      seen$url <- as.character(req$url)
+      seen$authorization <- dry$headers$authorization
+      seen$x_from_req <- dry$headers$`x-from-req`
+      seen$x_extra <- dry$headers$`x-extra`
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_dpop_retry = function(...) {
+      testthat::fail("DPoP retry helper should not be called for Bearer")
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- httr2::request("https://example.com/base") |>
+    httr2::req_method("POST") |>
+    httr2::req_headers(`X-From-Req` = "1")
+
+  resp <- perform_resource_req(
+    token = "tok",
+    url = req,
+    headers = list(`X-Extra` = "2"),
+    query = list(limit = 5)
+  )
+
+  expect_s3_class(resp, "httr2_response")
+  expect_identical(seen$idempotent, FALSE)
+  expect_identical(seen$method, "POST")
+  expect_identical(seen$url, "https://example.com/base?limit=5")
+  expect_identical(seen$authorization, "Bearer tok")
+  expect_identical(seen$x_from_req, "1")
+  expect_identical(seen$x_extra, "2")
+})
+
+test_that("perform_resource_req preserves original request body query and options", {
+  seen <- new.env(parent = emptyenv())
+  seen$idempotent <- NULL
+  seen$url <- NULL
+  seen$body <- NULL
+  seen$content_type <- NULL
+  seen$low_speed_time <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, idempotent = TRUE) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      seen$idempotent <- idempotent
+      seen$url <- as.character(req$url)
+      seen$body <- rawToChar(dry$body)
+      seen$content_type <- dry$headers$`content-type`
+      seen$low_speed_time <- req$options$low_speed_time
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_dpop_retry = function(...) {
+      testthat::fail("DPoP retry helper should not be called for Bearer")
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- httr2::request("https://example.com/base") |>
+    httr2::req_method("POST") |>
+    httr2::req_url_query(from_req = 1) |>
+    httr2::req_body_json(list(name = "example"), auto_unbox = TRUE) |>
+    httr2::req_options(low_speed_time = 2)
+
+  resp <- perform_resource_req(
+    token = "tok",
+    url = req,
+    query = list(limit = 5)
+  )
+
+  expect_s3_class(resp, "httr2_response")
+  expect_identical(seen$idempotent, FALSE)
+  expect_match(seen$url, "[?&]from_req=1")
+  expect_match(seen$url, "[?&]limit=5")
+  expect_identical(
+    jsonlite::fromJSON(seen$body, simplifyVector = TRUE)$name,
+    "example"
+  )
+  expect_identical(seen$content_type, "application/json")
+  expect_equal(seen$low_speed_time, 2)
+})
+
 test_that("perform_client_bearer_req is a deprecated alias for perform_resource_req", {
   withr::local_options(lifecycle_verbosity = "warning")
 
@@ -391,4 +495,142 @@ test_that("perform_resource_req uses DPoP retry helper for DPoP tokens", {
   expect_identical(seen$idempotent, TRUE)
   expect_identical(seen$nonce, "resource-nonce-1")
   expect_identical(seen$authorization, "DPoP at-1")
+})
+
+test_that("perform_resource_req accepts prebuilt DPoP httr2 requests", {
+  cli <- make_resource_req_dpop_client()
+  seen <- new.env(parent = emptyenv())
+  seen$client <- NULL
+  seen$access_token <- NULL
+  seen$idempotent <- NULL
+  seen$nonce <- NULL
+  seen$authorization <- NULL
+  seen$has_dpop <- NULL
+  seen$method <- NULL
+  seen$url <- NULL
+  seen$x_from_req <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(
+      req,
+      client,
+      access_token = NULL,
+      idempotent = TRUE,
+      nonce = NULL
+    ) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      seen$client <- client
+      seen$access_token <- access_token
+      seen$idempotent <- idempotent
+      seen$nonce <- nonce
+      seen$authorization <- dry$headers$authorization
+      seen$has_dpop <- is.character(dry$headers$dpop) &&
+        nzchar(dry$headers$dpop)
+      seen$method <- req$method
+      seen$url <- as.character(req$url)
+      seen$x_from_req <- dry$headers$`x-from-req`
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_retry = function(...) {
+      testthat::fail("Bearer retry helper should not be called for DPoP")
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- httr2::request("https://resource.example.com/api") |>
+    httr2::req_method("POST") |>
+    httr2::req_headers(`X-From-Req` = "1")
+
+  resp <- perform_resource_req(
+    token = "at-1",
+    url = req,
+    oauth_client = cli,
+    token_type = "DPoP",
+    dpop_nonce = "resource-nonce-1"
+  )
+
+  expect_s3_class(resp, "httr2_response")
+  expect_true(S7::S7_inherits(seen$client, OAuthClient))
+  expect_identical(seen$access_token, "at-1")
+  expect_identical(seen$idempotent, FALSE)
+  expect_identical(seen$nonce, "resource-nonce-1")
+  expect_identical(seen$authorization, "DPoP at-1")
+  expect_true(isTRUE(seen$has_dpop))
+  expect_identical(seen$method, "POST")
+  expect_identical(seen$url, "https://resource.example.com/api")
+  expect_identical(seen$x_from_req, "1")
+})
+
+test_that("perform_resource_req preserves original DPoP request body query and options", {
+  cli <- make_resource_req_dpop_client()
+  seen <- new.env(parent = emptyenv())
+  seen$idempotent <- NULL
+  seen$url <- NULL
+  seen$body_name <- NULL
+  seen$content_type <- NULL
+  seen$low_speed_time <- NULL
+  seen$htu <- NULL
+  seen$htm <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_dpop_retry = function(
+      req,
+      client,
+      access_token = NULL,
+      idempotent = TRUE,
+      nonce = NULL
+    ) {
+      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
+      proof_parts <- strsplit(dry$headers$dpop, ".", fixed = TRUE)[[1]]
+      payload <- jsonlite::fromJSON(
+        shinyOAuth:::base64url_decode(proof_parts[[2]])
+      )
+      seen$idempotent <- idempotent
+      seen$url <- as.character(req$url)
+      seen$body_name <- req$body$data$name
+      seen$content_type <- dry$headers$`content-type`
+      seen$low_speed_time <- req$options$low_speed_time
+      seen$htu <- payload$htu
+      seen$htm <- payload$htm
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    req_with_retry = function(...) {
+      testthat::fail("Bearer retry helper should not be called for DPoP")
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- httr2::request("https://resource.example.com/api") |>
+    httr2::req_method("PATCH") |>
+    httr2::req_url_query(from_req = 1) |>
+    httr2::req_body_json(list(name = "example"), auto_unbox = TRUE) |>
+    httr2::req_options(low_speed_time = 2)
+
+  resp <- perform_resource_req(
+    token = "at-1",
+    url = req,
+    oauth_client = cli,
+    token_type = "DPoP",
+    query = list(limit = 5)
+  )
+
+  expect_s3_class(resp, "httr2_response")
+  expect_identical(seen$idempotent, FALSE)
+  expect_match(seen$url, "[?&]from_req=1")
+  expect_match(seen$url, "[?&]limit=5")
+  expect_identical(seen$body_name, "example")
+  expect_identical(seen$content_type, "application/json")
+  expect_equal(seen$low_speed_time, 2)
+  expect_identical(seen$htm, "PATCH")
+  expect_identical(seen$htu, "https://resource.example.com/api")
 })

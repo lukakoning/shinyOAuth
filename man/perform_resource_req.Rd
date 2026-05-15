@@ -21,7 +21,11 @@ perform_resource_req(
 \arguments{
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
 
-\item{url}{The absolute URL to call.}
+\item{url}{Either the absolute URL to call or an \code{\link[httr2:request]{httr2::request()}} object
+to authorize and perform. When you pass a request object, shinyOAuth uses
+it as the base request, still applies token authentication and request
+defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
+\code{follow_redirect} overrides on top.}
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method
@@ -79,7 +83,9 @@ An \link[httr2:httr2]{httr2} response object.
 This is a helper for calling downstream APIs with an access token. It creates
 an \code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right authorization
 header for the token type, applies shinyOAuth's standard HTTP defaults, and
-performs the request with \code{\link[httr2:req_perform]{httr2::req_perform()}}.
+performs the request. You can also provide a prebuilt \code{\link[httr2:request]{httr2::request()}} object
+as the \code{url} argument, in which case this helper will layer token authentication
+and any explicit overrides on top of the provided request before performing it.
 
 Use \code{\link[=resource_req]{resource_req()}} if you want to only build the request (and perform it later).
 
@@ -104,13 +110,21 @@ if (interactive()) {
     query = list(limit = 5)
   )
 
-  # Advanced callers can still build first and perform later.
+  # Build only when you need to inspect the request yourself.
   request <- resource_req(
     token,
     "https://api.example.com/resource",
     query = list(limit = 5)
   )
 
-  response <- httr2::req_perform(request)
+  httr2::req_dry_run(request)
+
+  # Or start from your own httr2 request and still let shinyOAuth perform it
+  # so DPoP nonce retries remain available.
+  custom_request <- httr2::request("https://api.example.com/resource") |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_url_query(limit = 5)
+
+  response <- perform_resource_req(token, custom_request)
 }
 }

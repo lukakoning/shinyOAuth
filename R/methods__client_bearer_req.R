@@ -10,8 +10,8 @@
 #' @description
 #' This is a helper for calling downstream APIs with an access token. It creates an
 #' [httr2::request()] for the given URL, attaches the right authorization header
-#' for the token type, and applies shinyOAuth's standard HTTP defaults. 
-#' 
+#' for the token type, and applies shinyOAuth's standard HTTP defaults.
+#'
 #' Use [perform_resource_req()] when you want shinyOAuth to also perform the request
 #' and handle DPoP nonce challenges for you (which [httr2::req_perform()]
 #' would not do on its own).
@@ -79,47 +79,18 @@ resource_req <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
-  token_info <- resolve_client_bearer_token(
+  prepare_client_bearer_request(
     token = token,
-    token_type = token_type,
-    oauth_client = oauth_client
-  )
-
-  validate_client_bearer_token_context(
-    token_type = token_info$token_type,
-    oauth_client = oauth_client
-  )
-  validate_client_bearer_sender_constraints(
-    token = token,
-    access_token = token_info$access_token,
-    token_type = token_info$token_type,
-    oauth_client = oauth_client
-  )
-  validate_client_bearer_url(url, check_url = check_url)
-
-  req <- build_client_bearer_authorized_request(
     url = url,
     method = method,
-    token = token,
-    access_token = token_info$access_token,
-    token_type = token_info$token_type,
+    headers = headers,
+    query = query,
+    follow_redirect = follow_redirect,
+    check_url = check_url,
     oauth_client = oauth_client,
+    token_type = token_type,
     dpop_nonce = dpop_nonce
-  )
-
-  # Security: disable redirects by default to prevent leaking the access token.
-  if (!isTRUE(follow_redirect)) {
-    req <- req_no_redirect(req)
-  }
-
-  req <- apply_client_bearer_headers(req, headers)
-
-  if (is.list(query) && length(query) > 0L) {
-    query <- compact_list(query)
-    req <- do.call(httr2::req_url_query, c(list(req), query))
-  }
-
-  req
+  )$req
 }
 
 #' @title
@@ -175,17 +146,24 @@ client_bearer_req <- function(
 #' This is a helper for calling downstream APIs with an access token. It creates
 #' an [httr2::request()] for the given URL, attaches the right authorization
 #' header for the token type, applies shinyOAuth's standard HTTP defaults, and
-#' performs the request with [httr2::req_perform()]. 
-#' 
+#' performs the request. You can also provide a prebuilt [httr2::request()] object 
+#' as the `url` argument, in which case this helper will layer token authentication 
+#' and any explicit overrides on top of the provided request before performing it.
+#'
 #' Use [resource_req()] if you want to only build the request (and perform it later).
-#' 
-#' Compared to [httr2::req_perform()], this helper adds shinyOAuth-specific 
-#' handling for DPoP-bound tokens, including retrying once with a fresh proof when 
-#' a `DPoP-Nonce` challenge is encountered. For non-DPoP tokens, this helper behaves 
-#' similarly to [httr2::req_perform()] but with the package's standard defaults 
+#'
+#' Compared to [httr2::req_perform()], this helper adds shinyOAuth-specific
+#' handling for DPoP-bound tokens, including retrying once with a fresh proof when
+#' a `DPoP-Nonce` challenge is encountered. For non-DPoP tokens, this helper behaves
+#' similarly to [httr2::req_perform()] but with the package's standard defaults
 #' for retries and redirects.
 #'
 #' @inheritParams resource_req
+#' @param url Either the absolute URL to call or an [httr2::request()] object
+#'   to authorize and perform. When you pass a request object, shinyOAuth uses
+#'   it as the base request, still applies token authentication and request
+#'   defaults, and then layers any explicit `method`, `headers`, `query`, and
+#'   `follow_redirect` overrides on top.
 #' @param idempotent Optional logical controlling generic transport and
 #'   transient-HTTP retries in `req_with_retry()`. When `NULL` (the default),
 #'   shinyOAuth infers this from the final request method using standard HTTP
@@ -211,10 +189,14 @@ perform_resource_req <- function(
   dpop_nonce = NULL,
   idempotent = NULL
 ) {
-  req <- resource_req(
+  request_input <- inherits(url, "httr2_request")
+  method_override <- if (request_input && missing(method)) NULL else method
+
+  prepared <- prepare_client_bearer_request(
     token = token,
-    url = url,
-    method = method,
+    url = if (request_input) NULL else url,
+    req = if (request_input) url else NULL,
+    method = method_override,
     headers = headers,
     query = query,
     follow_redirect = follow_redirect,
@@ -224,11 +206,8 @@ perform_resource_req <- function(
     dpop_nonce = dpop_nonce
   )
 
-  token_info <- resolve_client_bearer_token(
-    token = token,
-    token_type = token_type,
-    oauth_client = oauth_client
-  )
+  req <- prepared$req
+  token_info <- prepared$token_info
 
   if (is.null(idempotent)) {
     request_method <- tryCatch(
@@ -315,7 +294,104 @@ perform_client_bearer_req <- function(
 
 # 2 Request validation and shaping ---------------------------------------------
 
+#' Build the authenticated request state for a protected resource
+#'
+#' Used by [resource_req()] and [perform_resource_req()] to resolve the token
+#' context, validate the target URL, attach authentication, and apply the
+#' package's standard request defaults before the request is performed.
+#'
+#' @param token Either an [OAuthToken] object or a raw access-token string.
+#' @param url Optional absolute URL supplied by the caller.
+#' @param req Optional httr2 request object to use as the base request.
+#' @param method Optional HTTP method override.
+#' @param headers Optional named list or named character vector of headers.
+#' @param query Optional named list of query parameters.
+#' @param follow_redirect Whether redirects should remain enabled.
+#' @param check_url Whether URL validation should run.
+#' @param oauth_client Optional [OAuthClient].
+#' @param token_type Optional token-type override.
+#' @param dpop_nonce Optional DPoP nonce to include in the proof.
+#' @return A named list with `req` and `token_info` entries.
+#' @keywords internal
+#' @noRd
+prepare_client_bearer_request <- function(
+  token,
+  url = NULL,
+  req = NULL,
+  method = "GET",
+  headers = NULL,
+  query = NULL,
+  follow_redirect = FALSE,
+  check_url = TRUE,
+  oauth_client = NULL,
+  token_type = NULL,
+  dpop_nonce = NULL
+) {
+  token_info <- resolve_client_bearer_token(
+    token = token,
+    token_type = token_type,
+    oauth_client = oauth_client
+  )
+
+  validate_client_bearer_token_context(
+    token_type = token_info$token_type,
+    oauth_client = oauth_client
+  )
+  validate_client_bearer_sender_constraints(
+    token = token,
+    access_token = token_info$access_token,
+    token_type = token_info$token_type,
+    oauth_client = oauth_client
+  )
+
+  target_url <- resolve_client_bearer_target_url(url = url, req = req)
+  validate_client_bearer_url(target_url, check_url = check_url)
+
+  req <- build_client_bearer_authorized_request(
+    url = target_url,
+    req = req,
+    method = method,
+    token = token,
+    access_token = token_info$access_token,
+    token_type = token_info$token_type,
+    oauth_client = oauth_client,
+    dpop_nonce = dpop_nonce
+  )
+
+  req <- finalize_client_bearer_request(
+    req = req,
+    headers = headers,
+    query = query,
+    follow_redirect = follow_redirect
+  )
+
+  list(req = req, token_info = token_info)
+}
+
 # 2.1 Token handling -----------------------------------------------------------
+
+#' Resolve the target URL for an authorized API request
+#'
+#' Used by `prepare_client_bearer_request()` to support either a URL string or
+#' a prebuilt httr2 request object as the request source.
+#'
+#' @param url Optional target URL string.
+#' @param req Optional httr2 request object.
+#' @return Scalar character URL extracted from `url` or `req`.
+#' @keywords internal
+#' @noRd
+resolve_client_bearer_target_url <- function(url = NULL, req = NULL) {
+  if (!inherits(req, "httr2_request")) {
+    return(url)
+  }
+
+  req_url <- req[["url"]] %||% NULL
+  if (!is_valid_string(req_url)) {
+    err_input("httr2 request must have a non-empty URL")
+  }
+
+  as.character(req_url)
+}
 
 #' Resolve the access token and token type for an authorized API request
 #'
@@ -511,6 +587,7 @@ validate_client_bearer_url <- function(url, check_url = TRUE) {
 #' authentication, and the package's standard request defaults.
 #'
 #' @param url Target resource URL.
+#' @param req Optional httr2 request object to use as the base request.
 #' @param method HTTP method to set when it is a non-empty string.
 #' @param token Original token input supplied to [resource_req()].
 #' @param access_token Scalar access-token string.
@@ -523,6 +600,7 @@ validate_client_bearer_url <- function(url, check_url = TRUE) {
 #' @noRd
 build_client_bearer_authorized_request <- function(
   url,
+  req = NULL,
   method,
   token,
   access_token,
@@ -530,7 +608,10 @@ build_client_bearer_authorized_request <- function(
   oauth_client = NULL,
   dpop_nonce = NULL
 ) {
-  req <- httr2::request(url)
+  if (is.null(req)) {
+    req <- httr2::request(url)
+  }
+
   if (is_valid_string(method)) {
     req <- httr2::req_method(req, toupper(method))
   }
@@ -561,6 +642,40 @@ build_client_bearer_authorized_request <- function(
 
 
 # 2.4 Optional headers ---------------------------------------------------------
+
+#' Apply post-auth request shaping for an authorized API request
+#'
+#' Used after authentication has been attached so redirect policy, optional
+#' headers, and optional query parameters are handled consistently for both URL
+#' inputs and prebuilt httr2 request objects.
+#'
+#' @param req httr2 request object.
+#' @param headers Optional named list or named character vector of headers.
+#' @param query Optional named list of query parameters.
+#' @param follow_redirect Whether redirects should remain enabled.
+#' @return Updated httr2 request object.
+#' @keywords internal
+#' @noRd
+finalize_client_bearer_request <- function(
+  req,
+  headers = NULL,
+  query = NULL,
+  follow_redirect = FALSE
+) {
+  # Security: disable redirects by default to prevent leaking the access token.
+  if (!isTRUE(follow_redirect)) {
+    req <- req_no_redirect(req)
+  }
+
+  req <- apply_client_bearer_headers(req, headers)
+
+  if (is.list(query) && length(query) > 0L) {
+    query <- compact_list(query)
+    req <- do.call(httr2::req_url_query, c(list(req), query))
+  }
+
+  req
+}
 
 #' Apply caller-supplied headers to an authorized API request
 #'
