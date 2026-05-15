@@ -2286,6 +2286,9 @@ verify_token_set <- function(
   with_otel_span(
     "shinyOAuth.token.verify",
     local({
+      # Initialize before on.exit so cleanup still runs after early aborts.
+      id_token_validated <- FALSE
+
       # Emit these decision attributes once on span exit so exporters do not
       # receive duplicate keys when final values replace the initial defaults.
       on.exit(
@@ -2431,11 +2434,6 @@ verify_token_set <- function(
         (isTRUE(client@provider@id_token_validation) ||
           isTRUE(client@provider@use_nonce) ||
           isTRUE(is_valid_string(nonce)))
-
-      # Track whether the ID token was actually validated for downstream consumers.
-      # This flag starts FALSE and is set to TRUE only when validate_id_token()
-      # succeeds (i.e. signature + claims are cryptographically verified).
-      id_token_validated <- FALSE
 
       id_token <- token_set[["id_token"]]
       if (isTRUE(is_refresh) && isTRUE(id_token_present)) {
