@@ -109,15 +109,29 @@ test_that("resource_req accepts OAuthToken and sets headers/query/method", {
 test_that("client_bearer_req is a deprecated alias for resource_req", {
   withr::local_options(lifecycle_verbosity = "warning")
 
-  expect_warning(
+  warning_cnd <- NULL
+  req <- withCallingHandlers(
     req <- client_bearer_req(
       token = "tok",
       url = "https://example.com/base",
       query = list(a = 1)
     ),
-    class = "lifecycle_warning_deprecated"
+    warning = function(w) {
+      if (!inherits(w, "lifecycle_warning_deprecated")) {
+        return(invisible(NULL))
+      }
+
+      warning_cnd <<- w
+      invokeRestart("muffleWarning")
+    }
   )
 
+  expect_s3_class(warning_cnd, "lifecycle_warning_deprecated")
+  expect_match(
+    conditionMessage(warning_cnd),
+    "[shinyOAuth] - Deprecated API",
+    fixed = TRUE
+  )
   expect_s3_class(req, "httr2_request")
   expect_equal(req$url, "https://example.com/base?a=1")
 })
@@ -302,14 +316,28 @@ test_that("perform_client_bearer_req is a deprecated alias for perform_resource_
     .package = "shinyOAuth"
   )
 
-  expect_warning(
+  warning_cnd <- NULL
+  resp <- withCallingHandlers(
     resp <- perform_client_bearer_req(
       token = "tok",
       url = "https://example.com/base"
     ),
-    class = "lifecycle_warning_deprecated"
+    warning = function(w) {
+      if (!inherits(w, "lifecycle_warning_deprecated")) {
+        return(invisible(NULL))
+      }
+
+      warning_cnd <<- w
+      invokeRestart("muffleWarning")
+    }
   )
 
+  expect_s3_class(warning_cnd, "lifecycle_warning_deprecated")
+  expect_match(
+    conditionMessage(warning_cnd),
+    "[shinyOAuth] - Deprecated API",
+    fixed = TRUE
+  )
   expect_s3_class(resp, "httr2_response")
 })
 

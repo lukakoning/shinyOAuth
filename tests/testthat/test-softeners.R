@@ -78,9 +78,16 @@ test_that("error_on_softened does not cover broader hardening opt-ins", {
 test_that("error_on_softened is deprecated", {
   withr::local_options(lifecycle_verbosity = "warning")
 
-  expect_warning(
+  warning_cnd <- rlang::catch_cnd(
     shinyOAuth::error_on_softened(),
-    class = "lifecycle_warning_deprecated"
+    classes = "warning"
+  )
+
+  expect_s3_class(warning_cnd, "lifecycle_warning_deprecated")
+  expect_match(
+    conditionMessage(warning_cnd),
+    "[shinyOAuth] - Deprecated API",
+    fixed = TRUE
   )
 })
 

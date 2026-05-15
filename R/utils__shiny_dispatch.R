@@ -196,9 +196,9 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   }
 
   # Neither backend is properly configured
-  rlang::abort(
+  abort_pkg(
+    "No async backend available",
     c(
-      "No async backend available",
       "i" = "Configure mirai daemons: `mirai::daemons(2)`",
       "i" = "Or configure a future plan: `future::plan(future::multisession)`"
     ),

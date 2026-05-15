@@ -79,7 +79,7 @@
 #' @keywords internal
 #' @export
 error_on_softened <- function() {
-  lifecycle::deprecate_warn(
+  deprecate_warn_pkg(
     when = "0.4.0.9000",
     what = "error_on_softened()",
     details = c(
@@ -104,9 +104,9 @@ error_on_softened <- function() {
       allow_redirect()
     )
   ) {
-    rlang::abort(
+    abort_pkg(
+      "One or more safety settings have been disabled",
       c(
-        "One or more safety settings have been disabled",
         "x" = "These settings relax shinyOAuth's default safety protections",
         "i" = "See `?error_on_softened` for more information"
       )

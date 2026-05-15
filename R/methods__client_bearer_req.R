@@ -153,7 +153,7 @@ client_bearer_req <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
-  lifecycle::deprecate_warn(
+  deprecate_warn_pkg(
     when = "0.4.0.9000",
     what = "client_bearer_req()",
     with = "resource_req()",
@@ -294,7 +294,7 @@ perform_client_bearer_req <- function(
   dpop_nonce = NULL,
   idempotent = NULL
 ) {
-  lifecycle::deprecate_warn(
+  deprecate_warn_pkg(
     when = "0.4.0.9000",
     what = "perform_client_bearer_req()",
     with = "perform_resource_req()",

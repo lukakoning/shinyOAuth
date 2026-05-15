@@ -152,6 +152,26 @@ test_that("package condition helpers build consistent headers", {
   expect_match(conditionMessage(warning_cnd), "Browser warning", fixed = TRUE)
   expect_match(conditionMessage(warning_cnd), "detail", fixed = TRUE)
 
+  error_cnd <- rlang::catch_cnd(
+    shinyOAuth:::abort_pkg(
+      "State store entry is malformed",
+      c("i" = "Missing: browser_token"),
+      class = "shinyOAuth_test_error"
+    ),
+    classes = "error"
+  )
+  expect_s3_class(error_cnd, "shinyOAuth_test_error")
+  expect_match(
+    conditionMessage(error_cnd),
+    "[shinyOAuth] - State store entry is malformed",
+    fixed = TRUE
+  )
+  expect_match(
+    conditionMessage(error_cnd),
+    "Missing: browser_token",
+    fixed = TRUE
+  )
+
   inform_cnd <- rlang::catch_cnd(
     shinyOAuth:::inform_pkg(
       "Async backend",
@@ -163,6 +183,22 @@ test_that("package condition helpers build consistent headers", {
   expect_s3_class(inform_cnd, "shinyOAuth_test_inform")
   expect_match(conditionMessage(inform_cnd), "Async backend", fixed = TRUE)
   expect_match(conditionMessage(inform_cnd), "using future", fixed = TRUE)
+})
+
+test_that("validate_state_store_value uses package-formatted state errors", {
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  error_cnd <- rlang::catch_cnd(
+    shinyOAuth:::validate_state_store_value(NULL, client),
+    classes = "error"
+  )
+
+  expect_s3_class(error_cnd, "shinyOAuth_state_error")
+  expect_match(
+    conditionMessage(error_cnd),
+    "[shinyOAuth] - State store entry is missing or malformed",
+    fixed = TRUE
+  )
 })
 
 # HTTP summary sanitization tests -----------------------------------------

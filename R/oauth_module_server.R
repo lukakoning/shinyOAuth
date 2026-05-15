@@ -1126,10 +1126,13 @@ oauth_module_server <- function(
       # If no browser token yet, defer URL building (return NA) so callers can
       # render a button/link reactively once the cookie arrives
       if (!.has_browser_token()) {
-        rlang::abort(
+        abort_pkg(
+          "No browser token available",
           c(
-            "No browser token available",
-            "i" = "Call `has_browser_token()` to check and `set_browser_token()` to set one before calling `build_auth_url()`"
+            "i" = paste(
+              "Call `has_browser_token()` to check and `set_browser_token()`",
+              "to set one before calling `build_auth_url()`"
+            )
           ),
           class = c("shinyOAuth_state_error", "shinyOAuth_error"),
           call = rlang::current_env()

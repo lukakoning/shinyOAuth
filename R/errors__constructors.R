@@ -94,6 +94,40 @@ format_condition_message <- function(
   )
 }
 
+#' Abort with standard shinyOAuth formatting
+#'
+#' Used by package helpers that need a custom error title while keeping the same
+#' header and bullet structure used by other shinyOAuth conditions.
+#'
+#' @param short Short description shown in the condition header.
+#' @param msg Error body as a string, bullet vector, or one-level list.
+#' @param ... Additional arguments forwarded to [rlang::abort()].
+#' @param default_type Bullet type assigned to unnamed body entries.
+#' @param footer Optional footer bullets appended after the main body.
+#' @param strong Whether to render `short` in bold via cli markup.
+#' @return No return value. This function always aborts.
+#' @keywords internal
+#' @noRd
+abort_pkg <- function(
+  short,
+  msg = NULL,
+  ...,
+  default_type = "!",
+  footer = NULL,
+  strong = TRUE
+) {
+  rlang::abort(
+    format_condition_message(
+      short,
+      msg,
+      default_type = default_type,
+      footer = footer,
+      strong = strong
+    ),
+    ...
+  )
+}
+
 #' Warn with standard shinyOAuth formatting
 #'
 #' Used by package helpers that emit advisory warnings with the same header and
@@ -159,6 +193,84 @@ inform_pkg <- function(
       strong = strong
     ),
     ...
+  )
+}
+
+#' Warn about a deprecated shinyOAuth API with standard formatting
+#'
+#' Uses lifecycle's deprecation machinery to honor verbosity and once-per-id
+#' behavior, then re-emits the warning with shinyOAuth's standard header.
+#'
+#' @param when Package version where the deprecation started.
+#' @param what Deprecated API description.
+#' @param with Optional replacement API description.
+#' @param details Optional extra details as a string, bullet vector, or list.
+#' @param id Optional lifecycle deprecation id.
+#' @param env Environment forwarded to [lifecycle::deprecate_warn()].
+#' @param user_env User environment forwarded to [lifecycle::deprecate_warn()].
+#' @return No meaningful return value; emits a warning side effect when the
+#'   deprecation is active under current lifecycle verbosity settings.
+#' @keywords internal
+#' @noRd
+deprecate_warn_pkg <- function(
+  when,
+  what,
+  with = NULL,
+  details = NULL,
+  id = NULL,
+  env = rlang::caller_env(),
+  user_env = rlang::caller_env()
+) {
+  deprecated_cnd <- NULL
+
+  withCallingHandlers(
+    lifecycle::deprecate_warn(
+      when = when,
+      what = what,
+      with = with,
+      details = details,
+      id = id,
+      env = env,
+      user_env = user_env
+    ),
+    warning = function(w) {
+      if (!inherits(w, "lifecycle_warning_deprecated")) {
+        return(invisible(NULL))
+      }
+
+      deprecated_cnd <<- w
+      tryInvokeRestart("muffleWarning")
+      invisible(NULL)
+    }
+  )
+
+  if (is.null(deprecated_cnd)) {
+    return(invisible(NULL))
+  }
+
+  what_label <- as.character(what %||% "")
+  with_label <- as.character(with %||% "")
+  if (nzchar(what_label) && !grepl("`", what_label, fixed = TRUE)) {
+    what_label <- paste0("`", what_label, "`")
+  }
+  if (nzchar(with_label) && !grepl("`", with_label, fixed = TRUE)) {
+    with_label <- paste0("`", with_label, "`")
+  }
+
+  bullets <- c(
+    "!" = paste0(what_label, " was deprecated in shinyOAuth ", when, "."),
+    if (nzchar(with_label)) {
+      stats::setNames(paste0("Please use ", with_label, " instead."), "i")
+    } else {
+      character()
+    },
+    normalize_bullets(details, default_type = "i")
+  )
+
+  warn_pkg(
+    "Deprecated API",
+    bullets,
+    class = "lifecycle_warning_deprecated"
   )
 }
 
