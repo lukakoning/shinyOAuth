@@ -111,7 +111,7 @@ test_that("client_bearer_req is a deprecated alias for resource_req", {
 
   warning_cnd <- NULL
   req <- withCallingHandlers(
-    req <- client_bearer_req(
+    client_bearer_req(
       token = "tok",
       url = "https://example.com/base",
       query = list(a = 1)
@@ -318,7 +318,7 @@ test_that("perform_client_bearer_req is a deprecated alias for perform_resource_
 
   warning_cnd <- NULL
   resp <- withCallingHandlers(
-    resp <- perform_client_bearer_req(
+    perform_client_bearer_req(
       token = "tok",
       url = "https://example.com/base"
     ),
