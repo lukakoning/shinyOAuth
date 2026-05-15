@@ -8,7 +8,9 @@ This folder provides a minimal Keycloak setup to run local integration tests aga
 - Test user: `alice` / `alice`
 - Clients:
   - `shiny-public` (public; PKCE S256; standard authorization-code flow)
+  - `shiny-par-required` (public; PKCE S256; PAR required at authorization endpoint)
   - `shiny-confidential` (confidential; client secret `secret`; standard code flow; service accounts enabled for client_credentials)
+  - `shiny-userinfo-jwt` (confidential; client secret `secret`; RS256-signed UserInfo responses)
   - `shiny-mtls-confidential` (confidential; X.509 client auth; certificate-bound authorization-code tokens)
   - `shiny-mtls-service` (confidential; X.509 client auth; certificate-bound client_credentials tokens)
   - `shiny-jar-hmac` (confidential; 32-byte client secret; HS256-signed Request Objects for JAR integration coverage)
@@ -78,6 +80,15 @@ These tests exercise high-priority OAuth2/OIDC protocol behavior against the liv
 | `test_integration_error_callback.R` | RFC 6749 authorization error callbacks | Surfaces provider errors only after issuer/state validation; consumes state; rejects replay and unsolicited errors |
 | `test_integration_keycloak_claims_scope_acr.R` | OIDC claims, ACR, and OAuth scope validation | Essential userinfo happy path; missing ID token claim; ACR downgrade; reduced live token scope |
 | `test_integration_keycloak_refresh_protection.R` | Refresh-token lifecycle | Refresh happy path; explicit refresh-token revocation; `revoke_on_session_end` invalidation |
+| `test_integration_keycloak_protocol_hardening.R` | RFC 8707, OIDC `max_age`, RFC 7662, UserInfo subject binding | Resource policy binding; `auth_time`; introspection `sub`/`client_id`/`scope`; client-id mix-up; cross-user UserInfo substitution |
+| `test_integration_keycloak_pkce_authorization_tamper.R` | RFC 7636 PKCE authorization request integrity | Missing challenge, `plain` downgrade, and malformed challenge rejected before code issuance |
+| `test_integration_keycloak_jwt_auth_unhappy_code_flow.R` | JWT client authentication in full auth-code flow | Wrong secret, wrong audience, wrong alg, and wrong private key fail at token exchange and consume state |
+| `test_integration_keycloak_dpop_nonce_retry.R` | RFC 9449 protected-resource nonce challenge | First DPoP proof receives `use_dpop_nonce`; retry uses fresh `jti`, nonce, `ath`, `htm`, and `htu` |
+| `test_integration_keycloak_jar_par_confusion.R` | JAR/PAR parameter-confusion resistance | Conflicting outer `redirect_uri`, `scope`, `state`, and `client_id` do not override signed/pushed request parameters; PAR-required client rejects direct auth |
+| `test_integration_module_shiny_browser_callback_cleanup.R` | Browser callback leakage cleanup | Real browser login leaves no OAuth callback parameters in `window.location.href` or `document.title` |
+| `test_integration_keycloak_resource_indicators.R` | RFC 8707 resource indicators | Live Keycloak code-flow compatibility when a `resource` parameter is present; audience/`invalid_target` enforcement is not asserted here because stock Keycloak does not project `resource` into token audience in this realm |
+| `test_integration_keycloak_jwks_rotation.R` | OIDC JWKS refresh on key rotation | Rotates the disposable Keycloak realm signing key through the admin API; validates refresh-on-new-`kid` and rejects rogue signatures for old/new `kid` values |
+| `test_integration_keycloak_userinfo_jwt.R` | OIDC signed UserInfo JWT | Live RS256 UserInfo JWT from Keycloak is verified, issuer/audience checked, and subject-bound to the validated ID token |
 
 ## Attack vector tests
 

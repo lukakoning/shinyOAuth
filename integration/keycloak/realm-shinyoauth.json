@@ -26,6 +26,26 @@
       }
     },
     {
+      "clientId": "shiny-par-required",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "require.pushed.authorization.requests": "true"
+      }
+    },
+    {
       "clientId": "shiny-dpop-public",
       "protocol": "openid-connect",
       "publicClient": true,
@@ -64,6 +84,28 @@
       "clientAuthenticatorType": "client-secret",
       "attributes": {
         "request.object.signature.alg": "HS256"
+      }
+    },
+    {
+      "clientId": "shiny-userinfo-jwt",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "user.info.response.signature.alg": "RS256"
       }
     },
     {
