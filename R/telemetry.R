@@ -1167,15 +1167,19 @@ otel_record_http_result <- function(resp, span = NULL) {
   }
 
   span <- span %||% otel::get_active_span()
+  status_code <- tryCatch(httr2::resp_status(resp), error = function(...) NULL)
+  content_type <- otel_http_content_type(resp = resp)
   otel_set_span_attributes(
     span = span,
     attributes = compact_list(c(
-      otel_http_attributes(resp = resp),
+      list(
+        http.response.status_code = as.integer(status_code %||% NA_integer_),
+        http.response.content_type = content_type
+      ),
       attr(resp, "shinyOAuth.otel_attributes", exact = TRUE) %||% list()
     ))
   )
 
-  status_code <- tryCatch(httr2::resp_status(resp), error = function(...) NULL)
   if (
     !is.numeric(status_code) || length(status_code) != 1L || is.na(status_code)
   ) {

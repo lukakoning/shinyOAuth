@@ -1202,11 +1202,13 @@ handle_callback_internal <- function(
   with_trace_id(
     payload$trace_id %||% NULL,
     {
-      otel_set_span_attributes(
-        attributes = list(
-          shinyoauth.trace_id = payload$trace_id %||% NULL
+      if (is.null(decrypted_payload)) {
+        otel_set_span_attributes(
+          attributes = list(
+            shinyoauth.trace_id = payload$trace_id %||% NULL
+          )
         )
-      )
+      }
 
       # Audit: callback received
       try(

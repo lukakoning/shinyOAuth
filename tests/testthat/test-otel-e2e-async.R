@@ -141,10 +141,45 @@ otel_span_attribute <- function(span, key) {
   otel_export_attr_value(span$attributes, key)
 }
 
+otel_attr_values <- function(attributes, key) {
+  if (is.null(attributes) || !length(attributes)) {
+    return(list())
+  }
+
+  values <- list()
+  for (attr in attributes) {
+    if (!identical(attr$key %||% NA_character_, key)) {
+      next
+    }
+
+    value <- attr$value %||% list()
+    for (field in c("stringValue", "intValue", "boolValue", "doubleValue")) {
+      if (!is.null(value[[field]])) {
+        values[[length(values) + 1L]] <- value[[field]]
+        break
+      }
+    }
+  }
+
+  values
+}
+
 otel_span_status_is_error <- function(span) {
   code <- span$status_code %||% NA_character_
   identical(code, "STATUS_CODE_ERROR") ||
     identical(as.character(code), "2")
+}
+
+expect_unique_span_attributes <- function(span, keys) {
+  for (key in keys) {
+    testthat::expect_length(otel_attr_values(span$attributes, key), 1L)
+  }
+}
+
+expect_no_duplicate_span_attributes <- function(span, keys) {
+  for (key in keys) {
+    testthat::expect_lte(length(otel_attr_values(span$attributes, key)), 1L)
+  }
 }
 
 otel_span_has_event <- function(span, name) {
@@ -252,6 +287,16 @@ expect_async_operation_spans <- function(
   if (length(main_operation) != 1L || length(worker_operation) != 1L) {
     return(NULL)
   }
+
+  expect_unique_span_attributes(
+    http_span[[1L]],
+    c(
+      "url.full",
+      "server.address",
+      "server.port",
+      "http.response.status_code"
+    )
+  )
 
   trace_ids <- unique(vapply(
     c(operation_spans, worker_span, http_span),
@@ -1140,6 +1185,21 @@ otel_async_daemon("async module callback/login success exports correct main and 
     )),
     worker_span$process_id
   )
+
+  expect_unique_span_attributes(
+    worker_span,
+    c(
+      "shiny.session.is_async",
+      "shiny.session.main_process_id",
+      "shiny.session.process_id",
+      "shiny.session_token_digest",
+      "shinyoauth.trace_id"
+    )
+  )
+  expect_no_duplicate_span_attributes(
+    worker_span,
+    c("http.request.method", "server.address")
+  )
 })
 
 otel_async_daemon("async callback exports worker userinfo spans and logs from a real daemon", {
@@ -1296,6 +1356,31 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
   callback_received_log <- callback_received_logs[[1L]]
   login_success_log <- login_success_logs[[1L]]
   userinfo_log <- userinfo_logs[[1L]]
+
+  expect_unique_span_attributes(
+    worker_span,
+    c(
+      "shiny.session.is_async",
+      "shiny.session.main_process_id",
+      "shiny.session.process_id",
+      "shiny.session_token_digest",
+      "shinyoauth.trace_id"
+    )
+  )
+  expect_no_duplicate_span_attributes(
+    worker_span,
+    c("http.request.method", "server.address")
+  )
+  expect_unique_span_attributes(
+    userinfo_http_span,
+    c(
+      "url.full",
+      "server.address",
+      "server.port",
+      "http.response.status_code",
+      "http.response.content_type"
+    )
+  )
 
   testthat::expect_identical(userinfo_span$trace_id, worker_span$trace_id)
   testthat::expect_identical(userinfo_span$parent_span_id, worker_span$span_id)

@@ -252,12 +252,6 @@ with_async_session_context <- function(ctx, code) {
 
   old <- set_async_session_context(ctx)
   on.exit(set_async_session_context(old), add = TRUE)
-  if (!is.null(ctx)) {
-    try(
-      otel_set_span_attributes(attributes = otel_shiny_attributes(ctx)),
-      silent = TRUE
-    )
-  }
   force(code)
 }
 
