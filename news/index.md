@@ -333,10 +333,12 @@
   [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
   is also exported as a deprecated compatibility alias.
 
-- [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)is
-  a new function which builds and performs an authenticated
+- [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+  is a new function which builds and performs an authenticated
   resource-request and, for DPoP-bound access tokens, replays one
-  `use_dpop_nonce` challenge with the server-provided nonce.
+  `use_dpop_nonce` challenge with the server-provided nonce. It can also
+  take pre-existing ‘httr2’ request objects and layer authentication and
+  DPoP on top.
 
 ## shinyOAuth 0.4.0
 
