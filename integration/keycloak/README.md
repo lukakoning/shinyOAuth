@@ -68,6 +68,17 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
    - Unhappy path (wrong verifier): replaces `code_verifier` with a different valid value → server rejects the token exchange (invalid_grant), surfaced as a token/HTTP error
  - `test_integration_keycloak_revocation.R` — token revocation (RFC 7009) end-to-end: acquires a client_credentials token, verifies it is active via introspection, calls `revoke_token()`, and confirms the token is inactive; also exercises different auth styles for the revocation call
 
+## Protocol validation tests
+
+These tests exercise high-priority OAuth2/OIDC protocol behavior against the live Keycloak realm.
+
+| Test file | Protocol surface | Coverage |
+|-----------|------------------|----------|
+| `test_integration_callback_issuer.R` | RFC 9207 authorization response `iss` | Accepts the real Keycloak callback issuer; rejects missing/mismatched issuer before state or code use |
+| `test_integration_error_callback.R` | RFC 6749 authorization error callbacks | Surfaces provider errors only after issuer/state validation; consumes state; rejects replay and unsolicited errors |
+| `test_integration_keycloak_claims_scope_acr.R` | OIDC claims, ACR, and OAuth scope validation | Essential userinfo happy path; missing ID token claim; ACR downgrade; reduced live token scope |
+| `test_integration_keycloak_refresh_protection.R` | Refresh-token lifecycle | Refresh happy path; explicit refresh-token revocation; `revoke_on_session_end` invalidation |
+
 ## Attack vector tests
 
 These tests simulate real-world OAuth2/OIDC attack vectors against a live Keycloak server to verify the package's security defenses hold end-to-end. Shared helpers live in `helper-keycloak.R`.
