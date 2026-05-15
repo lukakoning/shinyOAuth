@@ -49,11 +49,6 @@
 #' - `status`: machine-readable status such as `"ok"`, `"missing_token"`,
 #'   `"revocation_unsupported"`, or `"http_<code>"`.
 #'
-#' @section Side effects:
-#' Performs network I/O when the provider exposes a revocation endpoint and the
-#' selected token exists. Emits best-effort audit events and OpenTelemetry span
-#' attributes. When `async = TRUE`, the work may run in a background worker.
-#'
 #' @export
 revoke_token <- function(
   oauth_client,
@@ -337,11 +332,6 @@ revoke_token <- function(
 #' - `status`: machine-readable status such as `"ok"`,
 #'   `"introspection_unsupported"`, `"missing_token"`, `"invalid_json"`,
 #'   `"missing_active"`, `"invalid_active"`, or `"http_<code>"`.
-#'
-#' @section Side effects:
-#' Performs network I/O when the provider exposes an introspection endpoint and
-#' the selected token exists. Emits best-effort audit events and OpenTelemetry
-#' span attributes. When `async = TRUE`, the work may run in a background worker.
 #'
 #' @example inst/examples/token_methods.R
 #'
@@ -1153,10 +1143,6 @@ refresh_token <- function(
 #'   event.
 #' @return Invisibly returns `NULL`.
 #'
-#' @section Side effects:
-#' Emits a best-effort `token_revocation` audit event. Audit hook failures are
-#' swallowed so revocation result handling cannot change caller behavior.
-#'
 #' @keywords internal
 #' @noRd
 emit_token_revocation_audit <- function(
@@ -1195,10 +1181,6 @@ emit_token_revocation_audit <- function(
 #'   `status` fields.
 #' @return The same `result` list, unchanged.
 #'
-#' @section Side effects:
-#' Mutates the active OpenTelemetry span by setting token revocation result
-#' attributes when a span is active.
-#'
 #' @keywords internal
 #' @noRd
 annotate_token_revocation_span_result <- function(which, result) {
@@ -1231,10 +1213,6 @@ annotate_token_revocation_span_result <- function(which, result) {
 #' @param shiny_session Optional Shiny session context to attach to the audit
 #'   event.
 #' @return Invisibly returns `NULL`.
-#'
-#' @section Side effects:
-#' Emits a best-effort `token_introspection` audit event. Audit hook failures
-#' are swallowed so introspection result handling cannot change caller behavior.
 #'
 #' @keywords internal
 #' @noRd
@@ -1306,10 +1284,6 @@ emit_token_introspection_audit <- function(
 #' @param result Introspection result list with `supported`, `active`, `raw`,
 #'   and `status` fields.
 #' @return The same `result` list, unchanged.
-#'
-#' @section Side effects:
-#' Mutates the active OpenTelemetry span by setting token introspection result
-#' attributes when a span is active.
 #'
 #' @keywords internal
 #' @noRd

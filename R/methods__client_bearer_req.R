@@ -60,12 +60,6 @@
 #'   change the request method or base URL after calling
 #'   [resource_req()] because the proof is already bound to those values.
 #'
-#' @section Side effects:
-#' This function does not perform network I/O. It reads shinyOAuth package
-#' options through [is_ok_host()] and HTTP-default helpers, may emit warnings
-#' when unsafe custom auth headers are ignored, and may read configured mTLS
-#' certificate files when validating certificate-bound access tokens.
-#'
 #' @section DPoP note:
 #' DPoP proofs bind the current HTTP method and target URI (without query or
 #' fragment). Adding query parameters after [resource_req()] is fine, but
@@ -194,12 +188,6 @@ client_bearer_req <- function(
 #'   by RFC 9449.
 #'
 #' @return An httr2 response object.
-#'
-#' @section Side effects:
-#' Performs network I/O, may retry idempotent requests through shinyOAuth's
-#' HTTP retry helpers, and when the effective token type is `DPoP` may mint a
-#' second proof and replay the request once after a server-provided nonce
-#' challenge.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
@@ -473,10 +461,6 @@ validate_client_bearer_sender_constraints <- function(
 #' @return Invisibly returns `TRUE` when the URL is accepted. Otherwise this
 #'   function raises an input error.
 #'
-#' @section Side effects:
-#' Reads `shinyOAuth.allowed_hosts` and related host-policy options indirectly
-#' through [is_ok_host()].
-#'
 #' @keywords internal
 #' @noRd
 validate_client_bearer_url <- function(url, check_url = TRUE) {
@@ -528,11 +512,6 @@ validate_client_bearer_url <- function(url, check_url = TRUE) {
 #' @param oauth_client Optional [OAuthClient] used for DPoP and mTLS behavior.
 #' @param dpop_nonce Optional DPoP nonce to include in the proof.
 #' @return An httr2 request object with access-token authentication attached.
-#'
-#' @section Side effects:
-#' Reads shinyOAuth HTTP-default options through `add_req_defaults()`. When the
-#' token requires mTLS sender constraints, this may read configured certificate
-#' files through mTLS helpers.
 #'
 #' @keywords internal
 #' @noRd
@@ -587,10 +566,6 @@ build_client_bearer_authorized_request <- function(
 #' @param headers Optional named list or named character vector of headers.
 #' @return Updated httr2 request object.
 #'
-#' @section Side effects:
-#' Emits warnings when `headers` has an unsupported shape or includes
-#' auth-related headers that must be ignored.
-#'
 #' @keywords internal
 #' @noRd
 apply_client_bearer_headers <- function(req, headers = NULL) {
@@ -615,9 +590,6 @@ apply_client_bearer_headers <- function(req, headers = NULL) {
 #' @param headers Optional header input supplied by the caller.
 #' @return A named list of headers, or `NULL` when no usable headers were
 #'   supplied.
-#'
-#' @section Side effects:
-#' Emits a warning when unsupported header input is ignored.
 #'
 #' @keywords internal
 #' @noRd
@@ -651,9 +623,6 @@ normalize_client_bearer_headers <- function(headers = NULL) {
 #'
 #' @param headers Named list of normalized headers.
 #' @return `headers` with custom `Authorization` and `DPoP` entries removed.
-#'
-#' @section Side effects:
-#' Emits a warning when auth-related headers are ignored.
 #'
 #' @keywords internal
 #' @noRd

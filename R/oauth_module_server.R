@@ -2730,9 +2730,6 @@ build_oauth_module_browser_token_instance <- function(session, id) {
 #'   default.
 #' @return Invisibly returns `NULL`.
 #'
-#' @section Side effects:
-#' Sends a `shinyOAuth:setBrowserToken` custom message to the browser.
-#'
 #' @keywords internal
 #' @noRd
 send_oauth_module_set_browser_token <- function(
@@ -2769,9 +2766,6 @@ send_oauth_module_set_browser_token <- function(
 #'   default.
 #' @return Invisibly returns `NULL`.
 #'
-#' @section Side effects:
-#' Sends a `shinyOAuth:clearBrowserToken` custom message to the browser.
-#'
 #' @keywords internal
 #' @noRd
 send_oauth_module_clear_browser_token <- function(
@@ -2806,9 +2800,6 @@ send_oauth_module_clear_browser_token <- function(
 #' @param url Absolute URL to open in the browser.
 #' @return Invisibly returns `NULL`.
 #'
-#' @section Side effects:
-#' Sends a `shinyOAuth:redirect` custom message to the browser.
-#'
 #' @keywords internal
 #' @noRd
 send_oauth_module_redirect <- function(session, url) {
@@ -2830,9 +2821,6 @@ send_oauth_module_redirect <- function(session, url) {
 #' @param title_replacement Optional title to restore.
 #' @param clean_title Whether the browser should normalize the title text.
 #' @return Invisibly returns `NULL`.
-#'
-#' @section Side effects:
-#' Sends a `shinyOAuth:clearQueryAndFixTitle` custom message to the browser.
 #'
 #' @keywords internal
 #' @noRd

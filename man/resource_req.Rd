@@ -81,14 +81,6 @@ you.
 
 Accepts either a raw access token string or an \link{OAuthToken} object.
 }
-\section{Side effects}{
-
-This function does not perform network I/O. It reads shinyOAuth package
-options through \code{\link[=is_ok_host]{is_ok_host()}} and HTTP-default helpers, may emit warnings
-when unsafe custom auth headers are ignored, and may read configured mTLS
-certificate files when validating certificate-bound access tokens.
-}
-
 \section{DPoP note}{
 
 DPoP proofs bind the current HTTP method and target URI (without query or

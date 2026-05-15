@@ -82,14 +82,6 @@ reuses shinyOAuth's existing nonce-challenge handling and retries one
 \code{use_dpop_nonce} response with a fresh proof that includes the supplied
 \code{DPoP-Nonce}, as described by RFC 9449.
 }
-\section{Side effects}{
-
-Performs network I/O, may retry idempotent requests through shinyOAuth's
-HTTP retry helpers, and when the effective token type is \code{DPoP} may mint a
-second proof and replay the request once after a server-provided nonce
-challenge.
-}
-
 \examples{
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)

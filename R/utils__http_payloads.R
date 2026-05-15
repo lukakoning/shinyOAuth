@@ -24,10 +24,6 @@
 #'   a named character list such as `access_token`, `token_type`, `scope`,
 #'   `expires_in`, `refresh_token`, and provider-specific fields.
 #'
-#' @section Side effects:
-#' Reads `shinyOAuth.max_body_bytes` through `check_resp_body_size()` before
-#' parsing the response body. Does not perform network I/O.
-#'
 #' @keywords internal
 #' @noRd
 parse_token_response <- function(resp) {

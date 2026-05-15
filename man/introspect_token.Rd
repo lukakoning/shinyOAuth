@@ -81,13 +81,6 @@ normalized to logical \code{TRUE}/\code{FALSE} when possible; otherwise \code{ac
 set to \code{NA}.
 }
 }
-\section{Side effects}{
-
-Performs network I/O when the provider exposes an introspection endpoint and
-the selected token exists. Emits best-effort audit events and OpenTelemetry
-span attributes. When \code{async = TRUE}, the work may run in a background worker.
-}
-
 \examples{
 # Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
 # are typically not called by users of this package directly, but are called

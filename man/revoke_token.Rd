@@ -61,10 +61,3 @@ and \code{status = "ok"}.
 \code{revoked = NA}, and \code{status = "http_<code>"}.
 }
 }
-\section{Side effects}{
-
-Performs network I/O when the provider exposes a revocation endpoint and the
-selected token exists. Emits best-effort audit events and OpenTelemetry span
-attributes. When \code{async = TRUE}, the work may run in a background worker.
-}
-
