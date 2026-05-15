@@ -267,11 +267,13 @@ deployment-hardening check and show explicit option checks instead.
 - Renamed the resource-request helpers to `resource_req()` and
 `perform_resource_req()`. The existing public `client_bearer_req()` name
 remains available as a deprecated alias, and `perform_client_bearer_req()` is
-also exported as a deprecated compatibility alias. `perform_resource_req()`
-performs the request and, for DPoP-bound access tokens, replays one
-`use_dpop_nonce` challenge with the server-provided nonce while `resource_req()`
-remains the lower-level request builder for making authenticated resource
-requests.
+also exported as a deprecated compatibility alias. 
+
+- `perform_resource_req()` is a new function which builds and performs an
+authenticated resource-request and, for DPoP-bound access tokens, replays one
+`use_dpop_nonce` challenge with the server-provided nonce. It can also
+take pre-existing 'httr2' request objects and layer authentication and DPoP on
+top.
 
 # shinyOAuth 0.4.0
 
