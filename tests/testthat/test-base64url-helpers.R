@@ -52,6 +52,7 @@ test_that("unicode text roundtrips via base64url text decode", {
   enc <- shinyOAuth:::base64url_encode(raw)
   out <- shinyOAuth:::base64url_decode(enc)
   expect_identical(out, txt)
+  expect_identical(Encoding(out), "UTF-8")
 })
 
 test_that("invalid input yields empty decode without error", {

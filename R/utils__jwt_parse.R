@@ -191,6 +191,8 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
     ))
   }
 
+  Encoding(text) <- "UTF-8"
+
   text
 }
 
@@ -317,6 +319,8 @@ parse_jwt_payload_or_null <- function(jwt) {
   ) {
     return(NULL)
   }
+
+  Encoding(payload_text) <- "UTF-8"
 
   payload <- tryCatch(
     jsonlite::fromJSON(payload_text, simplifyVector = TRUE),

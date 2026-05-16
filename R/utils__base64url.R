@@ -62,5 +62,10 @@ base64url_decode <- function(x) {
   if (any(raw_bytes == as.raw(0))) {
     err_parse("base64url payload contains embedded NUL byte")
   }
-  rawToChar(raw_bytes)
+  text <- rawToChar(raw_bytes)
+  if (!isTRUE(validUTF8(text))) {
+    err_parse("base64url payload is not valid UTF-8")
+  }
+  Encoding(text) <- "UTF-8"
+  text
 }
