@@ -195,10 +195,6 @@ instead of being normalized from the first parsed element.
   fails when introspection is unsupported, inactive, malformed, or missing
   required `introspect_elements` such as `sub`, `client_id`, or `scope`.
 
-* Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
-refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
-`aud` checks.
-
 * `get_userinfo()` now:
   - Applies the same hard JWK `alg` compatibility checks to signed UserInfo JWT 
   verification as ID token verification, rejecting JWKS keys that advertise a 
@@ -223,6 +219,10 @@ refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
 * Successful token and refresh responses now always require `token_type`, even
 when `allowed_token_types = character()`. An empty allowlist still disables
 value allowlisting, but it no longer waives the RFC-required field.
+
+* Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
+refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
+`aud` checks.
 
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
