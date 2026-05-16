@@ -208,17 +208,14 @@ test_that("certificate-bound sender constraint requires token binding or explici
   )
 })
 
-test_that("refresh cnf resolution preserves prior mTLS binding only as a fallback", {
-  expect_identical(
-    shinyOAuth:::resolve_refresh_token_cnf(
-      prior_cnf = list(`x5t#S256` = "prior-thumbprint")
-    ),
-    list(`x5t#S256` = "prior-thumbprint")
+test_that("refresh cnf resolution only trusts fresh token surfaces", {
+  expect_length(
+    shinyOAuth:::resolve_refresh_token_cnf(),
+    0L
   )
 
   expect_identical(
     shinyOAuth:::resolve_refresh_token_cnf(
-      prior_cnf = list(`x5t#S256` = "prior-thumbprint"),
       access_token = build_dummy_jwt(list(cnf = list(jkt = "fresh-jkt")))
     ),
     list(jkt = "fresh-jkt")
@@ -226,9 +223,7 @@ test_that("refresh cnf resolution preserves prior mTLS binding only as a fallbac
 
   expect_length(
     shinyOAuth:::resolve_refresh_token_cnf(
-      prior_cnf = list(`x5t#S256` = "prior-thumbprint"),
-      introspection_result = list(active = TRUE),
-      preserve_prior_thumbprint = FALSE
+      introspection_result = list(active = TRUE)
     ),
     0L
   )

@@ -586,49 +586,25 @@ resolve_token_cnf <- function(
 
 #' Resolve cnf for a refreshed token
 #'
-#' @param prior_cnf cnf from the pre-refresh token.
 #' @param cnf Optional explicit cnf data returned by the refresh response.
 #' @param access_token Optional raw refreshed access-token string.
 #' @param introspection_result Optional introspection payload for the refreshed
 #'   token.
-#' @param preserve_prior_thumbprint Logical, default `TRUE`. When `TRUE` and no
-#'   refreshed-token cnf is observable, preserve the prior certificate
-#'   thumbprint as continuity state. Set to `FALSE` once refresh-time
-#'   introspection has supplied the authoritative metadata for the new token so
-#'   stale sender-constraining proof is not carried forward.
-#' @return Normalized cnf list. When the refreshed token does not expose any
-#'   new cnf binding and `preserve_prior_thumbprint = TRUE`, this preserves the
-#'   prior certificate thumbprint so later mTLS routing can keep continuity
-#'   state. Treat that preserved thumbprint as continuity state rather than
-#'   fresh proof of binding for the new token.
+#' @return Normalized cnf list. Refreshes only trust fresh binding data from
+#'   the new token or its introspection response; prior token state is not
+#'   carried forward as proof for the refreshed access token.
 #' @keywords internal
 #' @noRd
 resolve_refresh_token_cnf <- function(
-  prior_cnf = NULL,
   cnf = NULL,
   access_token = NULL,
-  introspection_result = NULL,
-  preserve_prior_thumbprint = TRUE
+  introspection_result = NULL
 ) {
-  resolved <- resolve_token_cnf(
+  resolve_token_cnf(
     cnf = cnf,
     access_token = access_token,
     introspection_result = introspection_result
   )
-  if (length(resolved) > 0L) {
-    return(resolved)
-  }
-
-  if (!isTRUE(preserve_prior_thumbprint)) {
-    return(resolved)
-  }
-
-  prior_thumbprint <- token_cnf_x5t_s256(cnf = prior_cnf)
-  if (!is_valid_string(prior_thumbprint)) {
-    return(resolved)
-  }
-
-  list(`x5t#S256` = prior_thumbprint)
 }
 
 #' Check whether mTLS sender constraints are required

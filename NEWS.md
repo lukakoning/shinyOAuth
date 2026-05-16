@@ -36,6 +36,10 @@ information.
   prior token state or `cnf.jkt` alone. DPoP token typing now comes only from
   the token response itself or from authoritative introspection metadata.
 
+* Refresh no longer carries forward a prior mTLS `cnf.x5t#S256` thumbprint when
+  the refreshed access token exposes no fresh `cnf`. Refreshed tokens keep
+  certificate-bound state only when the new token or introspection proves it.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback

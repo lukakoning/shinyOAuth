@@ -359,13 +359,10 @@ when configured, sends the client certificate on the TLS connection, and
 requires the token's `cnf.x5t#S256` thumbprint to match that certificate before
 making the request.
 
-When a refresh response omits any new observable `cnf`, 'shinyOAuth' may preserve
-the previous `x5t#S256` thumbprint so later mTLS resource requests keep using
-the same sender-constrained path only when refresh-time introspection is not
-being used. Treat that preserved thumbprint as continuity state rather than
-fresh proof of binding for the new token. When
-`oauth_client(introspect = TRUE)`, 'shinyOAuth' keeps mTLS binding only if the
-new token or its introspection response supplies fresh `cnf` data.
+When a refresh response omits any new observable `cnf`, 'shinyOAuth' does not
+carry forward the previous `x5t#S256` thumbprint onto the refreshed token.
+Refreshed access tokens keep mTLS sender-constrained state only when the new
+token itself, or its introspection response, supplies fresh `cnf` data.
 
 The userinfo endpoint may return either a standard JSON response or, less
 commonly, a JWT response (per OIDC Core section 5.3.2). When the endpoint

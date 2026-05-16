@@ -1017,7 +1017,7 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
   )
 })
 
-test_that("refresh uses token cnf to choose mTLS alias without provider metadata", {
+test_that("refresh uses prior token cnf for the token endpoint but does not keep it", {
   files <- make_mtls_test_files()
   on.exit(unlink(unlist(files), force = TRUE), add = TRUE)
 
@@ -1074,8 +1074,8 @@ test_that("refresh uses token cnf to choose mTLS alias without provider metadata
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(refreshed@access_token, "new-at")
-  expect_identical(refreshed@cnf$`x5t#S256`, "thumbprint")
-  expect_true(
+  expect_length(refreshed@cnf, 0L)
+  expect_false(
     shinyOAuth:::token_requires_mtls_sender_constraint(refreshed, client)
   )
 })

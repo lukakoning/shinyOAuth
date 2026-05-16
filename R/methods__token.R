@@ -943,7 +943,6 @@ refresh_token <- function(
           isTRUE(token@id_token_validated)
         }
         refreshed_cnf <- resolve_refresh_token_cnf(
-          prior_cnf = token@cnf,
           cnf = token_set$cnf,
           access_token = token_set$access_token
         )
@@ -979,11 +978,9 @@ refresh_token <- function(
             phase = "refresh_token"
           )
           refreshed_token@cnf <- resolve_refresh_token_cnf(
-            prior_cnf = token@cnf,
             cnf = token_set$cnf,
             access_token = refreshed_token@access_token,
-            introspection_result = intro_res,
-            preserve_prior_thumbprint = FALSE
+            introspection_result = intro_res
           )
           refreshed_token@token_type <- resolve_effective_access_token_type(
             oauth_client,
