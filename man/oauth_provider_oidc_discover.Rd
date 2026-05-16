@@ -136,6 +136,11 @@ and the browser redirect only carries the PAR-issued \code{request_uri}
 handle, regardless of \code{request_uri_parameter_supported} or
 \code{require_request_uri_registration}. When discovery omits these booleans,
 this helper applies the OpenID Connect defaults instead of storing \code{NA}.
+\item Response mode metadata: when the discovery document advertises
+\code{response_modes_supported}, the resulting provider stores it so explicit
+\code{response_mode} requests can fail fast when unsupported. When the metadata
+is omitted, this helper applies the OAuth/OIDC metadata default of
+\code{c("query", "fragment")}.
 \item Token endpoint JWT auth metadata: when the discovery document advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client

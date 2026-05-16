@@ -388,6 +388,18 @@ build_authorization_params <- function(
     if (length(response_mode_info$index) == 1L) {
       extra[[response_mode_info$index]] <- response_mode_info$mode
     }
+    if (
+      !is.null(response_mode_info$mode) &&
+        length(oauth_client@provider@response_modes_supported) > 0 &&
+        !response_mode_info$mode %in%
+          oauth_client@provider@response_modes_supported
+    ) {
+      err_config(paste0(
+        "OAuthProvider.extra_auth_params$response_mode = ",
+        sQuote(response_mode_info$mode),
+        " is not advertised in response_modes_supported"
+      ))
+    }
 
     # Block overrides for security-critical parameters unless explicitly
     # unblocked. Allowing callers to replace these can break state binding,

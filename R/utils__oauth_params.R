@@ -131,11 +131,11 @@ inspect_auth_response_mode <- function(extra_auth_params) {
   }
 
   mode <- tolower(trimws(raw_mode))
-  if (!identical(mode, "query")) {
+  if (!mode %in% c("query", "form_post")) {
     out$error <- paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",
       sQuote(raw_mode),
-      " is not supported. shinyOAuth only supports the default 'query' response mode because plain Shiny callback URLs do not accept POST form callbacks."
+      " is not supported. shinyOAuth supports 'query' and 'form_post' response modes for authorization-code callbacks."
     )
     return(out)
   }

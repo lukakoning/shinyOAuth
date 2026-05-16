@@ -25,6 +25,7 @@ oauth_provider(
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(),
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -153,6 +154,11 @@ the authorization response. When \code{TRUE}, the \code{\link[=oauth_client]{oau
 auto-enable callback issuer enforcement when the caller leaves
 \code{enforce_callback_issuer} unset and the provider also has a configured
 \code{issuer}.}
+
+\item{response_modes_supported}{Optional character vector of OAuth/OIDC
+\code{response_mode} values advertised by the provider. Discovery-backed
+providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
+may leave this empty when capabilities are not known.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},
@@ -344,7 +350,7 @@ check.}
 When provided, jwks_uri host must equal this value (exact match). You can
 pass either just the host (e.g., "www.googleapis.com") or a full URL; only
 the host component will be used. If you need to include a port or an IPv6
-literal, pass a full URL (e.g., \verb{https://[::1]:8443}) — the port is ignored
+literal, pass a full URL (e.g., \verb{https://[::1]:8443}) - the port is ignored
 and only the hostname part is used for matching. Takes precedence over
 \code{jwks_host_issuer_match}.}
 

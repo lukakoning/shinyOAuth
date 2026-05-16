@@ -72,6 +72,12 @@
 #'   `require_request_uri_registration`. When discovery omits these booleans,
 #'   this helper applies the OpenID Connect defaults instead of storing `NA`.
 #'
+#' - Response mode metadata: when the discovery document advertises
+#'   `response_modes_supported`, the resulting provider stores it so explicit
+#'   `response_mode` requests can fail fast when unsupported. When the metadata
+#'   is omitted, this helper applies the OAuth/OIDC metadata default of
+#'   `c("query", "fragment")`.
+#'
 #' - Token endpoint JWT auth metadata: when the discovery document advertises
 #'   `token_endpoint_auth_signing_alg_values_supported`, the resulting provider
 #'   stores that metadata so `OAuthClient` can fail fast when a JWT client
@@ -319,6 +325,10 @@ oauth_provider_oidc_discover <- function(
     "require_request_uri_registration",
     default = FALSE
   )
+  response_modes_supported <- tolower(trimws(as.character(unlist(
+    disc[["response_modes_supported"]] %||% c("query", "fragment"),
+    use.names = FALSE
+  ))))
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%
@@ -377,6 +387,7 @@ oauth_provider_oidc_discover <- function(
     request_parameter_supported = request_parameter_supported,
     request_uri_parameter_supported = request_uri_parameter_supported,
     require_request_uri_registration = require_request_uri_registration,
+    response_modes_supported = response_modes_supported,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,

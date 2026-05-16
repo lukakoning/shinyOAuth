@@ -101,6 +101,11 @@
 #'   auto-enable callback issuer enforcement when the caller leaves
 #'   `enforce_callback_issuer` unset and the provider also has a configured
 #'   `issuer`.
+#' @param response_modes_supported Optional character vector of OAuth/OIDC
+#'   `response_mode` values advertised by the provider. Discovery-backed
+#'   providers use the discovery metadata value, defaulting to `c("query",
+#'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
+#'   may leave this empty when capabilities are not known.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
@@ -284,7 +289,7 @@
 #'   When provided, jwks_uri host must equal this value (exact match). You can
 #'   pass either just the host (e.g., "www.googleapis.com") or a full URL; only
 #'   the host component will be used. If you need to include a port or an IPv6
-#'   literal, pass a full URL (e.g., \verb{https://[::1]:8443}) — the port is ignored
+#'   literal, pass a full URL (e.g., \verb{https://[::1]:8443}) - the port is ignored
 #'   and only the hostname part is used for matching. Takes precedence over
 #'   `jwks_host_issuer_match`.
 #'
@@ -397,6 +402,10 @@ OAuthProvider <- S7::new_class(
     authorization_response_iss_parameter_supported = S7::new_property(
       S7::class_logical,
       default = FALSE
+    ),
+    response_modes_supported = S7::new_property(
+      S7::class_character,
+      default = character()
     ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
@@ -551,6 +560,7 @@ oauth_provider <- function(
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(),
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -639,6 +649,12 @@ oauth_provider <- function(
       use.names = FALSE
     )
   ))
+  if (is.null(response_modes_supported)) {
+    response_modes_supported <- character()
+  }
+  response_modes_supported <- tolower(trimws(as.character(
+    unlist(response_modes_supported, use.names = FALSE)
+  )))
   request_parameter_supported <- normalize_optional_provider_boolean(
     request_parameter_supported,
     "request_parameter_supported"
@@ -834,6 +850,7 @@ oauth_provider <- function(
     authorization_response_iss_parameter_supported = isTRUE(
       authorization_response_iss_parameter_supported
     ),
+    response_modes_supported = response_modes_supported,
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -1019,6 +1036,31 @@ oauth_provider_validate <- function(self) {
   response_mode_info <- inspect_auth_response_mode(self@extra_auth_params)
   if (!is.null(response_mode_info$error)) {
     return(response_mode_info$error)
+  }
+  if (!is.character(self@response_modes_supported)) {
+    return("OAuthProvider: response_modes_supported must be a character vector")
+  }
+  if (
+    length(self@response_modes_supported) > 0 &&
+      any(
+        !nzchar(self@response_modes_supported) |
+          is.na(self@response_modes_supported)
+      )
+  ) {
+    return(
+      "OAuthProvider: response_modes_supported must contain only non-empty strings"
+    )
+  }
+  if (
+    !is.null(response_mode_info$mode) &&
+      length(self@response_modes_supported) > 0 &&
+      !response_mode_info$mode %in% self@response_modes_supported
+  ) {
+    return(paste0(
+      "OAuthProvider: extra_auth_params$response_mode = ",
+      sQuote(response_mode_info$mode),
+      " is not advertised in response_modes_supported"
+    ))
   }
 
   max_age_info <- inspect_auth_max_age(self@extra_auth_params)

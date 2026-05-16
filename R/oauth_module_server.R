@@ -1359,45 +1359,7 @@ oauth_module_server <- function(
       # shiny::parseQueryString() doesn't have to process arbitrarily long
       # input.  This MUST run before any code path that parses the query,
       # including the "already authenticated" early-return branch.
-      max_code_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_code_bytes",
-        4096
-      )
-      max_state_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_state_bytes",
-        8192
-      )
-      max_error_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_error_bytes",
-        256
-      )
-      max_error_desc_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_error_description_bytes",
-        4096
-      )
-      max_error_uri_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_error_uri_bytes",
-        2048
-      )
-      max_iss_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_iss_bytes",
-        2048
-      )
-      # Derived overall cap: sum of individual caps plus overhead for names,
-      # separators, URL encoding, and unexpected extra params.
-      max_query_overhead_bytes <- 2048
-      derived_query_bytes <-
-        max_code_bytes +
-        max_state_bytes +
-        max_error_bytes +
-        max_error_desc_bytes +
-        max_error_uri_bytes +
-        max_iss_bytes +
-        max_query_overhead_bytes
-      max_query_bytes <- get_option_positive_number(
-        "shinyOAuth.callback_max_query_bytes",
-        derived_query_bytes
-      )
+      limits <- oauth_callback_limits()
 
       # Validate raw query size before any parsing (including the
       # already-authenticated branch that checks for OAuth callback keys).
@@ -1405,7 +1367,7 @@ oauth_module_server <- function(
         {
           validate_untrusted_query_string(
             query_string %||% "",
-            max_bytes = max_query_bytes
+            max_bytes = limits$query
           )
           TRUE
         },
@@ -1459,34 +1421,44 @@ oauth_module_server <- function(
           validate_untrusted_query_param(
             "code",
             qs$code,
-            max_bytes = max_code_bytes
+            max_bytes = limits$code
           )
           validate_untrusted_query_param(
             "state",
             qs$state,
-            max_bytes = max_state_bytes
+            max_bytes = limits$state
           )
           validate_untrusted_query_param(
             "error",
             qs$error,
-            max_bytes = max_error_bytes
+            max_bytes = limits$error
           )
           validate_untrusted_query_param(
             "error_description",
             qs$error_description,
-            max_bytes = max_error_desc_bytes,
+            max_bytes = limits$error_description,
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "error_uri",
             qs$error_uri,
-            max_bytes = max_error_uri_bytes,
+            max_bytes = limits$error_uri,
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "iss",
             qs$iss,
-            max_bytes = max_iss_bytes
+            max_bytes = limits$iss
+          )
+          validate_untrusted_query_param(
+            oauth_form_post_handle_param,
+            qs[[oauth_form_post_handle_param]],
+            max_bytes = limits$form_post_handle
+          )
+          validate_untrusted_query_param(
+            oauth_form_post_id_param,
+            qs[[oauth_form_post_id_param]],
+            max_bytes = limits$form_post_id
           )
           TRUE
         },
@@ -1517,6 +1489,88 @@ oauth_module_server <- function(
         }
       )
       if (!isTRUE(ok)) {
+        return(invisible(NULL))
+      }
+
+      form_post_handle <- qs[[oauth_form_post_handle_param]]
+      if (!is.null(form_post_handle)) {
+        form_post_id <- qs[[oauth_form_post_id_param]]
+        if (is.null(form_post_id)) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .set_error(
+            "invalid_callback_query",
+            NULL,
+            phase = "form_post_callback_query",
+            description = "form_post callback handle is missing module id"
+          )
+          return(invisible(NULL))
+        }
+        if (!identical(form_post_id, id)) {
+          return(invisible(NULL))
+        }
+        if (!is.null(qs$code) || !is.null(qs$error) || !is.null(qs$state)) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .set_error(
+            "invalid_callback_query",
+            NULL,
+            phase = "form_post_callback_query",
+            description = paste(
+              "form_post callback handles must not be combined with direct",
+              "OAuth callback parameters"
+            )
+          )
+          return(invisible(NULL))
+        }
+
+        form_post_payload <- tryCatch(
+          oauth_form_post_store_take(client, id, form_post_handle),
+          error = function(e) {
+            clear_oauth_module_callback_query(
+              session,
+              tab_title_replacement,
+              tab_title_cleaning
+            )
+            .set_error(
+              oauth_module_callback_failure_error_code(e),
+              e,
+              phase = "form_post_callback_lookup"
+            )
+            NULL
+          }
+        )
+        if (is.null(form_post_payload)) {
+          return(invisible(NULL))
+        }
+
+        if (identical(form_post_payload$type, "error")) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .handle_error_response(
+            error = form_post_payload$error,
+            error_description = form_post_payload$error_description,
+            error_uri = form_post_payload$error_uri,
+            state = form_post_payload$state,
+            iss = form_post_payload$iss %||% NULL
+          )
+          return(invisible(NULL))
+        }
+
+        .handle_callback(
+          code = form_post_payload$code,
+          state = form_post_payload$state,
+          iss = form_post_payload$iss %||% NULL
+        )
         return(invisible(NULL))
       }
 
@@ -2876,7 +2930,9 @@ oauth_module_callback_query_keys <- c(
   "error",
   "error_description",
   "error_uri",
-  "iss"
+  "iss",
+  "shinyOAuth_form_post",
+  "shinyOAuth_form_post_id"
 )
 
 #' Check whether a query string contains OAuth callback keys
