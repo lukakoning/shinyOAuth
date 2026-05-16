@@ -493,6 +493,72 @@ normalize_url <- function(u) {
 #' @noRd
 rtrim_slash <- function(x) sub("/$", "", x)
 
+#' Internal: normalize hostnames to a stable ASCII comparison form
+#'
+#' Converts Unicode DNS labels to their A-label form so host comparisons work
+#' consistently across locales and input forms. IP literals and wildcard-bearing
+#' labels are left unchanged apart from lowercasing.
+#'
+#' @param host Host string or host pattern.
+#' @param allow_glob Whether `*` and `?` wildcards are allowed within labels.
+#' @return Normalized host string.
+#' @keywords internal
+#' @noRd
+host_normalize_idna <- function(host, allow_glob = FALSE) {
+  if (is.null(host) || is.na(host)) {
+    return(host)
+  }
+
+  host <- trimws(as.character(host))
+  if (!nzchar(host)) {
+    return(host)
+  }
+
+  host <- sub("\\.$", "", host)
+  lead_dot <- startsWith(host, ".")
+  core <- if (lead_dot) substr(host, 2, nchar(host)) else host
+  if (!nzchar(core)) {
+    return(if (lead_dot) "." else core)
+  }
+
+  if (grepl(":", core, fixed = TRUE) || grepl("^[0-9.]+$", core)) {
+    return(tolower(host))
+  }
+
+  labels <- strsplit(core, ".", fixed = TRUE)[[1]]
+  labels <- vapply(
+    labels,
+    function(label) {
+      if (!nzchar(label)) {
+        return(label)
+      }
+
+      if (isTRUE(allow_glob) && grepl("[*?]", label)) {
+        return(tolower(label))
+      }
+
+      label_utf8 <- enc2utf8(label)
+      if (all(utf8ToInt(label_utf8) < 128L)) {
+        return(tolower(label_utf8))
+      }
+
+      tryCatch(
+        tolower(urltools::puny_encode(label_utf8)),
+        error = function(...) tolower(label_utf8)
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+
+  out <- paste(labels, collapse = ".")
+  if (lead_dot) {
+    out <- paste0(".", out)
+  }
+
+  out
+}
+
 #' Internal: Parse URL and extract normalized scheme and host
 #'
 #' Returns a list with lowercased scheme and hostname. Errors with err_config
@@ -517,7 +583,7 @@ parse_url_components <- function(url, label = "url") {
   scheme <- tolower((parsed$scheme %||% ""))
   host <- tolower(trimws(parsed$hostname %||% ""))
   host <- sub("^\\[([^\\]]+)\\](?::.*)?$", "\\1", host, perl = TRUE)
-  host <- sub("\\.$", "", host)
+  host <- host_normalize_idna(host)
 
   if (!nzchar(host)) {
     err_config(c(
@@ -613,7 +679,7 @@ is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
   }
 
   host <- sub("^\\[([^\\]]+)\\](?::.*)?$", "\\1", host, perl = TRUE)
-  host <- sub("\\.$", "", host)
+  host <- host_normalize_idna(host)
   if (!nzchar(host)) {
     return(FALSE)
   }
@@ -720,7 +786,8 @@ host_normalize_pattern <- function(pat) {
   if (lead_dot && !startsWith(p, ".")) {
     p <- paste0(".", p)
   }
-  p
+
+  host_normalize_idna(p, allow_glob = TRUE)
 }
 
 #' Internal: convert a glob host pattern to a case-insensitive regex
@@ -787,13 +854,18 @@ host_matches_any <- function(host, patterns) {
   patterns <- vapply(patterns, host_normalize_pattern, character(1))
   # Drop NA/blank entries early to avoid regex generation surprises
   patterns <- patterns[!is.na(patterns) & nzchar(patterns)]
-  patterns <- tolower(patterns)
+  patterns <- vapply(
+    patterns,
+    host_normalize_idna,
+    character(1),
+    allow_glob = TRUE
+  )
   # If the caller provided entries but nothing remained after normalization,
   # deny by default rather than silently allowing any host
   if (orig_len > 0 && length(patterns) == 0) {
     return(FALSE)
   }
-  host_lc <- tolower(host)
+  host_lc <- host_normalize_idna(host)
   # Direct equality: also consider bracketed/unbracketed IPv6 equivalence
   if (host_lc %in% patterns) {
     return(TRUE)

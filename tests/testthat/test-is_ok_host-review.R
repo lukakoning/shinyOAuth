@@ -34,8 +34,15 @@ test_that("leading-dot matches domain and subdomains", {
 
 test_that("Unicode domains are supported", {
   dom <- "ドメイン.テスト"
+  dom_ascii <- urltools::puny_encode(dom)
   expect_true(is_ok_host(paste0("https://", dom), allowed_hosts = dom))
   expect_true(is_ok_host(dom, allowed_hosts = dom)) # scheme-less path
+  expect_identical(
+    shinyOAuth:::parse_url_host(paste0("https://", dom)),
+    dom_ascii
+  )
+  expect_true(is_ok_host(paste0("https://", dom), allowed_hosts = dom_ascii))
+  expect_true(is_ok_host(paste0("https://", dom_ascii), allowed_hosts = dom))
 })
 
 test_that("HTTP exemptions cannot be spoofed by suffix", {

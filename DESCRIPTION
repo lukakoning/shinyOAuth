@@ -22,6 +22,7 @@ Imports:
     jsonlite (>= 1.0),
     openssl (>= 2.0.0),
     httr2 (>= 1.1.0),
+    urltools (>= 1.7.3),
     cachem (>= 1.1.0),
     jose (>= 1.2.0),
     lifecycle (>= 1.0.0),
