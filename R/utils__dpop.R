@@ -839,6 +839,22 @@ req_with_dpop_retry <- function(
 
   url <- req[["url"]] %||% NA_character_
   request_kind <- if (is_valid_string(access_token)) "resource" else "token"
+  prior_prepare_attempt <- req$shinyOAuth_prepare_attempt %||% NULL
+
+  build_prepare_attempt <- function(nonce_value) {
+    function(attempt_req, attempt) {
+      if (is.function(prior_prepare_attempt)) {
+        attempt_req <- prior_prepare_attempt(attempt_req, attempt)
+      }
+
+      req_add_dpop_proof(
+        attempt_req,
+        client,
+        access_token = access_token,
+        nonce = nonce_value
+      )
+    }
+  }
 
   req_with_proof <- req_add_dpop_proof(
     req,
@@ -846,14 +862,7 @@ req_with_dpop_retry <- function(
     access_token = access_token,
     nonce = nonce
   )
-  req_with_proof$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
-    req_add_dpop_proof(
-      attempt_req,
-      client,
-      access_token = access_token,
-      nonce = nonce
-    )
-  }
+  req_with_proof$shinyOAuth_prepare_attempt <- build_prepare_attempt(nonce)
 
   resp <- req_with_retry(
     req_with_proof,
@@ -887,14 +896,7 @@ req_with_dpop_retry <- function(
     access_token = access_token,
     nonce = nonce
   )
-  retry_req$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
-    req_add_dpop_proof(
-      attempt_req,
-      client,
-      access_token = access_token,
-      nonce = nonce
-    )
-  }
+  retry_req$shinyOAuth_prepare_attempt <- build_prepare_attempt(nonce)
 
   resp <- req_with_retry(retry_req, idempotent = idempotent)
 

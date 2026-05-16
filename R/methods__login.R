@@ -2116,6 +2116,13 @@ swap_code_for_token_set <- function(
 
       # Add form body without using !!! so it works with simple stubs
       req <- req_body_form_encoded(req, params)
+      req <- req_refresh_jwt_client_assertion_on_retry(
+        req = req,
+        params = params,
+        client = client,
+        context = "token_exchange",
+        body_mode = "encoded"
+      )
       req <- httr2::req_method(req, "POST")
 
       resp <- with_otel_span(
