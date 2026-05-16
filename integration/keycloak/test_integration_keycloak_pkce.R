@@ -1,4 +1,4 @@
-## Integration tests: Keycloak PKCE authorization-code flow
+## Headless protocol integration: Keycloak PKCE authorization-code flow
 ##
 ## Goal: Demonstrate that PKCE is enforced for the public client and that tampering
 ## with the stored code_verifier (missing or incorrect) breaks the flow.
@@ -14,6 +14,8 @@
 ##
 ## These tests follow the pattern used in `test_integration_keycloak_code_jwt_auth.R` to
 ## drive the login form headlessly (no browser) and capture the authorization code.
+## They intentionally bypass the browser-cookie boundary; browser behavior is
+## covered by the *_browser*.R and *_e2e.R tests.
 
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
@@ -42,11 +44,15 @@ testthat::test_that("Keycloak PKCE happy path (public client)", {
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
       values$.process_query(callback_query(res))
       session$flushReact()
-      # Assertions
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
       testthat::expect_true(prov@use_pkce) # Provider PKCE enabled
     }
   )
@@ -77,14 +83,16 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
       values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      # Error description should mention PKCE/code verifier
-      combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl(
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_null(values$token)
+      testthat::expect_match(
+        values$error_description %||% "",
         "code verifier|PKCE",
-        combo,
         ignore.case = TRUE
-      ))
+      )
+      testthat::expect_null(
+        client@state_store$get(state$info$key, missing = NULL)
+      )
     }
   )
 })
@@ -125,14 +133,16 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
       values$.process_query(callback_query(res))
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
-      # Should reference token exchange or HTTP failure; be tolerant of wording
-      testthat::expect_true(grepl(
-        "Token exchange failed|invalid_grant|http_",
-        combo,
+      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_null(values$token)
+      testthat::expect_match(
+        values$error_description %||% "",
+        "invalid_grant|PKCE|code.verifier|code verifier",
         ignore.case = TRUE
-      ))
+      )
+      testthat::expect_null(
+        client@state_store$get(state$info$key, missing = NULL)
+      )
     }
   )
 })

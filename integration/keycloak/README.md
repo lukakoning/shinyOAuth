@@ -54,8 +54,14 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
 
 ## Overview of tests
 
+Headless `testServer()` + `perform_login_form*()` tests are protocol
+integrations. They intentionally bypass the browser cookie boundary, so they do
+not prove SameSite cookie handling, callback cleanup, or live redirect
+behavior. Those behaviors are covered by the `*_browser*.R` and `*_e2e.R`
+files listed below.
+
 - `test_integration_keycloak.R` — discovery and client_credentials + introspection
-- `test_integration_module_shiny.R` — full authorization code flow against Keycloak, driving `oauth_module_server()` inside a Shiny test server and posting credentials to the Keycloak login form (requires the R packages `xml2` and `rvest`)
+- `test_integration_module_shiny.R` — headless protocol integration for the full authorization-code flow against Keycloak, driving `oauth_module_server()` inside a Shiny test server and posting credentials directly to the Keycloak login form (requires the R packages `xml2` and `rvest`)
 - `test_integration_module_shiny_browser.R` — end-to-end flow with a real headless browser (Chromium via {shinytest2}/{chromote}): clicks the Login button, completes the Keycloak login form, and verifies redirect back to the app and authenticated state.
 - `test_integration_module_shiny_browser_request_uri.R` — end-to-end `request_uri` flow with a real Shiny app and headless browser, proving Keycloak can fetch the published Request Object through a public base-URL override while the browser still uses the local app URL.
  - `test_integration_keycloak_auth_styles.R` — parametric introspection using different token endpoint client auth styles: header (client_secret_basic), body (client_secret_post), client_secret_jwt and private_key_jwt (pre-provisioned in realm).
@@ -89,8 +95,8 @@ These tests exercise high-priority OAuth2/OIDC protocol behavior against the liv
 | `test_integration_keycloak_pkce_authorization_tamper.R` | RFC 7636 PKCE authorization request integrity | Missing challenge, `plain` downgrade, and malformed challenge rejected before code issuance |
 | `test_integration_keycloak_jwt_auth_unhappy_code_flow.R` | JWT client authentication in full auth-code flow | Wrong secret, wrong audience, wrong alg, and wrong private key fail at token exchange and consume state |
 | `test_integration_keycloak_dpop_nonce_retry.R` | RFC 9449 protected-resource nonce challenge | First DPoP proof receives `use_dpop_nonce`; retry uses fresh `jti`, nonce, `ath`, `htm`, and `htu` |
-| `test_integration_keycloak_par_unhappy.R` | RFC 9126 PAR unhappy paths | Rejects caller-supplied `request_uri` in pushed params, bad JWT client-assertion audience at the PAR endpoint, consumed `request_uri` reuse, and `request_uri` replay under another client_id |
-| `test_integration_keycloak_jar_par_confusion.R` | JAR/PAR parameter-confusion resistance | Conflicting outer `redirect_uri`, `scope`, `state`, and `client_id` do not override signed/pushed request parameters; PAR-required client rejects direct auth |
+| `test_integration_keycloak_par_unhappy.R` | RFC 9126 PAR unhappy paths | Rejects caller-supplied `request_uri` in pushed params, bad JWT client-assertion audience at the PAR endpoint, consumed `request_uri` reuse, and outer `client_id` changes that violate `request_uri` client binding |
+| `test_integration_keycloak_jar_par_confusion.R` | JAR/PAR outer-parameter behavior | PAR proves outer `redirect_uri`, `scope`, `state`, `nonce`, `resource`, and `code_challenge` do not override the pushed request; the JAR case records that this Keycloak fixture still reflects conflicting outer `redirect_uri` and `state` values in an `invalid_request` callback, so the suite does not overclaim JAR-alone protection |
 | `test_integration_module_shiny_browser_callback_cleanup.R` | Browser callback leakage cleanup | Real browser login leaves no OAuth callback parameters in `window.location.href` or `document.title` |
 | `test_integration_keycloak_resource_indicators.R` | RFC 8707 resource indicators | Proves stock Keycloak accepts `resource` parameters without projecting them into `aud`, then uses the dedicated `shiny-resource-confidential` fixture client plus a local protected resource to verify audience-checked token usability |
 | `test_integration_keycloak_jwks_rotation.R` | OIDC JWKS refresh on key rotation | Rotates the disposable Keycloak realm signing key through the admin API; validates refresh-on-new-`kid` and rejects rogue signatures for old/new `kid` values |
@@ -107,7 +113,7 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 | `test_integration_attack_code_replay.R` | **Authorization code replay** — replaying an already-exchanged code | Single-use state store; Keycloak server-side code single-use (invalid_grant) |
 | `test_integration_attack_state_replay.R` | **State replay / CSRF** — reusing a consumed state parameter or injecting state from a different session | Single-use state store; per-session state isolation; AES-256-GCM key binding |
 | `test_integration_attack_state_tamper.R` | **State parameter tampering** — bit-flip, truncation, random substitution, appending/prepending garbage, wrong encryption key | AES-256-GCM authenticated encryption (integrity tag); input validation |
-| `test_integration_attack_code_injection.R` | **Cross-user code injection** — attacker (bob) injects their code into victim's (alice) session | Per-session state stores; PKCE challenge binding; Keycloak client_id binding |
+| `test_integration_attack_code_injection.R` | **Cross-user flow substitution / login CSRF semantics** — Bob completes Alice's started flow, so the callback authenticates Bob, not Alice | Verified subject/claim surfaces remain app-visible for expected-user policy checks; independent state injection, wrong-verifier exchange, and cross-client swaps still fail closed |
 | `test_integration_attack_nonce_mismatch.R` | **Nonce mismatch / replay** — tampered, missing, or replayed nonce in ID token validation | ID token nonce claim verification against state store |
 | `test_integration_attack_csrf_browser_token.R` | **Browser token callback validation** — mismatched, missing, or malformed browser token values passed directly into callback handling | constant_time_compare(); browser token format validation; skip-guard |
 | `test_integration_attack_csrf_browser_token_e2e.R` | **Browser token CSRF (double-submit cookie bypass)** — attacker tampers with the real app-origin browser token cookie before the callback returns | Cookie/header double-submit binding across the real browser boundary; invalid_state failure at the live callback origin |

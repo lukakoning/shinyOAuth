@@ -181,7 +181,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
   )
 })
 
-testthat::test_that("Keycloak PAR request_uri is rejected when replayed with another client_id", {
+testthat::test_that("PAR request_uri remains bound to the posting client when outer client_id changes", {
   skip_common()
   local_test_options()
 

@@ -1,29 +1,29 @@
-## Attack vector: Cross-User Authorization Code Injection
+## Attack vector: cross-user authorization flow substitution
 ##
-## Verifies that an attacker cannot inject their own authorization code into
-## another user's session to impersonate them, and that PKCE prevents stolen
-## codes from being exchanged by a different party.
-## Defense mechanisms tested:
-##   1. Per-session state stores — attacker's state not in victim's store
-##   2. PKCE binding — code bound to the original code_challenge; a different
-##      code_verifier causes Keycloak to reject with invalid_grant
-##   3. State encryption binding — code + state from different sessions don't mix
+## These are headless protocol-integration tests. They do not exercise the real
+## browser cookie boundary; browser-boundary coverage lives in the *_browser*.R
+## and *_e2e.R tests.
+##
+## One scenario intentionally demonstrates login CSRF/account substitution:
+## if Bob completes Alice's started authorization request, OAuth authenticates
+## the IdP user who actually logged in (Bob). The package therefore needs to
+## expose verified subject and claim surfaces so the app can reject unexpected
+## identities. Separate-session state injection, wrong-verifier exchange, and
+## cross-client code swaps must still fail closed.
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
-testthat::test_that("Code injection: bob's code with alice's state succeeds but authenticates as bob", {
+testthat::test_that("Login CSRF/account substitution: bob can finish alice's started flow and authenticate as bob", {
   skip_common()
   local_test_options()
 
-  # This test demonstrates that if an attacker (bob) can somehow log in through
-
-  # alice's auth URL (same PKCE challenge), the resulting token will be for bob.
-  # The defense here is that the application must verify the identity claim in the
-  # token/userinfo matches the expected user at the application level.
-  # At the OAuth level, the code is bound to whoever authenticates at the IdP.
+  # If Bob authenticates against Alice's started flow, the PKCE verifier still
+  # belongs to Alice's session, so the callback succeeds. The authenticated
+  # identity is therefore Bob, and the app must compare the verified subject to
+  # whatever user it expected at the application layer.
 
   prov <- make_provider()
   client <- make_public_client(prov)
@@ -47,19 +47,93 @@ testthat::test_that("Code injection: bob's code with alice's state succeeds but 
       values$.process_query(callback_query(res_bob))
       session$flushReact()
 
-      # The flow succeeds because PKCE verifier matches (alice's session owns
-      # the verifier), but the resulting token is for BOB.
-      testthat::expect_true(isTRUE(values$authenticated))
-      # The token's identity is bob, not alice
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "bob"
+      )
+
       testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "bob"
+        values$token@userinfo$sub,
+        values$token@id_token_claims$sub
       )
     }
   )
 })
 
-testthat::test_that("Code injection: bob's independent code+state rejected in alice's session", {
+testthat::test_that("Login CSRF/account substitution: app can compare the verified subject and reject the wrong account", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider()
+  expected_alice_sub <- NULL
+  client_alice <- make_public_client(prov)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client_alice),
+    expr = {
+      url <- values$build_auth_url()
+      res <- perform_login_form_as(url, username = "alice", password = "alice")
+
+      values$.process_query(callback_query(res))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client_alice,
+        expected_username = "alice"
+      )
+
+      expected_alice_sub <<- values$token@userinfo$sub
+    }
+  )
+
+  testthat::expect_true(
+    is.character(expected_alice_sub) &&
+      length(expected_alice_sub) == 1L &&
+      !is.na(expected_alice_sub) &&
+      nzchar(expected_alice_sub)
+  )
+
+  client <- make_public_client(prov)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      url <- values$build_auth_url()
+      res_bob <- perform_login_form_as(url, username = "bob", password = "bob")
+
+      values$.process_query(callback_query(res_bob))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "bob"
+      )
+
+      testthat::expect_false(
+        identical(values$token@userinfo$sub, expected_alice_sub)
+      )
+    }
+  )
+})
+
+testthat::test_that("Cross-session code+state injection is rejected in alice's session", {
   skip_common()
   local_test_options()
 
@@ -91,13 +165,13 @@ testthat::test_that("Code injection: bob's independent code+state rejected in al
 
       # Must fail: bob's state is not in alice's state store
       testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl(
-        "state|State|decrypt|validation|store",
-        combo,
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_null(values$token)
+      testthat::expect_match(
+        paste(values$error, values$error_description),
+        "state|decrypt|validation|store",
         ignore.case = TRUE
-      ))
+      )
     }
   )
 })

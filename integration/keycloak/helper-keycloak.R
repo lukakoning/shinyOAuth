@@ -310,10 +310,14 @@ maybe_skip_keycloak_https <- function() {
   )
 }
 
-## Standard local_options for testServer-based tests
+## Standard local_options for headless protocol testServer tests
 local_test_options <- function(.local_envir = parent.frame()) {
   ca_file <- get_keycloak_tls_ca_file()
 
+  # These tests intentionally bypass the real browser cookie boundary so they
+  # can focus on OAuth/OIDC protocol behavior inside testServer. Browser-origin,
+  # SameSite, and live redirect behavior are covered by the *_browser*.R and
+  # *_e2e.R tests.
   withr::local_options(
     list(
       shinyOAuth.skip_browser_token = TRUE,
@@ -1185,7 +1189,9 @@ make_hmac_jar_jwe_client <- function(prov) {
 #'
 #' Given an authorization URL, fetches the HTML login page from Keycloak,
 #' fills in credentials, submits the form, and follows redirects until the
-#' authorization code is captured at the redirect_uri.
+#' authorization code is captured at the redirect_uri. This drives the flow
+#' over HTTP without a real browser, so it is appropriate for protocol coverage
+#' but does not prove cookie-boundary, SameSite, or live redirect behavior.
 #'
 #' @param auth_url Full authorization URL including state, PKCE, etc.
 #' @param username Keycloak username (default "alice")
@@ -1359,6 +1365,160 @@ set_state_store_entry <- function(client, key, new_entry) {
 
 decode_compact_jwt_payload <- function(jwt) {
   shinyOAuth:::parse_jwt_payload(jwt)
+}
+
+#' Normalize scalar or vector token claims to characters
+#'
+#' Used by the Keycloak protocol-integration tests so JWT claims can be checked
+#' consistently regardless of whether a provider returns scalars, vectors, or
+#' short lists.
+#'
+#' @param value Claim value to normalize.
+#' @return Character vector containing non-missing, non-empty values.
+#' @keywords internal
+#' @noRd
+normalize_claim_values <- function(value) {
+  if (is.null(value)) {
+    return(character(0))
+  }
+
+  out <- unlist(value, use.names = FALSE)
+  out <- as.character(out)
+  out <- out[!is.na(out)]
+  out[nzchar(out)]
+}
+
+#' Assert shared Keycloak login security invariants
+#'
+#' Used after `oauth_module_server()` finishes a headless protocol login in the
+#' Keycloak integration tests.
+#'
+#' @param authenticated Module `authenticated` flag.
+#' @param error Module `error` value.
+#' @param error_description Module `error_description` value.
+#' @param error_uri Module `error_uri` value.
+#' @param token [shinyOAuth::OAuthToken] returned by the module.
+#' @param client [shinyOAuth::OAuthClient] used for the login.
+#' @param expected_scopes Expected scopes. Defaults to `client@scopes`.
+#' @param expected_username Optional expected `preferred_username`.
+#' @return No return value; called for its expectations.
+#' @keywords internal
+#' @noRd
+expect_keycloak_module_login_invariants <- function(
+  authenticated,
+  error,
+  error_description,
+  error_uri,
+  token,
+  client,
+  expected_scopes = client@scopes,
+  expected_username = NULL
+) {
+  testthat::expect_true(isTRUE(authenticated))
+  testthat::expect_null(error)
+  testthat::expect_null(error_description)
+  testthat::expect_null(error_uri)
+  testthat::expect_false(is.null(token))
+  testthat::expect_true(
+    is.character(token@access_token) &&
+      length(token@access_token) == 1L &&
+      !is.na(token@access_token) &&
+      nzchar(token@access_token)
+  )
+
+  allowed_token_types <- normalize_claim_values(client@provider@allowed_token_types)
+  if (length(allowed_token_types) > 0L) {
+    testthat::expect_true(
+      tolower(token@token_type %||% "") %in% tolower(allowed_token_types),
+      info = paste0(
+        "Unexpected token_type: ",
+        token@token_type %||% "<missing>"
+      )
+    )
+  }
+
+  expect_oidc_claims <-
+    "openid" %in% normalize_claim_values(client@scopes) ||
+    isTRUE(client@provider@id_token_required) ||
+    isTRUE(client@provider@id_token_validation) ||
+    isTRUE(client@provider@use_nonce)
+
+  id_claims <- list()
+  if (isTRUE(expect_oidc_claims)) {
+    testthat::expect_true(
+      is.character(token@id_token) &&
+        length(token@id_token) == 1L &&
+        !is.na(token@id_token) &&
+        nzchar(token@id_token)
+    )
+    testthat::expect_true(isTRUE(token@id_token_validated))
+
+    id_claims <- token@id_token_claims
+    testthat::expect_identical(
+      id_claims$iss %||% NA_character_,
+      client@provider@issuer
+    )
+    testthat::expect_true(
+      client@client_id %in% normalize_claim_values(id_claims$aud %||% NULL)
+    )
+    testthat::expect_true(
+      is.character(id_claims$sub) &&
+        length(id_claims$sub) == 1L &&
+        !is.na(id_claims$sub) &&
+        nzchar(id_claims$sub)
+    )
+
+    if (isTRUE(client@provider@use_nonce)) {
+      testthat::expect_true(
+        is.character(id_claims$nonce) &&
+          length(id_claims$nonce) == 1L &&
+          !is.na(id_claims$nonce) &&
+          nzchar(id_claims$nonce)
+      )
+    }
+
+    max_age_info <- shinyOAuth:::inspect_auth_max_age(
+      client@provider@extra_auth_params
+    )
+    if (!is.null(max_age_info$value)) {
+      auth_time <- suppressWarnings(as.numeric(id_claims$auth_time %||% NA_real_))
+      testthat::expect_true(is.finite(auth_time))
+    }
+  }
+
+  if (isTRUE(client@provider@userinfo_required)) {
+    userinfo <- token@userinfo %||% list()
+    testthat::expect_true(is.list(userinfo) && length(userinfo) > 0L)
+    testthat::expect_true(
+      is.character(userinfo$sub) &&
+        length(userinfo$sub) == 1L &&
+        !is.na(userinfo$sub) &&
+        nzchar(userinfo$sub)
+    )
+
+    if (length(id_claims) > 0L && isTRUE(token@id_token_validated)) {
+      testthat::expect_identical(userinfo$sub, id_claims$sub)
+    }
+
+    if (
+      is.character(expected_username) &&
+        length(expected_username) == 1L &&
+        !is.na(expected_username) &&
+        nzchar(expected_username)
+    ) {
+      testthat::expect_identical(
+        userinfo$preferred_username,
+        expected_username
+      )
+    }
+  }
+
+  expected_scopes <- normalize_claim_values(expected_scopes)
+  if (length(expected_scopes) > 0L) {
+    testthat::expect_true(
+      all(expected_scopes %in% normalize_claim_values(token@granted_scopes))
+    )
+  }
 }
 
 access_token_cnf_jkt <- function(access_token) {

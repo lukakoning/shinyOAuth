@@ -182,10 +182,9 @@ for (case in cases) {
 
       # We require the call to be supported and not an outright HTTP failure
       testthat::expect_true(isTRUE(res$supported))
-
-      # We expect active TRUE (service-account token). If server returns an unknown
-      # encoding we allow NA but do not fail the suite.
-      testthat::expect_true(isTRUE(res$active) || is.na(res$active))
+      testthat::expect_identical(res$status, "ok")
+      testthat::expect_true(isTRUE(res$active))
+      testthat::expect_true(is.list(res$raw))
     }
   )
 }

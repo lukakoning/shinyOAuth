@@ -1,4 +1,4 @@
-## Attack vector: Redirect URI Manipulation
+## Headless protocol integration: redirect URI manipulation
 ##
 ## Verifies that modified redirect_uri parameters are rejected, preventing
 ## authorization codes from being sent to attacker-controlled endpoints.
@@ -143,6 +143,10 @@ testthat::test_that("Redirect URI: state payload binding catches redirect_uri sw
     scopes = c("openid")
   )
 
+  # Reuse the same state key so this check isolates redirect_uri policy binding
+  # instead of failing earlier on a different encryption key.
+  client_b@state_key <- client_a@state_key
+
   # Build auth URL with client_a (redirect_uri = localhost:3000/callback)
   state_from_a <- NULL
   shiny::testServer(
@@ -154,12 +158,20 @@ testthat::test_that("Redirect URI: state payload binding catches redirect_uri sw
     }
   )
 
-  # Try to validate client_a's state in client_b's context
-  # The state payload says redirect_uri=localhost:3000/callback
-  # but client_b has redirect_uri=localhost:8100/callback → binding mismatch
-  testthat::expect_error(
-    shinyOAuth:::state_payload_decrypt_validate(client_b, state_from_a),
-    regexp = "redirect|binding|mismatch|validation|State",
+  # The state payload decrypts under the shared key, then fails closed because
+  # it carries client_a's redirect_uri rather than client_b's.
+  err <- tryCatch(
+    {
+      shinyOAuth:::state_payload_decrypt_validate(client_b, state_from_a)
+      NULL
+    },
+    error = identity
+  )
+
+  testthat::expect_s3_class(err, "shinyOAuth_state_error")
+  testthat::expect_match(
+    conditionMessage(err),
+    "redirect|client policy|payload|binding",
     ignore.case = TRUE
   )
 })

@@ -1,3 +1,9 @@
+## Headless protocol integration: full code flow against Keycloak
+##
+## This test drives the authorization flow over HTTP inside testServer. It is
+## useful for protocol assertions, but browser-boundary behavior is covered by
+## the *_browser*.R and *_e2e.R tests.
+
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
@@ -25,11 +31,15 @@ testthat::test_that("Shiny module integration: full code flow against Keycloak",
 
       values$.process_query(callback_query(res))
       session$flushReact()
-
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
     }
   )
 })
