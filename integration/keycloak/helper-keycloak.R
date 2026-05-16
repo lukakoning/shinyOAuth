@@ -181,6 +181,126 @@ keycloak_create_client <- function(token, body, delete_existing = TRUE) {
   )
 }
 
+keycloak_realm_issuer <- function(realm) {
+  stopifnot(keycloak_nonempty_string(realm))
+  paste0(keycloak_base_url(), "/realms/", realm)
+}
+
+keycloak_realm_auth_endpoint <- function(realm) {
+  paste0(keycloak_realm_issuer(realm), "/protocol/openid-connect/auth")
+}
+
+keycloak_delete_realm <- function(token, realm) {
+  stopifnot(keycloak_nonempty_string(realm))
+
+  try(
+    keycloak_admin_request(
+      "DELETE",
+      paste0("/admin/realms/", realm),
+      token = token
+    ),
+    silent = TRUE
+  )
+
+  invisible(TRUE)
+}
+
+keycloak_create_realm <- function(token, body, delete_existing = TRUE) {
+  stopifnot(is.list(body))
+
+  realm <- body$realm %||% NA_character_
+  if (!keycloak_nonempty_string(realm)) {
+    stop("body$realm must be a non-empty string", call. = FALSE)
+  }
+
+  if (isTRUE(delete_existing)) {
+    keycloak_delete_realm(token, realm = realm)
+  }
+
+  resp <- keycloak_admin_request(
+    "POST",
+    "/admin/realms",
+    token = token,
+    body = body
+  )
+
+  if (httr2::resp_status(resp) >= 400L) {
+    testthat::skip(
+      paste(
+        "Keycloak did not accept the realm fixture:",
+        httr2::resp_body_string(resp)
+      )
+    )
+  }
+
+  list(
+    realm = realm,
+    issuer = keycloak_realm_issuer(realm),
+    auth_endpoint = keycloak_realm_auth_endpoint(realm),
+    response = resp
+  )
+}
+
+keycloak_temp_realm_name <- function(prefix = "shinyoauth-mixup") {
+  suffix <- paste(sample(c(letters, 0:9), 8L, replace = TRUE), collapse = "")
+  paste(prefix, suffix, sep = "-")
+}
+
+keycloak_create_mixup_realm <- function(
+  token,
+  realm = keycloak_temp_realm_name()
+) {
+  body <- list(
+    realm = realm,
+    enabled = TRUE,
+    sslRequired = "none",
+    loginWithEmailAllowed = TRUE,
+    registrationAllowed = FALSE,
+    resetPasswordAllowed = TRUE,
+    clients = list(
+      list(
+        clientId = "shiny-public",
+        protocol = "openid-connect",
+        publicClient = TRUE,
+        redirectUris = list(
+          "http://localhost:3000/*",
+          "http://127.0.0.1:3000/*",
+          "http://localhost:8100/*",
+          "http://127.0.0.1:8100/*"
+        ),
+        webOrigins = list("+"),
+        standardFlowEnabled = TRUE,
+        implicitFlowEnabled = FALSE,
+        directAccessGrantsEnabled = FALSE,
+        serviceAccountsEnabled = FALSE,
+        attributes = list(
+          "pkce.code.challenge.method" = "S256"
+        )
+      )
+    ),
+    users = list(
+      list(
+        username = "alice",
+        enabled = TRUE,
+        emailVerified = TRUE,
+        firstName = "Alice",
+        lastName = "Mixup",
+        email = paste0("alice@", realm, ".example.com"),
+        credentials = list(
+          list(
+            type = "password",
+            userLabel = "password",
+            value = "alice",
+            temporary = FALSE
+          )
+        )
+      )
+    )
+  )
+
+  keycloak_create_realm(token, body = body, delete_existing = TRUE)
+}
+
 normalize_existing_path <- function(path) {
   if (
     !is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)
@@ -915,14 +1035,15 @@ to_abs <- function(base, path) {
 
 ## ---------- Factory functions ----------
 
-make_provider <- function(
+make_provider_for_issuer <- function(
+  issuer = get_issuer(),
   token_auth_style = "body",
   allowed_token_types = c("Bearer"),
   use_par = FALSE,
   ...
 ) {
   prov <- shinyOAuth::oauth_provider_oidc_discover(
-    issuer = get_issuer(),
+    issuer = issuer,
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
     ...
@@ -931,6 +1052,21 @@ make_provider <- function(
     prov@par_url <- NA_character_
   }
   prov
+}
+
+make_provider <- function(
+  token_auth_style = "body",
+  allowed_token_types = c("Bearer"),
+  use_par = FALSE,
+  ...
+) {
+  make_provider_for_issuer(
+    issuer = get_issuer(),
+    token_auth_style = token_auth_style,
+    allowed_token_types = allowed_token_types,
+    use_par = use_par,
+    ...
+  )
 }
 
 make_mtls_provider <- function(
@@ -1744,6 +1880,91 @@ get_state_store_entry <- function(client, auth_url) {
   orig <- client@state_store$get(info$key, missing = NULL)
   stopifnot(is.list(orig))
   list(info = info, entry = orig)
+}
+
+resolve_state_store_key <- function(state_ref) {
+  if (
+    is.list(state_ref) &&
+      keycloak_nonempty_string(state_ref$key %||% NA_character_)
+  ) {
+    return(state_ref$key)
+  }
+
+  if (is.list(state_ref)) {
+    nested_info <- state_ref$info %||% NULL
+    if (is.list(nested_info)) {
+      return(resolve_state_store_key(nested_info))
+    }
+  }
+
+  if (keycloak_nonempty_string(state_ref)) {
+    return(state_ref)
+  }
+
+  stop("state_ref must be a state-store key or state-info list", call. = FALSE)
+}
+
+#' Expect a pending state-store entry to still exist
+#'
+#' @param client OAuth client under test.
+#' @param state_ref Output from `get_state_info()`, `get_state_store_entry()`, or
+#'   a state-store key string.
+#' @param info Optional failure message for `testthat`.
+#'
+#' @return Invisibly returns the cached state-store entry.
+#' @keywords internal
+#' @noRd
+expect_state_store_entry_present <- function(client, state_ref, info = NULL) {
+  key <- resolve_state_store_key(state_ref)
+  entry <- client@state_store$get(key, missing = NULL)
+
+  testthat::expect_false(
+    is.null(entry),
+    info = info %||% paste("Expected state-store entry to remain pending:", key)
+  )
+
+  invisible(entry)
+}
+
+#' Expect a state-store entry to be consumed
+#'
+#' @param client OAuth client under test.
+#' @param state_ref Output from `get_state_info()`, `get_state_store_entry()`, or
+#'   a state-store key string.
+#' @param info Optional failure message for `testthat`.
+#'
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
+expect_state_store_entry_consumed <- function(client, state_ref, info = NULL) {
+  key <- resolve_state_store_key(state_ref)
+
+  testthat::expect_null(
+    client@state_store$get(key, missing = NULL),
+    info = info %||% paste("Expected state-store entry to be consumed:", key)
+  )
+
+  invisible(NULL)
+}
+
+#' Expect a specific number of pending state-store entries
+#'
+#' @param client OAuth client under test.
+#' @param n Expected number of pending entries.
+#' @param info Optional failure message for `testthat`.
+#'
+#' @return Invisibly returns the current state-store keys.
+#' @keywords internal
+#' @noRd
+expect_state_store_size <- function(client, n, info = NULL) {
+  keys <- client@state_store$keys()
+  testthat::expect_equal(
+    length(keys),
+    n,
+    info = info %||% paste("Expected", n, "pending state-store entr(y/ies)")
+  )
+
+  invisible(keys)
 }
 
 #' Replace state store entry with a modified copy

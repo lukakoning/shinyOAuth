@@ -19,6 +19,17 @@ expect_callback_issuer_support <- function(prov, client) {
   )
 }
 
+replace_auth_request_endpoint <- function(auth_url, new_auth_endpoint) {
+  stopifnot(is.character(auth_url), length(auth_url) == 1L, nzchar(auth_url))
+  stopifnot(
+    is.character(new_auth_endpoint),
+    length(new_auth_endpoint) == 1L,
+    nzchar(new_auth_endpoint)
+  )
+
+  paste0(new_auth_endpoint, sub("^[^?]*", "", auth_url))
+}
+
 run_callback_issuer_rejection_then_retry <- function(
   prov,
   client,
@@ -41,8 +52,9 @@ run_callback_issuer_rejection_then_retry <- function(
 
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, expected_error)
-      testthat::expect_false(
-        is.null(client@state_store$get(state_info$key, missing = NULL)),
+      expect_state_store_entry_present(
+        client,
+        state_info,
         info = "Issuer rejection must happen before state is consumed"
       )
 
@@ -66,8 +78,9 @@ run_callback_issuer_rejection_then_retry <- function(
       } else {
         success_assert(values = values, client = client)
       }
-      testthat::expect_null(
-        client@state_store$get(state_info$key, missing = NULL),
+      expect_state_store_entry_consumed(
+        client,
+        state_info,
         info = "Accepted callback should consume state after token exchange"
       )
     }
@@ -124,6 +137,86 @@ testthat::test_that("mismatched callback issuer is rejected before state or code
     client = client,
     iss = "http://localhost:8080/realms/attacker",
     expected_error = "issuer_mismatch"
+  )
+})
+
+testthat::test_that("callback issuer mix-up from a real second Keycloak realm is rejected before state consumption", {
+  skip_common()
+  local_test_options()
+
+  admin_token <- keycloak_admin_token()
+  mixup_realm <- keycloak_create_mixup_realm(admin_token)
+
+  on.exit(
+    keycloak_delete_realm(admin_token, mixup_realm$realm),
+    add = TRUE
+  )
+
+  prov <- make_provider()
+  client <- make_public_client(prov)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      url <- values$build_auth_url()
+      state_info <- get_state_info(client, url)
+      foreign_url <- replace_auth_request_endpoint(
+        url,
+        mixup_realm$auth_endpoint
+      )
+
+      foreign_login <- perform_login_form(
+        foreign_url,
+        redirect_uri = client@redirect_uri
+      )
+      foreign_iss <- parse_query_param(
+        foreign_login$callback_url,
+        "iss",
+        decode = TRUE
+      )
+
+      testthat::expect_identical(foreign_iss, mixup_realm$issuer)
+      testthat::expect_false(identical(foreign_iss, prov@issuer))
+
+      values$.process_query(callback_query(foreign_login))
+      session$flushReact()
+
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_identical(values$error, "issuer_mismatch")
+      expect_state_store_entry_present(
+        client,
+        state_info,
+        info = "A real second-issuer callback must not consume primary state"
+      )
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      legitimate_login <- perform_login_form(
+        url,
+        redirect_uri = client@redirect_uri
+      )
+
+      values$.process_query(callback_query(legitimate_login))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+      expect_state_store_entry_consumed(
+        client,
+        state_info,
+        info = "The legitimate issuer callback should still consume the pending state"
+      )
+    }
   )
 })
 

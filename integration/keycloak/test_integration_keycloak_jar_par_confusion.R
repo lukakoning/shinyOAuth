@@ -21,6 +21,7 @@ attacker_outer_state <- "attacker-state"
 attacker_outer_nonce <- "attacker-nonce"
 attacker_outer_resource <- "https://attacker.example/resource"
 attacker_outer_code_challenge <- paste(rep("B", 43L), collapse = "")
+attacker_outer_client_id <- "shiny-public"
 
 replace_or_append_query_param <- function(url, name, value) {
   stopifnot(is.character(url), length(url) == 1L, nzchar(url))
@@ -74,6 +75,134 @@ tamper_outer_authorization_url <- function(auth_url, include_client_id = TRUE) {
   }
 
   tampered
+}
+
+tamper_outer_client_id <- function(
+  auth_url,
+  attacker_client_id = attacker_outer_client_id
+) {
+  replace_or_append_query_param(auth_url, "client_id", attacker_client_id)
+}
+
+inspect_auth_request_once <- function(auth_url) {
+  resp <- httr2::request(auth_url) |>
+    req_apply_keycloak_ca() |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "text/html") |>
+    httr2::req_options(followlocation = FALSE) |>
+    httr2::req_perform()
+
+  body <- try(httr2::resp_body_string(resp), silent = TRUE)
+  if (inherits(body, "try-error") || !is.character(body)) {
+    body <- ""
+  }
+
+  list(
+    status = httr2::resp_status(resp),
+    location = httr2::resp_header(resp, "location") %||% "",
+    body = body
+  )
+}
+
+attempt_attacker_client_id_auth <- function(auth_url, redirect_uri) {
+  attacked <- try(
+    perform_login_form(auth_url, redirect_uri = redirect_uri),
+    silent = TRUE
+  )
+
+  if (!inherits(attacked, "try-error")) {
+    attacker_code <- attacked$code %||% NA_character_
+    testthat::expect_false(
+      is.character(attacker_code) &&
+        length(attacker_code) == 1L &&
+        !is.na(attacker_code) &&
+        nzchar(attacker_code),
+      info = paste0(
+        "Expected outer client_id confusion to be rejected. Callback: ",
+        attacked$callback_url %||% "<no callback>"
+      )
+    )
+
+    return(list(kind = "callback", value = attacked))
+  }
+
+  inspected <- inspect_auth_request_once(auth_url)
+  combo <- paste(
+    inspected$status,
+    inspected$location %||% "",
+    inspected$body %||% ""
+  )
+
+  testthat::expect_true(
+    inspected$status %in% c(400L, 401L, 403L),
+    info = combo
+  )
+
+  list(kind = "http", value = inspected)
+}
+
+expect_outer_client_id_confusion_preserves_legitimate_state <- function(
+  client,
+  expected_username = "alice",
+  retry_legitimate_flow = TRUE
+) {
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      state_info <- get_state_info(client, auth_url)
+      tampered_url <- tamper_outer_client_id(auth_url)
+      attacked <- attempt_attacker_client_id_auth(
+        tampered_url,
+        redirect_uri = client@redirect_uri
+      )
+
+      testthat::expect_false(identical(tampered_url, auth_url))
+      testthat::expect_match(
+        tampered_url,
+        paste0(
+          "[?&]client_id=",
+          utils::URLencode(attacker_outer_client_id, reserved = TRUE)
+        )
+      )
+      expect_state_store_entry_present(client, state_info)
+
+      if (identical(attacked$kind, "callback")) {
+        values$.process_query(callback_query(attacked$value))
+        session$flushReact()
+
+        testthat::expect_false(isTRUE(values$authenticated))
+        testthat::expect_true(is.null(values$token))
+        testthat::expect_false(is.null(values$error))
+        expect_state_store_entry_present(client, state_info)
+
+        values$error <- NULL
+        values$error_description <- NULL
+        values$error_uri <- NULL
+      }
+
+      if (isTRUE(retry_legitimate_flow)) {
+        legitimate_login <- perform_login_form(
+          auth_url,
+          redirect_uri = client@redirect_uri
+        )
+        values$.process_query(callback_query(legitimate_login))
+        session$flushReact()
+
+        expect_keycloak_module_login_invariants(
+          authenticated = values$authenticated,
+          error = values$error,
+          error_description = values$error_description,
+          error_uri = values$error_uri,
+          token = values$token,
+          client = client,
+          expected_username = expected_username
+        )
+        expect_state_store_entry_consumed(client, state_info)
+      }
+    }
+  )
 }
 
 pkce_code_challenge_from_verifier <- function(verifier, method = "S256") {
@@ -332,6 +461,32 @@ testthat::test_that("PAR request_uri ignores conflicting outer redirect_uri, sco
   client <- make_par_confusion_client(prov, resource = resource)
 
   expect_par_outer_params_do_not_override(client, expected_resource = resource)
+})
+
+testthat::test_that("JAR outer client_id confusion is rejected without consuming the legitimate state", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(
+    request_object_signing_alg_values_supported = c("HS256")
+  )
+  client <- make_hmac_jar_client(prov)
+
+  expect_outer_client_id_confusion_preserves_legitimate_state(client)
+})
+
+testthat::test_that("JAR through PAR rejects outer client_id confusion without authenticating the attacker", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(token_auth_style = "private_key_jwt", use_par = TRUE)
+  client <- make_private_key_jar_client(prov)
+  testthat::skip_if(is.null(client), "private_key_jwt test key not available")
+
+  expect_outer_client_id_confusion_preserves_legitimate_state(
+    client,
+    retry_legitimate_flow = FALSE
+  )
 })
 
 testthat::test_that("Keycloak PAR-required client rejects direct authorization requests", {

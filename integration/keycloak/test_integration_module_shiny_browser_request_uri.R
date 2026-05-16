@@ -119,7 +119,8 @@ if (!exists("make_provider", mode = "function")) {
   encrypted_request_object = FALSE,
   prepare_only = FALSE,
   client_id = NULL,
-  module_id = "auth"
+  module_id = "auth",
+  authorization_request_ttl = NULL
 ) {
   stdout <- tempfile("request-uri-app-stdout-", fileext = ".log")
   stderr <- tempfile("request-uri-app-stderr-", fileext = ".log")
@@ -133,7 +134,8 @@ if (!exists("make_provider", mode = "function")) {
       encrypted_request_object,
       prepare_only,
       client_id,
-      module_id
+      module_id,
+      authorization_request_ttl
     ) {
       setwd(repo_root)
       if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -256,6 +258,11 @@ if (!exists("make_provider", mode = "function")) {
       }
 
       client@authorization_request_mode <- "request_uri"
+      if (!is.null(authorization_request_ttl)) {
+        client@authorization_request_ttl <- as.numeric(
+          authorization_request_ttl
+        )
+      }
       ui <- shiny::fluidPage(
         shinyOAuth::use_shinyOAuth(),
         shiny::h3(paste(
@@ -276,6 +283,8 @@ if (!exists("make_provider", mode = "function")) {
         shiny::verbatimTextOutput("ready_state"),
         shiny::h4("Auth state"),
         shiny::verbatimTextOutput("auth_state"),
+        shiny::h4("State store count"),
+        shiny::verbatimTextOutput("state_store_count"),
         shiny::h4("Published auth URL"),
         shiny::verbatimTextOutput("auth_url"),
         shiny::h4("Published request_uri"),
@@ -358,6 +367,10 @@ if (!exists("make_provider", mode = "function")) {
               "<none>"
             }
           )
+        })
+
+        output$state_store_count <- shiny::renderText({
+          as.character(length(client@state_store$keys()))
         })
 
         output$auth_url <- shiny::renderText({
@@ -458,7 +471,8 @@ if (!exists("make_provider", mode = "function")) {
       encrypted_request_object = encrypted_request_object,
       prepare_only = prepare_only,
       client_id = client_id,
-      module_id = module_id
+      module_id = module_id,
+      authorization_request_ttl = authorization_request_ttl
     ),
     stdout = stdout,
     stderr = stderr,
@@ -506,12 +520,14 @@ if (!exists("make_provider", mode = "function")) {
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
       var auth = document.querySelector('#auth_state');
+      var stateCount = document.querySelector('#state_store_count');
       var authUrl = document.querySelector('#auth_url');
       var requestUri = document.querySelector('#request_uri_url');
       var userInfo = document.querySelector('#user_info');
       return {
         ready_state: ready ? (ready.innerText || '') : '',
         auth_state: auth ? (auth.innerText || '') : '',
+        state_store_count: stateCount ? (stateCount.innerText || '') : '',
         auth_url: authUrl ? (authUrl.innerText || '') : '',
         request_uri_url: requestUri ? (requestUri.innerText || '') : '',
         user_info: userInfo ? (userInfo.innerText || '') : '{}'
@@ -519,6 +535,12 @@ if (!exists("make_provider", mode = "function")) {
     })())
   "
   ))
+}
+
+.read_request_uri_page_text <- function(drv) {
+  drv$get_js(
+    "(function(){return document.body ? (document.body.innerText || '') : '';})()"
+  )
 }
 
 .wait_for_request_uri_auth_url <- function(drv, timeout = 15000) {
@@ -807,6 +829,247 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   testthat::expect_identical(user_info$preferred_username, "alice")
   testthat::expect_identical(user_info$name, "Alice Test")
   testthat::expect_identical(user_info$email, "alice@example.com")
+})
+
+testthat::test_that("Shiny module E2E request_uri replay does not leak stale state into a fresh session", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_REQUEST_URI_REPLAY",
+    "8100"
+  ))
+  withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
+
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping request_uri replay E2E"
+    ))
+  }
+
+  public_base_url <- .request_uri_public_base_url(app_port)
+  .allow_request_uri_public_host(public_base_url)
+  public_base_url <- shinyOAuth:::normalize_request_uri_base_url(
+    public_base_url,
+    arg = "request_uri_base_url"
+  )
+  app_url <- sprintf("http://127.0.0.1:%d", app_port)
+
+  app_process <- .start_request_uri_app(
+    repo_root = .repo_root(),
+    app_port = app_port,
+    public_base_url = public_base_url,
+    app_url = app_url,
+    prepare_only = TRUE
+  )
+  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_request_uri_app(app_process, app_port)
+
+  drv <- shinytest2::AppDriver$new(
+    app_url,
+    name = "keycloak-e2e-request-uri-replay",
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#ready_state');
+      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+    })();
+  ",
+    timeout = 15000
+  )
+
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+
+  prepared <- .wait_for_request_uri_auth_url(drv)
+  .wait_for_request_uri_capture(drv)
+
+  .navigate_browser_to_url(drv, prepared$auth_url)
+
+  login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
+  if (identical(login_state, "login")) {
+    keycloak_submit_browser_login(drv)
+  }
+
+  auth_state <- .wait_for_request_uri_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: TRUE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error_description: <none>", fixed = TRUE)
+
+  .navigate_browser_to_url(drv, prepared$auth_url)
+  drv$wait_for_js(
+    "
+    (function () {
+      var text = document.body ? (document.body.innerText || '') : '';
+      return /Invalid Request|already used|Request Object already used/i.test(text);
+    })();
+  ",
+    timeout = 20000
+  )
+
+  replay_text <- .read_request_uri_page_text(drv)
+  testthat::expect_match(
+    replay_text,
+    "Invalid Request|already used|Request Object already used",
+    ignore.case = TRUE
+  )
+
+  .navigate_browser_to_url(drv, app_url)
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#ready_state');
+      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+    })();
+  ",
+    timeout = 15000
+  )
+
+  final_state <- .read_request_uri_browser_state(drv)
+  testthat::expect_match(
+    final_state$auth_state %||% "",
+    "authenticated: FALSE",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    final_state$auth_state %||% "",
+    "has_token: FALSE",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    final_state$auth_state %||% "",
+    "error_description: <none>",
+    fixed = TRUE
+  )
+  testthat::expect_identical(trimws(final_state$state_store_count %||% ""), "0")
+
+  user_info <- .read_request_uri_user_info(drv)
+  testthat::expect_null(user_info$preferred_username)
+})
+
+testthat::test_that("Shiny module E2E request_uri expiry is rejected before callback and leaves pending state untouched", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_REQUEST_URI_EXPIRED",
+    "8100"
+  ))
+  withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
+
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping request_uri expiry E2E"
+    ))
+  }
+
+  public_base_url <- .request_uri_public_base_url(app_port)
+  .allow_request_uri_public_host(public_base_url)
+  public_base_url <- shinyOAuth:::normalize_request_uri_base_url(
+    public_base_url,
+    arg = "request_uri_base_url"
+  )
+  app_url <- sprintf("http://127.0.0.1:%d", app_port)
+
+  app_process <- .start_request_uri_app(
+    repo_root = .repo_root(),
+    app_port = app_port,
+    public_base_url = public_base_url,
+    app_url = app_url,
+    prepare_only = TRUE,
+    authorization_request_ttl = 1
+  )
+  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_request_uri_app(app_process, app_port)
+
+  drv <- shinytest2::AppDriver$new(
+    app_url,
+    name = "keycloak-e2e-request-uri-expired",
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#ready_state');
+      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+    })();
+  ",
+    timeout = 15000
+  )
+
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+
+  prepared <- .wait_for_request_uri_auth_url(drv)
+  .wait_for_request_uri_capture(drv)
+
+  Sys.sleep(2)
+
+  .navigate_browser_to_url(drv, prepared$auth_url)
+  drv$wait_for_js(
+    "
+    (function () {
+      var text = document.body ? (document.body.innerText || '') : '';
+      return /Invalid Request|expired|Request Object expired/i.test(text);
+    })();
+  ",
+    timeout = 20000
+  )
+
+  expired_text <- .read_request_uri_page_text(drv)
+  testthat::expect_match(
+    expired_text,
+    "Invalid Request|expired|Request Object expired",
+    ignore.case = TRUE
+  )
+
+  .navigate_browser_to_url(drv, app_url)
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#ready_state');
+      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+    })();
+  ",
+    timeout = 15000
+  )
+
+  browser_state <- .read_request_uri_browser_state(drv)
+  testthat::expect_match(
+    browser_state$auth_state %||% "",
+    "authenticated: FALSE",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    browser_state$auth_state %||% "",
+    "has_token: FALSE",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    browser_state$auth_state %||% "",
+    "error_description: <none>",
+    fixed = TRUE
+  )
+  testthat::expect_identical(
+    trimws(browser_state$state_store_count %||% ""),
+    "1"
+  )
 })
 
 testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with public base override", {

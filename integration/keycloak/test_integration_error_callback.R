@@ -94,10 +94,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
         values$error_uri,
         "https://example.com/oauth-error"
       )
-      testthat::expect_null(client@state_store$get(
-        state_info$key,
-        missing = NULL
-      ))
+      expect_state_store_entry_consumed(client, state_info)
 
       clear_oauth_error_values(values)
       values$.process_query(query)
@@ -138,8 +135,9 @@ testthat::test_that("authorization error callback issuer is checked before state
       session$flushReact()
 
       testthat::expect_identical(values$error, "issuer_mismatch")
-      testthat::expect_false(
-        is.null(client@state_store$get(state_info$key, missing = NULL)),
+      expect_state_store_entry_present(
+        client,
+        state_info,
         info = "Issuer mismatch must not consume state"
       )
 
@@ -157,10 +155,7 @@ testthat::test_that("authorization error callback issuer is checked before state
         values$error_description,
         "Consent denied by user"
       )
-      testthat::expect_null(client@state_store$get(
-        state_info$key,
-        missing = NULL
-      ))
+      expect_state_store_entry_consumed(client, state_info)
     }
   )
 })

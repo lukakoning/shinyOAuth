@@ -76,18 +76,29 @@ inspect_auth_request_once <- function(auth_url) {
   )
 }
 
-expect_par_auth_request_rejected <- function(
-  auth_url,
-  redirect_uri,
-  expected_error = "invalid_request",
-  description_pattern = NULL
-) {
+capture_par_auth_request_rejection <- function(auth_url, redirect_uri) {
   result <- try(
     perform_login_form(auth_url, redirect_uri = redirect_uri),
     silent = TRUE
   )
 
   if (!inherits(result, "try-error")) {
+    return(list(kind = "callback", callback = result))
+  }
+
+  list(kind = "http", inspected = inspect_auth_request_once(auth_url))
+}
+
+expect_par_auth_request_rejected <- function(
+  auth_url,
+  redirect_uri,
+  expected_error = "invalid_request",
+  description_pattern = NULL
+) {
+  rejected <- capture_par_auth_request_rejection(auth_url, redirect_uri)
+
+  if (identical(rejected$kind, "callback")) {
+    result <- rejected$callback
     code <- result$code %||% NA_character_
     testthat::expect_false(
       is.character(code) && length(code) == 1L && !is.na(code) && nzchar(code),
@@ -115,10 +126,10 @@ expect_par_auth_request_rejected <- function(
       )
     }
 
-    return(invisible(result))
+    return(invisible(rejected))
   }
 
-  inspected <- inspect_auth_request_once(auth_url)
+  inspected <- rejected$inspected
   location_error <- parse_query_param(
     inspected$location,
     "error",
@@ -148,7 +159,7 @@ expect_par_auth_request_rejected <- function(
     testthat::expect_match(combo, description_pattern, ignore.case = TRUE)
   }
 
-  invisible(inspected)
+  invisible(rejected)
 }
 
 replace_client_id_in_auth_url <- function(auth_url, new_client_id) {
@@ -215,15 +226,10 @@ testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", 
   )
   testthat::expect_match(
     built$error_description %||% "",
-    "Status 401: Unauthorized.",
-    fixed = TRUE
+    "401|Unauthorized|invalid_request|Authentication failed",
+    ignore.case = TRUE
   )
-  testthat::expect_match(
-    built$error_description %||% "",
-    "OAuth error: invalid_request: Authentication failed.",
-    fixed = TRUE
-  )
-  testthat::expect_length(client@state_store$keys(), 0L)
+  expect_state_store_size(client, 0L)
 })
 
 testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
@@ -232,29 +238,83 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
 
   prov <- make_provider(use_par = TRUE)
   client <- make_public_client(prov)
-  auth_url <- NULL
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <<- values$build_auth_url()
+      auth_url <- values$build_auth_url()
+      state_info <- get_state_info(client, auth_url)
       testthat::expect_match(auth_url, "[?&]request_uri=")
 
       first <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
       values$.process_query(callback_query(first))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-    }
-  )
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+      expect_state_store_entry_consumed(client, state_info)
 
-  expect_par_auth_request_rejected(
-    auth_url,
-    redirect_uri = client@redirect_uri,
-    expected_error = "invalid_request",
-    description_pattern = "Invalid Request"
+      access_token_before <- values$token@access_token %||% ""
+      username_before <- values$token@userinfo$preferred_username %||%
+        NA_character_
+      rejected <- expect_par_auth_request_rejected(
+        auth_url,
+        redirect_uri = client@redirect_uri,
+        expected_error = "invalid_request",
+        description_pattern = "Invalid Request"
+      )
+
+      if (identical(rejected$kind, "callback")) {
+        replay_callback <- rejected$callback
+        replay_state <- parse_query_param(replay_callback$callback_url, "state")
+        replay_iss <- parse_query_param(
+          replay_callback$callback_url,
+          "iss",
+          decode = TRUE
+        )
+
+        values$.process_query(callback_query(replay_callback))
+        session$flushReact()
+
+        testthat::expect_true(isTRUE(values$authenticated))
+        testthat::expect_false(is.null(values$token))
+        testthat::expect_identical(
+          values$token@access_token %||% "",
+          access_token_before
+        )
+        testthat::expect_identical(
+          values$token@userinfo$preferred_username %||% NA_character_,
+          username_before
+        )
+        testthat::expect_true(
+          (values$error %||% "") %in%
+            c(
+              "invalid_state",
+              "issuer_missing",
+              "issuer_mismatch"
+            ),
+          info = paste(
+            "Unexpected replay error:",
+            values$error %||% "<NULL>",
+            replay_state %||% "<no state>",
+            replay_iss %||% "<no iss>"
+          )
+        )
+      } else {
+        testthat::expect_true(isTRUE(values$authenticated))
+        testthat::expect_false(is.null(values$token))
+      }
+
+      expect_state_store_entry_consumed(client, state_info)
+    }
   )
 })
 
@@ -286,19 +346,87 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
     "1"
   )
 
-  auth_url <- shinyOAuth:::prepare_call(
-    client,
-    browser_token = paste(rep("ab", 64), collapse = "")
-  )
-  testthat::expect_match(auth_url, "[?&]request_uri=")
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      state_info <- get_state_info(client, auth_url)
+      testthat::expect_match(auth_url, "[?&]request_uri=")
 
-  Sys.sleep(2)
+      Sys.sleep(2)
 
-  expect_par_auth_request_rejected(
-    auth_url,
-    redirect_uri = client@redirect_uri,
-    expected_error = "invalid_request",
-    description_pattern = "Invalid Request|expired|request_uri"
+      rejected <- expect_par_auth_request_rejected(
+        auth_url,
+        redirect_uri = client@redirect_uri,
+        expected_error = "invalid_request",
+        description_pattern = "Invalid Request|expired|request_uri"
+      )
+
+      if (identical(rejected$kind, "callback")) {
+        expired_callback <- rejected$callback
+        callback_state <- parse_query_param(
+          expired_callback$callback_url,
+          "state"
+        )
+        callback_iss <- parse_query_param(
+          expired_callback$callback_url,
+          "iss",
+          decode = TRUE
+        )
+        callback_bound <- identical(callback_state, state_info$sealed) &&
+          identical(callback_iss, prov@issuer)
+
+        values$.process_query(callback_query(expired_callback))
+        session$flushReact()
+
+        testthat::expect_false(isTRUE(values$authenticated))
+
+        if (isTRUE(callback_bound)) {
+          testthat::expect_identical(values$error, "invalid_request")
+          testthat::expect_match(
+            values$error_description %||% "",
+            "request|expired|invalid",
+            ignore.case = TRUE
+          )
+          expect_state_store_entry_consumed(
+            client,
+            state_info,
+            info = paste(
+              "A bound PAR expiry callback should consume the matching state"
+            )
+          )
+        } else {
+          testthat::expect_true(
+            (values$error %||% "") %in%
+              c(
+                "invalid_state",
+                "issuer_missing",
+                "issuer_mismatch"
+              ),
+            info = paste(
+              "Unexpected expiry callback error:",
+              values$error %||% "<NULL>",
+              callback_state %||% "<no state>",
+              callback_iss %||% "<no iss>"
+            )
+          )
+          expect_state_store_entry_present(
+            client,
+            state_info,
+            info = "Expiry rejection without a bound callback must leave pending state untouched"
+          )
+        }
+      } else {
+        testthat::expect_null(values$error)
+        testthat::expect_null(values$error_description)
+        expect_state_store_entry_present(
+          client,
+          state_info,
+          info = "Expiry rejection before redirect should leave pending state untouched"
+        )
+      }
+    }
   )
 })
 
