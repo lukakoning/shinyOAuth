@@ -28,18 +28,6 @@ token exchange/refresh, userinfo/introspection/revocation, and session-end
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
 
-* Successful token and refresh responses now always require `token_type`, even
-  when `allowed_token_types = character()`. An empty allowlist still disables
-  value allowlisting, but it no longer waives the RFC-required field.
-
-* Callback and refresh flows no longer reconstruct `token_type = "DPoP"` from
-  prior token state or `cnf.jkt` alone. DPoP token typing now comes only from
-  the token response itself or from authoritative introspection metadata.
-
-* Refresh no longer carries forward a prior mTLS `cnf.x5t#S256` thumbprint when
-  the refreshed access token exposes no fresh `cnf`. Refreshed tokens keep
-  certificate-bound state only when the new token or introspection proves it.
-
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback
@@ -232,6 +220,10 @@ refresh-time `nonce`, and `azp` in addition to the existing `iss` / `sub` /
   UserInfo JWTs can verify correctly,  provider `leeway` is honored 
   consistently, and invalid `typ` headers are rejected.
   
+* Successful token and refresh responses now always require `token_type`, even
+when `allowed_token_types = character()`. An empty allowlist still disables
+value allowlisting, but it no longer waives the RFC-required field.
+
 * Token exchange and refresh requests no longer retry on transport errors or
 transient HTTP statuses (408/429/5xx). Authorization codes are single-use and
 refresh tokens may be rotated on each use; retrying after the server has
