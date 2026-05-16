@@ -109,6 +109,10 @@
 #'   `client_private_key` when present; otherwise it falls back to HMAC signing
 #'   with `client_secret`. When Request Object encryption is configured,
 #'   shinyOAuth signs first and then wraps the signed Request Object in a JWE.
+#'   If a caller-managed `request_uri` uses HTTP and the configured host policy
+#'   explicitly allows it, shinyOAuth still publishes it but warns once per R
+#'   session because RFC 9101 Section 5.2 expects client-provided
+#'   `request_uri` values to use HTTPS.
 #'   If the provider advertises `require_request_uri_registration = TRUE`,
 #'   caller-managed `request_uri` publication still depends on the provider
 #'   having that URI or a matching wildcard prefix registered for the client;

@@ -128,7 +128,9 @@
 #'   Object through a different public host or proxy address than the browser
 #'   uses, or when you prefer to declare the public origin explicitly. The
 #'   value must not include a query string or fragment. Non-HTTPS hosts still
-#'   follow the same `?is_ok_host` policy as other package URLs.
+#'   follow the same `?is_ok_host` policy as other package URLs, but
+#'   shinyOAuth warns once per R session because RFC 9101 Section 5.2 expects
+#'   client-provided `request_uri` values to use HTTPS.
 #'
 #' @param browser_cookie_path Optional cookie Path to scope the browser token
 #'   cookie. By default (`NULL`), the path is fixed to "/" for reliable

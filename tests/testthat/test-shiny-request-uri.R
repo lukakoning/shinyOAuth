@@ -71,6 +71,42 @@ test_that("publish_shiny_request_object uses an explicit public base URL", {
   )
 })
 
+test_that("publish_shiny_request_object warns once for non-HTTPS request_uri URLs", {
+  rlang::reset_warning_verbosity("shinyOAuth_request_uri_non_https")
+  fixture <- make_request_uri_test_session(
+    protocol = "http:",
+    hostname = "localhost"
+  )
+
+  url <- NULL
+  expect_warning(
+    url <- shinyOAuth:::publish_shiny_request_object(
+      session = fixture$session,
+      request_object = "header.payload.signature",
+      request_handle_id = "deadbeef",
+      expires_at = Sys.time() + 60
+    ),
+    regexp = "RFC 9101|Non-HTTPS request_uri"
+  )
+
+  expect_identical(
+    url,
+    paste0(
+      "http://localhost/app/session/session-token/dataobj/",
+      "oauth-request-deadbeef?w=worker-1&nonce=testnonce"
+    )
+  )
+
+  expect_no_warning(
+    shinyOAuth:::publish_shiny_request_object(
+      session = fixture$session,
+      request_object = "header.payload.signature",
+      request_handle_id = "feedface",
+      expires_at = Sys.time() + 60
+    )
+  )
+})
+
 test_that("request_uri base URL overrides reject query strings and fragments", {
   expect_error(
     shinyOAuth:::normalize_request_uri_base_url(

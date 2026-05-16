@@ -6,6 +6,59 @@
 
 ## 1.1 Session URL helpers ----------------------------------------------------
 
+#' Warn when a caller-managed request_uri is not HTTPS
+#'
+#' Used for caller-managed Request Object publication flows. RFC 9101 Section
+#' 5.2 requires client-provided `request_uri` values to use HTTPS, but
+#' shinyOAuth still allows HTTP when the configured host policy explicitly
+#' permits it.
+#'
+#' @param request_uri Absolute request URI string.
+#' @param subject Human-readable label used in the warning body.
+#' @return Invisibly returns `TRUE` when a warning was emitted, otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
+warn_if_request_uri_is_non_https <- function(
+  request_uri,
+  subject = "The published {.code request_uri}"
+) {
+  if (!is_valid_string(request_uri)) {
+    return(invisible(FALSE))
+  }
+
+  parsed <- try(httr2::url_parse(request_uri), silent = TRUE)
+  if (inherits(parsed, "try-error")) {
+    return(invisible(FALSE))
+  }
+
+  scheme <- tolower(as.character(parsed$scheme %||% ""))
+  host <- as.character(parsed$hostname %||% "")
+
+  if (!nzchar(host) || identical(scheme, "https")) {
+    return(invisible(FALSE))
+  }
+
+  warn_pkg(
+    "Non-HTTPS request_uri is not RFC 9101 compliant",
+    c(
+      "!" = paste(subject, "uses", toupper(scheme), "instead of HTTPS."),
+      "i" = paste(
+        "RFC 9101 Section 5.2 requires client-provided request_uri values",
+        "to use HTTPS."
+      ),
+      "i" = paste(
+        "shinyOAuth is allowing this because your configured host policy",
+        "explicitly permits the non-HTTPS origin."
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = "shinyOAuth_request_uri_non_https"
+  )
+
+  invisible(TRUE)
+}
+
 #' Normalize a public request_uri base URL override
 #'
 #' Used when deployments need the authorization server to fetch published
@@ -276,6 +329,7 @@ publish_shiny_request_object <- function(
     absolute_url,
     getOption("shinyOAuth.allowed_hosts", default = NULL)
   )
+  warn_if_request_uri_is_non_https(absolute_url)
 
   absolute_url
 }
