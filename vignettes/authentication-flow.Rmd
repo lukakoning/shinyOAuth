@@ -475,12 +475,10 @@ token endpoint and updates the `OAuthToken` object. In short:
 - If `oauth_provider(userinfo_required = TRUE)`, userinfo is re-fetched using the fresh access token
 - If `oauth_client(introspect = TRUE)`, the refreshed access token is introspected through the same client policy before the session is updated
 
-When the refresh response omits new `cnf` and refresh-time introspection is not
-enabled, 'shinyOAuth' may preserve a prior certificate thumbprint so mTLS-bound
-resource requests do not silently lose their routing state. This is not fresh
-proof that the new access token is still sender-constrained. When
-`oauth_client(introspect = TRUE)`, 'shinyOAuth' keeps mTLS binding only if the
-new token or its introspection response supplies fresh `cnf`.
+When the refresh response omits new observable `cnf`, 'shinyOAuth' does not
+carry forward the previous certificate thumbprint onto the refreshed token.
+Refreshed access tokens keep mTLS sender-constrained state only when the new
+token itself, or its introspection response, supplies fresh `cnf` data.
 
 If you are running a security-sensitive app, set `options(shinyOAuth.default_expires_in = ...)`
 to the provider's documented lifetime instead of relying on the package default, and consider
