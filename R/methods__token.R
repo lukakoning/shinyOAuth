@@ -919,8 +919,7 @@ refresh_token <- function(
         )
         effective_token_type <- resolve_effective_access_token_type(
           oauth_client,
-          token_set = token_set,
-          prior_token_type = token@token_type
+          token_set = token_set
         )
 
         expires_at <- if (
@@ -989,7 +988,6 @@ refresh_token <- function(
           refreshed_token@token_type <- resolve_effective_access_token_type(
             oauth_client,
             token_set = token_set,
-            prior_token_type = refreshed_token@token_type,
             introspection_result = intro_res,
             phase = "refresh_token"
           )

@@ -32,6 +32,10 @@ information.
   when `allowed_token_types = character()`. An empty allowlist still disables
   value allowlisting, but it no longer waives the RFC-required field.
 
+* Callback and refresh flows no longer reconstruct `token_type = "DPoP"` from
+  prior token state or `cnf.jkt` alone. DPoP token typing now comes only from
+  the token response itself or from authoritative introspection metadata.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback

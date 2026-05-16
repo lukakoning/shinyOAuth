@@ -271,6 +271,63 @@ test_that("refresh rejects missing token_type before DPoP userinfo", {
   expect_true(is.na(seen$token_type))
 })
 
+test_that("resolve_effective_access_token_type does not infer DPoP from cnf", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@allowed_token_types <- character(0)
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen(),
+    dpop_require_access_token = FALSE
+  )
+
+  expect_true(is.na(shinyOAuth:::resolve_effective_access_token_type(
+    cli,
+    token_set = list(
+      access_token = "t",
+      cnf = list(jkt = shinyOAuth:::client_dpop_jkt(cli))
+    )
+  )))
+})
+
+test_that("resolve_effective_access_token_type still accepts introspection token_type", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@allowed_token_types <- character(0)
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(0),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    dpop_private_key = openssl::rsa_keygen(),
+    dpop_require_access_token = FALSE
+  )
+
+  expect_identical(
+    shinyOAuth:::resolve_effective_access_token_type(
+      cli,
+      token_set = list(access_token = "t"),
+      introspection_result = list(active = TRUE, token_type = "DPoP")
+    ),
+    "DPoP"
+  )
+})
+
 test_that("when allowed_token_types is non-empty, missing token_type errors", {
   prov <- oauth_provider(
     name = "fake",

@@ -1555,7 +1555,6 @@ handle_callback_internal <- function(
         token@token_type <- resolve_effective_access_token_type(
           oauth_client,
           token_set = token_set,
-          prior_token_type = token@token_type,
           introspection_result = intro_res,
           phase = "exchange_code"
         )
@@ -1821,7 +1820,6 @@ enforce_token_introspection_policy <- function(
       access_token = token@access_token,
       cnf = token_cnf_input
     ),
-    prior_token_type = token@token_type,
     introspection_result = introspection_result,
     phase = phase
   )
@@ -2801,15 +2799,13 @@ token_type_from_introspection <- function(introspection_result) {
 
 #' Resolve the effective access token type
 #'
-#' Used after token-response policy checks so later UserInfo and resource
-#' helpers preserve DPoP sender-constraint behavior even when permissive
-#' providers omit `token_type`.
+#' Used after token-response policy checks so later surfaces can reconcile an
+#' explicit token-response `token_type` with any authoritative introspection
+#' metadata.
 #'
 #' @param oauth_client [OAuthClient] whose DPoP configuration may imply DPoP.
 #' @param token_set Token response list containing `token_type`,
 #'   `access_token`, and optional `cnf`.
-#' @param prior_token_type Optional prior token type to carry forward when the
-#'   current token response omits `token_type`.
 #' @param introspection_result Optional introspection payload whose
 #'   `token_type` may backfill or validate the effective token type.
 #' @param phase Optional token-processing phase used in structured token
@@ -2821,7 +2817,6 @@ token_type_from_introspection <- function(introspection_result) {
 resolve_effective_access_token_type <- function(
   oauth_client,
   token_set,
-  prior_token_type = NULL,
   introspection_result = NULL,
   phase = NULL
 ) {
@@ -2833,9 +2828,6 @@ resolve_effective_access_token_type <- function(
 
   intro_token_type <- token_type_from_introspection(introspection_result)
   effective_token_type <- token_set$token_type %||% NA_character_
-  if (!is_valid_string(effective_token_type)) {
-    effective_token_type <- prior_token_type %||% NA_character_
-  }
   if (
     is_valid_string(effective_token_type) &&
       is_valid_string(intro_token_type) &&
@@ -2866,18 +2858,6 @@ resolve_effective_access_token_type <- function(
       token_set = list(token_type = intro_token_type)
     )
     effective_token_type <- intro_token_type
-  }
-  if (
-    !is_valid_string(effective_token_type) &&
-      client_has_dpop(oauth_client) &&
-      is_valid_string(token_cnf_jkt(
-        access_token = token_set$access_token,
-        cnf = token_set$cnf
-      ))
-  ) {
-    # Providers may omit token_type when allowed_token_types is empty.
-    # Preserve DPoP sender-constraint semantics for immediate userinfo.
-    effective_token_type <- "DPoP"
   }
 
   if (is_valid_string(effective_token_type)) {
