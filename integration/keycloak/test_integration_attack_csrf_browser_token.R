@@ -1,12 +1,8 @@
-## Attack vector: Browser Token CSRF (Double-Submit Cookie Bypass)
+## Direct callback validation: browser-token checks used by the callback path
 ##
-## Verifies that a mismatched browser token (cookie) causes authentication
-## to fail, preventing CSRF attacks where an attacker tricks a victim's
-## browser into completing a callback with a different session cookie.
-## Defense mechanisms tested:
-##   1. constant_time_compare() of browser token from cookie vs state store
-##   2. Browser token format validation (exactly 128 hex chars)
-##   3. Missing browser token is rejected when skip_browser_token is FALSE
+## These tests exercise browser-token validation logic through direct
+## handle_callback() calls in testServer. They are useful for format and
+## mismatch coverage, but they do not prove the full browser-cookie boundary.
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {

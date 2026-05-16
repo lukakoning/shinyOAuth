@@ -4,69 +4,13 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
-browser_cleanup_port_in_use <- function(port) {
-  con <- suppressWarnings(try(
-    socketConnection(
-      host = "127.0.0.1",
-      port = as.integer(port),
-      server = FALSE,
-      blocking = TRUE,
-      open = "r+",
-      timeout = 1
-    ),
-    silent = TRUE
-  ))
-  if (!inherits(con, "try-error")) {
-    try(close(con), silent = TRUE)
-    return(TRUE)
-  }
-  FALSE
-}
-
-submit_keycloak_login_for_cleanup <- function(drv) {
-  drv$wait_for_js(
-    "
-    (function () {
-      var authState = document.querySelector('#auth_state');
-      var login = document.querySelector('#kc-login');
-      var username = document.querySelector('#username');
-      var password = document.querySelector('#password');
-      var alreadyAuthenticated = !!(
-        authState &&
-        authState.innerText.indexOf('authenticated: TRUE') !== -1
-      );
-      return alreadyAuthenticated || !!(login && username && password);
-    })();
-  ",
-    timeout = 20000
-  )
-
-  drv$run_js(
-    "
-    (function () {
-      var authState = document.querySelector('#auth_state');
-      if (
-        authState &&
-        authState.innerText.indexOf('authenticated: TRUE') !== -1
-      ) {
-        return 'already-authenticated';
-      }
-      document.querySelector('#username').value = 'alice';
-      document.querySelector('#password').value = 'alice';
-      document.querySelector('#kc-login').click();
-      return 'submitted';
-    })();
-  "
-  )
-}
-
 testthat::test_that("browser callback cleanup removes OAuth parameters from URL and title", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_CLEANUP", "8100"))
-  if (browser_cleanup_port_in_use(app_port)) {
+  if (keycloak_browser_port_in_use(app_port)) {
     testthat::skip(paste0(
       "Port ",
       app_port,
@@ -122,7 +66,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
   )
   on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
 
-  submit_keycloak_login_for_cleanup(drv)
+  keycloak_submit_browser_login(drv)
 
   drv$wait_for_js(
     "

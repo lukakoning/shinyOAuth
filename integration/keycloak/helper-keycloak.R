@@ -342,6 +342,163 @@ skip_mtls_common <- function() {
   maybe_skip_keycloak_https()
 }
 
+## ---------- Browser E2E helpers ----------
+
+keycloak_browser_port_in_use <- function(port) {
+  con <- suppressWarnings(try(
+    socketConnection(
+      host = "127.0.0.1",
+      port = as.integer(port),
+      server = FALSE,
+      blocking = TRUE,
+      open = "r+",
+      timeout = 1
+    ),
+    silent = TRUE
+  ))
+  if (!inherits(con, "try-error")) {
+    try(close(con), silent = TRUE)
+    return(TRUE)
+  }
+  FALSE
+}
+
+keycloak_wait_for_login_or_auth_result <- function(
+  drv,
+  auth_selector = "#auth_state",
+  timeout = 10000,
+  interval = 0.25
+) {
+  deadline <- Sys.time() + (timeout / 1000)
+  auth_selector_json <- jsonlite::toJSON(auth_selector, auto_unbox = TRUE)
+
+  while (Sys.time() < deadline) {
+    state <- drv$get_js(
+      paste0(
+        "(function () {",
+        "  if (document.querySelector('#kc-login')) { return 'login'; }",
+        "  var el = document.querySelector(",
+        auth_selector_json,
+        ");",
+        "  if (!el) { return ''; }",
+        "  var text = el.innerText || '';",
+        "  if (text.includes('authenticated: TRUE')) { return 'done'; }",
+        "  if ((text.includes('error_description:') && ",
+        "      !text.includes('error_description: <none>')) || ",
+        "      (text.includes('error_desc:') && ",
+        "      !text.includes('error_desc: <none>'))) {",
+        "    return 'done';",
+        "  }",
+        "  return '';",
+        "})()"
+      )
+    )
+
+    if (identical(state, "login") || identical(state, "done")) {
+      return(state)
+    }
+
+    Sys.sleep(interval)
+  }
+
+  stop(
+    "Timed out waiting for a Keycloak login form or auth result",
+    call. = FALSE
+  )
+}
+
+keycloak_submit_browser_login <- function(
+  drv,
+  username = "alice",
+  password = username,
+  auth_selector = "#auth_state",
+  timeout = 20000,
+  interval = 0.25
+) {
+  login_state <- keycloak_wait_for_login_or_auth_result(
+    drv,
+    auth_selector = auth_selector,
+    timeout = timeout,
+    interval = interval
+  )
+  if (identical(login_state, "done")) {
+    return(invisible("already-authenticated"))
+  }
+
+  auth_selector_json <- jsonlite::toJSON(auth_selector, auto_unbox = TRUE)
+  username_json <- jsonlite::toJSON(username, auto_unbox = TRUE)
+  password_json <- jsonlite::toJSON(password, auto_unbox = TRUE)
+
+  drv$run_js(
+    paste0(
+      "(function () {",
+      "  var authState = document.querySelector(",
+      auth_selector_json,
+      ");",
+      "  var authText = authState ? (authState.innerText || '') : '';",
+      "  if (authText.indexOf('authenticated: TRUE') !== -1) {",
+      "    return 'already-authenticated';",
+      "  }",
+      "  var login = document.querySelector('#kc-login');",
+      "  var form = login && login.form ? login.form : document.querySelector('form');",
+      "  var usernameInput = document.querySelector('#username');",
+      "  var passwordInput = document.querySelector('#password');",
+      "  if (!(form && login && usernameInput && passwordInput)) {",
+      "    return 'login-form-missing';",
+      "  }",
+      "  function setValue(input, value) {",
+      "    input.focus();",
+      "    input.value = value;",
+      "    input.dispatchEvent(new Event('input', { bubbles: true }));",
+      "    input.dispatchEvent(new Event('change', { bubbles: true }));",
+      "  }",
+      "  setValue(usernameInput, ",
+      username_json,
+      ");",
+      "  setValue(passwordInput, ",
+      password_json,
+      ");",
+      "  HTMLFormElement.prototype.submit.call(form);",
+      "  return 'submitted';",
+      "})()"
+    )
+  )
+}
+
+keycloak_get_auth_state_robust <- function(
+  drv,
+  auth_selector = "#auth_state",
+  max_attempts = 10,
+  delay = 0.5
+) {
+  auth_selector_json <- jsonlite::toJSON(auth_selector, auto_unbox = TRUE)
+
+  for (i in seq_len(max_attempts)) {
+    auth_state <- drv$get_js(
+      paste0(
+        "(function () {",
+        "  var el = document.querySelector(",
+        auth_selector_json,
+        ");",
+        "  return el ? (el.innerText || '') : '';",
+        "})()"
+      )
+    )
+
+    if (
+      nchar(auth_state) > 0 &&
+        (grepl("authenticated: TRUE", auth_state, fixed = TRUE) ||
+          !grepl("error_description: <none>", auth_state, fixed = TRUE))
+    ) {
+      return(trimws(auth_state))
+    }
+
+    Sys.sleep(delay)
+  }
+
+  ""
+}
+
 ## ---------- URL / cookie helpers ----------
 
 parse_query_param <- function(url, name, decode = FALSE) {

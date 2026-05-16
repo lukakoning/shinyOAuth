@@ -72,6 +72,14 @@ token_subject <- function(token) {
   NA_character_
 }
 
+expect_live_userinfo_subject <- function(client, token, expected_subject) {
+  userinfo <- shinyOAuth::get_userinfo(client, token)
+
+  testthat::expect_true(is.list(userinfo))
+  testthat::expect_identical(userinfo$sub, expected_subject)
+  invisible(userinfo)
+}
+
 expect_refresh_token_failure <- function(client, token) {
   err <- testthat::expect_error(
     shinyOAuth::refresh_token(client, token),
@@ -100,12 +108,16 @@ testthat::test_that("Keycloak refresh happy path preserves subject binding", {
   original_subject <- token_subject(login$token)
   testthat::expect_true(nzchar(original_subject))
 
+  expect_live_userinfo_subject(client, login$token, original_subject)
+
   refreshed <- shinyOAuth::refresh_token(client, login$token)
 
   testthat::expect_true(nzchar(refreshed@access_token))
   testthat::expect_true(nzchar(refreshed@refresh_token))
   testthat::expect_identical(token_subject(refreshed), original_subject)
   testthat::expect_true(isTRUE(refreshed@id_token_validated))
+
+  expect_live_userinfo_subject(client, refreshed, original_subject)
 })
 
 testthat::test_that("revoking a Keycloak refresh token blocks future refresh", {

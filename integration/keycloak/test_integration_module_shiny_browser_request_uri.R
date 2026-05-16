@@ -4,138 +4,6 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
-.wait_for_login_or_auth_result <- function(
-  drv,
-  timeout = 10000,
-  interval = 0.25
-) {
-  deadline <- Sys.time() + (timeout / 1000)
-
-  while (Sys.time() < deadline) {
-    state <- drv$get_js(
-      "(function () {
-        if (document.querySelector('#kc-login')) {
-          return 'login';
-        }
-
-        var el = document.querySelector('#auth_state');
-        if (!el) {
-          return '';
-        }
-
-        var text = el.innerText || '';
-        if (text.includes('authenticated: TRUE')) {
-          return 'done';
-        }
-
-        if (
-          (text.includes('error_description:') &&
-            !text.includes('error_description: <none>')) ||
-          (text.includes('error_desc:') &&
-            !text.includes('error_desc: <none>'))
-        ) {
-          return 'done';
-        }
-
-        return '';
-      })()"
-    )
-
-    if (identical(state, "login") || identical(state, "done")) {
-      return(state)
-    }
-
-    Sys.sleep(interval)
-  }
-
-  stop(
-    "Timed out waiting for a Keycloak login form or auth result",
-    call. = FALSE
-  )
-}
-
-.submit_keycloak_login <- function(drv) {
-  drv$wait_for_js(
-    "
-    (function () {
-      var authState = document.querySelector('#auth_state');
-      var login = document.querySelector('#kc-login');
-      var username = document.querySelector('#username');
-      var password = document.querySelector('#password');
-      var form = document.forms.length > 0 ? document.forms[0] : null;
-      var onLoginForm = !!(
-        login &&
-        username &&
-        password &&
-        form &&
-        form.action &&
-        form.action.indexOf('/login-actions/authenticate') !== -1
-      );
-      var alreadyAuthenticated = !!(
-        authState &&
-        authState.innerText.indexOf('authenticated: TRUE') !== -1
-      );
-      return onLoginForm || alreadyAuthenticated;
-    })();
-  ",
-    timeout = 20000
-  )
-  Sys.sleep(1)
-
-  drv$run_js(
-    "
-    (function () {
-      var authState = document.querySelector('#auth_state');
-      if (
-        authState &&
-        authState.innerText.indexOf('authenticated: TRUE') !== -1
-      ) {
-        return 'already-authenticated';
-      }
-
-      var username = document.querySelector('#username');
-      var password = document.querySelector('#password');
-      var login = document.querySelector('#kc-login');
-      var form = (login && login.form) || document.forms[0];
-
-      if (!(username && password && form)) {
-        return 'login-form-missing';
-      }
-
-      username.value = 'alice';
-      password.value = 'alice';
-      username.dispatchEvent(new Event('input', { bubbles: true }));
-      password.dispatchEvent(new Event('input', { bubbles: true }));
-      username.dispatchEvent(new Event('change', { bubbles: true }));
-      password.dispatchEvent(new Event('change', { bubbles: true }));
-
-      HTMLFormElement.prototype.submit.call(form);
-      return 'submitted';
-    })();
-  "
-  )
-}
-
-.get_auth_state_robust <- function(drv, max_attempts = 10, delay = 0.5) {
-  for (i in seq_len(max_attempts)) {
-    auth_state <- drv$get_js(
-      "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
-    )
-
-    if (
-      nchar(auth_state) > 0 &&
-        (grepl("authenticated: TRUE", auth_state, fixed = TRUE) ||
-          !grepl("error_description: <none>", auth_state, fixed = TRUE))
-    ) {
-      return(trimws(auth_state))
-    }
-
-    Sys.sleep(delay)
-  }
-
-  ""
-}
-
 .request_uri_public_base_url <- function(app_port) {
   override <- Sys.getenv("SHINYOAUTH_E2E_REQUEST_URI_BASE_URL", "")
   if (nzchar(override)) {
@@ -173,26 +41,6 @@ if (!exists("make_provider", mode = "function")) {
   )
 
   invisible(base_url)
-}
-
-.is_port_in_use <- function(port) {
-  con <- suppressWarnings(try(
-    socketConnection(
-      host = "127.0.0.1",
-      port = as.integer(port),
-      server = FALSE,
-      blocking = TRUE,
-      open = "r+",
-      timeout = 1
-    ),
-    silent = TRUE
-  ))
-  if (!inherits(con, "try-error")) {
-    try(close(con), silent = TRUE)
-    return(TRUE)
-  }
-
-  FALSE
 }
 
 .repo_root <- function() {
@@ -505,7 +353,7 @@ if (!exists("make_provider", mode = "function")) {
       )
     }
 
-    if (.is_port_in_use(app_port)) {
+    if (keycloak_browser_port_in_use(app_port)) {
       return(invisible(app_process))
     }
 
@@ -531,7 +379,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT", "8100"))
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
-  if (.is_port_in_use(app_port)) {
+  if (keycloak_browser_port_in_use(app_port)) {
     testthat::skip(paste0(
       "Port ",
       app_port,
@@ -580,9 +428,9 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
 
   drv$run_js("document.querySelector('#login_btn').click();")
 
-  login_state <- .wait_for_login_or_auth_result(drv, timeout = 10000)
+  login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
-    .submit_keycloak_login(drv)
+    keycloak_submit_browser_login(drv)
   }
 
   drv$wait_for_js(
@@ -598,7 +446,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
     timeout = 20000
   )
 
-  auth_state <- .get_auth_state_robust(drv)
+  auth_state <- keycloak_get_auth_state_robust(drv)
   testthat::expect_true(
     nchar(auth_state) > 0,
     info = "The '#auth_state' content never stabilized"
@@ -648,7 +496,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT", "8100"))
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
-  if (.is_port_in_use(app_port)) {
+  if (keycloak_browser_port_in_use(app_port)) {
     testthat::skip(paste0(
       "Port ",
       app_port,
@@ -705,9 +553,9 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
 
   drv$run_js("document.querySelector('#login_btn').click();")
 
-  login_state <- .wait_for_login_or_auth_result(drv, timeout = 10000)
+  login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
-    .submit_keycloak_login(drv)
+    keycloak_submit_browser_login(drv)
   }
 
   drv$wait_for_js(
@@ -723,7 +571,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     timeout = 20000
   )
 
-  auth_state <- .get_auth_state_robust(drv)
+  auth_state <- keycloak_get_auth_state_robust(drv)
   testthat::expect_true(
     nchar(auth_state) > 0,
     info = "The '#auth_state' content never stabilized"

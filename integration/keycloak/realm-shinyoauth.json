@@ -87,6 +87,40 @@
       }
     },
     {
+      "clientId": "shiny-resource-confidential",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "http://localhost:8100/*",
+        "http://127.0.0.1:8100/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "attributes": {
+        "request.object.signature.alg": "HS256"
+      },
+      "protocolMappers": [
+        {
+          "name": "resource-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "included.custom.audience": "https://api.shinyoauth.test"
+          }
+        }
+      ]
+    },
+    {
       "clientId": "shiny-userinfo-jwt",
       "protocol": "openid-connect",
       "publicClient": false,

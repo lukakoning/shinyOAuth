@@ -84,6 +84,48 @@ maybe_skip_keycloak <- function() {
   )
 }
 
+perform_raw_introspection_request <- function(client, token_value) {
+  params <- list(
+    token = token_value,
+    token_type_hint = "access_token"
+  )
+  req <- httr2::request(client@provider@introspection_url)
+  prepared <- shinyOAuth:::apply_direct_client_auth(
+    req = req,
+    params = params,
+    client = client,
+    context = "introspect_token"
+  )
+  req <- prepared$req
+  params <- prepared$params
+
+  req <- shinyOAuth:::add_req_defaults(req)
+  req <- shinyOAuth:::req_no_redirect(req)
+  extra_headers <- as.list(client@provider@extra_token_headers)
+  if (length(extra_headers)) {
+    req <- do.call(httr2::req_headers, c(list(req), extra_headers))
+  }
+  req <- do.call(httr2::req_body_form, c(list(req), params))
+  req <- httr2::req_method(req, "POST")
+  req <- httr2::req_error(req, is_error = function(resp) FALSE)
+
+  resp <- shinyOAuth:::req_with_retry(req)
+  list(
+    status_code = httr2::resp_status(resp),
+    body = httr2::resp_body_json(resp, simplifyVector = TRUE)
+  )
+}
+
+expect_keycloak_auth_failure <- function(result) {
+  testthat::expect_identical(result$status_code, 401L)
+  testthat::expect_true(is.list(result$body))
+  testthat::expect_identical(result$body$error, "invalid_request")
+  testthat::expect_identical(
+    result$body$error_description,
+    "Authentication failed."
+  )
+}
+
 # 1) client_secret_jwt with wrong client secret -> server should reject (invalid_client)
 
 testthat::test_that("client_secret_jwt: wrong client_secret is rejected (http_ error)", {
@@ -108,9 +150,12 @@ testthat::test_that("client_secret_jwt: wrong client_secret is rejected (http_ e
     which = "access",
     async = FALSE
   )
+  raw_failure <- perform_raw_introspection_request(client, token_value)
+
   testthat::expect_true(isTRUE(res$supported))
   testthat::expect_true(is.na(res$active))
-  testthat::expect_match(res$status, "^http_", perl = TRUE)
+  testthat::expect_identical(res$status, "http_401")
+  expect_keycloak_auth_failure(raw_failure)
 })
 
 # 2) client_secret_jwt with mismatched alg from server config -> server should reject
@@ -137,9 +182,12 @@ testthat::test_that("client_secret_jwt: mismatched alg is rejected by server", {
     which = "access",
     async = FALSE
   )
+  raw_failure <- perform_raw_introspection_request(client, token_value)
+
   testthat::expect_true(isTRUE(res$supported))
   testthat::expect_true(is.na(res$active))
-  testthat::expect_match(res$status, "^http_", perl = TRUE)
+  testthat::expect_identical(res$status, "http_401")
+  expect_keycloak_auth_failure(raw_failure)
 })
 
 # 3) private_key_jwt with a non-matching private key -> server should reject
@@ -167,9 +215,12 @@ testthat::test_that("private_key_jwt: wrong private key is rejected (http_ error
     which = "access",
     async = FALSE
   )
+  raw_failure <- perform_raw_introspection_request(client, token_value)
+
   testthat::expect_true(isTRUE(res$supported))
   testthat::expect_true(is.na(res$active))
-  testthat::expect_match(res$status, "^http_", perl = TRUE)
+  testthat::expect_identical(res$status, "http_401")
+  expect_keycloak_auth_failure(raw_failure)
 })
 
 # 4) private_key_jwt with incompatible alg for the key -> local config error (no HTTP)

@@ -54,21 +54,7 @@ perform_raw_resource_request <- function(url, authorization, dpop = NULL) {
   req |> httr2::req_perform()
 }
 
-testthat::test_that("DPoP-protected resource accepts the bound key and rejects stolen or replayed proofs", {
-  skip_common()
-  local_test_options()
-  testthat::skip_if_not_installed("webfakes")
-
-  prov <- make_provider(allowed_token_types = c("Bearer", "DPoP"))
-  client <- make_dpop_public_client(prov)
-  login <- perform_dpop_login(client)
-
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_identical(login$token@token_type, "DPoP")
-
-  resource <- start_dpop_protected_resource()
-  on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
-
+expect_dpop_resource_contract <- function(resource, login, client, prov) {
   valid_resp <- shinyOAuth::resource_req(
     login$token,
     resource$url,
@@ -82,6 +68,17 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
   testthat::expect_identical(
     valid_body$token_jkt,
     access_token_cnf_jkt(login$token@access_token)
+  )
+
+  bearer_resp <- perform_raw_resource_request(
+    resource$url,
+    authorization = paste("Bearer", login$token@access_token)
+  )
+  bearer_body <- httr2::resp_body_json(bearer_resp, simplifyVector = TRUE)
+  testthat::expect_identical(httr2::resp_status(bearer_resp), 401L)
+  testthat::expect_identical(
+    bearer_body$error,
+    "missing_dpop_authorization"
   )
 
   missing_proof_resp <- perform_raw_resource_request(
@@ -144,4 +141,40 @@ testthat::test_that("DPoP-protected resource accepts the bound key and rejects s
   testthat::expect_identical(httr2::resp_status(first_replay_resp), 200L)
   testthat::expect_identical(httr2::resp_status(second_replay_resp), 401L)
   testthat::expect_identical(second_replay_body$error, "dpop_jti_replay")
+}
+
+testthat::test_that("package-backed DPoP resource accepts the bound key and rejects stolen or replayed proofs", {
+  skip_common()
+  local_test_options()
+  testthat::skip_if_not_installed("webfakes")
+
+  prov <- make_provider(allowed_token_types = c("Bearer", "DPoP"))
+  client <- make_dpop_public_client(prov)
+  login <- perform_dpop_login(client)
+
+  testthat::expect_true(isTRUE(login$authenticated))
+  testthat::expect_identical(login$token@token_type, "DPoP")
+
+  resource <- start_dpop_protected_resource(implementation = "package")
+  on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
+
+  expect_dpop_resource_contract(resource, login, client, prov)
+})
+
+testthat::test_that("independent DPoP resource accepts the bound key and rejects stolen or replayed proofs", {
+  skip_common()
+  local_test_options()
+  testthat::skip_if_not_installed("webfakes")
+
+  prov <- make_provider(allowed_token_types = c("Bearer", "DPoP"))
+  client <- make_dpop_public_client(prov)
+  login <- perform_dpop_login(client)
+
+  testthat::expect_true(isTRUE(login$authenticated))
+  testthat::expect_identical(login$token@token_type, "DPoP")
+
+  resource <- start_dpop_protected_resource(implementation = "independent")
+  on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
+
+  expect_dpop_resource_contract(resource, login, client, prov)
 })
