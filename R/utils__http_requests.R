@@ -221,6 +221,66 @@ apply_direct_client_auth <- function(req, params, client, context) {
   list(req = req, params = params)
 }
 
+#' Attach per-attempt JWT client-assertion rebuilding to a request
+#'
+#' OpenID Connect JWT client assertions are single-use credentials. When a
+#' request may be retried, the form body must be rebuilt with a fresh
+#' `client_assertion` (and therefore a fresh `jti`) for each attempt.
+#'
+#' @param req httr2 request object with the original body already attached.
+#' @param params Named request-parameter list used to build that body.
+#' @param client OAuth client carrying auth configuration.
+#' @param context Phase label used when rebuilding direct client auth.
+#' @param body_mode Either `"encoded"` for `req_body_form_encoded()` or
+#'   `"form"` for `httr2::req_body_form()`.
+#' @return Updated request. Non-JWT client-auth styles are returned unchanged.
+#' @keywords internal
+#' @noRd
+req_refresh_jwt_client_assertion_on_retry <- function(
+  req,
+  params,
+  client,
+  context,
+  body_mode = c("encoded", "form")
+) {
+  if (!inherits(req, "httr2_request")) {
+    return(req)
+  }
+
+  S7::check_is_S7(client, class = OAuthClient)
+
+  tas <- normalize_token_auth_style(
+    client@provider@token_auth_style %||% "header"
+  )
+  if (
+    !(identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt"))
+  ) {
+    return(req)
+  }
+
+  body_mode <- match.arg(body_mode)
+  base_params <- compact_list(params)
+
+  req$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
+    prepared <- apply_direct_client_auth(
+      req = attempt_req,
+      params = base_params,
+      client = client,
+      context = context
+    )
+    attempt_req <- prepared$req
+    attempt_params <- compact_list(prepared$params)
+
+    if (identical(body_mode, "encoded")) {
+      return(req_body_form_encoded(attempt_req, attempt_params))
+    }
+
+    do.call(httr2::req_body_form, c(list(attempt_req), attempt_params))
+  }
+
+  req
+}
+
 #' Internal: resolve max body bytes from option
 #'
 #' Used by request defaults and response-size guards.

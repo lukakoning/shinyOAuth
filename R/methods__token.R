@@ -176,6 +176,13 @@ revoke_token <- function(
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
         req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- req_refresh_jwt_client_assertion_on_retry(
+          req = req,
+          params = params,
+          client = oauth_client,
+          context = "revoke_token",
+          body_mode = "form"
+        )
         req <- httr2::req_method(req, "POST")
         req <- httr2::req_error(req, is_error = function(resp) FALSE)
         resp <- with_otel_span(
@@ -463,6 +470,13 @@ introspect_token <- function(
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
         req <- do.call(httr2::req_body_form, c(list(req), params))
+        req <- req_refresh_jwt_client_assertion_on_retry(
+          req = req,
+          params = params,
+          client = oauth_client,
+          context = "introspect_token",
+          body_mode = "form"
+        )
         req <- httr2::req_method(req, "POST")
         req <- httr2::req_error(req, is_error = function(resp) FALSE)
         resp <- with_otel_span(

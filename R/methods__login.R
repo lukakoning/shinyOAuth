@@ -491,6 +491,13 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       }
 
       req <- req_body_form_encoded(req, compact_list(params))
+      req <- req_refresh_jwt_client_assertion_on_retry(
+        req = req,
+        params = params,
+        client = client,
+        context = "pushed_authorization_request",
+        body_mode = "encoded"
+      )
       req <- httr2::req_method(req, "POST")
 
       resp <- with_otel_span(

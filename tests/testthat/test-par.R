@@ -726,6 +726,62 @@ test_that("client_secret_jwt PAR request sends client assertion and omits secret
   expect_false("client_secret" %in% names(captured))
 })
 
+test_that("client_secret_jwt PAR retries rebuild client assertions", {
+  cli <- make_par_test_client(
+    token_auth_style = "client_secret_jwt",
+    client_secret = paste(rep("s", 32), collapse = "")
+  )
+  seen_jtis <- character(0)
+
+  withr::local_options(list(
+    shinyOAuth.retry_max_tries = 2L,
+    shinyOAuth.retry_backoff_base = 0.01,
+    shinyOAuth.retry_backoff_cap = 0.01
+  ))
+
+  testthat::local_mocked_bindings(
+    req_perform = function(req) {
+      body_text <- request_body_text(req)
+      assertion <- parse_query_param(
+        paste0("https://example.com/?", body_text),
+        "client_assertion",
+        decode = TRUE
+      )
+      payload <- shinyOAuth:::parse_jwt_payload(assertion)
+      seen_jtis <<- c(seen_jtis, payload$jti %||% NA_character_)
+
+      if (length(seen_jtis) == 1L) {
+        return(httr2::response(
+          url = as.character(req$url),
+          status = 500,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        ))
+      }
+
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    Sys.sleep = function(time) invisible(NULL),
+    .package = "base"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(auth_url, "request_uri=")
+  expect_length(seen_jtis, 2L)
+  expect_length(unique(seen_jtis), 2L)
+})
+
 test_that("PAR body auth omits client_secret for public clients and keeps extra headers", {
   cli <- make_par_test_client(
     token_auth_style = "body",
