@@ -45,7 +45,8 @@ make_par_test_client <- function(
   client_assertion_audience = NULL,
   par_url = "https://example.com/par",
   issuer = NA_character_,
-  dpop_private_key = NULL
+  dpop_private_key = NULL,
+  authorization_request_front_channel_mode = "compat"
 ) {
   prov <- oauth_provider(
     name = "example",
@@ -53,6 +54,7 @@ make_par_test_client <- function(
     token_url = "https://example.com/token",
     par_url = par_url,
     issuer = issuer,
+    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = token_auth_style,
@@ -129,6 +131,45 @@ test_that("prepare_call pushes authorization params and redirects with request_u
   expect_match(body_text, "state=")
   expect_match(body_text, "code_challenge=")
   expect_match(body_text, "code_challenge_method=S256")
+})
+
+test_that("PAR minimal front-channel mode omits duplicated OIDC params", {
+  cli <- make_par_test_client(
+    issuer = "https://issuer.example.com",
+    scopes = c("openid"),
+    authorization_request_front_channel_mode = "minimal"
+  )
+  body_text <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_text <<- request_body_text(req)
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(
+    auth_url,
+    "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
+  )
+  expect_match(auth_url, "client_id=abc")
+  expect_false(grepl("[?&]response_type=", auth_url))
+  expect_false(grepl("[?&]scope=", auth_url))
+
+  expect_match(body_text, "response_type=code")
+  expect_match(body_text, "client_id=abc")
+  expect_match(body_text, "scope=openid")
+  expect_match(body_text, "redirect_uri=http%3A%2F%2Flocalhost%3A8100")
 })
 
 test_that("PAR requests keep nonce-challenge retries enabled", {

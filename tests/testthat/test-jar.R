@@ -10,9 +10,17 @@ query_param_names <- function(url) {
 }
 
 oidc_request_url_param_names <- function(
-  transport = c("request", "request_uri")
+  transport = c("request", "request_uri"),
+  front_channel_mode = c("compat", "minimal")
 ) {
-  c("client_id", "response_type", "scope", match.arg(transport))
+  transport <- match.arg(transport)
+  front_channel_mode <- match.arg(front_channel_mode)
+
+  if (identical(front_channel_mode, "minimal")) {
+    return(c("client_id", transport))
+  }
+
+  c("client_id", "response_type", "scope", transport)
 }
 
 oauth_request_url_param_names <- function(
@@ -66,7 +74,8 @@ make_jar_test_provider <- function(
   request_object_encryption_jwk = NULL,
   request_uri_parameter_supported = NA,
   require_request_uri_registration = NA,
-  require_signed_request_object = FALSE
+  require_signed_request_object = FALSE,
+  authorization_request_front_channel_mode = "compat"
 ) {
   do.call(
     shinyOAuth::oauth_provider,
@@ -84,6 +93,7 @@ make_jar_test_provider <- function(
       request_uri_parameter_supported = request_uri_parameter_supported,
       require_request_uri_registration = require_request_uri_registration,
       require_signed_request_object = require_signed_request_object,
+      authorization_request_front_channel_mode = authorization_request_front_channel_mode,
       use_nonce = use_nonce,
       use_pkce = TRUE,
       token_auth_style = token_auth_style,
@@ -770,6 +780,51 @@ test_that("request mode through PAR pushes encrypted request objects", {
   expect_identical(outer$header$cty, "JWT")
   expect_identical(inner_pl$client_id, "abc")
   expect_identical(inner_pl$redirect_uri, "http://localhost:8100")
+})
+
+test_that("request_uri minimal front-channel mode omits duplicated OIDC params", {
+  published <- NULL
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(
+      authorization_request_front_channel_mode = "minimal"
+    ),
+    authorization_request_mode = "request_uri"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    cli,
+    valid_browser_token(),
+    request_uri_publisher = function(
+      request_object,
+      request_handle_id,
+      expires_at,
+      oauth_client
+    ) {
+      published <<- list(
+        request_object = request_object,
+        request_handle_id = request_handle_id,
+        expires_at = expires_at,
+        client_id = oauth_client@client_id
+      )
+      "https://client.example.com/minimal-request-object"
+    }
+  )
+
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri", "minimal")
+  )
+  expect_false(grepl("[?&]response_type=", auth_url))
+  expect_false(grepl("[?&]scope=", auth_url))
+  expect_identical(
+    parse_query_param(auth_url, "request_uri", decode = TRUE),
+    "https://client.example.com/minimal-request-object"
+  )
+
+  request_payload <- shinyOAuth:::parse_jwt_payload(published$request_object)
+  expect_identical(request_payload$client_id, "abc")
+  expect_identical(request_payload$response_type, "code")
+  expect_identical(request_payload$scope, "openid profile")
 })
 
 

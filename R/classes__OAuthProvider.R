@@ -36,6 +36,13 @@
 #' @param require_pushed_authorization_requests Logical. Whether the provider
 #'   requires authorization requests to be sent via PAR. When `TRUE`,
 #'   `par_url` must also be configured.
+#' @param authorization_request_front_channel_mode Character scalar controlling
+#'   which browser-visible outer parameters shinyOAuth keeps when the actual
+#'   authorization request is carried by JAR or PAR. Use `"compat"`
+#'   (default) to keep the current OIDC-compatible shape with outer
+#'   `client_id`, `response_type`, and `scope` when an issuer is configured.
+#'   Use `"minimal"` for stricter authorization servers that expect only
+#'   `client_id` alongside `request` or `request_uri`.
 #' @param request_object_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed Request Objects (RFC
 #'   9101). This is mainly used for early validation when an [OAuthClient]
@@ -343,6 +350,10 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
+    authorization_request_front_channel_mode = S7::new_property(
+      S7::class_character,
+      default = "compat"
+    ),
     request_object_signing_alg_values_supported = S7::new_property(
       S7::class_character,
       default = character()
@@ -528,6 +539,7 @@ oauth_provider <- function(
   revocation_url = NA_character_,
   par_url = NA_character_,
   require_pushed_authorization_requests = FALSE,
+  authorization_request_front_channel_mode = "compat",
   request_object_signing_alg_values_supported = character(),
   request_object_encryption_alg_values_supported = character(),
   request_object_encryption_enc_values_supported = character(),
@@ -699,6 +711,10 @@ oauth_provider <- function(
     issuer_match,
     choices = c("url", "host", "none")
   )
+  authorization_request_front_channel_mode <- match.arg(
+    authorization_request_front_channel_mode,
+    choices = c("compat", "minimal")
+  )
   token_auth_style <- normalize_token_auth_style(token_auth_style)
 
   # Normalize and validate allowed_algs
@@ -804,6 +820,7 @@ oauth_provider <- function(
     require_pushed_authorization_requests = isTRUE(
       require_pushed_authorization_requests
     ),
+    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
     request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
@@ -1223,6 +1240,19 @@ oauth_provider_validate <- function(self) {
       paste(
         "OAuthProvider: require_pushed_authorization_requests = TRUE",
         "requires par_url"
+      )
+    )
+  }
+  if (
+    !(is.character(self@authorization_request_front_channel_mode) &&
+      length(self@authorization_request_front_channel_mode) == 1L &&
+      !is.na(self@authorization_request_front_channel_mode) &&
+      self@authorization_request_front_channel_mode %in% c("compat", "minimal"))
+  ) {
+    return(
+      paste(
+        "OAuthProvider: authorization_request_front_channel_mode",
+        "must be one of 'compat' or 'minimal'"
       )
     )
   }

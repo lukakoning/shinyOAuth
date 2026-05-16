@@ -13,6 +13,7 @@ OAuthProvider(
   revocation_url = NA_character_,
   par_url = NA_character_,
   require_pushed_authorization_requests = FALSE,
+  authorization_request_front_channel_mode = "compat",
   request_object_signing_alg_values_supported = character(0),
   request_object_encryption_alg_values_supported = character(0),
   request_object_encryption_enc_values_supported = character(0),
@@ -75,6 +76,14 @@ their provider specifically supports or requires PAR.}
 \item{require_pushed_authorization_requests}{Logical. Whether the provider
 requires authorization requests to be sent via PAR. When \code{TRUE},
 \code{par_url} must also be configured.}
+
+\item{authorization_request_front_channel_mode}{Character scalar controlling
+which browser-visible outer parameters shinyOAuth keeps when the actual
+authorization request is carried by JAR or PAR. Use \code{"compat"}
+(default) to keep the current OIDC-compatible shape with outer
+\code{client_id}, \code{response_type}, and \code{scope} when an issuer is configured.
+Use \code{"minimal"} for stricter authorization servers that expect only
+\code{client_id} alongside \code{request} or \code{request_uri}.}
 
 \item{request_object_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed Request Objects (RFC

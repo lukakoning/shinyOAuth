@@ -767,8 +767,11 @@ build_auth_url <- function(
     pkce_method = pkce_method,
     nonce = nonce
   )
+  front_channel_mode <-
+    oauth_client@provider@authorization_request_front_channel_mode %||% "compat"
   front_channel_params <- if (
-    is_valid_string(oauth_client@provider@issuer %||% NA_character_)
+    identical(front_channel_mode, "compat") &&
+      is_valid_string(oauth_client@provider@issuer %||% NA_character_)
   ) {
     compact_list(list(
       client_id = oauth_client@client_id,
