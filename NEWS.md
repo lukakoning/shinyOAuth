@@ -28,6 +28,10 @@ token exchange/refresh, userinfo/introspection/revocation, and session-end
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
 information.
 
+* Successful token and refresh responses now always require `token_type`, even
+  when `allowed_token_types = character()`. An empty allowlist still disables
+  value allowlisting, but it no longer waives the RFC-required field.
+
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive
   login now reuses a single flow `trace_id` across redirect issuance, callback

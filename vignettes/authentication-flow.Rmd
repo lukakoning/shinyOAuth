@@ -238,8 +238,9 @@ After a successful response, 'shinyOAuth' also checks two basic things:
 
 - If the token response includes `scope`, 'shinyOAuth' can reconcile it against the requested scopes (defaults to strict
   enforcement; configurable via the client `scope_validation` setting)
-- If the provider was configured with a non-empty `allowed_token_types`, the token response must include `token_type`
-  and its value must be one of the allowed types (case-insensitive, e.g., `Bearer`)
+- The token response must include `token_type`; if the provider was configured with a non-empty
+  `allowed_token_types`, that value must also be one of the allowed types (case-insensitive,
+  e.g., `Bearer`)
 
 #### What changes when mTLS is enabled (RFC 8705)
 

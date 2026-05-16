@@ -1,4 +1,4 @@
-test_that("when allowed_token_types is empty, missing token_type is allowed", {
+test_that("when allowed_token_types is empty, missing token_type errors", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -35,24 +35,26 @@ test_that("when allowed_token_types is empty, missing token_type is allowed", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  token <- testthat::with_mocked_bindings(
-    swap_code_for_token_set = function(client, code, code_verifier) {
-      # No token_type field returned
-      list(access_token = "t", expires_in = 5)
-    },
-    .package = "shinyOAuth",
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "ok",
-      payload = enc,
-      browser_token = tok
-    )
+  expect_error(
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        # No token_type field returned
+        list(access_token = "t", expires_in = 5)
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
+      )
+    ),
+    regexp = "missing token_type|token_type",
+    class = "shinyOAuth_token_error"
   )
-  expect_s3_class(token, "S7_object")
-  expect_true(is.character(token@access_token))
 })
 
-test_that("DPoP clients keep empty allowed_token_types as a callback opt-out", {
+test_that("DPoP clients still reject missing token_type on callback", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- character(0)
 
@@ -75,24 +77,25 @@ test_that("DPoP clients keep empty allowed_token_types as a callback opt-out", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  token <- testthat::with_mocked_bindings(
-    swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "t", expires_in = 5)
-    },
-    .package = "shinyOAuth",
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "ok",
-      payload = enc,
-      browser_token = tok
-    )
+  expect_error(
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(access_token = "t", expires_in = 5)
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
+      )
+    ),
+    regexp = "missing token_type|token_type",
+    class = "shinyOAuth_token_error"
   )
-
-  expect_s3_class(token, "S7_object")
-  expect_identical(token@access_token, "t")
 })
 
-test_that("callback carries forward effective DPoP token_type for userinfo when omitted", {
+test_that("callback rejects missing token_type before DPoP userinfo", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- character(0)
   prov@userinfo_url <- "https://example.com/userinfo"
@@ -119,38 +122,40 @@ test_that("callback carries forward effective DPoP token_type for userinfo when 
   seen <- new.env(parent = emptyenv())
   seen$token_type <- NA_character_
 
-  token <- testthat::with_mocked_bindings(
-    swap_code_for_token_set = function(client, code, code_verifier) {
-      list(
-        access_token = "t",
-        cnf = list(jkt = shinyOAuth:::client_dpop_jkt(cli)),
-        expires_in = 5
+  expect_error(
+    testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(
+          access_token = "t",
+          cnf = list(jkt = shinyOAuth:::client_dpop_jkt(cli)),
+          expires_in = 5
+        )
+      },
+      get_userinfo = function(
+        oauth_client,
+        token,
+        token_type = NULL,
+        shiny_session = NULL
+      ) {
+        seen$token_type <- token@token_type
+        list(sub = "user-1")
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
       )
-    },
-    get_userinfo = function(
-      oauth_client,
-      token,
-      token_type = NULL,
-      shiny_session = NULL
-    ) {
-      seen$token_type <- token@token_type
-      list(sub = "user-1")
-    },
-    .package = "shinyOAuth",
-    shinyOAuth:::handle_callback(
-      cli,
-      code = "ok",
-      payload = enc,
-      browser_token = tok
-    )
+    ),
+    regexp = "missing token_type|token_type",
+    class = "shinyOAuth_token_error"
   )
 
-  expect_identical(seen$token_type, "DPoP")
-  expect_identical(token@token_type, "DPoP")
-  expect_identical(token@userinfo$sub, "user-1")
+  expect_true(is.na(seen$token_type))
 })
 
-test_that("DPoP clients keep empty allowed_token_types as a refresh opt-out", {
+test_that("DPoP clients still reject missing token_type on refresh", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- character(0)
 
@@ -191,13 +196,14 @@ test_that("DPoP clients keep empty allowed_token_types as a refresh opt-out", {
     .package = "shinyOAuth"
   )
 
-  refreshed <- refresh_token(cli, token, async = FALSE, introspect = FALSE)
-
-  expect_identical(refreshed@access_token, "new-at")
-  expect_identical(refreshed@refresh_token, "refresh-2")
+  expect_error(
+    refresh_token(cli, token, async = FALSE, introspect = FALSE),
+    regexp = "missing token_type|token_type",
+    class = "shinyOAuth_token_error"
+  )
 })
 
-test_that("refresh carries forward effective DPoP token_type for userinfo when omitted", {
+test_that("refresh rejects missing token_type before DPoP userinfo", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@allowed_token_types <- character(0)
   prov@userinfo_url <- "https://example.com/userinfo"
@@ -256,11 +262,13 @@ test_that("refresh carries forward effective DPoP token_type for userinfo when o
     .package = "shinyOAuth"
   )
 
-  refreshed <- refresh_token(cli, token, async = FALSE, introspect = FALSE)
+  expect_error(
+    refresh_token(cli, token, async = FALSE, introspect = FALSE),
+    regexp = "missing token_type|token_type",
+    class = "shinyOAuth_token_error"
+  )
 
-  expect_identical(seen$token_type, "DPoP")
-  expect_identical(refreshed@token_type, "DPoP")
-  expect_identical(refreshed@userinfo$sub, "user-1")
+  expect_true(is.na(seen$token_type))
 })
 
 test_that("when allowed_token_types is non-empty, missing token_type errors", {

@@ -363,16 +363,16 @@ server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
-returned by the token endpoint (case-insensitive). When non-empty, the
-token response MUST include \code{token_type} and it must be one of the allowed
-values; otherwise the flow fails fast with a \code{shinyOAuth_token_error}.
-When empty, no check is performed and \code{token_type} may be omitted by the
-provider. The \code{\link[=oauth_provider]{oauth_provider()}} helper defaults to \code{c("Bearer")}. When
-the \link{OAuthClient} is configured with \code{dpop_private_key}, shinyOAuth also
-accepts \code{token_type = "DPoP"} and uses DPoP proofs on supported token and
-downstream requests. Other non-Bearer token types (for example \code{MAC}) still
-fail fast rather than being misused. Set \code{allowed_token_types = character()}
-explicitly to opt out of enforcement.}
+returned by the token endpoint (case-insensitive). Successful token
+responses must always include \code{token_type}; when \code{allowed_token_types} is
+non-empty, its value must also be one of the allowed values or the flow
+fails fast with a \code{shinyOAuth_token_error}. The \code{\link[=oauth_provider]{oauth_provider()}} helper
+defaults to \code{c("Bearer")}. When the \link{OAuthClient} is configured with
+\code{dpop_private_key}, shinyOAuth also accepts \code{token_type = "DPoP"} and uses
+DPoP proofs on supported token and downstream requests. Other non-Bearer
+token types (for example \code{MAC}) still fail fast rather than being misused.
+Set \code{allowed_token_types = character()} explicitly only to disable the
+value allowlist while still requiring \code{token_type} itself.}
 
 \item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
 and state payload \code{issued_at} future check. Default 30. Can be globally

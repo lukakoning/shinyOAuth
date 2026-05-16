@@ -298,16 +298,16 @@
 #'   server-side and is never shipped to, or derivable by, the browser or other
 #'   untrusted environments.
 #' @param allowed_token_types Character vector of acceptable OAuth token types
-#'   returned by the token endpoint (case-insensitive). When non-empty, the
-#'   token response MUST include `token_type` and it must be one of the allowed
-#'   values; otherwise the flow fails fast with a `shinyOAuth_token_error`.
-#'   When empty, no check is performed and `token_type` may be omitted by the
-#'   provider. The [oauth_provider()] helper defaults to `c("Bearer")`. When
-#'   the [OAuthClient] is configured with `dpop_private_key`, shinyOAuth also
-#'   accepts `token_type = "DPoP"` and uses DPoP proofs on supported token and
-#'   downstream requests. Other non-Bearer token types (for example `MAC`) still
-#'   fail fast rather than being misused. Set `allowed_token_types = character()`
-#'   explicitly to opt out of enforcement.
+#'   returned by the token endpoint (case-insensitive). Successful token
+#'   responses must always include `token_type`; when `allowed_token_types` is
+#'   non-empty, its value must also be one of the allowed values or the flow
+#'   fails fast with a `shinyOAuth_token_error`. The [oauth_provider()] helper
+#'   defaults to `c("Bearer")`. When the [OAuthClient] is configured with
+#'   `dpop_private_key`, shinyOAuth also accepts `token_type = "DPoP"` and uses
+#'   DPoP proofs on supported token and downstream requests. Other non-Bearer
+#'   token types (for example `MAC`) still fail fast rather than being misused.
+#'   Set `allowed_token_types = character()` explicitly only to disable the
+#'   value allowlist while still requiring `token_type` itself.
 #'
 #' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
 #'   and state payload `issued_at` future check. Default 30. Can be globally
@@ -749,7 +749,8 @@ oauth_provider <- function(
   # Default to Bearer for all providers. If an OAuthClient later enables DPoP
   # via dpop_private_key, shinyOAuth also accepts token_type = DPoP
   # automatically; other non-Bearer token types still fail fast rather than
-  # being misused. Set allowed_token_types = character() to opt out.
+  # being misused. Set allowed_token_types = character() to disable the value
+  # allowlist while still requiring token_type.
   if (is.null(allowed_token_types)) {
     allowed_token_types <- c("Bearer")
   }
