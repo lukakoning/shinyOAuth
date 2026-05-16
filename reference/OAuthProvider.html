@@ -502,16 +502,16 @@ untrusted environments.</p></dd>
 
 <dt id="arg-allowed-token-types">allowed_token_types<a class="anchor" aria-label="anchor" href="#arg-allowed-token-types"></a></dt>
 <dd><p>Character vector of acceptable OAuth token types
-returned by the token endpoint (case-insensitive). When non-empty, the
-token response MUST include <code>token_type</code> and it must be one of the allowed
-values; otherwise the flow fails fast with a <code>shinyOAuth_token_error</code>.
-When empty, no check is performed and <code>token_type</code> may be omitted by the
-provider. The <code><a href="oauth_provider.html">oauth_provider()</a></code> helper defaults to <code>c("Bearer")</code>. When
-the <a href="OAuthClient.html">OAuthClient</a> is configured with <code>dpop_private_key</code>, shinyOAuth also
-accepts <code>token_type = "DPoP"</code> and uses DPoP proofs on supported token and
-downstream requests. Other non-Bearer token types (for example <code>MAC</code>) still
-fail fast rather than being misused. Set <code>allowed_token_types = character()</code>
-explicitly to opt out of enforcement.</p></dd>
+returned by the token endpoint (case-insensitive). Successful token
+responses must always include <code>token_type</code>; when <code>allowed_token_types</code> is
+non-empty, its value must also be one of the allowed values or the flow
+fails fast with a <code>shinyOAuth_token_error</code>. The <code><a href="oauth_provider.html">oauth_provider()</a></code> helper
+defaults to <code>c("Bearer")</code>. When the <a href="OAuthClient.html">OAuthClient</a> is configured with
+<code>dpop_private_key</code>, shinyOAuth also accepts <code>token_type = "DPoP"</code> and uses
+DPoP proofs on supported token and downstream requests. Other non-Bearer
+token types (for example <code>MAC</code>) still fail fast rather than being misused.
+Set <code>allowed_token_types = character()</code> explicitly only to disable the
+value allowlist while still requiring <code>token_type</code> itself.</p></dd>
 
 
 <dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>

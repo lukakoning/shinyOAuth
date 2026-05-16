@@ -492,11 +492,10 @@ OAuthProvider(
 - allowed_token_types:
 
   Character vector of acceptable OAuth token types returned by the token
-  endpoint (case-insensitive). When non-empty, the token response MUST
-  include `token_type` and it must be one of the allowed values;
-  otherwise the flow fails fast with a `shinyOAuth_token_error`. When
-  empty, no check is performed and `token_type` may be omitted by the
-  provider. The
+  endpoint (case-insensitive). Successful token responses must always
+  include `token_type`; when `allowed_token_types` is non-empty, its
+  value must also be one of the allowed values or the flow fails fast
+  with a `shinyOAuth_token_error`. The
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
   helper defaults to `c("Bearer")`. When the
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
@@ -504,8 +503,8 @@ OAuthProvider(
   `token_type = "DPoP"` and uses DPoP proofs on supported token and
   downstream requests. Other non-Bearer token types (for example `MAC`)
   still fail fast rather than being misused. Set
-  `allowed_token_types = character()` explicitly to opt out of
-  enforcement.
+  `allowed_token_types = character()` explicitly only to disable the
+  value allowlist while still requiring `token_type` itself.
 
 - leeway:
 

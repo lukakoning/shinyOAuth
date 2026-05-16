@@ -273,6 +273,11 @@
     so EdDSA UserInfo JWTs can verify correctly, provider `leeway` is
     honored consistently, and invalid `typ` headers are rejected.
 
+- Successful token and refresh responses now always require
+  `token_type`, even when `allowed_token_types = character()`. An empty
+  allowlist still disables value allowlisting, but it no longer waives
+  the RFC-required field.
+
 - Token exchange and refresh requests no longer retry on transport
   errors or transient HTTP statuses (408/429/5xx). Authorization codes
   are single-use and refresh tokens may be rotated on each use; retrying

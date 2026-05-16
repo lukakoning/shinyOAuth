@@ -264,9 +264,9 @@ After a successful response, ‘shinyOAuth’ also checks two basic things:
 - If the token response includes `scope`, ‘shinyOAuth’ can reconcile it
   against the requested scopes (defaults to strict enforcement;
   configurable via the client `scope_validation` setting)
-- If the provider was configured with a non-empty `allowed_token_types`,
-  the token response must include `token_type` and its value must be one
-  of the allowed types (case-insensitive, e.g., `Bearer`)
+- The token response must include `token_type`; if the provider was
+  configured with a non-empty `allowed_token_types`, that value must
+  also be one of the allowed types (case-insensitive, e.g., `Bearer`)
 
 #### What changes when mTLS is enabled (RFC 8705)
 
@@ -408,13 +408,10 @@ userinfo call as protected-resource access: it uses the mTLS alias for
 TLS connection, and requires the token’s `cnf.x5t#S256` thumbprint to
 match that certificate before making the request.
 
-When a refresh response omits any new observable `cnf`, ‘shinyOAuth’ may
-preserve the previous `x5t#S256` thumbprint so later mTLS resource
-requests keep using the same sender-constrained path only when
-refresh-time introspection is not being used. Treat that preserved
-thumbprint as continuity state rather than fresh proof of binding for
-the new token. When `oauth_client(introspect = TRUE)`, ‘shinyOAuth’
-keeps mTLS binding only if the new token or its introspection response
+When a refresh response omits any new observable `cnf`, ‘shinyOAuth’
+does not carry forward the previous `x5t#S256` thumbprint onto the
+refreshed token. Refreshed access tokens keep mTLS sender-constrained
+state only when the new token itself, or its introspection response,
 supplies fresh `cnf` data.
 
 The userinfo endpoint may return either a standard JSON response or,

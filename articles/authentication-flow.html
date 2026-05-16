@@ -360,10 +360,10 @@ things:</p>
 reconcile it against the requested scopes (defaults to strict
 enforcement; configurable via the client <code>scope_validation</code>
 setting)</li>
-<li>If the provider was configured with a non-empty
-<code>allowed_token_types</code>, the token response must include
-<code>token_type</code> and its value must be one of the allowed types
-(case-insensitive, e.g., <code>Bearer</code>)</li>
+<li>The token response must include <code>token_type</code>; if the
+provider was configured with a non-empty
+<code>allowed_token_types</code>, that value must also be one of the
+allowed types (case-insensitive, e.g., <code>Bearer</code>)</li>
 </ul>
 <div class="section level4">
 <h4 id="what-changes-when-mtls-is-enabled-rfc-8705">What changes when mTLS is enabled (RFC 8705)<a class="anchor" aria-label="anchor" href="#what-changes-when-mtls-is-enabled-rfc-8705"></a>
@@ -529,14 +529,10 @@ certificate on the TLS connection, and requires the token’s
 <code>cnf.x5t#S256</code> thumbprint to match that certificate before
 making the request.</p>
 <p>When a refresh response omits any new observable <code>cnf</code>,
-‘shinyOAuth’ may preserve the previous <code>x5t#S256</code> thumbprint
-so later mTLS resource requests keep using the same sender-constrained
-path only when refresh-time introspection is not being used. Treat that
-preserved thumbprint as continuity state rather than fresh proof of
-binding for the new token. When
-<code>oauth_client(introspect = TRUE)</code>, ‘shinyOAuth’ keeps mTLS
-binding only if the new token or its introspection response supplies
-fresh <code>cnf</code> data.</p>
+‘shinyOAuth’ does not carry forward the previous <code>x5t#S256</code>
+thumbprint onto the refreshed token. Refreshed access tokens keep mTLS
+sender-constrained state only when the new token itself, or its
+introspection response, supplies fresh <code>cnf</code> data.</p>
 <p>The userinfo endpoint may return either a standard JSON response or,
 less commonly, a JWT response (per OIDC Core section 5.3.2). When the
 endpoint returns <code>Content-Type: application/jwt</code>, the body is
