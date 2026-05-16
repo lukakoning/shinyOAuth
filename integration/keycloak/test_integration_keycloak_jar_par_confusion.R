@@ -4,9 +4,11 @@
 ## not exercise the real browser cookie boundary; browser-boundary behavior is
 ## covered by the *_browser*.R and *_e2e.R tests.
 ##
-## PAR proves outer-parameter precedence here. The JAR case records the current
-## Keycloak fixture behavior when conflicting outer parameters are appended to a
-## signed Request Object so the suite does not overclaim JAR-alone protection.
+## PAR proves full outer-parameter precedence here. With the OIDC-required
+## outer response_type and scope preserved on Request Object URLs, the direct
+## JAR case proves this Keycloak fixture still honors the signed Request Object
+## for redirect_uri, state, nonce, and code_challenge when conflicting outer
+## parameters are appended in the browser-visible redirect.
 ## `request_uri` client binding is asserted separately in
 ## `test_integration_keycloak_par_unhappy.R` because that behavior is distinct
 ## from duplicate-parameter precedence.
@@ -217,7 +219,7 @@ pkce_code_challenge_from_verifier <- function(verifier, method = "S256") {
   shinyOAuth:::base64url_encode(digest)
 }
 
-expect_jar_outer_params_are_reflected <- function(client) {
+expect_jar_outer_params_do_not_override <- function(client) {
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
@@ -225,41 +227,46 @@ expect_jar_outer_params_are_reflected <- function(client) {
       auth_url <- values$build_auth_url()
       request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
       payload <- decode_compact_jwt_payload(request_jwt)
+      state <- get_state_store_entry(client, auth_url)
+      original_challenge <- pkce_code_challenge_from_verifier(
+        state$entry$pkce_code_verifier,
+        client@provider@pkce_method
+      )
       tampered_url <- tamper_outer_authorization_url(
         auth_url,
         include_client_id = FALSE
       )
       login <- perform_login_form(
         tampered_url,
-        redirect_uri = "http://localhost:3000"
+        redirect_uri = client@redirect_uri
       )
 
       testthat::expect_true(
-        startsWith(login$callback_url %||% "", attacker_outer_redirect_uri),
-        info = login$callback_url %||% "<no callback>"
-      )
-      testthat::expect_false(
         startsWith(login$callback_url %||% "", client@redirect_uri),
         info = login$callback_url %||% "<no callback>"
       )
-      testthat::expect_identical(login$state_payload, attacker_outer_state)
+      testthat::expect_false(
+        startsWith(login$callback_url %||% "", attacker_outer_redirect_uri),
+        info = login$callback_url %||% "<no callback>"
+      )
+      testthat::expect_identical(login$state_payload, payload$state)
       testthat::expect_identical(payload$redirect_uri, client@redirect_uri)
       testthat::expect_identical(payload$client_id, client@client_id)
       testthat::expect_false(identical(payload$state, attacker_outer_state))
-      testthat::expect_match(
-        parse_query_param(login$callback_url, "error", decode = TRUE),
-        "invalid_request",
-        ignore.case = TRUE
+      testthat::expect_false(identical(
+        login$state_payload,
+        attacker_outer_state
+      ))
+      testthat::expect_true(is.na(parse_query_param(
+        login$callback_url,
+        "error",
+        decode = TRUE
+      )))
+      testthat::expect_true(
+        is.character(state$entry$nonce) && nzchar(state$entry$nonce)
       )
-      testthat::expect_match(
-        parse_query_param(
-          login$callback_url,
-          "error_description",
-          decode = TRUE
-        ),
-        "Missing(\\+| )parameter:(\\+| )response_type",
-        perl = TRUE
-      )
+      testthat::expect_identical(payload$nonce, state$entry$nonce)
+      testthat::expect_identical(payload$code_challenge, original_challenge)
       testthat::expect_true(
         is.character(payload$nonce) && nzchar(payload$nonce)
       )
@@ -363,7 +370,7 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
   )
 }
 
-testthat::test_that("JAR signed request object in this Keycloak fixture still reflects conflicting outer parameters", {
+testthat::test_that("JAR signed request object ignores conflicting outer redirect_uri, state, nonce, and code_challenge", {
   skip_common()
   local_test_options()
 
@@ -372,10 +379,10 @@ testthat::test_that("JAR signed request object in this Keycloak fixture still re
   )
   client <- make_hmac_jar_client(prov)
 
-  expect_jar_outer_params_are_reflected(client)
+  expect_jar_outer_params_do_not_override(client)
 })
 
-testthat::test_that("reflected JAR invalid_request callback is rejected without consuming the legitimate state", {
+testthat::test_that("tampered JAR outer parameters still authenticate using the legitimate callback state", {
   skip_common()
   local_test_options()
 
@@ -394,45 +401,22 @@ testthat::test_that("reflected JAR invalid_request callback is rejected without 
         auth_url,
         include_client_id = FALSE
       )
-      reflected_error <- perform_login_form(
+      tampered_login <- perform_login_form(
         tampered_url,
-        redirect_uri = "http://localhost:3000"
-      )
-      reflected_description <- parse_query_param(
-        reflected_error$callback_url,
-        "error_description",
-        decode = TRUE
-      )
-
-      values$.process_query(callback_query(reflected_error))
-      session$flushReact()
-
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(is.null(values$token))
-      testthat::expect_identical(values$error, "invalid_state")
-      testthat::expect_match(
-        values$error_description %||% "",
-        "state",
-        ignore.case = TRUE
-      )
-      testthat::expect_false(identical(
-        values$error_description %||% "",
-        reflected_description %||% ""
-      ))
-      testthat::expect_false(is.null(client@state_store$get(
-        state_info$key,
-        missing = NULL
-      )))
-
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
-
-      legitimate_login <- perform_login_form(
-        auth_url,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(legitimate_login))
+
+      testthat::expect_true(
+        startsWith(tampered_login$callback_url %||% "", client@redirect_uri),
+        info = tampered_login$callback_url %||% "<no callback>"
+      )
+      testthat::expect_true(is.na(parse_query_param(
+        tampered_login$callback_url,
+        "error",
+        decode = TRUE
+      )))
+
+      values$.process_query(callback_query(tampered_login))
       session$flushReact()
 
       expect_keycloak_module_login_invariants(
@@ -444,10 +428,7 @@ testthat::test_that("reflected JAR invalid_request callback is rejected without 
         client = client,
         expected_username = "alice"
       )
-      testthat::expect_null(client@state_store$get(
-        state_info$key,
-        missing = NULL
-      ))
+      expect_state_store_entry_consumed(client, state_info)
     }
   )
 })
