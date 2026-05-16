@@ -9,6 +9,18 @@ query_param_names <- function(url) {
   unique(vapply(kv, function(p) utils::URLdecode(p[1]), ""))
 }
 
+oidc_request_url_param_names <- function(
+  transport = c("request", "request_uri")
+) {
+  c("client_id", "response_type", "scope", match.arg(transport))
+}
+
+oauth_request_url_param_names <- function(
+  transport = c("request", "request_uri")
+) {
+  c("client_id", match.arg(transport))
+}
+
 request_body_text <- function(req) {
   body <- req$body %||% NULL
   if (is.null(body)) {
@@ -145,7 +157,10 @@ test_that("prepare_call emits a signed request object instead of raw auth params
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request")
+  )
   expect_identical(
     parse_query_param(auth_url, "client_id", decode = TRUE),
     "abc"
@@ -222,7 +237,10 @@ test_that("prepare_call encrypts signed request objects when configured", {
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
   request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request")
+  )
   expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
 
   outer <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
@@ -263,6 +281,10 @@ test_that("request objects require issuer or explicit audience binding", {
     "https://issuer.example.com"
   )
   expect_identical(pl$aud, "https://issuer.example.com")
+  expect_setequal(
+    query_param_names(auth_url),
+    oauth_request_url_param_names("request")
+  )
 })
 
 test_that("request objects honor ttl and optional nbf skew controls", {
@@ -368,7 +390,10 @@ test_that("request_uri mode publishes signed request objects", {
     }
   )
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_identical(
     parse_query_param(auth_url, "request_uri", decode = TRUE),
@@ -426,7 +451,10 @@ test_that("request_uri mode publishes encrypted request objects", {
     }
   )
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_identical(
     parse_query_param(auth_url, "request_uri", decode = TRUE),
@@ -526,7 +554,10 @@ test_that("request_uri mode bypasses optional PAR and publishes by reference", {
     }
   )
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_identical(
     parse_query_param(auth_url, "request_uri", decode = TRUE),
@@ -619,7 +650,10 @@ test_that("request mode pushes signed request objects through PAR when available
   request_param <- utils::URLdecode(request_param)
   pl <- shinyOAuth:::parse_jwt_payload(request_param)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_match(
     auth_url,
     "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
@@ -631,6 +665,28 @@ test_that("request mode pushes signed request objects through PAR when available
   expect_identical(pl$client_id, "abc")
   expect_identical(pl$redirect_uri, "http://localhost:8100")
   expect_true(is.character(pl$state) && nzchar(pl$state))
+})
+
+test_that("OAuth request_uri mode keeps the front channel minimal without an issuer", {
+  cli <- make_jar_test_client(
+    provider = make_jar_test_provider(issuer = NA_character_),
+    authorization_request_mode = "request_uri",
+    authorization_request_audience = "https://issuer.example.com",
+    scopes = "profile"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    cli,
+    valid_browser_token(),
+    request_uri_publisher = function(...) {
+      "https://client.example.com/request-object"
+    }
+  )
+
+  expect_setequal(
+    query_param_names(auth_url),
+    oauth_request_url_param_names("request_uri")
+  )
 })
 
 test_that("request mode through PAR keeps dpop_jkt inside the request object", {
@@ -662,7 +718,10 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
     shinyOAuth:::dpop_public_jwk(key)
   )
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false("dpop_jkt" %in% names(body_data))
   expect_identical(pl$dpop_jkt, expected_jkt)
 })
@@ -700,7 +759,10 @@ test_that("request mode through PAR pushes encrypted request objects", {
   outer <- shinyOAuth:::jwe_compact_decrypt(body_data$request, encryption_key)
   inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_length(strsplit(body_data$request, ".", fixed = TRUE)[[1]], 5L)
   expect_identical(outer$header$alg, "RSA-OAEP")
@@ -828,7 +890,10 @@ test_that("request mode through PAR keeps extra auth params inside the request o
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
   pl <- shinyOAuth:::parse_jwt_payload(body_data$request)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]prompt=", auth_url))
   expect_false(grepl("[?&]login_hint=", auth_url))
   expect_false("prompt" %in% names(body_data))
@@ -875,7 +940,10 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
   request_payload <- shinyOAuth:::parse_jwt_payload(request_value)
   assertion_payload <- shinyOAuth:::parse_jwt_payload(assertion_value)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_true("request" %in% names(body_data))
   expect_identical(
@@ -933,7 +1001,10 @@ test_that("request mode through PAR supports private_key_jwt client auth", {
   assertion_header <- shinyOAuth:::parse_jwt_header(assertion_value)
   assertion_payload <- shinyOAuth:::parse_jwt_payload(assertion_value)
 
-  expect_setequal(query_param_names(auth_url), c("client_id", "request_uri"))
+  expect_setequal(
+    query_param_names(auth_url),
+    oidc_request_url_param_names("request_uri")
+  )
   expect_false(grepl("[?&]request=", auth_url))
   expect_true("request" %in% names(body_data))
   expect_identical(

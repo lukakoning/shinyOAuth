@@ -113,6 +113,8 @@ testthat::test_that("Keycloak PAR happy path (public client)", {
 
       testthat::expect_match(auth_url, "[?&]request_uri=")
       testthat::expect_match(auth_url, "[?&]client_id=shiny-public")
+      testthat::expect_match(auth_url, "[?&]response_type=code")
+      testthat::expect_match(auth_url, "[?&]scope=openid(?:%20|&|$)")
       testthat::expect_false(grepl("[?&]state=", auth_url))
       testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
       testthat::expect_false(grepl("[?&]code_challenge=", auth_url))

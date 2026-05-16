@@ -31,7 +31,7 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request")
+        c("client_id", "response_type", "scope", "request")
       )
       testthat::expect_match(auth_url, "[?&]client_id=shiny-jar-pjwt")
       testthat::expect_false(grepl("[?&]request_uri=", auth_url))
@@ -95,7 +95,7 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request")
+        c("client_id", "response_type", "scope", "request")
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "client_id"),
@@ -165,7 +165,7 @@ testthat::test_that("Keycloak encrypted request-object happy path (private_key_j
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request")
+        c("client_id", "response_type", "scope", "request")
       )
       testthat::expect_match(auth_url, "[?&]client_id=shiny-jar-pjwt-jwe")
       testthat::expect_false(grepl("[?&]request_uri=", auth_url))
@@ -220,7 +220,7 @@ testthat::test_that("Keycloak encrypted request-object happy path (HS256)", {
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request")
+        c("client_id", "response_type", "scope", "request")
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "client_id"),
@@ -273,7 +273,7 @@ testthat::test_that("Keycloak request-object happy path through PAR (private_key
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request_uri")
+        c("client_id", "response_type", "scope", "request_uri")
       )
       testthat::expect_match(auth_url, "[?&]client_id=shiny-jar-pjwt")
       testthat::expect_match(auth_url, "[?&]request_uri=")
@@ -321,7 +321,7 @@ testthat::test_that("Keycloak encrypted request-object happy path through PAR (p
 
       testthat::expect_setequal(
         query_param_names(auth_url),
-        c("client_id", "request_uri")
+        c("client_id", "response_type", "scope", "request_uri")
       )
       testthat::expect_match(auth_url, "[?&]client_id=shiny-jar-pjwt-jwe")
       testthat::expect_match(auth_url, "[?&]request_uri=")

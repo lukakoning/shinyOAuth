@@ -9,6 +9,17 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
+query_param_names <- function(url) {
+  q <- sub("^[^?]*\\?", "", url)
+  if (identical(q, url) || !nzchar(q)) {
+    return(character(0))
+  }
+
+  parts <- strsplit(q, "&", fixed = TRUE)[[1]]
+  kv <- strsplit(parts, "=", fixed = TRUE)
+  unique(vapply(kv, function(p) utils::URLdecode(p[1]), ""))
+}
+
 create_dpop_jar_fixture <- function() {
   public_key_pem <- get_pjwt_public_key_pem()
   if (!keycloak_nonempty_string(public_key_pem)) {
@@ -106,6 +117,12 @@ testthat::test_that("signed DPoP JAR emits dpop_jkt but live Keycloak rejects th
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   payload <- decode_compact_jwt_payload(request_jwt)
 
+  testthat::expect_setequal(
+    query_param_names(auth_url),
+    c("client_id", "response_type", "scope", "request")
+  )
+  testthat::expect_match(auth_url, "[?&]response_type=code")
+  testthat::expect_match(auth_url, "[?&]scope=openid(?:%20|&|$)")
   testthat::expect_identical(
     payload$dpop_jkt,
     shinyOAuth:::client_dpop_jkt(client)

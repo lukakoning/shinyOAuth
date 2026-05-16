@@ -4,6 +4,17 @@ if (!exists("make_mtls_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
+query_param_names <- function(url) {
+  q <- sub("^[^?]*\\?", "", url)
+  if (identical(q, url) || !nzchar(q)) {
+    return(character(0))
+  }
+
+  parts <- strsplit(q, "&", fixed = TRUE)[[1]]
+  kv <- strsplit(parts, "=", fixed = TRUE)
+  unique(vapply(kv, function(p) utils::URLdecode(p[1]), ""))
+}
+
 create_mtls_jar_fixture <- function(encrypted = FALSE) {
   admin_token <- keycloak_admin_token()
   fixture <- keycloak_create_temp_mtls_jar_client(
@@ -105,6 +116,14 @@ testthat::test_that("Keycloak currently rejects dynamic signed mTLS plus JAR at 
     client,
     browser_token = valid_browser_token()
   )
+
+  testthat::expect_setequal(
+    query_param_names(auth_url),
+    c("client_id", "response_type", "scope", "request")
+  )
+  testthat::expect_match(auth_url, "[?&]response_type=code")
+  testthat::expect_match(auth_url, "[?&]scope=openid(?:%20|&|$)")
+
   resp <- perform_auth_url_request(auth_url)
 
   expect_keycloak_invalid_request_page(resp)
@@ -135,6 +154,14 @@ testthat::test_that("Keycloak currently rejects dynamic encrypted mTLS plus JAR 
     client,
     browser_token = valid_browser_token()
   )
+
+  testthat::expect_setequal(
+    query_param_names(auth_url),
+    c("client_id", "response_type", "scope", "request")
+  )
+  testthat::expect_match(auth_url, "[?&]response_type=code")
+  testthat::expect_match(auth_url, "[?&]scope=openid(?:%20|&|$)")
+
   resp <- perform_auth_url_request(auth_url)
 
   expect_keycloak_invalid_request_page(resp)

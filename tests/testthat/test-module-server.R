@@ -166,6 +166,54 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
   )
 })
 
+testthat::test_that("manual build_auth_url keeps OIDC outer params in request_uri mode", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.allowed_hosts = c(
+      "example.com",
+      "app.example.com",
+      "client.example.com",
+      "localhost"
+    )
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE, scopes = "openid")
+  cli@provider@issuer <- "https://example.com"
+  cli@client_secret <- paste(rep("s", 32), collapse = "")
+  cli@authorization_request_mode <- "request_uri"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- testthat::with_mocked_bindings(
+        publish_shiny_request_object = function(...) {
+          "https://client.example.com/request-object"
+        },
+        .package = "shinyOAuth",
+        {
+          values$build_auth_url()
+        }
+      )
+
+      query_names <- names(shiny::parseQueryString(sub("^[^?]*\\?", "", url)))
+      testthat::expect_setequal(
+        query_names,
+        c("client_id", "response_type", "scope", "request_uri")
+      )
+      testthat::expect_identical(
+        parse_query_param(url, "request_uri", decode = TRUE),
+        "https://client.example.com/request-object"
+      )
+    }
+  )
+})
+
 testthat::test_that("request_uri mode requires a pinned public origin policy", {
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,

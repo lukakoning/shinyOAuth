@@ -112,9 +112,12 @@ caller-managed `authorization_request_mode = "request_uri"`, the module uses
 Pushed Authorization Requests (PAR, RFC 9126) before redirecting the browser.
 In that mode, the authorization request is first sent server-to-server to the
 provider's PAR endpoint as a form-encoded POST. The browser is then redirected
-with only `client_id` and a provider-issued `request_uri` handle, so the sealed
-`state`, `redirect_uri`, and other authorization parameters do not need to
-appear in the browser URL. If the provider requires PAR,
+with a provider-issued `request_uri` handle instead of the raw authorization
+parameters. For OIDC providers, the browser URL still retains outer
+`client_id`, `response_type=code`, and a `scope` containing `openid`, while the
+sealed `state`, `redirect_uri`, and other request details stay behind the PAR
+handle. Plain OAuth PAR flows can remain at the minimal `client_id` plus
+`request_uri` shape. If the provider requires PAR,
 `authorization_request_mode = "request_uri"` is not allowed, because RFC 9126
 assigns the `request_uri` handle to the PAR response and the PAR request itself
 must not include a `request_uri` parameter.
@@ -132,12 +135,18 @@ parameters.
 With JAR enabled but without PAR, the browser is still redirected to the
 provider's authorization endpoint, but the URL now carries the Request Object
 instead of the raw authorization parameters. In practice, the redirect
-contains `client_id` plus `request=<Request Object JWT>`. That value is signed
-by default, or signed first and then encrypted as a nested JWT when Request
-Object encryption is configured.
+contains `request=<Request Object JWT>` plus the outer parameters that the
+active profile still requires. For OIDC providers, that means `client_id`,
+`response_type=code`, and an outer `scope` containing `openid`; plain OAuth JAR
+flows can stay at `client_id` plus `request`. The Request Object itself is
+signed by default, or signed first and then encrypted as a nested JWT when
+Request Object encryption is configured.
 
 With caller-managed `request_uri` mode, the browser is redirected with
-`client_id` plus `request_uri=<absolute URL>`. The authorization server then
+`request_uri=<absolute URL>` plus any outer parameters still required by the
+active profile. For OIDC providers, that means `client_id`, `response_type=code`,
+and an outer `scope` containing `openid`; plain OAuth request-by-reference
+flows can stay at `client_id` plus `request_uri`. The authorization server then
 fetches the Request Object from that URL. This is different from PAR: the
 `request_uri` points at a client-managed published Request Object, not a
 provider-issued PAR handle. The published object still follows the same JAR
@@ -148,10 +157,12 @@ not as log-opaque as a provider-issued PAR handle.
 
 With PAR enabled and selected, the browser is still redirected to the
 provider's authorization endpoint, but the front-channel URL contains only the
-PAR handle: `client_id` and `request_uri`. If JAR request mode is also enabled,
-the Request Object pushed to the PAR endpoint follows the same rule: signed by
-default, or signed first and then encrypted when Request Object encryption is
-configured. The browser still sees only `client_id` plus `request_uri`.
+PAR handle plus any profile-required outer parameters. For OIDC providers, that
+means `client_id`, `response_type=code`, an outer `scope` containing `openid`,
+and `request_uri`; plain OAuth PAR flows can stay at `client_id` plus
+`request_uri`. If JAR request mode is also enabled, the Request Object pushed to
+the PAR endpoint follows the same rule: signed by default, or signed first and
+then encrypted when Request Object encryption is configured.
 
 ### 5. User authenticates and authorizes
 

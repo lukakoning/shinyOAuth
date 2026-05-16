@@ -760,6 +760,17 @@ build_auth_url <- function(
     pkce_method = pkce_method,
     nonce = nonce
   )
+  front_channel_params <- if (
+    is_valid_string(oauth_client@provider@issuer %||% NA_character_)
+  ) {
+    compact_list(list(
+      client_id = oauth_client@client_id,
+      response_type = params$response_type %||% NULL,
+      scope = params$scope %||% NULL
+    ))
+  } else {
+    list(client_id = oauth_client@client_id)
+  }
 
   if (isTRUE(request_object_used)) {
     request_object <- build_authorization_request_object(
@@ -821,9 +832,9 @@ build_auth_url <- function(
 
       return(url_append_query_params(
         oauth_client@provider@auth_url,
-        list(
-          client_id = oauth_client@client_id,
-          request_uri = request_uri
+        c(
+          front_channel_params,
+          list(request_uri = request_uri)
         )
       ))
     }
@@ -844,9 +855,9 @@ build_auth_url <- function(
 
       auth_url <- url_append_query_params(
         oauth_client@provider@auth_url,
-        list(
-          client_id = oauth_client@client_id,
-          request_uri = par_resp$request_uri
+        c(
+          front_channel_params,
+          list(request_uri = par_resp$request_uri)
         )
       )
 
@@ -855,9 +866,9 @@ build_auth_url <- function(
 
     return(url_append_query_params(
       oauth_client@provider@auth_url,
-      list(
-        client_id = oauth_client@client_id,
-        request = request_object
+      c(
+        front_channel_params,
+        list(request = request_object)
       )
     ))
   }
@@ -874,9 +885,9 @@ build_auth_url <- function(
 
     auth_url <- url_append_query_params(
       oauth_client@provider@auth_url,
-      list(
-        client_id = oauth_client@client_id,
-        request_uri = par_resp$request_uri
+      c(
+        front_channel_params,
+        list(request_uri = par_resp$request_uri)
       )
     )
 
