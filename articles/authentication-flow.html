@@ -188,13 +188,15 @@ browser. In that mode, the authorization request is first sent
 server-to-server to the provider’s PAR endpoint as a form-encoded POST.
 The browser is then redirected with a provider-issued
 <code>request_uri</code> handle instead of the raw authorization
-parameters. For OIDC providers, the browser URL still retains outer
+parameters. By default, OIDC providers keep outer
 <code>client_id</code>, <code>response_type=code</code>, and a
-<code>scope</code> containing <code>openid</code>, while the sealed
-<code>state</code>, <code>redirect_uri</code>, and other request details
-stay behind the PAR handle. Plain OAuth PAR flows can remain at the
-minimal <code>client_id</code> plus <code>request_uri</code> shape. If
-the provider requires PAR,
+<code>scope</code> containing <code>openid</code> for compatibility,
+while the sealed <code>state</code>, <code>redirect_uri</code>, and
+other request details stay behind the PAR handle. Set
+<code>oauth_provider(authorization_request_front_channel_mode = "minimal")</code>
+for stricter authorization servers that expect only
+<code>client_id</code> plus <code>request_uri</code>. Plain OAuth PAR
+flows already use that minimal shape. If the provider requires PAR,
 <code>authorization_request_mode = "request_uri"</code> is not allowed,
 because RFC 9126 assigns the <code>request_uri</code> handle to the PAR
 response and the PAR request itself must not include a
@@ -216,20 +218,24 @@ set on the client), plus any configured extra parameters.</p>
 the provider’s authorization endpoint, but the URL now carries the
 Request Object instead of the raw authorization parameters. In practice,
 the redirect contains <code>request=&lt;Request Object JWT&gt;</code>
-plus the outer parameters that the active profile still requires. For
-OIDC providers, that means <code>client_id</code>,
+plus the outer parameters that the active profile still requires. By
+default, OIDC providers keep outer <code>client_id</code>,
 <code>response_type=code</code>, and an outer <code>scope</code>
-containing <code>openid</code>; plain OAuth JAR flows can stay at
-<code>client_id</code> plus <code>request</code>. The Request Object
+containing <code>openid</code>; set
+<code>oauth_provider(authorization_request_front_channel_mode = "minimal")</code>
+to emit only <code>client_id</code> plus <code>request</code>. Plain
+OAuth JAR flows already use that minimal shape. The Request Object
 itself is signed by default, or signed first and then encrypted as a
 nested JWT when Request Object encryption is configured.</p>
 <p>With caller-managed <code>request_uri</code> mode, the browser is
 redirected with <code>request_uri=&lt;absolute URL&gt;</code> plus any
-outer parameters still required by the active profile. For OIDC
-providers, that means <code>client_id</code>,
+outer parameters still required by the active profile. By default, OIDC
+providers keep outer <code>client_id</code>,
 <code>response_type=code</code>, and an outer <code>scope</code>
-containing <code>openid</code>; plain OAuth request-by-reference flows
-can stay at <code>client_id</code> plus <code>request_uri</code>. The
+containing <code>openid</code>; set
+<code>oauth_provider(authorization_request_front_channel_mode = "minimal")</code>
+to emit only <code>client_id</code> plus <code>request_uri</code>. Plain
+OAuth request-by-reference flows already use that minimal shape. The
 authorization server then fetches the Request Object from that URL. This
 is different from PAR: the <code>request_uri</code> points at a
 client-managed published Request Object, not a provider-issued PAR
@@ -241,14 +247,16 @@ segments, so it is not as log-opaque as a provider-issued PAR
 handle.</p>
 <p>With PAR enabled and selected, the browser is still redirected to the
 provider’s authorization endpoint, but the front-channel URL contains
-only the PAR handle plus any profile-required outer parameters. For OIDC
-providers, that means <code>client_id</code>,
+only the PAR handle plus any profile-required outer parameters. By
+default, OIDC providers keep outer <code>client_id</code>,
 <code>response_type=code</code>, an outer <code>scope</code> containing
-<code>openid</code>, and <code>request_uri</code>; plain OAuth PAR flows
-can stay at <code>client_id</code> plus <code>request_uri</code>. If JAR
-request mode is also enabled, the Request Object pushed to the PAR
-endpoint follows the same rule: signed by default, or signed first and
-then encrypted when Request Object encryption is configured.</p>
+<code>openid</code>, and <code>request_uri</code>; set
+<code>oauth_provider(authorization_request_front_channel_mode = "minimal")</code>
+to emit only <code>client_id</code> plus <code>request_uri</code>. Plain
+OAuth PAR flows already use that minimal shape. If JAR request mode is
+also enabled, the Request Object pushed to the PAR endpoint follows the
+same rule: signed by default, or signed first and then encrypted when
+Request Object encryption is configured.</p>
 </div>
 <div class="section level3">
 <h3 id="user-authenticates-and-authorizes">5. User authenticates and authorizes<a class="anchor" aria-label="anchor" href="#user-authenticates-and-authorizes"></a>
@@ -706,14 +714,11 @@ is re-fetched using the fresh access token</li>
 access token is introspected through the same client policy before the
 session is updated</li>
 </ul>
-<p>When the refresh response omits new <code>cnf</code> and refresh-time
-introspection is not enabled, ‘shinyOAuth’ may preserve a prior
-certificate thumbprint so mTLS-bound resource requests do not silently
-lose their routing state. This is not fresh proof that the new access
-token is still sender-constrained. When
-<code>oauth_client(introspect = TRUE)</code>, ‘shinyOAuth’ keeps mTLS
-binding only if the new token or its introspection response supplies
-fresh <code>cnf</code>.</p>
+<p>When the refresh response omits new observable <code>cnf</code>,
+‘shinyOAuth’ does not carry forward the previous certificate thumbprint
+onto the refreshed token. Refreshed access tokens keep mTLS
+sender-constrained state only when the new token itself, or its
+introspection response, supplies fresh <code>cnf</code> data.</p>
 <p>If you are running a security-sensitive app, set
 <code>options(shinyOAuth.default_expires_in = ...)</code> to the
 provider’s documented lifetime instead of relying on the package

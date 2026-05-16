@@ -104,11 +104,11 @@ object with refreshed credentials.
   preserved
 
 - `cnf`: Updated from the token response when present, and may be
-  backfilled from refresh-time introspection when enabled. Without
-  refresh-time introspection, shinyOAuth may preserve a prior `x5t#S256`
-  thumbprint so later mTLS requests keep their sender-constraint
-  routing, but that preserved thumbprint is continuity state rather than
-  fresh proof for the new token
+  backfilled from refresh-time introspection when enabled. When the
+  refresh response omits new observable `cnf`, shinyOAuth does not carry
+  forward a prior `x5t#S256` thumbprint onto the refreshed token; mTLS
+  sender-constrained state is kept only when the new token or its
+  introspection response supplies fresh `cnf`
 
 **Validation failures cause errors:** If the provider returns a new ID
 token that fails validation (wrong issuer, audience, expired, or subject

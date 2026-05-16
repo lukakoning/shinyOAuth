@@ -26,6 +26,7 @@ OAuthProvider(
   revocation_url = NA_character_,
   par_url = NA_character_,
   require_pushed_authorization_requests = FALSE,
+  authorization_request_front_channel_mode = "compat",
   request_object_signing_alg_values_supported = character(0),
   request_object_encryption_alg_values_supported = character(0),
   request_object_encryption_enc_values_supported = character(0),
@@ -106,6 +107,16 @@ OAuthProvider(
 
   Logical. Whether the provider requires authorization requests to be
   sent via PAR. When `TRUE`, `par_url` must also be configured.
+
+- authorization_request_front_channel_mode:
+
+  Character scalar controlling which browser-visible outer parameters
+  shinyOAuth keeps when the actual authorization request is carried by
+  JAR or PAR. Use `"compat"` (default) to keep the current
+  OIDC-compatible shape with outer `client_id`, `response_type`, and
+  `scope` when an issuer is configured. Use `"minimal"` for stricter
+  authorization servers that expect only `client_id` alongside `request`
+  or `request_uri`.
 
 - request_object_signing_alg_values_supported:
 

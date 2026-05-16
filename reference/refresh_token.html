@@ -159,11 +159,11 @@ finite fallback expiry from <code>resolve_missing_expires_in()</code></p></li>
 otherwise the original from login is preserved</p></li>
 <li><p><code>userinfo</code>: Refreshed if <code>userinfo_required = TRUE</code>; otherwise preserved</p></li>
 <li><p><code>cnf</code>: Updated from the token response when present, and may be
-backfilled from refresh-time introspection when enabled. Without
-refresh-time introspection, shinyOAuth may preserve a prior <code>x5t#S256</code>
-thumbprint so later mTLS requests keep their sender-constraint routing,
-but that preserved thumbprint is continuity state rather than fresh
-proof for the new token</p></li>
+backfilled from refresh-time introspection when enabled. When the
+refresh response omits new observable <code>cnf</code>, shinyOAuth does not carry
+forward a prior <code>x5t#S256</code> thumbprint onto the refreshed token; mTLS
+sender-constrained state is kept only when the new token or its
+introspection response supplies fresh <code>cnf</code></p></li>
 </ul><p><strong>Validation failures cause errors:</strong> If the provider returns a new ID
 token that fails validation (wrong issuer, audience, expired, or subject
 mismatch with original), or if userinfo subject doesn't match the new ID

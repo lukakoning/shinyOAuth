@@ -117,15 +117,18 @@ uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
 the browser. In that mode, the authorization request is first sent
 server-to-server to the provider’s PAR endpoint as a form-encoded POST.
 The browser is then redirected with a provider-issued `request_uri`
-handle instead of the raw authorization parameters. For OIDC providers,
-the browser URL still retains outer `client_id`, `response_type=code`,
-and a `scope` containing `openid`, while the sealed `state`,
+handle instead of the raw authorization parameters. By default, OIDC
+providers keep outer `client_id`, `response_type=code`, and a `scope`
+containing `openid` for compatibility, while the sealed `state`,
 `redirect_uri`, and other request details stay behind the PAR handle.
-Plain OAuth PAR flows can remain at the minimal `client_id` plus
-`request_uri` shape. If the provider requires PAR,
-`authorization_request_mode = "request_uri"` is not allowed, because RFC
-9126 assigns the `request_uri` handle to the PAR response and the PAR
-request itself must not include a `request_uri` parameter.
+Set
+`oauth_provider(authorization_request_front_channel_mode = "minimal")`
+for stricter authorization servers that expect only `client_id` plus
+`request_uri`. Plain OAuth PAR flows already use that minimal shape. If
+the provider requires PAR, `authorization_request_mode = "request_uri"`
+is not allowed, because RFC 9126 assigns the `request_uri` handle to the
+PAR response and the PAR request itself must not include a `request_uri`
+parameter.
 
 ### 4. App redirects to the provider
 
@@ -141,36 +144,42 @@ With JAR enabled but without PAR, the browser is still redirected to the
 provider’s authorization endpoint, but the URL now carries the Request
 Object instead of the raw authorization parameters. In practice, the
 redirect contains `request=<Request Object JWT>` plus the outer
-parameters that the active profile still requires. For OIDC providers,
-that means `client_id`, `response_type=code`, and an outer `scope`
-containing `openid`; plain OAuth JAR flows can stay at `client_id` plus
-`request`. The Request Object itself is signed by default, or signed
-first and then encrypted as a nested JWT when Request Object encryption
-is configured.
+parameters that the active profile still requires. By default, OIDC
+providers keep outer `client_id`, `response_type=code`, and an outer
+`scope` containing `openid`; set
+`oauth_provider(authorization_request_front_channel_mode = "minimal")`
+to emit only `client_id` plus `request`. Plain OAuth JAR flows already
+use that minimal shape. The Request Object itself is signed by default,
+or signed first and then encrypted as a nested JWT when Request Object
+encryption is configured.
 
 With caller-managed `request_uri` mode, the browser is redirected with
 `request_uri=<absolute URL>` plus any outer parameters still required by
-the active profile. For OIDC providers, that means `client_id`,
-`response_type=code`, and an outer `scope` containing `openid`; plain
-OAuth request-by-reference flows can stay at `client_id` plus
-`request_uri`. The authorization server then fetches the Request Object
-from that URL. This is different from PAR: the `request_uri` points at a
-client-managed published Request Object, not a provider-issued PAR
-handle. The published object still follows the same JAR rules as above:
-signed by default, or signed first and then encrypted when Request
-Object encryption is configured. In the default Shiny-backed publisher
-used by ‘shinyOAuth’, that URL also embeds Shiny session-routing path
-segments, so it is not as log-opaque as a provider-issued PAR handle.
+the active profile. By default, OIDC providers keep outer `client_id`,
+`response_type=code`, and an outer `scope` containing `openid`; set
+`oauth_provider(authorization_request_front_channel_mode = "minimal")`
+to emit only `client_id` plus `request_uri`. Plain OAuth
+request-by-reference flows already use that minimal shape. The
+authorization server then fetches the Request Object from that URL. This
+is different from PAR: the `request_uri` points at a client-managed
+published Request Object, not a provider-issued PAR handle. The
+published object still follows the same JAR rules as above: signed by
+default, or signed first and then encrypted when Request Object
+encryption is configured. In the default Shiny-backed publisher used by
+‘shinyOAuth’, that URL also embeds Shiny session-routing path segments,
+so it is not as log-opaque as a provider-issued PAR handle.
 
 With PAR enabled and selected, the browser is still redirected to the
 provider’s authorization endpoint, but the front-channel URL contains
-only the PAR handle plus any profile-required outer parameters. For OIDC
-providers, that means `client_id`, `response_type=code`, an outer
-`scope` containing `openid`, and `request_uri`; plain OAuth PAR flows
-can stay at `client_id` plus `request_uri`. If JAR request mode is also
-enabled, the Request Object pushed to the PAR endpoint follows the same
-rule: signed by default, or signed first and then encrypted when Request
-Object encryption is configured.
+only the PAR handle plus any profile-required outer parameters. By
+default, OIDC providers keep outer `client_id`, `response_type=code`, an
+outer `scope` containing `openid`, and `request_uri`; set
+`oauth_provider(authorization_request_front_channel_mode = "minimal")`
+to emit only `client_id` plus `request_uri`. Plain OAuth PAR flows
+already use that minimal shape. If JAR request mode is also enabled, the
+Request Object pushed to the PAR endpoint follows the same rule: signed
+by default, or signed first and then encrypted when Request Object
+encryption is configured.
 
 ### 5. User authenticates and authorizes
 
@@ -556,13 +565,11 @@ provider’s token endpoint and updates the `OAuthToken` object. In short:
   introspected through the same client policy before the session is
   updated
 
-When the refresh response omits new `cnf` and refresh-time introspection
-is not enabled, ‘shinyOAuth’ may preserve a prior certificate thumbprint
-so mTLS-bound resource requests do not silently lose their routing
-state. This is not fresh proof that the new access token is still
-sender-constrained. When `oauth_client(introspect = TRUE)`, ‘shinyOAuth’
-keeps mTLS binding only if the new token or its introspection response
-supplies fresh `cnf`.
+When the refresh response omits new observable `cnf`, ‘shinyOAuth’ does
+not carry forward the previous certificate thumbprint onto the refreshed
+token. Refreshed access tokens keep mTLS sender-constrained state only
+when the new token itself, or its introspection response, supplies fresh
+`cnf` data.
 
 If you are running a security-sensitive app, set
 `options(shinyOAuth.default_expires_in = ...)` to the provider’s
