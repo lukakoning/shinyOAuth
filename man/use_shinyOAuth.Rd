@@ -21,11 +21,15 @@ Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
 This is required so the module can handle redirects and manage its
 browser-side session token.
 
-Without this call in the UI, \code{\link[=oauth_module_server]{oauth_module_server()}} will not work.
+Without this call in the UI, \code{\link[=oauth_module_server]{oauth_module_server()}} will not work unless
+your app UI is wrapped with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, which injects this
+dependency automatically for form_post flows.
 }
 \details{
 Place this near the top-level of your UI (e.g., inside \code{fluidPage()} or
-\code{tagList()}), similar to how you would use \code{shinyjs::useShinyjs()}.
+\code{tagList()}), similar to how you would use \code{shinyjs::useShinyjs()}. If you
+wrap the app UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, you usually do not need a
+separate call here because that wrapper injects this dependency for you.
 }
 \examples{
 ui <- shiny::fluidPage(

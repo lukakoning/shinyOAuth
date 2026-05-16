@@ -2,7 +2,7 @@
 % Please edit documentation in R/oauth_form_post_ui.R
 \name{oauth_form_post_ui}
 \alias{oauth_form_post_ui}
-\title{Wrap a Shiny UI to accept OAuth/OIDC form_post callbacks}
+\title{Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks}
 \usage{
 oauth_form_post_ui(base_ui, id, client, callback_path = NULL)
 }
@@ -18,7 +18,7 @@ the \code{id} argument passed to the server module.}
 to the path component of \code{client@redirect_uri}.}
 }
 \value{
-A Shiny UI function. Pass it to \code{shinyApp()} and, for non-root
+A Shiny UI function. Pass it to \code{\link[shiny:shinyApp]{shiny::shinyApp()}} and, for non-root
 callback paths, use \code{uiPattern = ".*"} so Shiny routes the callback path to
 this UI function.
 }
@@ -29,16 +29,40 @@ existing Shiny UI so a provider can POST an authorization response to the
 app's redirect URI. The POST body is stored server-side under a short-lived
 one-time handle, and the browser is redirected back to the app with only
 that opaque handle in the query string.
+
+For most apps, this helper is not needed because the default transport for
+authorization responses is the query string, which works without this UI wrapper.
+You only need to use this helper if your provider requires or strongly recommends
+form_post response mode.
+
+If you use form_post response mode, besides wrapping your UI with this helper,
+you must also configure your \link{OAuthClient} with \code{response_mode = "form_post"}
+and ensure the \code{redirect_uri} is set to a URL that routes to this UI wrapper
+(e.g., the app's root URL or a specific callback path).
 }
 \details{
-This helper is only for authorization-code callbacks (\code{response_type=code}),
-which is the flow implemented by shinyOAuth.
+When this wrapper is used, it also injects \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} automatically
+for the wrapped GET UI, so you do not need a separate top-level
+\code{use_shinyOAuth()} call.
 }
 \examples{
 \dontrun{
+# Query callbacks are the preferred default for most apps and do not need
+# `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"` 
+# only if your provider requires or strongly recommends it
+client <- oauth_client(
+  provider = provider,
+  client_id = "your-client-id",
+  client_secret = "",
+  # `/callback` is only an example sub-route. The app root also works if the
+  # provider redirect URI matches the path handled by `oauth_form_post_ui()`
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  response_mode = "form_post"
+)
+
 ui <- oauth_form_post_ui(
   shiny::fluidPage(
-    use_shinyOAuth()
+    shiny::uiOutput("login")
   ),
   id = "auth",
   client = client
@@ -48,6 +72,10 @@ server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 }
 
-shiny::shinyApp(ui, server, uiPattern = ".*")
+app <- shiny::shinyApp(ui, server, uiPattern = ".*")
+
+shiny::runApp(app, port = 8100, launch.browser = FALSE)
+# Open the app in your regular browser at http://127.0.0.1:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 }
 }

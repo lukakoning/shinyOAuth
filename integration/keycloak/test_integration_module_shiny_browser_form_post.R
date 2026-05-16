@@ -106,17 +106,14 @@ if (!exists("make_provider", mode = "function")) {
       source("integration/keycloak/helper-keycloak.R")
 
       provider <- make_provider()
-      provider@extra_auth_params <- c(
-        provider@extra_auth_params,
-        list(response_mode = "form_post")
-      )
 
       client <- shinyOAuth::oauth_client(
         provider = provider,
         client_id = "shiny-public",
         client_secret = "",
         redirect_uri = app_url,
-        scopes = c("openid", "profile", "email")
+        scopes = c("openid", "profile", "email"),
+        response_mode = "form_post"
       )
 
       base_ui <- shiny::fluidPage(
@@ -292,10 +289,6 @@ testthat::test_that("browser form_post login authenticates through oauth_form_po
   provider <- make_provider()
   testthat::expect_true(
     "form_post" %in% (provider@response_modes_supported %||% character())
-  )
-  provider@extra_auth_params <- c(
-    provider@extra_auth_params,
-    list(response_mode = "form_post")
   )
   repo_root <- .repo_root()
   app_url <- sprintf("http://127.0.0.1:%d", app_port)

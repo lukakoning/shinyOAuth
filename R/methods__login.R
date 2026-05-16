@@ -378,27 +378,44 @@ build_authorization_params <- function(
     params$acr_values <- paste(racr, collapse = " ")
   }
 
+  client_response_mode_info <- resolve_auth_response_mode(
+    oauth_client@response_mode %||% NA_character_,
+    arg = "response_mode",
+    context = "OAuthClient"
+  )
+  if (!is.null(client_response_mode_info$error)) {
+    err_config(client_response_mode_info$error)
+  }
+
+  resolved_response_mode <- client_response_mode_info$mode
+
   if (length(oauth_client@provider@extra_auth_params) > 0) {
     extra <- oauth_client@provider@extra_auth_params
 
-    response_mode_info <- inspect_auth_response_mode(extra)
-    if (!is.null(response_mode_info$error)) {
-      err_config(response_mode_info$error)
+    provider_response_mode_info <- inspect_auth_response_mode(extra)
+    if (!is.null(provider_response_mode_info$error)) {
+      err_config(provider_response_mode_info$error)
     }
-    if (length(response_mode_info$index) == 1L) {
-      extra[[response_mode_info$index]] <- response_mode_info$mode
-    }
+
     if (
-      !is.null(response_mode_info$mode) &&
-        length(oauth_client@provider@response_modes_supported) > 0 &&
-        !response_mode_info$mode %in%
-          oauth_client@provider@response_modes_supported
+      !is.null(resolved_response_mode) &&
+        !is.null(provider_response_mode_info$mode) &&
+        !identical(resolved_response_mode, provider_response_mode_info$mode)
     ) {
       err_config(paste0(
-        "OAuthProvider.extra_auth_params$response_mode = ",
-        sQuote(response_mode_info$mode),
-        " is not advertised in response_modes_supported"
+        "OAuthClient.response_mode = ",
+        sQuote(resolved_response_mode),
+        " conflicts with OAuthProvider.extra_auth_params$response_mode = ",
+        sQuote(provider_response_mode_info$mode),
+        ". Configure response_mode on the client or provider extra_auth_params, not both."
       ))
+    }
+
+    if (is.null(resolved_response_mode)) {
+      resolved_response_mode <- provider_response_mode_info$mode
+    }
+    if (length(provider_response_mode_info$index) == 1L) {
+      extra[[provider_response_mode_info$index]] <- NULL
     }
 
     # Block overrides for security-critical parameters unless explicitly
@@ -442,6 +459,24 @@ build_authorization_params <- function(
       ))
     }
     params <- c(params, extra)
+  }
+
+  resolved_response_mode <- resolved_response_mode %||% "query"
+
+  if (
+    length(oauth_client@provider@response_modes_supported) > 0 &&
+      !resolved_response_mode %in%
+        oauth_client@provider@response_modes_supported
+  ) {
+    err_config(paste0(
+      "OAuthClient.response_mode = ",
+      sQuote(resolved_response_mode),
+      " is not advertised in response_modes_supported"
+    ))
+  }
+
+  if (!is.null(resolved_response_mode)) {
+    params$response_mode <- resolved_response_mode
   }
 
   # Drop NULLs before building query strings or form bodies.

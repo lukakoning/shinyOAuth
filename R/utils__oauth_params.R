@@ -84,6 +84,62 @@ normalize_pkce_method <- function(pkce_method, default = NULL) {
   pkce_method
 }
 
+#' Resolve an authorization response mode value
+#'
+#' Used by provider validation, client validation, and request-building helpers.
+#'
+#' @param raw_mode Candidate response mode value.
+#' @param arg Label used in validation errors.
+#' @param context Prefix used in validation errors.
+#' @return A list containing the normalized mode and optional error text.
+#' @keywords internal
+#' @noRd
+resolve_auth_response_mode <- function(
+  raw_mode,
+  arg = "response_mode",
+  context = "OAuthClient"
+) {
+  out <- list(mode = NULL, error = NULL)
+
+  if (is.null(raw_mode)) {
+    return(out)
+  }
+
+  if (is.character(raw_mode) && length(raw_mode) == 1L && is.na(raw_mode)) {
+    return(out)
+  }
+
+  if (
+    !is.character(raw_mode) ||
+      length(raw_mode) != 1L ||
+      !nzchar(trimws(raw_mode))
+  ) {
+    out$error <- paste0(
+      context,
+      ": ",
+      arg,
+      " must be NULL or a single non-empty string"
+    )
+    return(out)
+  }
+
+  mode <- tolower(trimws(raw_mode))
+  if (!mode %in% c("query", "form_post")) {
+    out$error <- paste0(
+      context,
+      ": ",
+      arg,
+      " = ",
+      sQuote(raw_mode),
+      " is not supported. shinyOAuth supports 'query' and 'form_post' response modes for authorization-code callbacks."
+    )
+    return(out)
+  }
+
+  out$mode <- mode
+  out
+}
+
 #' Inspect the configured authorization response mode
 #'
 #' Used by provider validation and constructors.
@@ -117,30 +173,13 @@ inspect_auth_response_mode <- function(extra_auth_params) {
   }
 
   out$index <- idx[[1]]
-  raw_mode <- extra_auth_params[[out$index]]
-  if (
-    !is.character(raw_mode) ||
-      length(raw_mode) != 1L ||
-      is.na(raw_mode) ||
-      !nzchar(trimws(raw_mode))
-  ) {
-    out$error <- paste0(
-      "OAuthProvider: extra_auth_params$response_mode must be a single non-empty string"
-    )
-    return(out)
-  }
-
-  mode <- tolower(trimws(raw_mode))
-  if (!mode %in% c("query", "form_post")) {
-    out$error <- paste0(
-      "OAuthProvider: extra_auth_params$response_mode = ",
-      sQuote(raw_mode),
-      " is not supported. shinyOAuth supports 'query' and 'form_post' response modes for authorization-code callbacks."
-    )
-    return(out)
-  }
-
-  out$mode <- mode
+  resolved <- resolve_auth_response_mode(
+    extra_auth_params[[out$index]],
+    arg = "extra_auth_params$response_mode",
+    context = "OAuthProvider"
+  )
+  out$mode <- resolved$mode
+  out$error <- resolved$error
   out
 }
 

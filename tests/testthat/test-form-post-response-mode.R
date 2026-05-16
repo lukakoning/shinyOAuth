@@ -24,6 +24,29 @@ form_post_query <- function(handle, id = "auth") {
   )
 }
 
+count_referrer_meta <- function(html) {
+  matches <- gregexpr(
+    '<meta[^>]+name="referrer"[^>]+content="no-referrer"',
+    html,
+    perl = TRUE
+  )[[1]]
+
+  if (length(matches) == 1L && identical(matches[[1]], -1L)) {
+    return(0L)
+  }
+
+  length(matches)
+}
+
+get_ui_dependency_names <- function(ui) {
+  vapply(
+    htmltools::resolveDependencies(htmltools::findDependencies(ui)),
+    `[[`,
+    "",
+    "name"
+  )
+}
+
 test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
@@ -78,6 +101,43 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
 
   missing_state <- ui(make_form_post_req(body = "code=ok"))
   expect_identical(missing_state$status, 400L)
+})
+
+test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  req <- new.env(parent = emptyenv())
+  req$REQUEST_METHOD <- "GET"
+
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  rendered_ui <- ui(req)
+  rt <- htmltools::renderTags(rendered_ui)
+  deps <- get_ui_dependency_names(rendered_ui)
+
+  expect_identical(sum(deps == "shinyOAuth"), 1L)
+  expect_identical(count_referrer_meta(rt$head), 1L)
+})
+
+test_that("oauth_form_post_ui does not duplicate existing helper output", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  req <- new.env(parent = emptyenv())
+  req$REQUEST_METHOD <- "GET"
+
+  ui <- oauth_form_post_ui(
+    function(req) {
+      shiny::fluidPage(
+        use_shinyOAuth(),
+        shiny::uiOutput("login")
+      )
+    },
+    id = "auth",
+    client = cli
+  )
+  rendered_ui <- ui(req)
+  rt <- htmltools::renderTags(rendered_ui)
+  deps <- get_ui_dependency_names(rendered_ui)
+
+  expect_identical(sum(deps == "shinyOAuth"), 1L)
+  expect_identical(count_referrer_meta(rt$head), 1L)
 })
 
 test_that("oauth_module_server consumes form_post callback handles", {

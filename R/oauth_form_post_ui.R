@@ -5,8 +5,10 @@
 
 # 1 Public UI wrapper -----------------------------------------------------------
 
-#' Wrap a Shiny UI to accept OAuth/OIDC form_post callbacks
+#' @title
+#' Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
 #'
+#' @description
 #' `oauth_form_post_ui()` enables the OpenID Foundation OAuth 2.0 Form Post
 #' Response Mode for apps that use [oauth_module_server()]. It wraps your
 #' existing Shiny UI so a provider can POST an authorization response to the
@@ -14,27 +16,57 @@
 #' one-time handle, and the browser is redirected back to the app with only
 #' that opaque handle in the query string.
 #'
-#' This helper is only for authorization-code callbacks (`response_type=code`),
-#' which is the flow implemented by shinyOAuth.
+#' For most apps, this helper is not needed because the default transport for
+#' authorization responses is the query string, which works without this UI wrapper.
+#' You only need to use this helper if your provider requires or strongly recommends
+#' form_post response mode.
 #'
-#' @param base_ui Existing Shiny UI object, or a UI function accepting `req`.
-#' @param id Shiny module id used by [oauth_module_server()]. This must match
-#'   the `id` argument passed to the server module.
-#' @param client [OAuthClient] object used by [oauth_module_server()].
-#' @param callback_path Optional URL path to accept POST callbacks on. Defaults
-#'   to the path component of `client@redirect_uri`.
+#' If you use form_post response mode, besides wrapping your UI with this helper,
+#' you must also configure your [OAuthClient] with `response_mode = "form_post"`
+#' and ensure the `redirect_uri` is set to a URL that routes to this UI wrapper
+#' (e.g., the app's root URL or a specific callback path).
+#' 
+#' @details
+#' When this wrapper is used, it also injects [use_shinyOAuth()] automatically 
+#' for the wrapped GET UI, so you do not need a separate top-level 
+#' `use_shinyOAuth()` call.
 #'
-#' @return A Shiny UI function. Pass it to `shinyApp()` and, for non-root
-#'   callback paths, use `uiPattern = ".*"` so Shiny routes the callback path to
-#'   this UI function.
+#' @param base_ui
+#' Existing Shiny UI object, or a UI function accepting `req`.
+#' @param id
+#' Shiny module id used by [oauth_module_server()]. This must match
+#' the `id` argument passed to the server module.
+#' @param client
+#' [OAuthClient] object used by [oauth_module_server()].
+#' @param callback_path
+#' Optional URL path to accept POST callbacks on. Defaults
+#' to the path component of `client@redirect_uri`.
+#'
+#' @return
+#' A Shiny UI function. Pass it to [shiny::shinyApp()] and, for non-root
+#' callback paths, use `uiPattern = ".*"` so Shiny routes the callback path to
+#' this UI function.
 #'
 #' @export
 #'
 #' @examples
 #' \dontrun{
+#' # Query callbacks are the preferred default for most apps and do not need
+#' # `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"` 
+#' # only if your provider requires or strongly recommends it
+#' client <- oauth_client(
+#'   provider = provider,
+#'   client_id = "your-client-id",
+#'   client_secret = "",
+#'   # `/callback` is only an example sub-route. The app root also works if the
+#'   # provider redirect URI matches the path handled by `oauth_form_post_ui()`
+#'   redirect_uri = "http://127.0.0.1:8100/callback",
+#'   response_mode = "form_post"
+#' )
+#'
 #' ui <- oauth_form_post_ui(
 #'   shiny::fluidPage(
-#'     use_shinyOAuth()
+#'     shiny::uiOutput("login")
 #'   ),
 #'   id = "auth",
 #'   client = client
@@ -44,7 +76,11 @@
 #'   auth <- oauth_module_server("auth", client)
 #' }
 #'
-#' shiny::shinyApp(ui, server, uiPattern = ".*")
+#' app <- shiny::shinyApp(ui, server, uiPattern = ".*")
+#' 
+#' shiny::runApp(app, port = 8100, launch.browser = FALSE)
+#' # Open the app in your regular browser at http://127.0.0.1:8100
+#' # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 #' }
 oauth_form_post_ui <- function(
   base_ui,
@@ -69,6 +105,7 @@ oauth_form_post_ui <- function(
 
   request_matches <- oauth_form_post_request_matches
   handle_request <- oauth_form_post_handle_request
+  ensure_dependency <- oauth_form_post_ensure_ui_dependency
 
   ui <- function(req) {
     if (request_matches(req, callback_path)) {
@@ -76,11 +113,16 @@ oauth_form_post_ui <- function(
     }
 
     if (is.function(base_ui)) {
-      return(base_ui(req))
+      out <- base_ui(req)
+      if (identical(req$REQUEST_METHOD, "GET")) {
+        return(ensure_dependency(out))
+      }
+
+      return(out)
     }
 
     if (identical(req$REQUEST_METHOD, "GET")) {
-      return(base_ui)
+      return(ensure_dependency(base_ui))
     }
 
     NULL
@@ -93,86 +135,45 @@ oauth_form_post_ui <- function(
   ui
 }
 
-# 2 Shared callback limits ------------------------------------------------------
+#' Internal: ensure shinyOAuth UI dependency is present
+#'
+#' Adds [use_shinyOAuth()] to wrapped GET UIs when it is not already present.
+#' Used by [oauth_form_post_ui()] so form_post setups always get the required
+#' browser dependency without needing an extra top-level UI helper call.
+#'
+#' @param ui Wrapped UI value.
+#'
+#' @return UI value with the shinyOAuth dependency available.
+#' @keywords internal
+#' @noRd
+oauth_form_post_ensure_ui_dependency <- function(ui) {
+  assign(".called_js_dependency", TRUE, envir = .watchdog_environment)
+
+  if (inherits(ui, "httpResponse")) {
+    return(ui)
+  }
+
+  deps <- tryCatch(
+    htmltools::resolveDependencies(htmltools::findDependencies(ui)),
+    error = function(...) list()
+  )
+  has_dependency <- any(vapply(
+    deps,
+    function(dep) identical(dep$name %||% NA_character_, "shinyOAuth"),
+    logical(1)
+  ))
+
+  if (has_dependency) {
+    return(ui)
+  }
+
+  htmltools::tagList(use_shinyOAuth(), ui)
+}
 
 oauth_form_post_handle_param <- "shinyOAuth_form_post"
 oauth_form_post_id_param <- "shinyOAuth_form_post_id"
 
-#' Internal: callback size limits
-#'
-#' Centralizes callback limits used by URL query callbacks and form_post
-#' callbacks so both transports enforce the same field caps.
-#'
-#' @return Named list of byte limits.
-#' @keywords internal
-#' @noRd
-oauth_callback_limits <- function() {
-  max_code_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_code_bytes",
-    4096
-  )
-  max_state_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_state_bytes",
-    8192
-  )
-  max_error_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_error_bytes",
-    256
-  )
-  max_error_desc_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_error_description_bytes",
-    4096
-  )
-  max_error_uri_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_error_uri_bytes",
-    2048
-  )
-  max_iss_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_iss_bytes",
-    2048
-  )
-  max_form_post_handle_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_form_post_handle_bytes",
-    128
-  )
-  max_form_post_id_bytes <- get_option_positive_number(
-    "shinyOAuth.callback_max_form_post_id_bytes",
-    256
-  )
-
-  max_query_overhead_bytes <- 2048
-  derived_query_bytes <-
-    max_code_bytes +
-    max_state_bytes +
-    max_error_bytes +
-    max_error_desc_bytes +
-    max_error_uri_bytes +
-    max_iss_bytes +
-    max_form_post_handle_bytes +
-    max_form_post_id_bytes +
-    max_query_overhead_bytes
-
-  list(
-    code = max_code_bytes,
-    state = max_state_bytes,
-    error = max_error_bytes,
-    error_description = max_error_desc_bytes,
-    error_uri = max_error_uri_bytes,
-    iss = max_iss_bytes,
-    form_post_handle = max_form_post_handle_bytes,
-    form_post_id = max_form_post_id_bytes,
-    query = get_option_positive_number(
-      "shinyOAuth.callback_max_query_bytes",
-      derived_query_bytes
-    ),
-    form_post_body = get_option_positive_number(
-      "shinyOAuth.callback_max_form_post_body_bytes",
-      derived_query_bytes
-    )
-  )
-}
-
-# 3 Request handling ------------------------------------------------------------
+# 2 Request handling ------------------------------------------------------------
 
 oauth_form_post_redirect_path <- function(client) {
   parsed <- httr2::url_parse(client@redirect_uri)
@@ -420,7 +421,7 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
   paste0(path, if (nzchar(query)) paste0("?", query) else "")
 }
 
-# 4 One-time form_post callback storage ----------------------------------------
+# 3 One-time form_post callback storage ----------------------------------------
 
 oauth_form_post_cache_key <- function(id, handle) {
   if (!is_valid_string(id) || !is_valid_string(handle)) {
@@ -537,7 +538,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
   oauth_form_post_validate_payload(payload)
 }
 
-# 5 HTTP errors ----------------------------------------------------------------
+# 4 HTTP errors ----------------------------------------------------------------
 
 err_form_post_http <- function(message, status = 400L) {
   rlang::abort(

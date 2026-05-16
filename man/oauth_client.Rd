@@ -27,6 +27,7 @@ oauth_client(
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
+  response_mode = "query",
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -264,6 +265,18 @@ If the provider advertises \code{require_request_uri_registration = TRUE},
 caller-managed \code{request_uri} publication still depends on the provider
 having that URI or a matching wildcard prefix registered for the client;
 shinyOAuth cannot verify that server-side registration automatically.}
+
+\item{response_mode}{Authorization response mode for authorization-code
+callbacks. Supported values are \code{"query"} and \code{"form_post"}. The
+effective default is always \code{"query"}: shinyOAuth explicitly requests the
+normal query-parameter callback flow unless you opt into a different
+response mode. Omit this argument or pass \code{NULL} to keep that default.
+Set \code{"form_post"} only when the provider requires or explicitly
+recommends POSTing the authorization response to the redirect URI. Shiny
+apps using \code{"form_post"} must wrap their UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}.
+Prefer this argument over setting \code{extra_auth_params$response_mode} on the
+provider. When the provider advertises \code{response_modes_supported}, the
+resolved mode must be included in that set.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a
