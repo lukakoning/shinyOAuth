@@ -28,6 +28,159 @@ get_https_issuer <- function() {
   "https://localhost:8443/realms/shinyoauth"
 }
 
+keycloak_base_url <- function() {
+  sub("/realms/shinyoauth$", "", get_issuer())
+}
+
+keycloak_nonempty_string <- function(x) {
+  is.character(x) &&
+    length(x) == 1L &&
+    !is.na(x) &&
+    nzchar(x)
+}
+
+keycloak_admin_token <- function() {
+  resp <- httr2::request(
+    paste0(keycloak_base_url(), "/realms/master/protocol/openid-connect/token")
+  ) |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_body_form(
+      grant_type = "password",
+      client_id = "admin-cli",
+      username = "admin",
+      password = "admin"
+    ) |>
+    httr2::req_perform()
+
+  if (httr2::resp_is_error(resp)) {
+    testthat::skip("Keycloak admin token request failed")
+  }
+
+  body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  token <- body$access_token %||% NA_character_
+  if (!keycloak_nonempty_string(token)) {
+    testthat::skip("Keycloak admin token response did not include access_token")
+  }
+
+  token
+}
+
+keycloak_admin_request <- function(method, path, token, body = NULL) {
+  req <- httr2::request(paste0(keycloak_base_url(), path)) |>
+    httr2::req_auth_bearer_token(token) |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_method(method)
+
+  if (!is.null(body)) {
+    req <- httr2::req_body_json(req, body, auto_unbox = TRUE)
+  }
+
+  httr2::req_perform(req)
+}
+
+keycloak_find_client <- function(token, client_id) {
+  stopifnot(keycloak_nonempty_string(client_id))
+
+  resp <- keycloak_admin_request(
+    "GET",
+    paste0(
+      "/admin/realms/shinyoauth/clients?clientId=",
+      utils::URLencode(client_id, reserved = TRUE)
+    ),
+    token = token
+  )
+
+  if (httr2::resp_is_error(resp)) {
+    testthat::skip("Keycloak admin clients endpoint failed")
+  }
+
+  body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
+  if (!is.list(body) || length(body) == 0L) {
+    return(NULL)
+  }
+
+  for (candidate in body) {
+    candidate_id <- candidate$clientId %||% NA_character_
+    if (identical(candidate_id, client_id)) {
+      return(candidate)
+    }
+  }
+
+  NULL
+}
+
+keycloak_delete_client <- function(token, client_id = NULL, id = NULL) {
+  resolved_id <- id %||% NA_character_
+
+  if (
+    !keycloak_nonempty_string(resolved_id) &&
+      keycloak_nonempty_string(client_id)
+  ) {
+    client_info <- keycloak_find_client(token, client_id)
+    resolved_id <- client_info$id %||% NA_character_
+  }
+
+  if (!keycloak_nonempty_string(resolved_id)) {
+    return(invisible(FALSE))
+  }
+
+  try(
+    keycloak_admin_request(
+      "DELETE",
+      paste0("/admin/realms/shinyoauth/clients/", resolved_id),
+      token = token
+    ),
+    silent = TRUE
+  )
+
+  invisible(TRUE)
+}
+
+keycloak_create_client <- function(token, body, delete_existing = TRUE) {
+  stopifnot(is.list(body))
+
+  client_id <- body$clientId %||% NA_character_
+  if (!keycloak_nonempty_string(client_id)) {
+    stop("body$clientId must be a non-empty string", call. = FALSE)
+  }
+
+  if (isTRUE(delete_existing)) {
+    keycloak_delete_client(token, client_id = client_id)
+  }
+
+  resp <- keycloak_admin_request(
+    "POST",
+    "/admin/realms/shinyoauth/clients",
+    token = token,
+    body = body
+  )
+
+  if (httr2::resp_status(resp) >= 400L) {
+    testthat::skip(
+      paste(
+        "Keycloak did not accept the client fixture:",
+        httr2::resp_body_string(resp)
+      )
+    )
+  }
+
+  location <- httr2::resp_header(resp, "location") %||% ""
+  created_id <- sub(".*/clients/", "", location)
+
+  if (
+    !keycloak_nonempty_string(created_id) || identical(created_id, location)
+  ) {
+    client_info <- keycloak_find_client(token, client_id)
+    created_id <- client_info$id %||% NA_character_
+  }
+
+  list(
+    id = created_id,
+    client_id = client_id,
+    response = resp
+  )
+}
+
 normalize_existing_path <- function(path) {
   if (
     !is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)
@@ -825,6 +978,104 @@ get_pjwt_key <- function() {
   key
 }
 
+get_pjwt_public_key_pem <- function() {
+  key <- get_pjwt_key()
+  if (is.null(key)) {
+    return(NULL)
+  }
+
+  paste(capture.output(openssl::write_pem(key$pubkey)), collapse = "\n")
+}
+
+keycloak_temp_client_id <- function(prefix) {
+  stopifnot(keycloak_nonempty_string(prefix))
+
+  paste0(
+    prefix,
+    "-",
+    tolower(substr(shinyOAuth:::random_urlsafe(12), 1L, 12L))
+  )
+}
+
+keycloak_default_redirect_uris <- function() {
+  list(
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "http://localhost:8100/*",
+    "http://127.0.0.1:8100/*"
+  )
+}
+
+keycloak_oidc_client_body <- function(
+  client_id,
+  public_client = FALSE,
+  redirect_uris = keycloak_default_redirect_uris(),
+  web_origins = list("+"),
+  standard_flow_enabled = TRUE,
+  implicit_flow_enabled = FALSE,
+  service_accounts_enabled = FALSE,
+  direct_access_grants_enabled = FALSE,
+  client_authenticator_type = "client-secret",
+  attributes = list()
+) {
+  stopifnot(keycloak_nonempty_string(client_id))
+
+  list(
+    clientId = client_id,
+    protocol = "openid-connect",
+    publicClient = isTRUE(public_client),
+    redirectUris = redirect_uris,
+    webOrigins = web_origins,
+    standardFlowEnabled = isTRUE(standard_flow_enabled),
+    implicitFlowEnabled = isTRUE(implicit_flow_enabled),
+    serviceAccountsEnabled = isTRUE(service_accounts_enabled),
+    directAccessGrantsEnabled = isTRUE(direct_access_grants_enabled),
+    clientAuthenticatorType = client_authenticator_type,
+    attributes = attributes
+  )
+}
+
+keycloak_create_temp_mtls_jar_client <- function(
+  token,
+  client_id = keycloak_temp_client_id("shiny-mtls-jar-pjwt"),
+  encrypted = FALSE
+) {
+  public_key_pem <- get_pjwt_public_key_pem()
+  if (!keycloak_nonempty_string(public_key_pem)) {
+    testthat::skip("private_key_jwt test key not available")
+  }
+
+  attributes <- list(
+    "pkce.code.challenge.method" = "S256",
+    "x509.subjectdn" = paste(
+      "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,",
+      "L=Local,ST=NA,C=US",
+      sep = ""
+    ),
+    "x509.allow.regex.pattern.comparison" = "false",
+    "tls.client.certificate.bound.access.tokens" = "true",
+    "use.jwks.url" = "false",
+    "jwt.credential.public.key" = public_key_pem,
+    "request.object.signature.alg" = "RS256"
+  )
+
+  if (isTRUE(encrypted)) {
+    attributes[["request.object.encryption.alg"]] <- "RSA-OAEP"
+    attributes[["request.object.encryption.enc"]] <- "A256CBC-HS512"
+  }
+
+  keycloak_create_client(
+    token = token,
+    body = keycloak_oidc_client_body(
+      client_id = client_id,
+      public_client = FALSE,
+      service_accounts_enabled = FALSE,
+      client_authenticator_type = "client-x509",
+      attributes = attributes
+    )
+  )
+}
+
 make_public_client <- function(
   prov,
   client_id = "shiny-public",
@@ -1179,7 +1430,12 @@ make_private_key_jwt_client <- function(prov) {
   )
 }
 
-make_private_key_jar_client <- function(prov) {
+make_private_key_jar_client <- function(
+  prov,
+  client_id = "shiny-jar-pjwt",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid")
+) {
   key <- get_pjwt_key()
   if (is.null(key)) {
     return(NULL)
@@ -1187,10 +1443,10 @@ make_private_key_jar_client <- function(prov) {
 
   shinyOAuth::oauth_client(
     provider = prov,
-    client_id = "shiny-jar-pjwt",
+    client_id = client_id,
     client_secret = "",
-    redirect_uri = "http://localhost:3000/callback",
-    scopes = c("openid"),
+    redirect_uri = redirect_uri,
+    scopes = scopes,
     client_private_key = key,
     client_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
@@ -1199,7 +1455,12 @@ make_private_key_jar_client <- function(prov) {
   )
 }
 
-make_private_key_jar_jwe_client <- function(prov) {
+make_private_key_jar_jwe_client <- function(
+  prov,
+  client_id = "shiny-jar-pjwt-jwe",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid")
+) {
   key <- get_pjwt_key()
   if (is.null(key)) {
     return(NULL)
@@ -1207,13 +1468,74 @@ make_private_key_jar_jwe_client <- function(prov) {
 
   shinyOAuth::oauth_client(
     provider = prov,
-    client_id = "shiny-jar-pjwt-jwe",
+    client_id = client_id,
     client_secret = "",
-    redirect_uri = "http://localhost:3000/callback",
-    scopes = c("openid"),
+    redirect_uri = redirect_uri,
+    scopes = scopes,
     client_private_key = key,
     client_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "RS256",
+    authorization_request_encryption_alg = "RSA-OAEP",
+    authorization_request_encryption_enc = "A256CBC-HS512",
+    authorization_request_encryption_kid = get_request_object_encryption_kid()
+  )
+}
+
+make_mtls_private_key_jar_client <- function(
+  prov,
+  client_id = "shiny-mtls-jar-pjwt",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+  key <- get_pjwt_key()
+  if (is.null(key)) {
+    return(NULL)
+  }
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = client_id,
+    client_secret = "",
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    client_private_key = key,
+    client_private_key_kid = NA_character_,
+    authorization_request_mode = "request",
+    authorization_request_signing_alg = "RS256"
+  )
+}
+
+make_mtls_private_key_jar_jwe_client <- function(
+  prov,
+  client_id = "shiny-mtls-jar-pjwt-jwe",
+  redirect_uri = "http://localhost:3000/callback",
+  scopes = c("openid"),
+  cert_variant = c("valid", "wrong", "rogue")
+) {
+  cert_variant <- match.arg(cert_variant)
+  key <- get_pjwt_key()
+  if (is.null(key)) {
+    return(NULL)
+  }
+
+  shinyOAuth::oauth_client(
+    provider = prov,
+    client_id = client_id,
+    client_secret = "",
+    redirect_uri = redirect_uri,
+    scopes = scopes,
+    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    client_private_key = key,
+    client_private_key_kid = NA_character_,
     authorization_request_mode = "request",
     authorization_request_signing_alg = "RS256",
     authorization_request_encryption_alg = "RSA-OAEP",

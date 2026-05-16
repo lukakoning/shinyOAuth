@@ -246,6 +246,83 @@ testthat::test_that("JAR signed request object in this Keycloak fixture still re
   expect_jar_outer_params_are_reflected(client)
 })
 
+testthat::test_that("reflected JAR invalid_request callback is rejected without consuming the legitimate state", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(
+    request_object_signing_alg_values_supported = c("HS256")
+  )
+  client <- make_hmac_jar_client(prov)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      state_info <- get_state_info(client, auth_url)
+      tampered_url <- tamper_outer_authorization_url(
+        auth_url,
+        include_client_id = FALSE
+      )
+      reflected_error <- perform_login_form(
+        tampered_url,
+        redirect_uri = "http://localhost:3000"
+      )
+      reflected_description <- parse_query_param(
+        reflected_error$callback_url,
+        "error_description",
+        decode = TRUE
+      )
+
+      values$.process_query(callback_query(reflected_error))
+      session$flushReact()
+
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_true(is.null(values$token))
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "state",
+        ignore.case = TRUE
+      )
+      testthat::expect_false(identical(
+        values$error_description %||% "",
+        reflected_description %||% ""
+      ))
+      testthat::expect_false(is.null(client@state_store$get(
+        state_info$key,
+        missing = NULL
+      )))
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      legitimate_login <- perform_login_form(
+        auth_url,
+        redirect_uri = client@redirect_uri
+      )
+      values$.process_query(callback_query(legitimate_login))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+      testthat::expect_null(client@state_store$get(
+        state_info$key,
+        missing = NULL
+      ))
+    }
+  )
+})
+
 testthat::test_that("PAR request_uri ignores conflicting outer redirect_uri, scope, state, nonce, resource, and code_challenge", {
   skip_common()
   local_test_options()

@@ -76,13 +76,14 @@ testthat::test_that("Keycloak PAR keeps login_hint extra auth params", {
       values$.process_query(callback_query(res))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "bob"
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "bob"
       )
     }
   )
@@ -128,13 +129,14 @@ testthat::test_that("Keycloak PAR happy path (public client)", {
       values$.process_query(callback_query(res))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "alice"
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
       )
     }
   )
@@ -176,13 +178,14 @@ testthat::test_that("Keycloak PAR happy path (confidential client with header au
       values$.process_query(callback_query(res))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "alice"
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
       )
     }
   )
@@ -217,13 +220,14 @@ testthat::test_that("Keycloak PAR happy path (client_secret_jwt)", {
       values$.process_query(callback_query(res))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "alice"
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
       )
     }
   )
@@ -259,13 +263,14 @@ testthat::test_that("Keycloak PAR happy path (private_key_jwt)", {
       values$.process_query(callback_query(res))
       session$flushReact()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
-      testthat::expect_identical(
-        values$token@userinfo$preferred_username,
-        "alice"
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
       )
     }
   )

@@ -24,6 +24,38 @@ build_par_auth_url <- function(client) {
   result
 }
 
+keycloak_realm_attribute <- function(token, name, default = NA_character_) {
+  stopifnot(keycloak_nonempty_string(name))
+
+  resp <- keycloak_admin_request(
+    "GET",
+    "/admin/realms/shinyoauth",
+    token = token
+  )
+  if (httr2::resp_is_error(resp)) {
+    testthat::skip("Keycloak realm endpoint failed")
+  }
+
+  body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
+  body$attributes[[name]] %||% default
+}
+
+keycloak_update_realm_attribute <- function(token, name, value) {
+  stopifnot(keycloak_nonempty_string(name))
+
+  resp <- keycloak_admin_request(
+    "PUT",
+    "/admin/realms/shinyoauth",
+    token = token,
+    body = list(attributes = stats::setNames(list(value), name))
+  )
+  if (httr2::resp_status(resp) >= 400L) {
+    testthat::skip("Keycloak realm update failed")
+  }
+
+  invisible(resp)
+}
+
 inspect_auth_request_once <- function(auth_url) {
   resp <- httr2::request(auth_url) |>
     req_apply_keycloak_ca() |>
@@ -44,7 +76,12 @@ inspect_auth_request_once <- function(auth_url) {
   )
 }
 
-expect_par_auth_request_rejected <- function(auth_url, redirect_uri, pattern) {
+expect_par_auth_request_rejected <- function(
+  auth_url,
+  redirect_uri,
+  expected_error = "invalid_request",
+  description_pattern = NULL
+) {
   result <- try(
     perform_login_form(auth_url, redirect_uri = redirect_uri),
     silent = TRUE
@@ -59,21 +96,58 @@ expect_par_auth_request_rejected <- function(auth_url, redirect_uri, pattern) {
         result$callback_url %||% "<no callback>"
       )
     )
-    testthat::expect_match(
-      result$callback_url %||% "",
-      pattern,
-      ignore.case = TRUE
+    callback_error <- parse_query_param(
+      result$callback_url,
+      "error",
+      decode = TRUE
     )
+    testthat::expect_identical(callback_error, expected_error)
+
+    if (!is.null(description_pattern)) {
+      testthat::expect_match(
+        parse_query_param(
+          result$callback_url,
+          "error_description",
+          decode = TRUE
+        ),
+        description_pattern,
+        ignore.case = TRUE
+      )
+    }
+
     return(invisible(result))
   }
 
   inspected <- inspect_auth_request_once(auth_url)
+  location_error <- parse_query_param(
+    inspected$location,
+    "error",
+    decode = TRUE
+  )
   combo <- paste(
     inspected$status,
     inspected$location %||% "",
     inspected$body %||% ""
   )
-  testthat::expect_match(combo, pattern, ignore.case = TRUE)
+
+  if (
+    is.character(location_error) &&
+      length(location_error) == 1L &&
+      !is.na(location_error) &&
+      nzchar(location_error)
+  ) {
+    testthat::expect_identical(location_error, expected_error)
+  } else {
+    testthat::expect_true(
+      inspected$status %in% c(400L, 401L, 403L),
+      info = combo
+    )
+  }
+
+  if (!is.null(description_pattern)) {
+    testthat::expect_match(combo, description_pattern, ignore.case = TRUE)
+  }
+
   invisible(inspected)
 }
 
@@ -130,24 +204,26 @@ testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", 
     client_assertion_audience = "https://example.com/not-keycloak"
   )
 
-  shiny::testServer(
-    app = shinyOAuth::oauth_module_server,
-    args = default_module_args(client),
-    expr = {
-      auth_url <- values$build_auth_url()
-      combo <- paste(values$error %||% "", values$error_description %||% "")
+  built <- build_par_auth_url(client)
 
-      testthat::expect_true(is.na(auth_url))
-      testthat::expect_true(!is.null(values$error))
-      testthat::expect_match(
-        combo,
-        "Pushed authorization request failed|invalid_client|aud",
-        perl = TRUE,
-        ignore.case = TRUE
-      )
-      testthat::expect_length(client@state_store$keys(), 0L)
-    }
+  testthat::expect_true(is.na(built$auth_url))
+  testthat::expect_identical(built$error, "auth_url_error")
+  testthat::expect_match(
+    built$error_description %||% "",
+    "Pushed authorization request failed",
+    fixed = TRUE
   )
+  testthat::expect_match(
+    built$error_description %||% "",
+    "Status 401: Unauthorized.",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    built$error_description %||% "",
+    "OAuth error: invalid_request: Authentication failed.",
+    fixed = TRUE
+  )
+  testthat::expect_length(client@state_store$keys(), 0L)
 })
 
 testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
@@ -177,7 +253,52 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
   expect_par_auth_request_rejected(
     auth_url,
     redirect_uri = client@redirect_uri,
-    pattern = "error|invalid|request_uri|expired|already|used|pushed|PAR"
+    expected_error = "invalid_request",
+    description_pattern = "Invalid Request"
+  )
+})
+
+testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured expiry", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(use_par = TRUE)
+  client <- make_public_client(prov)
+  admin_token <- keycloak_admin_token()
+  original_lifespan <- keycloak_realm_attribute(
+    admin_token,
+    "parRequestUriLifespan",
+    default = "60"
+  )
+
+  on.exit(
+    keycloak_update_realm_attribute(
+      admin_token,
+      "parRequestUriLifespan",
+      original_lifespan
+    ),
+    add = TRUE
+  )
+
+  keycloak_update_realm_attribute(
+    admin_token,
+    "parRequestUriLifespan",
+    "1"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(
+    client,
+    browser_token = paste(rep("ab", 64), collapse = "")
+  )
+  testthat::expect_match(auth_url, "[?&]request_uri=")
+
+  Sys.sleep(2)
+
+  expect_par_auth_request_rejected(
+    auth_url,
+    redirect_uri = client@redirect_uri,
+    expected_error = "invalid_request",
+    description_pattern = "Invalid Request|expired|request_uri"
   )
 })
 
@@ -202,6 +323,7 @@ testthat::test_that("PAR request_uri remains bound to the posting client when ou
   expect_par_auth_request_rejected(
     tampered_url,
     redirect_uri = client@redirect_uri,
-    pattern = "error|invalid|request_uri|client|unauthorized|PAR"
+    expected_error = "invalid_request",
+    description_pattern = "request_uri|client|unauthorized|PAR"
   )
 })

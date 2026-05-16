@@ -37,6 +37,112 @@ perform_mtls_module_login <- function(
   result
 }
 
+expect_mtls_par_build_auth_url_failure <- function(
+  cert_variant,
+  description_pattern
+) {
+  prov <- make_mtls_provider(
+    token_auth_style = "tls_client_auth",
+    use_par = TRUE
+  )
+  client <- make_mtls_confidential_client(prov, cert_variant = cert_variant)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+
+      testthat::expect_true(is.na(auth_url))
+      testthat::expect_identical(values$error, "auth_url_error")
+      testthat::expect_null(values$error_uri)
+      testthat::expect_match(
+        values$error_description %||% "",
+        description_pattern,
+        ignore.case = TRUE
+      )
+      testthat::expect_length(client@state_store$keys(), 0L)
+    }
+  )
+}
+
+build_raw_mtls_par_params <- function(client) {
+  scopes <- shinyOAuth:::effective_client_scopes(client)
+  state <- shinyOAuth:::random_urlsafe(n = client@state_entropy %||% 64)
+  shinyOAuth:::validate_state(state)
+
+  pkce_code_challenge <- NULL
+  pkce_method <- NULL
+  if (isTRUE(client@provider@use_pkce)) {
+    pkce_code_verifier <- shinyOAuth:::gen_code_verifier(64)
+    pkce_code_challenge <- shinyOAuth:::base64url_encode(
+      openssl::sha256(charToRaw(pkce_code_verifier))
+    )
+    pkce_method <- client@provider@pkce_method %||% "S256"
+  }
+
+  nonce <- NULL
+  if (isTRUE(client@provider@use_nonce)) {
+    nonce <- shinyOAuth:::random_urlsafe(n = 32)
+  }
+
+  payload <- shinyOAuth:::compact_list(list(
+    state = state,
+    client_id = client@client_id,
+    redirect_uri = client@redirect_uri,
+    scopes = scopes,
+    provider = shinyOAuth:::provider_fingerprint(client@provider),
+    client_policy = shinyOAuth:::state_client_policy_fingerprint(client),
+    issued_at = as.numeric(Sys.time()),
+    trace_id = shinyOAuth:::gen_trace_id()
+  )) |>
+    shinyOAuth:::state_encrypt_gcm(key = client@state_key)
+
+  shinyOAuth:::build_authorization_params(
+    oauth_client = client,
+    payload = payload,
+    scopes = scopes,
+    pkce_code_challenge = pkce_code_challenge,
+    pkce_method = pkce_method,
+    nonce = nonce
+  )
+}
+
+raw_mtls_par_request <- function(
+  client,
+  cert_variant = c("valid", "wrong", "rogue", "none")
+) {
+  cert_variant <- match.arg(cert_variant)
+  endpoint <- shinyOAuth:::resolve_provider_endpoint_url(
+    client@provider,
+    "par_endpoint",
+    prefer_mtls = TRUE
+  )
+  params <- build_raw_mtls_par_params(client)
+  req <- httr2::request(endpoint) |>
+    req_apply_keycloak_ca() |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_options(followlocation = FALSE) |>
+    httr2::req_method("POST")
+
+  prepared <- shinyOAuth:::apply_direct_client_auth(
+    req = req,
+    params = params,
+    client = client,
+    context = "pushed_authorization_request"
+  )
+  req <- prepared$req
+  params <- prepared$params
+
+  if (!identical(cert_variant, "none")) {
+    req <- req_apply_keycloak_client_certificate(req, cert_variant)
+  }
+
+  req <- do.call(httr2::req_body_form, c(list(req), params))
+  req |> httr2::req_perform()
+}
+
 testthat::test_that("Keycloak HTTPS discovery wires mTLS metadata into make_mtls_provider", {
   skip_mtls_common()
   local_test_options()
@@ -121,6 +227,33 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
   )
 })
 
+testthat::test_that("Keycloak mTLS protected resource helper reaches the userinfo endpoint", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
+  client <- make_mtls_confidential_client(prov)
+
+  login <- perform_mtls_module_login(client)
+
+  testthat::expect_true(isTRUE(login$authenticated))
+  testthat::expect_false(is.null(login$token))
+
+  resp <- shinyOAuth::perform_resource_req(
+    token = login$token,
+    url = get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
+    oauth_client = client
+  )
+  body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+
+  testthat::expect_identical(httr2::resp_status(resp), 200L)
+  testthat::expect_identical(body$sub, login$token@userinfo$sub)
+  testthat::expect_identical(
+    body$preferred_username,
+    login$token@userinfo$preferred_username
+  )
+})
+
 testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered endpoints", {
   skip_mtls_common()
   local_test_options()
@@ -161,13 +294,65 @@ testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered en
 
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_null(values$error)
+      testthat::expect_null(values$error_description)
+      testthat::expect_null(values$error_uri)
       testthat::expect_false(is.null(values$token))
       testthat::expect_true(nzchar(values$token@access_token %||% ""))
+      testthat::expect_identical(
+        values$token@userinfo$preferred_username,
+        "alice"
+      )
       testthat::expect_identical(
         access_token_cnf_x5t_s256(values$token@access_token),
         tls_client_thumbprint("valid")
       )
     }
+  )
+})
+
+testthat::test_that("Keycloak mTLS PAR endpoint rejects a missing client certificate", {
+  skip_mtls_common()
+  local_test_options()
+
+  prov <- make_mtls_provider(
+    token_auth_style = "tls_client_auth",
+    use_par = TRUE
+  )
+  client <- make_mtls_confidential_client(prov)
+  no_cert_resp <- raw_mtls_par_request(client, cert_variant = "none")
+  no_cert_body <- safe_resp_body_json(no_cert_resp)
+
+  testthat::expect_identical(httr2::resp_status(no_cert_resp), 401L)
+  testthat::expect_identical(no_cert_body$error, "invalid_request")
+  testthat::expect_identical(
+    no_cert_body$error_description,
+    "Authentication failed."
+  )
+})
+
+testthat::test_that("Keycloak mTLS PAR build_auth_url fails on a wrong client certificate", {
+  skip_mtls_common()
+  local_test_options()
+
+  expect_mtls_par_build_auth_url_failure(
+    cert_variant = "wrong",
+    description_pattern = paste(
+      "Pushed authorization request failed|invalid_client|",
+      "invalid_client_credentials|unauthorized_client"
+    )
+  )
+})
+
+testthat::test_that("Keycloak mTLS PAR fails closed on a rogue CA certificate at the PAR endpoint", {
+  skip_mtls_common()
+  local_test_options()
+
+  expect_mtls_par_build_auth_url_failure(
+    cert_variant = "rogue",
+    description_pattern = paste(
+      "Pushed authorization request failed|Transport failure|",
+      "certificate unknown|unknown ca|tls alert|No HTTP response"
+    )
   )
 })
 

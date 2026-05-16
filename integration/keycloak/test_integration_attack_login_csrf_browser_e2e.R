@@ -178,10 +178,7 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
     ))
   }
 
-  provider <- shinyOAuth::oauth_provider_keycloak(
-    base_url = "http://localhost:8080",
-    realm = "shinyoauth"
-  )
+  provider <- make_provider()
   client <- shinyOAuth::oauth_client(
     provider = provider,
     client_id = "shiny-public",
@@ -229,8 +226,30 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
     is.character(browser_state$auth_url) && nzchar(browser_state$auth_url)
   )
 
-  navigate_browser_to_url(drv, browser_state$auth_url)
-  keycloak_submit_browser_login(drv, username = "bob", password = "bob")
+  login <- perform_login_form_as(
+    browser_state$auth_url,
+    username = "bob",
+    password = "bob",
+    redirect_uri = client@redirect_uri
+  )
+  testthat::expect_true(
+    is.character(login$callback_url) && nzchar(login$callback_url)
+  )
+
+  navigate_browser_to_url(drv, login$callback_url)
+
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#auth_state');
+      if (!el) return false;
+      var text = el.innerText || '';
+      return text.indexOf('authenticated: TRUE') !== -1 ||
+        text.indexOf('error_description: <none>') === -1;
+    })();
+  ",
+    timeout = 20000
+  )
 
   auth_state <- keycloak_get_auth_state_robust(drv)
   browser_state <- read_login_csrf_browser_state(drv)
