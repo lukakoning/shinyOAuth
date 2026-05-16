@@ -27,7 +27,7 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"new_at","refresh_token":"new_rt","expires_in":3600}'
+          '{"access_token":"new_at","token_type":"Bearer","refresh_token":"new_rt","expires_in":3600}'
         )
       )
     },
@@ -52,7 +52,9 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"access_token":"newer_at","expires_in":"60"}')
+        body = charToRaw(
+          '{"access_token":"newer_at","token_type":"Bearer","expires_in":"60"}'
+        )
       )
     },
     .package = "shinyOAuth"
@@ -80,7 +82,7 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"async_new_at","refresh_token":"async_new_rt","expires_in":60}'
+          '{"access_token":"async_new_at","token_type":"Bearer","refresh_token":"async_new_rt","expires_in":60}'
         )
       )
     },
@@ -135,7 +137,9 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
           url = url,
           status = 200,
           headers = list("content-type" = "application/json"),
-          body = charToRaw('{"access_token":"at3","expires_in":120}')
+          body = charToRaw(
+            '{"access_token":"at3","token_type":"Bearer","expires_in":120}'
+          )
         )
       } else if (grepl("/userinfo", url, fixed = TRUE)) {
         calls$userinfo <<- calls$userinfo + 1L
@@ -190,7 +194,9 @@ expect_refresh_introspection_error <- function(
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"access_token":"new_at","expires_in":120}')
+        body = charToRaw(
+          '{"access_token":"new_at","token_type":"Bearer","expires_in":120}'
+        )
       )
     },
     introspect_token = function(oauth_client, oauth_token, which, async, ...) {
@@ -444,7 +450,9 @@ testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"access_token":"new_at","expires_in":0}')
+        body = charToRaw(
+          '{"access_token":"new_at","token_type":"Bearer","expires_in":0}'
+        )
       )
     },
     .package = "shinyOAuth"
@@ -479,7 +487,9 @@ testthat::test_that("refresh_token rejects negative expires_in", {
         url = as.character(req$url),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"access_token":"new_at","expires_in":-1}')
+        body = charToRaw(
+          '{"access_token":"new_at","token_type":"Bearer","expires_in":-1}'
+        )
       )
     },
     .package = "shinyOAuth"
@@ -1974,7 +1984,7 @@ testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 
         headers = list("content-type" = "application/json"),
         # Provider omits scope from refresh response
         body = charToRaw(
-          '{"access_token":"refreshed_at","expires_in":3600}'
+          '{"access_token":"refreshed_at","token_type":"Bearer","expires_in":3600}'
         )
       )
     },
@@ -2014,7 +2024,7 @@ testthat::test_that("refresh_token validates scope when provider returns it", {
         headers = list("content-type" = "application/json"),
         # Provider returns scope matching requested scopes
         body = charToRaw(
-          '{"access_token":"refreshed_at","scope":"openid profile email","expires_in":3600}'
+          '{"access_token":"refreshed_at","token_type":"Bearer","scope":"openid profile email","expires_in":3600}'
         )
       )
     },
@@ -2056,7 +2066,7 @@ testthat::test_that("refresh_token errors when provider returns reduced scope (s
         headers = list("content-type" = "application/json"),
         # Provider returns only subset of requested scopes
         body = charToRaw(
-          '{"access_token":"refreshed_at","scope":"openid profile","expires_in":3600}'
+          '{"access_token":"refreshed_at","token_type":"Bearer","scope":"openid profile","expires_in":3600}'
         )
       )
     },

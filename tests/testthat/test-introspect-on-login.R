@@ -1025,7 +1025,7 @@ test_that("handle_callback rejects conflicting introspection cnf values", {
   )
 })
 
-test_that("introspect_elements can require token_type and backfill DPoP", {
+test_that("introspect_elements can require token_type for DPoP tokens", {
   key <- openssl::rsa_keygen()
   jkt <- shinyOAuth:::compute_jwk_thumbprint(
     shinyOAuth:::dpop_public_jwk(key)
@@ -1043,6 +1043,7 @@ test_that("introspect_elements can require token_type and backfill DPoP", {
     swap_code_for_token_set = function(client, code, code_verifier) {
       list(
         access_token = "opaque-dpop-at",
+        token_type = "DPoP",
         expires_in = 3600
       )
     },

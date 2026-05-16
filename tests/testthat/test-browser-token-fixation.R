@@ -11,7 +11,7 @@ testthat::test_that("pre-set browser token works only for that session (fixation
   # Successful callback with same token (stub network)
   t1 <- testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 60)
+      list(access_token = "at", token_type = "Bearer", expires_in = 60)
     },
     .package = "shinyOAuth",
     shinyOAuth:::handle_callback(

@@ -25,7 +25,7 @@ testthat::test_that("manual login flow yields authenticated TRUE on success", {
       # Mock token exchange to avoid real HTTP
       token <- testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t", expires_in = 3600)
+          list(access_token = "t", token_type = "Bearer", expires_in = 3600)
         },
         .package = "shinyOAuth",
         {
@@ -329,7 +329,11 @@ testthat::test_that("manual sync login succeeds with browser-token protection en
 
       token <- testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t-sync-cookie", expires_in = 3600)
+          list(
+            access_token = "t-sync-cookie",
+            token_type = "Bearer",
+            expires_in = 3600
+          )
         },
         .package = "shinyOAuth",
         {
@@ -371,7 +375,7 @@ testthat::test_that("login fails when introspection validation fails", {
 
       testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t", expires_in = 3600)
+          list(access_token = "t", token_type = "Bearer", expires_in = 3600)
         },
         req_with_retry = function(req, ...) {
           httr2::response(
@@ -1253,7 +1257,7 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
           testthat::with_mocked_bindings(
             swap_code_for_token_set = function(client, code, code_verifier) {
               called <<- TRUE
-              list(access_token = "t", expires_in = 3600)
+              list(access_token = "t", token_type = "Bearer", expires_in = 3600)
             },
             .package = "shinyOAuth",
             {
@@ -1760,7 +1764,7 @@ testthat::test_that("oauth_module_server proactive refresh forwards introspectio
               status = 200,
               headers = list("content-type" = "application/json"),
               body = charToRaw(
-                '{"access_token":"new_at","expires_in":7200}'
+                '{"access_token":"new_at","token_type":"Bearer","expires_in":7200}'
               )
             ))
           }

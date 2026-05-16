@@ -988,7 +988,11 @@ otel_async_daemon("async module callback/login success exports correct main and 
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(access_token = "ok_at", expires_in = 3600))
+    res$send_json(list(
+      access_token = "ok_at",
+      token_type = "Bearer",
+      expires_in = 3600
+    ))
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1228,7 +1232,11 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(access_token = "ok_at", expires_in = 3600))
+    res$send_json(list(
+      access_token = "ok_at",
+      token_type = "Bearer",
+      expires_in = 3600
+    ))
   })
   app$get("/userinfo", function(req, res) {
     res$set_status(200L)
@@ -1466,7 +1474,11 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(access_token = "new_at", expires_in = 3600))
+    res$send_json(list(
+      access_token = "new_at",
+      token_type = "Bearer",
+      expires_in = 3600
+    ))
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1558,7 +1570,11 @@ otel_async_daemon("refresh_token async exports logs correlated with spans from a
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(access_token = "new_at", expires_in = 3600))
+    res$send_json(list(
+      access_token = "new_at",
+      token_type = "Bearer",
+      expires_in = 3600
+    ))
   })
   srv <- webfakes::local_app_process(app)
 

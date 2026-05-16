@@ -38,7 +38,11 @@ testthat::test_that("async login flow resolves token and sets flags", {
       # Mock token exchange to avoid HTTP; resolve with a short-lived token
       token <- testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t-async", expires_in = 3600)
+          list(
+            access_token = "t-async",
+            token_type = "Bearer",
+            expires_in = 3600
+          )
         },
         .package = "shinyOAuth",
         {
@@ -215,7 +219,11 @@ testthat::test_that("pending callback resumes after cookie arrives (async)", {
       # Once cookie is provided, module should resume the pending callback
       token <- testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t-async2", expires_in = 3600)
+          list(
+            access_token = "t-async2",
+            token_type = "Bearer",
+            expires_in = 3600
+          )
         },
         .package = "shinyOAuth",
         {

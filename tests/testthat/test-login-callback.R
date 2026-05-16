@@ -267,7 +267,7 @@ test_that("state store is single-use during handle_callback", {
   # First callback consumes state key and succeeds through stub
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 1)
+      list(access_token = "at", token_type = "Bearer", expires_in = 1)
     },
     .package = "shinyOAuth",
     {
@@ -355,7 +355,7 @@ test_that("verify_token_set enforces id_token requirement when provider demands 
   expect_error(
     shinyOAuth:::verify_token_set(
       cli,
-      list(access_token = "at", expires_in = 10),
+      list(access_token = "at", token_type = "Bearer", expires_in = 10),
       nonce = NULL
     ),
     class = "shinyOAuth_id_token_error",

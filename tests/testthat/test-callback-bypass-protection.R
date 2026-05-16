@@ -71,7 +71,7 @@ test_that("handle_callback enforces state-store consume on every call (replay bl
   # First call: stub token swap to succeed
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600)
+      list(access_token = "at", token_type = "Bearer", expires_in = 3600)
     },
     .package = "shinyOAuth",
     {

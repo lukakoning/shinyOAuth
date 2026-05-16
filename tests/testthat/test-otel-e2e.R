@@ -416,7 +416,7 @@ otel_e2e("prepare_call and callback share shinyOAuth trace_id", {
 
     testthat::with_mocked_bindings(
       swap_code_for_token_set = function(client, code, code_verifier) {
-        list(access_token = "test_at", expires_in = 3600)
+        list(access_token = "test_at", token_type = "Bearer", expires_in = 3600)
       },
       .package = "shinyOAuth",
       {
@@ -470,7 +470,7 @@ otel_e2e("handle_callback exports shinyOAuth trace_id once", {
 
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "test_at", expires_in = 3600)
+      list(access_token = "test_at", token_type = "Bearer", expires_in = 3600)
     },
     .package = "shinyOAuth",
     {
@@ -550,7 +550,7 @@ otel_e2e("prepare_call roots itself and callback parents to login span", {
 
     testthat::with_mocked_bindings(
       swap_code_for_token_set = function(client, code, code_verifier) {
-        list(access_token = "test_at", expires_in = 3600)
+        list(access_token = "test_at", token_type = "Bearer", expires_in = 3600)
       },
       .package = "shinyOAuth",
       {

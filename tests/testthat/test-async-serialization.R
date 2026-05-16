@@ -144,7 +144,11 @@ testthat::test_that("async login with non-serializable client falls back to sync
       token <- testthat::with_mocked_bindings(
         prepare_client_for_worker = function(client) NULL,
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t-sync-fallback", expires_in = 3600)
+          list(
+            access_token = "t-sync-fallback",
+            token_type = "Bearer",
+            expires_in = 3600
+          )
         },
         .package = "shinyOAuth",
         {
@@ -207,7 +211,11 @@ testthat::test_that("async login with serializable client still uses async path"
       # Normal async path should work (no warning)
       token <- testthat::with_mocked_bindings(
         swap_code_for_token_set = function(client, code, code_verifier) {
-          list(access_token = "t-async-ok", expires_in = 3600)
+          list(
+            access_token = "t-async-ok",
+            token_type = "Bearer",
+            expires_in = 3600
+          )
         },
         .package = "shinyOAuth",
         {

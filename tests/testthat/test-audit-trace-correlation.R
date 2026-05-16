@@ -19,7 +19,7 @@ testthat::test_that("successful redirect and callback share one flow trace_id", 
 
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
-      list(access_token = "at", expires_in = 3600)
+      list(access_token = "at", token_type = "Bearer", expires_in = 3600)
     },
     .package = "shinyOAuth",
     {

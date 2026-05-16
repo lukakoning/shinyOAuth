@@ -45,7 +45,7 @@ testthat::test_that("every audit event fires and serializes to JSON", {
     enc <- parse_query_param(prepare_call(cli, browser_token = btok), "state")
     tok <- testthat::with_mocked_bindings(
       swap_code_for_token_set = function(client, code, code_verifier) {
-        list(access_token = "t", expires_in = 3600)
+        list(access_token = "t", token_type = "Bearer", expires_in = 3600)
       },
       .package = "shinyOAuth",
       {
@@ -175,7 +175,9 @@ testthat::test_that("every audit event fires and serializes to JSON", {
             url = url,
             status = 200,
             headers = list("content-type" = "application/json"),
-            body = charToRaw('{"access_token":"new","expires_in":3600}')
+            body = charToRaw(
+              '{"access_token":"new","token_type":"Bearer","expires_in":3600}'
+            )
           )
         } else if (grepl("/userinfo", url, fixed = TRUE)) {
           httr2::response(

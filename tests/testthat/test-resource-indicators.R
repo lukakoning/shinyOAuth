@@ -116,7 +116,7 @@ test_that("refresh_token sends resource indicators in refresh body", {
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"new_at","refresh_token":"new_rt","expires_in":60}'
+          '{"access_token":"new_at","token_type":"Bearer","refresh_token":"new_rt","expires_in":60}'
         )
       )
     },
