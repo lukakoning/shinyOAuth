@@ -242,10 +242,6 @@
     malformed, or missing required `introspect_elements` such as `sub`,
     `client_id`, or `scope`.
 
-- Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
-  refresh-time `nonce`, and `azp` in addition to the existing `iss` /
-  `sub` / `aud` checks.
-
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   now:
 
@@ -277,6 +273,10 @@
   `token_type`, even when `allowed_token_types = character()`. An empty
   allowlist still disables value allowlisting, but it no longer waives
   the RFC-required field.
+
+- Refreshed OIDC ID tokens now enforce full continuity for `auth_time`,
+  refresh-time `nonce`, and `azp` in addition to the existing `iss` /
+  `sub` / `aud` checks.
 
 - Token exchange and refresh requests no longer retry on transport
   errors or transient HTTP statuses (408/429/5xx). Authorization codes

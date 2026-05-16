@@ -109,7 +109,6 @@
 <ul><li>Refuses to update userinfo unless it can verify the refreshed identity against a new or preserved ID token subject, preventing identity confusion when providers omit <code>id_token</code> from refresh responses.</li>
 <li>When called with <code>introspect = TRUE</code>, enforces token introspection as a hard policy check instead of best-effort metadata enrichment. Refresh now fails when introspection is unsupported, inactive, malformed, or missing required <code>introspect_elements</code> such as <code>sub</code>, <code>client_id</code>, or <code>scope</code>.</li>
 </ul></li>
-<li><p>Refreshed OIDC ID tokens now enforce full continuity for <code>auth_time</code>, refresh-time <code>nonce</code>, and <code>azp</code> in addition to the existing <code>iss</code> / <code>sub</code> / <code>aud</code> checks.</p></li>
 <li>
 <p><code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> now:</p>
 <ul><li>Applies the same hard JWK <code>alg</code> compatibility checks to signed UserInfo JWT verification as ID token verification, rejecting JWKS keys that advertise a different algorithm even if signature verification would otherwise succeed.</li>
@@ -121,6 +120,7 @@
 <li>Uses internal JWS verifier instead of <code><a href="https://r-lib.r-universe.dev/jose/reference/jwt_encode.html" class="external-link">jose::jwt_decode_sig()</a></code>, so EdDSA UserInfo JWTs can verify correctly, provider <code>leeway</code> is honored consistently, and invalid <code>typ</code> headers are rejected.</li>
 </ul></li>
 <li><p>Successful token and refresh responses now always require <code>token_type</code>, even when <code>allowed_token_types = character()</code>. An empty allowlist still disables value allowlisting, but it no longer waives the RFC-required field.</p></li>
+<li><p>Refreshed OIDC ID tokens now enforce full continuity for <code>auth_time</code>, refresh-time <code>nonce</code>, and <code>azp</code> in addition to the existing <code>iss</code> / <code>sub</code> / <code>aud</code> checks.</p></li>
 <li><p>Token exchange and refresh requests no longer retry on transport errors or transient HTTP statuses (408/429/5xx). Authorization codes are single-use and refresh tokens may be rotated on each use; retrying after the server has already committed the first request would replay an invalidated credential, causing <code>invalid_grant</code> errors or triggering refresh-token replay detection.</p></li>
 <li><p>Hardened runtime JWKS discovery by validating the discovery issuer before trusting <code>jwks_uri</code>. This policy is now stored on <code>OAuthProvider</code> via <code>issuer_match</code>, so both provider discovery and runtime JWKS fetches apply the same rule: <code>url</code> for exact issuer URL matching, <code>host</code> for scheme-and-host matching, or <code>none</code> to skip the discovery issuer check.</p></li>
 <li><p>JWKS caching now respects global host policy immediately. Cached entries are scoped to the current <code>allowed_hosts</code> / <code>allowed_non_https_hosts</code> settings, and cache hits re-check the stored <code>jwks_uri</code> before a JWKS is trusted.</p></li>
