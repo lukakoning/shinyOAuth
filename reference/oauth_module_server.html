@@ -194,7 +194,9 @@ Set this when the authorization server must fetch the published Request
 Object through a different public host or proxy address than the browser
 uses, or when you prefer to declare the public origin explicitly. The
 value must not include a query string or fragment. Non-HTTPS hosts still
-follow the same <code><a href="is_ok_host.html">?is_ok_host</a></code> policy as other package URLs.</p></dd>
+follow the same <code><a href="is_ok_host.html">?is_ok_host</a></code> policy as other package URLs, but
+shinyOAuth warns once per R session because RFC 9101 Section 5.2 expects
+client-provided <code>request_uri</code> values to use HTTPS.</p></dd>
 
 
 <dt id="arg-browser-cookie-path">browser_cookie_path<a class="anchor" aria-label="anchor" href="#arg-browser-cookie-path"></a></dt>

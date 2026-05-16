@@ -146,7 +146,9 @@ oauth_module_server(
   explicitly. The value must not include a query string or fragment.
   Non-HTTPS hosts still follow the same
   [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  policy as other package URLs.
+  policy as other package URLs, but shinyOAuth warns once per R session
+  because RFC 9101 Section 5.2 expects client-provided `request_uri`
+  values to use HTTPS.
 
 - browser_cookie_path:
 
