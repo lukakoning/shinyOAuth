@@ -80,7 +80,8 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(res))
+      query <- callback_query(res)
+      values$.process_query(query)
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, "invalid_state")
@@ -92,6 +93,20 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
       )
       testthat::expect_null(
         client@state_store$get(state$info$key, missing = NULL)
+      )
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      values$.process_query(query)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "state",
+        ignore.case = TRUE
       )
     }
   )
@@ -130,7 +145,8 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(res))
+      query <- callback_query(res)
+      values$.process_query(query)
       session$flushReact()
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, "token_exchange_error")
@@ -142,6 +158,20 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
       )
       testthat::expect_null(
         client@state_store$get(state$info$key, missing = NULL)
+      )
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      values$.process_query(query)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "state",
+        ignore.case = TRUE
       )
     }
   )

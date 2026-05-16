@@ -178,16 +178,48 @@ testthat::test_that("Keycloak mTLS auth-code flow surfaces wrong certificate err
   prov <- make_mtls_provider(token_auth_style = "tls_client_auth")
   wrong_client <- make_mtls_confidential_client(prov, cert_variant = "wrong")
 
-  login <- perform_mtls_module_login(wrong_client)
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(wrong_client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      state_info <- get_state_info(wrong_client, auth_url)
+      login <- perform_login_form_as(
+        auth_url,
+        redirect_uri = wrong_client@redirect_uri
+      )
+      query <- callback_query(login)
 
-  testthat::expect_false(isTRUE(login$authenticated))
-  testthat::expect_true(is.null(login$token))
-  testthat::expect_identical(login$error, "token_exchange_error")
-  combo <- paste(login$error_description %||% "")
-  testthat::expect_match(
-    combo,
-    "Transport failure|invalid_client|invalid_client_credentials|certificate|tls alert|No HTTP response",
-    ignore.case = TRUE
+      values$.process_query(query)
+      session$flushReact()
+
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_true(is.null(values$token))
+      testthat::expect_identical(values$error, "token_exchange_error")
+      combo <- paste(values$error_description %||% "")
+      testthat::expect_match(
+        combo,
+        "Transport failure|invalid_client|invalid_client_credentials|certificate|tls alert|No HTTP response",
+        ignore.case = TRUE
+      )
+      testthat::expect_null(
+        wrong_client@state_store$get(state_info$key, missing = NULL)
+      )
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      values$.process_query(query)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "state",
+        ignore.case = TRUE
+      )
+    }
   )
 })
 

@@ -16,10 +16,11 @@ expect_jwt_auth_code_flow_failure <- function(client, description_pattern) {
       auth_url <- values$build_auth_url()
       state_info <- get_state_info(client, auth_url)
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
+      query <- callback_query(login)
 
       testthat::expect_true(nzchar(login$code %||% ""))
 
-      values$.process_query(callback_query(login))
+      values$.process_query(query)
       session$flushReact()
 
       testthat::expect_false(isTRUE(values$authenticated))
@@ -33,6 +34,20 @@ expect_jwt_auth_code_flow_failure <- function(client, description_pattern) {
       testthat::expect_null(
         client@state_store$get(state_info$key, missing = NULL),
         info = "State should be single-use even when token exchange fails"
+      )
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      values$.process_query(query)
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "state",
+        ignore.case = TRUE
       )
     }
   )

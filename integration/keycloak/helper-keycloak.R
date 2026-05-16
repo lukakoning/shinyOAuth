@@ -503,6 +503,72 @@ keycloak_get_auth_state_robust <- function(
   ""
 }
 
+browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
+  ns_hash <- substr(as.character(openssl::sha256(paste0(id, "-"))), 1, 8)
+  paste0(prefix, "-", id, "-", ns_hash)
+}
+
+browser_cookie_candidates <- function(id) {
+  c(
+    browser_cookie_name(id),
+    browser_cookie_name(id, prefix = "__Host-shinyOAuth_sid")
+  )
+}
+
+get_browser_cookie <- function(drv, name) {
+  cookies <- drv$get_chromote_session()$Network$getAllCookies()$cookies
+  matches <- Filter(function(cookie) identical(cookie$name, name), cookies)
+  if (length(matches) == 0L) {
+    return(NULL)
+  }
+
+  testthat::expect_length(matches, 1L)
+  matches[[1]]
+}
+
+wait_for_browser_cookie <- function(
+  drv,
+  name,
+  timeout = 8,
+  idle_ms = 200
+) {
+  deadline <- Sys.time() + timeout
+
+  repeat {
+    cookie <- get_browser_cookie(drv, name)
+    if (!is.null(cookie)) {
+      return(cookie)
+    }
+    if (Sys.time() > deadline) {
+      return(NULL)
+    }
+    drv$wait_for_idle(idle_ms)
+  }
+}
+
+find_browser_token_cookie <- function(
+  drv,
+  id,
+  timeout = 8,
+  idle_ms = 200
+) {
+  deadline <- Sys.time() + timeout
+  names <- browser_cookie_candidates(id)
+
+  repeat {
+    for (name in names) {
+      cookie <- get_browser_cookie(drv, name)
+      if (!is.null(cookie)) {
+        return(cookie)
+      }
+    }
+    if (Sys.time() > deadline) {
+      return(NULL)
+    }
+    drv$wait_for_idle(idle_ms)
+  }
+}
+
 ## ---------- URL / cookie helpers ----------
 
 parse_query_param <- function(url, name, decode = FALSE) {
@@ -1426,7 +1492,9 @@ expect_keycloak_module_login_invariants <- function(
       nzchar(token@access_token)
   )
 
-  allowed_token_types <- normalize_claim_values(client@provider@allowed_token_types)
+  allowed_token_types <- normalize_claim_values(
+    client@provider@allowed_token_types
+  )
   if (length(allowed_token_types) > 0L) {
     testthat::expect_true(
       tolower(token@token_type %||% "") %in% tolower(allowed_token_types),
@@ -1438,7 +1506,8 @@ expect_keycloak_module_login_invariants <- function(
   }
 
   expect_oidc_claims <-
-    "openid" %in% normalize_claim_values(client@scopes) ||
+    "openid" %in%
+    normalize_claim_values(client@scopes) ||
     isTRUE(client@provider@id_token_required) ||
     isTRUE(client@provider@id_token_validation) ||
     isTRUE(client@provider@use_nonce)
@@ -1481,7 +1550,9 @@ expect_keycloak_module_login_invariants <- function(
       client@provider@extra_auth_params
     )
     if (!is.null(max_age_info$value)) {
-      auth_time <- suppressWarnings(as.numeric(id_claims$auth_time %||% NA_real_))
+      auth_time <- suppressWarnings(as.numeric(
+        id_claims$auth_time %||% NA_real_
+      ))
       testthat::expect_true(is.finite(auth_time))
     }
   }

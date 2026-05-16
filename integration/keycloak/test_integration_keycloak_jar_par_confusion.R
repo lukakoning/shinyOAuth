@@ -100,7 +100,10 @@ expect_jar_outer_params_are_reflected <- function(client) {
         auth_url,
         include_client_id = FALSE
       )
-      login <- perform_login_form(tampered_url, redirect_uri = "http://localhost:3000")
+      login <- perform_login_form(
+        tampered_url,
+        redirect_uri = "http://localhost:3000"
+      )
 
       testthat::expect_true(
         startsWith(login$callback_url %||% "", attacker_outer_redirect_uri),
@@ -120,7 +123,11 @@ expect_jar_outer_params_are_reflected <- function(client) {
         ignore.case = TRUE
       )
       testthat::expect_match(
-        parse_query_param(login$callback_url, "error_description", decode = TRUE),
+        parse_query_param(
+          login$callback_url,
+          "error_description",
+          decode = TRUE
+        ),
         "Missing(\\+| )parameter:(\\+| )response_type",
         perl = TRUE
       )
@@ -168,16 +175,24 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
         auth_url,
         include_client_id = FALSE
       )
-      login <- perform_login_form(tampered_url, redirect_uri = client@redirect_uri)
+      login <- perform_login_form(
+        tampered_url,
+        redirect_uri = client@redirect_uri
+      )
 
       testthat::expect_true(
         startsWith(login$callback_url %||% "", client@redirect_uri)
       )
-      testthat::expect_false(identical(login$state_payload, attacker_outer_state))
+      testthat::expect_false(identical(
+        login$state_payload,
+        attacker_outer_state
+      ))
       testthat::expect_true(
         is.character(state$entry$nonce) && nzchar(state$entry$nonce)
       )
-      testthat::expect_true(is.character(original_challenge) && nzchar(original_challenge))
+      testthat::expect_true(
+        is.character(original_challenge) && nzchar(original_challenge)
+      )
       testthat::expect_false(identical(state$entry$nonce, attacker_outer_nonce))
       testthat::expect_false(
         identical(original_challenge, attacker_outer_code_challenge)
@@ -199,7 +214,11 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
         "admin" %in% normalize_claim_values(values$token@granted_scopes)
       )
 
-      intros <- shinyOAuth::introspect_token(client, values$token, which = "access")
+      intros <- shinyOAuth::introspect_token(
+        client,
+        values$token,
+        which = "access"
+      )
       token_aud <- normalize_claim_values(
         decode_compact_jwt_payload(values$token@access_token)$aud %||% NULL
       )
