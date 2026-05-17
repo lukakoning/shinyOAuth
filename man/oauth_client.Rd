@@ -27,7 +27,7 @@ oauth_client(
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
-  response_mode = "query",
+  response_mode = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,

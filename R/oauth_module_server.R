@@ -584,6 +584,44 @@ oauth_module_server <- function(
       refresh_in_progress = FALSE
     )
 
+    form_post_module_registry <- tryCatch(
+      session$userData$shinyOAuth_form_post_module_registry,
+      error = function(...) NULL
+    )
+    if (!is.environment(form_post_module_registry)) {
+      form_post_module_registry <- new.env(parent = emptyenv())
+      session$userData$shinyOAuth_form_post_module_registry <-
+        form_post_module_registry
+    }
+    assign(id, TRUE, envir = form_post_module_registry)
+
+    .form_post_module_registered <- function(module_id) {
+      if (!is_valid_string(module_id)) {
+        return(FALSE)
+      }
+
+      isTRUE(get0(
+        module_id,
+        envir = form_post_module_registry,
+        inherits = FALSE,
+        ifnotfound = FALSE
+      ))
+    }
+
+    .mark_unclaimed_form_post_query <- function(query_string) {
+      raw_query <- query_string %||% ""
+      last_query <- tryCatch(
+        session$userData$shinyOAuth_last_unclaimed_form_post_query,
+        error = function(...) NULL
+      )
+      if (identical(last_query, raw_query)) {
+        return(FALSE)
+      }
+
+      session$userData$shinyOAuth_last_unclaimed_form_post_query <- raw_query
+      TRUE
+    }
+
     # Export for tests
     shiny::exportTestValues(
       token = values$token,
@@ -1510,6 +1548,22 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
         if (!identical(form_post_id, id)) {
+          if (
+            !isTRUE(.form_post_module_registered(form_post_id)) &&
+              isTRUE(.mark_unclaimed_form_post_query(query_string))
+          ) {
+            clear_oauth_module_callback_query(
+              session,
+              tab_title_replacement,
+              tab_title_cleaning
+            )
+            .set_error(
+              "invalid_callback_query",
+              NULL,
+              phase = "form_post_callback_query",
+              description = "form_post callback handle references unknown module id"
+            )
+          }
           return(invisible(NULL))
         }
         if (!is.null(qs$code) || !is.null(qs$error) || !is.null(qs$state)) {

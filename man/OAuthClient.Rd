@@ -18,7 +18,7 @@ OAuthClient(
   tls_client_ca_file = NA_character_,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = "parameters",
-  response_mode = "query",
+  response_mode = NA_character_,
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
   authorization_request_encryption_alg = NA_character_,

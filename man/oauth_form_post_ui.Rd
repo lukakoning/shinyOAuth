@@ -48,7 +48,7 @@ for the wrapped GET UI, so you do not need a separate top-level
 \examples{
 \dontrun{
 # Query callbacks are the preferred default for most apps and do not need
-# `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"` 
+# `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"`
 # only if your provider requires or strongly recommends it
 client <- oauth_client(
   provider = provider,

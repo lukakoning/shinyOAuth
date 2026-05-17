@@ -69,19 +69,16 @@ test_that("prepare_call normalizes explicit query response_mode", {
 test_that("oauth_client defaults response_mode to query", {
   client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
-  expect_identical(client@response_mode, "query")
+  expect_true(is.na(client@response_mode))
 })
 
-test_that("prepare_call emits query response_mode by default", {
+test_that("prepare_call omits implicit query response_mode by default", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@extra_auth_params <- list(prompt = "login")
 
   url <- shinyOAuth:::prepare_call(cli, browser_token = valid_browser_token())
 
-  expect_identical(
-    parse_query_param(url, "response_mode", decode = TRUE),
-    "query"
-  )
+  expect_true(is.na(parse_query_param(url, "response_mode", decode = TRUE)))
   expect_identical(parse_query_param(url, "prompt", decode = TRUE), "login")
 })
 
@@ -182,19 +179,26 @@ test_that("oauth_client rejects conflicting response_mode configuration", {
   )
 })
 
-test_that("oauth_client default query conflicts with provider form_post", {
+test_that("oauth_client inherits provider response_mode when unset", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@response_modes_supported <- c("query", "form_post")
   prov@extra_auth_params <- list(response_mode = "form_post")
 
-  expect_error(
-    oauth_client(
-      provider = prov,
-      client_id = "abc",
-      client_secret = "",
-      redirect_uri = "http://localhost:8100/callback"
-    ),
-    regexp = "conflicts"
+  client <- expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback"
+  ))
+  expect_true(is.na(client@response_mode))
+
+  url <- shinyOAuth:::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  expect_identical(
+    parse_query_param(url, "response_mode", decode = TRUE),
+    "form_post"
   )
 })
 

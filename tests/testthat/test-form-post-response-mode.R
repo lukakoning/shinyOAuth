@@ -101,6 +101,11 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
 
   missing_state <- ui(make_form_post_req(body = "code=ok"))
   expect_identical(missing_state$status, 400L)
+
+  invalid_state <- ui(make_form_post_req(
+    body = "code=ok&state=definitely-not-a-valid-state"
+  ))
+  expect_identical(invalid_state$status, 400L)
 })
 
 test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
@@ -221,6 +226,55 @@ test_that("oauth_module_server consumes form_post error callbacks", {
 
       expect_identical(values$error, "access_denied")
       expect_identical(values$error_description, "Denied")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("oauth_module_server rejects unknown form_post module ids", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  seen <- character(0)
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    seen <<- c(seen, type)
+    orig(type, message)
+  }
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    session = sess,
+    expr = {
+      session$flushReact()
+      seen <<- character(0)
+
+      url <- values$build_auth_url()
+      enc_state <- parse_query_param(url, "state")
+      decoded_state <- shiny::parseQueryString(paste0(
+        "?state=",
+        enc_state
+      ))$state
+      handle <- shinyOAuth:::oauth_form_post_store_set(
+        cli,
+        "auth",
+        list(code = "ok", state = decoded_state)
+      )
+
+      values$.process_query(form_post_query(handle, "wrong"))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "unknown module id")
+      expect_true(any(seen == "shinyOAuth:clearQueryAndFixTitle"))
       expect_false(isTRUE(values$authenticated))
     }
   )

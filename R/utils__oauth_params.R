@@ -183,6 +183,94 @@ inspect_auth_response_mode <- function(extra_auth_params) {
   out
 }
 
+#' Resolve the effective OAuthClient authorization response mode
+#'
+#' Merges the client-level `response_mode` with any provider
+#' `extra_auth_params$response_mode`, validates conflicts against advertised
+#' provider support, and strips the provider-level `response_mode` from the
+#' returned auth params so request builders can add it exactly once when
+#' explicitly configured.
+#'
+#' @param oauth_client [OAuthClient] object.
+#' @param default_mode Fallback response mode when neither client nor provider
+#'   config sets one.
+#' @return A list containing the effective mode, explicit mode (or `NULL`),
+#'   cleaned provider auth params, and optional error text.
+#' @keywords internal
+#' @noRd
+resolve_oauth_client_response_mode <- function(
+  oauth_client,
+  default_mode = "query"
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  extra_auth_params <- oauth_client@provider@extra_auth_params
+  out <- list(
+    mode = default_mode,
+    explicit_mode = NULL,
+    extra_auth_params = extra_auth_params,
+    error = NULL
+  )
+
+  client_response_mode_info <- resolve_auth_response_mode(
+    oauth_client@response_mode %||% NA_character_,
+    arg = "response_mode",
+    context = "OAuthClient"
+  )
+  if (!is.null(client_response_mode_info$error)) {
+    out$error <- client_response_mode_info$error
+    return(out)
+  }
+
+  provider_response_mode_info <- inspect_auth_response_mode(extra_auth_params)
+  if (!is.null(provider_response_mode_info$error)) {
+    out$error <- provider_response_mode_info$error
+    return(out)
+  }
+
+  if (
+    !is.null(client_response_mode_info$mode) &&
+      !is.null(provider_response_mode_info$mode) &&
+      !identical(
+        client_response_mode_info$mode,
+        provider_response_mode_info$mode
+      )
+  ) {
+    out$error <- paste0(
+      "OAuthClient: response_mode = ",
+      sQuote(client_response_mode_info$mode),
+      " conflicts with OAuthProvider.extra_auth_params$response_mode = ",
+      sQuote(provider_response_mode_info$mode),
+      ". Configure response_mode on the client or provider extra_auth_params, not both."
+    )
+    return(out)
+  }
+
+  out$explicit_mode <- client_response_mode_info$mode %||%
+    provider_response_mode_info$mode
+  out$mode <- out$explicit_mode %||% default_mode
+
+  if (length(provider_response_mode_info$index) == 1L) {
+    extra_auth_params[[provider_response_mode_info$index]] <- NULL
+  }
+  out$extra_auth_params <- extra_auth_params
+
+  if (
+    !is.null(out$mode) &&
+      length(oauth_client@provider@response_modes_supported) > 0 &&
+      !out$mode %in% oauth_client@provider@response_modes_supported
+  ) {
+    out$error <- paste0(
+      "OAuthClient: response_mode = ",
+      sQuote(out$mode),
+      " is not advertised in provider response_modes_supported"
+    )
+    return(out)
+  }
+
+  out
+}
+
 #' Inspect the configured OIDC max_age authorization parameter
 #'
 #' Used by provider validation, login-time ID token checks, and telemetry.

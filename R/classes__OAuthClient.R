@@ -466,7 +466,7 @@ OAuthClient <- S7::new_class(
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
       S7::class_character,
-      default = "query"
+      default = NA_character_
     ),
     # Optional override for the signed authorization request alg.
     authorization_request_signing_alg = S7::new_property(
@@ -618,7 +618,7 @@ oauth_client <- function(
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
-  response_mode = "query",
+  response_mode = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -703,7 +703,7 @@ oauth_client <- function(
   if (!is.null(response_mode_info$error)) {
     err_input(response_mode_info$error)
   }
-  response_mode <- response_mode_info$mode %||% "query"
+  response_mode <- response_mode_info$mode %||% NA_character_
 
   if (
     !isTRUE(dpop_require_access_token_missing) &&
@@ -1156,46 +1156,9 @@ oauth_client_validate <- function(self) {
       "OAuthClient: authorization_request_mode must be a scalar character string"
     )
   }
-  response_mode_info <- resolve_auth_response_mode(
-    self@response_mode %||% NA_character_,
-    arg = "response_mode",
-    context = "OAuthClient"
-  )
+  response_mode_info <- resolve_oauth_client_response_mode(self)
   if (!is.null(response_mode_info$error)) {
     return(response_mode_info$error)
-  }
-  provider_response_mode_info <- inspect_auth_response_mode(
-    self@provider@extra_auth_params
-  )
-  if (!is.null(provider_response_mode_info$error)) {
-    return(provider_response_mode_info$error)
-  }
-  if (
-    !is.null(response_mode_info$mode) &&
-      !is.null(provider_response_mode_info$mode) &&
-      !identical(response_mode_info$mode, provider_response_mode_info$mode)
-  ) {
-    return(paste0(
-      "OAuthClient: response_mode = ",
-      sQuote(response_mode_info$mode),
-      " conflicts with OAuthProvider.extra_auth_params$response_mode = ",
-      sQuote(provider_response_mode_info$mode),
-      ". Configure response_mode on the client or provider extra_auth_params, not both."
-    ))
-  }
-  resolved_response_mode <- response_mode_info$mode %||%
-    provider_response_mode_info$mode %||%
-    "query"
-  if (
-    !is.null(resolved_response_mode) &&
-      length(self@provider@response_modes_supported) > 0 &&
-      !resolved_response_mode %in% self@provider@response_modes_supported
-  ) {
-    return(paste0(
-      "OAuthClient: response_mode = ",
-      sQuote(resolved_response_mode),
-      " is not advertised in provider response_modes_supported"
-    ))
   }
   request_object_modes <- c("request", "request_uri")
 

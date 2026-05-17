@@ -378,46 +378,15 @@ build_authorization_params <- function(
     params$acr_values <- paste(racr, collapse = " ")
   }
 
-  client_response_mode_info <- resolve_auth_response_mode(
-    oauth_client@response_mode %||% NA_character_,
-    arg = "response_mode",
-    context = "OAuthClient"
-  )
-  if (!is.null(client_response_mode_info$error)) {
-    err_config(client_response_mode_info$error)
+  response_mode_info <- resolve_oauth_client_response_mode(oauth_client)
+  if (!is.null(response_mode_info$error)) {
+    err_config(response_mode_info$error)
   }
 
-  resolved_response_mode <- client_response_mode_info$mode
+  explicit_response_mode <- response_mode_info$explicit_mode
+  extra <- response_mode_info$extra_auth_params
 
-  if (length(oauth_client@provider@extra_auth_params) > 0) {
-    extra <- oauth_client@provider@extra_auth_params
-
-    provider_response_mode_info <- inspect_auth_response_mode(extra)
-    if (!is.null(provider_response_mode_info$error)) {
-      err_config(provider_response_mode_info$error)
-    }
-
-    if (
-      !is.null(resolved_response_mode) &&
-        !is.null(provider_response_mode_info$mode) &&
-        !identical(resolved_response_mode, provider_response_mode_info$mode)
-    ) {
-      err_config(paste0(
-        "OAuthClient.response_mode = ",
-        sQuote(resolved_response_mode),
-        " conflicts with OAuthProvider.extra_auth_params$response_mode = ",
-        sQuote(provider_response_mode_info$mode),
-        ". Configure response_mode on the client or provider extra_auth_params, not both."
-      ))
-    }
-
-    if (is.null(resolved_response_mode)) {
-      resolved_response_mode <- provider_response_mode_info$mode
-    }
-    if (length(provider_response_mode_info$index) == 1L) {
-      extra[[provider_response_mode_info$index]] <- NULL
-    }
-
+  if (length(extra) > 0) {
     # Block overrides for security-critical parameters unless explicitly
     # unblocked. Allowing callers to replace these can break state binding,
     # redirect_uri validation, PKCE integrity, or PAR request indirection.
@@ -461,22 +430,8 @@ build_authorization_params <- function(
     params <- c(params, extra)
   }
 
-  resolved_response_mode <- resolved_response_mode %||% "query"
-
-  if (
-    length(oauth_client@provider@response_modes_supported) > 0 &&
-      !resolved_response_mode %in%
-        oauth_client@provider@response_modes_supported
-  ) {
-    err_config(paste0(
-      "OAuthClient.response_mode = ",
-      sQuote(resolved_response_mode),
-      " is not advertised in response_modes_supported"
-    ))
-  }
-
-  if (!is.null(resolved_response_mode)) {
-    params$response_mode <- resolved_response_mode
+  if (!is.null(explicit_response_mode)) {
+    params$response_mode <- explicit_response_mode
   }
 
   # Drop NULLs before building query strings or form bodies.

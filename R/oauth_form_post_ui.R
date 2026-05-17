@@ -25,10 +25,10 @@
 #' you must also configure your [OAuthClient] with `response_mode = "form_post"`
 #' and ensure the `redirect_uri` is set to a URL that routes to this UI wrapper
 #' (e.g., the app's root URL or a specific callback path).
-#' 
+#'
 #' @details
-#' When this wrapper is used, it also injects [use_shinyOAuth()] automatically 
-#' for the wrapped GET UI, so you do not need a separate top-level 
+#' When this wrapper is used, it also injects [use_shinyOAuth()] automatically
+#' for the wrapped GET UI, so you do not need a separate top-level
 #' `use_shinyOAuth()` call.
 #'
 #' @param base_ui
@@ -52,7 +52,7 @@
 #' @examples
 #' \dontrun{
 #' # Query callbacks are the preferred default for most apps and do not need
-#' # `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"` 
+#' # `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"`
 #' # only if your provider requires or strongly recommends it
 #' client <- oauth_client(
 #'   provider = provider,
@@ -77,7 +77,7 @@
 #' }
 #'
 #' app <- shiny::shinyApp(ui, server, uiPattern = ".*")
-#' 
+#'
 #' shiny::runApp(app, port = 8100, launch.browser = FALSE)
 #' # Open the app in your regular browser at http://127.0.0.1:8100
 #' # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
@@ -221,6 +221,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
       limits <- oauth_callback_limits()
       body <- oauth_form_post_read_body(req, limits$form_post_body)
       payload <- oauth_form_post_parse_body(body, limits)
+      state_payload_decrypt_validate(client, payload$state)
       handle <- oauth_form_post_store_set(client, id, payload)
       location <- oauth_form_post_redirect_location(req, id, handle)
 
