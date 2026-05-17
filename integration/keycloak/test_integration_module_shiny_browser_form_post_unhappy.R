@@ -323,6 +323,22 @@ if (!exists("make_provider", mode = "function")) {
   ))
 }
 
+.fetch_form_post_code_callback <- function(auth_url, redirect_uri) {
+  login <- perform_login_form_as(auth_url, redirect_uri = redirect_uri)
+
+  testthat::expect_identical(
+    login$response_mode %||% NA_character_,
+    "form_post"
+  )
+  testthat::expect_true(is.list(login$form_post_fields))
+  testthat::expect_true(keycloak_nonempty_string(login$form_post_fields$code))
+  testthat::expect_true(keycloak_nonempty_string(login$form_post_fields$state))
+  testthat::expect_true(keycloak_nonempty_string(login$form_post_fields$iss))
+  testthat::expect_true(startsWith(login$callback_url, redirect_uri))
+
+  login$form_post_fields
+}
+
 .navigate_form_post_browser_to_url <- function(drv, url) {
   url_json <- jsonlite::toJSON(url, auto_unbox = TRUE)
   drv$run_js(paste0("window.location.href = ", url_json, ";"))
@@ -586,6 +602,229 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
     .read_form_post_browser_state(drv)$state_store_count,
     0L
   )
+})
+
+testthat::test_that("browser form_post code callbacks with tampered browser cookies are rejected", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("xml2")
+  testthat::skip_if_not_installed("rvest")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_CODE_CSRF",
+    "8100"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post code cookie tamper E2E"
+    ))
+  }
+
+  client <- .make_form_post_browser_client(app_port)
+  drv <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client,
+      title = "Form post code cookie tamper",
+      module_id = "auth"
+    ),
+    name = sprintf("keycloak-form-post-code-csrf-%d", app_port),
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$click("prepare_login_btn")
+  prepared <- .wait_for_form_post_auth_url(drv)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  enc_state <- parse_query_param(auth_url, "state", decode = TRUE)
+  fields <- .fetch_form_post_code_callback(auth_url, client@redirect_uri)
+
+  testthat::expect_identical(fields$state, enc_state)
+
+  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_false(is.null(cookie))
+
+  attacker_cookie <- .random_browser_token_hex()
+  testthat::expect_false(identical(
+    cookie$value %||% NA_character_,
+    attacker_cookie
+  ))
+  .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
+
+  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_identical(tampered_cookie$value, attacker_cookie)
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = fields
+  )
+
+  auth_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
+  testthat::expect_match(
+    auth_state,
+    "browser.token|browser token|invalid browser token|mismatch",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  .wait_for_form_post_callback_cleanup(drv)
+  .wait_for_form_post_state_store_count(drv, 0L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    0L
+  )
+})
+
+testthat::test_that("swapped form_post code callbacks against the wrong app are rejected without consuming rightful callbacks", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("xml2")
+  testthat::skip_if_not_installed("rvest")
+
+  port_a <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_CODE_SWAP_A",
+    "8100"
+  ))
+  port_b <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_CODE_SWAP_B",
+    "3000"
+  ))
+
+  testthat::skip_if(
+    identical(port_a, port_b),
+    "Form-post code swap E2E requires two distinct app ports"
+  )
+
+  busy_ports <- c()
+  if (keycloak_browser_port_in_use(port_a)) {
+    busy_ports <- c(busy_ports, as.character(port_a))
+  }
+  if (keycloak_browser_port_in_use(port_b)) {
+    busy_ports <- c(busy_ports, as.character(port_b))
+  }
+  testthat::skip_if(
+    length(busy_ports) > 0L,
+    paste0(
+      "Port(s) ",
+      paste(busy_ports, collapse = ", "),
+      " already in use; skipping form_post code swap E2E"
+    )
+  )
+
+  client_a <- .make_form_post_browser_client(port_a)
+  client_b <- .make_form_post_browser_client(port_b)
+
+  drv_a <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client_a,
+      title = "Form post code swap A",
+      module_id = "auth_a"
+    ),
+    name = sprintf("keycloak-form-post-code-swap-a-%d", port_a),
+    load_timeout = 15000,
+    shiny_args = list(port = port_a, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+
+  drv_b <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client_b,
+      title = "Form post code swap B",
+      module_id = "auth_b"
+    ),
+    name = sprintf("keycloak-form-post-code-swap-b-%d", port_b),
+    load_timeout = 15000,
+    shiny_args = list(port = port_b, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv_a)
+  .wait_for_form_post_ready(drv_b)
+
+  drv_a$click("prepare_login_btn")
+  drv_b$click("prepare_login_btn")
+
+  prepared_a <- .wait_for_form_post_auth_url(drv_a)
+  prepared_b <- .wait_for_form_post_auth_url(drv_b)
+  enc_state_a <- parse_query_param(prepared_a$auth_url, "state")
+  fields_b <- .fetch_form_post_code_callback(
+    prepared_b$auth_url,
+    client_b@redirect_uri
+  )
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = client_a@redirect_uri,
+    fields = fields_b
+  )
+
+  attacked_page <- .wait_for_form_post_page_text(
+    drv_a,
+    pattern = "state|redirect_uri|binding|invalid|validation|decrypt"
+  )
+  testthat::expect_match(
+    attacked_page,
+    "state|redirect_uri|binding|invalid|validation|decrypt",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
+  restored_a <- .wait_for_form_post_ready(drv_a)
+  .wait_for_form_post_state_store_count(drv_a, 1L)
+  .wait_for_form_post_state_store_count(drv_b, 1L)
+
+  .submit_form_post_browser_callback(
+    drv_b,
+    action_url = client_b@redirect_uri,
+    fields = fields_b
+  )
+  auth_state_b <- .wait_for_form_post_auth_state_transition(
+    drv_b,
+    previous_state = prepared_b$auth_state
+  )
+  testthat::expect_match(auth_state_b, "authenticated: TRUE", fixed = TRUE)
+  testthat::expect_match(
+    auth_state_b,
+    "error_description: <none>",
+    fixed = TRUE
+  )
+
+  .wait_for_form_post_callback_cleanup(drv_b)
+  .wait_for_form_post_state_store_count(drv_b, 0L)
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = client_a@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state_a,
+      iss = client_a@provider@issuer
+    )
+  )
+  auth_state_a <- .wait_for_form_post_auth_state_transition(
+    drv_a,
+    previous_state = restored_a$auth_state
+  )
+  testthat::expect_match(auth_state_a, "error: access_denied", fixed = TRUE)
+
+  .wait_for_form_post_callback_cleanup(drv_a)
+  .wait_for_form_post_state_store_count(drv_a, 0L)
 })
 
 testthat::test_that("swapped form_post callbacks against the wrong app are rejected without consuming rightful callbacks", {

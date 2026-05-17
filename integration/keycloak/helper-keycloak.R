@@ -1000,6 +1000,75 @@ parse_callback_redirect <- function(loc, redirect_uri) {
   )
 }
 
+parse_form_post_authorization_response <- function(
+  resp,
+  redirect_uri = NA_character_
+) {
+  html <- tryCatch(httr2::resp_body_string(resp), error = function(...) "")
+  if (!is.character(html) || length(html) != 1L || !nzchar(html)) {
+    return(NULL)
+  }
+  if (!grepl("<form", html, ignore.case = TRUE, fixed = FALSE)) {
+    return(NULL)
+  }
+
+  doc <- tryCatch(xml2::read_html(html), error = function(...) NULL)
+  if (is.null(doc)) {
+    return(NULL)
+  }
+
+  forms <- rvest::html_elements(doc, "form")
+  if (length(forms) == 0L) {
+    return(NULL)
+  }
+
+  for (form in forms) {
+    method <- rvest::html_attr(form, "method") %||% ""
+    if (!identical(tolower(method), "post")) {
+      next
+    }
+
+    action <- rvest::html_attr(form, "action") %||% ""
+    if (!keycloak_nonempty_string(action)) {
+      next
+    }
+
+    base_url <- resp$url %||% redirect_uri
+    action_url <- to_abs(base_url, action)
+    if (
+      keycloak_nonempty_string(redirect_uri) &&
+        !startsWith(action_url, redirect_uri)
+    ) {
+      next
+    }
+
+    inputs <- rvest::html_elements(form, "input")
+    names <- rvest::html_attr(inputs, "name")
+    vals <- rvest::html_attr(inputs, "value")
+    keep <- !is.na(names) & nzchar(names)
+    if (!any(keep)) {
+      next
+    }
+
+    vals[is.na(vals)] <- ""
+    fields <- as.list(stats::setNames(vals[keep], names[keep]))
+    code <- fields$code %||% NA_character_
+    state <- fields$state %||% NA_character_
+
+    if (keycloak_nonempty_string(code) && keycloak_nonempty_string(state)) {
+      return(list(
+        code = code,
+        state_payload = state,
+        callback_url = action_url,
+        form_post_fields = fields,
+        response_mode = "form_post"
+      ))
+    }
+  }
+
+  NULL
+}
+
 follow_once <- function(resp, cookie_hdr) {
   loc <- httr2::resp_header(resp, "location")
   if (is.null(loc) || !nzchar(loc)) {
@@ -1784,6 +1853,14 @@ perform_login_form_as <- function(
     cookie_hdr <- merge_cookies(cookie_hdr, cur_resp)
   }
 
+  form_post <- parse_form_post_authorization_response(
+    cur_resp,
+    redirect_uri = redirect_uri
+  )
+  if (!is.null(form_post)) {
+    return(form_post)
+  }
+
   html <- httr2::resp_body_string(cur_resp)
   doc <- xml2::read_html(html)
   form <- rvest::html_element(doc, "form")
@@ -1829,6 +1906,14 @@ perform_login_form_as <- function(
       break
     }
   }
+  form_post <- parse_form_post_authorization_response(
+    cur_resp,
+    redirect_uri = redirect_uri
+  )
+  if (!is.null(form_post)) {
+    return(form_post)
+  }
+
   stopifnot(is.character(code) && nzchar(code))
   list(
     code = code,
