@@ -81,6 +81,36 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(payload$iss, "https://issuer")
 })
 
+test_that("oauth_form_post_store_take verifies fallback handle removal", {
+  withr::local_options(list(shinyOAuth.allow_non_atomic_state_store = TRUE))
+
+  backing <- new.env(parent = emptyenv())
+  store <- custom_cache(
+    get = function(key, missing = NULL) {
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        return(get(key, envir = backing, inherits = FALSE))
+      }
+      missing
+    },
+    set = function(key, value) assign(key, value, envir = backing),
+    remove = function(key) TRUE
+  )
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@state_store <- store
+
+  handle <- shinyOAuth:::oauth_form_post_store_set(
+    cli,
+    "auth",
+    list(code = "ok", state = "state")
+  )
+
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
+    class = "shinyOAuth_state_error",
+    regexp = "Failed to remove form_post callback handle"
+  )
+})
+
 test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)

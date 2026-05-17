@@ -528,7 +528,30 @@ oauth_form_post_store_take <- function(client, id, handle) {
         )
       }
     )
-    try(store$remove(key), silent = TRUE)
+    remove_succeeded <- FALSE
+    missing_sentinel <- new.env(parent = emptyenv())
+    tryCatch(
+      {
+        store$remove(key)
+        post <- store$get(key, missing = missing_sentinel)
+        remove_succeeded <- identical(post, missing_sentinel)
+      },
+      error = function(e) {
+        err_invalid_state(
+          sprintf(
+            "Failed to remove form_post callback handle: %s",
+            conditionMessage(e)
+          ),
+          context = list(phase = "form_post_store_remove")
+        )
+      }
+    )
+    if (!isTRUE(remove_succeeded)) {
+      err_invalid_state(
+        "Failed to remove form_post callback handle",
+        context = list(phase = "form_post_store_remove")
+      )
+    }
   }
 
   if (is.null(payload)) {
