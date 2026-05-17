@@ -221,7 +221,11 @@ oauth_form_post_handle_request <- function(req, id, client) {
       limits <- oauth_callback_limits()
       body <- oauth_form_post_read_body(req, limits$form_post_body)
       payload <- oauth_form_post_parse_body(body, limits)
-      state_payload_decrypt_validate(client, payload$state)
+      state_payload_decrypt_validate(
+        client,
+        payload$state,
+        audit_success = FALSE
+      )
       handle <- oauth_form_post_store_set(client, id, payload)
       location <- oauth_form_post_redirect_location(req, id, handle)
 

@@ -24,11 +24,14 @@
 #' @param shiny_session Optional pre-captured Shiny session context (from
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
+#' @param audit_success Whether successful payload validation should emit the
+#'   standard callback validation audit event. Failures are still audited.
 #' @keywords internal
 state_payload_decrypt_validate <- function(
   client,
   encrypted_payload,
-  shiny_session = NULL
+  shiny_session = NULL,
+  audit_success = TRUE
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -45,22 +48,24 @@ state_payload_decrypt_validate <- function(
       payload_verify_client_binding(client, pld)
 
       # Success audit (redacted identifiers only)
-      with_trace_id(
-        pld$trace_id %||% NULL,
-        try(
-          audit_event(
-            "callback_validation_success",
-            context = list(
-              provider = client@provider@name %||% NA_character_,
-              issuer = client@provider@issuer %||% NA_character_,
-              client_id_digest = string_digest(client@client_id),
-              state_digest = string_digest(pld$state)
+      if (isTRUE(audit_success)) {
+        with_trace_id(
+          pld$trace_id %||% NULL,
+          try(
+            audit_event(
+              "callback_validation_success",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                state_digest = string_digest(pld$state)
+              ),
+              shiny_session = shiny_session
             ),
-            shiny_session = shiny_session
-          ),
-          silent = TRUE
+            silent = TRUE
+          )
         )
-      )
+      }
       pld
     },
     error = function(e) {

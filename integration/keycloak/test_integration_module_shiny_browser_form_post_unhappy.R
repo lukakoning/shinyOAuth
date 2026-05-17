@@ -1,0 +1,746 @@
+## Browser E2E: form_post unhappy and attacker paths against Keycloak-backed apps
+
+if (!exists("make_provider", mode = "function")) {
+  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+}
+
+.make_form_post_browser_client <- function(app_port) {
+  shinyOAuth::oauth_client(
+    provider = make_provider(),
+    client_id = "shiny-public",
+    client_secret = "",
+    redirect_uri = sprintf("http://127.0.0.1:%d", app_port),
+    scopes = c("openid", "profile", "email"),
+    response_mode = "form_post"
+  )
+}
+
+.make_form_post_browser_app <- function(client, title, module_id = "auth") {
+  base_ui <- shiny::fluidPage(
+    shinyOAuth::use_shinyOAuth(),
+    shiny::titlePanel(title),
+    shiny::actionButton("prepare_login_btn", "Prepare login"),
+    shiny::tags$hr(),
+    shiny::verbatimTextOutput("ready_state"),
+    shiny::verbatimTextOutput("auth_state"),
+    shiny::verbatimTextOutput("auth_url"),
+    shiny::verbatimTextOutput("state_store_count")
+  )
+
+  ui <- shinyOAuth::oauth_form_post_ui(
+    base_ui,
+    id = module_id,
+    client = client
+  )
+
+  server <- function(input, output, session) {
+    published_auth_urls <- shiny::reactiveValues()
+    session_browser_tokens <- shiny::reactiveValues()
+
+    session$onSessionEnded(function() {
+      session_browser_tokens[[session$token]] <- NULL
+    })
+
+    auth <- shinyOAuth::oauth_module_server(
+      module_id,
+      client,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    )
+
+    shiny::observe({
+      browser_token <- auth$browser_token %||% NA_character_
+      if (keycloak_nonempty_string(browser_token)) {
+        session_browser_tokens[[session$token]] <- browser_token
+      }
+    })
+
+    build_and_capture_auth_url <- function() {
+      url <- auth$build_auth_url()
+      browser_token <- auth$browser_token %||% NA_character_
+
+      if (keycloak_nonempty_string(browser_token)) {
+        published_auth_urls[[browser_token]] <- url
+      }
+
+      url
+    }
+
+    shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
+      build_and_capture_auth_url()
+    })
+
+    output$ready_state <- shiny::renderText({
+      paste("browser_ready:", isTRUE(auth$has_browser_token()))
+    })
+
+    output$auth_state <- shiny::renderText({
+      paste(
+        "authenticated:",
+        isTRUE(auth$authenticated),
+        "has_token:",
+        !is.null(auth$token),
+        "error:",
+        auth$error %||% "<none>",
+        "error_description:",
+        auth$error_description %||% "<none>"
+      )
+    })
+
+    output$auth_url <- shiny::renderText({
+      browser_token <- session_browser_tokens[[session$token]] %||%
+        NA_character_
+      auth_url <- if (keycloak_nonempty_string(browser_token)) {
+        published_auth_urls[[browser_token]] %||% NA_character_
+      } else {
+        NA_character_
+      }
+
+      if (
+        !is.character(auth_url) ||
+          length(auth_url) != 1L ||
+          is.na(auth_url) ||
+          !nzchar(auth_url)
+      ) {
+        return("<none>")
+      }
+
+      auth_url
+    })
+
+    output$state_store_count <- shiny::renderText({
+      shiny::invalidateLater(100, session)
+      as.character(length(client@state_store$keys()))
+    })
+  }
+
+  shiny::shinyApp(ui, server, uiPattern = ".*")
+}
+
+.read_form_post_browser_state <- function(drv) {
+  state <- jsonlite::fromJSON(drv$get_js(
+    "
+    JSON.stringify((function () {
+      var ready = document.querySelector('#ready_state');
+      var auth = document.querySelector('#auth_state');
+      var authUrl = document.querySelector('#auth_url');
+      var stateCount = document.querySelector('#state_store_count');
+      return {
+        ready_state: ready ? (ready.innerText || '') : '',
+        auth_state: auth ? (auth.innerText || '') : '',
+        auth_url: authUrl ? (authUrl.innerText || '') : '',
+        state_store_count: stateCount ? (stateCount.innerText || '0') : '0',
+        href: window.location.href || '',
+        title: document.title || '',
+        body_text: document.body ? (document.body.innerText || '') : ''
+      };
+    })())
+  "
+  ))
+
+  state$state_store_count <- suppressWarnings(as.integer(
+    state$state_store_count
+  ))
+  state
+}
+
+.wait_for_form_post_ready <- function(drv, timeout = 15000) {
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#ready_state');
+      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+    })();
+  ",
+    timeout = timeout
+  )
+
+  .read_form_post_browser_state(drv)
+}
+
+.wait_for_form_post_auth_url <- function(drv, timeout = 15000) {
+  drv$wait_for_js(
+    "
+    (function () {
+      var el = document.querySelector('#auth_url');
+      return !!(el && el.innerText && el.innerText !== '<none>');
+    })();
+  ",
+    timeout = timeout
+  )
+
+  .read_form_post_browser_state(drv)
+}
+
+.wait_for_form_post_auth_state_transition <- function(
+  drv,
+  previous_state = "",
+  timeout = 20000,
+  interval = 0.25
+) {
+  deadline <- Sys.time() + (timeout / 1000)
+  previous_state <- trimws(previous_state %||% "")
+  current_state <- previous_state
+
+  while (Sys.time() < deadline) {
+    current_state <- trimws(
+      .read_form_post_browser_state(drv)$auth_state %||% ""
+    )
+    if (
+      nchar(current_state) > 0 &&
+        !identical(current_state, previous_state) &&
+        (grepl("authenticated: TRUE", current_state, fixed = TRUE) ||
+          !grepl("error: <none>", current_state, fixed = TRUE) ||
+          !grepl("error_description: <none>", current_state, fixed = TRUE))
+    ) {
+      return(current_state)
+    }
+
+    Sys.sleep(interval)
+  }
+
+  stop(
+    paste0(
+      "Timed out waiting for auth state transition. Previous: ",
+      previous_state,
+      " Current: ",
+      current_state
+    ),
+    call. = FALSE
+  )
+}
+
+.wait_for_form_post_page_text <- function(
+  drv,
+  pattern,
+  timeout = 10000,
+  interval = 0.25,
+  ignore_case = TRUE
+) {
+  deadline <- Sys.time() + (timeout / 1000)
+  current_text <- ""
+
+  while (Sys.time() < deadline) {
+    current_text <- .read_form_post_browser_state(drv)$body_text %||% ""
+    if (grepl(pattern, current_text, perl = TRUE, ignore.case = ignore_case)) {
+      return(current_text)
+    }
+
+    Sys.sleep(interval)
+  }
+
+  stop(
+    paste0(
+      "Timed out waiting for page text pattern '",
+      pattern,
+      "'. Current text: ",
+      current_text
+    ),
+    call. = FALSE
+  )
+}
+
+.wait_for_form_post_callback_cleanup <- function(drv, timeout = 5000) {
+  drv$wait_for_js(
+    "
+    (function () {
+      var forbidden = [
+        'code=', 'state=', 'iss=', 'error=',
+        'error_description=', 'error_uri=',
+        'shinyOAuth_form_post=', 'shinyOAuth_form_post_id=',
+        'id_token=', 'access_token='
+      ];
+      var href = window.location.href || '';
+      var title = document.title || '';
+      return forbidden.every(function (key) {
+        return href.indexOf(key) === -1 && title.indexOf(key) === -1;
+      });
+    })();
+  ",
+    timeout = timeout
+  )
+
+  .read_form_post_browser_state(drv)
+}
+
+.wait_for_form_post_state_store_count <- function(
+  drv,
+  expected,
+  timeout = 5000,
+  interval = 0.1
+) {
+  deadline <- Sys.time() + (timeout / 1000)
+  current <- NA_integer_
+
+  while (Sys.time() < deadline) {
+    current <- .read_form_post_browser_state(drv)$state_store_count
+    if (identical(current, as.integer(expected))) {
+      return(current)
+    }
+
+    Sys.sleep(interval)
+  }
+
+  stop(
+    paste0(
+      "Timed out waiting for state_store_count = ",
+      as.integer(expected),
+      ". Current value: ",
+      if (is.na(current)) "NA" else as.character(current)
+    ),
+    call. = FALSE
+  )
+}
+
+.submit_form_post_browser_callback <- function(drv, action_url, fields) {
+  action_url_json <- jsonlite::toJSON(action_url, auto_unbox = TRUE)
+  fields_json <- jsonlite::toJSON(fields, auto_unbox = TRUE, null = "null")
+
+  drv$run_js(paste0(
+    "(function () {",
+    "  var actionUrl = ",
+    action_url_json,
+    ";",
+    "  var fields = ",
+    fields_json,
+    ";",
+    "  var form = document.createElement('form');",
+    "  form.method = 'POST';",
+    "  form.action = actionUrl;",
+    "  Object.keys(fields).forEach(function (name) {",
+    "    var value = fields[name];",
+    "    if (value === null || value === undefined) { return; }",
+    "    var input = document.createElement('input');",
+    "    input.type = 'hidden';",
+    "    input.name = name;",
+    "    input.value = String(value);",
+    "    form.appendChild(input);",
+    "  });",
+    "  document.body.appendChild(form);",
+    "  HTMLFormElement.prototype.submit.call(form);",
+    "  return true;",
+    "})()"
+  ))
+}
+
+.navigate_form_post_browser_to_url <- function(drv, url) {
+  url_json <- jsonlite::toJSON(url, auto_unbox = TRUE)
+  drv$run_js(paste0("window.location.href = ", url_json, ";"))
+}
+
+.random_browser_token_hex <- function(bytes = 64L) {
+  paste0(
+    sample(c(0:9, letters[1:6]), as.integer(bytes) * 2L, replace = TRUE),
+    collapse = ""
+  )
+}
+
+.tamper_browser_token_cookie <- function(drv, cookie_name, cookie_value) {
+  cookie_name_json <- jsonlite::toJSON(cookie_name, auto_unbox = TRUE)
+  cookie_value_json <- jsonlite::toJSON(cookie_value, auto_unbox = TRUE)
+
+  drv$run_js(paste0(
+    "document.cookie = ",
+    cookie_name_json,
+    " + '=' + ",
+    cookie_value_json,
+    " + '; Path=/; SameSite=Strict';"
+  ))
+}
+
+testthat::test_that("browser form_post provider error callbacks are surfaced and cleaned", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_ERROR",
+    "8110"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post error callback E2E"
+    ))
+  }
+
+  client <- .make_form_post_browser_client(app_port)
+  drv <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client,
+      title = "Form post error callback",
+      module_id = "auth"
+    ),
+    name = sprintf("keycloak-form-post-error-%d", app_port),
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$click("prepare_login_btn")
+  prepared <- .wait_for_form_post_auth_url(drv)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  enc_state <- parse_query_param(auth_url, "state")
+
+  testthat::expect_true(nzchar(auth_url))
+  testthat::expect_identical(
+    parse_query_param(auth_url, "response_mode", decode = TRUE),
+    "form_post"
+  )
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state,
+      iss = client@provider@issuer
+    )
+  )
+
+  auth_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error: access_denied", fixed = TRUE)
+  testthat::expect_match(
+    auth_state,
+    "error_description: Denied by Keycloak",
+    fixed = TRUE
+  )
+
+  cleaned <- .wait_for_form_post_callback_cleanup(drv)
+  .wait_for_form_post_state_store_count(drv, 0L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    0L
+  )
+})
+
+testthat::test_that("browser form_post issuer mismatches are rejected without consuming state", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_ISS",
+    "8111"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post issuer mismatch E2E"
+    ))
+  }
+
+  client <- .make_form_post_browser_client(app_port)
+  drv <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client,
+      title = "Form post issuer mismatch",
+      module_id = "auth"
+    ),
+    name = sprintf("keycloak-form-post-iss-%d", app_port),
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$click("prepare_login_btn")
+  prepared <- .wait_for_form_post_auth_url(drv)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  enc_state <- parse_query_param(auth_url, "state")
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state,
+      iss = paste0(client@provider@issuer, "/attacker")
+    )
+  )
+
+  auth_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error: issuer_mismatch", fixed = TRUE)
+
+  after_mismatch <- .wait_for_form_post_callback_cleanup(drv)
+  .wait_for_form_post_state_store_count(drv, 1L)
+  testthat::expect_identical(after_mismatch$state_store_count, 1L)
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state,
+      iss = client@provider@issuer
+    )
+  )
+
+  recovered_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = after_mismatch$auth_state
+  )
+  testthat::expect_match(recovered_state, "error: access_denied", fixed = TRUE)
+
+  recovered <- .wait_for_form_post_callback_cleanup(drv)
+  .wait_for_form_post_state_store_count(drv, 0L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    0L
+  )
+})
+
+testthat::test_that("browser form_post callbacks with tampered browser cookies are rejected", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_CSRF",
+    "8112"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post cookie tamper E2E"
+    ))
+  }
+
+  client <- .make_form_post_browser_client(app_port)
+  drv <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client,
+      title = "Form post cookie tamper",
+      module_id = "auth"
+    ),
+    name = sprintf("keycloak-form-post-csrf-%d", app_port),
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$click("prepare_login_btn")
+  prepared <- .wait_for_form_post_auth_url(drv)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  enc_state <- parse_query_param(auth_url, "state")
+
+  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_false(is.null(cookie))
+
+  attacker_cookie <- .random_browser_token_hex()
+  testthat::expect_false(identical(
+    cookie$value %||% NA_character_,
+    attacker_cookie
+  ))
+  .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
+
+  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_identical(tampered_cookie$value, attacker_cookie)
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state,
+      iss = client@provider@issuer
+    )
+  )
+
+  auth_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
+  testthat::expect_match(
+    auth_state,
+    "browser.token|browser token|invalid browser token|mismatch",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  cleaned <- .wait_for_form_post_callback_cleanup(drv)
+  .wait_for_form_post_state_store_count(drv, 0L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    0L
+  )
+})
+
+testthat::test_that("swapped form_post callbacks against the wrong app are rejected without consuming rightful callbacks", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  port_a <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_SWAP_A",
+    "8113"
+  ))
+  port_b <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_SWAP_B",
+    "8114"
+  ))
+
+  testthat::skip_if(
+    identical(port_a, port_b),
+    "Form-post swap E2E requires two distinct app ports"
+  )
+
+  busy_ports <- c()
+  if (keycloak_browser_port_in_use(port_a)) {
+    busy_ports <- c(busy_ports, as.character(port_a))
+  }
+  if (keycloak_browser_port_in_use(port_b)) {
+    busy_ports <- c(busy_ports, as.character(port_b))
+  }
+  testthat::skip_if(
+    length(busy_ports) > 0L,
+    paste0(
+      "Port(s) ",
+      paste(busy_ports, collapse = ", "),
+      " already in use; skipping form_post swap E2E"
+    )
+  )
+
+  client_a <- .make_form_post_browser_client(port_a)
+  client_b <- .make_form_post_browser_client(port_b)
+
+  drv_a <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client_a,
+      title = "Form post swap A",
+      module_id = "auth_a"
+    ),
+    name = sprintf("keycloak-form-post-swap-a-%d", port_a),
+    load_timeout = 15000,
+    shiny_args = list(port = port_a, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+
+  drv_b <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client_b,
+      title = "Form post swap B",
+      module_id = "auth_b"
+    ),
+    name = sprintf("keycloak-form-post-swap-b-%d", port_b),
+    load_timeout = 15000,
+    shiny_args = list(port = port_b, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv_a)
+  .wait_for_form_post_ready(drv_b)
+
+  drv_a$click("prepare_login_btn")
+  drv_b$click("prepare_login_btn")
+
+  prepared_a <- .wait_for_form_post_auth_url(drv_a)
+  prepared_b <- .wait_for_form_post_auth_url(drv_b)
+  enc_state_a <- parse_query_param(prepared_a$auth_url, "state")
+  enc_state_b <- parse_query_param(prepared_b$auth_url, "state")
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = client_a@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state_b,
+      iss = client_a@provider@issuer
+    )
+  )
+
+  attacked_page <- .wait_for_form_post_page_text(
+    drv_a,
+    pattern = "state|redirect_uri|binding|invalid"
+  )
+  testthat::expect_match(
+    attacked_page,
+    "state|redirect_uri|binding|invalid",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
+  restored_a <- .wait_for_form_post_ready(drv_a)
+  restored_b <- .read_form_post_browser_state(drv_b)
+  .wait_for_form_post_state_store_count(drv_a, 1L)
+  .wait_for_form_post_state_store_count(drv_b, 1L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv_a)$state_store_count,
+    1L
+  )
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv_b)$state_store_count,
+    1L
+  )
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = client_a@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state_a,
+      iss = client_a@provider@issuer
+    )
+  )
+  auth_state_a <- .wait_for_form_post_auth_state_transition(
+    drv_a,
+    previous_state = restored_a$auth_state
+  )
+  testthat::expect_match(auth_state_a, "error: access_denied", fixed = TRUE)
+
+  .submit_form_post_browser_callback(
+    drv_b,
+    action_url = client_b@redirect_uri,
+    fields = list(
+      error = "access_denied",
+      error_description = "Denied by Keycloak",
+      state = enc_state_b,
+      iss = client_b@provider@issuer
+    )
+  )
+  auth_state_b <- .wait_for_form_post_auth_state_transition(
+    drv_b,
+    previous_state = prepared_b$auth_state
+  )
+  testthat::expect_match(auth_state_b, "error: access_denied", fixed = TRUE)
+
+  final_a <- .wait_for_form_post_callback_cleanup(drv_a)
+  final_b <- .wait_for_form_post_callback_cleanup(drv_b)
+  .wait_for_form_post_state_store_count(drv_a, 0L)
+  .wait_for_form_post_state_store_count(drv_b, 0L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv_a)$state_store_count,
+    0L
+  )
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv_b)$state_store_count,
+    0L
+  )
+})
