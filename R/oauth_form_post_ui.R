@@ -580,7 +580,11 @@ err_form_post_http <- function(message, status = 400L) {
   )
 }
 
-oauth_form_post_error_response <- function(e, fallback_status = 400L) {
+oauth_form_post_error_response <- function(
+  e,
+  fallback_status = 400L,
+  expose_message = inherits(e, "shinyOAuth_form_post_http_error")
+) {
   status <- tryCatch(e$status, error = function(...) NULL)
   if (
     !is.numeric(status) ||
@@ -591,10 +595,18 @@ oauth_form_post_error_response <- function(e, fallback_status = 400L) {
     status <- fallback_status
   }
 
+  content <- if (isTRUE(expose_message)) {
+    conditionMessage(e)
+  } else if (status >= 500L) {
+    "OAuth form_post callback failed."
+  } else {
+    "OAuth form_post callback could not be processed."
+  }
+
   shiny::httpResponse(
     status = as.integer(status),
     content_type = "text/plain; charset=UTF-8",
-    content = conditionMessage(e),
+    content = content,
     headers = stats::setNames(
       as.list(c("no-store", "no-cache", "no-referrer")),
       c("Cache-Control", "Pragma", "Referrer-Policy")

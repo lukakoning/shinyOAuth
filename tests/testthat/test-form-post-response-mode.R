@@ -123,6 +123,7 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     content_type = "application/json"
   ))
   expect_identical(bad_type$status, 415L)
+  expect_match(bad_type$content, "application/x-www-form-urlencoded")
 
   duplicate <- ui(make_form_post_req(
     body = paste0("code=ok&code=again&state=", enc_state)
@@ -136,6 +137,39 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     body = "code=ok&state=definitely-not-a-valid-state"
   ))
   expect_identical(invalid_state$status, 400L)
+  expect_identical(
+    invalid_state$content,
+    "OAuth form_post callback could not be processed."
+  )
+  expect_false(grepl(
+    "definitely-not-a-valid-state",
+    invalid_state$content,
+    fixed = TRUE
+  ))
+})
+
+test_that("oauth_form_post_ui hides internal callback POST failures", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+
+  cli@state_store <- custom_cache(
+    get = function(key, missing = NULL) missing,
+    set = function(key, value) stop("backend-secret-detail", call. = FALSE),
+    remove = function(key) TRUE
+  )
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  resp <- ui(make_form_post_req(
+    body = paste0("code=ok&state=", enc_state)
+  ))
+
+  expect_identical(resp$status, 400L)
+  expect_identical(
+    resp$content,
+    "OAuth form_post callback could not be processed."
+  )
+  expect_false(grepl("backend-secret-detail", resp$content, fixed = TRUE))
 })
 
 test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
