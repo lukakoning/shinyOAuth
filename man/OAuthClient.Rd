@@ -161,9 +161,10 @@ shinyOAuth cannot verify that server-side registration automatically.}
 
 \item{response_mode}{Authorization response mode for authorization-code
 callbacks. Supported values are \code{"query"} and \code{"form_post"}. The
-effective default is always \code{"query"}: shinyOAuth explicitly requests the
-normal query-parameter callback flow unless you opt into a different
-response mode. Omit this argument or pass \code{NULL} to keep that default.
+effective default is always \code{"query"}: omitting this argument keeps the
+normal query-parameter callback flow and shinyOAuth does not send a
+\code{response_mode} parameter. Pass \code{"query"} only if you need to explicitly
+request the query response mode from the provider.
 Set \code{"form_post"} only when the provider requires or explicitly
 recommends POSTing the authorization response to the redirect URI. Shiny
 apps using \code{"form_post"} must wrap their UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}.

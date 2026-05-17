@@ -317,19 +317,20 @@ observeEvent(input$logout_btn, {
 
 ## Using `response_mode = "form_post"`
 
-The response mode determines how the provider returns the authorization response 
-to the app after the user authenticates. The default is `response_mode = "query"`,
-which means the provider will redirect back to the app with query parameters 
-(e.g., `?code=...&state=...`).
+The response mode determines how the provider returns the authorization response
+to the app after the user authenticates. The effective default is the normal
+query callback flow, which means the provider redirects back to the app with
+query parameters (e.g., `?code=...&state=...`) and shinyOAuth does not send a
+`response_mode` parameter unless you configure one.
 
 For most Shiny apps, query is the preferred response mode because it works
 seamlessly with Shiny's routing and does not require any special UI handling.
 It is the default and does not require setting `response_mode` explicitly.
 
-For some apps, when your provider explicitly requires or recommends 
+For some apps, when your provider explicitly requires or recommends
 `response_mode = "form_post"`, you can configure that on the client.
 As by default Shiny apps do not handle POST callbacks, you need to enable
-this by wrapping your UI with `oauth_form_post_ui()`. This allows the provider 
+this by wrapping your UI with `oauth_form_post_ui()`. This allows the provider
 to POST the authorization response back to the app. That wrapper also injects
 the shinyOAuth browser dependency automatically, so you do not need a separate
 `use_shinyOAuth()` call in the wrapped UI. The `/callback` path below is only
