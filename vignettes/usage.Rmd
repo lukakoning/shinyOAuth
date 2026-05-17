@@ -390,9 +390,9 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
-If your `redirect_uri` is the app root (like `http://127.0.0.1:8100`), 
+If your `redirect_uri` is the app root (like `http://127.0.0.1:8100`),
 `uiPattern = ".*"` is usually harmless.
-If your `redirect_uri` is a sub-route (like `http://127.0.0.1:8100/callback`), 
+If your `redirect_uri` is a sub-route (like `http://127.0.0.1:8100/callback`),
 use `uiPattern = ".*"` so Shiny routes that POST request through `oauth_form_post_ui()`
 before the app returns to its normal GET flow.
 
