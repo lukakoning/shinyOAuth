@@ -338,6 +338,10 @@ an example sub-route; using the app root is also fine as long as the provider
 redirect URI matches the path handled by `oauth_form_post_ui()`. Here's how you
 can set it up:
 
+This is the plain OAuth/OIDC Form Post Response Mode: the POST body contains
+parameters such as `code`, `state`, `error`, and `iss`. JWT Secured
+Authorization Response Mode (JARM) values such as `form_post.jwt` use a
+different JWT `response` payload and are not currently supported.
 
 ```{r, eval = FALSE}
 library(shiny)

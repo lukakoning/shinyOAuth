@@ -115,6 +115,22 @@ test_that("oauth_client accepts query and form_post response_mode", {
   )
 })
 
+test_that("oauth_client rejects JARM response_mode values explicitly", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@response_modes_supported <- c("query", "form_post", "form_post.jwt")
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      response_mode = "form_post.jwt"
+    ),
+    regexp = "JARM|JWT Secured Authorization Response Mode"
+  )
+})
+
 test_that("oauth_client validates response_mode against provider support", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@response_modes_supported <- "query"

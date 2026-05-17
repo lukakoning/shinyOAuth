@@ -25,6 +25,10 @@
 #' you must also configure your [OAuthClient] with `response_mode = "form_post"`
 #' and ensure the `redirect_uri` is set to a URL that routes to this UI wrapper
 #' (e.g., the app's root URL or a specific callback path).
+#' This helper handles the plain form_post response mode, where the POST body
+#' contains authorization response parameters such as `code`, `state`, `error`,
+#' and `iss`. It does not decode JWT Secured Authorization Response Mode (JARM)
+#' responses such as `response_mode = "form_post.jwt"`.
 #'
 #' @details
 #' When this wrapper is used, it also injects [use_shinyOAuth()] automatically

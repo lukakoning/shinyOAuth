@@ -170,7 +170,10 @@ recommends POSTing the authorization response to the redirect URI. Shiny
 apps using \code{"form_post"} must wrap their UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}.
 Prefer this argument over setting \code{extra_auth_params$response_mode} on the
 provider. When the provider advertises \code{response_modes_supported}, the
-resolved mode must be included in that set.}
+resolved mode must be included in that set.
+JWT Secured Authorization Response Mode (JARM) values such as
+\code{"form_post.jwt"} are a separate response format and are not currently
+supported.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a

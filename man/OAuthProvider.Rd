@@ -158,7 +158,10 @@ auto-enable callback issuer enforcement when the caller leaves
 \item{response_modes_supported}{Optional character vector of OAuth/OIDC
 \code{response_mode} values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
-may leave this empty when capabilities are not known.}
+may leave this empty when capabilities are not known. Provider metadata may
+include response modes that shinyOAuth does not implement, such as JARM
+values ending in \code{.jwt}; clients still fail fast if they request one of
+those unsupported modes.}
 
 \item{issuer}{Optional OIDC issuer URL. You need this when you want ID token
 validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to

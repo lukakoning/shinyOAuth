@@ -129,6 +129,9 @@
 #'   Prefer this argument over setting `extra_auth_params$response_mode` on the
 #'   provider. When the provider advertises `response_modes_supported`, the
 #'   resolved mode must be included in that set.
+#'   JWT Secured Authorization Response Mode (JARM) values such as
+#'   `"form_post.jwt"` are a separate response format and are not currently
+#'   supported.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a
