@@ -114,6 +114,7 @@ make_jar_test_client <- function(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   authorization_request_mode = "request",
+  response_mode = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -146,6 +147,7 @@ make_jar_test_client <- function(
       dpop_private_key_kid = dpop_private_key_kid,
       dpop_signing_alg = dpop_signing_alg,
       authorization_request_mode = authorization_request_mode,
+      response_mode = response_mode,
       authorization_request_signing_alg = authorization_request_signing_alg,
       authorization_request_audience = authorization_request_audience,
       authorization_request_encryption_alg = authorization_request_encryption_alg,
@@ -209,6 +211,17 @@ test_that("request mode includes dpop_jkt inside the signed request object", {
 
   expect_false("dpop_jkt" %in% query_param_names(auth_url))
   expect_identical(pl$dpop_jkt, expected_jkt)
+})
+
+test_that("request mode includes form_post response_mode inside request object", {
+  cli <- make_jar_test_client(response_mode = "form_post")
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+  request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+  pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
+
+  expect_false("response_mode" %in% query_param_names(auth_url))
+  expect_identical(pl$response_mode, "form_post")
 })
 
 test_that("request objects default to private-key signing and honor audience overrides", {

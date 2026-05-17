@@ -502,6 +502,7 @@ testthat::test_that("browser form_post login still succeeds when the auth reques
   testthat::expect_match(auth_url, "[?&]client_id=shiny-public")
   testthat::expect_false(grepl("[?&]state=", auth_url))
   testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
+  testthat::expect_false(grepl("[?&]response_mode=", auth_url))
 
   .navigate_form_post_browser_to_url(drv, auth_url)
 

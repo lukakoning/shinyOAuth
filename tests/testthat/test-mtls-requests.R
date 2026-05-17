@@ -415,6 +415,14 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
   )
 
   captured_req <- NULL
+  captured_form <- NULL
+  testthat::local_mocked_bindings(
+    req_body_form = function(req, ...) {
+      captured_form <<- list(...)
+      req
+    },
+    .package = "httr2"
+  )
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       captured_req <<- req
@@ -432,12 +440,17 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
 
   result <- shinyOAuth:::push_authorization_request(
     client,
-    params = list(response_type = "code", client_id = client@client_id)
+    params = list(
+      response_type = "code",
+      client_id = client@client_id,
+      response_mode = "form_post"
+    )
   )
 
   expect_identical(captured_req$url, "https://example.com/mtls/par")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(captured_form$response_mode, "form_post")
   expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
 })
 

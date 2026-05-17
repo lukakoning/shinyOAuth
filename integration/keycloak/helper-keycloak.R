@@ -1570,7 +1570,8 @@ make_private_key_jar_client <- function(
   prov,
   client_id = "shiny-jar-pjwt",
   redirect_uri = "http://localhost:3000/callback",
-  scopes = c("openid")
+  scopes = c("openid"),
+  response_mode = NULL
 ) {
   key <- get_pjwt_key()
   if (is.null(key)) {
@@ -1587,7 +1588,8 @@ make_private_key_jar_client <- function(
     client_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
     authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256"
+    authorization_request_signing_alg = "RS256",
+    response_mode = response_mode
   )
 }
 
