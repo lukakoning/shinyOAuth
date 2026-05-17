@@ -221,6 +221,10 @@ oauth_form_post_handle_request <- function(req, id, client) {
       limits <- oauth_callback_limits()
       body <- oauth_form_post_read_body(req, limits$form_post_body)
       payload <- oauth_form_post_parse_body(body, limits)
+      # Reject invalid state before persisting any pre-session form_post
+      # handle. The module callback path will validate again when redeeming the
+      # handle, so suppress the success-side audit here to avoid duplicate
+      # callback_validation_success events.
       state_payload_decrypt_validate(
         client,
         payload$state,

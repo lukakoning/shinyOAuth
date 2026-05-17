@@ -25,7 +25,11 @@
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #' @param audit_success Whether successful payload validation should emit the
-#'   standard callback validation audit event. Failures are still audited.
+#'   standard callback validation audit event. Used for callers such as the
+#'   form_post bridge that must reject invalid pre-session POSTs before storing
+#'   a handle, but still rely on the later callback path to perform the
+#'   canonical success-side validation and single-use state consumption.
+#'   Failures are still audited.
 #' @keywords internal
 state_payload_decrypt_validate <- function(
   client,
@@ -47,7 +51,9 @@ state_payload_decrypt_validate <- function(
       payload_verify_issued_at(client, pld)
       payload_verify_client_binding(client, pld)
 
-      # Success audit (redacted identifiers only)
+      # Success audit is normally emitted at the real callback boundary. Some
+      # pre-validation callers, such as the form_post bridge, suppress it here
+      # because the handle redemption path will re-validate and consume state.
       if (isTRUE(audit_success)) {
         with_trace_id(
           pld$trace_id %||% NULL,
