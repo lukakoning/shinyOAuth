@@ -148,6 +148,30 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   ))
 })
 
+test_that("oauth_form_post_ui rejects oversized callback query before storing", {
+  withr::local_options(list(shinyOAuth.callback_max_query_bytes = 64))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+  keys_before <- sort(cli@state_store$keys())
+
+  resp <- ui(make_form_post_req(
+    query = paste0("pad=", strrep("x", 80)),
+    body = paste0("code=ok&state=", enc_state)
+  ))
+
+  expect_identical(resp$status, 400L)
+  expect_identical(
+    resp$content,
+    "OAuth form_post callback could not be processed."
+  )
+  expect_false("Location" %in% names(resp$headers))
+  expect_identical(sort(cli@state_store$keys()), keys_before)
+})
+
 test_that("oauth_form_post_ui hides internal callback POST failures", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   url <- prepare_call(cli, browser_token = valid_browser_token())

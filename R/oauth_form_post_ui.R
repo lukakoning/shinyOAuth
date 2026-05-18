@@ -223,6 +223,10 @@ oauth_form_post_handle_request <- function(req, id, client) {
     {
       oauth_form_post_validate_content_type(req)
       limits <- oauth_callback_limits()
+      validate_untrusted_query_string(
+        req$QUERY_STRING %||% "",
+        max_bytes = limits$query
+      )
       body <- oauth_form_post_read_body(req, limits$form_post_body)
       payload <- oauth_form_post_parse_body(body, limits)
       # Reject invalid state before persisting any pre-session form_post
