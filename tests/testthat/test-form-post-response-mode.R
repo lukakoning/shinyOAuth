@@ -111,6 +111,58 @@ test_that("oauth_form_post_store_take verifies fallback handle removal", {
   )
 })
 
+test_that("oauth_form_post_store_take rejects expired handles", {
+  backing <- new.env(parent = emptyenv())
+  store <- custom_cache(
+    get = function(key, missing = NULL) {
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        return(get(key, envir = backing, inherits = FALSE))
+      }
+      missing
+    },
+    set = function(key, value) assign(key, value, envir = backing),
+    remove = function(key) {
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        rm(list = key, envir = backing)
+      }
+      TRUE
+    },
+    take = function(key, missing = NULL) {
+      if (!exists(key, envir = backing, inherits = FALSE)) {
+        return(missing)
+      }
+      value <- get(key, envir = backing, inherits = FALSE)
+      rm(list = key, envir = backing)
+      value
+    },
+    info = function() list(max_age = 3600)
+  )
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@state_store <- store
+  cli@state_payload_max_age <- 1
+
+  handle <- shinyOAuth:::oauth_form_post_store_set(
+    cli,
+    "auth",
+    list(code = "ok", state = "state")
+  )
+  key <- ls(backing)[[1]]
+  payload <- get(key, envir = backing, inherits = FALSE)
+  payload$stored_at <- as.numeric(Sys.time()) - 10
+  assign(key, payload, envir = backing)
+
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
+    class = "shinyOAuth_state_error",
+    regexp = "form_post callback handle expired"
+  )
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
+    class = "shinyOAuth_state_error",
+    regexp = "missing or already consumed"
+  )
+})
+
 test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)

@@ -543,7 +543,62 @@ oauth_form_post_store_take <- function(client, id, handle) {
     )
   }
 
+  oauth_form_post_validate_handle_freshness(client, payload)
   oauth_form_post_validate_payload(payload)
+}
+
+oauth_form_post_validate_handle_freshness <- function(client, payload) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is.list(payload)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  stored_at <- payload$stored_at
+  if (
+    !is.numeric(stored_at) ||
+      length(stored_at) != 1L ||
+      is.na(stored_at) ||
+      !is.finite(stored_at)
+  ) {
+    err_invalid_state(
+      "form_post callback handle is missing a valid stored_at timestamp",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  max_age <- min(
+    client_state_payload_max_age(client),
+    client_state_store_max_age(client)
+  )
+  now <- as.numeric(Sys.time())
+  if (!is.finite(now) || is.na(now)) {
+    err_invalid_state(
+      "form_post callback handle freshness could not be evaluated",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  if (stored_at > now + (client@provider@leeway %||% 30)) {
+    err_invalid_state(
+      "form_post callback handle timestamp is in the future",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  if ((now - stored_at) > max_age) {
+    err_invalid_state(
+      "form_post callback handle expired",
+      context = list(
+        phase = "form_post_store_take",
+        max_age = max_age
+      )
+    )
+  }
+
+  invisible(TRUE)
 }
 
 # 4 HTTP errors ----------------------------------------------------------------
