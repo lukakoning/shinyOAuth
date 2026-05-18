@@ -533,8 +533,11 @@ These prevent maliciously large state parameters from causing excessive CPU or m
 - `options(shinyOAuth.callback_max_iss_bytes = 2048)` – maximum byte length of the `iss` query parameter (RFC 9207 issuer identification)
 - `options(shinyOAuth.callback_max_query_bytes = <derived>)` – maximum total byte length of the raw callback query string (pre-parse guard)
 - `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum byte length of the `browser_token` argument accepted by `handle_callback()`
+- `options(shinyOAuth.callback_max_form_post_body_bytes = <derived>)` – maximum byte length of the raw `form_post` callback body before parsing
+- `options(shinyOAuth.callback_max_form_post_handle_bytes = 128)` – maximum byte length of the transient `shinyOAuth_form_post` handle query parameter
+- `options(shinyOAuth.callback_max_form_post_id_bytes = 256)` – maximum byte length of the transient `shinyOAuth_form_post_id` module-id query parameter
 
-These apply before any hashing/auditing/state parsing, and exist to prevent memory/log amplification from extremely large callback URLs.
+These apply before any hashing/auditing/state parsing, and exist to prevent memory/log amplification from extremely large callback URLs or `form_post` bodies.
 
 ### Development/debugging
 

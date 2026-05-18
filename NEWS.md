@@ -25,7 +25,8 @@ with the returned `request_uri`.
 callbacks. Apps can wrap their UI with `oauth_form_post_ui()` so Shiny accepts
 the provider POST, stores the callback server-side under a one-time handle, and
 lets `oauth_module_server()` finish the existing state, issuer, and token
-exchange flow.
+exchange flow. Stored callback handles are bounded by the effective state/store
+TTL and the `shinyOAuth.callback_max_form_post_*` size-cap options.
 
 * Added OpenTelemetry ('OTel') support (using the 'otel' package). 
 'shinyOAuth' now emits OTel logs from existing audit events and traces

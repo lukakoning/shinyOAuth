@@ -48,6 +48,13 @@ responses such as \code{response_mode = "form_post.jwt"}.
 When this wrapper is used, it also injects \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} automatically
 for the wrapped GET UI, so you do not need a separate top-level
 \code{use_shinyOAuth()} call.
+
+The server-side callback handle is single-use and is rejected if it is older
+than the smaller of \code{client@state_payload_max_age} and the configured
+\code{state_store} TTL. The raw POST body and transient handle query
+parameters are also bounded by the
+\code{shinyOAuth.callback_max_form_post_*} options described in the usage
+vignette.
 }
 \examples{
 if (

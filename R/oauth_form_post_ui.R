@@ -35,6 +35,12 @@
 #' for the wrapped GET UI, so you do not need a separate top-level
 #' `use_shinyOAuth()` call.
 #'
+#' The server-side callback handle is single-use and is rejected if it is older
+#' than the smaller of `client@state_payload_max_age` and the configured
+#' `state_store` TTL. The raw POST body and transient handle query parameters
+#' are also bounded by the `shinyOAuth.callback_max_form_post_*` options
+#' described in the usage vignette.
+#'
 #' @param base_ui
 #' Existing Shiny UI object, or a UI function accepting `req`.
 #' @param id
