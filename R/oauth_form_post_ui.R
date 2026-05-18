@@ -53,39 +53,7 @@
 #'
 #' @export
 #'
-#' @examples
-#' \dontrun{
-#' # Query callbacks are the preferred default for most apps and do not need
-#' # `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"`
-#' # only if your provider requires or strongly recommends it
-#' client <- oauth_client(
-#'   provider = provider,
-#'   client_id = "your-client-id",
-#'   client_secret = "",
-#'   # `/callback` is only an example sub-route. The app root also works if the
-#'   # provider redirect URI matches the path handled by `oauth_form_post_ui()`
-#'   redirect_uri = "http://127.0.0.1:8100/callback",
-#'   response_mode = "form_post"
-#' )
-#'
-#' ui <- oauth_form_post_ui(
-#'   shiny::fluidPage(
-#'     shiny::uiOutput("login")
-#'   ),
-#'   id = "auth",
-#'   client = client
-#' )
-#'
-#' server <- function(input, output, session) {
-#'   auth <- oauth_module_server("auth", client)
-#' }
-#'
-#' app <- shiny::shinyApp(ui, server, uiPattern = ".*")
-#'
-#' shiny::runApp(app, port = 8100, launch.browser = FALSE)
-#' # Open the app in your regular browser at http://127.0.0.1:8100
-#' # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
-#' }
+#' @example inst/examples/oauth_form_post_ui.R
 oauth_form_post_ui <- function(
   base_ui,
   id,

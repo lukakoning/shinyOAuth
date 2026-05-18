@@ -50,36 +50,57 @@ for the wrapped GET UI, so you do not need a separate top-level
 \code{use_shinyOAuth()} call.
 }
 \examples{
-\dontrun{
-# Query callbacks are the preferred default for most apps and do not need
-# `oauth_form_post_ui()`. Use this helper and `response_mode = "form_post"`
-# only if your provider requires or strongly recommends it
-client <- oauth_client(
-  provider = provider,
-  client_id = "your-client-id",
-  client_secret = "",
-  # `/callback` is only an example sub-route. The app root also works if the
-  # provider redirect URI matches the path handled by `oauth_form_post_ui()`
-  redirect_uri = "http://127.0.0.1:8100/callback",
-  response_mode = "form_post"
-)
+if (
+  # Example requires a local or remote Keycloak realm whose client allows
+  # http://127.0.0.1:8100/callback as a valid redirect URI.
+  nzchar(Sys.getenv("KEYCLOAK_BASE_URL")) &&
+    nzchar(Sys.getenv("KEYCLOAK_REALM")) &&
+    nzchar(Sys.getenv("KEYCLOAK_CLIENT_ID")) &&
+    interactive()
+) {
+  library(shiny)
+  library(shinyOAuth)
 
-ui <- oauth_form_post_ui(
-  shiny::fluidPage(
-    shiny::uiOutput("login")
-  ),
-  id = "auth",
-  client = client
-)
+  provider <- oauth_provider_keycloak(
+    base_url = Sys.getenv("KEYCLOAK_BASE_URL"),
+    realm = Sys.getenv("KEYCLOAK_REALM")
+  )
 
-server <- function(input, output, session) {
-  auth <- oauth_module_server("auth", client)
-}
+  client <- oauth_client(
+    provider = provider,
+    client_id = Sys.getenv("KEYCLOAK_CLIENT_ID"),
+    client_secret = Sys.getenv("KEYCLOAK_CLIENT_SECRET"),
+    redirect_uri = "http://127.0.0.1:8100/callback",
+    scopes = c("openid", "profile", "email"),
+    response_mode = "form_post"
+  )
 
-app <- shiny::shinyApp(ui, server, uiPattern = ".*")
+  base_ui <- fluidPage(
+    uiOutput("login")
+  )
 
-shiny::runApp(app, port = 8100, launch.browser = FALSE)
-# Open the app in your regular browser at http://127.0.0.1:8100
-# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
+  ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
+
+  server <- function(input, output, session) {
+    auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
+
+    output$login <- renderUI({
+      if (auth$authenticated) {
+        user_info <- auth$token@userinfo
+        tagList(
+          tags$p("You are logged in!"),
+          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+        )
+      } else {
+        tags$p("You are not logged in.")
+      }
+    })
+  }
+
+  runApp(
+    shinyApp(ui, server, uiPattern = ".*"),
+    port = 8100,
+    launch.browser = FALSE
+  )
 }
 }
