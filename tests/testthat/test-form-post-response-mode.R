@@ -224,6 +224,26 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
   expect_identical(sort(cli@state_store$keys()), keys_before)
 })
 
+test_that("oauth_form_post_ui rejects oversized callback bodies before storing", {
+  withr::local_options(list(shinyOAuth.callback_max_form_post_body_bytes = 64))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+  keys_before <- sort(cli@state_store$keys())
+
+  resp <- ui(make_form_post_req(
+    body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 80))
+  ))
+
+  expect_identical(resp$status, 413L)
+  expect_match(resp$content, "body exceeded maximum length", fixed = TRUE)
+  expect_false("Location" %in% names(resp$headers))
+  expect_identical(sort(cli@state_store$keys()), keys_before)
+})
+
 test_that("oauth_form_post_ui hides internal callback POST failures", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   url <- prepare_call(cli, browser_token = valid_browser_token())
@@ -455,6 +475,62 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
 
       expect_identical(values$error, "invalid_callback_query")
       expect_match(values$error_description, "must not be combined")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("oauth_module_server rejects oversized form_post handle query params", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.callback_max_form_post_handle_bytes = 8
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$.process_query(form_post_query(strrep("h", 9), "auth"))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "shinyOAuth_form_post")
+      expect_match(values$error_description, "exceeded maximum length")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("oauth_module_server rejects oversized form_post module id query params", {
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.callback_max_form_post_id_bytes = 8
+  ))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$.process_query(form_post_query("handle", strrep("m", 9)))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "shinyOAuth_form_post_id")
+      expect_match(values$error_description, "exceeded maximum length")
       expect_false(isTRUE(values$authenticated))
     }
   )
