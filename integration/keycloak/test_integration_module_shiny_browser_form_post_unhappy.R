@@ -364,6 +364,99 @@ if (!exists("make_provider", mode = "function")) {
   ))
 }
 
+.post_form_post_http_callback <- function(
+  url,
+  body,
+  content_type = "application/x-www-form-urlencoded",
+  query = NULL
+) {
+  target_url <- url
+  if (keycloak_nonempty_string(query)) {
+    target_url <- paste0(url, "?", query)
+  }
+
+  httr2::request(target_url) |>
+    httr2::req_method("POST") |>
+    httr2::req_body_raw(charToRaw(body), type = content_type) |>
+    httr2::req_timeout(10) |>
+    httr2::req_error(is_error = function(resp) FALSE) |>
+    httr2::req_perform()
+}
+
+testthat::test_that("direct form_post HTTP envelope attacks are rejected without storing handles", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_HTTP_ENVELOPE",
+    "8118"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post HTTP envelope E2E"
+    ))
+  }
+
+  client <- .make_form_post_browser_client(app_port)
+  drv <- shinytest2::AppDriver$new(
+    .make_form_post_browser_app(
+      client,
+      title = "Form post HTTP envelope",
+      module_id = "auth"
+    ),
+    name = sprintf("keycloak-form-post-http-envelope-%d", app_port),
+    load_timeout = 15000,
+    shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$click("prepare_login_btn")
+  prepared <- .wait_for_form_post_auth_url(drv)
+  .wait_for_form_post_state_store_count(drv, 1L)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  enc_state <- parse_query_param(auth_url, "state")
+
+  bad_type <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&state=", enc_state),
+    content_type = "application/json"
+  )
+  testthat::expect_identical(httr2::resp_status(bad_type), 415L)
+  testthat::expect_match(
+    httr2::resp_body_string(bad_type),
+    "application/x-www-form-urlencoded",
+    fixed = TRUE
+  )
+  .wait_for_form_post_state_store_count(drv, 1L)
+
+  duplicate <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&code=again&state=", enc_state)
+  )
+  testthat::expect_identical(httr2::resp_status(duplicate), 400L)
+  .wait_for_form_post_state_store_count(drv, 1L)
+
+  oversized_body <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 30000))
+  )
+  testthat::expect_identical(httr2::resp_status(oversized_body), 413L)
+  .wait_for_form_post_state_store_count(drv, 1L)
+
+  oversized_query <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&state=", enc_state),
+    query = paste0("pad=", strrep("x", 30000))
+  )
+  testthat::expect_identical(httr2::resp_status(oversized_query), 400L)
+  .wait_for_form_post_state_store_count(drv, 1L)
+})
+
 testthat::test_that("browser form_post provider error callbacks are surfaced and cleaned", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
