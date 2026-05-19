@@ -25,11 +25,9 @@
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #' @param audit_success Whether successful payload validation should emit the
-#'   standard callback validation audit event. Used for callers such as the
-#'   form_post bridge that must reject invalid pre-session POSTs before storing
-#'   a handle, but still rely on the later callback path to perform the
-#'   canonical success-side validation and single-use state consumption.
-#'   Failures are still audited.
+#'   standard callback validation audit event. Set to `FALSE` when a caller
+#'   must perform additional checks or single-use state consumption before
+#'   emitting the success audit. Failures are still audited.
 #' @keywords internal
 state_payload_decrypt_validate <- function(
   client,
