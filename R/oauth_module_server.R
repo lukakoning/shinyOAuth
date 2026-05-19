@@ -1454,6 +1454,7 @@ oauth_module_server <- function(
       qs <- NULL
       ok <- tryCatch(
         {
+          reject_duplicate_oauth_module_callback_query(query_string %||% "")
           qs <- shiny::parseQueryString(query_string %||% "")
 
           validate_untrusted_query_param(
@@ -3066,6 +3067,57 @@ oauth_module_query_has_callback_keys <- function(query_string) {
   }
 
   any(names(parsed) %in% oauth_module_callback_query_keys)
+}
+
+#' Reject duplicate OAuth callback query parameters
+#'
+#' Used before parsing callback query strings so repeated OAuth parameters
+#' cannot be smuggled through parser-specific first/last-value behavior.
+#'
+#' @param query_string Raw query string, with or without a leading `?`.
+#' @return Invisibly returns `NULL` on success.
+#' @keywords internal
+#' @noRd
+reject_duplicate_oauth_module_callback_query <- function(query_string) {
+  raw <- sub("^\\?", "", query_string %||% "")
+  if (!nzchar(raw)) {
+    return(invisible(NULL))
+  }
+
+  parts <- strsplit(raw, "&", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) {
+    return(invisible(NULL))
+  }
+
+  seen <- character(0)
+  for (part in parts) {
+    key <- sub("=.*$", "", part)
+    key <- tryCatch(
+      utils::URLdecode(key),
+      error = function(e) {
+        err_invalid_state(
+          "Callback query parameter name could not be decoded",
+          context = list(component = "query_string")
+        )
+      }
+    )
+
+    if (key %in% oauth_module_callback_query_keys) {
+      if (key %in% seen) {
+        err_invalid_state(
+          paste0("Callback query contains duplicate OAuth parameter: ", key),
+          context = list(
+            component = "query_string",
+            parameter = key
+          )
+        )
+      }
+      seen <- c(seen, key)
+    }
+  }
+
+  invisible(NULL)
 }
 
 #' Strip OAuth callback parameters from a query string

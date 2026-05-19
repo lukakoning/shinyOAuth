@@ -542,6 +542,76 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
   )
 })
 
+test_that("oauth_module_server rejects duplicate form_post handle query params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc_state <- parse_query_param(url, "state")
+      decoded_state <- shiny::parseQueryString(paste0(
+        "?state=",
+        enc_state
+      ))$state
+      handle <- shinyOAuth:::oauth_form_post_store_set(
+        cli,
+        "auth",
+        list(
+          error = "access_denied",
+          error_description = "Denied",
+          state = decoded_state
+        )
+      )
+
+      values$.process_query(paste0(
+        "?shinyOAuth_form_post=bad",
+        "&shinyOAuth_form_post=",
+        utils::URLencode(handle, reserved = TRUE),
+        "&shinyOAuth_form_post_id=auth"
+      ))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "duplicate OAuth parameter")
+      expect_false(isTRUE(values$authenticated))
+
+      values$.process_query(form_post_query(handle, "auth"))
+      session$flushReact()
+
+      expect_identical(values$error, "access_denied")
+      expect_identical(values$error_description, "Denied")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("callback query duplicate rejection covers direct OAuth params", {
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query("?code=a&code=b"),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate OAuth parameter: code"
+  )
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+      "?state=a&foo=1&state=b"
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate OAuth parameter: state"
+  )
+  expect_silent(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query("?foo=1&foo=2")
+  )
+})
+
 test_that("oauth_module_server rejects oversized form_post handle query params", {
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
