@@ -123,8 +123,12 @@ client <- oauth_client(
 base_ui <- fluidPage(
   titlePanel("shinyOAuth + Keycloak (form_post at app root)"),
   p("Uses the local Keycloak fixture with response_mode = 'form_post'."),
-  p("This version returns to the same app URL instead of a /callback sub-route."),
-  p("Login with alice / alice. The fixture also has bob / bob for cross-user checks."),
+  p(
+    "This version returns to the same app URL instead of a /callback sub-route."
+  ),
+  p(
+    "Login with alice / alice. The fixture also has bob / bob for cross-user checks."
+  ),
   actionButton("login_btn", "Login"),
   actionButton("logout_btn", "Logout"),
   tags$hr(),
