@@ -51,26 +51,8 @@ state_payload_decrypt_validate <- function(
       payload_verify_issued_at(client, pld)
       payload_verify_client_binding(client, pld)
 
-      # Success audit is normally emitted at the real callback boundary. Some
-      # pre-validation callers, such as the form_post bridge, suppress it here
-      # because the handle redemption path will re-validate and consume state.
       if (isTRUE(audit_success)) {
-        with_trace_id(
-          pld$trace_id %||% NULL,
-          try(
-            audit_event(
-              "callback_validation_success",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                state_digest = string_digest(pld$state)
-              ),
-              shiny_session = shiny_session
-            ),
-            silent = TRUE
-          )
-        )
+        audit_callback_validation_success(client, pld, shiny_session)
       }
       pld
     },
@@ -101,6 +83,42 @@ state_payload_decrypt_validate <- function(
       )
     }
   )
+}
+
+#' Audit successful callback state validation
+#'
+#' Used after a state payload has been decrypted, verified, and accepted at a
+#' callback boundary.
+#'
+#' @param client [OAuthClient] instance.
+#' @param payload Decrypted state payload.
+#' @param shiny_session Optional Shiny session context.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
+audit_callback_validation_success <- function(
+  client,
+  payload,
+  shiny_session = NULL
+) {
+  with_trace_id(
+    payload$trace_id %||% NULL,
+    try(
+      audit_event(
+        "callback_validation_success",
+        context = list(
+          provider = client@provider@name %||% NA_character_,
+          issuer = client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(client@client_id),
+          state_digest = string_digest(payload$state)
+        ),
+        shiny_session = shiny_session
+      ),
+      silent = TRUE
+    )
+  )
+
+  invisible(NULL)
 }
 
 ## 1.2 Policy fingerprints -----------------------------------------------------

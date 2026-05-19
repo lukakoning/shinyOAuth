@@ -1615,7 +1615,9 @@ oauth_module_server <- function(
             error_description = form_post_payload$error_description,
             error_uri = form_post_payload$error_uri,
             state = form_post_payload$state,
-            iss = form_post_payload$iss %||% NULL
+            iss = form_post_payload$iss %||% NULL,
+            decrypted_payload = form_post_payload$state_payload %||% NULL,
+            state_store_values = form_post_payload$state_store_values %||% NULL
           )
           return(invisible(NULL))
         }
@@ -1623,7 +1625,9 @@ oauth_module_server <- function(
         .handle_callback(
           code = form_post_payload$code,
           state = form_post_payload$state,
-          iss = form_post_payload$iss %||% NULL
+          iss = form_post_payload$iss %||% NULL,
+          decrypted_payload = form_post_payload$state_payload %||% NULL,
+          state_store_values = form_post_payload$state_store_values %||% NULL
         )
         return(invisible(NULL))
       }
@@ -1741,7 +1745,9 @@ oauth_module_server <- function(
       error_description,
       error_uri,
       state,
-      iss = NULL
+      iss = NULL,
+      decrypted_payload = NULL,
+      state_store_values = NULL
     ) {
       if (!isTRUE(.enforce_callback_issuer_or_set_error(iss))) {
         return(invisible(NULL))
@@ -1760,7 +1766,9 @@ oauth_module_server <- function(
           error_description = error_description,
           error_uri = error_uri,
           state = state,
-          iss = iss
+          iss = iss,
+          decrypted_payload = decrypted_payload,
+          state_store_values = state_store_values
         )
         return(invisible(NULL))
       }
@@ -1774,7 +1782,16 @@ oauth_module_server <- function(
           }
           # strict = TRUE makes validation failures propagate so we can reject
           # the callback instead of surfacing an unbound provider error.
-          consumed_state <- .consume_error_state(state, strict = TRUE)
+          consumed_state <- if (
+            !is.null(decrypted_payload) && !is.null(state_store_values)
+          ) {
+            list(
+              payload = decrypted_payload,
+              state_store_values = state_store_values
+            )
+          } else {
+            .consume_error_state(state, strict = TRUE)
+          }
           .validate_error_response_browser_token(consumed_state)
           TRUE
         },
@@ -1970,7 +1987,13 @@ oauth_module_server <- function(
     # @param iss Optional callback issuer.
     # @return No return value; completes or defers callback handling and
     #   updates module state.
-    .handle_callback <- function(code, state, iss = NULL) {
+    .handle_callback <- function(
+      code,
+      state,
+      iss = NULL,
+      decrypted_payload = NULL,
+      state_store_values = NULL
+    ) {
       callback_parent <- NULL
       callback_hint <- otel_callback_parent_hint(client, state)
       # Always clear callback params once we've parsed them (success or failure)
@@ -1998,7 +2021,9 @@ oauth_module_server <- function(
           type = "code",
           code = code,
           state = state,
-          iss = iss
+          iss = iss,
+          decrypted_payload = decrypted_payload,
+          state_store_values = state_store_values
         )
         return(invisible(NULL))
       }
@@ -2056,48 +2081,52 @@ oauth_module_server <- function(
                     # available in the worker process.
                     captured_async_options <- capture_async_options()
 
-                    pre_payload <- tryCatch(
-                      with_otel_span(
-                        "shinyOAuth.callback.validate",
-                        {
-                          payload <- state_payload_decrypt_validate(
-                            client,
-                            state,
-                            shiny_session = captured_shiny_session
-                          )
-                          if (
-                            !is_valid_string(
-                              callback_hint$trace_id %||% NA_character_
+                    pre_payload <- decrypted_payload
+                    if (is.null(pre_payload)) {
+                      pre_payload <- tryCatch(
+                        with_otel_span(
+                          "shinyOAuth.callback.validate",
+                          {
+                            payload <- state_payload_decrypt_validate(
+                              client,
+                              state,
+                              shiny_session = captured_shiny_session
                             )
-                          ) {
-                            otel_set_span_attributes(
-                              attributes = list(
-                                shinyoauth.trace_id = payload$trace_id %||% NULL
+                            if (
+                              !is_valid_string(
+                                callback_hint$trace_id %||% NA_character_
                               )
-                            )
-                          }
-                          payload
-                        },
-                        attributes = otel_client_attributes(
-                          client = client,
-                          module_id = id,
-                          shiny_session = captured_shiny_session,
-                          async = TRUE,
-                          phase = "callback.state_payload"
-                        )
-                      ),
-                      error = function(e) {
-                        .set_error(
-                          oauth_module_callback_failure_error_code(e),
-                          e,
-                          phase = "async_payload_validation"
-                        )
-                        rethrow_with_context(
-                          e,
-                          phase = "async_payload_validation"
-                        )
-                      }
-                    )
+                            ) {
+                              otel_set_span_attributes(
+                                attributes = list(
+                                  shinyoauth.trace_id =
+                                    payload$trace_id %||% NULL
+                                )
+                              )
+                            }
+                            payload
+                          },
+                          attributes = otel_client_attributes(
+                            client = client,
+                            module_id = id,
+                            shiny_session = captured_shiny_session,
+                            async = TRUE,
+                            phase = "callback.state_payload"
+                          )
+                        ),
+                        error = function(e) {
+                          .set_error(
+                            oauth_module_callback_failure_error_code(e),
+                            e,
+                            phase = "async_payload_validation"
+                          )
+                          rethrow_with_context(
+                            e,
+                            phase = "async_payload_validation"
+                          )
+                        }
+                      )
+                    }
 
                     captured_trace_id <- pre_payload$trace_id %||%
                       resolve_trace_id()
@@ -2118,36 +2147,39 @@ oauth_module_server <- function(
                           )
                         }
 
-                        pre_state <- tryCatch(
-                          with_otel_span(
-                            "shinyOAuth.callback.validate",
-                            {
-                              state_store_get_remove(
-                                client,
-                                pre_payload$state,
-                                shiny_session = captured_shiny_session
+                        pre_state <- state_store_values
+                        if (is.null(pre_state)) {
+                          pre_state <- tryCatch(
+                            with_otel_span(
+                              "shinyOAuth.callback.validate",
+                              {
+                                state_store_get_remove(
+                                  client,
+                                  pre_payload$state,
+                                  shiny_session = captured_shiny_session
+                                )
+                              },
+                              attributes = otel_client_attributes(
+                                client = client,
+                                module_id = id,
+                                shiny_session = captured_shiny_session,
+                                async = TRUE,
+                                phase = "callback.state_store_consume"
                               )
-                            },
-                            attributes = otel_client_attributes(
-                              client = client,
-                              module_id = id,
-                              shiny_session = captured_shiny_session,
-                              async = TRUE,
-                              phase = "callback.state_store_consume"
-                            )
-                          ),
-                          error = function(e) {
-                            .set_error(
-                              oauth_module_callback_failure_error_code(e),
-                              e,
-                              phase = "async_state_store_lookup"
-                            )
-                            rethrow_with_context(
-                              e,
-                              phase = "async_state_store_lookup"
-                            )
-                          }
-                        )
+                            ),
+                            error = function(e) {
+                              .set_error(
+                                oauth_module_callback_failure_error_code(e),
+                                e,
+                                phase = "async_state_store_lookup"
+                              )
+                              rethrow_with_context(
+                                e,
+                                phase = "async_state_store_lookup"
+                              )
+                            }
+                          )
+                        }
 
                         # Capture the browser token value on the main thread to avoid
                         # touching reactive values inside the worker
@@ -2244,13 +2276,26 @@ oauth_module_server <- function(
                   }
                 )
               } else {
-                handle_callback(
-                  oauth_client = client,
-                  code = code,
-                  payload = state,
-                  browser_token = values$browser_token,
-                  iss = iss
-                )
+                if (
+                  !is.null(decrypted_payload) && !is.null(state_store_values)
+                ) {
+                  handle_callback_internal(
+                    oauth_client = client,
+                    code = code,
+                    payload = state,
+                    browser_token = values$browser_token,
+                    decrypted_payload = decrypted_payload,
+                    state_store_values = state_store_values
+                  )
+                } else {
+                  handle_callback(
+                    oauth_client = client,
+                    code = code,
+                    payload = state,
+                    browser_token = values$browser_token,
+                    iss = iss
+                  )
+                }
               }
 
               # Handle async/sync
@@ -2393,10 +2438,18 @@ oauth_module_server <- function(
               error_description = pc$error_description,
               error_uri = pc$error_uri,
               state = pc$state,
-              iss = pc$iss %||% NULL
+              iss = pc$iss %||% NULL,
+              decrypted_payload = pc$decrypted_payload %||% NULL,
+              state_store_values = pc$state_store_values %||% NULL
             )
           } else {
-            .handle_callback(pc$code, pc$state, pc$iss %||% NULL)
+            .handle_callback(
+              pc$code,
+              pc$state,
+              pc$iss %||% NULL,
+              decrypted_payload = pc$decrypted_payload %||% NULL,
+              state_store_values = pc$state_store_values %||% NULL
+            )
           }
         }
       },

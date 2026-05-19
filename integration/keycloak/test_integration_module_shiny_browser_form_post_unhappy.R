@@ -379,6 +379,7 @@ if (!exists("make_provider", mode = "function")) {
     httr2::req_method("POST") |>
     httr2::req_body_raw(charToRaw(body), type = content_type) |>
     httr2::req_timeout(10) |>
+    httr2::req_options(followlocation = FALSE) |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_perform()
 }
@@ -454,6 +455,31 @@ testthat::test_that("direct form_post HTTP envelope attacks are rejected without
     query = paste0("pad=", strrep("x", 30000))
   )
   testthat::expect_identical(httr2::resp_status(oversized_query), 400L)
+  .wait_for_form_post_state_store_count(drv, 1L)
+
+  valid <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&state=", enc_state, "&iss=", utils::URLencode(
+      client@provider@issuer,
+      reserved = TRUE
+    ))
+  )
+  testthat::expect_identical(httr2::resp_status(valid), 303L)
+  testthat::expect_match(
+    httr2::resp_header(valid, "location"),
+    "shinyOAuth_form_post=",
+    fixed = TRUE
+  )
+  .wait_for_form_post_state_store_count(drv, 1L)
+
+  replayed_valid <- .post_form_post_http_callback(
+    client@redirect_uri,
+    body = paste0("code=ok&state=", enc_state, "&iss=", utils::URLencode(
+      client@provider@issuer,
+      reserved = TRUE
+    ))
+  )
+  testthat::expect_identical(httr2::resp_status(replayed_valid), 400L)
   .wait_for_form_post_state_store_count(drv, 1L)
 })
 

@@ -81,6 +81,41 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(payload$iss, "https://issuer")
 })
 
+test_that("oauth_form_post_ui consumes state before issuing a callback handle", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+  body <- paste0("code=ok&state=", enc_state)
+
+  first <- ui(make_form_post_req(body = body))
+  expect_identical(first$status, 303L)
+
+  second <- ui(make_form_post_req(body = body))
+  expect_identical(second$status, 400L)
+  expect_identical(
+    second$content,
+    "OAuth form_post callback could not be processed."
+  )
+
+  keys <- cli@state_store$keys()
+  expect_length(keys, 1L)
+  expect_true(startsWith(keys[[1]], "formpost"))
+
+  handle <- parse_query_param(
+    first$headers$Location,
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+  payload <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
+  expect_identical(payload$type, "code")
+  expect_identical(payload$code, "ok")
+  expect_true(is.list(payload$state_payload))
+  expect_true(is.list(payload$state_store_values))
+  expect_length(cli@state_store$keys(), 0L)
+})
+
 test_that("oauth_form_post_store_take verifies fallback handle removal", {
   withr::local_options(list(shinyOAuth.allow_non_atomic_state_store = TRUE))
 
@@ -248,11 +283,38 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   url <- prepare_call(cli, browser_token = valid_browser_token())
   enc_state <- parse_query_param(url, "state")
+  stored_keys <- cli@state_store$keys()
+  backing <- new.env(parent = emptyenv())
+  for (key in stored_keys) {
+    assign(
+      key,
+      cli@state_store$get(key, missing = NULL),
+      envir = backing
+    )
+  }
 
   cli@state_store <- custom_cache(
-    get = function(key, missing = NULL) missing,
+    get = function(key, missing = NULL) {
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        return(get(key, envir = backing, inherits = FALSE))
+      }
+      missing
+    },
     set = function(key, value) stop("backend-secret-detail", call. = FALSE),
-    remove = function(key) TRUE
+    remove = function(key) {
+      if (exists(key, envir = backing, inherits = FALSE)) {
+        rm(list = key, envir = backing)
+      }
+      TRUE
+    },
+    take = function(key, missing = NULL) {
+      if (!exists(key, envir = backing, inherits = FALSE)) {
+        return(missing)
+      }
+      value <- get(key, envir = backing, inherits = FALSE)
+      rm(list = key, envir = backing)
+      value
+    }
   )
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
