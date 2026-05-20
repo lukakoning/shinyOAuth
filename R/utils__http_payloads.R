@@ -208,7 +208,10 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   for (part in parts) {
     key <- sub("=.*$", "", part)
     if (grepl("(?i)%00|%(?![0-9a-f]{2})", key, perl = TRUE)) {
-      err_parse(paste0(label, " contains malformed percent-encoded parameter name"))
+      err_parse(paste0(
+        label,
+        " contains malformed percent-encoded parameter name"
+      ))
     }
     key <- tryCatch(
       utils::URLdecode(key),
