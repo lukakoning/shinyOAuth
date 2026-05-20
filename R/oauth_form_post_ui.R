@@ -489,7 +489,6 @@ oauth_form_post_validate_payload <- function(
 }
 
 oauth_form_post_redirect_location <- function(req, id, handle) {
-  path <- oauth_form_post_request_path(req)
   clean_query <- strip_oauth_module_callback_query(req$QUERY_STRING %||% "")
   clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
@@ -504,7 +503,7 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
     collapse = "&"
   )
 
-  paste0(path, if (nzchar(query)) paste0("?", query) else "")
+  paste0("?", query)
 }
 
 # 3 One-time form_post callback storage ----------------------------------------

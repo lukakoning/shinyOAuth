@@ -63,6 +63,7 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(resp$status, 303L)
   expect_match(resp$headers$Location, "shinyOAuth_form_post=")
   expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
+  expect_true(startsWith(resp$headers$Location, "?"))
   expect_false(grepl("code=ok", resp$headers$Location, fixed = TRUE))
   expect_false(grepl(
     "state=",
@@ -79,6 +80,35 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(payload$code, "ok")
   expect_identical(payload$state, decoded_state)
   expect_identical(payload$iss, "https://issuer")
+})
+
+test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(
+    shiny::fluidPage(),
+    id = "auth",
+    client = cli,
+    callback_path = "/callback"
+  )
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+
+  req <- make_form_post_req(
+    path = "/callback",
+    query = "return_to=dashboard",
+    body = paste0("code=ok&state=", enc_state)
+  )
+  req$SCRIPT_NAME <- "/mounted/app"
+
+  resp <- ui(req)
+
+  expect_identical(resp$status, 303L)
+  expect_true(startsWith(resp$headers$Location, "?"))
+  expect_false(startsWith(resp$headers$Location, "/"))
+  expect_match(resp$headers$Location, "^\\?return_to=dashboard&")
+  expect_match(resp$headers$Location, "shinyOAuth_form_post=")
+  expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
 })
 
 test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
