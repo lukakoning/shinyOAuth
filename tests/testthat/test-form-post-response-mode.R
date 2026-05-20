@@ -1049,6 +1049,83 @@ test_that("form_post handles are ignored until the owning module claims them", {
   )
 })
 
+test_that("authenticated modules do not clear foreign form_post handles", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli_a <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli_b <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  seen <- character(0)
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    seen <<- c(seen, type)
+    orig(type, message)
+  }
+
+  wrapper_server <- function(input, output, session) {
+    auth_a <- oauth_module_server(
+      "auth_a",
+      cli_a,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    )
+    auth_b <- oauth_module_server(
+      "auth_b",
+      cli_b,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    )
+  }
+
+  shiny::testServer(
+    app = wrapper_server,
+    session = sess,
+    expr = {
+      session$flushReact()
+      seen <<- character(0)
+
+      auth_a$token <- OAuthToken(
+        access_token = "existing",
+        refresh_token = NA_character_,
+        expires_at = as.numeric(Sys.time()) + 3600,
+        id_token = NA_character_
+      )
+
+      url_b <- auth_b$build_auth_url()
+      enc_state_b <- parse_query_param(url_b, "state")
+      decoded_state_b <- shiny::parseQueryString(paste0(
+        "?state=",
+        enc_state_b
+      ))$state
+      handle_b <- shinyOAuth:::oauth_form_post_store_set(
+        cli_b,
+        "auth_b",
+        list(
+          error = "access_denied",
+          error_description = "Denied",
+          state = decoded_state_b
+        )
+      )
+
+      auth_a$.process_query(form_post_query(handle_b, "auth_b"))
+      session$flushReact()
+
+      expect_identical(auth_a$token@access_token, "existing")
+      expect_null(auth_a$error)
+      expect_false(any(seen == "shinyOAuth:clearQueryAndFixTitle"))
+
+      auth_b$.process_query(form_post_query(handle_b, "auth_b"))
+      session$flushReact()
+
+      expect_identical(auth_b$error, "access_denied")
+      expect_identical(auth_b$error_description, "Denied")
+      expect_true(any(seen == "shinyOAuth:clearQueryAndFixTitle"))
+      expect_false(isTRUE(auth_b$authenticated))
+    }
+  )
+})
+
 test_that("form_post bridge does not duplicate callback validation success audits", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

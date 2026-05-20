@@ -1385,6 +1385,37 @@ oauth_module_server <- function(
       priority = 100
     )
 
+    # Internal helper: decide whether an already-authenticated module should
+    # clear callback-like query params immediately. Foreign registered
+    # form_post handles must remain in the URL so the owning module can bridge
+    # or reject them.
+    # @param query_string Current browser query string.
+    # @return `TRUE` when this module should clear the callback query now.
+    .should_clear_authenticated_callback_query <- function(query_string) {
+      if (!isTRUE(oauth_module_query_has_callback_keys(query_string))) {
+        return(FALSE)
+      }
+
+      parsed <- tryCatch(
+        shiny::parseQueryString(query_string %||% ""),
+        error = function(...) list()
+      )
+      form_post_handle <- parsed[[oauth_form_post_handle_param]] %||% NULL
+      if (is.null(form_post_handle)) {
+        return(TRUE)
+      }
+
+      form_post_id <- parsed[[oauth_form_post_id_param]] %||% NULL
+      if (identical(form_post_id, id)) {
+        return(TRUE)
+      }
+      if (!is_valid_string(form_post_id)) {
+        return(TRUE)
+      }
+
+      !isTRUE(.form_post_module_registered(form_post_id))
+    }
+
     # Internal helper: process the current URL query string. Decides whether
     # to log in, handle a callback, or surface an error. Used by the
     # `url_search` observer and test hooks.
@@ -1441,7 +1472,7 @@ oauth_module_server <- function(
       }
 
       if (!is.null(values$token)) {
-        if (isTRUE(oauth_module_query_has_callback_keys(query_string))) {
+        if (isTRUE(.should_clear_authenticated_callback_query(query_string))) {
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
