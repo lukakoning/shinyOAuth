@@ -202,6 +202,7 @@ easier to guess for low-entropy values such as email addresses.
 
 - When: the callback query parameters fail validation (e.g., too large)
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
+- For form_post bridge query rejections, context also includes `phase`, `reason`, and `handle_digest`.
 
 ### Callback issuer validation
 

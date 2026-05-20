@@ -536,10 +536,95 @@ test_that("oauth_module_server consumes form_post error callbacks", {
   )
 })
 
+test_that("oauth_module_server audits preconsumed form_post error state", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  url <- prepare_call(cli, browser_token = NULL)
+  enc_state <- parse_query_param(url, "state")
+  resp <- ui(make_form_post_req(
+    body = paste0("error=access_denied&state=", enc_state)
+  ))
+  handle <- parse_query_param(
+    resp$headers$Location,
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$.process_query(form_post_query(handle, "auth"))
+      session$flushReact()
+
+      expect_identical(values$error, "access_denied")
+    }
+  )
+
+  event_types <- vapply(events, function(e) as.character(e$type), character(1))
+  expect_true("audit_error_state_consumed" %in% event_types)
+})
+
+test_that("oauth_module_server audits form_post handles missing module ids", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$.process_query("?shinyOAuth_form_post=handle")
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "missing module id")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+
+  reject_events <- Filter(
+    function(e) {
+      identical(e$type, "audit_callback_query_rejected") &&
+        identical(e$reason, "missing_form_post_id")
+    },
+    events
+  )
+  expect_length(reject_events, 1L)
+})
+
 test_that("oauth_module_server rejects unknown form_post module ids", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
 
   seen <- character(0)
   sess <- shiny::MockShinySession$new()
@@ -583,12 +668,26 @@ test_that("oauth_module_server rejects unknown form_post module ids", {
       expect_false(isTRUE(values$authenticated))
     }
   )
+
+  reject_events <- Filter(
+    function(e) {
+      identical(e$type, "audit_callback_query_rejected") &&
+        identical(e$reason, "unknown_form_post_id")
+    },
+    events
+  )
+  expect_length(reject_events, 1L)
 })
 
 test_that("oauth_module_server rejects form_post handles mixed with direct callback params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -623,6 +722,15 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
       expect_false(isTRUE(values$authenticated))
     }
   )
+
+  reject_events <- Filter(
+    function(e) {
+      identical(e$type, "audit_callback_query_rejected") &&
+        identical(e$reason, "mixed_form_post_and_direct_callback_params")
+    },
+    events
+  )
+  expect_length(reject_events, 1L)
 })
 
 test_that("oauth_module_server rejects duplicate form_post handle query params", {

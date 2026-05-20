@@ -1546,6 +1546,21 @@ oauth_module_server <- function(
             phase = "form_post_callback_query",
             description = "form_post callback handle is missing module id"
           )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                handle_digest = string_digest(form_post_handle),
+                error_class = "invalid_callback_query",
+                phase = "form_post_callback_query",
+                reason = "missing_form_post_id"
+              )
+            ),
+            silent = TRUE
+          )
           return(invisible(NULL))
         }
         if (!identical(form_post_id, id)) {
@@ -1564,6 +1579,22 @@ oauth_module_server <- function(
               phase = "form_post_callback_query",
               description = "form_post callback handle references unknown module id"
             )
+            try(
+              audit_event(
+                "callback_query_rejected",
+                context = list(
+                  provider = client@provider@name %||% NA_character_,
+                  issuer = client@provider@issuer %||% NA_character_,
+                  client_id_digest = string_digest(client@client_id),
+                  handle_digest = string_digest(form_post_handle),
+                  target_module_id = form_post_id,
+                  error_class = "invalid_callback_query",
+                  phase = "form_post_callback_query",
+                  reason = "unknown_form_post_id"
+                )
+              ),
+              silent = TRUE
+            )
           }
           return(invisible(NULL))
         }
@@ -1581,6 +1612,21 @@ oauth_module_server <- function(
               "form_post callback handles must not be combined with direct",
               "OAuth callback parameters"
             )
+          )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                handle_digest = string_digest(form_post_handle),
+                error_class = "invalid_callback_query",
+                phase = "form_post_callback_query",
+                reason = "mixed_form_post_and_direct_callback_params"
+              )
+            ),
+            silent = TRUE
           )
           return(invisible(NULL))
         }
@@ -1801,6 +1847,21 @@ oauth_module_server <- function(
           consumed_state <- if (
             !is.null(decrypted_payload) && !is.null(state_store_values)
           ) {
+            with_trace_id(
+              decrypted_payload$trace_id %||% NULL,
+              try(
+                audit_event(
+                  "error_state_consumed",
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id),
+                    state_digest = string_digest(decrypted_payload$state)
+                  )
+                ),
+                silent = TRUE
+              )
+            )
             list(
               payload = decrypted_payload,
               state_store_values = state_store_values
