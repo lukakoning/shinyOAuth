@@ -283,6 +283,27 @@ oauth_form_post_validate_content_type <- function(req) {
 }
 
 oauth_form_post_read_body <- function(req, max_bytes) {
+  max_bytes <- suppressWarnings(as.numeric(max_bytes))
+  if (
+    !is.numeric(max_bytes) ||
+      length(max_bytes) != 1L ||
+      is.na(max_bytes) ||
+      !is.finite(max_bytes) ||
+      max_bytes <= 0
+  ) {
+    err_form_post_http(
+      "OAuth form_post callback body limit is invalid.",
+      status = 500L
+    )
+  }
+  read_bytes <- max_bytes + 1
+  if (read_bytes > .Machine$integer.max) {
+    err_form_post_http(
+      "OAuth form_post callback body limit is invalid.",
+      status = 500L
+    )
+  }
+
   content_length <- suppressWarnings(as.numeric(
     req$CONTENT_LENGTH %||% req$HTTP_CONTENT_LENGTH %||% NA_real_
   ))
@@ -303,7 +324,7 @@ oauth_form_post_read_body <- function(req, max_bytes) {
     err_form_post_http("OAuth form_post callback body is unavailable.")
   }
 
-  body_raw <- input$read(as.integer(max_bytes + 1L))
+  body_raw <- input$read(as.integer(read_bytes))
   if (!is.raw(body_raw)) {
     err_form_post_http("OAuth form_post callback body was not raw bytes.")
   }

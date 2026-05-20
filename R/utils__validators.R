@@ -264,7 +264,8 @@ oauth_callback_limits <- function() {
     ),
     form_post_body = get_option_positive_number(
       "shinyOAuth.callback_max_form_post_body_bytes",
-      derived_query_bytes
+      derived_query_bytes,
+      max_value = .Machine$integer.max - 1L
     )
   )
 }

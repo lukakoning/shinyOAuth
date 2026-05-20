@@ -12,10 +12,21 @@
 #'
 #' @param name Option name.
 #' @param default Fallback value when the option is unset or invalid.
+#' @param max_value Optional upper bound; larger values are invalid.
 #' @return One positive numeric value.
 #' @keywords internal
 #' @noRd
-get_option_positive_number <- function(name, default) {
+get_option_positive_number <- function(name, default, max_value = Inf) {
+  max_value <- suppressWarnings(as.numeric(max_value))
+  if (
+    !is.numeric(max_value) ||
+      length(max_value) != 1L ||
+      is.na(max_value) ||
+      max_value <= 0
+  ) {
+    max_value <- Inf
+  }
+
   val <- getOption(name, NULL)
   if (is.null(val)) {
     return(as.numeric(default))
@@ -25,7 +36,7 @@ get_option_positive_number <- function(name, default) {
   if (!is.numeric(val) || length(val) != 1L || is.na(val) || !is.finite(val)) {
     return(as.numeric(default))
   }
-  if (val <= 0) {
+  if (val <= 0 || val > max_value) {
     return(as.numeric(default))
   }
   val

@@ -302,6 +302,24 @@ test_that("oauth_form_post_ui rejects oversized callback bodies before storing",
   expect_identical(sort(cli@state_store$keys()), keys_before)
 })
 
+test_that("oauth_form_post_ui rejects unsafe body read limits", {
+  withr::local_options(list(
+    shinyOAuth.callback_max_form_post_body_bytes = .Machine$integer.max
+  ))
+
+  limits <- shinyOAuth:::oauth_callback_limits()
+  expect_lt(limits$form_post_body, .Machine$integer.max - 1L)
+
+  expect_error(
+    shinyOAuth:::oauth_form_post_read_body(
+      make_form_post_req(body = "code=ok"),
+      .Machine$integer.max
+    ),
+    class = "shinyOAuth_form_post_http_error",
+    regexp = "body limit is invalid"
+  )
+})
+
 test_that("oauth_form_post_ui hides internal callback POST failures", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   url <- prepare_call(cli, browser_token = valid_browser_token())
