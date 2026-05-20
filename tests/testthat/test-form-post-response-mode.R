@@ -224,6 +224,11 @@ test_that("oauth_form_post_store_take rejects expired handles", {
 test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
   enc_state <- parse_query_param(url, "state")
@@ -234,6 +239,14 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   ))
   expect_identical(bad_type$status, 415L)
   expect_match(bad_type$content, "application/x-www-form-urlencoded")
+  form_post_reject_events <- Filter(
+    function(e) {
+      identical(e$type, "audit_callback_validation_failed") &&
+        identical(e$phase, "form_post_request_validation")
+    },
+    events
+  )
+  expect_length(form_post_reject_events, 1L)
 
   duplicate <- ui(make_form_post_req(
     body = paste0("code=ok&code=again&state=", enc_state)
@@ -256,6 +269,35 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     invalid_state$content,
     fixed = TRUE
   ))
+})
+
+test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  cli@enforce_callback_issuer <- TRUE
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+  keys_before <- sort(cli@state_store$keys())
+
+  resp <- ui(make_form_post_req(
+    body = paste0(
+      "code=ok&state=",
+      enc_state,
+      "&iss=https%3A%2F%2Fattacker.example"
+    )
+  ))
+
+  expect_identical(resp$status, 400L)
+  expect_identical(sort(cli@state_store$keys()), keys_before)
+
+  event_types <- vapply(events, function(e) as.character(e$type), character(1))
+  expect_true("audit_callback_iss_mismatch" %in% event_types)
 })
 
 test_that("oauth_form_post_ui rejects oversized callback query before storing", {
@@ -737,6 +779,11 @@ test_that("oauth_module_server rejects replayed form_post handles", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -773,6 +820,16 @@ test_that("oauth_module_server rejects replayed form_post handles", {
       expect_identical(values$error, "invalid_state")
       expect_match(values$error_description, "missing or already consumed")
       expect_false(isTRUE(values$authenticated))
+
+      lookup_events <- Filter(
+        function(e) {
+          identical(e$type, "audit_callback_validation_failed") &&
+            identical(e$phase, "form_post_callback_lookup")
+        },
+        events
+      )
+      expect_length(lookup_events, 1L)
+      expect_true(is.character(lookup_events[[1L]]$handle_digest))
     }
   )
 })

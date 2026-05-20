@@ -216,9 +216,38 @@ oauth_form_post_handle_request <- function(req, id, client) {
         payload$state,
         audit_success = FALSE
       )
-      enforce_callback_issuer(
-        oauth_client = client,
-        iss = payload$iss %||% NULL
+      tryCatch(
+        enforce_callback_issuer(
+          oauth_client = client,
+          iss = payload$iss %||% NULL
+        ),
+        error = function(e) {
+          error_context <- tryCatch(e[["context"]], error = function(...) {
+            NULL
+          })
+          callback_error <- error_context$callback_error %||%
+            "callback_iss_validation_error"
+          audit_name <- switch(
+            callback_error,
+            issuer_missing = "callback_iss_missing",
+            issuer_mismatch = "callback_iss_mismatch",
+            "callback_iss_validation_failed"
+          )
+          try(
+            audit_event(
+              audit_name,
+              context = compact_list(list(
+                provider = client@provider@name %||% NA_character_,
+                expected_issuer = client@provider@issuer %||% NA_character_,
+                callback_issuer = payload$iss %||% NULL,
+                client_id_digest = string_digest(client@client_id),
+                error_class = paste(class(e), collapse = ", ")
+              ))
+            ),
+            silent = TRUE
+          )
+          stop(e)
+        }
       )
       state_store_values <- state_store_get_remove(
         client,
@@ -253,6 +282,20 @@ oauth_form_post_handle_request <- function(req, id, client) {
       )
     },
     shinyOAuth_form_post_http_error = function(e) {
+      try(
+        audit_event(
+          "callback_validation_failed",
+          context = list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            state_digest = NA_character_,
+            error_class = paste(class(e), collapse = ", "),
+            phase = "form_post_request_validation"
+          )
+        ),
+        silent = TRUE
+      )
       oauth_form_post_error_response(e)
     },
     shinyOAuth_state_error = function(e) {

@@ -1598,6 +1598,21 @@ oauth_module_server <- function(
               e,
               phase = "form_post_callback_lookup"
             )
+            try(
+              audit_event(
+                "callback_validation_failed",
+                context = list(
+                  provider = client@provider@name %||% NA_character_,
+                  issuer = client@provider@issuer %||% NA_character_,
+                  client_id_digest = string_digest(client@client_id),
+                  state_digest = NA_character_,
+                  handle_digest = string_digest(form_post_handle),
+                  error_class = paste(class(e), collapse = ", "),
+                  phase = "form_post_callback_lookup"
+                )
+              ),
+              silent = TRUE
+            )
             NULL
           }
         )
