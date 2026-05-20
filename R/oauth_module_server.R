@@ -2192,8 +2192,8 @@ oauth_module_server <- function(
                             ) {
                               otel_set_span_attributes(
                                 attributes = list(
-                                  shinyoauth.trace_id =
-                                    payload$trace_id %||% NULL
+                                  shinyoauth.trace_id = payload$trace_id %||%
+                                    NULL
                                 )
                               )
                             }

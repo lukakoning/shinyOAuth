@@ -459,10 +459,15 @@ testthat::test_that("direct form_post HTTP envelope attacks are rejected without
 
   valid <- .post_form_post_http_callback(
     client@redirect_uri,
-    body = paste0("code=ok&state=", enc_state, "&iss=", utils::URLencode(
-      client@provider@issuer,
-      reserved = TRUE
-    ))
+    body = paste0(
+      "code=ok&state=",
+      enc_state,
+      "&iss=",
+      utils::URLencode(
+        client@provider@issuer,
+        reserved = TRUE
+      )
+    )
   )
   testthat::expect_identical(httr2::resp_status(valid), 303L)
   testthat::expect_match(
@@ -474,10 +479,15 @@ testthat::test_that("direct form_post HTTP envelope attacks are rejected without
 
   replayed_valid <- .post_form_post_http_callback(
     client@redirect_uri,
-    body = paste0("code=ok&state=", enc_state, "&iss=", utils::URLencode(
-      client@provider@issuer,
-      reserved = TRUE
-    ))
+    body = paste0(
+      "code=ok&state=",
+      enc_state,
+      "&iss=",
+      utils::URLencode(
+        client@provider@issuer,
+        reserved = TRUE
+      )
+    )
   )
   testthat::expect_identical(httr2::resp_status(replayed_valid), 400L)
   .wait_for_form_post_state_store_count(drv, 1L)
