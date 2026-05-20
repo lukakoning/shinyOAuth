@@ -329,7 +329,7 @@ It is the default and does not require setting `response_mode` explicitly.
 
 For some apps, when your provider explicitly requires or recommends
 `response_mode = "form_post"`, you can configure that on the client.
-As by default Shiny apps do not handle POST callbacks, you need to enable
+Because Shiny apps do not handle POST callbacks by default, you need to enable
 this by wrapping your UI with `oauth_form_post_ui()`. This allows the provider
 to POST the authorization response back to the app. That wrapper also injects
 the shinyOAuth browser dependency automatically, so you do not need a separate
