@@ -253,6 +253,14 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   ))
   expect_identical(duplicate$status, 400L)
 
+  malformed_name <- ui(make_form_post_req(body = "st%ZZate=x"))
+  expect_identical(malformed_name$status, 400L)
+  expect_match(
+    malformed_name$content,
+    "malformed percent-encoded parameter name",
+    fixed = TRUE
+  )
+
   missing_state <- ui(make_form_post_req(body = "code=ok"))
   expect_identical(missing_state$status, 400L)
 
