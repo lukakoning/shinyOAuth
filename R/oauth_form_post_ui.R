@@ -199,88 +199,104 @@ oauth_form_post_request_matches <- function(req, callback_path) {
 
 oauth_form_post_handle_request <- function(req, id, client) {
   tryCatch(
-    {
-      oauth_form_post_validate_content_type(req)
-      limits <- oauth_callback_limits()
-      validate_untrusted_query_string(
-        req$QUERY_STRING %||% "",
-        max_bytes = limits$query
-      )
-      body <- oauth_form_post_read_body(req, limits$form_post_body)
-      payload <- oauth_form_post_parse_body(body, limits)
-      # Reject invalid state/issuer before persisting any pre-session form_post
-      # handle, then consume the logical state at the POST boundary so repeated
-      # valid POSTs cannot mint multiple live handles for one login attempt.
-      state_payload <- state_payload_decrypt_validate(
-        client,
-        payload$state,
-        audit_success = FALSE
-      )
-      tryCatch(
-        enforce_callback_issuer(
-          oauth_client = client,
-          iss = payload$iss %||% NULL
-        ),
-        error = function(e) {
-          error_context <- tryCatch(e[["context"]], error = function(...) {
-            NULL
-          })
-          callback_error <- error_context$callback_error %||%
-            "callback_iss_validation_error"
-          audit_name <- switch(
-            callback_error,
-            issuer_missing = "callback_iss_missing",
-            issuer_mismatch = "callback_iss_mismatch",
-            "callback_iss_validation_failed"
-          )
-          try(
-            audit_event(
-              audit_name,
-              context = compact_list(list(
-                provider = client@provider@name %||% NA_character_,
-                expected_issuer = client@provider@issuer %||% NA_character_,
-                callback_issuer = payload$iss %||% NULL,
-                client_id_digest = string_digest(client@client_id),
-                error_class = paste(class(e), collapse = ", ")
-              ))
-            ),
-            silent = TRUE
-          )
-          stop(e)
-        }
-      )
-      state_store_values <- state_store_get_remove(
-        client,
-        state_payload$state
-      )
-      audit_callback_validation_success(client, state_payload)
-      payload$state_payload <- state_payload
-      payload$state_store_values <- state_store_values
-      handle <- oauth_form_post_store_set(client, id, payload)
-      location <- oauth_form_post_redirect_location(req, id, handle)
-
-      shiny::httpResponse(
-        status = 303L,
-        content_type = "text/html; charset=UTF-8",
-        content = paste0(
-          "<!doctype html><html><head><meta name=\"referrer\" ",
-          "content=\"no-referrer\"></head><body>",
-          "<a href=\"",
-          htmltools::htmlEscape(location, attribute = TRUE),
-          "\">Continue</a>",
-          "</body></html>"
-        ),
-        headers = stats::setNames(
-          as.list(c(
-            location,
-            "no-store",
-            "no-cache",
-            "no-referrer"
-          )),
-          c("Location", "Cache-Control", "Pragma", "Referrer-Policy")
+    with_otel_span(
+      "shinyOAuth.form_post",
+      {
+        oauth_form_post_validate_content_type(req)
+        limits <- oauth_callback_limits()
+        validate_untrusted_query_string(
+          req$QUERY_STRING %||% "",
+          max_bytes = limits$query
         )
-      )
-    },
+        body <- oauth_form_post_read_body(req, limits$form_post_body)
+        payload <- oauth_form_post_parse_body(body, limits)
+        # Reject invalid state/issuer before persisting any pre-session
+        # form_post handle, then consume the logical state at the POST
+        # boundary so repeated valid POSTs cannot mint multiple live handles
+        # for one login attempt.
+        state_payload <- state_payload_decrypt_validate(
+          client,
+          payload$state,
+          audit_success = FALSE
+        )
+        otel_set_span_attributes(
+          attributes = list(
+            shinyoauth.trace_id = state_payload$trace_id %||% NULL
+          )
+        )
+        tryCatch(
+          enforce_callback_issuer(
+            oauth_client = client,
+            iss = payload$iss %||% NULL
+          ),
+          error = function(e) {
+            error_context <- tryCatch(e[["context"]], error = function(...) {
+              NULL
+            })
+            callback_error <- error_context$callback_error %||%
+              "callback_iss_validation_error"
+            audit_name <- switch(
+              callback_error,
+              issuer_missing = "callback_iss_missing",
+              issuer_mismatch = "callback_iss_mismatch",
+              "callback_iss_validation_failed"
+            )
+            try(
+              audit_event(
+                audit_name,
+                context = compact_list(list(
+                  provider = client@provider@name %||% NA_character_,
+                  expected_issuer = client@provider@issuer %||% NA_character_,
+                  callback_issuer = payload$iss %||% NULL,
+                  client_id_digest = string_digest(client@client_id),
+                  error_class = paste(class(e), collapse = ", ")
+                ))
+              ),
+              silent = TRUE
+            )
+            stop(e)
+          }
+        )
+        state_store_values <- state_store_get_remove(
+          client,
+          state_payload$state
+        )
+        audit_callback_validation_success(client, state_payload)
+        payload$state_payload <- state_payload
+        payload$state_store_values <- state_store_values
+        handle <- oauth_form_post_store_set(client, id, payload)
+        location <- oauth_form_post_redirect_location(req, id, handle)
+
+        shiny::httpResponse(
+          status = 303L,
+          content_type = "text/html; charset=UTF-8",
+          content = paste0(
+            "<!doctype html><html><head><meta name=\"referrer\" ",
+            "content=\"no-referrer\"></head><body>",
+            "<a href=\"",
+            htmltools::htmlEscape(location, attribute = TRUE),
+            "\">Continue</a>",
+            "</body></html>"
+          ),
+          headers = stats::setNames(
+            as.list(c(
+              location,
+              "no-store",
+              "no-cache",
+              "no-referrer"
+            )),
+            c("Location", "Cache-Control", "Pragma", "Referrer-Policy")
+          )
+        )
+      },
+      attributes = otel_client_attributes(
+        client = client,
+        module_id = id,
+        phase = "form_post.post",
+        extra = list(oauth.response_mode = "form_post")
+      ),
+      parent = NA
+    ),
     shinyOAuth_form_post_http_error = function(e) {
       try(
         audit_event(

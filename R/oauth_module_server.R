@@ -1632,7 +1632,23 @@ oauth_module_server <- function(
         }
 
         form_post_payload <- tryCatch(
-          oauth_form_post_store_take(client, id, form_post_handle),
+          with_otel_span(
+            "shinyOAuth.form_post.bridge",
+            {
+              oauth_form_post_store_take(client, id, form_post_handle)
+            },
+            attributes = otel_client_attributes(
+              client = client,
+              module_id = id,
+              phase = "form_post.callback_lookup",
+              extra = list(
+                oauth.form_post.handle_digest = string_digest(
+                  form_post_handle
+                )
+              )
+            ),
+            parent = NA
+          ),
           error = function(e) {
             clear_oauth_module_callback_query(
               session,

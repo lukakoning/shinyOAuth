@@ -164,6 +164,36 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - otherwise it is started as a root span instead of inheriting Shiny's
     `reactive_update`
 
+#### Span: `shinyOAuth.form_post`
+
+- When: while the pre-session `response_mode = "form_post"` POST callback is
+  validated and bridged into Shiny
+- Represents: form POST envelope validation, state payload validation, issuer
+  validation, single-use state consumption, and transient handle storage
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `shiny.module_id`
+  - `oauth.phase = "form_post.post"`
+  - `oauth.response_mode = "form_post"`
+- Notes:
+  - after state decryption succeeds, the span receives the recovered
+    `shinyoauth.trace_id`
+  - invalid envelopes that cannot expose a trusted state value remain root
+    spans
+
+#### Span: `shinyOAuth.form_post.bridge`
+
+- When: when the Shiny module consumes the one-time form_post handle from the
+  GET bridge query
+- Represents: transient form_post handle lookup and single-use consumption
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `shiny.module_id`
+  - `oauth.phase = "form_post.callback_lookup"`
+  - `oauth.form_post.handle_digest`
+
 #### Span: `shinyOAuth.callback.validate`
 
 - When: during callback validation sub-steps

@@ -1062,3 +1062,53 @@ test_that("form_post bridge does not duplicate callback validation success audit
   event_types <- vapply(events, function(e) as.character(e$type), character(1))
   expect_identical(sum(event_types == "audit_callback_validation_success"), 1L)
 })
+
+test_that("form_post callback path emits existing OTel spans", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  spans <- character(0)
+
+  testthat::with_mocked_bindings(
+    with_otel_span = function(name, code, ...) {
+      spans <<- c(spans, name)
+      force(code)
+    },
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+      url <- prepare_call(cli, browser_token = NULL)
+      enc_state <- parse_query_param(url, "state")
+      resp <- ui(make_form_post_req(
+        body = paste0("code=ok&state=", enc_state)
+      ))
+      handle <- parse_query_param(
+        resp$headers$Location,
+        "shinyOAuth_form_post",
+        decode = TRUE
+      )
+
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = cli,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$.process_query(form_post_query(handle, "auth"))
+          session$flushReact()
+
+          expect_true(isTRUE(values$authenticated))
+        }
+      )
+    }
+  )
+
+  expect_true("shinyOAuth.form_post" %in% spans)
+  expect_true("shinyOAuth.form_post.bridge" %in% spans)
+})
