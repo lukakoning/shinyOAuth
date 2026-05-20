@@ -178,6 +178,11 @@ normalize_oauth_form_post_callback_path <- function(path) {
   if (!startsWith(path, "/")) {
     path <- paste0("/", path)
   }
+  if (startsWith(path, "//")) {
+    err_input(
+      "{.arg callback_path} must not start with {.val //}."
+    )
+  }
 
   path
 }

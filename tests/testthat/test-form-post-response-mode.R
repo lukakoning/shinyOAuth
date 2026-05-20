@@ -81,6 +81,29 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(payload$iss, "https://issuer")
 })
 
+test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_error(
+    oauth_form_post_ui(
+      shiny::fluidPage(),
+      id = "auth",
+      client = cli,
+      callback_path = "//evil.example/callback"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "must not start"
+  )
+
+  expect_error(
+    shinyOAuth:::normalize_oauth_form_post_callback_path(
+      "//evil.example/callback"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "must not start"
+  )
+})
+
 test_that("oauth_form_post_ui consumes state before issuing a callback handle", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
