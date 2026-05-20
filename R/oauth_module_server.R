@@ -3216,11 +3216,23 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
   seen <- character(0)
   for (part in parts) {
     key <- sub("=.*$", "", part)
+    if (grepl("(?i)%00|%(?![0-9a-f]{2})", key, perl = TRUE)) {
+      err_invalid_state(
+        "Callback query contains malformed percent-encoded parameter name",
+        context = list(component = "query_string")
+      )
+    }
     key <- tryCatch(
       utils::URLdecode(key),
+      warning = function(e) {
+        err_invalid_state(
+          "Callback query contains malformed percent-encoded parameter name",
+          context = list(component = "query_string")
+        )
+      },
       error = function(e) {
         err_invalid_state(
-          "Callback query parameter name could not be decoded",
+          "Callback query contains malformed percent-encoded parameter name",
           context = list(component = "query_string")
         )
       }

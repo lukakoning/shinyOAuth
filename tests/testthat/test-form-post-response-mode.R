@@ -839,6 +839,16 @@ test_that("callback query duplicate rejection covers direct OAuth params", {
   expect_silent(
     shinyOAuth:::reject_duplicate_oauth_module_callback_query("?foo=1&foo=2")
   )
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query("?st%ZZate=x"),
+    class = "shinyOAuth_state_error",
+    regexp = "malformed percent-encoded parameter name"
+  )
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query("?%00state=x"),
+    class = "shinyOAuth_state_error",
+    regexp = "malformed percent-encoded parameter name"
+  )
 })
 
 test_that("oauth_module_server rejects oversized form_post handle query params", {
