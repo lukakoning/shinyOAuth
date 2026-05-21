@@ -135,6 +135,7 @@ make_test_client <- function(
   claims_validation = "none",
   userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
+  response_mode = NULL,
   introspect = FALSE,
   introspect_elements = character(0)
 ) {
@@ -156,6 +157,7 @@ make_test_client <- function(
     scopes = scopes,
     resource = resource,
     claims = claims,
+    response_mode = response_mode,
     claims_validation = claims_validation,
     userinfo_jwt_required_temporal_claims = userinfo_jwt_required_temporal_claims,
     required_acr_values = required_acr_values,

@@ -117,6 +117,21 @@
 #'   caller-managed `request_uri` publication still depends on the provider
 #'   having that URI or a matching wildcard prefix registered for the client;
 #'   shinyOAuth cannot verify that server-side registration automatically.
+#' @param response_mode Authorization response mode for authorization-code
+#'   callbacks. Supported values are `"query"` and `"form_post"`. The
+#'   effective default is always `"query"`: omitting this argument keeps the
+#'   normal query-parameter callback flow and shinyOAuth does not send a
+#'   `response_mode` parameter. Pass `"query"` only if you need to explicitly
+#'   request the query response mode from the provider.
+#'   Set `"form_post"` only when the provider requires or explicitly
+#'   recommends POSTing the authorization response to the redirect URI. Shiny
+#'   apps using `"form_post"` must wrap their UI with [oauth_form_post_ui()].
+#'   Prefer this argument over setting `extra_auth_params$response_mode` on the
+#'   provider. When the provider advertises `response_modes_supported`, the
+#'   resolved mode must be included in that set.
+#'   JWT Secured Authorization Response Mode (JARM) values such as
+#'   `"form_post.jwt"` are a separate response format and are not currently
+#'   supported.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a
@@ -452,6 +467,11 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = "parameters"
     ),
+    # Authorization response mode for authorization-code callbacks.
+    response_mode = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     # Optional override for the signed authorization request alg.
     authorization_request_signing_alg = S7::new_property(
       S7::class_character,
@@ -602,6 +622,7 @@ oauth_client <- function(
   tls_client_ca_file = NULL,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
+  response_mode = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -678,6 +699,15 @@ oauth_client <- function(
   }
   claims_validation <- match.arg(claims_validation)
   authorization_request_mode <- match.arg(authorization_request_mode)
+  response_mode_info <- resolve_auth_response_mode(
+    response_mode,
+    arg = "response_mode",
+    context = "OAuthClient"
+  )
+  if (!is.null(response_mode_info$error)) {
+    err_input(response_mode_info$error)
+  }
+  response_mode <- response_mode_info$mode %||% NA_character_
 
   if (
     !isTRUE(dpop_require_access_token_missing) &&
@@ -748,6 +778,7 @@ oauth_client <- function(
       mtls_request_certificate_bound_access_tokens
     ),
     authorization_request_mode = authorization_request_mode,
+    response_mode = response_mode,
     authorization_request_signing_alg = authorization_request_signing_alg %||%
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
@@ -1128,6 +1159,10 @@ oauth_client_validate <- function(self) {
     return(
       "OAuthClient: authorization_request_mode must be a scalar character string"
     )
+  }
+  response_mode_info <- resolve_oauth_client_response_mode(self)
+  if (!is.null(response_mode_info$error)) {
+    return(response_mode_info$error)
   }
   request_object_modes <- c("request", "request_uri")
 

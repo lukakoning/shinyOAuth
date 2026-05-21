@@ -378,17 +378,15 @@ build_authorization_params <- function(
     params$acr_values <- paste(racr, collapse = " ")
   }
 
-  if (length(oauth_client@provider@extra_auth_params) > 0) {
-    extra <- oauth_client@provider@extra_auth_params
+  response_mode_info <- resolve_oauth_client_response_mode(oauth_client)
+  if (!is.null(response_mode_info$error)) {
+    err_config(response_mode_info$error)
+  }
 
-    response_mode_info <- inspect_auth_response_mode(extra)
-    if (!is.null(response_mode_info$error)) {
-      err_config(response_mode_info$error)
-    }
-    if (length(response_mode_info$index) == 1L) {
-      extra[[response_mode_info$index]] <- response_mode_info$mode
-    }
+  explicit_response_mode <- response_mode_info$explicit_mode
+  extra <- response_mode_info$extra_auth_params
 
+  if (length(extra) > 0) {
     # Block overrides for security-critical parameters unless explicitly
     # unblocked. Allowing callers to replace these can break state binding,
     # redirect_uri validation, PKCE integrity, or PAR request indirection.
@@ -430,6 +428,10 @@ build_authorization_params <- function(
       ))
     }
     params <- c(params, extra)
+  }
+
+  if (!is.null(explicit_response_mode)) {
+    params$response_mode <- explicit_response_mode
   }
 
   # Drop NULLs before building query strings or form bodies.
@@ -1264,12 +1266,12 @@ handle_callback_internal <- function(
 
       # Retrieve state_info from state store ---------------------------------------
       # State is the key; value is a list with browser_token, pkce_code_verifier, nonce
+      state_store_preconsumed <- !is.null(state_store_values)
       if (is.null(state_store_values)) {
         state_store_values <- with_otel_span(
           "shinyOAuth.callback.validate",
           {
-            # Centralized auditing for state store lookup occurs in state_store_get_remove()
-            state_store_get_remove(
+            state_store_get(
               oauth_client,
               payload$state,
               shiny_session = shiny_session
@@ -1278,7 +1280,7 @@ handle_callback_internal <- function(
           attributes = otel_client_attributes(
             client = oauth_client,
             shiny_session = shiny_session,
-            phase = "callback.state_store_consume"
+            phase = "callback.state_store_lookup"
           )
         )
       }
@@ -1343,6 +1345,29 @@ handle_callback_internal <- function(
           rethrow_with_context(e)
         }
       )
+
+      if (!isTRUE(state_store_preconsumed)) {
+        state_store_values <- with_otel_span(
+          "shinyOAuth.callback.validate",
+          {
+            # Centralized auditing for state store consumption occurs in
+            # state_store_get_remove().
+            state_store_get_remove(
+              oauth_client,
+              payload$state,
+              shiny_session = shiny_session
+            )
+          },
+          attributes = otel_client_attributes(
+            client = oauth_client,
+            shiny_session = shiny_session,
+            phase = "callback.state_store_consume"
+          )
+        )
+      }
+      if (!is.null(decrypted_payload)) {
+        audit_callback_validation_success(oauth_client, payload, shiny_session)
+      }
 
       # Swap code for token --------------------------------------------------------
 

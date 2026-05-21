@@ -318,6 +318,7 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
     class = "shinyOAuth_state_error",
     regexp = "malformed.*missing required fields"
   )
+  expect_null(cli@state_store$get(key, missing = NULL))
 
   # Re-prepare and use malformed browser token
   url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -387,6 +388,7 @@ test_that("handle_callback fails when nonce is required but missing in state sto
     class = "shinyOAuth_state_error",
     regexp = "malformed.*missing required fields"
   )
+  expect_null(cli@state_store$get(key, missing = NULL))
 })
 
 test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {

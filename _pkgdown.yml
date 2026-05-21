@@ -6,6 +6,7 @@ reference:
 - title: Shiny module
 - contents:
   - oauth_module_server
+  - oauth_form_post_ui
   - use_shinyOAuth
 
 - title: S7 classes

@@ -225,10 +225,9 @@ testthat::test_that("error response with mismatched browser_token is rejected as
       testthat::expect_null(values$pending_callback)
       testthat::expect_false(values$authenticated)
 
-      # Error callbacks now follow the code path and consume state before the
-      # browser-token comparison, so the state is single-use even on mismatch.
+      # Browser-token rejection must not burn the pending login state.
       after <- cli@state_store$get(key, missing = NULL)
-      testthat::expect_null(after)
+      testthat::expect_false(is.null(after))
     }
   )
 

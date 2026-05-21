@@ -46,6 +46,7 @@ make_par_test_client <- function(
   par_url = "https://example.com/par",
   issuer = NA_character_,
   dpop_private_key = NULL,
+  response_mode = NULL,
   authorization_request_front_channel_mode = "compat"
 ) {
   prov <- oauth_provider(
@@ -74,6 +75,7 @@ make_par_test_client <- function(
     resource = resource,
     client_assertion_audience = client_assertion_audience,
     dpop_private_key = dpop_private_key,
+    response_mode = response_mode,
     state_store = cachem::cache_mem(max_age = 60),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -131,6 +133,32 @@ test_that("prepare_call pushes authorization params and redirects with request_u
   expect_match(body_text, "state=")
   expect_match(body_text, "code_challenge=")
   expect_match(body_text, "code_challenge_method=S256")
+})
+
+test_that("PAR pushes form_post response_mode in authorization request body", {
+  cli <- make_par_test_client(response_mode = "form_post")
+  body_text <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      body_text <<- request_body_text(req)
+      httr2::response(
+        url = as.character(req$url),
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test","expires_in":90}'
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
+
+  expect_match(body_text, "response_mode=form_post")
+  expect_match(auth_url, "[?&]request_uri=")
+  expect_false(grepl("[?&]response_mode=", auth_url))
 })
 
 test_that("PAR minimal front-channel mode omits duplicated OIDC params", {

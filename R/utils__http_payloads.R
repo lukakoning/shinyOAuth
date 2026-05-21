@@ -206,8 +206,17 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
 
   seen <- character(0)
   for (part in parts) {
-    key <- sub("=.*$", "", part)
-    key <- utils::URLdecode(key)
+    separator <- regexpr("=", part, fixed = TRUE)[[1]]
+    if (separator < 0) {
+      raw_key <- part
+      raw_value <- ""
+    } else {
+      raw_key <- substr(part, 1L, separator - 1L)
+      raw_value <- substr(part, separator + 1L, nchar(part, type = "chars"))
+    }
+
+    key <- decode_form_member(raw_key, label, "parameter name")
+    decode_form_member(raw_value, label, "parameter value")
     if (key %in% seen) {
       err_parse(paste0(label, " contains duplicate parameter name: ", key))
     }
@@ -215,6 +224,33 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   }
 
   invisible(NULL)
+}
+
+decode_form_member <- function(value, label, member) {
+  if (grepl("(?i)%00|%(?![0-9a-f]{2})", value, perl = TRUE)) {
+    err_parse(paste0(
+      label,
+      " contains malformed percent-encoded ",
+      member
+    ))
+  }
+  tryCatch(
+    utils::URLdecode(value),
+    warning = function(e) {
+      err_parse(paste0(
+        label,
+        " contains malformed percent-encoded ",
+        member
+      ))
+    },
+    error = function(e) {
+      err_parse(paste0(
+        label,
+        " contains malformed percent-encoded ",
+        member
+      ))
+    }
+  )
 }
 
 

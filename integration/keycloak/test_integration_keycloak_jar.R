@@ -77,6 +77,38 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
   )
 })
 
+testthat::test_that("Keycloak request-object carries form_post response_mode in the signed object", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(token_auth_style = "private_key_jwt")
+  testthat::expect_true(
+    "form_post" %in% (prov@response_modes_supported %||% character())
+  )
+  client <- make_private_key_jar_client(prov, response_mode = "form_post")
+  testthat::skip_if(is.null(client), "private_key_jwt test key not available")
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+
+      testthat::expect_false(grepl("[?&]response_mode=", auth_url))
+
+      request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
+      payload <- decode_compact_jwt_payload(request_jwt)
+
+      testthat::expect_identical(payload$response_mode, "form_post")
+      testthat::expect_identical(payload$client_id, client@client_id)
+      testthat::expect_identical(
+        payload$redirect_uri,
+        client@redirect_uri
+      )
+    }
+  )
+})
+
 testthat::test_that("Keycloak request-object happy path (HS256)", {
   skip_common()
   local_test_options()

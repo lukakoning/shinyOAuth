@@ -195,6 +195,81 @@ validate_untrusted_query_string <- function(query_string, max_bytes) {
   invisible(NULL)
 }
 
+#' Internal: callback size limits
+#'
+#' Centralizes callback limits used by URL query callbacks and form_post
+#' callbacks so both transports enforce the same field caps.
+#'
+#' @return Named list of byte limits.
+#' @keywords internal
+#' @noRd
+oauth_callback_limits <- function() {
+  max_code_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_code_bytes",
+    4096
+  )
+  max_state_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_state_bytes",
+    8192
+  )
+  max_error_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_error_bytes",
+    256
+  )
+  max_error_desc_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_error_description_bytes",
+    4096
+  )
+  max_error_uri_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_error_uri_bytes",
+    2048
+  )
+  max_iss_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_iss_bytes",
+    2048
+  )
+  max_form_post_handle_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_form_post_handle_bytes",
+    128
+  )
+  max_form_post_id_bytes <- get_option_positive_number(
+    "shinyOAuth.callback_max_form_post_id_bytes",
+    256
+  )
+
+  max_query_overhead_bytes <- 2048
+  derived_query_bytes <-
+    max_code_bytes +
+    max_state_bytes +
+    max_error_bytes +
+    max_error_desc_bytes +
+    max_error_uri_bytes +
+    max_iss_bytes +
+    max_form_post_handle_bytes +
+    max_form_post_id_bytes +
+    max_query_overhead_bytes
+
+  list(
+    code = max_code_bytes,
+    state = max_state_bytes,
+    error = max_error_bytes,
+    error_description = max_error_desc_bytes,
+    error_uri = max_error_uri_bytes,
+    iss = max_iss_bytes,
+    form_post_handle = max_form_post_handle_bytes,
+    form_post_id = max_form_post_id_bytes,
+    query = get_option_positive_number(
+      "shinyOAuth.callback_max_query_bytes",
+      derived_query_bytes
+    ),
+    form_post_body = get_option_positive_number(
+      "shinyOAuth.callback_max_form_post_body_bytes",
+      derived_query_bytes,
+      max_value = .Machine$integer.max - 1L
+    )
+  )
+}
+
 #' Safely coerce one value to a scalar character string
 #'
 #' @param x Value to coerce.

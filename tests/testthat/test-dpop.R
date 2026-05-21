@@ -3,7 +3,8 @@ make_dpop_test_client <- function(
   dpop_require_access_token = NULL,
   dpop_private_key = openssl::rsa_keygen(),
   dpop_private_key_kid = NULL,
-  dpop_signing_alg = NULL
+  dpop_signing_alg = NULL,
+  response_mode = NULL
 ) {
   args <- list(
     provider = provider,
@@ -18,7 +19,8 @@ make_dpop_test_client <- function(
     ),
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid,
-    dpop_signing_alg = dpop_signing_alg
+    dpop_signing_alg = dpop_signing_alg,
+    response_mode = response_mode
   )
 
   if (!is.null(dpop_require_access_token)) {
@@ -63,6 +65,27 @@ test_that("prepare_call includes dpop_jkt in authorization request parameters", 
   )
 
   expect_identical(dpop_jkt, expected_jkt)
+})
+
+test_that("prepare_call can combine DPoP dpop_jkt with form_post response_mode", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  key <- openssl::rsa_keygen()
+  cli <- make_dpop_test_client(
+    prov,
+    dpop_private_key = key,
+    response_mode = "form_post"
+  )
+
+  auth_url <- prepare_call(cli, valid_browser_token())
+
+  expect_identical(
+    parse_query_param(auth_url, "response_mode", decode = TRUE),
+    "form_post"
+  )
+  expect_identical(
+    parse_query_param(auth_url, "dpop_jkt", decode = TRUE),
+    shinyOAuth:::compute_jwk_thumbprint(shinyOAuth:::dpop_public_jwk(key))
+  )
 })
 
 test_that("resource_req builds DPoP authorization and proof headers", {

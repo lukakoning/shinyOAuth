@@ -142,7 +142,7 @@
 
     try{
       var u=new URL(window.location.href);
-      var drop=['code','state','session_state','id_token','access_token','token_type','expires_in','error','error_description','error_uri','iss'];
+      var drop=['code','state','session_state','id_token','access_token','token_type','expires_in','error','error_description','error_uri','iss','shinyOAuth_form_post','shinyOAuth_form_post_id'];
       for(var i=0;i<drop.length;i++){u.searchParams.delete(drop[i]);}
       var h=window.location.hash||'';
       if(h && h.indexOf('#/')===0){
