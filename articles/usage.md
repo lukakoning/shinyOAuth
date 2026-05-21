@@ -328,6 +328,99 @@ observeEvent(input$logout_btn, {
 })
 ```
 
+## Using `response_mode = "form_post"`
+
+The response mode determines how the provider returns the authorization
+response to the app after the user authenticates. The effective default
+is the normal query callback flow, which means the provider redirects
+back to the app with query parameters (e.g., `?code=...&state=...`) and
+shinyOAuth does not send a `response_mode` parameter unless you
+configure one.
+
+For most Shiny apps, query is the preferred response mode because it
+works seamlessly with Shiny’s routing and does not require any special
+UI handling. It is the default and does not require setting
+`response_mode` explicitly.
+
+For some apps, when your provider explicitly requires or recommends
+`response_mode = "form_post"`, you can configure that on the client.
+Because Shiny apps do not handle POST callbacks by default, you need to
+enable this by wrapping your UI with
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+This allows the provider to POST the authorization response back to the
+app. That wrapper also injects the shinyOAuth browser dependency
+automatically, so you do not need a separate
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+call in the wrapped UI. The `/callback` path below is only an example
+sub-route; using the app root is also fine as long as the provider
+redirect URI matches the path handled by
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+Here’s how you can set it up:
+
+This is the plain OAuth/OIDC Form Post Response Mode: the POST body
+contains parameters such as `code`, `state`, `error`, and `iss`. JWT
+Secured Authorization Response Mode (JARM) values such as
+`form_post.jwt` use a different JWT `response` payload and are not
+currently supported.
+
+``` r
+library(shiny)
+library(shinyOAuth)
+
+provider <- oauth_provider_keycloak(
+  base_url = "http://localhost:8080",
+  realm = "shinyoauth"
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "shiny-public",
+  client_secret = "",
+  # `/callback` is only an example sub-route. The app root also works if the
+  # provider redirect URI matches the path handled by `oauth_form_post_ui()`
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  scopes = c("openid", "profile", "email"),
+  response_mode = "form_post"
+)
+
+base_ui <- fluidPage(
+  uiOutput("login")
+)
+
+ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
+
+server <- function(input, output, session) {
+  auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
+
+  output$login <- renderUI({
+    if (auth$authenticated) {
+      tagList(
+        tags$p("You are logged in!"),
+        tags$pre(paste(capture.output(str(auth$token@userinfo)), collapse = "\n"))
+      )
+    } else {
+      tags$p("You are not logged in.")
+    }
+  })
+}
+
+runApp(
+  shinyApp(ui, server, uiPattern = ".*"),
+  port = 8100,
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.0.1:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
+```
+
+If your `redirect_uri` is the app root (like `http://127.0.0.1:8100`),
+`uiPattern = ".*"` is usually harmless. If your `redirect_uri` is a
+sub-route (like `http://127.0.0.1:8100/callback`), use
+`uiPattern = ".*"` so Shiny routes that POST request through
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+before the app returns to its normal GET flow.
+
 ## Global options
 
 The package provides several global options to customize behavior. Most
@@ -399,6 +492,10 @@ certain security-critical parameters from being passed via
 `extra_auth_params`, `extra_token_params`, and `extra_token_headers`.
 This helps prevent accidental misconfiguration that could break state
 binding, PKCE, or client authentication.
+
+`response_mode` now has a dedicated client argument via
+`oauth_client(..., response_mode = ...)`. Prefer that first-class API
+over setting `extra_auth_params$response_mode` manually.
 
 If you have a specific, advanced use case where you need to override one
 of these blocked parameters, you can unblock them using the following
@@ -525,9 +622,19 @@ CPU or memory usage during decoding and decryption.
 - `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum
   byte length of the `browser_token` argument accepted by
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+- `options(shinyOAuth.callback_max_form_post_body_bytes = <derived>)` –
+  maximum byte length of the raw `form_post` callback body before
+  parsing
+- `options(shinyOAuth.callback_max_form_post_handle_bytes = 128)` –
+  maximum byte length of the transient `shinyOAuth_form_post` handle
+  query parameter
+- `options(shinyOAuth.callback_max_form_post_id_bytes = 256)` – maximum
+  byte length of the transient `shinyOAuth_form_post_id` module-id query
+  parameter
 
 These apply before any hashing/auditing/state parsing, and exist to
-prevent memory/log amplification from extremely large callback URLs.
+prevent memory/log amplification from extremely large callback URLs or
+`form_post` bodies.
 
 ### Development/debugging
 

@@ -317,6 +317,60 @@ the encrypted state payload, it becomes a child of that
 </ul>
 </div>
 <div class="section level4">
+<h4 id="span-shinyoauth-form_post">Span: <code>shinyOAuth.form_post</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-form_post"></a>
+</h4>
+<ul>
+<li>When: while the pre-session <code>response_mode = "form_post"</code>
+POST callback is validated and bridged into Shiny</li>
+<li>Represents: form POST envelope validation, state payload validation,
+issuer validation, single-use state consumption, and transient handle
+storage</li>
+<li>Main attributes:
+<ul>
+<li>
+<code>oauth.provider.name</code>,
+<code>oauth.provider.issuer</code>
+</li>
+<li><code>oauth.client_id_digest</code></li>
+<li><code>shiny.module_id</code></li>
+<li><code>oauth.phase = "form_post.post"</code></li>
+<li><code>oauth.response_mode = "form_post"</code></li>
+</ul>
+</li>
+<li>Notes:
+<ul>
+<li>after state decryption succeeds, the span receives the recovered
+<code>shinyoauth.trace_id</code>
+</li>
+<li>invalid envelopes that cannot expose a trusted state value remain
+root spans</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="span-shinyoauth-form_post-bridge">Span: <code>shinyOAuth.form_post.bridge</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-form_post-bridge"></a>
+</h4>
+<ul>
+<li>When: when the Shiny module consumes the one-time form_post handle
+from the GET bridge query</li>
+<li>Represents: transient form_post handle lookup and single-use
+consumption</li>
+<li>Main attributes:
+<ul>
+<li>
+<code>oauth.provider.name</code>,
+<code>oauth.provider.issuer</code>
+</li>
+<li><code>oauth.client_id_digest</code></li>
+<li><code>shiny.module_id</code></li>
+<li><code>oauth.phase = "form_post.callback_lookup"</code></li>
+<li><code>oauth.form_post.handle_digest</code></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section level4">
 <h4 id="span-shinyoauth-callback-validate">Span: <code>shinyOAuth.callback.validate</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-callback-validate"></a>
 </h4>
 <ul>

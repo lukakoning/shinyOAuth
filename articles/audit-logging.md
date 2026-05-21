@@ -240,6 +240,8 @@ also easier to guess for low-entropy values such as email addresses.
 
 - When: the callback query parameters fail validation (e.g., too large)
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
+- For form_post bridge query rejections, context also includes `phase`,
+  `reason`, and `handle_digest`.
 
 ### Callback issuer validation
 
@@ -298,7 +300,10 @@ failure event.
   `phase`, `error_class` (+ `browser_token_digest` when phase is
   `browser_token_validation`)
 - Phases include: `payload_validation`, `browser_token_validation`,
-  `pkce_verifier_validation`, `nonce_validation`
+  `pkce_verifier_validation`, `nonce_validation`,
+  `form_post_request_validation`, `form_post_callback_lookup`
+- `handle_digest` is included when a form_post callback handle is
+  missing, expired, or already consumed.
 - Note: Failures related to state store access (lookup/removal) are
   reported as their own events (see below) rather than using the
   `callback_validation_failed` event.

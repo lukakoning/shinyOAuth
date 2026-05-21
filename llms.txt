@@ -204,6 +204,8 @@ Finally, a minimal demo app deployment is provided under
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   : OAuth 2.0 & OIDC authentication module for Shiny applications
+- [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  : Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
 - [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
   : Add JavaScript dependency to the UI of a Shiny app
 

@@ -175,6 +175,12 @@ discovery might fail early.
   booleans, this helper applies the OpenID Connect defaults instead of
   storing `NA`.
 
+- Response mode metadata: when the discovery document advertises
+  `response_modes_supported`, the resulting provider stores it so
+  explicit `response_mode` requests can fail fast when unsupported. When
+  the metadata is omitted, this helper applies the OAuth/OIDC metadata
+  default of `c("query", "fragment")`.
+
 - Token endpoint JWT auth metadata: when the discovery document
   advertises `token_endpoint_auth_signing_alg_values_supported`, the
   resulting provider stores that metadata so `OAuthClient` can fail fast

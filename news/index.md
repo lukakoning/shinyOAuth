@@ -27,6 +27,16 @@
   discovery, and login flows will push the authorization request and
   redirect with the returned `request_uri`.
 
+- Added OAuth/OIDC `response_mode = "form_post"` support for
+  authorization-code callbacks. Apps can wrap their UI with
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  so Shiny accepts the provider POST, stores the callback server-side
+  under a one-time handle, and lets
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  finish the existing state, issuer, and token exchange flow. Stored
+  callback handles are bounded by the effective state/store TTL and the
+  `shinyOAuth.callback_max_form_post_*` size-cap options.
+
 - Added OpenTelemetry (‘OTel’) support (using the ‘otel’ package).
   ‘shinyOAuth’ now emits OTel logs from existing audit events and traces
   key OAuth operations such as module initialization, login/callback
@@ -156,10 +166,11 @@
 - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
   (`OAuthProvider`) now:
 
-  - Fails fast if `response_mode != "query"`. Plain Shiny callback URLs
-    reject POST requests, so `response_mode = "form_post"` or
-    `"fragment"` now fails during provider setup instead of later in a
-    broken callback round-trip.
+  - Allows `response_mode = "query"` and `response_mode = "form_post"`
+    for authorization-code callbacks, while still rejecting unsupported
+    modes such as `"fragment"`. When provider metadata advertises
+    `response_modes_supported`, shinyOAuth also fails fast if an
+    explicit response mode is not advertised.
   - Treats nonce-enabled OIDC flows as sufficient validation context for
     `userinfo_id_token_match`, and shinyOAuth now always binds userinfo
     to a validated ID token subject when that baseline exists.

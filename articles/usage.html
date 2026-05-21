@@ -382,6 +382,94 @@ revocation endpoint is available):</p>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="using-response_mode-form_post">Using <code>response_mode = "form_post"</code><a class="anchor" aria-label="anchor" href="#using-response_mode-form_post"></a>
+</h2>
+<p>The response mode determines how the provider returns the
+authorization response to the app after the user authenticates. The
+effective default is the normal query callback flow, which means the
+provider redirects back to the app with query parameters (e.g.,
+<code>?code=...&amp;state=...</code>) and shinyOAuth does not send a
+<code>response_mode</code> parameter unless you configure one.</p>
+<p>For most Shiny apps, query is the preferred response mode because it
+works seamlessly with Shiny’s routing and does not require any special
+UI handling. It is the default and does not require setting
+<code>response_mode</code> explicitly.</p>
+<p>For some apps, when your provider explicitly requires or recommends
+<code>response_mode = "form_post"</code>, you can configure that on the
+client. Because Shiny apps do not handle POST callbacks by default, you
+need to enable this by wrapping your UI with
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. This allows the provider to POST the
+authorization response back to the app. That wrapper also injects the
+shinyOAuth browser dependency automatically, so you do not need a
+separate <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> call in the wrapped UI. The
+<code>/callback</code> path below is only an example sub-route; using
+the app root is also fine as long as the provider redirect URI matches
+the path handled by <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Here’s how you
+can set it up:</p>
+<p>This is the plain OAuth/OIDC Form Post Response Mode: the POST body
+contains parameters such as <code>code</code>, <code>state</code>,
+<code>error</code>, and <code>iss</code>. JWT Secured Authorization
+Response Mode (JARM) values such as <code>form_post.jwt</code> use a
+different JWT <code>response</code> payload and are not currently
+supported.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>,</span>
+<span>  realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"shiny-public"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  <span class="co"># `/callback` is only an example sub-route. The app root also works if the</span></span>
+<span>  <span class="co"># provider redirect URI matches the path handled by `oauth_form_post_ui()`</span></span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span>,</span>
+<span>  response_mode <span class="op">=</span> <span class="st">"form_post"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
+<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are logged in!"</span><span class="op">)</span>,</span>
+<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">pre</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/capture.output.html" class="external-link">capture.output</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span><span class="op">)</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>      <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span>,</span>
+<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
+<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
+<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
+<p>If your <code>redirect_uri</code> is the app root (like
+<code>http://127.0.0.1:8100</code>), <code>uiPattern = ".*"</code> is
+usually harmless. If your <code>redirect_uri</code> is a sub-route (like
+<code>http://127.0.0.1:8100/callback</code>), use
+<code>uiPattern = ".*"</code> so Shiny routes that POST request through
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> before the app returns to its normal
+GET flow.</p>
+</div>
+<div class="section level2">
 <h2 id="global-options">Global options<a class="anchor" aria-label="anchor" href="#global-options"></a>
 </h2>
 <p>The package provides several global options to customize behavior.
@@ -483,6 +571,10 @@ certain security-critical parameters from being passed via
 <code>extra_token_headers</code>. This helps prevent accidental
 misconfiguration that could break state binding, PKCE, or client
 authentication.</p>
+<p><code>response_mode</code> now has a dedicated client argument via
+<code>oauth_client(..., response_mode = ...)</code>. Prefer that
+first-class API over setting
+<code>extra_auth_params$response_mode</code> manually.</p>
 <p>If you have a specific, advanced use case where you need to override
 one of these blocked parameters, you can unblock them using the
 following options:</p>
@@ -675,9 +767,22 @@ guard)</li>
 – maximum byte length of the <code>browser_token</code> argument
 accepted by <code><a href="../reference/handle_callback.html">handle_callback()</a></code>
 </li>
+<li>
+<code>options(shinyOAuth.callback_max_form_post_body_bytes = &lt;derived&gt;)</code>
+– maximum byte length of the raw <code>form_post</code> callback body
+before parsing</li>
+<li>
+<code>options(shinyOAuth.callback_max_form_post_handle_bytes = 128)</code>
+– maximum byte length of the transient <code>shinyOAuth_form_post</code>
+handle query parameter</li>
+<li>
+<code>options(shinyOAuth.callback_max_form_post_id_bytes = 256)</code>
+– maximum byte length of the transient
+<code>shinyOAuth_form_post_id</code> module-id query parameter</li>
 </ul>
 <p>These apply before any hashing/auditing/state parsing, and exist to
-prevent memory/log amplification from extremely large callback URLs.</p>
+prevent memory/log amplification from extremely large callback URLs or
+<code>form_post</code> bodies.</p>
 </div>
 </div>
 <div class="section level3">

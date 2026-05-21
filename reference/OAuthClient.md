@@ -25,6 +25,7 @@ OAuthClient(
   tls_client_ca_file = NA_character_,
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = "parameters",
+  response_mode = NA_character_,
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
   authorization_request_encryption_alg = NA_character_,
@@ -201,6 +202,24 @@ OAuthClient(
   having that URI or a matching wildcard prefix registered for the
   client; shinyOAuth cannot verify that server-side registration
   automatically.
+
+- response_mode:
+
+  Authorization response mode for authorization-code callbacks.
+  Supported values are `"query"` and `"form_post"`. The effective
+  default is always `"query"`: omitting this argument keeps the normal
+  query-parameter callback flow and shinyOAuth does not send a
+  `response_mode` parameter. Pass `"query"` only if you need to
+  explicitly request the query response mode from the provider. Set
+  `"form_post"` only when the provider requires or explicitly recommends
+  POSTing the authorization response to the redirect URI. Shiny apps
+  using `"form_post"` must wrap their UI with
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+  Prefer this argument over setting `extra_auth_params$response_mode` on
+  the provider. When the provider advertises `response_modes_supported`,
+  the resolved mode must be included in that set. JWT Secured
+  Authorization Response Mode (JARM) values such as `"form_post.jwt"`
+  are a separate response format and are not currently supported.
 
 - authorization_request_signing_alg:
 

@@ -6,7 +6,9 @@ browser-side session token.
 
 Without this call in the UI,
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-will not work.
+will not work unless your app UI is wrapped with
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md),
+which injects this dependency automatically for form_post flows.
 
 ## Usage
 
@@ -33,7 +35,11 @@ A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
 Place this near the top-level of your UI (e.g., inside
 [`fluidPage()`](https://rdrr.io/pkg/shiny/man/fluidPage.html) or
 [`tagList()`](https://rstudio.github.io/htmltools/reference/tagList.html)),
-similar to how you would use `shinyjs::useShinyjs()`.
+similar to how you would use `shinyjs::useShinyjs()`. If you wrap the
+app UI with
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md),
+you usually do not need a separate call here because that wrapper
+injects this dependency for you.
 
 ## See also
 

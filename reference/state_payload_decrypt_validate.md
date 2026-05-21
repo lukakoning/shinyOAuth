@@ -7,7 +7,12 @@ by callback handling before the code exchange continues.
 ## Usage
 
 ``` r
-state_payload_decrypt_validate(client, encrypted_payload, shiny_session = NULL)
+state_payload_decrypt_validate(
+  client,
+  encrypted_payload,
+  shiny_session = NULL,
+  audit_success = TRUE
+)
 ```
 
 ## Arguments
@@ -28,6 +33,13 @@ state_payload_decrypt_validate(client, encrypted_payload, shiny_session = NULL)
   `capture_shiny_session_context()`) to include in audit events. Used
   when calling from async workers that lack access to the reactive
   domain.
+
+- audit_success:
+
+  Whether successful payload validation should emit the standard
+  callback validation audit event. Set to `FALSE` when a caller must
+  perform additional checks or single-use state consumption before
+  emitting the success audit. Failures are still audited.
 
 ## Value
 

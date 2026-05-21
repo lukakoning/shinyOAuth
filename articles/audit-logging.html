@@ -354,6 +354,9 @@ large)</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>error_class</code>
 </li>
+<li>For form_post bridge query rejections, context also includes
+<code>phase</code>, <code>reason</code>, and
+<code>handle_digest</code>.</li>
 </ul>
 </div>
 </div>
@@ -447,9 +450,13 @@ and verified for freshness and client/provider binding (emitted from
 <code>browser_token_validation</code>)</li>
 <li>Phases include: <code>payload_validation</code>,
 <code>browser_token_validation</code>,
-<code>pkce_verifier_validation</code>,
-<code>nonce_validation</code>
+<code>pkce_verifier_validation</code>, <code>nonce_validation</code>,
+<code>form_post_request_validation</code>,
+<code>form_post_callback_lookup</code>
 </li>
+<li>
+<code>handle_digest</code> is included when a form_post callback
+handle is missing, expired, or already consumed.</li>
 <li>Note: Failures related to state store access (lookup/removal) are
 reported as their own events (see below) rather than using the
 <code>callback_validation_failed</code> event.</li>

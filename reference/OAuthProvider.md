@@ -38,6 +38,7 @@ OAuthProvider(
   token_endpoint_auth_signing_alg_values_supported = character(0),
   dpop_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(0),
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -210,6 +211,17 @@ OAuthProvider(
   helper can auto-enable callback issuer enforcement when the caller
   leaves `enforce_callback_issuer` unset and the provider also has a
   configured `issuer`.
+
+- response_modes_supported:
+
+  Optional character vector of OAuth/OIDC `response_mode` values
+  advertised by the provider. Discovery-backed providers use the
+  discovery metadata value, defaulting to `c("query", "fragment")` when
+  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
+  empty when capabilities are not known. Provider metadata may include
+  response modes that shinyOAuth does not implement, such as JARM values
+  ending in `.jwt`; clients still fail fast if they request one of those
+  unsupported modes.
 
 - issuer:
 
@@ -478,7 +490,7 @@ OAuthProvider(
   provided, jwks_uri host must equal this value (exact match). You can
   pass either just the host (e.g., "www.googleapis.com") or a full URL;
   only the host component will be used. If you need to include a port or
-  an IPv6 literal, pass a full URL (e.g., `https://[::1]:8443`) — the
+  an IPv6 literal, pass a full URL (e.g., `https://[::1]:8443`) - the
   port is ignored and only the hostname part is used for matching. Takes
   precedence over `jwks_host_issuer_match`.
 
