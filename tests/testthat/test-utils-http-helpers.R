@@ -264,6 +264,21 @@ test_that("parse_token_response rejects duplicate text/plain form token paramete
   )
 })
 
+test_that("parse_token_response rejects malformed form token values", {
+  malformed_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/x-www-form-urlencoded"),
+    body = charToRaw("access_token=%ZZ&token_type=Bearer")
+  )
+
+  expect_error(
+    shinyOAuth:::parse_token_response(malformed_resp),
+    class = "shinyOAuth_parse_error",
+    regexp = "malformed percent-encoded parameter value"
+  )
+})
+
 # Tests using webfakes to verify real httr2 semantics ----------------------------
 # Note: webfakes runs the app in a subprocess, so we use shared state
 # via environment stored in the app locals.
