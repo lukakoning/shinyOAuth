@@ -384,7 +384,7 @@ if (!exists("make_provider", mode = "function")) {
     httr2::req_perform()
 }
 
-testthat::test_that("direct form_post HTTP envelope attacks are rejected without storing handles", {
+testthat::test_that("direct form_post HTTP envelope attacks do not consume login state", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
@@ -475,7 +475,10 @@ testthat::test_that("direct form_post HTTP envelope attacks are rejected without
     "shinyOAuth_form_post=",
     fixed = TRUE
   )
-  .wait_for_form_post_state_store_count(drv, 1L)
+  # A valid POST only creates a transient bridge handle. The logical login
+  # state is consumed later, after the Shiny browser session proves the
+  # browser-bound cookie.
+  .wait_for_form_post_state_store_count(drv, 2L)
 
   replayed_valid <- .post_form_post_http_callback(
     client@redirect_uri,
@@ -489,8 +492,8 @@ testthat::test_that("direct form_post HTTP envelope attacks are rejected without
       )
     )
   )
-  testthat::expect_identical(httr2::resp_status(replayed_valid), 400L)
-  .wait_for_form_post_state_store_count(drv, 1L)
+  testthat::expect_identical(httr2::resp_status(replayed_valid), 303L)
+  .wait_for_form_post_state_store_count(drv, 3L)
 })
 
 testthat::test_that("browser form_post provider error callbacks are surfaced and cleaned", {
@@ -731,10 +734,11 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
   )
 
   cleaned <- .wait_for_form_post_callback_cleanup(drv)
-  .wait_for_form_post_state_store_count(drv, 0L)
+  # Browser-token rejection must not burn the pending login state.
+  .wait_for_form_post_state_store_count(drv, 1L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
-    0L
+    1L
   )
 })
 
@@ -813,10 +817,11 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   )
 
   .wait_for_form_post_callback_cleanup(drv)
-  .wait_for_form_post_state_store_count(drv, 0L)
+  # Browser-token rejection must not burn the pending login state.
+  .wait_for_form_post_state_store_count(drv, 1L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
-    0L
+    1L
   )
 })
 
