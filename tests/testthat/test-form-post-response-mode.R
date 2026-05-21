@@ -138,12 +138,11 @@ test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
   )
 })
 
-test_that("oauth_form_post_ui requires form_post response mode", {
+test_that("oauth_form_post_ui can install bridge before response_mode is set", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
-  expect_error(
-    oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli),
-    "response_mode = 'form_post'"
+  expect_silent(
+    oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   )
 })
 

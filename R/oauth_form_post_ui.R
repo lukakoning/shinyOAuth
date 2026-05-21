@@ -21,9 +21,9 @@
 #' You only need to use this helper if your provider requires or strongly recommends
 #' form_post response mode.
 #'
-#' If you use form_post response mode, besides wrapping your UI with this helper,
-#' you must also configure your [OAuthClient] with `response_mode = "form_post"`
-#' and ensure the `redirect_uri` is set to a URL that routes to this UI wrapper
+#' To request form_post response mode from the provider, wrap your UI with this
+#' helper, configure your [OAuthClient] with `response_mode = "form_post"`, and
+#' ensure the `redirect_uri` is set to a URL that routes to this UI wrapper
 #' (e.g., the app's root URL or a specific callback path).
 #' This helper handles the plain form_post response mode, where the POST body
 #' contains authorization response parameters such as `code`, `state`, `error`,
@@ -70,19 +70,6 @@ oauth_form_post_ui <- function(
 
   if (!is_valid_string(id)) {
     err_input("{.arg id} must be a single non-empty string.")
-  }
-
-  response_mode_info <- resolve_oauth_client_response_mode(client)
-  if (!is.null(response_mode_info$error)) {
-    err_config(response_mode_info$error)
-  }
-  if (!identical(response_mode_info$mode, "form_post")) {
-    err_config(
-      paste0(
-        "oauth_form_post_ui() requires an OAuthClient configured with ",
-        "response_mode = 'form_post'."
-      )
-    )
   }
 
   callback_path <- normalize_oauth_form_post_callback_path(

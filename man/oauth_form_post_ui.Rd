@@ -35,9 +35,9 @@ authorization responses is the query string, which works without this UI wrapper
 You only need to use this helper if your provider requires or strongly recommends
 form_post response mode.
 
-If you use form_post response mode, besides wrapping your UI with this helper,
-you must also configure your \link{OAuthClient} with \code{response_mode = "form_post"}
-and ensure the \code{redirect_uri} is set to a URL that routes to this UI wrapper
+To request form_post response mode from the provider, wrap your UI with this
+helper, configure your \link{OAuthClient} with \code{response_mode = "form_post"}, and
+ensure the \code{redirect_uri} is set to a URL that routes to this UI wrapper
 (e.g., the app's root URL or a specific callback path).
 This helper handles the plain form_post response mode, where the POST body
 contains authorization response parameters such as \code{code}, \code{state}, \code{error},
