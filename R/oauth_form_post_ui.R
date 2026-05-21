@@ -210,11 +210,10 @@ oauth_form_post_handle_request <- function(req, id, client) {
         )
         body <- oauth_form_post_read_body(req, limits$form_post_body)
         payload <- oauth_form_post_parse_body(body, limits)
-        # Reject callbacks whose state payload does not bind to this client
-        # before persisting any pre-session form_post handle. Issuer checks,
-        # browser-token checks, and single-use state consumption remain on the
-        # normal module callback path so rejected callbacks do not consume
-        # rightful state.
+        # Reject invalid state/issuer before persisting any pre-session
+        # form_post handle, then consume the logical state at the POST
+        # boundary so repeated valid POSTs cannot mint multiple live handles
+        # for one login attempt.
         state_payload <- state_payload_decrypt_validate(
           client,
           payload$state,
@@ -225,6 +224,46 @@ oauth_form_post_handle_request <- function(req, id, client) {
             shinyoauth.trace_id = state_payload$trace_id %||% NULL
           )
         )
+        tryCatch(
+          enforce_callback_issuer(
+            oauth_client = client,
+            iss = payload$iss %||% NULL
+          ),
+          error = function(e) {
+            error_context <- tryCatch(e[["context"]], error = function(...) {
+              NULL
+            })
+            callback_error <- error_context$callback_error %||%
+              "callback_iss_validation_error"
+            audit_name <- switch(
+              callback_error,
+              issuer_missing = "callback_iss_missing",
+              issuer_mismatch = "callback_iss_mismatch",
+              "callback_iss_validation_failed"
+            )
+            try(
+              audit_event(
+                audit_name,
+                context = compact_list(list(
+                  provider = client@provider@name %||% NA_character_,
+                  expected_issuer = client@provider@issuer %||% NA_character_,
+                  callback_issuer = payload$iss %||% NULL,
+                  client_id_digest = string_digest(client@client_id),
+                  error_class = paste(class(e), collapse = ", ")
+                ))
+              ),
+              silent = TRUE
+            )
+            stop(e)
+          }
+        )
+        state_store_values <- state_store_get_remove(
+          client,
+          state_payload$state
+        )
+        audit_callback_validation_success(client, state_payload)
+        payload$state_payload <- state_payload
+        payload$state_store_values <- state_store_values
         handle <- oauth_form_post_store_set(client, id, payload)
         location <- oauth_form_post_redirect_location(req, id, handle)
 
@@ -675,13 +714,7 @@ err_form_post_http <- function(message, status = 400L) {
 oauth_form_post_error_response <- function(
   e,
   fallback_status = 400L,
-  expose_message = inherits(
-    e,
-    c(
-      "shinyOAuth_form_post_http_error",
-      "shinyOAuth_state_error"
-    )
-  )
+  expose_message = inherits(e, "shinyOAuth_form_post_http_error")
 ) {
   status <- tryCatch(e$status, error = function(...) NULL)
   if (
