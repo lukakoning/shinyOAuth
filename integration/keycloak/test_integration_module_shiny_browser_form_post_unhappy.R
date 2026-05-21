@@ -615,15 +615,20 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
     )
   )
 
-  auth_state <- .wait_for_form_post_auth_state_transition(
+  attacked_page <- .wait_for_form_post_page_text(
     drv,
-    previous_state = prepared$auth_state
+    pattern = "OAuth form_post callback could not be processed.",
+    ignore_case = FALSE
   )
-  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
-  testthat::expect_match(auth_state, "error: issuer_mismatch", fixed = TRUE)
+  testthat::expect_identical(
+    trimws(attacked_page),
+    "OAuth form_post callback could not be processed."
+  )
 
-  after_mismatch <- .wait_for_form_post_callback_cleanup(drv)
+  .navigate_form_post_browser_to_url(drv, client@redirect_uri)
+  after_mismatch <- .wait_for_form_post_ready(drv)
   .wait_for_form_post_state_store_count(drv, 1L)
+  after_mismatch <- .read_form_post_browser_state(drv)
   testthat::expect_identical(after_mismatch$state_store_count, 1L)
 
   .submit_form_post_browser_callback(
@@ -903,13 +908,12 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "state|redirect_uri|binding|invalid|validation|decrypt"
+    pattern = "OAuth form_post callback could not be processed.",
+    ignore_case = FALSE
   )
-  testthat::expect_match(
-    attacked_page,
-    "state|redirect_uri|binding|invalid|validation|decrypt",
-    perl = TRUE,
-    ignore.case = TRUE
+  testthat::expect_identical(
+    trimws(attacked_page),
+    "OAuth form_post callback could not be processed."
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1044,13 +1048,12 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "state|redirect_uri|binding|invalid"
+    pattern = "OAuth form_post callback could not be processed.",
+    ignore_case = FALSE
   )
-  testthat::expect_match(
-    attacked_page,
-    "state|redirect_uri|binding|invalid",
-    perl = TRUE,
-    ignore.case = TRUE
+  testthat::expect_identical(
+    trimws(attacked_page),
+    "OAuth form_post callback could not be processed."
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
