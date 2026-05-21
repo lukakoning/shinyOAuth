@@ -1266,12 +1266,12 @@ handle_callback_internal <- function(
 
       # Retrieve state_info from state store ---------------------------------------
       # State is the key; value is a list with browser_token, pkce_code_verifier, nonce
+      state_store_preconsumed <- !is.null(state_store_values)
       if (is.null(state_store_values)) {
         state_store_values <- with_otel_span(
           "shinyOAuth.callback.validate",
           {
-            # Centralized auditing for state store lookup occurs in state_store_get_remove()
-            state_store_get_remove(
+            state_store_get(
               oauth_client,
               payload$state,
               shiny_session = shiny_session
@@ -1280,7 +1280,7 @@ handle_callback_internal <- function(
           attributes = otel_client_attributes(
             client = oauth_client,
             shiny_session = shiny_session,
-            phase = "callback.state_store_consume"
+            phase = "callback.state_store_lookup"
           )
         )
       }
@@ -1345,6 +1345,29 @@ handle_callback_internal <- function(
           rethrow_with_context(e)
         }
       )
+
+      if (!isTRUE(state_store_preconsumed)) {
+        state_store_values <- with_otel_span(
+          "shinyOAuth.callback.validate",
+          {
+            # Centralized auditing for state store consumption occurs in
+            # state_store_get_remove().
+            state_store_get_remove(
+              oauth_client,
+              payload$state,
+              shiny_session = shiny_session
+            )
+          },
+          attributes = otel_client_attributes(
+            client = oauth_client,
+            shiny_session = shiny_session,
+            phase = "callback.state_store_consume"
+          )
+        )
+      }
+      if (!is.null(decrypted_payload)) {
+        audit_callback_validation_success(oauth_client, payload, shiny_session)
+      }
 
       # Swap code for token --------------------------------------------------------
 

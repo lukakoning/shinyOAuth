@@ -224,9 +224,8 @@ oauth_form_post_handle_request <- function(req, id, client) {
         body <- oauth_form_post_read_body(req, limits$form_post_body)
         payload <- oauth_form_post_parse_body(body, limits)
         # Reject invalid state/issuer before persisting any pre-session
-        # form_post handle, then consume the logical state at the POST
-        # boundary so repeated valid POSTs cannot mint multiple live handles
-        # for one login attempt.
+        # form_post handle. Do not consume the logical state here: the Shiny
+        # session still needs to prove possession of the browser-bound token.
         state_payload <- state_payload_decrypt_validate(
           client,
           payload$state,
@@ -270,13 +269,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
             stop(e)
           }
         )
-        state_store_values <- state_store_get_remove(
-          client,
-          state_payload$state
-        )
-        audit_callback_validation_success(client, state_payload)
         payload$state_payload <- state_payload
-        payload$state_store_values <- state_store_values
         handle <- oauth_form_post_store_set(client, id, payload)
         location <- oauth_form_post_redirect_location(req, id, handle)
 

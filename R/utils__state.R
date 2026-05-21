@@ -552,7 +552,91 @@ payload_verify_client_binding <- function(client, payload) {
 
 # 2 State store helpers --------------------------------------------------------
 
-## 2.1 Fetch and remove state entry --------------------------------------------
+## 2.1 Read state entry --------------------------------------------------------
+
+#' Read a state-store entry without consuming it
+#'
+#' Used when the caller must validate browser-bound data before burning the
+#' single-use state entry. Single-use enforcement must still happen later via
+#' [state_store_get_remove()].
+#'
+#' @param client [OAuthClient] instance
+#' @param state Plain (decrypted) state string used as the logical key
+#' @param shiny_session Optional pre-captured Shiny session context.
+#' @return Validated state-store value list.
+#' @keywords internal
+#' @noRd
+state_store_get <- function(client, state, shiny_session = NULL) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is_valid_string(state)) {
+    try(
+      audit_event(
+        "state_store_lookup_failed",
+        context = list(
+          provider = client@provider@name %||% NA_character_,
+          issuer = client@provider@issuer %||% NA_character_,
+          client_id_digest = string_digest(client@client_id),
+          state_digest = string_digest(state %||% NA_character_),
+          error_class = "shinyOAuth_state_error",
+          phase = "state_store_lookup"
+        ),
+        shiny_session = shiny_session
+      ),
+      silent = TRUE
+    )
+    err_invalid_state("Invalid or missing state")
+  }
+
+  key <- state_cache_key(state)
+  store <- client@state_store
+  ssv <- NULL
+  get_error_class <- NULL
+  get_error_message <- NULL
+
+  tryCatch(
+    {
+      ssv <- store$get(key, missing = NULL)
+      ssv <- validate_state_store_value(ssv, client)
+    },
+    error = function(e) {
+      get_error_class <<- paste(class(e), collapse = ", ")
+      get_error_message <<- conditionMessage(e)
+      try(
+        audit_event(
+          "state_store_lookup_failed",
+          context = list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            state_digest = string_digest(state),
+            error_class = get_error_class,
+            phase = "state_store_lookup"
+          ),
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+    }
+  )
+
+  if (!is.null(get_error_message) || is.null(ssv)) {
+    err_invalid_state(
+      get_error_message %||% "State store entry is missing or malformed",
+      context = list(
+        provider = client@provider@name %||% NA_character_,
+        issuer = client@provider@issuer %||% NA_character_,
+        client_id_digest = string_digest(client@client_id),
+        state_digest = string_digest(state),
+        get_error_class = get_error_class %||% NA_character_,
+        phase = "state_store_lookup"
+      )
+    )
+  }
+
+  ssv
+}
+
+## 2.2 Fetch and remove state entry --------------------------------------------
 
 #' Fetch and remove the single-use state entry
 #'
@@ -678,7 +762,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 }
 
 
-## 2.2 Atomic consume path -----------------------------------------------------
+## 2.3 Atomic consume path -----------------------------------------------------
 
 #' Consume a state-store entry atomically
 #'
@@ -748,7 +832,7 @@ state_store_consume_atomic <- function(
 }
 
 
-## 2.3 Non-atomic fallback path ------------------------------------------------
+## 2.4 Non-atomic fallback path ------------------------------------------------
 
 #' Consume a state-store entry with a fallback path
 #'
@@ -860,7 +944,7 @@ state_store_consume_fallback <- function(
 }
 
 
-## 2.4 Shared state-store validation -------------------------------------------
+## 2.5 Shared state-store validation -------------------------------------------
 
 #' Validate a retrieved state-store value
 #'

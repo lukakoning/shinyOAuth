@@ -1891,6 +1891,8 @@ oauth_module_server <- function(
           }
           # strict = TRUE makes validation failures propagate so we can reject
           # the callback instead of surfacing an unbound provider error.
+          state_was_preconsumed <- !is.null(decrypted_payload) &&
+            !is.null(state_store_values)
           consumed_state <- if (
             !is.null(decrypted_payload) && !is.null(state_store_values)
           ) {
@@ -1914,9 +1916,22 @@ oauth_module_server <- function(
               state_store_values = state_store_values
             )
           } else {
-            .consume_error_state(state, strict = TRUE)
+            .consume_error_state(
+              state,
+              strict = TRUE,
+              decrypted_payload = decrypted_payload,
+              consume = FALSE
+            )
           }
           .validate_error_response_browser_token(consumed_state)
+          if (!isTRUE(state_was_preconsumed)) {
+            consumed_state <- .consume_error_state(
+              state,
+              strict = TRUE,
+              decrypted_payload = consumed_state$payload,
+              consume = TRUE
+            )
+          }
           TRUE
         },
         error = function(e) {
@@ -1946,37 +1961,50 @@ oauth_module_server <- function(
     # @param state Encrypted callback state payload.
     # @param strict Whether failures should be rethrown instead of converted to
     #   `FALSE`.
+    # @param decrypted_payload Optional pre-decrypted state payload.
+    # @param consume Whether to consume the state-store entry. Use `FALSE` for
+    #   the pre-browser-token lookup and `TRUE` after browser binding succeeds.
     # @return Consumed state bundle on success, otherwise `FALSE` when
     #   `strict` is `FALSE`.
-    .consume_error_state <- function(state, strict = FALSE) {
+    .consume_error_state <- function(
+      state,
+      strict = FALSE,
+      decrypted_payload = NULL,
+      consume = TRUE
+    ) {
       payload <- NULL
       state_store_values <- NULL
       consumed <- tryCatch(
         {
           # Decrypt and validate the state payload
-          payload <- state_payload_decrypt_validate(client, state)
+          payload <- decrypted_payload %||%
+            state_payload_decrypt_validate(client, state)
           with_trace_id(
             payload$trace_id %||% NULL,
             {
-              # Consume the state store entry (single-use enforcement)
-              state_store_values <- state_store_get_remove(
-                client,
-                payload$state
-              )
+              if (isTRUE(consume)) {
+                # Consume the state store entry (single-use enforcement)
+                state_store_values <- state_store_get_remove(
+                  client,
+                  payload$state
+                )
 
-              # Audit success using the logical state digest for correlation.
-              try(
-                audit_event(
-                  "error_state_consumed",
-                  context = list(
-                    provider = client@provider@name %||% NA_character_,
-                    issuer = client@provider@issuer %||% NA_character_,
-                    client_id_digest = string_digest(client@client_id),
-                    state_digest = string_digest(payload$state)
-                  )
-                ),
-                silent = TRUE
-              )
+                # Audit success using the logical state digest for correlation.
+                try(
+                  audit_event(
+                    "error_state_consumed",
+                    context = list(
+                      provider = client@provider@name %||% NA_character_,
+                      issuer = client@provider@issuer %||% NA_character_,
+                      client_id_digest = string_digest(client@client_id),
+                      state_digest = string_digest(payload$state)
+                    )
+                  ),
+                  silent = TRUE
+                )
+              } else {
+                state_store_values <- state_store_get(client, payload$state)
+              }
             }
           )
 
@@ -2271,8 +2299,124 @@ oauth_module_server <- function(
                           )
                         }
 
+                        # Capture the browser token value on the main thread to avoid
+                        # touching reactive values inside the worker.
+                        captured_browser_token <- tryCatch(
+                          shiny::isolate(values$browser_token),
+                          error = function(...) values$browser_token
+                        )
+
                         pre_state <- state_store_values
                         if (is.null(pre_state)) {
+                          pre_state <- tryCatch(
+                            with_otel_span(
+                              "shinyOAuth.callback.validate",
+                              {
+                                state_store_get(
+                                  client,
+                                  pre_payload$state,
+                                  shiny_session = captured_shiny_session
+                                )
+                              },
+                              attributes = otel_client_attributes(
+                                client = client,
+                                module_id = id,
+                                shiny_session = captured_shiny_session,
+                                async = TRUE,
+                                phase = "callback.state_store_lookup"
+                              )
+                            ),
+                            error = function(e) {
+                              .set_error(
+                                oauth_module_callback_failure_error_code(e),
+                                e,
+                                phase = "async_state_store_lookup"
+                              )
+                              rethrow_with_context(
+                                e,
+                                phase = "async_state_store_lookup"
+                              )
+                            }
+                          )
+
+                          tryCatch(
+                            with_otel_span(
+                              "shinyOAuth.callback.validate",
+                              {
+                                tryCatch(
+                                  validate_browser_token(
+                                    captured_browser_token
+                                  ),
+                                  error = function(e) {
+                                    err_invalid_state(
+                                      "Invalid browser token",
+                                      context = list(
+                                        original_error_class = paste(
+                                          class(e),
+                                          collapse = ", "
+                                        )
+                                      )
+                                    )
+                                  }
+                                )
+                                if (
+                                  !constant_time_compare(
+                                    pre_state$browser_token,
+                                    captured_browser_token
+                                  )
+                                ) {
+                                  err_invalid_state("Browser token mismatch")
+                                }
+                              },
+                              attributes = otel_client_attributes(
+                                client = client,
+                                module_id = id,
+                                shiny_session = captured_shiny_session,
+                                async = TRUE,
+                                phase = "callback.browser_token_validation"
+                              )
+                            ),
+                            error = function(e) {
+                              try(
+                                audit_event(
+                                  "callback_validation_failed",
+                                  context = list(
+                                    provider = client@provider@name %||%
+                                      NA_character_,
+                                    issuer = client@provider@issuer %||%
+                                      NA_character_,
+                                    client_id_digest = string_digest(
+                                      client@client_id
+                                    ),
+                                    state_digest = string_digest(
+                                      pre_payload$state %||% NA_character_
+                                    ),
+                                    browser_token_digest = string_digest(
+                                      captured_browser_token %||%
+                                        NA_character_
+                                    ),
+                                    error_class = paste(
+                                      class(e),
+                                      collapse = ", "
+                                    ),
+                                    phase = "browser_token_validation"
+                                  ),
+                                  shiny_session = captured_shiny_session
+                                ),
+                                silent = TRUE
+                              )
+                              .set_error(
+                                oauth_module_callback_failure_error_code(e),
+                                e,
+                                phase = "browser_token_validation"
+                              )
+                              rethrow_with_context(
+                                e,
+                                phase = "browser_token_validation"
+                              )
+                            }
+                          )
+
                           pre_state <- tryCatch(
                             with_otel_span(
                               "shinyOAuth.callback.validate",
@@ -2304,13 +2448,6 @@ oauth_module_server <- function(
                             }
                           )
                         }
-
-                        # Capture the browser token value on the main thread to avoid
-                        # touching reactive values inside the worker
-                        captured_browser_token <- tryCatch(
-                          shiny::isolate(values$browser_token),
-                          error = function(...) values$browser_token
-                        )
                         # Build a serialization-safe client for the worker.
                         # The state_store is already consumed on the main thread, so
                         # prepare_client_for_worker() replaces it with a lightweight

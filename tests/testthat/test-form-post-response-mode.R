@@ -147,7 +147,7 @@ test_that("oauth_form_post_ui requires form_post response mode", {
   )
 })
 
-test_that("oauth_form_post_ui consumes state before issuing a callback handle", {
+test_that("oauth_form_post_ui preserves state until browser-bound callback", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
@@ -159,15 +159,11 @@ test_that("oauth_form_post_ui consumes state before issuing a callback handle", 
   expect_identical(first$status, 303L)
 
   second <- ui(make_form_post_req(body = body))
-  expect_identical(second$status, 400L)
-  expect_identical(
-    second$content,
-    "OAuth form_post callback could not be processed."
-  )
+  expect_identical(second$status, 303L)
 
   keys <- cli@state_store$keys()
-  expect_length(keys, 1L)
-  expect_true(startsWith(keys[[1]], "formpost"))
+  expect_equal(sum(startsWith(keys, "formpost")), 2L)
+  expect_equal(sum(!startsWith(keys, "formpost")), 1L)
 
   handle <- parse_query_param(
     first$headers$Location,
@@ -178,8 +174,8 @@ test_that("oauth_form_post_ui consumes state before issuing a callback handle", 
   expect_identical(payload$type, "code")
   expect_identical(payload$code, "ok")
   expect_true(is.list(payload$state_payload))
-  expect_true(is.list(payload$state_store_values))
-  expect_length(cli@state_store$keys(), 0L)
+  expect_null(payload$state_store_values)
+  expect_equal(sum(!startsWith(cli@state_store$keys(), "formpost")), 1L)
 })
 
 test_that("oauth_form_post_store_take verifies fallback handle removal", {
@@ -547,6 +543,49 @@ test_that("oauth_module_server consumes form_post callback handles", {
   )
 })
 
+test_that("form_post browser-token rejection does not consume login state", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  good_browser_token <- valid_browser_token()
+  wrong_browser_token <- paste(rep("cd", 64), collapse = "")
+  url <- prepare_call(cli, browser_token = good_browser_token)
+  enc_state <- parse_query_param(url, "state")
+  decoded_state <- shiny::parseQueryString(paste0("?state=", enc_state))$state
+  state_payload <- shinyOAuth:::state_decrypt_gcm(
+    decoded_state,
+    key = cli@state_key
+  )
+  state_key <- shinyOAuth:::state_cache_key(state_payload$state)
+
+  resp <- ui(make_form_post_req(
+    body = paste0("code=ok&state=", enc_state)
+  ))
+  handle <- parse_query_param(
+    resp$headers$Location,
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$browser_token <- wrong_browser_token
+      values$.process_query(form_post_query(handle, "auth"))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_state")
+      expect_true(is.list(cli@state_store$get(state_key, missing = NULL)))
+    }
+  )
+})
+
 test_that("oauth_module_server consumes form_post error callbacks", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -587,7 +626,7 @@ test_that("oauth_module_server consumes form_post error callbacks", {
   )
 })
 
-test_that("oauth_module_server audits preconsumed form_post error state", {
+test_that("oauth_module_server audits form_post error state consumption", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
