@@ -596,7 +596,11 @@ state_store_get <- function(client, state, shiny_session = NULL) {
   tryCatch(
     {
       ssv <- store$get(key, missing = NULL)
-      ssv <- validate_state_store_value(ssv, client)
+      ssv <- validate_state_store_value(
+        ssv,
+        client,
+        validate_policy_fields = FALSE
+      )
     },
     error = function(e) {
       get_error_class <<- paste(class(e), collapse = ", ")
@@ -951,11 +955,18 @@ state_store_consume_fallback <- function(
 #' @param ssv Retrieved state-store value.
 #' @param client OAuth client whose policy determines whether PKCE and nonce
 #'   values are required.
+#' @param validate_policy_fields Whether to require and validate the PKCE and
+#'   nonce fields that are controlled by the client policy. Set this to `FALSE`
+#'   only for pre-consumption browser-token checks.
 #' @return Invisibly returns `ssv` on success. Otherwise this function raises a
 #'   state error.
 #' @keywords internal
 #' @noRd
-validate_state_store_value <- function(ssv, client) {
+validate_state_store_value <- function(
+  ssv,
+  client,
+  validate_policy_fields = TRUE
+) {
   if (is.null(ssv) || !is.list(ssv)) {
     abort_pkg(
       "State store entry is missing or malformed",
@@ -966,10 +977,10 @@ validate_state_store_value <- function(ssv, client) {
   # Custom stores may serialize away unused NULLs. Only require the fields
   # that the current client policy can actually consume later.
   required_keys <- "browser_token"
-  if (isTRUE(client@provider@use_pkce)) {
+  if (isTRUE(validate_policy_fields) && isTRUE(client@provider@use_pkce)) {
     required_keys <- c(required_keys, "pkce_code_verifier")
   }
-  if (isTRUE(client@provider@use_nonce)) {
+  if (isTRUE(validate_policy_fields) && isTRUE(client@provider@use_nonce)) {
     required_keys <- c(required_keys, "nonce")
   }
 
@@ -991,6 +1002,7 @@ validate_state_store_value <- function(ssv, client) {
   }
 
   if (
+    isTRUE(validate_policy_fields) &&
     isTRUE(client@provider@use_pkce) &&
       !is_valid_string(ssv$pkce_code_verifier)
   ) {
@@ -1003,7 +1015,11 @@ validate_state_store_value <- function(ssv, client) {
     )
   }
 
-  if (isTRUE(client@provider@use_nonce) && !is_valid_string(ssv$nonce)) {
+  if (
+    isTRUE(validate_policy_fields) &&
+      isTRUE(client@provider@use_nonce) &&
+      !is_valid_string(ssv$nonce)
+  ) {
     abort_pkg(
       paste0(
         "State store entry is malformed: nonce must be a non-empty string ",
