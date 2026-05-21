@@ -24,6 +24,10 @@ form_post_query <- function(handle, id = "auth") {
   )
 }
 
+make_form_post_test_client <- function(...) {
+  make_test_client(..., response_mode = "form_post")
+}
+
 count_referrer_meta <- function(html) {
   matches <- gregexpr(
     '<meta[^>]+name="referrer"[^>]+content="no-referrer"',
@@ -48,7 +52,7 @@ get_ui_dependency_names <- function(ui) {
 }
 
 test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
@@ -83,7 +87,7 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
 })
 
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(
     shiny::fluidPage(),
     id = "auth",
@@ -112,7 +116,7 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
 })
 
 test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   expect_error(
     oauth_form_post_ui(
@@ -134,8 +138,17 @@ test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
   )
 })
 
-test_that("oauth_form_post_ui consumes state before issuing a callback handle", {
+test_that("oauth_form_post_ui requires form_post response mode", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_error(
+    oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli),
+    "response_mode = 'form_post'"
+  )
+})
+
+test_that("oauth_form_post_ui consumes state before issuing a callback handle", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
@@ -183,7 +196,7 @@ test_that("oauth_form_post_store_take verifies fallback handle removal", {
     set = function(key, value) assign(key, value, envir = backing),
     remove = function(key) TRUE
   )
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@state_store <- store
 
   handle <- shinyOAuth:::oauth_form_post_store_set(
@@ -225,7 +238,7 @@ test_that("oauth_form_post_store_take rejects expired handles", {
     },
     info = function() list(max_age = 3600)
   )
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@state_store <- store
   cli@state_payload_max_age <- 1
 
@@ -252,7 +265,7 @@ test_that("oauth_form_post_store_take rejects expired handles", {
 })
 
 test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
@@ -310,7 +323,7 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
 })
 
 test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = TRUE)
   cli@enforce_callback_issuer <- TRUE
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   events <- list()
@@ -341,7 +354,7 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
 test_that("oauth_form_post_ui rejects oversized callback query before storing", {
   withr::local_options(list(shinyOAuth.callback_max_query_bytes = 64))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
@@ -365,7 +378,7 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
 test_that("oauth_form_post_ui rejects oversized callback bodies before storing", {
   withr::local_options(list(shinyOAuth.callback_max_form_post_body_bytes = 64))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
@@ -401,7 +414,7 @@ test_that("oauth_form_post_ui rejects unsafe body read limits", {
 })
 
 test_that("oauth_form_post_ui hides internal callback POST failures", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   url <- prepare_call(cli, browser_token = valid_browser_token())
   enc_state <- parse_query_param(url, "state")
   stored_keys <- cli@state_store$keys()
@@ -452,7 +465,7 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
 })
 
 test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "GET"
 
@@ -466,7 +479,7 @@ test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
 })
 
 test_that("oauth_form_post_ui does not duplicate existing helper output", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "GET"
 
@@ -491,7 +504,7 @@ test_that("oauth_form_post_ui does not duplicate existing helper output", {
 test_that("oauth_module_server consumes form_post callback handles", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -537,7 +550,7 @@ test_that("oauth_module_server consumes form_post callback handles", {
 test_that("oauth_module_server consumes form_post error callbacks", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -577,7 +590,7 @@ test_that("oauth_module_server consumes form_post error callbacks", {
 test_that("oauth_module_server audits preconsumed form_post error state", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
@@ -619,7 +632,7 @@ test_that("oauth_module_server audits preconsumed form_post error state", {
 test_that("oauth_module_server audits form_post handles missing module ids", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -657,7 +670,7 @@ test_that("oauth_module_server audits form_post handles missing module ids", {
 test_that("oauth_module_server rejects unknown form_post module ids", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -720,7 +733,7 @@ test_that("oauth_module_server rejects unknown form_post module ids", {
 test_that("oauth_module_server rejects form_post handles mixed with direct callback params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -774,7 +787,7 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
 test_that("oauth_module_server rejects duplicate form_post handle query params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -857,7 +870,7 @@ test_that("oauth_module_server rejects oversized form_post handle query params",
     shinyOAuth.callback_max_form_post_handle_bytes = 8
   ))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -885,7 +898,7 @@ test_that("oauth_module_server rejects oversized form_post module id query param
     shinyOAuth.callback_max_form_post_id_bytes = 8
   ))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -910,7 +923,7 @@ test_that("oauth_module_server rejects oversized form_post module id query param
 test_that("oauth_module_server rejects missing form_post handles", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   shiny::testServer(
     app = oauth_module_server,
@@ -934,7 +947,7 @@ test_that("oauth_module_server rejects missing form_post handles", {
 test_that("oauth_module_server rejects replayed form_post handles", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -993,8 +1006,8 @@ test_that("oauth_module_server rejects replayed form_post handles", {
 test_that("form_post handles are ignored until the owning module claims them", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli_a <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli_b <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli_a <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli_b <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   seen <- character(0)
   sess <- shiny::MockShinySession$new()
@@ -1062,8 +1075,8 @@ test_that("form_post handles are ignored until the owning module claims them", {
 test_that("authenticated modules do not clear foreign form_post handles", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli_a <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli_b <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli_a <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli_b <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   seen <- character(0)
   sess <- shiny::MockShinySession$new()
@@ -1139,7 +1152,7 @@ test_that("authenticated modules do not clear foreign form_post handles", {
 test_that("form_post bridge does not duplicate callback validation success audits", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -1191,7 +1204,7 @@ test_that("form_post bridge does not duplicate callback validation success audit
 test_that("form_post callback path emits existing OTel spans", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   spans <- character(0)
 
   testthat::with_mocked_bindings(

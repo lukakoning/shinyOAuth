@@ -72,6 +72,19 @@ oauth_form_post_ui <- function(
     err_input("{.arg id} must be a single non-empty string.")
   }
 
+  response_mode_info <- resolve_oauth_client_response_mode(client)
+  if (!is.null(response_mode_info$error)) {
+    err_config(response_mode_info$error)
+  }
+  if (!identical(response_mode_info$mode, "form_post")) {
+    err_config(
+      paste0(
+        "oauth_form_post_ui() requires an OAuthClient configured with ",
+        "response_mode = 'form_post'."
+      )
+    )
+  }
+
   callback_path <- normalize_oauth_form_post_callback_path(
     callback_path %||% oauth_form_post_redirect_path(client)
   )
