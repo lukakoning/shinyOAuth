@@ -1003,7 +1003,7 @@ validate_state_store_value <- function(
 
   if (
     isTRUE(validate_policy_fields) &&
-    isTRUE(client@provider@use_pkce) &&
+      isTRUE(client@provider@use_pkce) &&
       !is_valid_string(ssv$pkce_code_verifier)
   ) {
     abort_pkg(
