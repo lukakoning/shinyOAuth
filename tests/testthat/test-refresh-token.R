@@ -315,6 +315,7 @@ testthat::test_that("refresh_token fails when introspection omits required scope
     use_nonce = FALSE,
     scopes = c("openid", "profile")
   )
+  cli@scope_validation <- "strict"
   cli@provider@introspection_url <- "https://example.com/introspect"
   cli@introspect <- TRUE
   cli@introspect_elements <- "scope"

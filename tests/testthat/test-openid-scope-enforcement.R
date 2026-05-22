@@ -237,10 +237,11 @@ test_that("prepare_call seals the effective scopes sent in the auth request", {
   expect_identical(payload$scopes, c("openid", "profile", "email"))
 })
 
-test_that("handle_callback validates scopes against auto-added openid scope", {
+test_that("handle_callback validates scopes against auto-added openid scope in strict mode", {
   reset_openid_warn()
   cli <- make_oidc_client(scopes = "profile")
   cli@provider@use_nonce <- FALSE
+  cli@scope_validation <- "strict"
   tok <- valid_browser_token()
 
   expect_warning(

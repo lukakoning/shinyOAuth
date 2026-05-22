@@ -60,6 +60,8 @@ test_that("scope_validation = 'strict' errors on missing scopes", {
 })
 
 test_that("scope_validation defaults to 'warn' for reduced grants", {
+  rlang::reset_warning_verbosity("scope-validation-missing-scopes")
+
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
