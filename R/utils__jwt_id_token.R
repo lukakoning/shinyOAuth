@@ -383,9 +383,10 @@ validate_id_token <- function(
       err_id_token("ID token nonce mismatch")
     }
   }
-  # Authorized party (azp) handling per OIDC Core §2: if aud has multiple
-  # entries, azp MUST be present and equal to the client_id. If azp is present
-  # in any case, it MUST equal client_id.
+  # Authorized party (azp) handling per OIDC Core §2: if azp is present, it
+  # must equal client_id. shinyOAuth also fails closed when aud has multiple
+  # entries but azp is absent, because the package does not support a separate
+  # trusted-extra-audience allowlist.
   if (!is.null(payload$azp)) {
     if (!identical(payload$azp, client_id)) {
       err_id_token("azp claim does not match client_id")
