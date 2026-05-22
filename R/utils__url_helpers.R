@@ -461,6 +461,40 @@ normalize_url <- function(u) {
 #' @noRd
 rtrim_slash <- function(x) sub("/$", "", x)
 
+#' Internal: normalize text to UTF-8 without double-decoding valid bytes
+#'
+#' Some Windows locale/codepage combinations surface URL components as valid
+#' UTF-8 bytes marked with `Encoding = "unknown"`. Used by URL and IDNA
+#' helpers so Unicode hosts survive parsing and punycode conversion unchanged.
+#'
+#' @param text Character vector.
+#' @return Character vector normalized to UTF-8 where possible.
+#' @keywords internal
+#' @noRd
+text_force_utf8 <- function(text) {
+  if (is.null(text) || length(text) == 0L) {
+    return(text)
+  }
+
+  text <- as.character(text)
+  if (!length(text)) {
+    return(text)
+  }
+
+  looks_like_utf8 <- vapply(
+    text,
+    function(x) {
+      !is.na(x) && isTRUE(validUTF8(x))
+    },
+    logical(1)
+  )
+  if (any(looks_like_utf8)) {
+    Encoding(text[looks_like_utf8]) <- "UTF-8"
+  }
+
+  enc2utf8(text)
+}
+
 #' Internal: normalize hostnames to a stable ASCII comparison form
 #'
 #' Converts Unicode DNS labels to their A-label form so host comparisons work
@@ -477,7 +511,7 @@ host_normalize_idna <- function(host, allow_glob = FALSE) {
     return(host)
   }
 
-  host <- trimws(as.character(host))
+  host <- trimws(text_force_utf8(host))
   if (!nzchar(host)) {
     return(host)
   }
@@ -505,7 +539,7 @@ host_normalize_idna <- function(host, allow_glob = FALSE) {
         return(tolower(label))
       }
 
-      label_utf8 <- enc2utf8(label)
+      label_utf8 <- text_force_utf8(label)
       if (all(utf8ToInt(label_utf8) < 128L)) {
         return(tolower(label_utf8))
       }
@@ -539,6 +573,7 @@ host_normalize_idna <- function(host, allow_glob = FALSE) {
 #' @keywords internal
 #' @noRd
 parse_url_components <- function(url, label = "url") {
+  url <- text_force_utf8(url)
   parsed <- try(httr2::url_parse(url), silent = TRUE)
 
   if (inherits(parsed, "try-error")) {
@@ -597,7 +632,7 @@ is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
   if (is.null(x) || is.na(x)) {
     return(FALSE)
   }
-  x <- trimws(as.character(x))
+  x <- trimws(text_force_utf8(x))
   if (!nzchar(x)) {
     return(FALSE)
   }

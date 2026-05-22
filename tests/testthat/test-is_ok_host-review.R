@@ -45,6 +45,46 @@ test_that("Unicode domains are supported", {
   expect_true(is_ok_host(paste0("https://", dom_ascii), allowed_hosts = dom))
 })
 
+test_that("Unicode hosts survive valid UTF-8 bytes marked unknown", {
+  dom <- "ドメイン.テスト"
+  host <- enc2utf8(dom)
+  Encoding(host) <- "unknown"
+
+  expect_identical(
+    shinyOAuth:::host_normalize_idna(host),
+    urltools::puny_encode(dom)
+  )
+})
+
+test_that("Unicode host parsing survives Windows non-UTF locales", {
+  skip_if(.Platform$OS.type != "windows")
+
+  old_locale <- Sys.getlocale("LC_CTYPE")
+  on.exit(
+    try(Sys.setlocale("LC_CTYPE", old_locale), silent = TRUE),
+    add = TRUE
+  )
+
+  locale <- try(
+    suppressWarnings(
+      Sys.setlocale("LC_CTYPE", "English_United States.1252")
+    ),
+    silent = TRUE
+  )
+  if (inherits(locale, "try-error") || !is.character(locale) || is.na(locale)) {
+    skip("Windows-1252 locale unavailable")
+  }
+
+  dom <- "ドメイン.テスト"
+  dom_ascii <- urltools::puny_encode(dom)
+
+  expect_identical(
+    shinyOAuth:::parse_url_host(paste0("https://", dom)),
+    dom_ascii
+  )
+  expect_true(is_ok_host(paste0("https://", dom), allowed_hosts = dom))
+})
+
 test_that("HTTP exemptions cannot be spoofed by suffix", {
   expect_false(is_ok_host(
     "http://127.0.0.1.evil.com",
