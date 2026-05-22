@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,7 +41,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2>
 <ul><li><p>Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client authentication, certificate-bound access tokens, mTLS endpoint aliases, and the exported <code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> helper for RFC 8705 client metadata.</p></li>
 <li><p>Added Demonstrating Proof-of-Possession (‘DPoP’, RFC 9449) support. Clients configured with <code>dpop_private_key</code> now send DPoP proofs on token and protected-resource requests, include <code>dpop_jkt</code> in authorization requests, can require <code>token_type = "DPoP"</code> plus <code>cnf.jkt</code> binding, and replay one <code>DPoP-Nonce</code> challenge on token and protected-resource requests.</p></li>
 <li><p>Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support. <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now send signed and encrypted Request Objects via <code>authorization_request_mode = "request"</code> (sent as parameter) or via <code>authorization_request_mode = "request_uri"</code> (served from your Shiny app).</p></li>
