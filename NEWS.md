@@ -169,6 +169,10 @@ the client's configured scopes when a refresh response omits `scope`.
   nonce-enabled OIDC flows, and signed UserInfo JWT validation. These
   misconfigurations now fail during provider setup instead of later during a
   JWKS fetch.
+  - Validates discovered `jwks_uri` values against the same absolute-URL,
+  scheme, and host policy used for other discovery endpoints, so invalid or
+  disallowed JWKS URLs now fail during discovery instead of later during the
+  first JWKS fetch.
   - Rejects issuer inputs that contain query strings or fragments before
   building the discovery URL, matching the stricter issuer validation already
   used by manually configured providers.

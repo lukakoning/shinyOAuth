@@ -251,6 +251,12 @@ oauth_provider_oidc_discover <- function(
     userinfo_signed_jwt_required = isTRUE(dots$userinfo_signed_jwt_required)
   )
 
+  .discover_validate_jwks_uri(
+    disc = disc,
+    allowed_hosts_vec = allowed_hosts_vec,
+    jwks_host_allow_only = jwks_host_allow_only
+  )
+
   # 8) Enforce JWKS host pinning if enabled or explicitly configured.
   if (isTRUE(jwks_host_issuer_match) || is_valid_string(jwks_host_allow_only)) {
     .discover_enforce_jwks_pinning(
@@ -769,6 +775,46 @@ oauth_provider_oidc_discover <- function(
       userinfo_signed_jwt_required = userinfo_signed_jwt_required
     )
   )
+}
+
+#' Internal: validate jwks_uri against the discovery URL policy
+#'
+#' Used by [oauth_provider_oidc_discover()] to fail fast when discovery returns
+#' a malformed or disallowed JWKS URL.
+#'
+#' @param disc Discovery document.
+#' @param allowed_hosts_vec Allowed host vector used for endpoint validation.
+#' @param jwks_host_allow_only Optional exact JWKS host override.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
+#'   configuration error.
+#'
+#' @keywords internal
+#' @noRd
+.discover_validate_jwks_uri <- function(
+  disc,
+  allowed_hosts_vec,
+  jwks_host_allow_only = NULL
+) {
+  jwks_uri <- disc[["jwks_uri"]] %||% ""
+  if (!nzchar(jwks_uri)) {
+    return(invisible(TRUE))
+  }
+
+  jwks_allowed_hosts <- allowed_hosts_vec
+  if (is_valid_string(jwks_host_allow_only)) {
+    pinned_host <- tolower(trimws(jwks_host_allow_only))
+    if (grepl("://", pinned_host, fixed = TRUE)) {
+      pinned_host <- parse_url_host(
+        pinned_host,
+        label = "jwks_host_allow_only"
+      )
+    }
+    pinned_host <- sub("\\.$", "", pinned_host)
+    jwks_allowed_hosts <- unique(c(jwks_allowed_hosts, pinned_host))
+  }
+
+  validate_endpoint(jwks_uri, jwks_allowed_hosts)
+  invisible(TRUE)
 }
 
 #' Internal: enforce JWKS pinning per issuer/allowed hosts
