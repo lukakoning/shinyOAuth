@@ -18,8 +18,6 @@ default. It takes care of:
 - Exchanging the authorization code for tokens and validating the result
 - Optionally loading user info and validating ID token signatures/claims
 - Optionally refreshing tokens before expiry or triggering re-login
-- When DPoP is configured, attaching DPoP proofs to token and protected-resource
-  requests and handling RFC 9449 nonce challenges automatically
 
 For a full step-by-step protocol breakdown, see the separate vignette:
 `vignette("authentication-flow", package = "shinyOAuth")`.
