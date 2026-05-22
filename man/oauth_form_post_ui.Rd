@@ -51,10 +51,9 @@ for the wrapped GET UI, so you do not need a separate top-level
 
 The server-side callback handle is single-use and is rejected if it is older
 than the smaller of \code{client@state_payload_max_age} and the configured
-\code{state_store} TTL. The raw POST body and transient handle query
-parameters are also bounded by the
-\code{shinyOAuth.callback_max_form_post_*} options described in the usage
-vignette.
+\code{state_store} TTL. The raw POST body and transient handle query parameters
+are also bounded by the \verb{shinyOAuth.callback_max_form_post_*} options
+described in the usage vignette.
 }
 \examples{
 if (
