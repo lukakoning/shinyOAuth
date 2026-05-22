@@ -106,9 +106,13 @@ oauth_provider(
   shinyOAuth keeps when the actual authorization request is carried by
   JAR or PAR. Use `"compat"` (default) to keep the current
   OIDC-compatible shape with outer `client_id`, `response_type`, and
-  `scope` when an issuer is configured. Use `"minimal"` for stricter
-  authorization servers that expect only `client_id` alongside `request`
-  or `request_uri`.
+  `scope` when an issuer is configured. Use `"minimal"` for plain OAuth
+  browser redirects and for PAR deployments whose authorization endpoint
+  accepts only `client_id` plus the provider-issued `request_uri`
+  handle. OpenID Connect by-value `request` and caller-managed
+  `request_uri` transports reject `"minimal"` because OIDC still
+  requires outer `response_type` and an outer `scope` containing
+  `openid`.
 
 - request_object_signing_alg_values_supported:
 

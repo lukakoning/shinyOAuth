@@ -146,40 +146,44 @@ Object instead of the raw authorization parameters. In practice, the
 redirect contains `request=<Request Object JWT>` plus the outer
 parameters that the active profile still requires. By default, OIDC
 providers keep outer `client_id`, `response_type=code`, and an outer
-`scope` containing `openid`; set
-`oauth_provider(authorization_request_front_channel_mode = "minimal")`
-to emit only `client_id` plus `request`. Plain OAuth JAR flows already
-use that minimal shape. The Request Object itself is signed by default,
-or signed first and then encrypted as a nested JWT when Request Object
-encryption is configured.
+`scope` containing `openid`. That outer OIDC shape is required by OpenID
+Connect Core Section 6.1, so
+`authorization_request_front_channel_mode = "minimal"` is rejected for
+OIDC by-value `request` transport. Plain OAuth JAR flows can still use
+the minimal `client_id` plus `request` shape. The Request Object itself
+is signed by default, or signed first and then encrypted as a nested JWT
+when Request Object encryption is configured.
 
 With caller-managed `request_uri` mode, the browser is redirected with
 `request_uri=<absolute URL>` plus any outer parameters still required by
 the active profile. By default, OIDC providers keep outer `client_id`,
-`response_type=code`, and an outer `scope` containing `openid`; set
-`oauth_provider(authorization_request_front_channel_mode = "minimal")`
-to emit only `client_id` plus `request_uri`. Plain OAuth
-request-by-reference flows already use that minimal shape. The
-authorization server then fetches the Request Object from that URL. This
-is different from PAR: the `request_uri` points at a client-managed
-published Request Object, not a provider-issued PAR handle. The
-published object still follows the same JAR rules as above: signed by
-default, or signed first and then encrypted when Request Object
-encryption is configured. In the default Shiny-backed publisher used by
-‘shinyOAuth’, that URL also embeds Shiny session-routing path segments,
-so it is not as log-opaque as a provider-issued PAR handle.
+`response_type=code`, and an outer `scope` containing `openid`. That
+outer OIDC shape is required by OpenID Connect Core Section 6.2, so
+`authorization_request_front_channel_mode = "minimal"` is rejected for
+caller-managed OIDC `request_uri` transport. Plain OAuth
+request-by-reference flows can still use the minimal `client_id` plus
+`request_uri` shape. The authorization server then fetches the Request
+Object from that URL. This is different from PAR: the `request_uri`
+points at a client-managed published Request Object, not a
+provider-issued PAR handle. The published object still follows the same
+JAR rules as above: signed by default, or signed first and then
+encrypted when Request Object encryption is configured. In the default
+Shiny-backed publisher used by ‘shinyOAuth’, that URL also embeds Shiny
+session-routing path segments, so it is not as log-opaque as a
+provider-issued PAR handle.
 
 With PAR enabled and selected, the browser is still redirected to the
 provider’s authorization endpoint, but the front-channel URL contains
 only the PAR handle plus any profile-required outer parameters. By
 default, OIDC providers keep outer `client_id`, `response_type=code`, an
-outer `scope` containing `openid`, and `request_uri`; set
-`oauth_provider(authorization_request_front_channel_mode = "minimal")`
-to emit only `client_id` plus `request_uri`. Plain OAuth PAR flows
-already use that minimal shape. If JAR request mode is also enabled, the
-Request Object pushed to the PAR endpoint follows the same rule: signed
-by default, or signed first and then encrypted when Request Object
-encryption is configured.
+outer `scope` containing `openid`, and `request_uri`. If your provider
+accepts a smaller PAR redirect carrying only `client_id` plus the
+provider-issued `request_uri`, set
+`oauth_provider(authorization_request_front_channel_mode = "minimal")`.
+Plain OAuth PAR flows already use that minimal shape. If JAR request
+mode is also enabled, the Request Object pushed to the PAR endpoint
+follows the same rule: signed by default, or signed first and then
+encrypted when Request Object encryption is configured.
 
 ### 5. User authenticates and authorizes
 

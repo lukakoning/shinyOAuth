@@ -153,8 +153,12 @@ which browser-visible outer parameters shinyOAuth keeps when the actual
 authorization request is carried by JAR or PAR. Use <code>"compat"</code>
 (default) to keep the current OIDC-compatible shape with outer
 <code>client_id</code>, <code>response_type</code>, and <code>scope</code> when an issuer is configured.
-Use <code>"minimal"</code> for stricter authorization servers that expect only
-<code>client_id</code> alongside <code>request</code> or <code>request_uri</code>.</p></dd>
+Use <code>"minimal"</code> for plain OAuth browser redirects and for PAR
+deployments whose authorization endpoint accepts only <code>client_id</code>
+plus the provider-issued <code>request_uri</code> handle. OpenID Connect
+by-value <code>request</code> and caller-managed <code>request_uri</code> transports reject
+<code>"minimal"</code> because OIDC still requires outer <code>response_type</code> and an
+outer <code>scope</code> containing <code>openid</code>.</p></dd>
 
 
 <dt id="arg-request-object-signing-alg-values-supported">request_object_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-signing-alg-values-supported"></a></dt>
