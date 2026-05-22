@@ -1211,11 +1211,14 @@ handle_callback_internal <- function(
     payload <- with_otel_span(
       "shinyOAuth.callback.validate",
       {
-        # Centralized auditing now occurs inside state_payload_decrypt_validate()
+        # Payload-validation failures are audited inside
+        # state_payload_decrypt_validate(); success is emitted only after the
+        # browser token and single-use state checks succeed.
         payload <- state_payload_decrypt_validate(
           oauth_client,
           payload,
-          shiny_session = shiny_session
+          shiny_session = shiny_session,
+          audit_success = FALSE
         )
         if (!isTRUE(trace_id_seeded)) {
           otel_set_span_attributes(
@@ -1365,9 +1368,7 @@ handle_callback_internal <- function(
           )
         )
       }
-      if (!is.null(decrypted_payload)) {
-        audit_callback_validation_success(oauth_client, payload, shiny_session)
-      }
+      audit_callback_validation_success(oauth_client, payload, shiny_session)
 
       # Swap code for token --------------------------------------------------------
 

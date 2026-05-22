@@ -1978,7 +1978,11 @@ oauth_module_server <- function(
         {
           # Decrypt and validate the state payload
           payload <- decrypted_payload %||%
-            state_payload_decrypt_validate(client, state)
+            state_payload_decrypt_validate(
+              client,
+              state,
+              audit_success = FALSE
+            )
           with_trace_id(
             payload$trace_id %||% NULL,
             {
@@ -2242,7 +2246,8 @@ oauth_module_server <- function(
                             payload <- state_payload_decrypt_validate(
                               client,
                               state,
-                              shiny_session = captured_shiny_session
+                              shiny_session = captured_shiny_session,
+                              audit_success = FALSE
                             )
                             if (
                               !is_valid_string(

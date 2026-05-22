@@ -100,6 +100,37 @@ test_that("handle_callback enforces state-store consume on every call (replay bl
   )
 })
 
+test_that("replayed callback does not emit callback validation success", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+  payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
+  key <- shinyOAuth:::state_cache_key(payload$state)
+
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  cli@state_store$remove(key)
+
+  expect_error(
+    shinyOAuth::handle_callback(
+      cli,
+      code = "c1",
+      payload = enc,
+      browser_token = tok
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "State access failed|state"
+  )
+
+  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  expect_false("audit_callback_validation_success" %in% event_types)
+})
+
 test_that("handle_callback_internal exists as non-exported function with bypass params", {
   # Verify the internal function exists and has the bypass parameters
   fn <- shinyOAuth:::handle_callback_internal

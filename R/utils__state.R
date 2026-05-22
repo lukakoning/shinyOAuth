@@ -25,19 +25,20 @@
 #'   `capture_shiny_session_context()`) to include in audit events. Used when
 #'   calling from async workers that lack access to the reactive domain.
 #' @param audit_success Whether successful payload validation should emit the
-#'   standard callback validation audit event. Set to `FALSE` when a caller
-#'   must perform additional checks or single-use state consumption before
-#'   emitting the success audit. Failures are still audited.
+#'   standard callback validation audit event. Defaults to `FALSE` because
+#'   callback handlers normally still need to validate the browser-bound token
+#'   and consume the single-use state entry before success is final. Failures
+#'   are still audited.
 #' @keywords internal
 state_payload_decrypt_validate <- function(
   client,
   encrypted_payload,
   shiny_session = NULL,
-  audit_success = TRUE
+  audit_success = FALSE
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  # Centralized auditing for decrypt + validation to align sync/async flows
+  # Centralized failure auditing for decrypt + validation to align sync/async flows
   tryCatch(
     {
       # Validate input early but within tryCatch so failures are audited
@@ -85,8 +86,8 @@ state_payload_decrypt_validate <- function(
 
 #' Audit successful callback state validation
 #'
-#' Used after a state payload has been decrypted, verified, and accepted at a
-#' callback boundary.
+#' Used after a callback has completed its state, browser-token, and single-use
+#' validation steps.
 #'
 #' @param client [OAuthClient] instance.
 #' @param payload Decrypted state payload.

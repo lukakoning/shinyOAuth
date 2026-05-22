@@ -37,6 +37,14 @@ testthat::test_that("every audit event fires and serializes to JSON", {
       ),
       class = "shinyOAuth_state_error"
     )
+
+    seen_after_failure <- audit_types(events)
+    testthat::expect_true(
+      "audit_callback_validation_failed" %in% seen_after_failure
+    )
+    testthat::expect_false(
+      "audit_callback_validation_success" %in% seen_after_failure
+    )
   }
 
   # 3) handle_callback: success path -> callback_received/validation_success/token_exchange/login_success
