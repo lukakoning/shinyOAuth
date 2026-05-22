@@ -72,7 +72,7 @@ test_that("validate_discovery_issuer errors on issuer path mismatch by default",
   )
 })
 
-test_that("validate_discovery_issuer normalizes trailing slashes", {
+test_that("validate_discovery_issuer matches the discovery request prefix", {
   f <- shinyOAuth:::validate_discovery_issuer
   expect_identical(
     f(
@@ -80,6 +80,17 @@ test_that("validate_discovery_issuer normalizes trailing slashes", {
       "https://login.example.com/tenant-a"
     ),
     "https://login.example.com/tenant-a"
+  )
+})
+
+test_that("validate_discovery_issuer errors on host case mismatch by default", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_error(
+    f(
+      "https://EXAMPLE.com/issuer",
+      "https://example.com/issuer"
+    ),
+    class = "shinyOAuth_config_error"
   )
 })
 

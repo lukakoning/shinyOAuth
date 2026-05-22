@@ -130,8 +130,8 @@
 #' document's `issuer` is validated against `issuer` when it later
 #' performs runtime discovery to locate the JWKS URI.
 #'
-#' - `"url"` (default): require the full issuer URL to match after
-#'   trailing-slash normalization.
+#' - `"url"` (default): require the issuer used for discovery to match
+#'   exactly, after removing one trailing slash for discovery URL construction.
 #' - `"host"`: compare only scheme + host.
 #' - `"none"`: do not validate discovery issuer consistency.
 #'

@@ -64,8 +64,9 @@ Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
 \item{issuer_match}{Character scalar controlling how strictly to validate the
 discovery document's \code{issuer} against the input \code{issuer}.
 \itemize{
-\item \code{"url"} (default): require the full issuer URL to match after
-trailing-slash normalization (recommended).
+\item \code{"url"} (default): require the issuer used for discovery to match
+exactly, after removing one trailing slash for discovery URL construction
+(recommended).
 \item \code{"host"}: compare only scheme + host (explicit opt-out; not recommended).
 \item \code{"none"}: do not validate issuer consistency.
 }

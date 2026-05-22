@@ -172,8 +172,8 @@ discovery document at \verb{/.well-known/openid-configuration}.}
 document's \code{issuer} is validated against \code{issuer} when it later
 performs runtime discovery to locate the JWKS URI.
 \itemize{
-\item \code{"url"} (default): require the full issuer URL to match after
-trailing-slash normalization.
+\item \code{"url"} (default): require the issuer used for discovery to match
+exactly, after removing one trailing slash for discovery URL construction.
 \item \code{"host"}: compare only scheme + host.
 \item \code{"none"}: do not validate discovery issuer consistency.
 }
