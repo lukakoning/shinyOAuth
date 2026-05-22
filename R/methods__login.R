@@ -1949,7 +1949,7 @@ enforce_token_introspection_policy <- function(
   }
 
   if ("scope" %in% introspect_elements) {
-    scope_validation_mode <- oauth_client@scope_validation %||% "strict"
+    scope_validation_mode <- oauth_client@scope_validation %||% "warn"
     requested_scopes <- normalize_scope_tokens(
       requested_scopes %||% effective_client_scopes(oauth_client)
     )
@@ -2324,7 +2324,7 @@ verify_token_set <- function(
     err_token("Invalid token set: must be a non-empty list")
   }
 
-  scope_validation_mode <- client@scope_validation %||% "strict"
+  scope_validation_mode <- client@scope_validation %||% "warn"
   requested_scopes <- normalize_scope_tokens(
     requested_scopes %||% effective_client_scopes(client)
   )

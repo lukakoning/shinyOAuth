@@ -39,7 +39,7 @@ oauth_client(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   dpop_require_access_token = NULL,
-  scope_validation = c("strict", "warn", "none"),
+  scope_validation = c("warn", "strict", "none"),
   claims_validation = c("none", "warn", "strict"),
   userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
@@ -376,11 +376,11 @@ Section 3.3 permits servers to issue tokens with reduced scope, and
 Section 5.1 allows token responses to omit \code{scope} when it is unchanged
 from the requested scope.
 \itemize{
-\item \code{"strict"} (default): Throws an error if any requested scope is missing
-from the granted scopes. Omitted \code{scope} is treated as unchanged, not as
-an error.
-\item \code{"warn"}: Emits a warning but continues authentication if scopes are
-missing.
+\item \code{"warn"} (default): Emits a warning but continues authentication if
+scopes are missing.
+\item \code{"strict"}: Throws an error if any requested scope is missing from the
+granted scopes. Omitted \code{scope} is treated as unchanged, not as an
+error.
 \item \code{"none"}: Skips scope validation entirely.
 }}
 

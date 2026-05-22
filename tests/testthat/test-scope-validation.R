@@ -1,6 +1,6 @@
-# Test scope_validation modes: "strict", "warn", "none"
+# Test scope_validation modes: "warn", "strict", "none"
 
-test_that("scope_validation = 'strict' errors on missing scopes (default)", {
+test_that("scope_validation = 'strict' errors on missing scopes", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -57,6 +57,68 @@ test_that("scope_validation = 'strict' errors on missing scopes (default)", {
     regexp = "Granted scopes missing|scope_validation",
     class = "shinyOAuth_token_error"
   )
+})
+
+test_that("scope_validation defaults to 'warn' for reduced grants", {
+  prov <- oauth_provider(
+    name = "fake",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    userinfo_url = NA_character_,
+    introspection_url = NA_character_,
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    pkce_method = "S256",
+    userinfo_required = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE,
+    userinfo_id_token_match = FALSE,
+    token_auth_style = "body"
+  )
+
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = c("openid", "profile", "email"),
+    state_store = cachem::cache_mem(max_age = 600),
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  tok <- valid_browser_token()
+  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+  enc <- parse_query_param(url, "state")
+
+  expect_warning(
+    result <- testthat::with_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        list(
+          access_token = "my_access_token",
+          token_type = "Bearer",
+          scope = "profile email",
+          expires_in = 3600
+        )
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::handle_callback(
+        cli,
+        code = "ok",
+        payload = enc,
+        browser_token = tok
+      )
+    ),
+    regexp = "Granted scopes missing|scope_validation"
+  )
+
+  expect_true(S7::S7_inherits(result, OAuthToken))
+  expect_equal(result@access_token, "my_access_token")
+  expect_identical(result@granted_scopes, c("email", "profile"))
+  expect_true(result@granted_scopes_verified)
 })
 
 test_that("scope_validation tokenizes space-delimited scope strings", {
@@ -188,7 +250,7 @@ test_that("scope_validation does not split comma-bearing scope tokens", {
   )
 })
 
-test_that("scope_validation = 'warn' warns but continues on missing scopes", {
+test_that("scope_validation = 'warn' continues on missing scopes", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -224,26 +286,23 @@ test_that("scope_validation = 'warn' warns but continues on missing scopes", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
 
-  # Should warn but not error, and return a token
-  expect_warning(
-    result <- testthat::with_mocked_bindings(
-      swap_code_for_token_set = function(client, code, code_verifier) {
-        list(
-          access_token = "my_access_token",
-          token_type = "Bearer",
-          scope = "profile email", # missing "openid"
-          expires_in = 3600
-        )
-      },
-      .package = "shinyOAuth",
-      shinyOAuth:::handle_callback(
-        cli,
-        code = "ok",
-        payload = enc,
-        browser_token = tok
+  # Should continue and return a token even if the warning was already emitted
+  result <- testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(
+        access_token = "my_access_token",
+        token_type = "Bearer",
+        scope = "profile email", # missing "openid"
+        expires_in = 3600
       )
-    ),
-    regexp = "Granted scopes missing|scope_validation"
+    },
+    .package = "shinyOAuth",
+    shinyOAuth:::handle_callback(
+      cli,
+      code = "ok",
+      payload = enc,
+      browser_token = tok
+    )
   )
 
   # Token should still be returned
@@ -331,7 +390,7 @@ test_that("scope_validation = 'none' skips validation entirely", {
   expect_equal(result@access_token, "my_access_token")
 })
 
-test_that("scope_validation defaults to 'strict'", {
+test_that("scope_validation defaults to 'warn'", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -360,10 +419,10 @@ test_that("scope_validation defaults to 'strict'", {
       "0123456789abcdefghijklmnopqrstuvwxyz",
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     )
-    # No scope_validation specified - should default to "strict"
+    # No scope_validation specified - should default to "warn"
   )
 
-  expect_equal(cli@scope_validation, "strict")
+  expect_equal(cli@scope_validation, "warn")
 })
 
 test_that("invalid scope_validation value is rejected", {
@@ -399,7 +458,7 @@ test_that("invalid scope_validation value is rejected", {
       ),
       scope_validation = "invalid"
     ),
-    regexp = "strict.*warn.*none"
+    regexp = "warn.*strict.*none|strict.*warn.*none"
   )
 
   # Using OAuthClient directly - should error via validator

@@ -248,8 +248,8 @@ Malformed or error responses abort the flow.
 
 After a successful response, 'shinyOAuth' also checks two basic things:
 
-- If the token response includes `scope`, 'shinyOAuth' can reconcile it against the requested scopes (defaults to strict
-  enforcement; configurable via the client `scope_validation` setting)
+- If the token response includes `scope`, 'shinyOAuth' can reconcile it against the requested scopes (defaults to warning
+  on reduced grants; configurable via the client `scope_validation` setting)
 - The token response must include `token_type`; if the provider was configured with a non-empty
   `allowed_token_types`, that value must also be one of the allowed types (case-insensitive,
   e.g., `Bearer`)

@@ -326,11 +326,11 @@
 #'   Section 5.1 allows token responses to omit `scope` when it is unchanged
 #'   from the requested scope.
 #'
-#'   - `"strict"` (default): Throws an error if any requested scope is missing
-#'     from the granted scopes. Omitted `scope` is treated as unchanged, not as
-#'     an error.
-#'   - `"warn"`: Emits a warning but continues authentication if scopes are
-#'     missing.
+#'   - `"warn"` (default): Emits a warning but continues authentication if
+#'     scopes are missing.
+#'   - `"strict"`: Throws an error if any requested scope is missing from the
+#'     granted scopes. Omitted `scope` is treated as unchanged, not as an
+#'     error.
 #'   - `"none"`: Skips scope validation entirely.
 #'
 #' @param claims_validation Controls validation of requested claims supplied via
@@ -556,7 +556,7 @@ OAuthClient <- S7::new_class(
     ),
     scope_validation = S7::new_property(
       S7::class_character,
-      default = "strict"
+      default = "warn"
     ),
     claims_validation = S7::new_property(
       S7::class_character,
@@ -634,7 +634,7 @@ oauth_client <- function(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   dpop_require_access_token = NULL,
-  scope_validation = c("strict", "warn", "none"),
+  scope_validation = c("warn", "strict", "none"),
   claims_validation = c("none", "warn", "strict"),
   userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
