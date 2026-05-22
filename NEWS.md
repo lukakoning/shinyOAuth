@@ -10,9 +10,6 @@ Clients configured with `dpop_private_key` now send DPoP proofs on token and
 protected-resource requests, include `dpop_jkt` in authorization requests,
 can require `token_type = "DPoP"` plus `cnf.jkt` binding, and replay one
 `DPoP-Nonce` challenge on token and protected-resource requests.
-Raw access-token strings no longer auto-upgrade to `DPoP` based on locally
-parsed JWT `cnf.jkt`; pass `token_type = "DPoP"` explicitly or use an
-`OAuthToken` with trusted token metadata instead.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed and encrypted Request Objects via
@@ -24,7 +21,7 @@ Providers can now configure `par_url` directly or pick it up from OIDC
 discovery, and login flows will push the authorization request and redirect
 with the returned `request_uri`.
 
-* Added OAuth/OIDC `response_mode = "form_post"` support for authorization-code
+* Added `response_mode = "form_post"` support for authorization-code
 callbacks. Apps can wrap their UI with `oauth_form_post_ui()` so Shiny accepts
 the provider POST, stores the callback server-side under a one-time handle, and
 lets `oauth_module_server()` finish the existing state, issuer, and token
@@ -260,7 +257,7 @@ refresh tokens may be rotated on each use; retrying after the server has
 already committed the first request would replay an invalidated credential,
 causing `invalid_grant` errors or triggering refresh-token replay detection.
 
-- Hardened runtime JWKS discovery by validating the discovery issuer before 
+* Hardened runtime JWKS discovery by validating the discovery issuer before 
 trusting `jwks_uri`. This policy is now stored on `OAuthProvider` via 
 `issuer_match`, so both provider discovery and runtime JWKS fetches apply the 
 same rule: `url` for exact issuer URL matching, `host` for scheme-and-host 
@@ -298,12 +295,12 @@ fail closed.
 dev/debug softeners, but the docs now stop presenting it as a comprehensive
 deployment-hardening check and show explicit option checks instead.
 
-- Renamed the resource-request helpers to `resource_req()` and
+* Renamed the resource-request helpers to `resource_req()` and
 `perform_resource_req()`. The existing public `client_bearer_req()` name
 remains available as a deprecated alias, and `perform_client_bearer_req()` is
 also exported as a deprecated compatibility alias. 
 
-- `perform_resource_req()` is a new function which builds and performs an
+* `perform_resource_req()` is a new function which builds and performs an
 authenticated resource-request and, for DPoP-bound access tokens, replays one
 `use_dpop_nonce` challenge with the server-provided nonce. It can also
 take pre-existing 'httr2' request objects and layer authentication and DPoP on
@@ -523,7 +520,7 @@ grammar (`NQSCHAR = %x21 / %x23-5B / %x5D-7E`). The previous regex rejected
 valid ASCII characters such as `!`, `#`, `$`, `=`, `@`, `~`, and others. All
 printable ASCII except space, double-quote, and backslash is now accepted.
 
-- JWT helpers (`build_client_assertion()`, 
+* JWT helpers (`build_client_assertion()`, 
 `resolve_client_assertion_audience()`) now have defense-in-depth scalar guards 
 so malformed property values cannot cause subscript errors at runtime.
 
