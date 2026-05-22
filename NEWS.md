@@ -42,6 +42,10 @@ information.
   correlate the pre-redirect and post-redirect Shiny sessions for a single login
   round-trip; async work also carries more accurate originating Shiny
   session/process context into worker-emitted events.
+  - `audit_login_success$sub_source = "id_token"` now reflects the
+  `OAuthToken@id_token_validated` result for the returned token, so telemetry no
+  longer overstates ID-token validation when tests or debug options skip
+  signature verification.
   - Improved existing audit event types. `audit_token_exchange` and 
   `audit_token_refresh` now include `expires_in_synthesized`, indicating that 
   the provider did not return a usable `expires_in` and shinyOAuth had to 

@@ -1703,11 +1703,8 @@ handle_callback_internal <- function(
               if (!inherits(pl, "try-error")) {
                 sub_val <- pl$sub %||% NA_character_
                 if (is_valid_string(sub_val)) {
-                  # Mark whether ID token was validated (signature + claims checked)
-                  id_token_was_validated <- isTRUE(
-                    oauth_client@provider@id_token_validation
-                  ) ||
-                    isTRUE(oauth_client@provider@use_nonce)
+                  # Mark whether this specific ID token was actually validated
+                  id_token_was_validated <- isTRUE(token@id_token_validated)
                   sub_source <- if (id_token_was_validated) {
                     "id_token"
                   } else {
