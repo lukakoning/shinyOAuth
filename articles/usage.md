@@ -434,7 +434,9 @@ you want to tune logging, networking, or a specific advanced behavior.
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
   request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
-  redaction of sensitive data in audit events (default: `TRUE`)
+  redaction of sensitive data in audit events (default: `TRUE`). Debug
+  only: raw mode can expose cookies, authorization headers, codes, state
+  values, and client IP addresses
 - `options(shinyOAuth.audit_digest_key = ...)` – shared key for
   HMAC-SHA256 digests used in audit/OTel attributes. By default,
   ‘shinyOAuth’ generates a random per-process key when this is not

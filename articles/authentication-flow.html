@@ -370,9 +370,9 @@ abort the flow.</p>
 things:</p>
 <ul>
 <li>If the token response includes <code>scope</code>, ‘shinyOAuth’ can
-reconcile it against the requested scopes (defaults to strict
-enforcement; configurable via the client <code>scope_validation</code>
-setting)</li>
+reconcile it against the requested scopes (defaults to warning on
+reduced grants; configurable via the client
+<code>scope_validation</code> setting)</li>
 <li>The token response must include <code>token_type</code>; if the
 provider was configured with a non-empty
 <code>allowed_token_types</code>, that value must also be one of the

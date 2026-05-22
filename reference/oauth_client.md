@@ -44,7 +44,7 @@ oauth_client(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   dpop_require_access_token = NULL,
-  scope_validation = c("strict", "warn", "none"),
+  scope_validation = c("warn", "strict", "none"),
   claims_validation = c("none", "warn", "strict"),
   userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
@@ -147,7 +147,10 @@ oauth_client(
     [`I()`](https://rdrr.io/r/base/AsIs.html), e.g.,
     `acr = list(values = I("urn:mace:incommon:iap:silver"))` produces
     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
-    are always encoded as arrays.
+    are always encoded as arrays. shinyOAuth warns when it sees a
+    single-element `values` entry that is not wrapped in
+    [`I()`](https://rdrr.io/r/base/AsIs.html), because that common input
+    pattern serializes incorrectly for OIDC.
 
   - A character string: pre-encoded JSON string (advanced use). Must be
     valid JSON. Use this when you need full control over JSON encoding.
@@ -465,12 +468,12 @@ oauth_client(
   allows token responses to omit `scope` when it is unchanged from the
   requested scope.
 
-  - `"strict"` (default): Throws an error if any requested scope is
-    missing from the granted scopes. Omitted `scope` is treated as
-    unchanged, not as an error.
+  - `"warn"` (default): Emits a warning but continues authentication if
+    scopes are missing.
 
-  - `"warn"`: Emits a warning but continues authentication if scopes are
-    missing.
+  - `"strict"`: Throws an error if any requested scope is missing from
+    the granted scopes. Omitted `scope` is treated as unchanged, not as
+    an error.
 
   - `"none"`: Skips scope validation entirely.
 

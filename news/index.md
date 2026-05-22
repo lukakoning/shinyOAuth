@@ -13,7 +13,10 @@
   token and protected-resource requests, include `dpop_jkt` in
   authorization requests, can require `token_type = "DPoP"` plus
   `cnf.jkt` binding, and replay one `DPoP-Nonce` challenge on token and
-  protected-resource requests.
+  protected-resource requests. Raw access-token strings no longer
+  auto-upgrade to `DPoP` based on locally parsed JWT `cnf.jkt`; pass
+  `token_type = "DPoP"` explicitly or use an `OAuthToken` with trusted
+  token metadata instead.
 
 - Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
@@ -54,6 +57,13 @@
     post-redirect Shiny sessions for a single login round-trip; async
     work also carries more accurate originating Shiny session/process
     context into worker-emitted events.
+  - `audit_login_success$sub_source = "id_token"` now reflects the
+    `OAuthToken@id_token_validated` result for the returned token, so
+    telemetry no longer overstates ID-token validation when tests or
+    debug options skip signature verification.
+  - Sanitized HTTP audit context now redacts `remote_addr` as well as
+    proxy headers, so default audit events no longer export raw client
+    IP addresses.
   - Improved existing audit event types. `audit_token_exchange` and
     `audit_token_refresh` now include `expires_in_synthesized`,
     indicating that the provider did not return a usable `expires_in`
@@ -80,6 +90,10 @@
     description is emitted only when
     `options(shinyOAuth.expose_error_body = TRUE)` is enabled for
     debugging.
+  - `err_http()` now strips query strings, fragments, and userinfo from
+    response URLs before surfacing them through condition messages and
+    emitted events, reducing leakage of authorization codes, state,
+    request URIs, and similar URL-borne secrets.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now:
@@ -139,6 +153,13 @@
   - Has native RFC 8707 `resource` support, so authorization, token
     exchange, and refresh requests can request audience-restricted
     tokens without dropping down to manual extra params.
+  - Defaults `scope_validation` to `"warn"`, so RFC-compliant reduced
+    grants surface as warnings unless you opt into
+    `scope_validation = "strict"`.
+  - Warns when list-based OIDC claims requests use a single-element
+    `values` entry without `I(...)`, because
+    `jsonlite::toJSON(auto_unbox = TRUE)` would otherwise serialize that
+    OIDC array constraint as a scalar.
   - Rejects impossible JOSE alg/private-key combinations for JWT client
     assertions and DPoP proofs before emitting invalid JOSE headers.
   - Also enforces OIDC claim request `value` and `values` constraints
@@ -202,6 +223,10 @@
     `id_token_validation = TRUE`, nonce-enabled OIDC flows, and signed
     UserInfo JWT validation. These misconfigurations now fail during
     provider setup instead of later during a JWKS fetch.
+  - Validates discovered `jwks_uri` values against the same
+    absolute-URL, scheme, and host policy used for other discovery
+    endpoints, so invalid or disallowed JWKS URLs now fail during
+    discovery instead of later during the first JWKS fetch.
   - Rejects issuer inputs that contain query strings or fragments before
     building the discovery URL, matching the stricter issuer validation
     already used by manually configured providers.

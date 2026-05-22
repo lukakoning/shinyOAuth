@@ -97,6 +97,9 @@ designed to serialize cleanly with
   - `headers`: a list of request headers derived from `HTTP_*`
     environment variables, with lowercase names (e.g., `user_agent`).
 
+With the default `options(shinyOAuth.audit_redact_http = TRUE)`,
+`remote_addr` is replaced with `[REDACTED]` before the event is emitted.
+
 Note: the raw `session$request` from Shiny is not included to keep the
 event JSON-serializable and concise.
 
@@ -118,16 +121,22 @@ when forwarding events to log sinks:
 - Proxy headers are redacted: headers starting with `x_` (e.g.,
   `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to
   avoid leaking internal infrastructure details.
+- Client IP addresses are redacted: `remote_addr` is replaced with
+  `[REDACTED]` while HTTP redaction stays enabled.
 
 This means you can safely forward the `shiny_session$http` object to
 external logging systems without manually stripping secrets.
 
-If you need the raw, unsanitized HTTP context in audit events, you can
-disable redaction:
+If you need the raw, unsanitized HTTP context in audit events for local
+debugging, you can disable redaction temporarily:
 
 ``` r
 options(shinyOAuth.audit_redact_http = FALSE)
 ```
+
+Do not use this in production log sinks. Raw mode can expose
+authorization codes, state values, cookies, authorization headers,
+client assertions, and client IP addresses.
 
 ### Excluding HTTP context entirely
 

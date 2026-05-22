@@ -275,7 +275,7 @@ beyond that RFC 9449 nonce handshake. The response must include at least
 After a successful response, ‘shinyOAuth’ also checks two basic things:
 
 - If the token response includes `scope`, ‘shinyOAuth’ can reconcile it
-  against the requested scopes (defaults to strict enforcement;
+  against the requested scopes (defaults to warning on reduced grants;
   configurable via the client `scope_validation` setting)
 - The token response must include `token_type`; if the provider was
   configured with a non-empty `allowed_token_types`, that value must

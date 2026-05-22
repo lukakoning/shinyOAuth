@@ -197,6 +197,10 @@ future backend)</li>
 </ul>
 </li>
 </ul>
+<p>With the default
+<code>options(shinyOAuth.audit_redact_http = TRUE)</code>,
+<code>remote_addr</code> is replaced with <code>[REDACTED]</code> before
+the event is emitted.</p>
 <p>Note: the raw <code>session$request</code> from Shiny is not included
 to keep the event JSON-serializable and concise.</p>
 <div class="section level3">
@@ -222,14 +226,20 @@ such as <code>client_secret</code>, <code>client_assertion</code>,
 (e.g., <code>x_forwarded_for</code>, <code>x_real_ip</code>) are
 replaced with <code>[REDACTED]</code> to avoid leaking internal
 infrastructure details.</li>
+<li>Client IP addresses are redacted: <code>remote_addr</code> is
+replaced with <code>[REDACTED]</code> while HTTP redaction stays
+enabled.</li>
 </ul>
 <p>This means you can safely forward the <code>shiny_session$http</code>
 object to external logging systems without manually stripping
 secrets.</p>
-<p>If you need the raw, unsanitized HTTP context in audit events, you
-can disable redaction:</p>
+<p>If you need the raw, unsanitized HTTP context in audit events for
+local debugging, you can disable redaction temporarily:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_redact_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>Do not use this in production log sinks. Raw mode can expose
+authorization codes, state values, cookies, authorization headers,
+client assertions, and client IP addresses.</p>
 </div>
 <div class="section level3">
 <h3 id="excluding-http-context-entirely">Excluding HTTP context entirely<a class="anchor" aria-label="anchor" href="#excluding-http-context-entirely"></a>

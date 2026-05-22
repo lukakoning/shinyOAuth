@@ -46,7 +46,7 @@ OAuthClient(
   state_payload_max_age = 300,
   state_entropy = 64,
   state_key = random_urlsafe(n = 128),
-  scope_validation = "strict",
+  scope_validation = "warn",
   claims_validation = "none",
   userinfo_jwt_required_temporal_claims = character(0),
   required_acr_values = character(0),
@@ -388,7 +388,10 @@ OAuthClient(
     [`I()`](https://rdrr.io/r/base/AsIs.html), e.g.,
     `acr = list(values = I("urn:mace:incommon:iap:silver"))` produces
     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
-    are always encoded as arrays.
+    are always encoded as arrays. shinyOAuth warns when it sees a
+    single-element `values` entry that is not wrapped in
+    [`I()`](https://rdrr.io/r/base/AsIs.html), because that common input
+    pattern serializes incorrectly for OIDC.
 
   - A character string: pre-encoded JSON string (advanced use). Must be
     valid JSON. Use this when you need full control over JSON encoding.
@@ -471,12 +474,12 @@ OAuthClient(
   allows token responses to omit `scope` when it is unchanged from the
   requested scope.
 
-  - `"strict"` (default): Throws an error if any requested scope is
-    missing from the granted scopes. Omitted `scope` is treated as
-    unchanged, not as an error.
+  - `"warn"` (default): Emits a warning but continues authentication if
+    scopes are missing.
 
-  - `"warn"`: Emits a warning but continues authentication if scopes are
-    missing.
+  - `"strict"`: Throws an error if any requested scope is missing from
+    the granted scopes. Omitted `scope` is treated as unchanged, not as
+    an error.
 
   - `"none"`: Skips scope validation entirely.
 

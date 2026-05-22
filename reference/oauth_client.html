@@ -85,7 +85,7 @@ oauth_module_server() starts login or callback handling."></head><body>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_require_access_token <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strict"</span>, <span class="st">"warn"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
+<span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"warn"</span>, <span class="st">"strict"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  claims_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"warn"</span>, <span class="st">"strict"</span><span class="op">)</span>,</span>
 <span>  userinfo_jwt_required_temporal_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -172,7 +172,9 @@ The OIDC spec defines <code>values</code> as an array. To force array encoding
 for a single-element vector, wrap it in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, e.g.,
 <code>acr = list(values = I("urn:mace:incommon:iap:silver"))</code> produces
 <code>{"values":["urn:mace:incommon:iap:silver"]}</code>. Multi-element vectors
-are always encoded as arrays.</p></li>
+are always encoded as arrays. shinyOAuth warns when it sees a
+single-element <code>values</code> entry that is not wrapped in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code>, because
+that common input pattern serializes incorrectly for OIDC.</p></li>
 <li><p>A character string: pre-encoded JSON string (advanced use). Must
 be valid JSON. Use this when you need full control over JSON encoding.
 Note: The <code>claims</code> parameter is OPTIONAL per OIDC Core §5.5. Not all
@@ -471,11 +473,11 @@ to bind refresh tokens.</p></dd>
 the authorization server grants fewer scopes than requested. RFC 6749
 Section 3.3 permits servers to issue tokens with reduced scope, and
 Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
-from the requested scope.</p><ul><li><p><code>"strict"</code> (default): Throws an error if any requested scope is missing
-from the granted scopes. Omitted <code>scope</code> is treated as unchanged, not as
-an error.</p></li>
-<li><p><code>"warn"</code>: Emits a warning but continues authentication if scopes are
-missing.</p></li>
+from the requested scope.</p><ul><li><p><code>"warn"</code> (default): Emits a warning but continues authentication if
+scopes are missing.</p></li>
+<li><p><code>"strict"</code>: Throws an error if any requested scope is missing from the
+granted scopes. Omitted <code>scope</code> is treated as unchanged, not as an
+error.</p></li>
 <li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
 </ul></dd>
 

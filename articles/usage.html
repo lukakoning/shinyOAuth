@@ -490,7 +490,8 @@ exclude HTTP request details from audit events (default:
 <li>
 <code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
 automatic redaction of sensitive data in audit events (default:
-<code>TRUE</code>)</li>
+<code>TRUE</code>). Debug only: raw mode can expose cookies,
+authorization headers, codes, state values, and client IP addresses</li>
 <li>
 <code>options(shinyOAuth.audit_digest_key = ...)</code> – shared key
 for HMAC-SHA256 digests used in audit/OTel attributes. By default,
