@@ -1066,6 +1066,7 @@ otel_e2e("token.verify span captures validation decision attributes", {
     use_nonce = TRUE,
     scopes = c("openid", "profile")
   )
+  cli@scope_validation <- "strict"
   cli@provider@id_token_validation <- TRUE
   cli@required_acr_values <- "loa2"
   shiny_session <- list(
@@ -1317,6 +1318,15 @@ otel_e2e("userinfo spans capture sender-constraint details", {
       )
     )
   ))
+  token <- OAuthToken(
+    access_token = raw_token,
+    userinfo = list(),
+    cnf = list(
+      jkt = shinyOAuth:::compute_jwk_thumbprint(
+        shinyOAuth:::dpop_public_jwk(key)
+      )
+    )
+  )
   calls <- 0L
 
   r <- otelsdk::with_otel_record({
@@ -1345,7 +1355,7 @@ otel_e2e("userinfo spans capture sender-constraint details", {
       },
       .package = "shinyOAuth",
       {
-        shinyOAuth::get_userinfo(cli, token = raw_token)
+        shinyOAuth::get_userinfo(cli, token = token)
       }
     )
   })

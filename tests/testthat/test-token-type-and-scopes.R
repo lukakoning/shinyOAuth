@@ -53,7 +53,7 @@ test_that("token_type is enforced when present", {
   )
 })
 
-test_that("missing requested scopes cause error when provider returns scope", {
+test_that("missing requested scopes cause error in strict mode", {
   prov <- oauth_provider(
     name = "fake",
     auth_url = "https://example.com/auth",
@@ -82,6 +82,7 @@ test_that("missing requested scopes cause error when provider returns scope", {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     )
   )
+  cli@scope_validation <- "strict"
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)

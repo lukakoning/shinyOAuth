@@ -610,6 +610,7 @@ test_that("introspect_elements can require scopes", {
     use_nonce = FALSE,
     scopes = c("openid", "profile")
   )
+  cli@scope_validation <- "strict"
   cli@introspect_elements <- "scope"
 
   tok <- valid_browser_token()
@@ -652,6 +653,7 @@ test_that("introspect_elements can require scopes", {
     use_nonce = FALSE,
     scopes = "openid profile"
   )
+  cli_str@scope_validation <- "strict"
   cli_str@introspect_elements <- "scope"
 
   urls <- shinyOAuth:::prepare_call(cli_str, browser_token = tok)
@@ -845,7 +847,8 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     ),
     introspect = TRUE,
-    introspect_elements = "scope"
+    introspect_elements = "scope",
+    scope_validation = "strict"
   )
 
   tok <- valid_browser_token()
@@ -891,6 +894,7 @@ test_that("introspection scope validation does not split comma-bearing tokens", 
     use_nonce = FALSE,
     scopes = c("read", "write")
   )
+  cli@scope_validation <- "strict"
   cli@introspect_elements <- "scope"
 
   tok <- valid_browser_token()
