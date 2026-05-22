@@ -420,6 +420,7 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     expect_equal(result$headers$proxy_authorization, "Basic proxysecret123")
     expect_equal(result$headers$www_authenticate, "Bearer realm=example")
     expect_equal(result$headers$x_forwarded_for, "192.168.1.1")
+    expect_equal(result$remote_addr, "192.168.1.1")
     expect_equal(result$headers$user_agent, "TestClient/1.0")
   })
 
@@ -429,6 +430,7 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     result <- shinyOAuth:::build_http_summary(req)
     expect_no_match(result$query_string, "authcode123")
     expect_null(result$headers$cookie)
+    expect_equal(result$remote_addr, "[REDACTED]")
   })
 })
 

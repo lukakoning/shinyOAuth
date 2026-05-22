@@ -157,6 +157,7 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   testthat::expect_null(http$headers$authorization)
   testthat::expect_equal(http$headers$user_agent, "TestClient/1.0")
   testthat::expect_equal(http$headers$x_forwarded_for, "[REDACTED]")
+  testthat::expect_equal(http$remote_addr, "[REDACTED]")
 })
 
 testthat::test_that("audit_event redacts malformed callback query strings", {
@@ -295,4 +296,5 @@ testthat::test_that("audit_event can include raw HTTP context when redaction is 
   testthat::expect_equal(http$headers$cookie, "session=secret123")
   testthat::expect_equal(http$headers$authorization, "Bearer token123")
   testthat::expect_equal(http$headers$x_forwarded_for, "192.168.1.1")
+  testthat::expect_equal(http$remote_addr, "192.168.1.1")
 })

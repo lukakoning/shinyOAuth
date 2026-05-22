@@ -119,6 +119,11 @@ sanitize_http_summary <- function(summary) {
     summary$headers <- redact_headers(summary$headers)
   }
 
+  # Client IPs can be personal data; keep them out of sanitized audit events.
+  if (!is.null(summary$remote_addr) && nzchar(summary$remote_addr)) {
+    summary$remote_addr <- "[REDACTED]"
+  }
+
   summary
 }
 

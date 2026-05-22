@@ -46,6 +46,8 @@ information.
   `OAuthToken@id_token_validated` result for the returned token, so telemetry no
   longer overstates ID-token validation when tests or debug options skip
   signature verification.
+  - Sanitized HTTP audit context now redacts `remote_addr` as well as proxy
+  headers, so default audit events no longer export raw client IP addresses.
   - Improved existing audit event types. `audit_token_exchange` and 
   `audit_token_refresh` now include `expires_in_synthesized`, indicating that 
   the provider did not return a usable `expires_in` and shinyOAuth had to 
