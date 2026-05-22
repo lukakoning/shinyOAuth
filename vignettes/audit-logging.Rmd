@@ -100,11 +100,14 @@ This prevents accidental secret leakage when forwarding events to log sinks:
 This means you can safely forward the `shiny_session$http` object to external logging systems
 without manually stripping secrets.
 
-If you need the raw, unsanitized HTTP context in audit events, you can disable redaction:
+If you need the raw, unsanitized HTTP context in audit events for local debugging, you can disable redaction temporarily:
 
 ```r
 options(shinyOAuth.audit_redact_http = FALSE)
 ```
+
+Do not use this in production log sinks. Raw mode can expose authorization codes,
+state values, cookies, authorization headers, client assertions, and client IP addresses.
 
 ### Excluding HTTP context entirely
 
