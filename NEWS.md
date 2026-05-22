@@ -71,6 +71,10 @@ information.
   text by default and keep only `oauth_error`, `oauth_error_uri`, and 
   `body_digest`. The raw description is emitted only when 
   `options(shinyOAuth.expose_error_body = TRUE)` is enabled for debugging.
+  - `err_http()` now strips query strings, fragments, and userinfo from
+  response URLs before surfacing them through condition messages and emitted
+  events, reducing leakage of authorization codes, state, request URIs, and
+  similar URL-borne secrets.
 
 * `oauth_module_server()` now:
   - Explicitly ignores new login requests while a 

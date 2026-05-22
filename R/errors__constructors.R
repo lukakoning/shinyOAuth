@@ -381,7 +381,11 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
       desc <- NULL
     }
     urlv <- try(httr2::resp_url(resp), silent = TRUE)
-    url <- if (!inherits(urlv, "try-error") && length(urlv) == 1) urlv else NULL
+    url <- if (!inherits(urlv, "try-error") && length(urlv) == 1) {
+      otel_http_url_full(urlv)
+    } else {
+      NULL
+    }
     if (inherits(url, "try-error")) {
       url <- NULL
     }
@@ -429,7 +433,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
           oauth_error_description <- parsed[["error_description"]]
         }
         if (is_valid_string(parsed[["error_uri"]])) {
-          oauth_error_uri <- parsed[["error_uri"]]
+          oauth_error_uri <- otel_http_url_full(parsed[["error_uri"]])
         }
       }
     }

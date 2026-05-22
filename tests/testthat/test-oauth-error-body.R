@@ -2,11 +2,16 @@
 
 test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
   resp <- httr2::response(
-    url = "https://example.com/token",
+    url = "https://user:pass@example.com/token?code=secret&state=abc#frag",
     status = 400,
     headers = list("content-type" = "application/json"),
     body = charToRaw(
-      '{"error":"invalid_grant","error_description":"The authorization code has expired","error_uri":"https://example.com/docs/errors#invalid_grant"}'
+      paste0(
+        '{"error":"invalid_grant","error_description":',
+        '"The authorization code has expired",',
+        '"error_uri":',
+        '"https://example.com/docs/errors?request_uri=opaque#invalid_grant"}'
+      )
     )
   )
 
@@ -25,9 +30,10 @@ test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
     cond$oauth_error_description,
     "The authorization code has expired"
   )
+  expect_identical(cond$url, "https://example.com/token")
   expect_identical(
     cond$oauth_error_uri,
-    "https://example.com/docs/errors#invalid_grant"
+    "https://example.com/docs/errors"
   )
   # Message should contain the structured error
 
@@ -39,9 +45,18 @@ test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
   )
   expect_match(
     conditionMessage(cond),
-    "https://example.com/docs/errors#invalid_grant",
+    "https://example.com/docs/errors",
     fixed = TRUE
   )
+  expect_match(
+    conditionMessage(cond),
+    "URL: https://example.com/token",
+    fixed = TRUE
+  )
+  expect_no_match(conditionMessage(cond), "user:pass", fixed = TRUE)
+  expect_no_match(conditionMessage(cond), "code=secret", fixed = TRUE)
+  expect_no_match(conditionMessage(cond), "state=abc", fixed = TRUE)
+  expect_no_match(conditionMessage(cond), "request_uri=opaque", fixed = TRUE)
 })
 
 test_that("err_http extracts error + error_description without error_uri", {
@@ -137,7 +152,7 @@ test_that("err_http propagates RFC 6749 §5.2 fields to trace event", {
   ))
 
   resp <- httr2::response(
-    url = "https://example.com/token",
+    url = "https://user:pass@example.com/token?code=secret&state=abc#frag",
     status = 400,
     headers = list("content-type" = "application/json"),
     body = charToRaw(
@@ -157,6 +172,7 @@ test_that("err_http propagates RFC 6749 §5.2 fields to trace event", {
   expect_true(length(events) >= 1)
   ev <- events[[1]]
   expect_identical(ev$oauth_error, "invalid_grant")
+  expect_identical(ev$url, "https://example.com/token")
   expect_null(ev$oauth_error_description)
   expect_null(ev$oauth_error_uri)
 })
