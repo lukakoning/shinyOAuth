@@ -1213,6 +1213,27 @@ oauth_client_validate <- function(self) {
     )
   }
 
+  provider_has_issuer <- is_valid_string(
+    self@provider@issuer %||% NA_character_
+  )
+  par_configured <- is_valid_string(self@provider@par_url %||% NA_character_)
+  front_channel_mode <-
+    self@provider@authorization_request_front_channel_mode %||% "compat"
+  if (
+    isTRUE(provider_has_issuer) &&
+      identical(front_channel_mode, "minimal") &&
+      (identical(arm, "request_uri") ||
+        (identical(arm, "request") && !isTRUE(par_configured)))
+  ) {
+    return(
+      paste(
+        "OAuthClient: OpenID Connect request and caller-managed request_uri transports do not support",
+        "authorization_request_front_channel_mode = 'minimal';",
+        "use 'compat' or send the request through PAR"
+      )
+    )
+  }
+
   arsa <- self@authorization_request_signing_alg %||% NA_character_
   if (!is.character(arsa) || length(arsa) != 1L) {
     return(

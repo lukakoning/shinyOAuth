@@ -830,49 +830,33 @@ test_that("request mode through PAR pushes encrypted request objects", {
   expect_identical(inner_pl$redirect_uri, "http://localhost:8100")
 })
 
-test_that("request_uri minimal front-channel mode omits duplicated OIDC params", {
-  published <- NULL
-  cli <- make_jar_test_client(
-    provider = make_jar_test_provider(
-      authorization_request_front_channel_mode = "minimal"
-    ),
-    authorization_request_mode = "request_uri"
-  )
-
-  auth_url <- shinyOAuth:::prepare_call(
-    cli,
-    valid_browser_token(),
-    request_uri_publisher = function(
-      request_object,
-      request_handle_id,
-      expires_at,
-      oauth_client
-    ) {
-      published <<- list(
-        request_object = request_object,
-        request_handle_id = request_handle_id,
-        expires_at = expires_at,
-        client_id = oauth_client@client_id
+test_that("OIDC request minimal front-channel mode is rejected without PAR", {
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(
+        authorization_request_front_channel_mode = "minimal"
       )
-      "https://client.example.com/minimal-request-object"
-    }
+    ),
+    regexp = paste(
+      "OpenID Connect request and caller-managed request_uri transports do not support",
+      "authorization_request_front_channel_mode = 'minimal'"
+    )
   )
+})
 
-  expect_setequal(
-    query_param_names(auth_url),
-    oidc_request_url_param_names("request_uri", "minimal")
+test_that("OIDC request_uri minimal front-channel mode is rejected", {
+  expect_error(
+    make_jar_test_client(
+      provider = make_jar_test_provider(
+        authorization_request_front_channel_mode = "minimal"
+      ),
+      authorization_request_mode = "request_uri"
+    ),
+    regexp = paste(
+      "OpenID Connect request and caller-managed request_uri transports do not support",
+      "authorization_request_front_channel_mode = 'minimal'"
+    )
   )
-  expect_false(grepl("[?&]response_type=", auth_url))
-  expect_false(grepl("[?&]scope=", auth_url))
-  expect_identical(
-    parse_query_param(auth_url, "request_uri", decode = TRUE),
-    "https://client.example.com/minimal-request-object"
-  )
-
-  request_payload <- shinyOAuth:::parse_jwt_payload(published$request_object)
-  expect_identical(request_payload$client_id, "abc")
-  expect_identical(request_payload$response_type, "code")
-  expect_identical(request_payload$scope, "openid profile")
 })
 
 

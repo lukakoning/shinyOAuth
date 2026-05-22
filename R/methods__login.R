@@ -771,6 +771,22 @@ build_auth_url <- function(
   )
   front_channel_mode <-
     oauth_client@provider@authorization_request_front_channel_mode %||% "compat"
+  oidc_outer_params_required <-
+    is_valid_string(oauth_client@provider@issuer %||% NA_character_) &&
+    (isTRUE(request_uri_used) ||
+      (isTRUE(request_object_used) && !isTRUE(par_used)))
+  if (
+    identical(front_channel_mode, "minimal") &&
+      isTRUE(oidc_outer_params_required)
+  ) {
+    err_config(
+      paste(
+        "build_auth_url: OpenID Connect request and caller-managed request_uri transports require",
+        "authorization_request_front_channel_mode = 'compat';",
+        "use PAR if you need a minimal browser URL"
+      )
+    )
+  }
   front_channel_params <- if (
     identical(front_channel_mode, "compat") &&
       is_valid_string(oauth_client@provider@issuer %||% NA_character_)
