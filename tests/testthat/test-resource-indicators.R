@@ -47,6 +47,19 @@ test_that("oauth_client rejects non-absolute resource indicators", {
   )
 })
 
+test_that("oauth_client rejects resource indicators with fragments", {
+  expect_error(
+    oauth_client(
+      provider = make_test_provider(),
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      resource = "https://api.example.com/#frag"
+    ),
+    regexp = "resource.*fragment"
+  )
+})
+
 test_that("prepare_call includes repeated RFC 8707 resource indicators", {
   cli <- make_test_client(
     resource = c(

@@ -389,6 +389,22 @@ is_absolute_uri <- function(x) {
   TRUE
 }
 
+#' Internal: check whether a URI includes a fragment component
+#'
+#' Used by endpoint, issuer, and resource-indicator validation.
+#'
+#' @param x URI string to inspect.
+#' @return `TRUE` when `x` includes a fragment delimiter; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+has_uri_fragment <- function(x) {
+  if (!is_valid_string(x)) {
+    return(FALSE)
+  }
+
+  grepl("#", trimws(x), fixed = TRUE)
+}
+
 #' Internal: sanitize provider callback error_uri values
 #'
 #' Provider-supplied `error_uri` values are untrusted navigation inputs. Only
@@ -442,6 +458,9 @@ resource_indicator_problem <- function(resource) {
   }
   if (!all(vapply(resource, is_absolute_uri, logical(1)))) {
     return("resource must contain only absolute URI values")
+  }
+  if (any(vapply(resource, has_uri_fragment, logical(1)))) {
+    return("resource must not include a fragment component")
   }
 
   NULL
