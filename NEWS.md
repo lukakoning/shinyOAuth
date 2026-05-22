@@ -10,6 +10,9 @@ Clients configured with `dpop_private_key` now send DPoP proofs on token and
 protected-resource requests, include `dpop_jkt` in authorization requests,
 can require `token_type = "DPoP"` plus `cnf.jkt` binding, and replay one
 `DPoP-Nonce` challenge on token and protected-resource requests.
+Raw access-token strings no longer auto-upgrade to `DPoP` based on locally
+parsed JWT `cnf.jkt`; pass `token_type = "DPoP"` explicitly or use an
+`OAuthToken` with trusted token metadata instead.
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed and encrypted Request Objects via

@@ -178,7 +178,7 @@ test_that("resource_req rejects strict DPoP JWTs without cnf.jkt", {
   )
 })
 
-test_that("resource_req infers DPoP from raw JWT access-token cnf.jkt", {
+test_that("resource_req keeps raw JWT access tokens on Bearer by default", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   key <- openssl::rsa_keygen()
   cli <- make_dpop_test_client(prov, dpop_private_key = key)
@@ -197,51 +197,21 @@ test_that("resource_req infers DPoP from raw JWT access-token cnf.jkt", {
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-  expect_identical(dry$headers$authorization, paste("DPoP", raw_token))
-  expect_true(nzchar(dry$headers$dpop))
-
-  payload <- decode_dpop_payload(dry$headers$dpop)
-  expect_identical(payload$htu, "https://resource.example.com/api")
-  expect_true(nzchar(payload$ath))
+  expect_identical(dry$headers$authorization, paste("Bearer", raw_token))
+  expect_null(dry$headers$dpop)
 })
 
-test_that("resource_req keeps DPoP inference when cnf members span sources", {
+test_that("resource_req infers DPoP from explicit OAuthToken cnf.jkt", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  files <- list(
-    cert_file = mtls_pem_fixture("client-cert.pem"),
-    key_file = mtls_pem_fixture("client-key.pem"),
-    ca_file = mtls_pem_fixture("ca-cert.pem")
-  )
   key <- openssl::rsa_keygen()
-  cli <- oauth_client(
-    provider = prov,
-    client_id = "abc",
-    client_secret = "",
-    redirect_uri = "http://localhost:8100",
-    scopes = character(0),
-    state_store = cachem::cache_mem(max_age = 600),
-    state_key = paste0(
-      "0123456789abcdefghijklmnopqrstuvwxyz",
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    ),
-    dpop_private_key = key,
-    tls_client_cert_file = files$cert_file,
-    tls_client_key_file = files$key_file,
-    tls_client_key_password = "password",
-    tls_client_ca_file = files$ca_file
-  )
+  cli <- make_dpop_test_client(prov, dpop_private_key = key)
   jkt <- shinyOAuth:::compute_jwk_thumbprint(
     shinyOAuth:::dpop_public_jwk(key)
   )
   tok <- OAuthToken(
-    access_token = build_dummy_jwt(list(
-      sub = "user-1",
-      cnf = list(jkt = jkt)
-    )),
+    access_token = build_dummy_jwt(list(sub = "user-1")),
     userinfo = list(),
-    cnf = list(
-      `x5t#S256` = shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
-    )
+    cnf = list(jkt = jkt)
   )
 
   req <- resource_req(
@@ -1971,7 +1941,7 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
   expect_identical(userinfo$second_nonce, "resource-nonce-1")
 })
 
-test_that("get_userinfo retries a DPoP nonce challenge for inferred raw JWT tokens", {
+test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with explicit token_type", {
   state <- new.env(parent = emptyenv())
   state$count <- 0L
   state$first_has_nonce <- NA
@@ -2021,7 +1991,7 @@ test_that("get_userinfo retries a DPoP nonce challenge for inferred raw JWT toke
     .package = "shinyOAuth"
   )
 
-  userinfo <- get_userinfo(cli, token = raw_token)
+  userinfo <- get_userinfo(cli, token = raw_token, token_type = "DPoP")
 
   expect_identical(userinfo$sub, "user-1")
   expect_identical(userinfo$request_count, 2L)

@@ -45,10 +45,9 @@
 #' @param token_type Optional override for the access token type when `token`
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
 #'   Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
-#'   preserves `OAuthToken@token_type` and also infers `DPoP` from an observed
-#'   raw JWT access token `cnf.jkt` binding when `oauth_client` carries a DPoP
-#'   key. This local JWT parse does not independently verify the access-token
-#'   signature.
+#'   preserves `OAuthToken@token_type`, and may infer `DPoP` from explicit
+#'   `OAuthToken@cnf$jkt` metadata. Raw access-token strings default to
+#'   `Bearer` unless you pass `token_type = "DPoP"` explicitly.
 #' @param dpop_nonce Optional DPoP nonce to embed in the proof for this
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
@@ -329,14 +328,14 @@ prepare_client_bearer_request <- function(
 ) {
   token_info <- resolve_client_bearer_token(
     token = token,
-    token_type = token_type,
-    oauth_client = oauth_client
+    token_type = token_type
   )
 
   validate_client_bearer_token_context(
     token_type = token_info$token_type,
     oauth_client = oauth_client
   )
+
   validate_client_bearer_sender_constraints(
     token = token,
     access_token = token_info$access_token,
@@ -401,26 +400,25 @@ resolve_client_bearer_target_url <- function(url = NULL, req = NULL) {
 #'
 #' @param token Either an [OAuthToken] object or a raw access-token string.
 #' @param token_type Optional token-type override for raw token strings.
-#' @param oauth_client Optional [OAuthClient] whose configured DPoP key may
-#'   imply an effective `DPoP` token type for raw JWT access tokens carrying a
-#'   `cnf.jkt` binding.
 #' @return A named list with `access_token` and `token_type` scalar string
 #'   entries.
 #' @keywords internal
 #' @noRd
 resolve_client_bearer_token <- function(
   token,
-  token_type = NULL,
-  oauth_client = NULL
+  token_type = NULL
 ) {
   access_token <- token
   effective_token_type <- NULL
+  explicit_cnf_jkt <- NA_character_
   explicit_token_type <- !(is.null(token_type) ||
     (is.character(token_type) && length(token_type) == 1L && is.na(token_type)))
 
   if (S7::S7_inherits(token, class = OAuthToken)) {
     access_token <- token@access_token
     effective_token_type <- token@token_type
+    explicit_cnf_jkt <- normalize_token_cnf(token@cnf %||% NULL)[["jkt"]] %||%
+      NA_character_
   }
 
   if (isTRUE(explicit_token_type)) {
@@ -438,11 +436,7 @@ resolve_client_bearer_token <- function(
     as.character(effective_token_type)
   } else if (is_valid_string(effective_token_type)) {
     as.character(effective_token_type)
-  } else if (
-    S7::S7_inherits(oauth_client, class = OAuthClient) &&
-      client_has_dpop(oauth_client) &&
-      is_valid_string(token_cnf_jkt(token = token, access_token = access_token))
-  ) {
+  } else if (is_valid_string(explicit_cnf_jkt)) {
     "DPoP"
   } else {
     "Bearer"
@@ -458,8 +452,6 @@ resolve_client_bearer_token <- function(
   )
 }
 
-#' Validate token-type requirements for an authorized API request
-#'
 #' Used by [resource_req()] after the effective token type is known. DPoP
 #' requests need an [OAuthClient] because the client carries the private key
 #' used to sign the DPoP proof.

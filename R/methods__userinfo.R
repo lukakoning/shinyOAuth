@@ -64,8 +64,7 @@ get_userinfo <- function(
 
   token_info <- resolve_client_bearer_token(
     token = token,
-    token_type = token_type,
-    oauth_client = oauth_client
+    token_type = token_type
   )
   access_token <- token_info$access_token
   effective_token_type <- token_info$token_type
