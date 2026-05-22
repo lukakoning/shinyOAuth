@@ -57,7 +57,7 @@ callback handling before the code exchange continues.</p>
 <span>  <span class="va">client</span>,</span>
 <span>  <span class="va">encrypted_payload</span>,</span>
 <span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  audit_success <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  audit_success <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -82,9 +82,10 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 
 <dt id="arg-audit-success">audit_success<a class="anchor" aria-label="anchor" href="#arg-audit-success"></a></dt>
 <dd><p>Whether successful payload validation should emit the
-standard callback validation audit event. Set to <code>FALSE</code> when a caller
-must perform additional checks or single-use state consumption before
-emitting the success audit. Failures are still audited.</p></dd>
+standard callback validation audit event. Defaults to <code>FALSE</code> because
+callback handlers normally still need to validate the browser-bound token
+and consume the single-use state entry before success is final. Failures
+are still audited.</p></dd>
 
 </dl></div>
     <div class="section level2">
