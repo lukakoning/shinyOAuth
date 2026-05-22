@@ -116,7 +116,9 @@ The OIDC spec defines \code{values} as an array. To force array encoding
 for a single-element vector, wrap it in \code{\link[=I]{I()}}, e.g.,
 \code{acr = list(values = I("urn:mace:incommon:iap:silver"))} produces
 \verb{\{"values":["urn:mace:incommon:iap:silver"]\}}. Multi-element vectors
-are always encoded as arrays.
+are always encoded as arrays. shinyOAuth warns when it sees a
+single-element \code{values} entry that is not wrapped in \code{\link[=I]{I()}}, because
+that common input pattern serializes incorrectly for OIDC.
 \item A character string: pre-encoded JSON string (advanced use). Must
 be valid JSON. Use this when you need full control over JSON encoding.
 Note: The \code{claims} parameter is OPTIONAL per OIDC Core §5.5. Not all

@@ -118,6 +118,9 @@ the client's configured scopes when a refresh response omits `scope`.
   down to manual extra params.
   - Defaults `scope_validation` to `"warn"`, so RFC-compliant reduced grants
   surface as warnings unless you opt into `scope_validation = "strict"`.
+  - Warns when list-based OIDC claims requests use a single-element `values`
+  entry without `I(...)`, because `jsonlite::toJSON(auto_unbox = TRUE)` would
+  otherwise serialize that OIDC array constraint as a scalar.
   - Rejects impossible JOSE alg/private-key combinations for JWT client
   assertions and DPoP proofs before emitting invalid JOSE headers.
   * Also enforces OIDC claim request `value` and `values` constraints when 

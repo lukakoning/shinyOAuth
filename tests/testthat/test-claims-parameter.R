@@ -285,13 +285,21 @@ test_that("claims parameter survives URL encoding/decoding round-trip", {
 test_that("I() forces array encoding for single-element values field", {
   # Per OIDC Core §5.5.1, values is always an array. auto_unbox = TRUE
   # collapses single-element vectors to scalars; I() prevents this.
-  cli <- make_test_client(
-    claims = list(
-      id_token = list(
-        acr = list(values = I("urn:mace:incommon:iap:silver"))
+  warned <- FALSE
+  cli <- withCallingHandlers(
+    make_test_client(
+      claims = list(
+        id_token = list(
+          acr = list(values = I("urn:mace:incommon:iap:silver"))
+        )
       )
-    )
+    ),
+    warning = function(w) {
+      warned <<- TRUE
+      invokeRestart("muffleWarning")
+    }
   )
+  expect_false(warned)
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   claims_val <- parse_query_param(url, "claims", decode = TRUE)
@@ -308,12 +316,26 @@ test_that("I() forces array encoding for single-element values field", {
 
 test_that("single-element values without I() becomes scalar (expected)", {
   # Without I(), auto_unbox produces a scalar — user should be aware
-  cli <- make_test_client(
-    claims = list(
-      id_token = list(
-        acr = list(values = "urn:mace:incommon:iap:silver")
+  rlang::reset_warning_verbosity("claims-values-singleton-scalar")
+
+  warning_cnd <- NULL
+  cli <- withCallingHandlers(
+    make_test_client(
+      claims = list(
+        id_token = list(
+          acr = list(values = "urn:mace:incommon:iap:silver")
+        )
       )
-    )
+    ),
+    warning = function(w) {
+      warning_cnd <<- w
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_s3_class(warning_cnd, "warning")
+  expect_match(
+    conditionMessage(warning_cnd),
+    "values.*serialize|Wrap single-element `values` entries"
   )
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
