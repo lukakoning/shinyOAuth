@@ -174,6 +174,7 @@ testthat::test_that("strict scope validation rejects a real Keycloak token set m
     prov,
     scopes = c("openid")
   )
+  client@scope_validation <- "strict"
 
   auth_url <- shinyOAuth::prepare_call(
     client,
