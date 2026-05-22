@@ -551,7 +551,7 @@ oauth_provider_oidc_discover <- function(
   check_resp_body_size(resp, context = "oidc_discovery")
   ct <- tolower(httr2::resp_header(resp, "content-type") %||% "")
 
-  if (!grepl("^application/json", ct)) {
+  if (!grepl("^application/json(?:\\s*;|$)", ct, perl = TRUE)) {
     err_parse(
       "Discovery response was not JSON",
       context = list(content_type = ct)
