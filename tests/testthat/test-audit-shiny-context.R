@@ -99,6 +99,12 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
       "state=mystate",
       "client_secret=super-secret",
       "client_assertion=jwt-assertion",
+      "request=signed.request.jwt",
+      "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Aabc123",
+      "code_challenge=challenge123",
+      "claims=%7B%22userinfo%22%3A%7B%22email%22%3A%7B%22essential%22%3Atrue%7D%7D%7D",
+      "login_hint=alice%40example.com",
+      "error_description=Sensitive%20provider%20detail",
       "safe=keep_me",
       sep = "&"
     ),
@@ -142,6 +148,11 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   testthat::expect_no_match(http$query_string, "mystate")
   testthat::expect_no_match(http$query_string, "super-secret")
   testthat::expect_no_match(http$query_string, "jwt-assertion")
+  testthat::expect_no_match(http$query_string, "signed.request.jwt")
+  testthat::expect_no_match(http$query_string, "request_uri%3Aabc123")
+  testthat::expect_no_match(http$query_string, "challenge123")
+  testthat::expect_no_match(http$query_string, "alice%40example.com")
+  testthat::expect_no_match(http$query_string, "Sensitive%20provider%20detail")
   testthat::expect_null(http$headers$cookie)
   testthat::expect_null(http$headers$authorization)
   testthat::expect_equal(http$headers$user_agent, "TestClient/1.0")
@@ -156,6 +167,8 @@ testthat::test_that("audit_event redacts malformed callback query strings", {
     QUERY_STRING = paste(
       "code=authcode123%ZZ",
       "state=mystate%ZZ",
+      "request=signed.request.jwt%ZZ",
+      "request_uri=urn:ietf:params:oauth:request_uri:abc123",
       "safe=keep_me",
       sep = "&"
     ),
@@ -190,6 +203,8 @@ testthat::test_that("audit_event redacts malformed callback query strings", {
   testthat::expect_match(http$query_string, "safe=keep_me")
   testthat::expect_no_match(http$query_string, "authcode123")
   testthat::expect_no_match(http$query_string, "mystate")
+  testthat::expect_no_match(http$query_string, "signed.request.jwt")
+  testthat::expect_no_match(http$query_string, "request_uri:abc123")
 })
 
 testthat::test_that("raw query fallback redacts sensitive callback values", {
@@ -200,6 +215,8 @@ testthat::test_that("raw query fallback redacts sensitive callback values", {
         "state=mystate%ZZ",
         "client_secret=super-secret%ZZ",
         "client_assertion=jwt-assertion%ZZ",
+        "request=signed.request.jwt%ZZ",
+        "request_uri=urn:ietf:params:oauth:request_uri:abc123",
         "safe=keep_me",
         sep = "&"
       ),
@@ -216,6 +233,12 @@ testthat::test_that("raw query fallback redacts sensitive callback values", {
         "client_secret",
         "client_assertion",
         "assertion",
+        "request",
+        "request_uri",
+        "claims",
+        "login_hint",
+        "error_description",
+        "code_challenge",
         "username",
         "password"
       )
@@ -225,6 +248,8 @@ testthat::test_that("raw query fallback redacts sensitive callback values", {
       "state=[REDACTED]",
       "client_secret=[REDACTED]",
       "client_assertion=[REDACTED]",
+      "request=[REDACTED]",
+      "request_uri=[REDACTED]",
       "safe=keep_me",
       sep = "&"
     )

@@ -359,7 +359,14 @@ test_that("build_http_summary returns sanitized output", {
   req <- list(
     REQUEST_METHOD = "GET",
     PATH_INFO = "/callback",
-    QUERY_STRING = "code=authcode123&state=mystate",
+    QUERY_STRING = paste(
+      "code=authcode123",
+      "state=mystate",
+      "request=signed.request.jwt",
+      "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Aabc123",
+      "login_hint=alice%40example.com",
+      sep = "&"
+    ),
     HTTP_HOST = "example.com",
     HTTP_COOKIE = "session=secret123",
     HTTP_AUTHORIZATION = "Bearer token123",
@@ -373,6 +380,9 @@ test_that("build_http_summary returns sanitized output", {
   # Sensitive values should be redacted
   expect_no_match(result$query_string, "authcode123")
   expect_no_match(result$query_string, "mystate")
+  expect_no_match(result$query_string, "signed.request.jwt")
+  expect_no_match(result$query_string, "request_uri%3Aabc123")
+  expect_no_match(result$query_string, "alice%40example.com")
   expect_null(result$headers$cookie)
   expect_null(result$headers$authorization)
   expect_null(result$headers$proxy_authorization)
