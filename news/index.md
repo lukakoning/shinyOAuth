@@ -13,10 +13,7 @@
   token and protected-resource requests, include `dpop_jkt` in
   authorization requests, can require `token_type = "DPoP"` plus
   `cnf.jkt` binding, and replay one `DPoP-Nonce` challenge on token and
-  protected-resource requests. Raw access-token strings no longer
-  auto-upgrade to `DPoP` based on locally parsed JWT `cnf.jkt`; pass
-  `token_type = "DPoP"` explicitly or use an `OAuthToken` with trusted
-  token metadata instead.
+  protected-resource requests.
 
 - Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
@@ -30,8 +27,8 @@
   discovery, and login flows will push the authorization request and
   redirect with the returned `request_uri`.
 
-- Added OAuth/OIDC `response_mode = "form_post"` support for
-  authorization-code callbacks. Apps can wrap their UI with
+- Added `response_mode = "form_post"` support for authorization-code
+  callbacks. Apps can wrap their UI with
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   so Shiny accepts the provider POST, stores the callback server-side
   under a one-time handle, and lets
