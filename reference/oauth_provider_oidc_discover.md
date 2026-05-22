@@ -93,8 +93,9 @@ oauth_provider_oidc_discover(
   Character scalar controlling how strictly to validate the discovery
   document's `issuer` against the input `issuer`.
 
-  - `"url"` (default): require the full issuer URL to match after
-    trailing-slash normalization (recommended).
+  - `"url"` (default): require the issuer used for discovery to match
+    exactly, after removing one trailing slash for discovery URL
+    construction (recommended).
 
   - `"host"`: compare only scheme + host (explicit opt-out; not
     recommended).

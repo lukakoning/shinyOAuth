@@ -134,8 +134,9 @@ Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
 
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly to validate the
-discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the full issuer URL to match after
-trailing-slash normalization (recommended).</p></li>
+discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
+exactly, after removing one trailing slash for discovery URL construction
+(recommended).</p></li>
 <li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
 <li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
 </ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>

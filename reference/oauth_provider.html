@@ -286,8 +286,8 @@ discovery document at <code>/.well-known/openid-configuration</code>.</p></dd>
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly the discovery
 document's <code>issuer</code> is validated against <code>issuer</code> when it later
-performs runtime discovery to locate the JWKS URI.</p><ul><li><p><code>"url"</code> (default): require the full issuer URL to match after
-trailing-slash normalization.</p></li>
+performs runtime discovery to locate the JWKS URI.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
+exactly, after removing one trailing slash for discovery URL construction.</p></li>
 <li><p><code>"host"</code>: compare only scheme + host.</p></li>
 <li><p><code>"none"</code>: do not validate discovery issuer consistency.</p></li>
 </ul><p>In most cases, keep the default <code>"url"</code>. Use <code>"host"</code> only for providers
