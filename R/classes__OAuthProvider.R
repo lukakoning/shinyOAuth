@@ -1642,6 +1642,13 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
     ))
   }
 
+  if (!identical(name, "issuer") && isTRUE(has_uri_fragment(value))) {
+    return(sprintf(
+      "OAuthProvider: %s must not include a fragment component",
+      name
+    ))
+  }
+
   if (!is_ok_host(value)) {
     return(sprintf(
       "OAuthProvider: %s provided but not accepted as a host (see `?is_ok_host` for details)",
