@@ -5,16 +5,24 @@
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
-* `oauth_provider_oidc_discover()` now accepts either an issuer base URL or the 
-standard `/.well-known/openid-configuration` URL. Full discovery URLs are 
-normalized back to the issuer base before request construction, so strict issuer
-matching still applies without requiring `issuer_match = "host"`.
+* `oauth_provider_oidc_discover()` now:
+  - Accepts either an issuer base URL or the standard 
+  `/.well-known/openid-configuration` URL. Full discovery URLs are normalized 
+  back to the issuer base before request construction, so strict issuer
+  matching still applies without requiring `issuer_match = "host"`.
+  - Has transport failures surface the attempted 
+  `/.well-known/openid-configuration` URL plus the underlying network error,
+  making discovery misconfiguration and connectivity problems easier to 
+  diagnose.
 
-* Added `oauth_provider_apple()` which configures
-Apple's fixed OIDC endpoints and ID-token defaults, and added
-`oauth_client_secret_apple()` which generates the ES256 JWT that Apple expects 
-in the `client_secret` field of an `oauth_client()` configured with 
-`oauth_provider_apple()`.
+* `oauth_provider_apple()` has been added which configures Apple's OIDC 
+endpoints and ID-token defaults, and added `oauth_client_secret_apple()` which 
+generates the ES256 JWT that Apple expects in the `client_secret` field of an 
+`OAuthClient` configured with `oauth_provider_apple()`.
+
+* `OAuthClient` printing now handles `client_secret = ""` cleanly for
+public-client setups that do not send a secret, instead of failing while
+formatting the redacted console preview.
 
 # shinyOAuth 0.5.0
 
