@@ -197,6 +197,34 @@ test_that("validate_jarm_response rejects alg none", {
   )
 })
 
+test_that("validate_jarm_response rejects clients that did not request JARM", {
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  client@provider@issuer <- "https://issuer.example.com"
+  now <- floor(as.numeric(Sys.time()))
+  response <- build_dummy_jwt(list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    exp = now + 300,
+    code = "ok",
+    state = "state-1"
+  ))
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        "validate_jarm_response should reject non-JARM clients before JWKS fetch"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "not configured to accept JARM"
+  )
+})
+
 test_that("validate_jarm_response rejects issuer mismatch before JWKS fetch", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -572,6 +600,78 @@ test_that("oauth_module_server handles query.jwt callbacks", {
 
           expect_true(isTRUE(values$authenticated))
           expect_identical(values$error, NULL)
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server rejects query JARM callbacks for form_post.jwt clients before JWT processing", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  browser_token <- valid_browser_token()
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject query transport mismatches",
+          "before JARM signature validation"
+        )
+      )
+    },
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject query transport mismatches",
+          "before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          now <- floor(as.numeric(Sys.time()))
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = client@client_id,
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query(paste0(
+            "?response=",
+            utils::URLencode(response, reserved = TRUE)
+          ))
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_identical(values$error, "invalid_state")
+          expect_match(
+            values$error_description %||% "",
+            "transport mismatch"
+          )
+          expect_length(client@state_store$keys(), 1L)
         }
       )
     }

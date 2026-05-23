@@ -1806,7 +1806,7 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
 
-        .handle_jarm_response(qs$response)
+        .handle_jarm_response(qs$response, transport = "query")
         return(invisible(NULL))
       }
 
@@ -1917,10 +1917,17 @@ oauth_module_server <- function(
     #   callback handlers.
     .handle_jarm_response <- function(
       response,
+      transport = c("query", "form_post"),
       phase = "callback_response_validation"
     ) {
+      transport <- match.arg(transport)
+
       normalized <- tryCatch(
-        validate_jarm_response(client, response),
+        validate_jarm_response(
+          client,
+          response,
+          transport = transport
+        ),
         error = function(e) {
           clear_oauth_module_callback_query(
             session,

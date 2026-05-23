@@ -63,6 +63,35 @@ resolve_authorization_response_encryption_config <- function(oauth_client) {
   )
 }
 
+#' Resolve the configured JARM callback transport for one client
+#'
+#' Used by inbound JARM validation to bind the callback transport to the
+#' response mode the client requested before any JWT claims are processed.
+#'
+#' @param oauth_client [OAuthClient] object.
+#' @return `NULL` when the client is not configured for JARM; otherwise a named
+#'   list containing the configured mode and callback transport.
+#' @keywords internal
+#' @noRd
+resolve_jarm_callback_transport <- function(oauth_client) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  response_mode_info <- resolve_oauth_client_response_mode(oauth_client)
+  if (!is.null(response_mode_info$error)) {
+    err_config(response_mode_info$error)
+  }
+
+  mode <- response_mode_info$mode %||% "query"
+  if (mode %in% c("query.jwt", "jwt")) {
+    return(list(mode = mode, transport = "query"))
+  }
+  if (identical(mode, "form_post.jwt")) {
+    return(list(mode = mode, transport = "form_post"))
+  }
+
+  NULL
+}
+
 ## 1.2 Signature and claim validation -----------------------------------------
 
 #' Verify one signed JARM signature
@@ -396,8 +425,26 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
 #' @return Normalized callback payload list.
 #' @keywords internal
 #' @noRd
-validate_jarm_response <- function(oauth_client, response) {
+validate_jarm_response <- function(
+  oauth_client,
+  response,
+  transport = c("query", "form_post")
+) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
+  transport <- match.arg(transport)
+
+  configured_transport <- resolve_jarm_callback_transport(oauth_client)
+  if (is.null(configured_transport)) {
+    err_invalid_state("Client is not configured to accept JARM responses")
+  }
+  if (!identical(configured_transport$transport, transport)) {
+    err_invalid_state(paste0(
+      "JARM callback transport mismatch: client requested ",
+      configured_transport$mode,
+      " but callback arrived via ",
+      transport
+    ))
+  }
 
   limits <- oauth_callback_limits()
   validate_untrusted_query_param(
