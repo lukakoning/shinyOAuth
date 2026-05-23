@@ -2,8 +2,43 @@
 #
 # Verifies that each pre-configured provider constructor produces an
 # OAuthProvider with the expected properties. Discovery-based providers
-# (Slack, Keycloak, Okta, Auth0) are tested by mocking the discovery
+# (Apple, Slack, Keycloak, Okta, Auth0) are tested by mocking the discovery
 # call to avoid network access.
+
+make_apple_discovery_doc <- function() {
+  jsonlite::toJSON(
+    list(
+      issuer = "https://appleid.apple.com",
+      authorization_endpoint = "https://appleid.apple.com/auth/authorize",
+      token_endpoint = "https://appleid.apple.com/auth/token",
+      revocation_endpoint = "https://appleid.apple.com/auth/revoke",
+      jwks_uri = "https://appleid.apple.com/auth/keys",
+      response_modes_supported = list("query", "fragment", "form_post"),
+      token_endpoint_auth_methods_supported = list("client_secret_post"),
+      id_token_signing_alg_values_supported = list("RS256")
+    ),
+    auto_unbox = TRUE
+  )
+}
+
+mock_apple_discovery <- function(disc_json = make_apple_discovery_doc()) {
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      testthat::expect_match(
+        as.character(req$url),
+        "appleid\\.apple\\.com/.well-known/openid-configuration"
+      )
+
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(as.character(disc_json))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+}
 
 # ── Non-discovery providers ─────────────────────────────────────────────────
 
@@ -41,6 +76,41 @@ test_that("oauth_provider_github returns valid OAuthProvider with expected defau
 test_that("oauth_provider_github allows custom name", {
   p <- oauth_provider_github(name = "my-github")
   expect_identical(p@name, "my-github")
+})
+
+test_that("oauth_provider_apple returns valid OAuthProvider with expected defaults", {
+  mock_apple_discovery()
+
+  p <- oauth_provider_apple()
+
+  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_identical(p@name, "apple")
+  expect_identical(p@auth_url, "https://appleid.apple.com/auth/authorize")
+  expect_identical(p@token_url, "https://appleid.apple.com/auth/token")
+  expect_identical(p@revocation_url, "https://appleid.apple.com/auth/revoke")
+  expect_true(is.na(p@userinfo_url))
+  expect_true(is.na(p@introspection_url))
+  expect_identical(p@issuer, "https://appleid.apple.com")
+  expect_true(p@use_nonce)
+  expect_true(p@use_pkce)
+  expect_identical(p@pkce_method, "S256")
+  expect_identical(p@token_auth_style, "body")
+  expect_identical(
+    p@response_modes_supported,
+    c("query", "fragment", "form_post")
+  )
+  expect_identical(p@allowed_algs, "RS256")
+  expect_false(p@userinfo_required)
+  expect_false(p@userinfo_id_token_match)
+  expect_true(p@id_token_required)
+  expect_true(p@id_token_validation)
+})
+
+test_that("oauth_provider_apple allows custom name", {
+  mock_apple_discovery()
+
+  p <- oauth_provider_apple(name = "my-apple")
+  expect_identical(p@name, "my-apple")
 })
 
 test_that("oauth_provider_google returns valid OAuthProvider with expected defaults", {

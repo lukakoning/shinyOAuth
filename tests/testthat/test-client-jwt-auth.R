@@ -324,6 +324,54 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
   expect_identical(pl2$aud, "https://example.com/token/")
 })
 
+test_that("oauth_client_secret_apple composes expected ES256 JWT", {
+  testthat::skip_if_not_installed("jose")
+
+  key <- openssl::ec_keygen(curve = "P-256")
+  secret <- oauth_client_secret_apple(
+    client_id = "com.example.web",
+    team_id = "ABCDEFGHIJ",
+    key_id = "ABC123DEFG",
+    private_key = key,
+    expires_in = 300,
+    issued_at = 1700000000
+  )
+
+  header <- shinyOAuth:::parse_jwt_header(secret)
+  payload <- shinyOAuth:::parse_jwt_payload(secret)
+
+  expect_identical(header$alg, "ES256")
+  expect_identical(header$kid, "ABC123DEFG")
+  expect_identical(payload$iss, "ABCDEFGHIJ")
+  expect_identical(payload$sub, "com.example.web")
+  expect_identical(payload$aud, "https://appleid.apple.com")
+  expect_equal(payload$iat, 1700000000)
+  expect_equal(payload$exp, 1700000300)
+})
+
+test_that("oauth_client_secret_apple validates expiration and key type", {
+  expect_error(
+    oauth_client_secret_apple(
+      client_id = "com.example.web",
+      team_id = "ABCDEFGHIJ",
+      key_id = "ABC123DEFG",
+      private_key = openssl::ec_keygen(curve = "P-256"),
+      expires_in = 15777001
+    ),
+    regexp = "15777000"
+  )
+
+  expect_error(
+    oauth_client_secret_apple(
+      client_id = "com.example.web",
+      team_id = "ABCDEFGHIJ",
+      key_id = "ABC123DEFG",
+      private_key = openssl::rsa_keygen()
+    ),
+    regexp = "ES256-compatible"
+  )
+})
+
 test_that("client_assertion_audience overrides aud for introspection/revocation assertions", {
   prov <- oauth_provider(
     name = "example",

@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Added Sign in with Apple helpers: `oauth_provider_apple()` configures
+Apple's fixed OIDC endpoints and ID-token defaults, and
+`oauth_client_secret_apple()` generates the ES256 JWT that Apple expects in the
+token request `client_secret` field.
+
 # shinyOAuth 0.5.0
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client
