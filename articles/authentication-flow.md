@@ -132,6 +132,12 @@ parameter.
 
 ### 4. App redirects to the provider
 
+If the client sets `response_mode = "form_post"`, ‘shinyOAuth’ also
+sends `response_mode=form_post` on the authorization request so the
+provider knows to return the authorization response as an HTTP POST. If
+`response_mode` is left unset, ‘shinyOAuth’ stays on the normal query
+callback flow and does not send a `response_mode` parameter.
+
 Without JAR and without PAR, the browser of the app user is redirected
 to the provider’s authorization endpoint with the usual OAuth query
 parameters: `response_type=code`, `client_id`, `redirect_uri`,
@@ -192,34 +198,65 @@ in and authorize the app to access the requested scopes.
 
 ### 6. Provider redirects user back to the app
 
-The provider redirects the user’s browser back to your Shiny app (your
-`redirect_uri`), including the `code` and `state` parameters, and
-optionally RFC 9207 `iss`, plus `error`, `error_description`, and
-`error_uri` on failure.
+The provider returns the user’s browser to your Shiny app
+(`redirect_uri`).
+
+In the default query flow, the browser lands back on the app with `code`
+and `state` in the query string, and optionally RFC 9207 `iss`, plus
+`error`, `error_description`, and `error_uri` on failure.
+
+#### What changes with `response_mode = "form_post"`?
+
+If the client requested `response_mode = "form_post"`, the first hop
+back is an HTTP POST to the `redirect_uri` instead of a query-string
+callback. The plain form body carries the same callback fields (`code`,
+`state`, optional `iss`, or provider error fields such as `error`,
+`error_description`, and `error_uri`).
+
+Because that POST reaches the app before a Shiny session exists, your UI
+must be wrapped with
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+That wrapper validates the POST boundary, decrypts the sealed state and
+checks `iss` early enough to reject obviously invalid callbacks, stores
+the accepted callback payload under a short-lived single-use handle, and
+replies with a `303 See Other` redirect back to the app. The redirected
+URL no longer carries raw OAuth callback values; instead, the
+OAuth-specific query parameters are only `shinyOAuth_form_post=<handle>`
+and `shinyOAuth_form_post_id=<module id>` so the normal Shiny module
+callback path can resume on an ordinary GET request. Plain `form_post`
+is supported; JWT Secured Authorization Response Mode (JARM) values such
+as `form_post.jwt` are not.
 
 ### 7. Callback processing & state verification (`handle_callback()`)
 
-Once the user is redirected back to the app, the module processes the
-callback. In plain terms, it checks that the callback belongs to the
-login attempt that started earlier and only then continues to token
-exchange. The main checks are:
+Once the browser lands back on the app, either directly with query
+parameters or through the `form_post` bridge redirect, the module
+processes the callback. In plain terms, it checks that the callback
+belongs to the login attempt that started earlier and only then
+continues to token exchange. The main checks are:
 
 - Wait for a usable browser token input if it has not reached Shiny yet;
   when the cookie bridge fails, the module surfaces
   `browser_cookie_error` instead of attempting authentication without
   that binding
-- Enforce callback query size caps before and after parsing to protect
+- If the URL carries a `form_post` bridge handle, resolve that handle to
+  the stored callback payload and reject missing, expired, replayed, or
+  misaddressed handles before continuing. The underlying login state is
+  still consumed only after the Shiny session proves the browser-token
+  binding
+- Enforce callback query size caps before and after parsing, and when
+  `form_post` is enabled also cap the incoming POST body, to protect
   against unusually large or abusive callback inputs on sensitive
   parameters such as `code`, `state`, `error`, `error_description`,
   `error_uri`, and `iss`
-- Validate the callback `iss` query parameter against the provider’s
+- Validate the callback `iss` value against the provider’s
   configured/discovered issuer so the callback must come from the
   expected provider (per RFC 9207). When
   `oauth_client(enforce_callback_issuer = TRUE)` is enabled, callbacks
   that omit `iss` are also rejected before token exchange. A mismatch
   produces an `issuer_mismatch` error; a missing required `iss` produces
   an `issuer_missing` error and corresponding audit event
-- If the callback is an error response (`?error=...`), still require a
+- If the callback is an error response (`error=...`), still require a
   valid `state` parameter and browser-token binding before showing the
   provider error. That way, attacker-controlled error values are not
   trusted on their own. The provider’s `error_uri` is only surfaced when
