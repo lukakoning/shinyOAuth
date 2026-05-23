@@ -28,6 +28,11 @@ oauth_client(
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
   response_mode = NULL,
+  authorization_signed_response_alg = NULL,
+  authorization_encrypted_response_alg = NULL,
+  authorization_encrypted_response_enc = NULL,
+  authorization_response_decryption_private_key = NULL,
+  authorization_response_decryption_private_key_kid = NULL,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -280,9 +285,37 @@ apps using \code{"form_post"} must wrap their UI with \code{\link[=oauth_form_po
 Prefer this argument over setting \code{extra_auth_params$response_mode} on the
 provider. When the provider advertises \code{response_modes_supported}, the
 resolved mode must be included in that set.
-JWT Secured Authorization Response Mode (JARM) values such as
-\code{"form_post.jwt"} are a separate response format and are not currently
-supported.}
+Supported JARM values are \code{"jwt"}, \code{"query.jwt"}, and
+\code{"form_post.jwt"}. \code{"jwt"} requests the RFC-defined default callback
+transport for the response type; for the authorization-code flow that
+still means a query callback, but shinyOAuth preserves and sends
+\code{"jwt"} when you configure it explicitly. \code{"fragment.jwt"} is not
+currently supported because shinyOAuth does not implement fragment
+callback transport.}
+
+\item{authorization_signed_response_alg}{Optional expected JWS algorithm for
+signed JWT Secured Authorization Responses (JARM). When omitted and the
+effective response mode is JARM, shinyOAuth defaults to \code{RS256}.}
+
+\item{authorization_encrypted_response_alg}{Optional expected JWE
+key-management algorithm for encrypted JARM responses. Current inbound
+support is limited to \code{RSA-OAEP}.}
+
+\item{authorization_encrypted_response_enc}{Optional expected JWE
+content-encryption algorithm for encrypted JARM responses. Current inbound
+support is limited to the AES-CBC-HMAC family (\code{A128CBC-HS256},
+\code{A192CBC-HS384}, \code{A256CBC-HS512}). When omitted while
+\code{authorization_encrypted_response_alg} is set, shinyOAuth defaults to
+\code{A128CBC-HS256}.}
+
+\item{authorization_response_decryption_private_key}{Optional private key
+used to decrypt encrypted JARM responses. Can be an \code{openssl::key} or a
+PEM string containing a private key. Required when encrypted JARM is
+enabled.}
+
+\item{authorization_response_decryption_private_key_kid}{Optional key
+identifier (\code{kid}) associated with
+\code{authorization_response_decryption_private_key}.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a

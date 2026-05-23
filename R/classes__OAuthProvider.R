@@ -1113,9 +1113,9 @@ oauth_provider_validate <- function(self) {
     )
   }
   if (
-    !is.null(response_mode_info$mode) &&
+    !is.null(response_mode_info$effective_mode) &&
       length(self@response_modes_supported) > 0 &&
-      !response_mode_info$mode %in%
+      !response_mode_info$effective_mode %in%
         {
           supported_modes <- tolower(trimws(self@response_modes_supported))
           supported_modes[supported_modes == "jwt"] <- "query.jwt"

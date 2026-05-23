@@ -129,10 +129,13 @@
 #'   Prefer this argument over setting `extra_auth_params$response_mode` on the
 #'   provider. When the provider advertises `response_modes_supported`, the
 #'   resolved mode must be included in that set.
-#'   Supported JARM values are `"query.jwt"`, `"form_post.jwt"`, and the
-#'   `"jwt"` alias for `"query.jwt"`. `"fragment.jwt"` is not currently
-#'   supported because shinyOAuth does not implement fragment callback
-#'   transport.
+#'   Supported JARM values are `"jwt"`, `"query.jwt"`, and
+#'   `"form_post.jwt"`. `"jwt"` requests the RFC-defined default callback
+#'   transport for the response type; for the authorization-code flow that
+#'   still means a query callback, but shinyOAuth preserves and sends
+#'   `"jwt"` when you configure it explicitly. `"fragment.jwt"` is not
+#'   currently supported because shinyOAuth does not implement fragment
+#'   callback transport.
 #'
 #' @param authorization_signed_response_alg Optional expected JWS algorithm for
 #'   signed JWT Secured Authorization Responses (JARM). When omitted and the
@@ -1272,7 +1275,7 @@ oauth_client_validate <- function(self) {
     return(
       paste(
         "OAuthClient: authorization_signed_response_alg requires",
-        "response_mode = 'query.jwt' or 'form_post.jwt'"
+        "response_mode = 'jwt', 'query.jwt', or 'form_post.jwt'"
       )
     )
   }
@@ -1376,7 +1379,7 @@ oauth_client_validate <- function(self) {
     return(
       paste(
         "OAuthClient: JARM authorization response settings require",
-        "response_mode = 'query.jwt' or 'form_post.jwt'"
+        "response_mode = 'jwt', 'query.jwt', or 'form_post.jwt'"
       )
     )
   }

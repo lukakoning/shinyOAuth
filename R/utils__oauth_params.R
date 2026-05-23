@@ -91,7 +91,8 @@ normalize_pkce_method <- function(pkce_method, default = NULL) {
 #' @param raw_mode Candidate response mode value.
 #' @param arg Label used in validation errors.
 #' @param context Prefix used in validation errors.
-#' @return A list containing the normalized mode and optional error text.
+#' @return A list containing the normalized mode, the effective mode used for
+#'   internal validation, and optional error text.
 #' @keywords internal
 #' @noRd
 resolve_auth_response_mode <- function(
@@ -99,7 +100,7 @@ resolve_auth_response_mode <- function(
   arg = "response_mode",
   context = "OAuthClient"
 ) {
-  out <- list(mode = NULL, error = NULL)
+  out <- list(mode = NULL, effective_mode = NULL, error = NULL)
 
   if (is.null(raw_mode)) {
     return(out)
@@ -124,11 +125,15 @@ resolve_auth_response_mode <- function(
   }
 
   mode <- tolower(trimws(raw_mode))
-  if (identical(mode, "jwt")) {
-    mode <- "query.jwt"
-  }
+  effective_mode <- if (identical(mode, "jwt")) "query.jwt" else mode
 
-  supported_modes <- c("query", "form_post", "query.jwt", "form_post.jwt")
+  supported_modes <- c(
+    "query",
+    "form_post",
+    "jwt",
+    "query.jwt",
+    "form_post.jwt"
+  )
   if (!mode %in% supported_modes) {
     if (identical(mode, "fragment.jwt")) {
       out$error <- paste0(
@@ -159,6 +164,7 @@ resolve_auth_response_mode <- function(
   }
 
   out$mode <- mode
+  out$effective_mode <- effective_mode
   out
 }
 
@@ -172,7 +178,12 @@ resolve_auth_response_mode <- function(
 #' @keywords internal
 #' @noRd
 inspect_auth_response_mode <- function(extra_auth_params) {
-  out <- list(index = integer(0), mode = NULL, error = NULL)
+  out <- list(
+    index = integer(0),
+    mode = NULL,
+    effective_mode = NULL,
+    error = NULL
+  )
 
   if (!is.list(extra_auth_params) || length(extra_auth_params) == 0) {
     return(out)
@@ -201,6 +212,7 @@ inspect_auth_response_mode <- function(extra_auth_params) {
     context = "OAuthProvider"
   )
   out$mode <- resolved$mode
+  out$effective_mode <- resolved$effective_mode
   out$error <- resolved$error
   out
 }
@@ -216,8 +228,8 @@ inspect_auth_response_mode <- function(extra_auth_params) {
 #' @param oauth_client [OAuthClient] object.
 #' @param default_mode Fallback response mode when neither client nor provider
 #'   config sets one.
-#' @return A list containing the effective mode, explicit mode (or `NULL`),
-#'   cleaned provider auth params, and optional error text.
+#' @return A list containing the effective mode, the explicit outbound mode (or
+#'   `NULL`), cleaned provider auth params, and optional error text.
 #' @keywords internal
 #' @noRd
 resolve_oauth_client_response_mode <- function(
@@ -251,11 +263,11 @@ resolve_oauth_client_response_mode <- function(
   }
 
   if (
-    !is.null(client_response_mode_info$mode) &&
-      !is.null(provider_response_mode_info$mode) &&
+    !is.null(client_response_mode_info$effective_mode) &&
+      !is.null(provider_response_mode_info$effective_mode) &&
       !identical(
-        client_response_mode_info$mode,
-        provider_response_mode_info$mode
+        client_response_mode_info$effective_mode,
+        provider_response_mode_info$effective_mode
       )
   ) {
     out$error <- paste0(
@@ -270,7 +282,9 @@ resolve_oauth_client_response_mode <- function(
 
   out$explicit_mode <- client_response_mode_info$mode %||%
     provider_response_mode_info$mode
-  out$mode <- out$explicit_mode %||% default_mode
+  out$mode <- client_response_mode_info$effective_mode %||%
+    provider_response_mode_info$effective_mode %||%
+    default_mode
 
   if (length(provider_response_mode_info$index) == 1L) {
     extra_auth_params[[provider_response_mode_info$index]] <- NULL
