@@ -195,5 +195,6 @@ The package has a standard ‘testthat’ test suite under
 local Keycloak instance (in Docker/Podman) is provided under
 `integration/keycloak/`. These integration tests also include
 browser-driven end-to-end tests using ‘shinytest2’ and ‘chromote’.
-Finally, a minimal demo app deployment is provided under
-`integration/gcp/` for Google Cloud Run using a GitHub OAuth 2.0 app.
+Finally, minimal demo app deployments are provided under
+`integration/gcp/` for Google Cloud Run and `integration/posit/` for
+Posit Connect Cloud.

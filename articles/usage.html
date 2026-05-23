@@ -467,6 +467,31 @@ usually harmless. If your <code>redirect_uri</code> is a sub-route (like
 GET flow.</p>
 </div>
 <div class="section level2">
+<h2 id="deploying-on-posit-connect-cloud-avoiding-embedded-deployment">Deploying on Posit Connect Cloud (avoiding embedded deployment)<a class="anchor" aria-label="anchor" href="#deploying-on-posit-connect-cloud-avoiding-embedded-deployment"></a>
+</h2>
+<p>To be able to handle OAuth callbacks properly, your Shiny app needs
+to run in a top-level browser context where the provider can redirect
+back to it with query parameters or a POST body. When your app is
+embedded inside another page, this does not work.</p>
+<p>If you deploy a <code>shinyOAuth</code> app on Posit Connect Cloud,
+publish and test it via a top-level (custom) app URL, not the default
+embedded content URL (which has the app embedded inside another web
+page).</p>
+<p>At Posit Connect Cloud (the successor of shinyapps.io), you can
+configure a top-level URL like so:</p>
+<ol style="list-style-type: decimal">
+<li>In Posit Connect Cloud, go to the app, then Settings -&gt; URL</li>
+<li>Configure a custom app URL. This can be a claimed Posit URL (free)
+or your own custom domain</li>
+<li>Use that top-level URL as your redirect URI in your
+<code>OAuthClient</code>
+</li>
+<li>Register that same top-level URL as the callback URL at your OAuth
+provider</li>
+<li>Open the app via that top-level URL</li>
+</ol>
+</div>
+<div class="section level2">
 <h2 id="global-options">Global options<a class="anchor" aria-label="anchor" href="#global-options"></a>
 </h2>
 <p>The package provides several global options to customize behavior.

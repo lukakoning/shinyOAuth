@@ -418,6 +418,28 @@ sub-route (like `http://127.0.0.1:8100/callback`), use
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
 before the app returns to its normal GET flow.
 
+## Deploying on Posit Connect Cloud (avoiding embedded deployment)
+
+To be able to handle OAuth callbacks properly, your Shiny app needs to
+run in a top-level browser context where the provider can redirect back
+to it with query parameters or a POST body. When your app is embedded
+inside another page, this does not work.
+
+If you deploy a `shinyOAuth` app on Posit Connect Cloud, publish and
+test it via a top-level (custom) app URL, not the default embedded
+content URL (which has the app embedded inside another web page).
+
+At Posit Connect Cloud (the successor of shinyapps.io), you can
+configure a top-level URL like so:
+
+1.  In Posit Connect Cloud, go to the app, then Settings -\> URL
+2.  Configure a custom app URL. This can be a claimed Posit URL (free)
+    or your own custom domain
+3.  Use that top-level URL as your redirect URI in your `OAuthClient`
+4.  Register that same top-level URL as the callback URL at your OAuth
+    provider
+5.  Open the app via that top-level URL
+
 ## Global options
 
 The package provides several global options to customize behavior. Most
