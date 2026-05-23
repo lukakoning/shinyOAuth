@@ -19,7 +19,9 @@
 #'
 #' Note: when using this module, you must include
 #' `shinyOAuth::use_shinyOAuth()` in your UI definition to load the
-#' necessary JavaScript dependencies.
+#' necessary JavaScript dependencies, unless your app UI is already wrapped with
+#' [oauth_form_post_ui()] or [oauth_fragment_ui()], which inject the dependency
+#' automatically for their pre-session callback bridges.
 #'
 #' @details
 #' Most apps only need to decide whether login starts automatically, whether to
@@ -460,6 +462,7 @@ oauth_module_server <- function(
 
   warn_about_missing_js_dependency()
   warn_about_missing_form_post_ui(id, client)
+  warn_about_missing_fragment_ui(id, client)
 
   browser_cookie_samesite <- match.arg(browser_cookie_samesite)
   if (identical(browser_cookie_samesite, "Lax")) {

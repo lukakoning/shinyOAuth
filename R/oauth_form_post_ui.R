@@ -199,7 +199,12 @@ oauth_form_post_request_matches <- function(req, callback_path) {
     identical(oauth_form_post_request_path(req), callback_path)
 }
 
-oauth_form_post_handle_request <- function(req, id, client) {
+oauth_form_post_handle_request <- function(
+  req,
+  id,
+  client,
+  block_fragment = FALSE
+) {
   tryCatch(
     with_otel_span(
       "shinyOAuth.form_post",
@@ -260,7 +265,12 @@ oauth_form_post_handle_request <- function(req, id, client) {
         )
         payload$state_payload <- state_payload
         handle <- oauth_form_post_store_set(client, id, payload)
-        location <- oauth_form_post_redirect_location(req, id, handle)
+        location <- oauth_form_post_redirect_location(
+          req,
+          id,
+          handle,
+          block_fragment = block_fragment
+        )
 
         shiny::httpResponse(
           status = 303L,
@@ -483,7 +493,12 @@ oauth_form_post_validate_payload <- function(
   payload
 }
 
-oauth_form_post_redirect_location <- function(req, id, handle) {
+oauth_form_post_redirect_location <- function(
+  req,
+  id,
+  handle,
+  block_fragment = FALSE
+) {
   clean_query <- strip_oauth_module_callback_query(req$QUERY_STRING %||% "")
   clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
@@ -498,7 +513,13 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
     collapse = "&"
   )
 
-  paste0("?", query)
+  location <- paste0("?", query)
+
+  if (isTRUE(block_fragment)) {
+    return(paste0(location, "#_"))
+  }
+
+  location
 }
 
 # 3 One-time form_post callback storage ----------------------------------------

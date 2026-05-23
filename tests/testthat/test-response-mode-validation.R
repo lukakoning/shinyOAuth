@@ -1,13 +1,10 @@
-test_that("OAuthProvider allows query and form_post response_mode", {
-  expect_error(
-    OAuthProvider(
-      name = "test",
-      auth_url = "https://example.com/authorize",
-      token_url = "https://example.com/token",
-      extra_auth_params = list(response_mode = "fragment")
-    ),
-    regexp = "response_mode"
-  )
+test_that("OAuthProvider allows query, fragment, and form_post response_mode", {
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
+    extra_auth_params = list(response_mode = "fragment")
+  ))
 
   expect_no_error(OAuthProvider(
     name = "test",
@@ -66,6 +63,22 @@ test_that("prepare_call normalizes explicit query response_mode", {
   expect_identical(parse_query_param(url, "prompt", decode = TRUE), "login")
 })
 
+test_that("prepare_call normalizes explicit fragment response_mode", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@extra_auth_params <- list(
+    response_mode = " Fragment ",
+    prompt = "login"
+  )
+
+  url <- shinyOAuth:::prepare_call(cli, browser_token = valid_browser_token())
+
+  expect_identical(
+    parse_query_param(url, "response_mode", decode = TRUE),
+    "fragment"
+  )
+  expect_identical(parse_query_param(url, "prompt", decode = TRUE), "login")
+})
+
 test_that("oauth_client defaults response_mode to query", {
   client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -82,9 +95,9 @@ test_that("prepare_call omits implicit query response_mode by default", {
   expect_identical(parse_query_param(url, "prompt", decode = TRUE), "login")
 })
 
-test_that("oauth_client accepts query and form_post response_mode", {
+test_that("oauth_client accepts query, fragment, and form_post response_mode", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  prov@response_modes_supported <- c("query", "form_post")
+  prov@response_modes_supported <- c("query", "fragment", "form_post")
 
   expect_no_error(oauth_client(
     provider = prov,
@@ -99,20 +112,18 @@ test_that("oauth_client accepts query and form_post response_mode", {
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100/callback",
+    response_mode = " Fragment "
+  ))
+  expect_identical(client@response_mode, "fragment")
+
+  client <- expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
     response_mode = " form_POST "
   ))
   expect_identical(client@response_mode, "form_post")
-
-  expect_error(
-    oauth_client(
-      provider = prov,
-      client_id = "abc",
-      client_secret = "",
-      redirect_uri = "http://localhost:8100/callback",
-      response_mode = "fragment"
-    ),
-    regexp = "response_mode"
-  )
 })
 
 test_that("oauth_client rejects JARM response_mode values explicitly", {
@@ -166,15 +177,15 @@ test_that("prepare_call emits oauth_client response_mode", {
   cli <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
-    response_mode = " form_POST "
+    response_mode = " Fragment "
   )
-  cli@provider@response_modes_supported <- c("query", "form_post")
+  cli@provider@response_modes_supported <- c("query", "fragment", "form_post")
 
   url <- shinyOAuth:::prepare_call(cli, browser_token = valid_browser_token())
 
   expect_identical(
     parse_query_param(url, "response_mode", decode = TRUE),
-    "form_post"
+    "fragment"
   )
 })
 
@@ -242,9 +253,12 @@ test_that("OIDC discovery records supported response modes", {
 
   prov <- discover_provider(c(
     base_metadata,
-    list(response_modes_supported = c("query", "form_post"))
+    list(response_modes_supported = c("query", "fragment", "form_post"))
   ))
-  expect_identical(prov@response_modes_supported, c("query", "form_post"))
+  expect_identical(
+    prov@response_modes_supported,
+    c("query", "fragment", "form_post")
+  )
 
   prov_default <- discover_provider(base_metadata)
   expect_identical(

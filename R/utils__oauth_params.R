@@ -124,7 +124,7 @@ resolve_auth_response_mode <- function(
   }
 
   mode <- tolower(trimws(raw_mode))
-  if (!mode %in% c("query", "form_post")) {
+  if (!mode %in% c("query", "fragment", "form_post")) {
     jarm_modes <- c("jwt", "query.jwt", "fragment.jwt", "form_post.jwt")
     if (mode %in% jarm_modes) {
       out$error <- paste0(
@@ -135,7 +135,7 @@ resolve_auth_response_mode <- function(
         sQuote(raw_mode),
         " is a JWT Secured Authorization Response Mode (JARM) value, ",
         "which shinyOAuth does not currently support. shinyOAuth supports ",
-        "plain 'query' and 'form_post' response modes for authorization-code ",
+        "plain 'query', 'fragment', and 'form_post' response modes for authorization-code ",
         "callbacks."
       )
     } else {
@@ -145,7 +145,7 @@ resolve_auth_response_mode <- function(
         arg,
         " = ",
         sQuote(raw_mode),
-        " is not supported. shinyOAuth supports plain 'query' and ",
+        " is not supported. shinyOAuth supports plain 'query', 'fragment', and ",
         "'form_post' response modes for authorization-code callbacks."
       )
     }

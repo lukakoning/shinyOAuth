@@ -144,7 +144,9 @@ this helper applies the OpenID Connect defaults instead of storing \code{NA}.
 \code{response_modes_supported}, the resulting provider stores it so explicit
 \code{response_mode} requests can fail fast when unsupported. When the metadata
 is omitted, this helper applies the OAuth/OIDC metadata default of
-\code{c("query", "fragment")}.
+\code{c("query", "fragment")}. shinyOAuth can consume plain
+\code{response_mode = "fragment"} for authorization-code callbacks when Shiny
+apps use \code{\link[=oauth_fragment_ui]{oauth_fragment_ui()}} on a dedicated callback path.
 \item Token endpoint JWT auth metadata: when the discovery document advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, the resulting provider
 stores that metadata so \code{OAuthClient} can fail fast when a JWT client

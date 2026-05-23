@@ -118,11 +118,16 @@
 #'   having that URI or a matching wildcard prefix registered for the client;
 #'   shinyOAuth cannot verify that server-side registration automatically.
 #' @param response_mode Authorization response mode for authorization-code
-#'   callbacks. Supported values are `"query"` and `"form_post"`. The
+#'   callbacks. Supported values are `"query"`, `"fragment"`, and
+#'   `"form_post"`. The
 #'   effective default is always `"query"`: omitting this argument keeps the
 #'   normal query-parameter callback flow and shinyOAuth does not send a
 #'   `response_mode` parameter. Pass `"query"` only if you need to explicitly
 #'   request the query response mode from the provider.
+#'   Set `"fragment"` only when the provider requires or explicitly recommends
+#'   fragment callbacks for the authorization-code flow. Shiny apps using
+#'   `"fragment"` must wrap their UI with [oauth_fragment_ui()] and use a
+#'   dedicated non-root callback path such as `/callback`.
 #'   Set `"form_post"` only when the provider requires or explicitly
 #'   recommends POSTing the authorization response to the redirect URI. Shiny
 #'   apps using `"form_post"` must wrap their UI with [oauth_form_post_ui()].
@@ -130,8 +135,8 @@
 #'   provider. When the provider advertises `response_modes_supported`, the
 #'   resolved mode must be included in that set.
 #'   JWT Secured Authorization Response Mode (JARM) values such as
-#'   `"form_post.jwt"` are a separate response format and are not currently
-#'   supported.
+#'   `"fragment.jwt"` or `"form_post.jwt"` are a separate response format and
+#'   are not currently supported.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a

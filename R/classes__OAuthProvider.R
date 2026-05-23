@@ -109,10 +109,12 @@
 #'   `response_mode` values advertised by the provider. Discovery-backed
 #'   providers use the discovery metadata value, defaulting to `c("query",
 #'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
-#'   may leave this empty when capabilities are not known. Provider metadata may
-#'   include response modes that shinyOAuth does not implement, such as JARM
-#'   values ending in `.jwt`; clients still fail fast if they request one of
-#'   those unsupported modes.
+#'   may leave this empty when capabilities are not known. shinyOAuth supports
+#'   plain `query`, `fragment`, and `form_post` response modes for
+#'   authorization-code callbacks; provider metadata may still include response
+#'   modes that shinyOAuth does not implement, such as JARM values ending in
+#'   `.jwt`, and clients still fail fast if they request one of those
+#'   unsupported modes.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,

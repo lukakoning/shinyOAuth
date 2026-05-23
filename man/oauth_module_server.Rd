@@ -241,7 +241,9 @@ manual login flows, session expiry, and proactive token refresh.
 
 Note: when using this module, you must include
 \code{shinyOAuth::use_shinyOAuth()} in your UI definition to load the
-necessary JavaScript dependencies.
+necessary JavaScript dependencies, unless your app UI is already wrapped with
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} or \code{\link[=oauth_fragment_ui]{oauth_fragment_ui()}}, which inject the dependency
+automatically for their pre-session callback bridges.
 }
 \details{
 Most apps only need to decide whether login starts automatically, whether to

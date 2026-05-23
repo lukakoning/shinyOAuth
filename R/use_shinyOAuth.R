@@ -15,14 +15,16 @@
 #' browser-side session token.
 #'
 #' Without this call in the UI, [oauth_module_server()] will not work unless
-#' your app UI is wrapped with [oauth_form_post_ui()], which injects this
-#' dependency automatically for form_post flows.
+#' your app UI is wrapped with [oauth_form_post_ui()] or [oauth_fragment_ui()],
+#' both of which inject this dependency automatically for their callback
+#' bridge flows.
 #'
 #' @details
 #' Place this near the top-level of your UI (e.g., inside `fluidPage()` or
 #' `tagList()`), similar to how you would use `shinyjs::useShinyjs()`. If you
-#' wrap the app UI with [oauth_form_post_ui()], you usually do not need a
-#' separate call here because that wrapper injects this dependency for you.
+#' wrap the app UI with [oauth_form_post_ui()] or [oauth_fragment_ui()], you
+#' usually do not need a separate call here because those wrappers inject this
+#' dependency for you.
 #'
 #' @param inject_referrer_meta If TRUE (default), injects a
 #'   `<meta name="referrer" content="no-referrer">` tag into the document
@@ -156,6 +158,88 @@ form_post_watchdog_key <- function(id, client) {
   )
 }
 
+response_mode_ui_watchdog_key <- function(id, client, response_mode) {
+  paste(response_mode, form_post_watchdog_key(id, client), sep = " :: ")
+}
+
+mark_response_mode_ui_called <- function(id, client, response_mode) {
+  assign(
+    paste0(
+      ".called_response_mode_ui::",
+      response_mode_ui_watchdog_key(id, client, response_mode)
+    ),
+    TRUE,
+    envir = .watchdog_environment
+  )
+
+  invisible(TRUE)
+}
+
+warn_about_missing_response_mode_ui <- function(
+  id,
+  client,
+  response_mode,
+  helper_name
+) {
+  if (.is_test()) {
+    return(invisible(NULL))
+  }
+
+  response_mode_info <- resolve_oauth_client_response_mode(client)
+  if (
+    !is.null(response_mode_info$error) ||
+      !identical(response_mode_info$mode, response_mode)
+  ) {
+    return(invisible(NULL))
+  }
+
+  watchdog_key <- response_mode_ui_watchdog_key(id, client, response_mode)
+  if (
+    get0(
+      paste0(".called_response_mode_ui::", watchdog_key),
+      envir = .watchdog_environment,
+      inherits = FALSE,
+      ifnotfound = FALSE
+    )
+  ) {
+    return(invisible(NULL))
+  }
+
+  warn_pkg(
+    paste0(response_mode, " UI wrapper not detected"),
+    c(
+      "!" = paste0(
+        "{.code oauth_module_server()} was called with a client that resolves to ",
+        "{.code response_mode = \"",
+        response_mode,
+        "\"}, but no previous call to ",
+        "{.code ",
+        helper_name,
+        "()} was detected for this module"
+      ),
+      "i" = paste0(
+        "Wrap your app UI with {.code ",
+        helper_name,
+        "(..., id = ",
+        deparse(id),
+        ", client = client)} so shinyOAuth can bridge the callback before ",
+        "the Shiny session starts"
+      ),
+      "i" = paste0(
+        "If you already wrap the UI indirectly and this reminder fires before ",
+        "that call is made, you can ignore it"
+      )
+    ),
+    .frequency = "once",
+    .frequency_id = paste0(
+      "response_mode_ui_warning::",
+      watchdog_key
+    )
+  )
+
+  invisible(TRUE)
+}
+
 #' Mark a form_post UI wrapper as configured
 #'
 #' Records that `oauth_form_post_ui()` was called for a given module/client
@@ -168,13 +252,7 @@ form_post_watchdog_key <- function(id, client) {
 #' @keywords internal
 #' @noRd
 mark_form_post_ui_called <- function(id, client) {
-  assign(
-    paste0(".called_form_post_ui::", form_post_watchdog_key(id, client)),
-    TRUE,
-    envir = .watchdog_environment
-  )
-
-  invisible(TRUE)
+  mark_response_mode_ui_called(id, client, "form_post")
 }
 
 #' Warn when the form_post UI wrapper is missing
@@ -191,54 +269,25 @@ mark_form_post_ui_called <- function(id, client) {
 #' @keywords internal
 #' @noRd
 warn_about_missing_form_post_ui <- function(id, client) {
-  if (.is_test()) {
-    return(invisible(NULL))
-  }
-
-  response_mode_info <- resolve_oauth_client_response_mode(client)
-  if (
-    !is.null(response_mode_info$error) ||
-      !identical(response_mode_info$mode, "form_post")
-  ) {
-    return(invisible(NULL))
-  }
-
-  watchdog_key <- form_post_watchdog_key(id, client)
-  if (
-    get0(
-      paste0(".called_form_post_ui::", watchdog_key),
-      envir = .watchdog_environment,
-      inherits = FALSE,
-      ifnotfound = FALSE
-    )
-  ) {
-    return(invisible(NULL))
-  }
-
-  warn_pkg(
-    "form_post UI wrapper not detected",
-    c(
-      "!" = paste0(
-        "{.code oauth_module_server()} was called with a client that resolves to ",
-        "{.code response_mode = \"form_post\"}, but no previous call to ",
-        "{.code oauth_form_post_ui()} was detected for this module"
-      ),
-      "i" = paste0(
-        "Wrap your app UI with {.code oauth_form_post_ui(..., id = ",
-        deparse(id),
-        ", client = client)} so POST callbacks reach shinyOAuth before the ",
-        "Shiny session starts"
-      ),
-      "i" = paste0(
-        "If you already wrap the UI indirectly and this reminder fires before ",
-        "that call is made, you can ignore it"
-      )
-    ),
-    .frequency = "once",
-    .frequency_id = paste0("form_post_ui_warning::", watchdog_key)
+  warn_about_missing_response_mode_ui(
+    id,
+    client,
+    response_mode = "form_post",
+    helper_name = "oauth_form_post_ui"
   )
+}
 
-  invisible(TRUE)
+mark_fragment_ui_called <- function(id, client) {
+  mark_response_mode_ui_called(id, client, "fragment")
+}
+
+warn_about_missing_fragment_ui <- function(id, client) {
+  warn_about_missing_response_mode_ui(
+    id,
+    client,
+    response_mode = "fragment",
+    helper_name = "oauth_fragment_ui"
+  )
 }
 
 ## 2.2 Store file-local watchdog state -----------------------------------------

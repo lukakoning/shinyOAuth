@@ -82,7 +82,9 @@ runApp(
 
 `use_shinyOAuth()` must be included once in your UI. It loads the JavaScript
 helper that the login flow depends on. Place it near the top of your UI, for
-example inside `fluidPage()`, `tagList()`, or `bslib::page()`.
+example inside `fluidPage()`, `tagList()`, or `bslib::page()`. If your app UI
+is wrapped with `oauth_form_post_ui()` or `oauth_fragment_ui()`, those wrappers
+inject the same dependency automatically.
 
 Open the app in a regular browser, not an IDE viewer. Embedded viewers in tools
 like RStudio or Positron usually cannot complete the required redirects.
@@ -397,6 +399,86 @@ If your `redirect_uri` is the app root (like `http://127.0.0.1:8100`),
 If your `redirect_uri` is a sub-route (like `http://127.0.0.1:8100/callback`),
 use `uiPattern = ".*"` so Shiny routes that POST request through `oauth_form_post_ui()`
 before the app returns to its normal GET flow.
+
+## Using `response_mode = "fragment"`
+
+Some providers also allow or require `response_mode = "fragment"` for the
+authorization-code flow. In that mode the provider redirects back with
+parameters such as `code`, `state`, `error`, and `iss` in the URL fragment
+(for example, `#code=...&state=...`). Because browsers do not send fragments to
+the server on the first request, server-rendered Shiny apps need a small
+browser bridge before `oauth_module_server()` can resume the normal callback
+flow.
+
+shinyOAuth supports the plain fragment response mode through
+`oauth_fragment_ui()`. That wrapper serves a minimal callback page on a
+dedicated non-root path, reads the fragment in the browser, POSTs it back to
+the same path, and then reuses the existing one-time callback-handle flow.
+The follow-up redirect also applies a blocker fragment so the original OAuth
+fragment is not inherited by later redirects.
+
+Use fragment mode only when your provider explicitly requires or recommends it.
+For server-side Shiny apps, query remains the default and `form_post` is often
+the better explicit alternative when the provider supports it.
+
+This is the plain OAuth/OIDC fragment response mode. JWT Secured Authorization
+Response Mode (JARM) values such as `fragment.jwt` use a different JWT
+`response` payload and are not currently supported.
+
+```{r, eval = FALSE}
+library(shiny)
+library(shinyOAuth)
+
+provider <- oauth_provider_keycloak(
+  base_url = "http://localhost:8080",
+  realm = "shinyoauth"
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "shiny-public",
+  client_secret = "",
+  # Fragment mode requires a dedicated non-root callback path.
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  scopes = c("openid", "profile", "email"),
+  response_mode = "fragment"
+)
+
+base_ui <- fluidPage(
+  uiOutput("login")
+)
+
+ui <- oauth_fragment_ui(base_ui, id = "auth", client = client)
+
+server <- function(input, output, session) {
+  auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
+
+  output$login <- renderUI({
+    if (auth$authenticated) {
+      tagList(
+        tags$p("You are logged in!"),
+        tags$pre(paste(capture.output(str(auth$token@userinfo)), collapse = "\n"))
+      )
+    } else {
+      tags$p("You are not logged in.")
+    }
+  })
+}
+
+runApp(
+  shinyApp(ui, server, uiPattern = ".*"),
+  port = 8100,
+  launch.browser = FALSE
+)
+
+# Open the app in your regular browser at http://127.0.0.1:8100
+# (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
+```
+
+Because the callback path is a sub-route such as `/callback`, use
+`uiPattern = ".*"` so Shiny routes both the initial callback GET and the
+follow-up POST through `oauth_fragment_ui()` before the app returns to its
+normal GET flow.
 
 ## Deploying on Posit Connect Cloud (avoiding embedded deployment)
 

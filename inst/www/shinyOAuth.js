@@ -145,7 +145,9 @@
       var drop=['code','state','session_state','id_token','access_token','token_type','expires_in','error','error_description','error_uri','iss','shinyOAuth_form_post','shinyOAuth_form_post_id'];
       for(var i=0;i<drop.length;i++){u.searchParams.delete(drop[i]);}
       var h=window.location.hash||'';
-      if(h && h.indexOf('#/')===0){
+      if(h === '#_'){
+        u.hash='';
+      }else if(h && h.indexOf('#/')===0){
         var qidx=h.indexOf('?');
         if(qidx>-1){
           var hpath=h.substring(0,qidx);
@@ -182,12 +184,91 @@
     }
   }
 
-  function register(){
-    if (!window.Shiny || !Shiny.addCustomMessageHandler) {
-      // In case Shiny is not yet ready, retry shortly
-      setTimeout(register, 100);
+  function buildFragmentBridgeActionUrl(){
+    return window.location.pathname + window.location.search + '#_';
+  }
+
+  function bridgeStatusNode(){
+    return document.getElementById('shinyOAuth-fragment-bridge-status') || document.getElementById('shinyOAuth-fragment-bridge');
+  }
+
+  function setBridgeStatus(text){
+    var node = bridgeStatusNode();
+    if (node) node.textContent = text;
+  }
+
+  function fragmentBridgeLooksLikeOAuthCallback(params){
+    var hasState = params.has('state');
+    var hasCode = params.has('code');
+    var hasError = params.has('error');
+    return hasState && (hasCode || hasError) && !(hasCode && hasError);
+  }
+
+  function bootFragmentBridge(){
+    var marker = document.getElementById('shinyOAuth-fragment-bridge');
+    if (!marker) return;
+    if (marker.getAttribute('data-shinyoauth-bridge') !== 'fragment') return;
+    if (marker.getAttribute('data-bridge-processed') === 'true') return;
+    marker.setAttribute('data-bridge-processed', 'true');
+
+    var rawHash = (window.location.hash || '').replace(/^#/, '');
+    if (!rawHash || rawHash.indexOf('=') === -1) {
+      setBridgeStatus('OAuth fragment callback was not present.');
       return;
     }
+
+    var params;
+    try {
+      params = new URLSearchParams(rawHash);
+    } catch(e) {
+      setBridgeStatus('OAuth fragment callback could not be processed.');
+      return;
+    }
+
+    if (!fragmentBridgeLooksLikeOAuthCallback(params)) {
+      setBridgeStatus('OAuth fragment callback could not be processed.');
+      return;
+    }
+
+    var actionUrl = buildFragmentBridgeActionUrl();
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = actionUrl;
+    form.style.display = 'none';
+
+    params.forEach(function(value, key){
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    try {
+      window.history.replaceState({}, document.title, actionUrl);
+    } catch(e) {}
+    setBridgeStatus('Processing sign-in response...');
+    form.submit();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootFragmentBridge, { once: true });
+  } else {
+    bootFragmentBridge();
+  }
+
+  var registerAttempts = 0;
+  function register(){
+    if (window.__shinyOAuthHandlersRegistered) return;
+    if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+      if (registerAttempts < 200) {
+        registerAttempts += 1;
+        setTimeout(register, 100);
+      }
+      return;
+    }
+    window.__shinyOAuthHandlersRegistered = true;
     Shiny.addCustomMessageHandler('shinyOAuth:setBrowserToken', handleSetBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:clearBrowserToken', handleClearBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:redirect', handleRedirect);

@@ -14,6 +14,12 @@ the custom-server path.
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
+* Added `response_mode = "fragment"` support for authorization-code callbacks.
+Apps can wrap their UI with `oauth_fragment_ui()` on a dedicated non-root
+callback path so the browser bridge converts the fragment into the existing
+one-time callback-handle flow before `oauth_module_server()` resumes normal
+state, issuer, and token exchange processing.
+
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
   `/.well-known/openid-configuration` URL. Full discovery URLs are normalized 
