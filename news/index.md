@@ -2,28 +2,30 @@
 
 ## shinyOAuth (development version)
 
-- Added Sign in with Apple helpers:
-  [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
-  configures Apple’s fixed OIDC endpoints and ID-token defaults, and
-  [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
-  generates the ES256 JWT that Apple expects in the token request
-  `client_secret` field.
-
-- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  now:
-
-  - Accepts either an issuer base URL or the standard
-    `/.well-known/openid-configuration` URL. Full discovery URLs are
-    normalized back to the issuer base before request construction, so
-    strict issuer matching still applies without requiring
-    `issuer_match = "host"`.
-
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now warns once when a client resolves to `response_mode = "form_post"`
   but no prior
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   call was detected for the same module/client setup, helping catch
   missing form_post UI wrappers earlier.
+
+- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  now accepts either an issuer base URL or the standard
+  `/.well-known/openid-configuration` URL. Full discovery URLs are
+  normalized back to the issuer base before request construction, so
+  strict issuer matching still applies without requiring
+  `issuer_match = "host"`.
+
+- Added
+  [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
+  which configures Apple’s fixed OIDC endpoints and ID-token defaults,
+  and added
+  [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
+  which generates the ES256 JWT that Apple expects in the
+  `client_secret` field of an
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  configured with
+  [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md).
 
 ## shinyOAuth 0.5.0
 
