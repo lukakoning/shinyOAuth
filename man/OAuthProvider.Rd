@@ -26,6 +26,9 @@ OAuthProvider(
   dpop_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(0),
+  authorization_signing_alg_values_supported = character(0),
+  authorization_encryption_alg_values_supported = character(0),
+  authorization_encryption_enc_values_supported = character(0),
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -163,9 +166,20 @@ auto-enable callback issuer enforcement when the caller leaves
 \code{response_mode} values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement, such as JARM
-values ending in \code{.jwt}; clients still fail fast if they request one of
-those unsupported modes.}
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.}
+
+\item{authorization_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for signed JWT Secured
+Authorization Responses (JARM).}
+
+\item{authorization_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted JARM
+responses.}
+
+\item{authorization_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+JARM responses.}
 
 \item{issuer}{Optional OIDC issuer URL. You need this when you want ID token
 validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to

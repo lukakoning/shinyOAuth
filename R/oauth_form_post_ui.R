@@ -27,9 +27,10 @@
 #' (e.g., the app's root URL or a specific callback path).
 #' This helper handles the plain form_post response mode, where the POST body
 #' contains authorization response parameters such as `code`, `state`, `error`,
-#' and `iss`. When `response_mode = "form_post.jwt"`, the helper stores the
-#' raw JARM `response` parameter under the same one-time handle and leaves JWT
-#' decoding and validation to the main callback flow.
+#' and `iss`. When `response_mode = "form_post.jwt"`, the helper validates the
+#' inbound JARM `response`, decrypts and validates the enclosed state, and then
+#' stores the accepted callback payload under the same one-time handle so the
+#' main callback flow can resume from a prevalidated POST boundary.
 #'
 #' @details
 #' When this wrapper is used, it also injects [use_shinyOAuth()] automatically

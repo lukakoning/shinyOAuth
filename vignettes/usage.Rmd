@@ -338,8 +338,15 @@ can set it up:
 
 This is the plain OAuth/OIDC Form Post Response Mode: the POST body contains
 parameters such as `code`, `state`, `error`, and `iss`. JWT Secured
-Authorization Response Mode (JARM) values such as `form_post.jwt` use a
-different JWT `response` payload and are not currently supported.
+Authorization Response Mode (JARM) values such as `form_post.jwt` use the same
+POST bridge, but the body carries a compact JWT `response` value instead. In
+that mode, `oauth_form_post_ui()` validates the JARM payload and the inner
+sealed state before issuing the one-time callback handle.
+
+For query-based JARM, set `response_mode = "jwt"` or `"query.jwt"`. Both
+request a JWT-wrapped authorization response on the normal query callback path;
+`"jwt"` preserves the RFC-defined shortcut value on the outbound authorization
+request, while `"query.jwt"` is the fully explicit form.
 
 ```{r, eval = FALSE}
 library(shiny)

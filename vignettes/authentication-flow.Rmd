@@ -128,9 +128,12 @@ must not include a `request_uri` parameter.
 
 If the client sets `response_mode = "form_post"`, 'shinyOAuth' also sends
 `response_mode=form_post` on the authorization request so the provider knows to
-return the authorization response as an HTTP POST. If `response_mode` is left
-unset, 'shinyOAuth' stays on the normal query callback flow and does not send a
-`response_mode` parameter.
+return the authorization response as an HTTP POST. If the client sets
+`response_mode = "jwt"`, 'shinyOAuth' sends that exact shortcut value and still
+expects the authorization-code callback on the normal query path because `jwt`
+selects the default transport for that response type. If `response_mode` is
+left unset, 'shinyOAuth' stays on the normal query callback flow and does not
+send a `response_mode` parameter.
 
 Without JAR and without PAR, the browser of the app user is redirected to the
 provider's authorization endpoint with the usual OAuth query parameters:
@@ -212,7 +215,10 @@ instead, the OAuth-specific query parameters are only
 `shinyOAuth_form_post=<handle>` and `shinyOAuth_form_post_id=<module id>` so
 the normal Shiny module callback path can resume on an ordinary GET request.
 Plain `form_post` is supported; JWT Secured Authorization Response Mode (JARM)
-values such as `form_post.jwt` are not.
+values such as `form_post.jwt` use the same POST bridge, but the provider sends
+a compact JWT `response` instead of direct OAuth fields. `oauth_form_post_ui()`
+validates that JARM payload and the inner sealed state before redirecting back
+to the app with the short-lived callback handle.
 
 ### 7. Callback processing & state verification (`handle_callback()`)
 

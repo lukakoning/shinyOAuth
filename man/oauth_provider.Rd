@@ -26,6 +26,9 @@ oauth_provider(
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(),
+  authorization_signing_alg_values_supported = character(),
+  authorization_encryption_alg_values_supported = character(),
+  authorization_encryption_enc_values_supported = character(),
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -163,9 +166,20 @@ auto-enable callback issuer enforcement when the caller leaves
 \code{response_mode} values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement, such as JARM
-values ending in \code{.jwt}; clients still fail fast if they request one of
-those unsupported modes.}
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.}
+
+\item{authorization_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for signed JWT Secured
+Authorization Responses (JARM).}
+
+\item{authorization_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted JARM
+responses.}
+
+\item{authorization_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+JARM responses.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},
