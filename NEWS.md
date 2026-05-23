@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* `oauth_provider_oidc_discover()` and helpers built on it now accept
+discovery metadata that differs from the configured issuer only by one
+trailing slash in the published `issuer`, while still storing the provider's
+advertised issuer verbatim for downstream `iss` checks.
+
 * `oauth_module_server()` now warns once when a client resolves to
 `response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
 detected for the same module/client setup, helping catch missing form_post UI

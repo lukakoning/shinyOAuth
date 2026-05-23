@@ -83,6 +83,17 @@ test_that("validate_discovery_issuer matches the discovery request prefix", {
   )
 })
 
+test_that("validate_discovery_issuer tolerates a trailing slash in discovery metadata", {
+  f <- shinyOAuth:::validate_discovery_issuer
+  expect_identical(
+    f(
+      "https://login.example.com/tenant-a",
+      "https://login.example.com/tenant-a/"
+    ),
+    "https://login.example.com/tenant-a/"
+  )
+})
+
 test_that("validate_discovery_issuer errors on host case mismatch by default", {
   f <- shinyOAuth:::validate_discovery_issuer
   expect_error(
