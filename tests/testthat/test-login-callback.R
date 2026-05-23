@@ -113,6 +113,96 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
   )
 })
 
+test_that("state_client_policy_fingerprint includes JARM callback policy", {
+  make_jarm_client <- function(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256",
+    authorization_encrypted_response_enc = "A128CBC-HS256",
+    authorization_response_decryption_private_key,
+    authorization_response_decryption_private_key_kid = "enc-1"
+  ) {
+    prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+    prov@issuer <- "https://issuer.example.com"
+    prov@response_modes_supported <- c("jwt", "query.jwt", "form_post.jwt")
+    prov@authorization_signing_alg_values_supported <- c("RS256", "ES256")
+    prov@authorization_encryption_alg_values_supported <- "RSA-OAEP"
+    prov@authorization_encryption_enc_values_supported <- c(
+      "A128CBC-HS256",
+      "A256CBC-HS512"
+    )
+
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100",
+      scopes = "openid",
+      response_mode = response_mode,
+      authorization_signed_response_alg = authorization_signed_response_alg,
+      authorization_encrypted_response_alg = "RSA-OAEP",
+      authorization_encrypted_response_enc = authorization_encrypted_response_enc,
+      authorization_response_decryption_private_key = authorization_response_decryption_private_key,
+      authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
+      state_store = cachem::cache_mem(max_age = 600),
+      state_payload_max_age = 300,
+      state_entropy = 64,
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      )
+    )
+  }
+
+  key_one <- openssl::rsa_keygen()
+  key_two <- openssl::rsa_keygen()
+  base <- make_jarm_client(
+    authorization_response_decryption_private_key = key_one
+  )
+  base_fingerprint <- shinyOAuth:::state_client_policy_fingerprint(base)
+
+  expect_identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      response_mode = "jwt",
+      authorization_response_decryption_private_key = key_one
+    ))
+  )
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      response_mode = "form_post.jwt",
+      authorization_response_decryption_private_key = key_one
+    ))
+  ))
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      authorization_signed_response_alg = "ES256",
+      authorization_response_decryption_private_key = key_one
+    ))
+  ))
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      authorization_encrypted_response_enc = "A256CBC-HS512",
+      authorization_response_decryption_private_key = key_one
+    ))
+  ))
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      authorization_response_decryption_private_key = key_two
+    ))
+  ))
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      authorization_response_decryption_private_key = key_one,
+      authorization_response_decryption_private_key_kid = "enc-2"
+    ))
+  ))
+})
+
 test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
   # Cover browser_token mismatch and PKCE verifier missing
   cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)

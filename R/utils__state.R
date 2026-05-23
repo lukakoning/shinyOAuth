@@ -343,6 +343,29 @@ state_policy_mtls_cert_thumbprint <- function(client) {
   )
 }
 
+#' Compute a JARM decryption-key thumbprint for state binding
+#'
+#' Used by `state_client_policy_fingerprint()` when encrypted JARM is enabled.
+#'
+#' @param client OAuth client carrying inbound JARM decryption configuration.
+#' @return RFC 7638 JWK thumbprint string, or `NA_character_` when no JARM
+#'   decryption key is configured.
+#' @keywords internal
+#' @noRd
+state_policy_jarm_decryption_key_thumbprint <- function(client) {
+  if (is.null(client@authorization_response_decryption_private_key)) {
+    return(NA_character_)
+  }
+
+  key <- normalize_private_key_input(
+    client@authorization_response_decryption_private_key,
+    arg_name = "authorization_response_decryption_private_key"
+  )
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = TRUE)
+
+  compute_jwk_thumbprint(jwk)
+}
+
 #' Build a client-side callback policy fingerprint
 #'
 #' Computes a stable digest over client settings that affect callback handling,
@@ -356,7 +379,21 @@ state_policy_mtls_cert_thumbprint <- function(client) {
 state_client_policy_fingerprint <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 
+  response_mode_info <- resolve_oauth_client_response_mode(client)
+  if (!is.null(response_mode_info$error)) {
+    err_config(response_mode_info$error)
+  }
+
+  response_mode <- response_mode_info$mode %||% "query"
+  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+  jarm_encryption_config <- if (isTRUE(jarm_response_mode)) {
+    resolve_authorization_response_encryption_config(client)
+  } else {
+    NULL
+  }
+
   components <- list(
+    response_mode = response_mode,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
     resource = state_policy_string_set(client@resource),
     claims = client@claims,
@@ -376,6 +413,30 @@ state_client_policy_fingerprint <- function(client) {
     ),
     dpop_signing_alg = if (client_has_dpop(client)) {
       resolve_dpop_alg(client)
+    } else {
+      NA_character_
+    },
+    authorization_signed_response_alg = if (isTRUE(jarm_response_mode)) {
+      resolve_authorization_response_signing_alg(client)
+    } else {
+      NA_character_
+    },
+    authorization_encrypted_response_alg = jarm_encryption_config$alg %||%
+      NA_character_,
+    authorization_encrypted_response_enc = jarm_encryption_config$enc %||%
+      NA_character_,
+    authorization_response_decryption_private_key_kid = if (
+      !is.null(jarm_encryption_config)
+    ) {
+      client@authorization_response_decryption_private_key_kid %||%
+        NA_character_
+    } else {
+      NA_character_
+    },
+    authorization_response_decryption_key_thumbprint = if (
+      !is.null(jarm_encryption_config)
+    ) {
+      state_policy_jarm_decryption_key_thumbprint(client)
     } else {
       NA_character_
     },
