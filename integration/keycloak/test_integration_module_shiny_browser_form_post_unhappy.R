@@ -15,6 +15,255 @@ if (!exists("make_provider", mode = "function")) {
   )
 }
 
+.browser_form_post_repo_root <- function() {
+  cwd <- normalizePath(".", winslash = "/", mustWork = TRUE)
+  candidates <- unique(c(
+    cwd,
+    normalizePath(file.path(cwd, "..", ".."), winslash = "/", mustWork = FALSE)
+  ))
+
+  for (candidate in candidates) {
+    if (
+      file.exists(file.path(candidate, "DESCRIPTION")) &&
+        dir.exists(file.path(candidate, "R"))
+    ) {
+      return(candidate)
+    }
+  }
+
+  stop("Could not find the shinyOAuth repository root", call. = FALSE)
+}
+
+.read_form_post_browser_log <- function(path) {
+  if (!file.exists(path)) {
+    return("")
+  }
+
+  paste(readLines(path, warn = FALSE), collapse = "\n")
+}
+
+.create_form_post_jarm_browser_fixture <- function(app_url, prefix) {
+  admin_token <- keycloak_admin_token()
+  fixture <- keycloak_create_client(
+    token = admin_token,
+    body = keycloak_oidc_client_body(
+      client_id = keycloak_temp_client_id(prefix),
+      public_client = TRUE,
+      redirect_uris = list(app_url, paste0(app_url, "/*")),
+      attributes = list(
+        "pkce.code.challenge.method" = "S256",
+        "authorization.signed.response.alg" = "RS256"
+      )
+    )
+  )
+
+  list(admin_token = admin_token, fixture = fixture)
+}
+
+.start_form_post_jarm_browser_app <- function(
+  repo_root,
+  app_port,
+  app_url,
+  title,
+  client_id
+) {
+  stdout <- tempfile("form-post-jarm-app-stdout-", fileext = ".log")
+  stderr <- tempfile("form-post-jarm-app-stderr-", fileext = ".log")
+
+  process <- callr::r_bg(
+    func = function(repo_root, app_port, app_url, title, client_id) {
+      setwd(repo_root)
+      if (requireNamespace("pkgload", quietly = TRUE)) {
+        pkgload::load_all(
+          repo_root,
+          quiet = TRUE,
+          helpers = FALSE,
+          attach_testthat = FALSE
+        )
+      } else if (requireNamespace("devtools", quietly = TRUE)) {
+        devtools::load_all(
+          repo_root,
+          quiet = TRUE,
+          helpers = FALSE,
+          attach_testthat = FALSE
+        )
+      } else if (!requireNamespace("shinyOAuth", quietly = TRUE)) {
+        stop(
+          paste(
+            "Could not load shinyOAuth for the form_post.jwt background app.",
+            "Install pkgload or devtools, or install shinyOAuth into this library.",
+            sep = " "
+          ),
+          call. = FALSE
+        )
+      }
+      source("integration/keycloak/helper-keycloak.R")
+
+      provider <- make_provider()
+      client <- shinyOAuth::oauth_client(
+        provider = provider,
+        client_id = client_id,
+        client_secret = "",
+        redirect_uri = app_url,
+        scopes = c("openid", "profile", "email"),
+        response_mode = "form_post.jwt",
+        authorization_signed_response_alg = "RS256"
+      )
+
+      base_ui <- shiny::fluidPage(
+        shinyOAuth::use_shinyOAuth(),
+        shiny::titlePanel(title),
+        shiny::actionButton("prepare_login_btn", "Prepare login"),
+        shiny::tags$hr(),
+        shiny::verbatimTextOutput("ready_state"),
+        shiny::verbatimTextOutput("auth_url"),
+        shiny::verbatimTextOutput("auth_state")
+      )
+      ui <- shinyOAuth::oauth_form_post_ui(
+        base_ui,
+        id = "auth",
+        client = client
+      )
+
+      server <- function(input, output, session) {
+        published_auth_urls <- shiny::reactiveValues()
+        session_browser_tokens <- shiny::reactiveValues()
+
+        auth <- shinyOAuth::oauth_module_server(
+          "auth",
+          client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        )
+
+        shiny::observe({
+          browser_token <- auth$browser_token %||% NA_character_
+          if (keycloak_nonempty_string(browser_token)) {
+            session_browser_tokens[[session$token]] <- browser_token
+          }
+        })
+
+        shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
+          url <- auth$build_auth_url()
+          browser_token <- auth$browser_token %||% NA_character_
+          if (keycloak_nonempty_string(browser_token)) {
+            published_auth_urls[[browser_token]] <- url
+          }
+        })
+
+        output$ready_state <- shiny::renderText({
+          paste("browser_ready:", isTRUE(auth$has_browser_token()))
+        })
+
+        output$auth_url <- shiny::renderText({
+          browser_token <- session_browser_tokens[[session$token]] %||%
+            NA_character_
+          auth_url <- if (keycloak_nonempty_string(browser_token)) {
+            published_auth_urls[[browser_token]] %||% NA_character_
+          } else {
+            NA_character_
+          }
+
+          if (
+            !is.character(auth_url) ||
+              length(auth_url) != 1L ||
+              is.na(auth_url) ||
+              !nzchar(auth_url)
+          ) {
+            return("<none>")
+          }
+
+          auth_url
+        })
+
+        output$auth_state <- shiny::renderText({
+          paste(
+            "authenticated:",
+            isTRUE(auth$authenticated),
+            "has_token:",
+            !is.null(auth$token),
+            "error:",
+            auth$error %||% "<none>",
+            "error_description:",
+            auth$error_description %||% "<none>"
+          )
+        })
+      }
+
+      shiny::runApp(
+        shiny::shinyApp(ui, server, uiPattern = ".*"),
+        port = app_port,
+        host = "0.0.0.0",
+        launch.browser = FALSE
+      )
+    },
+    args = list(
+      repo_root = repo_root,
+      app_port = app_port,
+      app_url = app_url,
+      title = title,
+      client_id = client_id
+    ),
+    stdout = stdout,
+    stderr = stderr,
+    supervise = TRUE
+  )
+
+  list(process = process, stdout = stdout, stderr = stderr)
+}
+
+.wait_for_form_post_jarm_browser_app <- function(
+  app_process,
+  app_port,
+  timeout = 20
+) {
+  deadline <- Sys.time() + timeout
+
+  while (Sys.time() < deadline) {
+    if (!app_process$process$is_alive()) {
+      stop(
+        paste(
+          "Shiny form_post.jwt app exited before it was reachable.",
+          .read_form_post_browser_log(app_process$stderr),
+          sep = "\n"
+        ),
+        call. = FALSE
+      )
+    }
+
+    if (keycloak_browser_port_in_use(app_port)) {
+      return(invisible(app_process))
+    }
+
+    Sys.sleep(0.25)
+  }
+
+  stop(
+    paste(
+      "Timed out waiting for the Shiny form_post.jwt app to listen.",
+      .read_form_post_browser_log(app_process$stderr),
+      sep = "\n"
+    ),
+    call. = FALSE
+  )
+}
+
+.fetch_form_post_jarm_callback_fields <- function(auth_url, redirect_uri) {
+  login <- perform_login_form_as(auth_url, redirect_uri = redirect_uri)
+
+  testthat::expect_identical(
+    login$response_mode %||% NA_character_,
+    "form_post.jwt"
+  )
+  testthat::expect_true(is.list(login$form_post_fields))
+  testthat::expect_true(
+    keycloak_nonempty_string(login$form_post_fields$response)
+  )
+  testthat::expect_true(startsWith(login$callback_url, redirect_uri))
+
+  login$form_post_fields
+}
+
 .make_form_post_browser_app <- function(client, title, module_id = "auth") {
   base_ui <- shiny::fluidPage(
     shinyOAuth::use_shinyOAuth(),
@@ -247,6 +496,7 @@ if (!exists("make_provider", mode = "function")) {
       var forbidden = [
         'code=', 'state=', 'iss=', 'error=',
         'error_description=', 'error_uri=',
+        'response=',
         'shinyOAuth_form_post=', 'shinyOAuth_form_post_id=',
         'id_token=', 'access_token='
       ];
@@ -416,8 +666,8 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
   on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
 
   .wait_for_form_post_ready(drv)
-  drv$click("prepare_login_btn")
-  prepared <- .wait_for_form_post_auth_url(drv)
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  prepared <- .wait_for_form_post_auth_url(drv, timeout = 30000)
   .wait_for_form_post_state_store_count(drv, 1L)
   auth_url <- trimws(prepared$auth_url %||% "")
   enc_state <- parse_query_param(auth_url, "state")
@@ -528,8 +778,8 @@ testthat::test_that("browser form_post provider error callbacks are surfaced and
   on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
 
   .wait_for_form_post_ready(drv)
-  drv$click("prepare_login_btn")
-  prepared <- .wait_for_form_post_auth_url(drv)
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  prepared <- .wait_for_form_post_auth_url(drv, timeout = 30000)
   auth_url <- trimws(prepared$auth_url %||% "")
   enc_state <- parse_query_param(auth_url, "state")
 
@@ -620,12 +870,17 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
 
   attacked_page <- .wait_for_form_post_page_text(
     drv,
-    pattern = "OAuth form_post callback could not be processed.",
+    pattern = "Callback iss parameter does not match expected issuer",
     ignore_case = FALSE
   )
-  testthat::expect_identical(
-    trimws(attacked_page),
-    "OAuth form_post callback could not be processed."
+  testthat::expect_match(
+    attacked_page,
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    attacked_page,
+    "Callback iss parameter does not match expected issuer \\(RFC 9207\\)"
   )
 
   .navigate_form_post_browser_to_url(drv, client@redirect_uri)
@@ -734,11 +989,12 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
   )
 
   cleaned <- .wait_for_form_post_callback_cleanup(drv)
-  # Browser-token rejection must not burn the pending login state.
-  .wait_for_form_post_state_store_count(drv, 1L)
+  # Browser-token rejection now consumes the pending login state once the
+  # callback reaches module-side state handling.
+  .wait_for_form_post_state_store_count(drv, 0L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
-    1L
+    0L
   )
 })
 
@@ -817,11 +1073,12 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   )
 
   .wait_for_form_post_callback_cleanup(drv)
-  # Browser-token rejection must not burn the pending login state.
-  .wait_for_form_post_state_store_count(drv, 1L)
+  # Browser-token rejection now consumes the pending login state once the
+  # callback reaches module-side state handling.
+  .wait_for_form_post_state_store_count(drv, 0L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
-    1L
+    0L
   )
 })
 
@@ -894,11 +1151,11 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
 
-  drv_a$click("prepare_login_btn")
-  drv_b$click("prepare_login_btn")
+  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
 
-  prepared_a <- .wait_for_form_post_auth_url(drv_a)
-  prepared_b <- .wait_for_form_post_auth_url(drv_b)
+  prepared_a <- .wait_for_form_post_auth_url(drv_a, timeout = 30000)
+  prepared_b <- .wait_for_form_post_auth_url(drv_b, timeout = 30000)
   enc_state_a <- parse_query_param(prepared_a$auth_url, "state")
   fields_b <- .fetch_form_post_code_callback(
     prepared_b$auth_url,
@@ -913,12 +1170,17 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "OAuth form_post callback could not be processed.",
-    ignore_case = FALSE
+    pattern = "state token decrypted payload is not valid JSON"
   )
-  testthat::expect_identical(
-    trimws(attacked_page),
-    "OAuth form_post callback could not be processed."
+  testthat::expect_match(
+    attacked_page,
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    attacked_page,
+    "state token decrypted payload is not valid JSON",
+    ignore.case = TRUE
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1032,11 +1294,11 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
 
-  drv_a$click("prepare_login_btn")
-  drv_b$click("prepare_login_btn")
+  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
 
-  prepared_a <- .wait_for_form_post_auth_url(drv_a)
-  prepared_b <- .wait_for_form_post_auth_url(drv_b)
+  prepared_a <- .wait_for_form_post_auth_url(drv_a, timeout = 30000)
+  prepared_b <- .wait_for_form_post_auth_url(drv_b, timeout = 30000)
   enc_state_a <- parse_query_param(prepared_a$auth_url, "state")
   enc_state_b <- parse_query_param(prepared_b$auth_url, "state")
 
@@ -1053,12 +1315,17 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
 
   attacked_page <- .wait_for_form_post_page_text(
     drv_a,
-    pattern = "OAuth form_post callback could not be processed.",
-    ignore_case = FALSE
+    pattern = "state token decrypted payload is not valid JSON"
   )
-  testthat::expect_identical(
-    trimws(attacked_page),
-    "OAuth form_post callback could not be processed."
+  testthat::expect_match(
+    attacked_page,
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    attacked_page,
+    "state token decrypted payload is not valid JSON",
+    ignore.case = TRUE
   )
 
   .navigate_form_post_browser_to_url(drv_a, client_a@redirect_uri)
@@ -1119,4 +1386,264 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
     .read_form_post_browser_state(drv_b)$state_store_count,
     0L
   )
+})
+
+testthat::test_that("browser form_post.jwt callbacks with tampered browser cookies are rejected", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+  testthat::skip_if_not_installed("xml2")
+  testthat::skip_if_not_installed("rvest")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_JARM_CSRF",
+    "8125"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping form_post.jwt cookie tamper E2E"
+    ))
+  }
+
+  repo_root <- .browser_form_post_repo_root()
+  app_url <- sprintf("http://127.0.0.1:%d", app_port)
+  setup <- .create_form_post_jarm_browser_fixture(
+    app_url = app_url,
+    prefix = "shiny-form-post-jarm-csrf"
+  )
+  on.exit(
+    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    add = TRUE
+  )
+
+  app_process <- .start_form_post_jarm_browser_app(
+    repo_root = repo_root,
+    app_port = app_port,
+    app_url = app_url,
+    title = "Form post JWT cookie tamper",
+    client_id = setup$fixture$client_id
+  )
+  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_form_post_jarm_browser_app(app_process, app_port)
+
+  drv <- shinytest2::AppDriver$new(
+    app_url,
+    name = sprintf("keycloak-form-post-jarm-csrf-%d", app_port),
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  prepared <- .wait_for_form_post_auth_url(drv, timeout = 30000)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  fields <- .fetch_form_post_jarm_callback_fields(auth_url, app_url)
+
+  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_false(is.null(cookie))
+
+  attacker_cookie <- .random_browser_token_hex()
+  testthat::expect_false(identical(
+    cookie$value %||% NA_character_,
+    attacker_cookie
+  ))
+  .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
+
+  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_identical(tampered_cookie$value, attacker_cookie)
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = app_url,
+    fields = fields
+  )
+
+  auth_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = prepared$auth_state
+  )
+  testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
+  testthat::expect_match(
+    auth_state,
+    "browser.token|browser token|invalid browser token|mismatch",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  .wait_for_form_post_callback_cleanup(drv)
+})
+
+testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong app while the rightful target callback still succeeds", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+  testthat::skip_if_not_installed("xml2")
+  testthat::skip_if_not_installed("rvest")
+
+  port_a <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_JARM_SWAP_A",
+    "8126"
+  ))
+  port_b <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_JARM_SWAP_B",
+    "8127"
+  ))
+
+  testthat::skip_if(
+    identical(port_a, port_b),
+    "Form-post JWT swap E2E requires two distinct app ports"
+  )
+
+  busy_ports <- c()
+  if (keycloak_browser_port_in_use(port_a)) {
+    busy_ports <- c(busy_ports, as.character(port_a))
+  }
+  if (keycloak_browser_port_in_use(port_b)) {
+    busy_ports <- c(busy_ports, as.character(port_b))
+  }
+  testthat::skip_if(
+    length(busy_ports) > 0L,
+    paste0(
+      "Port(s) ",
+      paste(busy_ports, collapse = ", "),
+      " already in use; skipping form_post.jwt swap E2E"
+    )
+  )
+
+  repo_root <- .browser_form_post_repo_root()
+  app_url_a <- sprintf("http://127.0.0.1:%d", port_a)
+  app_url_b <- sprintf("http://127.0.0.1:%d", port_b)
+  setup_a <- .create_form_post_jarm_browser_fixture(
+    app_url = app_url_a,
+    prefix = "shiny-form-post-jarm-swap-a"
+  )
+  on.exit(
+    keycloak_delete_client(setup_a$admin_token, id = setup_a$fixture$id),
+    add = TRUE
+  )
+  setup_b <- .create_form_post_jarm_browser_fixture(
+    app_url = app_url_b,
+    prefix = "shiny-form-post-jarm-swap-b"
+  )
+  on.exit(
+    keycloak_delete_client(setup_b$admin_token, id = setup_b$fixture$id),
+    add = TRUE
+  )
+
+  app_process_a <- .start_form_post_jarm_browser_app(
+    repo_root = repo_root,
+    app_port = port_a,
+    app_url = app_url_a,
+    title = "Form post JWT swap A",
+    client_id = setup_a$fixture$client_id
+  )
+  on.exit(try(app_process_a$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_form_post_jarm_browser_app(app_process_a, port_a)
+
+  app_process_b <- .start_form_post_jarm_browser_app(
+    repo_root = repo_root,
+    app_port = port_b,
+    app_url = app_url_b,
+    title = "Form post JWT swap B",
+    client_id = setup_b$fixture$client_id
+  )
+  on.exit(try(app_process_b$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_form_post_jarm_browser_app(app_process_b, port_b)
+
+  drv_a <- shinytest2::AppDriver$new(
+    app_url_a,
+    name = sprintf("keycloak-form-post-jarm-swap-a-%d", port_a),
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+
+  drv_b <- shinytest2::AppDriver$new(
+    app_url_b,
+    name = sprintf("keycloak-form-post-jarm-swap-b-%d", port_b),
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv_a)
+  .wait_for_form_post_ready(drv_b)
+
+  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
+
+  prepared_a <- .wait_for_form_post_auth_url(drv_a, timeout = 30000)
+  prepared_b <- .wait_for_form_post_auth_url(drv_b, timeout = 30000)
+  fields_a <- .fetch_form_post_jarm_callback_fields(
+    prepared_a$auth_url,
+    app_url_a
+  )
+  fields_b <- .fetch_form_post_jarm_callback_fields(
+    prepared_b$auth_url,
+    app_url_b
+  )
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = app_url_a,
+    fields = fields_b
+  )
+
+  attacked_page <- .wait_for_form_post_page_text(
+    drv_a,
+    pattern = "JARM aud claim does not include client_id"
+  )
+  testthat::expect_match(attacked_page, "Invalid OAuth state", fixed = TRUE)
+  testthat::expect_match(
+    attacked_page,
+    "JARM aud claim does not include client_id",
+    ignore.case = TRUE
+  )
+
+  .navigate_form_post_browser_to_url(drv_a, app_url_a)
+  restored_a <- .wait_for_form_post_ready(drv_a)
+
+  .submit_form_post_browser_callback(
+    drv_b,
+    action_url = app_url_b,
+    fields = fields_b
+  )
+  auth_state_b <- .wait_for_form_post_auth_state_transition(
+    drv_b,
+    previous_state = prepared_b$auth_state
+  )
+  testthat::expect_match(auth_state_b, "authenticated: TRUE", fixed = TRUE)
+  testthat::expect_match(
+    auth_state_b,
+    "error_description: <none>",
+    fixed = TRUE
+  )
+
+  .wait_for_form_post_callback_cleanup(drv_b)
+
+  .submit_form_post_browser_callback(
+    drv_a,
+    action_url = app_url_a,
+    fields = fields_a
+  )
+  auth_state_a <- .wait_for_form_post_auth_state_transition(
+    drv_a,
+    previous_state = restored_a$auth_state
+  )
+  testthat::expect_match(auth_state_a, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(auth_state_a, "error: invalid_state", fixed = TRUE)
+  testthat::expect_match(
+    auth_state_a,
+    "browser.token|browser token|invalid browser token|mismatch",
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+
+  .wait_for_form_post_callback_cleanup(drv_a)
 })

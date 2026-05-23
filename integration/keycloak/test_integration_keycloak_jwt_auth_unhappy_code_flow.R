@@ -8,7 +8,25 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
-expect_jwt_auth_code_flow_failure <- function(client, description_pattern) {
+extract_login_callback_response <- function(login) {
+  response <- login$response %||% NA_character_
+
+  if (!keycloak_nonempty_string(response)) {
+    response <- parse_query_param(
+      login$callback_url %||% NA_character_,
+      "response",
+      decode = TRUE
+    )
+  }
+
+  response
+}
+
+expect_jwt_auth_code_flow_failure <- function(
+  client,
+  description_pattern,
+  expect_jarm = FALSE
+) {
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
@@ -18,7 +36,15 @@ expect_jwt_auth_code_flow_failure <- function(client, description_pattern) {
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
       query <- callback_query(login)
 
-      testthat::expect_true(nzchar(login$code %||% ""))
+      if (isTRUE(expect_jarm)) {
+        response <- extract_login_callback_response(login)
+
+        testthat::expect_true(keycloak_nonempty_string(response))
+        testthat::expect_false(grepl("[?&]code=", login$callback_url))
+        testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      } else {
+        testthat::expect_true(nzchar(login$code %||% ""))
+      }
 
       values$.process_query(query)
       session$flushReact()
@@ -53,7 +79,7 @@ expect_jwt_auth_code_flow_failure <- function(client, description_pattern) {
   )
 }
 
-make_bad_client_secret_jwt_client <- function(prov) {
+make_bad_client_secret_jwt_client <- function(prov, ...) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
@@ -67,11 +93,12 @@ make_bad_client_secret_jwt_client <- function(prov) {
     ),
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    client_assertion_alg = "HS256"
+    client_assertion_alg = "HS256",
+    ...
   )
 }
 
-make_bad_client_secret_jwt_aud_client <- function(prov) {
+make_bad_client_secret_jwt_aud_client <- function(prov, ...) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
@@ -79,22 +106,24 @@ make_bad_client_secret_jwt_aud_client <- function(prov) {
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     client_assertion_alg = "HS256",
-    client_assertion_audience = "https://example.com/not-keycloak"
+    client_assertion_audience = "https://example.com/not-keycloak",
+    ...
   )
 }
 
-make_bad_client_secret_jwt_alg_client <- function(prov) {
+make_bad_client_secret_jwt_alg_client <- function(prov, ...) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-csjwt",
     client_secret = get_client_secret_jwt_secret(),
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    client_assertion_alg = "HS384"
+    client_assertion_alg = "HS384",
+    ...
   )
 }
 
-make_bad_private_key_jwt_client <- function(prov) {
+make_bad_private_key_jwt_client <- function(prov, ...) {
   shinyOAuth::oauth_client(
     provider = prov,
     client_id = "shiny-pjwt",
@@ -103,7 +132,8 @@ make_bad_private_key_jwt_client <- function(prov) {
     scopes = c("openid"),
     client_private_key = openssl::rsa_keygen(bits = 2048),
     client_private_key_kid = NA_character_,
-    client_assertion_alg = NA_character_
+    client_assertion_alg = NA_character_,
+    ...
   )
 }
 
@@ -157,5 +187,78 @@ testthat::test_that("code flow fails with wrong private_key_jwt key", {
   expect_jwt_auth_code_flow_failure(
     client,
     "Token exchange failed|invalid_client|jwt|401"
+  )
+})
+
+testthat::test_that("JARM code flow fails with wrong client_secret_jwt secret", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(token_auth_style = "client_secret_jwt")
+  client <- make_bad_client_secret_jwt_client(
+    prov,
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256"
+  )
+
+  expect_jwt_auth_code_flow_failure(
+    client,
+    "Token exchange failed|invalid_client|401",
+    expect_jarm = TRUE
+  )
+})
+
+testthat::test_that("JARM code flow fails with wrong client_secret_jwt audience", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(token_auth_style = "client_secret_jwt")
+  client <- make_bad_client_secret_jwt_aud_client(
+    prov,
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256"
+  )
+
+  expect_jwt_auth_code_flow_failure(
+    client,
+    "Token exchange failed|invalid_client|aud|401",
+    expect_jarm = TRUE
+  )
+})
+
+testthat::test_that("JARM code flow fails with client_secret_jwt alg not allowed by client", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider(token_auth_style = "client_secret_jwt")
+  client <- make_bad_client_secret_jwt_alg_client(
+    prov,
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256"
+  )
+
+  expect_jwt_auth_code_flow_failure(
+    client,
+    "Token exchange failed|invalid_client|alg|401",
+    expect_jarm = TRUE
+  )
+})
+
+testthat::test_that("JARM code flow fails with wrong private_key_jwt key", {
+  skip_common()
+  local_test_options()
+  testthat::skip_if_not_installed("openssl")
+
+  prov <- make_provider(token_auth_style = "private_key_jwt")
+  client <- make_bad_private_key_jwt_client(
+    prov,
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256"
+  )
+
+  expect_jwt_auth_code_flow_failure(
+    client,
+    "Token exchange failed|invalid_client|jwt|401",
+    expect_jarm = TRUE
   )
 })

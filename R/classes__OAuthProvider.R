@@ -110,9 +110,17 @@
 #'   providers use the discovery metadata value, defaulting to `c("query",
 #'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
 #'   may leave this empty when capabilities are not known. Provider metadata may
-#'   include response modes that shinyOAuth does not implement, such as JARM
-#'   values ending in `.jwt`; clients still fail fast if they request one of
-#'   those unsupported modes.
+#'   include response modes that shinyOAuth does not implement; clients still
+#'   fail fast if they request one of those unsupported modes.
+#' @param authorization_signing_alg_values_supported Optional vector of JWS
+#'   algorithms that the provider advertises for signed JWT Secured
+#'   Authorization Responses (JARM).
+#' @param authorization_encryption_alg_values_supported Optional vector of JWE
+#'   key-management algorithms that the provider advertises for encrypted JARM
+#'   responses.
+#' @param authorization_encryption_enc_values_supported Optional vector of JWE
+#'   content-encryption algorithms that the provider advertises for encrypted
+#'   JARM responses.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
@@ -415,6 +423,18 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    authorization_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    authorization_encryption_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    authorization_encryption_enc_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
       S7::class_character,
@@ -569,6 +589,9 @@ oauth_provider <- function(
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(),
+  authorization_signing_alg_values_supported = character(),
+  authorization_encryption_alg_values_supported = character(),
+  authorization_encryption_enc_values_supported = character(),
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -663,6 +686,33 @@ oauth_provider <- function(
   response_modes_supported <- tolower(trimws(as.character(
     unlist(response_modes_supported, use.names = FALSE)
   )))
+  if (is.null(authorization_signing_alg_values_supported)) {
+    authorization_signing_alg_values_supported <- character()
+  }
+  authorization_signing_alg_values_supported <- toupper(as.character(
+    unlist(
+      authorization_signing_alg_values_supported,
+      use.names = FALSE
+    )
+  ))
+  if (is.null(authorization_encryption_alg_values_supported)) {
+    authorization_encryption_alg_values_supported <- character()
+  }
+  authorization_encryption_alg_values_supported <- toupper(as.character(
+    unlist(
+      authorization_encryption_alg_values_supported,
+      use.names = FALSE
+    )
+  ))
+  if (is.null(authorization_encryption_enc_values_supported)) {
+    authorization_encryption_enc_values_supported <- character()
+  }
+  authorization_encryption_enc_values_supported <- toupper(as.character(
+    unlist(
+      authorization_encryption_enc_values_supported,
+      use.names = FALSE
+    )
+  ))
   request_parameter_supported <- normalize_optional_provider_boolean(
     request_parameter_supported,
     "request_parameter_supported"
@@ -859,6 +909,9 @@ oauth_provider <- function(
       authorization_response_iss_parameter_supported
     ),
     response_modes_supported = response_modes_supported,
+    authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
+    authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
+    authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -1062,7 +1115,12 @@ oauth_provider_validate <- function(self) {
   if (
     !is.null(response_mode_info$mode) &&
       length(self@response_modes_supported) > 0 &&
-      !response_mode_info$mode %in% self@response_modes_supported
+      !response_mode_info$mode %in%
+        {
+          supported_modes <- tolower(trimws(self@response_modes_supported))
+          supported_modes[supported_modes == "jwt"] <- "query.jwt"
+          supported_modes
+        }
   ) {
     return(paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",
@@ -1490,6 +1548,78 @@ oauth_provider_validate <- function(self) {
       return(
         paste(
           "OAuthProvider: dpop_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  authorization_signing_algs <-
+    self@authorization_signing_alg_values_supported
+  if (length(authorization_signing_algs) > 0) {
+    if (!is.character(authorization_signing_algs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_signing_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_signing_algs) ||
+        !all(nzchar(authorization_signing_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  authorization_encryption_algs <-
+    self@authorization_encryption_alg_values_supported
+  if (length(authorization_encryption_algs) > 0) {
+    if (!is.character(authorization_encryption_algs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_encryption_algs) ||
+        !all(nzchar(authorization_encryption_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  authorization_encryption_encs <-
+    self@authorization_encryption_enc_values_supported
+  if (length(authorization_encryption_encs) > 0) {
+    if (!is.character(authorization_encryption_encs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_enc_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_encryption_encs) ||
+        !all(nzchar(authorization_encryption_encs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_enc_values_supported",
           "must contain only non-empty strings"
         )
       )

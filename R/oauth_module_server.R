@@ -1495,6 +1495,11 @@ oauth_module_server <- function(
             max_bytes = limits$code
           )
           validate_untrusted_query_param(
+            "response",
+            qs$response,
+            max_bytes = limits$query
+          )
+          validate_untrusted_query_param(
             "state",
             qs$state,
             max_bytes = limits$state
@@ -1630,7 +1635,12 @@ oauth_module_server <- function(
           }
           return(invisible(NULL))
         }
-        if (!is.null(qs$code) || !is.null(qs$error) || !is.null(qs$state)) {
+        if (
+          !is.null(qs$response) ||
+            !is.null(qs$code) ||
+            !is.null(qs$error) ||
+            !is.null(qs$state)
+        ) {
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
@@ -1714,6 +1724,14 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
 
+        if (identical(form_post_payload$type, "response")) {
+          .handle_jarm_response(
+            response = form_post_payload$response,
+            phase = "form_post_callback_validation"
+          )
+          return(invisible(NULL))
+        }
+
         if (identical(form_post_payload$type, "error")) {
           clear_oauth_module_callback_query(
             session,
@@ -1739,6 +1757,56 @@ oauth_module_server <- function(
           decrypted_payload = form_post_payload$state_payload %||% NULL,
           state_store_values = form_post_payload$state_store_values %||% NULL
         )
+        return(invisible(NULL))
+      }
+
+      if (!is.null(qs$response)) {
+        if (
+          !all(vapply(
+            qs[c(
+              "code",
+              "state",
+              "error",
+              "error_description",
+              "error_uri",
+              "iss"
+            )],
+            is.null,
+            logical(1)
+          ))
+        ) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .set_error(
+            "invalid_callback_query",
+            NULL,
+            phase = "callback_query_validation",
+            description = paste(
+              "JARM response must not be combined with direct OAuth callback",
+              "parameters"
+            )
+          )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                error_class = "invalid_callback_query",
+                phase = "callback_query_validation",
+                reason = "mixed_jarm_and_direct_callback_params"
+              )
+            ),
+            silent = TRUE
+          )
+          return(invisible(NULL))
+        }
+
+        .handle_jarm_response(qs$response)
         return(invisible(NULL))
       }
 
@@ -1839,6 +1907,74 @@ oauth_module_server <- function(
           FALSE
         }
       )
+    }
+
+    # Internal helper: validate one JARM callback response and dispatch the
+    # normalized result into the existing error or code callback path.
+    # @param response Raw compact JARM JWT from the callback transport.
+    # @param phase Phase label used for module error reporting and auditing.
+    # @return No return value; updates module state or delegates to existing
+    #   callback handlers.
+    .handle_jarm_response <- function(
+      response,
+      phase = "callback_response_validation"
+    ) {
+      normalized <- tryCatch(
+        validate_jarm_response(client, response),
+        error = function(e) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .set_error(
+            oauth_module_callback_failure_error_code(e),
+            e,
+            phase = phase
+          )
+          try(
+            audit_event(
+              "callback_validation_failed",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                state_digest = NA_character_,
+                error_class = paste(class(e), collapse = ", "),
+                phase = phase
+              )
+            ),
+            silent = TRUE
+          )
+          NULL
+        }
+      )
+      if (is.null(normalized)) {
+        return(invisible(NULL))
+      }
+
+      if (identical(normalized$type, "error")) {
+        clear_oauth_module_callback_query(
+          session,
+          tab_title_replacement,
+          tab_title_cleaning
+        )
+        .handle_error_response(
+          error = normalized$error,
+          error_description = normalized$error_description,
+          error_uri = normalized$error_uri,
+          state = normalized$state,
+          iss = normalized$iss %||% NULL
+        )
+        return(invisible(NULL))
+      }
+
+      .handle_callback(
+        code = normalized$code,
+        state = normalized$state,
+        iss = normalized$iss %||% NULL
+      )
+      invisible(NULL)
     }
 
     # Internal helper: handle a provider-supplied error callback after state
@@ -3294,6 +3430,7 @@ clear_oauth_module_callback_query <- function(
 # browser URL after callback handling. This keeps provider data out of browser
 # history while preserving unrelated application query parameters.
 oauth_module_callback_query_keys <- c(
+  "response",
   "code",
   "state",
   "session_state",

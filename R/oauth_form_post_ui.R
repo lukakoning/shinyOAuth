@@ -27,8 +27,9 @@
 #' (e.g., the app's root URL or a specific callback path).
 #' This helper handles the plain form_post response mode, where the POST body
 #' contains authorization response parameters such as `code`, `state`, `error`,
-#' and `iss`. It does not decode JWT Secured Authorization Response Mode (JARM)
-#' responses such as `response_mode = "form_post.jwt"`.
+#' and `iss`. When `response_mode = "form_post.jwt"`, the helper stores the
+#' raw JARM `response` parameter under the same one-time handle and leaves JWT
+#' decoding and validation to the main callback flow.
 #'
 #' @details
 #' When this wrapper is used, it also injects [use_shinyOAuth()] automatically
@@ -212,53 +213,55 @@ oauth_form_post_handle_request <- function(req, id, client) {
         )
         body <- oauth_form_post_read_body(req, limits$form_post_body)
         payload <- oauth_form_post_parse_body(body, limits)
-        # Reject invalid state/issuer before persisting any pre-session
-        # form_post handle. Do not consume the logical state here: the Shiny
-        # session still needs to prove possession of the browser-bound token.
-        state_payload <- state_payload_decrypt_validate(
-          client,
-          payload$state,
-          audit_success = FALSE
-        )
-        otel_set_span_attributes(
-          attributes = list(
-            shinyoauth.trace_id = state_payload$trace_id %||% NULL
+        if (!identical(payload$type, "response")) {
+          # Reject invalid state/issuer before persisting any pre-session
+          # form_post handle. Do not consume the logical state here: the Shiny
+          # session still needs to prove possession of the browser-bound token.
+          state_payload <- state_payload_decrypt_validate(
+            client,
+            payload$state,
+            audit_success = FALSE
           )
-        )
-        tryCatch(
-          enforce_callback_issuer(
-            oauth_client = client,
-            iss = payload$iss %||% NULL
-          ),
-          error = function(e) {
-            error_context <- tryCatch(e[["context"]], error = function(...) {
-              NULL
-            })
-            callback_error <- error_context$callback_error %||%
-              "callback_iss_validation_error"
-            audit_name <- switch(
-              callback_error,
-              issuer_missing = "callback_iss_missing",
-              issuer_mismatch = "callback_iss_mismatch",
-              "callback_iss_validation_failed"
+          otel_set_span_attributes(
+            attributes = list(
+              shinyoauth.trace_id = state_payload$trace_id %||% NULL
             )
-            try(
-              audit_event(
-                audit_name,
-                context = compact_list(list(
-                  provider = client@provider@name %||% NA_character_,
-                  expected_issuer = client@provider@issuer %||% NA_character_,
-                  callback_issuer = payload$iss %||% NULL,
-                  client_id_digest = string_digest(client@client_id),
-                  error_class = paste(class(e), collapse = ", ")
-                ))
-              ),
-              silent = TRUE
-            )
-            stop(e)
-          }
-        )
-        payload$state_payload <- state_payload
+          )
+          tryCatch(
+            enforce_callback_issuer(
+              oauth_client = client,
+              iss = payload$iss %||% NULL
+            ),
+            error = function(e) {
+              error_context <- tryCatch(e[["context"]], error = function(...) {
+                NULL
+              })
+              callback_error <- error_context$callback_error %||%
+                "callback_iss_validation_error"
+              audit_name <- switch(
+                callback_error,
+                issuer_missing = "callback_iss_missing",
+                issuer_mismatch = "callback_iss_mismatch",
+                "callback_iss_validation_failed"
+              )
+              try(
+                audit_event(
+                  audit_name,
+                  context = compact_list(list(
+                    provider = client@provider@name %||% NA_character_,
+                    expected_issuer = client@provider@issuer %||% NA_character_,
+                    callback_issuer = payload$iss %||% NULL,
+                    client_id_digest = string_digest(client@client_id),
+                    error_class = paste(class(e), collapse = ", ")
+                  ))
+                ),
+                silent = TRUE
+              )
+              stop(e)
+            }
+          )
+          payload$state_payload <- state_payload
+        }
         handle <- oauth_form_post_store_set(client, id, payload)
         location <- oauth_form_post_redirect_location(req, id, handle)
 
@@ -431,6 +434,7 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
   )
 
   payload <- compact_list(list(
+    response = parsed$response,
     code = parsed$code,
     state = parsed$state,
     error = parsed$error,
@@ -450,6 +454,11 @@ oauth_form_post_validate_payload <- function(
     err_form_post_http("OAuth form_post callback payload must be a list.")
   }
 
+  validate_untrusted_query_param(
+    "response",
+    payload$response,
+    max_bytes = limits$form_post_body
+  )
   validate_untrusted_query_param("code", payload$code, limits$code)
   validate_untrusted_query_param("state", payload$state, limits$state)
   validate_untrusted_query_param("error", payload$error, limits$error)
@@ -466,6 +475,32 @@ oauth_form_post_validate_payload <- function(
     allow_empty = TRUE
   )
   validate_untrusted_query_param("iss", payload$iss, limits$iss)
+
+  if (!is.null(payload$response)) {
+    if (
+      !all(vapply(
+        payload[c(
+          "code",
+          "state",
+          "error",
+          "error_description",
+          "error_uri",
+          "iss"
+        )],
+        is.null,
+        logical(1)
+      ))
+    ) {
+      err_form_post_http(
+        paste(
+          "OAuth form_post JARM callback must not contain both response and",
+          "direct OAuth callback parameters."
+        )
+      )
+    }
+    payload$type <- "response"
+    return(payload)
+  }
 
   if (is.null(payload$state)) {
     err_form_post_http("OAuth form_post callback missing state.")

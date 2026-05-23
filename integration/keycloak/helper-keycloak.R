@@ -884,6 +884,15 @@ callback_query <- function(
   )
 ) {
   callback_url <- login_result$callback_url %||% NA_character_
+  response <- login_result$response %||% NA_character_
+
+  if (
+    !keycloak_nonempty_string(response) &&
+      is.list(login_result$form_post_fields)
+  ) {
+    response <- login_result$form_post_fields$response %||% NA_character_
+  }
+
   if (
     !is.character(callback_url) ||
       length(callback_url) != 1L ||
@@ -895,6 +904,17 @@ callback_query <- function(
       "login_result$callback_url must be a non-empty callback URL",
       call. = FALSE
     )
+  }
+
+  if (!keycloak_nonempty_string(response)) {
+    response <- parse_query_param(callback_url, "response", decode = TRUE)
+  }
+
+  if (keycloak_nonempty_string(response)) {
+    return(paste0(
+      "?response=",
+      utils::URLencode(response, reserved = TRUE)
+    ))
   }
 
   parts <- shiny::parseQueryString(
@@ -1054,6 +1074,18 @@ parse_form_post_authorization_response <- function(
     fields <- as.list(stats::setNames(vals[keep], names[keep]))
     code <- fields$code %||% NA_character_
     state <- fields$state %||% NA_character_
+    response <- fields$response %||% NA_character_
+
+    if (keycloak_nonempty_string(response)) {
+      return(list(
+        code = code,
+        state_payload = state,
+        callback_url = action_url,
+        form_post_fields = fields,
+        response = response,
+        response_mode = "form_post.jwt"
+      ))
+    }
 
     if (keycloak_nonempty_string(code) && keycloak_nonempty_string(state)) {
       return(list(

@@ -124,19 +124,24 @@ resolve_auth_response_mode <- function(
   }
 
   mode <- tolower(trimws(raw_mode))
-  if (!mode %in% c("query", "form_post")) {
-    jarm_modes <- c("jwt", "query.jwt", "fragment.jwt", "form_post.jwt")
-    if (mode %in% jarm_modes) {
+  if (identical(mode, "jwt")) {
+    mode <- "query.jwt"
+  }
+
+  supported_modes <- c("query", "form_post", "query.jwt", "form_post.jwt")
+  if (!mode %in% supported_modes) {
+    if (identical(mode, "fragment.jwt")) {
       out$error <- paste0(
         context,
         ": ",
         arg,
         " = ",
         sQuote(raw_mode),
-        " is a JWT Secured Authorization Response Mode (JARM) value, ",
-        "which shinyOAuth does not currently support. shinyOAuth supports ",
-        "plain 'query' and 'form_post' response modes for authorization-code ",
-        "callbacks."
+        " is a JWT Secured Authorization Response Mode (JARM) value that ",
+        "depends on fragment-based callbacks, which shinyOAuth does not yet ",
+        "support. Supported authorization-code response modes are 'query', ",
+        "'form_post', 'query.jwt', 'form_post.jwt', and the 'jwt' alias for ",
+        "'query.jwt'."
       )
     } else {
       out$error <- paste0(
@@ -145,8 +150,9 @@ resolve_auth_response_mode <- function(
         arg,
         " = ",
         sQuote(raw_mode),
-        " is not supported. shinyOAuth supports plain 'query' and ",
-        "'form_post' response modes for authorization-code callbacks."
+        " is not supported. Supported authorization-code response modes are ",
+        "'query', 'form_post', 'query.jwt', 'form_post.jwt', and the 'jwt' ",
+        "alias for 'query.jwt'."
       )
     }
     return(out)
@@ -274,7 +280,14 @@ resolve_oauth_client_response_mode <- function(
   if (
     !is.null(out$mode) &&
       length(oauth_client@provider@response_modes_supported) > 0 &&
-      !out$mode %in% oauth_client@provider@response_modes_supported
+      !out$mode %in%
+        {
+          supported_modes <- tolower(trimws(
+            oauth_client@provider@response_modes_supported
+          ))
+          supported_modes[supported_modes == "jwt"] <- "query.jwt"
+          supported_modes
+        }
   ) {
     out$error <- paste0(
       "OAuthClient: response_mode = ",
