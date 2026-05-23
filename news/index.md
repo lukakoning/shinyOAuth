@@ -10,22 +10,29 @@
   missing form_post UI wrappers earlier.
 
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  now accepts either an issuer base URL or the standard
-  `/.well-known/openid-configuration` URL. Full discovery URLs are
-  normalized back to the issuer base before request construction, so
-  strict issuer matching still applies without requiring
-  `issuer_match = "host"`.
+  now:
 
-- Added
-  [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
-  which configures Apple’s fixed OIDC endpoints and ID-token defaults,
-  and added
+  - Accepts either an issuer base URL or the standard
+    `/.well-known/openid-configuration` URL. Full discovery URLs are
+    normalized back to the issuer base before request construction, so
+    strict issuer matching still applies without requiring
+    `issuer_match = "host"`.
+  - Has transport failures surface the attempted
+    `/.well-known/openid-configuration` URL plus the underlying network
+    error, making discovery misconfiguration and connectivity problems
+    easier to diagnose.
+
+- [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
+  has been added which configures Apple’s OIDC endpoints and ID-token
+  defaults, and added
   [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
   which generates the ES256 JWT that Apple expects in the
-  `client_secret` field of an
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  configured with
+  `client_secret` field of an `OAuthClient` configured with
   [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md).
+
+- `OAuthClient` printing now handles `client_secret = ""` cleanly for
+  public-client setups that do not send a secret, instead of failing
+  while formatting the redacted console preview.
 
 ## shinyOAuth 0.5.0
 
