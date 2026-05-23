@@ -85,6 +85,9 @@
       if (is.na(value)) {
         return("NA")
       }
+      if (!nzchar(value)) {
+        return("<redacted>")
+      }
 
       pem_header <- strsplit(value, "\n", fixed = TRUE)[[1]][[1]]
       pem_header <- sub("\r$", "", pem_header)

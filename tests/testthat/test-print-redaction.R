@@ -94,6 +94,33 @@ test_that("OAuthClient printing redacts secrets and private keys", {
   }
 })
 
+test_that("OAuthClient printing handles secretless public clients", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth",
+    token_url = "https://example.com/token",
+    issuer = NA_character_,
+    use_nonce = FALSE,
+    use_pkce = TRUE,
+    token_auth_style = "body",
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://127.0.0.1:8100"
+  )
+
+  rendered <- collect_rendered_output(cli)
+
+  for (output in unname(rendered)) {
+    expect_match(output, "client_secret\\s*: <redacted>")
+    expect_match(output, "client_id\\s*: chr \\\"abc\\\"")
+  }
+})
+
 test_that("OAuthClient formatter redacts encrypted PEM strings", {
   encrypted_private_key <- openssl::write_pem(
     openssl::rsa_keygen(),
