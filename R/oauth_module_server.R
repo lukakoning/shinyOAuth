@@ -1488,17 +1488,21 @@ oauth_module_server <- function(
         {
           reject_duplicate_oauth_module_callback_query(query_string %||% "")
           qs <- shiny::parseQueryString(query_string %||% "")
+          response <- qs[["response", exact = TRUE]]
+          response_is_jarm <- oauth_module_query_has_jarm_response(response)
 
           validate_untrusted_query_param(
             "code",
             qs$code,
             max_bytes = limits$code
           )
-          validate_untrusted_query_param(
-            "response",
-            qs$response,
-            max_bytes = limits$query
-          )
+          if (isTRUE(response_is_jarm)) {
+            validate_untrusted_query_param(
+              "response",
+              response,
+              max_bytes = limits$query
+            )
+          }
           validate_untrusted_query_param(
             "state",
             qs$state,
@@ -1762,7 +1766,8 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (!is.null(qs$response)) {
+      response <- qs[["response", exact = TRUE]]
+      if (isTRUE(oauth_module_query_has_jarm_response(response))) {
         if (
           !all(vapply(
             qs[c(
@@ -1808,7 +1813,7 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
 
-        .handle_jarm_response(qs$response, transport = "query")
+        .handle_jarm_response(response, transport = "query")
         return(invisible(NULL))
       }
 
@@ -3440,9 +3445,10 @@ clear_oauth_module_callback_query <- function(
 
 # OAuth/OIDC callback parameters that should be recognized and removed from the
 # browser URL after callback handling. This keeps provider data out of browser
-# history while preserving unrelated application query parameters.
+# history while preserving unrelated application query parameters. The JARM
+# `response` parameter is handled separately so ordinary app queries like
+# `?response=ok` are not treated as OAuth callbacks.
 oauth_module_callback_query_keys <- c(
-  "response",
   "code",
   "state",
   "session_state",
@@ -3457,6 +3463,38 @@ oauth_module_callback_query_keys <- c(
   "shinyOAuth_form_post",
   "shinyOAuth_form_post_id"
 )
+
+#' Check whether a query response value looks like compact JARM
+#'
+#' Used by callback-query helpers so ordinary app parameters named `response`
+#' are ignored unless they look like a compact JWS/JWE.
+#'
+#' @param response Query parameter value.
+#' @return `TRUE` when `response` looks like a compact JWS/JWE; otherwise
+#'   `FALSE`.
+#' @keywords internal
+#' @noRd
+oauth_module_query_has_jarm_response <- function(response) {
+  if (!is_valid_string(response)) {
+    return(FALSE)
+  }
+
+  parts <- strsplit(response, ".", fixed = TRUE)[[1]]
+  if (!length(parts) %in% c(3L, 5L)) {
+    return(FALSE)
+  }
+
+  all(vapply(
+    parts,
+    function(part) {
+      is.character(part) &&
+        length(part) == 1L &&
+        nzchar(part) &&
+        grepl("^[A-Za-z0-9_-]+$", part)
+    },
+    logical(1)
+  ))
+}
 
 #' Check whether a query string contains OAuth callback keys
 #'
@@ -3481,7 +3519,10 @@ oauth_module_query_has_callback_keys <- function(query_string) {
     return(FALSE)
   }
 
-  any(names(parsed) %in% oauth_module_callback_query_keys)
+  any(names(parsed) %in% oauth_module_callback_query_keys) ||
+    isTRUE(oauth_module_query_has_jarm_response(
+      parsed[["response", exact = TRUE]]
+    ))
 }
 
 #' Reject duplicate OAuth callback query parameters
@@ -3530,7 +3571,14 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
       }
     )
 
-    if (key %in% oauth_module_callback_query_keys) {
+    is_callback_key <- key %in% oauth_module_callback_query_keys
+    if (identical(key, "response")) {
+      value <- sub("^[^=]*=?", "", part)
+      value <- tryCatch(utils::URLdecode(value), error = function(...) value)
+      is_callback_key <- isTRUE(oauth_module_query_has_jarm_response(value))
+    }
+
+    if (isTRUE(is_callback_key)) {
       if (key %in% seen) {
         err_invalid_state(
           paste0("Callback query contains duplicate OAuth parameter: ", key),
@@ -3574,7 +3622,16 @@ strip_oauth_module_callback_query <- function(query_string) {
     return("")
   }
 
-  keep <- parsed[setdiff(names(parsed), oauth_module_callback_query_keys)]
+  drop_names <- oauth_module_callback_query_keys
+  if (
+    isTRUE(oauth_module_query_has_jarm_response(
+      parsed[["response", exact = TRUE]]
+    ))
+  ) {
+    drop_names <- c(drop_names, "response")
+  }
+
+  keep <- parsed[setdiff(names(parsed), drop_names)]
   if (!length(keep)) {
     return("")
   }
