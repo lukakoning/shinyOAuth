@@ -18,6 +18,13 @@
     strict issuer matching still applies without requiring
     `issuer_match = "host"`.
 
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now warns once when a client resolves to `response_mode = "form_post"`
+  but no prior
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  call was detected for the same module/client setup, helping catch
+  missing form_post UI wrappers earlier.
+
 ## shinyOAuth 0.5.0
 
 CRAN release: 2026-05-23
