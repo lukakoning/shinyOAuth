@@ -1,20 +1,20 @@
 # shinyOAuth (development version)
 
-* Added Sign in with Apple helpers: `oauth_provider_apple()` configures
-Apple's fixed OIDC endpoints and ID-token defaults, and
-`oauth_client_secret_apple()` generates the ES256 JWT that Apple expects in the
-token request `client_secret` field.
-
-* `oauth_provider_oidc_discover()` now:
-  - Accepts either an issuer base URL or the standard
-  `/.well-known/openid-configuration` URL. Full discovery URLs are normalized
-  back to the issuer base before request construction, so strict issuer
-  matching still applies without requiring `issuer_match = "host"`.
 * `oauth_module_server()` now warns once when a client resolves to
 `response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
+* `oauth_provider_oidc_discover()` now accepts either an issuer base URL or the 
+standard `/.well-known/openid-configuration` URL. Full discovery URLs are 
+normalized back to the issuer base before request construction, so strict issuer
+matching still applies without requiring `issuer_match = "host"`.
+
+* Added `oauth_provider_apple()` which configures
+Apple's fixed OIDC endpoints and ID-token defaults, and added
+`oauth_client_secret_apple()` which generates the ES256 JWT that Apple expects 
+in the `client_secret` field of an `oauth_client()` configured with 
+`oauth_provider_apple()`.
 
 # shinyOAuth 0.5.0
 
