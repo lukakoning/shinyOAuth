@@ -26,9 +26,11 @@
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.html</loc></url>

@@ -31,6 +31,8 @@
 
 ### Preconfigured
 
+- [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
+  : Create an Apple OAuthProvider
 - [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
   : Create an Auth0 OAuthProvider (via OIDC discovery)
 - [`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
@@ -54,6 +56,8 @@
   : Create generic OAuthClient
 - [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
   : Build RFC 8705 mTLS registration metadata
+- [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
+  : Create an Apple client secret JWT
 
 ## Authentication flow
 

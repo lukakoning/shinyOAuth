@@ -42,7 +42,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-</div>
+<ul><li>Added Sign in with Apple helpers: <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> configures Apple’s fixed OIDC endpoints and ID-token defaults, and <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> generates the ES256 JWT that Apple expects in the token request <code>client_secret</code> field.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2><p class="text-muted">CRAN release: 2026-05-23</p>
 <ul><li><p>Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client authentication, certificate-bound access tokens, mTLS endpoint aliases, and the exported <code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> helper for RFC 8705 client metadata.</p></li>

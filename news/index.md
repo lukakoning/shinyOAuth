@@ -2,6 +2,13 @@
 
 ## shinyOAuth (development version)
 
+- Added Sign in with Apple helpers:
+  [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
+  configures Apple’s fixed OIDC endpoints and ID-token defaults, and
+  [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
+  generates the ES256 JWT that Apple expects in the token request
+  `client_secret` field.
+
 ## shinyOAuth 0.5.0
 
 CRAN release: 2026-05-23
