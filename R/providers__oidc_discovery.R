@@ -545,12 +545,22 @@ oauth_provider_oidc_discover <- function(
   resp <- try(req_with_retry(req), silent = TRUE)
 
   if (inherits(resp, "try-error")) {
-    msg <- try(conditionMessage(attr(resp, "condition")), silent = TRUE)
+    cnd <- attr(resp, "condition")
+    while (!is.null(cnd) && !is.null(cnd$parent)) {
+      cnd <- cnd$parent
+    }
+    msg <- try(conditionMessage(cnd), silent = TRUE)
+    discovery_url <- try(as.character(req$url), silent = TRUE)
     err_http(
       c("x" = "Failed to fetch OIDC discovery document"),
       resp = NULL,
       context = list(
         issuer = issuer,
+        discovery_url = if (!inherits(discovery_url, "try-error")) {
+          discovery_url
+        } else {
+          NULL
+        },
         transport_error = if (!inherits(msg, "try-error")) {
           as.character(msg)
         } else {

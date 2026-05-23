@@ -142,6 +142,48 @@ testthat::test_that("public discovery auth does not send env client_secret", {
   testthat::expect_null(prepared$params$client_secret)
 })
 
+testthat::test_that("oidc discovery transport errors include discovery url and transport detail", {
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req) {
+      stop("forced discovery transport fail")
+    },
+    .package = "shinyOAuth"
+  )
+
+  err <- tryCatch(
+    oauth_provider_oidc_discover("https://issuer.example.com/tenant"),
+    error = identity
+  )
+
+  testthat::expect_s3_class(err, "shinyOAuth_http_error")
+  testthat::expect_identical(
+    err$context$discovery_url,
+    "https://issuer.example.com/tenant/.well-known/openid-configuration"
+  )
+
+  msg <- conditionMessage(err)
+  testthat::expect_match(
+    msg,
+    "Failed to fetch OIDC discovery document",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    msg,
+    "forced discovery transport fail",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    msg,
+    "https://issuer.example.com/tenant/.well-known/openid-configuration",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    msg,
+    "Issuer: https://issuer.example.com/tenant",
+    fixed = TRUE
+  )
+})
+
 test_that("oidc discovery accepts advertised signing algorithm supersets", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()

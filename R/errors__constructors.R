@@ -368,7 +368,28 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   status <- NA_integer_
   desc <- NULL
   url <- NULL
+  transport_error <- NULL
+  issuer <- NULL
   body_snippet <- NULL
+
+  if (is_valid_string(context[["transport_error"]])) {
+    transport_error <- as.character(context[["transport_error"]])
+  }
+  if (is_valid_string(context[["issuer"]])) {
+    issuer <- as.character(context[["issuer"]])
+  }
+  if (is_valid_string(context[["url"]])) {
+    url <- otel_http_url_full(context[["url"]])
+  } else if (is_valid_string(context[["request_url"]])) {
+    url <- otel_http_url_full(context[["request_url"]])
+  } else if (is_valid_string(context[["discovery_url"]])) {
+    url <- otel_http_url_full(context[["discovery_url"]])
+  }
+
+  if (inherits(url, "try-error")) {
+    url <- NULL
+  }
+
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
     st <- try(httr2::resp_status(resp), silent = TRUE)
     status <- if (!inherits(st, "try-error") && length(st) == 1) {
@@ -485,8 +506,18 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   } else {
     character()
   }
+  transport_msg <- if (is_valid_string(transport_error)) {
+    stats::setNames(paste0("Transport error: ", transport_error), "x")
+  } else {
+    character()
+  }
   url_msg <- if (!is.null(url)) {
     stats::setNames(paste0("URL: ", url), "i")
+  } else {
+    character()
+  }
+  issuer_msg <- if (is_valid_string(issuer)) {
+    stats::setNames(paste0("Issuer: ", issuer), "i")
   } else {
     character()
   }
@@ -498,7 +529,15 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   }
   message <- format_condition_message(
     "HTTP request failed",
-    c(msg, status_msg, oauth_error_msg, oauth_error_uri_msg, url_msg),
+    c(
+      msg,
+      status_msg,
+      oauth_error_msg,
+      oauth_error_uri_msg,
+      transport_msg,
+      url_msg,
+      issuer_msg
+    ),
     footer = c(trace_msg, body_msg)
   )
 
