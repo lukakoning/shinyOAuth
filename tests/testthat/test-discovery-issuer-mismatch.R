@@ -105,3 +105,56 @@ test_that("validate_discovery_issuer can opt out to host-only matching", {
     "https://login.example.com/tenant-b"
   )
 })
+
+test_that("discovery input normalization strips a full discovery URL", {
+  f <- shinyOAuth:::.discover_normalize_issuer_input
+
+  expect_identical(
+    f("https://login.example.com/tenant-a/.well-known/openid-configuration"),
+    "https://login.example.com/tenant-a"
+  )
+  expect_identical(
+    f("https://login.example.com/tenant-a/.well-known/openid-configuration/"),
+    "https://login.example.com/tenant-a"
+  )
+  expect_identical(
+    f("https://login.example.com/tenant-a"),
+    "https://login.example.com/tenant-a"
+  )
+})
+
+test_that("oauth_provider_oidc_discover accepts a full discovery URL", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  tenant_path <- "/tenant-a"
+  app <- webfakes::new_app()
+  app$get(
+    paste0(tenant_path, "/.well-known/openid-configuration"),
+    function(req, res) {
+      issuer_url <- paste0("http://", req$get_header("host"), tenant_path)
+      res$set_status(200)$set_type("application/json")$send(
+        jsonlite::toJSON(
+          list(
+            issuer = issuer_url,
+            authorization_endpoint = paste0(issuer_url, "/auth"),
+            token_endpoint = paste0(issuer_url, "/token"),
+            jwks_uri = paste0(issuer_url, "/jwks")
+          ),
+          auto_unbox = TRUE
+        )
+      )
+    }
+  )
+
+  srv <- webfakes::local_app_process(app)
+  issuer_url <- paste0(sub("/$", "", srv$url()), tenant_path)
+
+  prov <- oauth_provider_oidc_discover(
+    issuer = paste0(issuer_url, "/.well-known/openid-configuration")
+  )
+
+  expect_identical(prov@issuer, issuer_url)
+  expect_identical(prov@auth_url, paste0(issuer_url, "/auth"))
+  expect_identical(prov@token_url, paste0(issuer_url, "/token"))
+})

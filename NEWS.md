@@ -5,6 +5,12 @@ Apple's fixed OIDC endpoints and ID-token defaults, and
 `oauth_client_secret_apple()` generates the ES256 JWT that Apple expects in the
 token request `client_secret` field.
 
+* `oauth_provider_oidc_discover()` now:
+  - Accepts either an issuer base URL or the standard
+  `/.well-known/openid-configuration` URL. Full discovery URLs are normalized
+  back to the issuer base before request construction, so strict issuer
+  matching still applies without requiring `issuer_match = "host"`.
+
 # shinyOAuth 0.5.0
 
 * Added mutual-TLS ('mTLS', RFC 8705) support, including mTLS client

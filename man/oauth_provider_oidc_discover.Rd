@@ -20,7 +20,9 @@ oauth_provider_oidc_discover(
 }
 \arguments{
 \item{issuer}{The OIDC issuer base URL (including scheme), e.g.,
-"https://login.example.com"}
+"https://login.example.com". The standard discovery-document URL ending
+in \verb{/.well-known/openid-configuration} is also accepted and normalized
+back to the issuer base URL before validation and fetch.}
 
 \item{name}{Optional friendly provider name. Defaults to the issuer hostname}
 
@@ -65,8 +67,8 @@ Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
 discovery document's \code{issuer} against the input \code{issuer}.
 \itemize{
 \item \code{"url"} (default): require the issuer used for discovery to match
-exactly, after removing one trailing slash for discovery URL construction
-(recommended).
+exactly, after removing one trailing slash and normalizing a full
+discovery-document input back to its issuer base URL (recommended).
 \item \code{"host"}: compare only scheme + host (explicit opt-out; not recommended).
 \item \code{"none"}: do not validate issuer consistency.
 }

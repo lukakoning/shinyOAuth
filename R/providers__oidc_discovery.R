@@ -123,7 +123,9 @@
 #'   `?is_ok_host`).
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
-#'   "https://login.example.com"
+#'   "https://login.example.com". The standard discovery-document URL ending
+#'   in `/.well-known/openid-configuration` is also accepted and normalized
+#'   back to the issuer base URL before validation and fetch.
 #' @param name Optional friendly provider name. Defaults to the issuer hostname
 #' @param use_pkce Logical, whether to use PKCE for this provider. Defaults to
 #'   TRUE. If the discovery document indicates `token_endpoint_auth_methods_supported`
@@ -159,8 +161,8 @@
 #'  discovery document's `issuer` against the input `issuer`.
 #'
 #'  - `"url"` (default): require the issuer used for discovery to match
-#'    exactly, after removing one trailing slash for discovery URL construction
-#'    (recommended).
+#'    exactly, after removing one trailing slash and normalizing a full
+#'    discovery-document input back to its issuer base URL (recommended).
 #'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
 #'  - `"none"`: do not validate issuer consistency.
 #'
@@ -197,6 +199,7 @@ oauth_provider_oidc_discover <- function(
   ...
 ) {
   issuer_match <- match.arg(issuer_match)
+  issuer <- .discover_normalize_issuer_input(issuer)
 
   # If callers explicitly turn off ID
   # token validation and do not explicitly opt back into nonce handling,
@@ -424,6 +427,33 @@ oauth_provider_oidc_discover <- function(
 # 2 Discovery helpers ----------------------------------------------------------
 
 ## 2.1 Input validation --------------------------------------------------------
+
+#' Internal: normalize issuer or discovery URL input
+#'
+#' Used by [oauth_provider_oidc_discover()] before validation so callers can
+#' pass either an issuer base URL or the standard OIDC discovery-document URL.
+#'
+#' @param issuer Issuer or discovery URL string.
+#' @return Issuer base URL string. Returns the input unchanged unless it ends
+#'   with `/.well-known/openid-configuration` (optionally with one trailing
+#'   slash).
+#'
+#' @keywords internal
+#' @noRd
+.discover_normalize_issuer_input <- function(issuer) {
+  if (!is.character(issuer) || length(issuer) != 1L || is.na(issuer)) {
+    return(issuer)
+  }
+
+  issuer <- rtrim_slash(issuer)
+  suffix <- "/.well-known/openid-configuration"
+
+  if (!endsWith(issuer, suffix)) {
+    return(issuer)
+  }
+
+  substr(issuer, 1L, nchar(issuer) - nchar(suffix))
+}
 
 #' Internal: validate issuer input
 #'
