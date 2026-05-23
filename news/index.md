@@ -2,6 +2,17 @@
 
 ## shinyOAuth (development version)
 
+- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  and helpers built on it now accept discovery metadata that differs
+  from the configured issuer only by one trailing slash in the published
+  `issuer`, while still storing the provider’s advertised issuer
+  verbatim for downstream `iss` checks.
+
+- [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
+  can now target Okta’s org authorization server with
+  `auth_server = NULL`, instead of always forcing
+  `/oauth2/{auth_server}` and the custom-server path.
+
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now warns once when a client resolves to `response_mode = "form_post"`
   but no prior

@@ -18,7 +18,9 @@ oauth_provider_okta(domain, auth_server = "default", name = "okta")
 
 - auth_server:
 
-  Authorization server ID (default "default")
+  Authorization server ID for a custom authorization server (default
+  "default"). Use `NULL` to target the org authorization server at
+  `https://{yourOktaDomain}`.
 
 - name:
 
