@@ -76,6 +76,8 @@ oauth_form_post_ui <- function(
     callback_path %||% oauth_form_post_redirect_path(client)
   )
 
+  mark_form_post_ui_called(id, client)
+
   force(base_ui)
   force(id)
   force(client)

@@ -459,6 +459,7 @@ oauth_module_server <- function(
   }
 
   warn_about_missing_js_dependency()
+  warn_about_missing_form_post_ui(id, client)
 
   browser_cookie_samesite <- match.arg(browser_cookie_samesite)
   if (identical(browser_cookie_samesite, "Lax")) {

@@ -10,6 +10,11 @@ token request `client_secret` field.
   `/.well-known/openid-configuration` URL. Full discovery URLs are normalized
   back to the issuer base before request construction, so strict issuer
   matching still applies without requiring `issuer_match = "host"`.
+* `oauth_module_server()` now warns once when a client resolves to
+`response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
+detected for the same module/client setup, helping catch missing form_post UI
+wrappers earlier.
+
 
 # shinyOAuth 0.5.0
 

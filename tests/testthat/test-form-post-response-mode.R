@@ -51,6 +51,50 @@ get_ui_dependency_names <- function(ui) {
   )
 }
 
+test_that("form_post reminder warns when oauth_form_post_ui was not called", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  id <- "auth_form_post_watchdog_missing"
+
+  warning_cnd <- testthat::with_mocked_bindings(
+    .package = "shinyOAuth",
+    .is_test = function() FALSE,
+    rlang::catch_cnd(
+      shinyOAuth:::warn_about_missing_form_post_ui(id, cli),
+      classes = "warning"
+    )
+  )
+
+  testthat::expect_s3_class(warning_cnd, "warning")
+  testthat::expect_match(
+    conditionMessage(warning_cnd),
+    "oauth_form_post_ui",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    conditionMessage(warning_cnd),
+    "response_mode = \"form_post\"",
+    fixed = TRUE
+  )
+})
+
+test_that("form_post reminder stays quiet once oauth_form_post_ui was called", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  id <- "auth_form_post_watchdog_seen"
+
+  oauth_form_post_ui(shiny::fluidPage(), id = id, client = cli)
+
+  warning_cnd <- testthat::with_mocked_bindings(
+    .package = "shinyOAuth",
+    .is_test = function() FALSE,
+    rlang::catch_cnd(
+      shinyOAuth:::warn_about_missing_form_post_ui(id, cli),
+      classes = "warning"
+    )
+  )
+
+  testthat::expect_null(warning_cnd)
+})
+
 test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
