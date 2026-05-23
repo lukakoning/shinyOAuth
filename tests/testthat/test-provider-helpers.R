@@ -396,6 +396,32 @@ test_that("oauth_provider_okta constructs correct issuer from domain + auth_serv
   expect_identical(p@issuer, issuer)
 })
 
+test_that("oauth_provider_okta can target the org authorization server", {
+  issuer <- "https://dev-123456.okta.com"
+  disc_json <- make_discovery_doc(issuer)
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req$url),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(as.character(disc_json))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  p <- oauth_provider_okta(
+    domain = "dev-123456.okta.com",
+    auth_server = NULL
+  )
+
+  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_identical(p@name, "okta")
+  expect_identical(p@issuer, issuer)
+})
+
 test_that("oauth_provider_auth0 constructs correct issuer from domain", {
   issuer <- "https://my-domain.auth0.com"
   disc_json <- make_discovery_doc(issuer)
@@ -514,6 +540,14 @@ test_that("oauth_provider_okta rejects empty domain", {
   expect_error(
     oauth_provider_okta(domain = ""),
     "domain must be a non-empty string",
+    class = "shinyOAuth_input_error"
+  )
+})
+
+test_that("oauth_provider_okta rejects empty auth_server", {
+  expect_error(
+    oauth_provider_okta(domain = "dev-123456.okta.com", auth_server = ""),
+    "auth_server must be NULL or a non-empty string",
     class = "shinyOAuth_input_error"
   )
 })

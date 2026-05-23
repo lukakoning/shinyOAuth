@@ -400,7 +400,9 @@ oauth_provider_keycloak <- function(
 #' Create an Okta [OAuthProvider] (via OIDC discovery)
 #'
 #' @param domain Your Okta domain, e.g., "dev-123456.okta.com"
-#' @param auth_server Authorization server ID (default "default")
+#' @param auth_server Authorization server ID for a custom authorization
+#'   server (default "default"). Use `NULL` to target the org authorization
+#'   server at `https://{yourOktaDomain}`.
 #' @param name Optional provider name (default "okta")
 #'
 #' @return [OAuthProvider] object configured for the specified Okta domain
@@ -417,13 +419,21 @@ oauth_provider_okta <- function(
     err_input("domain must be a non-empty string")
   }
 
+  if (!(is.null(auth_server) || is_valid_string(auth_server))) {
+    err_input("auth_server must be NULL or a non-empty string")
+  }
+
   base <- if (grepl("^https?://", domain)) {
     domain
   } else {
     paste0("https://", domain)
   }
 
-  issuer <- paste0(rtrim_slash(base), "/oauth2/", auth_server)
+  issuer <- if (is.null(auth_server)) {
+    rtrim_slash(base)
+  } else {
+    paste0(rtrim_slash(base), "/oauth2/", auth_server)
+  }
 
   oauth_provider_oidc_discover(
     issuer = issuer,

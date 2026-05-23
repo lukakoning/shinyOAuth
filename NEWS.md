@@ -5,6 +5,10 @@ discovery metadata that differs from the configured issuer only by one
 trailing slash in the published `issuer`, while still storing the provider's
 advertised issuer verbatim for downstream `iss` checks.
 
+* `oauth_provider_okta()` can now target Okta's org authorization server with
+`auth_server = NULL`, instead of always forcing `/oauth2/{auth_server}` and
+the custom-server path.
+
 * `oauth_module_server()` now warns once when a client resolves to
 `response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
 detected for the same module/client setup, helping catch missing form_post UI

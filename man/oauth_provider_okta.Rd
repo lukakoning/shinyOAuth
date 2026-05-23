@@ -9,7 +9,9 @@ oauth_provider_okta(domain, auth_server = "default", name = "okta")
 \arguments{
 \item{domain}{Your Okta domain, e.g., "dev-123456.okta.com"}
 
-\item{auth_server}{Authorization server ID (default "default")}
+\item{auth_server}{Authorization server ID for a custom authorization
+server (default "default"). Use \code{NULL} to target the org authorization
+server at \verb{https://\{yourOktaDomain\}}.}
 
 \item{name}{Optional provider name (default "okta")}
 }
