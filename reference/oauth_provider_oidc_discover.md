@@ -29,7 +29,9 @@ oauth_provider_oidc_discover(
 - issuer:
 
   The OIDC issuer base URL (including scheme), e.g.,
-  "https://login.example.com"
+  "https://login.example.com". The standard discovery-document URL
+  ending in `/.well-known/openid-configuration` is also accepted and
+  normalized back to the issuer base URL before validation and fetch.
 
 - name:
 
@@ -94,8 +96,8 @@ oauth_provider_oidc_discover(
   document's `issuer` against the input `issuer`.
 
   - `"url"` (default): require the issuer used for discovery to match
-    exactly, after removing one trailing slash for discovery URL
-    construction (recommended).
+    exactly, after removing one trailing slash and normalizing a full
+    discovery-document input back to its issuer base URL (recommended).
 
   - `"host"`: compare only scheme + host (explicit opt-out; not
     recommended).

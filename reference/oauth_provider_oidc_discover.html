@@ -74,7 +74,9 @@ document at <code>/.well-known/openid-configuration</code>. When present,
 
 <dl><dt id="arg-issuer">issuer<a class="anchor" aria-label="anchor" href="#arg-issuer"></a></dt>
 <dd><p>The OIDC issuer base URL (including scheme), e.g.,
-"https://login.example.com"</p></dd>
+"https://login.example.com". The standard discovery-document URL ending
+in <code>/.well-known/openid-configuration</code> is also accepted and normalized
+back to the issuer base URL before validation and fetch.</p></dd>
 
 
 <dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
@@ -135,8 +137,8 @@ Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly to validate the
 discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
-exactly, after removing one trailing slash for discovery URL construction
-(recommended).</p></li>
+exactly, after removing one trailing slash and normalizing a full
+discovery-document input back to its issuer base URL (recommended).</p></li>
 <li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
 <li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
 </ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>

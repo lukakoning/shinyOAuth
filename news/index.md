@@ -9,6 +9,15 @@
   generates the ES256 JWT that Apple expects in the token request
   `client_secret` field.
 
+- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  now:
+
+  - Accepts either an issuer base URL or the standard
+    `/.well-known/openid-configuration` URL. Full discovery URLs are
+    normalized back to the issuer base before request construction, so
+    strict issuer matching still applies without requiring
+    `issuer_match = "host"`.
+
 ## shinyOAuth 0.5.0
 
 CRAN release: 2026-05-23
