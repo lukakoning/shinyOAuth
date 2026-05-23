@@ -1727,6 +1727,8 @@ oauth_module_server <- function(
         if (identical(form_post_payload$type, "response")) {
           .handle_jarm_response(
             response = form_post_payload$response,
+            transport = "form_post",
+            decrypted_payload = form_post_payload$state_payload %||% NULL,
             phase = "form_post_callback_validation"
           )
           return(invisible(NULL))
@@ -1918,6 +1920,7 @@ oauth_module_server <- function(
     .handle_jarm_response <- function(
       response,
       transport = c("query", "form_post"),
+      decrypted_payload = NULL,
       phase = "callback_response_validation"
     ) {
       transport <- match.arg(transport)
@@ -1971,7 +1974,8 @@ oauth_module_server <- function(
           error_description = normalized$error_description,
           error_uri = normalized$error_uri,
           state = normalized$state,
-          iss = normalized$iss %||% NULL
+          iss = normalized$iss %||% NULL,
+          decrypted_payload = decrypted_payload
         )
         return(invisible(NULL))
       }
@@ -1979,7 +1983,8 @@ oauth_module_server <- function(
       .handle_callback(
         code = normalized$code,
         state = normalized$state,
-        iss = normalized$iss %||% NULL
+        iss = normalized$iss %||% NULL,
+        decrypted_payload = decrypted_payload
       )
       invisible(NULL)
     }

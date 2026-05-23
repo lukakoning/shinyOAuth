@@ -721,6 +721,47 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
   )
 })
 
+test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner state before storing", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  keys_before <- sort(client@state_store$keys())
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "definitely-not-a-valid-state"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      resp <- ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE)
+        )
+      ))
+
+      expect_identical(resp$status, 400L)
+      expect_identical(
+        resp$content,
+        "OAuth form_post callback could not be processed."
+      )
+      expect_false("Location" %in% names(resp$headers))
+      expect_identical(sort(client@state_store$keys()), keys_before)
+    }
+  )
+})
+
 test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -768,6 +809,7 @@ test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
               utils::URLencode(response, reserved = TRUE)
             )
           ))
+          expect_identical(post_resp$status, 303L)
           handle <- parse_query_param(
             post_resp$headers$Location,
             "shinyOAuth_form_post",
@@ -778,6 +820,79 @@ test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
           session$flushReact()
 
           expect_true(isTRUE(values$authenticated))
+          expect_identical(values$error, NULL)
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server rejects bridged form_post JARM callbacks for query.jwt clients before JWT processing", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  browser_token <- valid_browser_token()
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject form_post transport mismatches",
+          "before JARM signature validation"
+        )
+      )
+    },
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject form_post transport mismatches",
+          "before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          now <- floor(as.numeric(Sys.time()))
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = client@client_id,
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          post_resp <- ui(make_jarm_form_post_req(
+            body = paste0(
+              "response=",
+              utils::URLencode(response, reserved = TRUE)
+            )
+          ))
+          expect_identical(post_resp$status, 400L)
+          expect_identical(
+            post_resp$content,
+            "OAuth form_post callback could not be processed."
+          )
+          expect_false("Location" %in% names(post_resp$headers))
+          expect_false(isTRUE(values$authenticated))
+          expect_length(client@state_store$keys(), 1L)
           expect_identical(values$error, NULL)
         }
       )
@@ -842,46 +957,21 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
               utils::URLencode(bad_response, reserved = TRUE)
             )
           ))
-          bad_handle <- parse_query_param(
-            bad_post_resp$headers$Location,
-            "shinyOAuth_form_post",
-            decode = TRUE
+          expect_identical(bad_post_resp$status, 400L)
+          expect_identical(
+            bad_post_resp$content,
+            "OAuth form_post callback could not be processed."
           )
-
-          values$.process_query(jarm_form_post_query(bad_handle, "auth"))
-          session$flushReact()
-
+          expect_false("Location" %in% names(bad_post_resp$headers))
           expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_state")
-          expect_match(
-            values$error_description %||% "",
-            "aud claim does not include client_id"
-          )
+          expect_identical(values$error, NULL)
           expect_length(client@state_store$keys(), 1L)
           expect_identical(exchanged_codes, character(0))
-
-          failure_events <- Filter(
-            function(e) {
-              identical(e$type, "audit_callback_validation_failed") &&
-                identical(e$phase, "form_post_callback_validation")
-            },
-            events
-          )
-          expect_length(failure_events, 1L)
-          expect_match(
-            failure_events[[1L]]$error_class %||% "",
-            "shinyOAuth_state_error",
-            fixed = TRUE
-          )
           expect_false(any(vapply(
             events,
             function(e) identical(e$type, "audit_callback_validation_success"),
             logical(1)
           )))
-
-          values$error <- NULL
-          values$error_description <- NULL
-          values$error_uri <- NULL
 
           good_response <- make_signed_jarm(
             payload_list = list(
@@ -900,6 +990,7 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
               utils::URLencode(good_response, reserved = TRUE)
             )
           ))
+          expect_identical(good_post_resp$status, 303L)
           good_handle <- parse_query_param(
             good_post_resp$headers$Location,
             "shinyOAuth_form_post",

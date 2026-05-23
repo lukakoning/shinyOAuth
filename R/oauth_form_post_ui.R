@@ -213,13 +213,30 @@ oauth_form_post_handle_request <- function(req, id, client) {
         )
         body <- oauth_form_post_read_body(req, limits$form_post_body)
         payload <- oauth_form_post_parse_body(body, limits)
-        if (!identical(payload$type, "response")) {
+        if (identical(payload[["type", exact = TRUE]], "response")) {
+          normalized <- validate_jarm_response(
+            client,
+            payload[["response", exact = TRUE]],
+            transport = "form_post"
+          )
+          state_payload <- state_payload_decrypt_validate(
+            client,
+            normalized$state %||% NA_character_,
+            audit_success = FALSE
+          )
+          otel_set_span_attributes(
+            attributes = list(
+              shinyoauth.trace_id = state_payload$trace_id %||% NULL
+            )
+          )
+          payload$state_payload <- state_payload
+        } else {
           # Reject invalid state/issuer before persisting any pre-session
           # form_post handle. Do not consume the logical state here: the Shiny
           # session still needs to prove possession of the browser-bound token.
           state_payload <- state_payload_decrypt_validate(
             client,
-            payload$state,
+            payload[["state", exact = TRUE]],
             audit_success = FALSE
           )
           otel_set_span_attributes(
@@ -230,7 +247,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
           tryCatch(
             enforce_callback_issuer(
               oauth_client = client,
-              iss = payload$iss %||% NULL
+              iss = payload[["iss", exact = TRUE]] %||% NULL
             ),
             error = function(e) {
               error_context <- tryCatch(e[["context"]], error = function(...) {
@@ -250,7 +267,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
                   context = compact_list(list(
                     provider = client@provider@name %||% NA_character_,
                     expected_issuer = client@provider@issuer %||% NA_character_,
-                    callback_issuer = payload$iss %||% NULL,
+                    callback_issuer = payload[["iss", exact = TRUE]] %||% NULL,
                     client_id_digest = string_digest(client@client_id),
                     error_class = paste(class(e), collapse = ", ")
                   ))
@@ -454,39 +471,42 @@ oauth_form_post_validate_payload <- function(
     err_form_post_http("OAuth form_post callback payload must be a list.")
   }
 
+  # Use exact indexing so helper-added fields like `state_payload` cannot
+  # partially match OAuth parameter names during revalidation.
+  response <- payload[["response", exact = TRUE]]
+  code <- payload[["code", exact = TRUE]]
+  state <- payload[["state", exact = TRUE]]
+  error <- payload[["error", exact = TRUE]]
+  error_description <- payload[["error_description", exact = TRUE]]
+  error_uri <- payload[["error_uri", exact = TRUE]]
+  iss <- payload[["iss", exact = TRUE]]
+
   validate_untrusted_query_param(
     "response",
-    payload$response,
-    max_bytes = limits$form_post_body
+    response,
+    max_bytes = max(limits$query, limits$form_post_body)
   )
-  validate_untrusted_query_param("code", payload$code, limits$code)
-  validate_untrusted_query_param("state", payload$state, limits$state)
-  validate_untrusted_query_param("error", payload$error, limits$error)
+  validate_untrusted_query_param("code", code, limits$code)
+  validate_untrusted_query_param("state", state, limits$state)
+  validate_untrusted_query_param("error", error, limits$error)
   validate_untrusted_query_param(
     "error_description",
-    payload$error_description,
+    error_description,
     max_bytes = limits$error_description,
     allow_empty = TRUE
   )
   validate_untrusted_query_param(
     "error_uri",
-    payload$error_uri,
+    error_uri,
     max_bytes = limits$error_uri,
     allow_empty = TRUE
   )
-  validate_untrusted_query_param("iss", payload$iss, limits$iss)
+  validate_untrusted_query_param("iss", iss, limits$iss)
 
-  if (!is.null(payload$response)) {
+  if (!is.null(response)) {
     if (
       !all(vapply(
-        payload[c(
-          "code",
-          "state",
-          "error",
-          "error_description",
-          "error_uri",
-          "iss"
-        )],
+        list(code, state, error, error_description, error_uri, iss),
         is.null,
         logical(1)
       ))
@@ -502,19 +522,19 @@ oauth_form_post_validate_payload <- function(
     return(payload)
   }
 
-  if (is.null(payload$state)) {
+  if (is.null(state)) {
     err_form_post_http("OAuth form_post callback missing state.")
   }
-  if (!is.null(payload$code) && !is.null(payload$error)) {
+  if (!is.null(code) && !is.null(error)) {
     err_form_post_http(
       "OAuth form_post callback must not contain both code and error."
     )
   }
-  if (is.null(payload$code) && is.null(payload$error)) {
+  if (is.null(code) && is.null(error)) {
     err_form_post_http("OAuth form_post callback missing code or error.")
   }
 
-  payload$type <- if (!is.null(payload$error)) "error" else "code"
+  payload$type <- if (!is.null(error)) "error" else "code"
   payload
 }
 
