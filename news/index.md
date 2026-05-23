@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.5.0
 
+CRAN release: 2026-05-23
+
 - Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client
   authentication, certificate-bound access tokens, mTLS endpoint
   aliases, and the exported

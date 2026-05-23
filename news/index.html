@@ -37,11 +37,11 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/lukakoning/shinyOAuth/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/lukakoning/shinyOAuth/blob/v0.5.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2><p class="text-muted">CRAN release: 2026-05-23</p>
 <ul><li><p>Added mutual-TLS (‘mTLS’, RFC 8705) support, including mTLS client authentication, certificate-bound access tokens, mTLS endpoint aliases, and the exported <code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> helper for RFC 8705 client metadata.</p></li>
 <li><p>Added Demonstrating Proof-of-Possession (‘DPoP’, RFC 9449) support. Clients configured with <code>dpop_private_key</code> now send DPoP proofs on token and protected-resource requests, include <code>dpop_jkt</code> in authorization requests, can require <code>token_type = "DPoP"</code> plus <code>cnf.jkt</code> binding, and replay one <code>DPoP-Nonce</code> challenge on token and protected-resource requests.</p></li>
 <li><p>Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support. <code><a href="../reference/oauth_client.html">oauth_client()</a></code> can now send signed and encrypted Request Objects via <code>authorization_request_mode = "request"</code> (sent as parameter) or via <code>authorization_request_mode = "request_uri"</code> (served from your Shiny app).</p></li>
