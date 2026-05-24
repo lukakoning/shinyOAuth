@@ -393,7 +393,8 @@ oauth_provider_keycloak <- function(
   oauth_provider_oidc_discover(
     issuer = issuer,
     name = name,
-    token_auth_style = token_auth_style
+    token_auth_style = token_auth_style,
+    tolerate_duplicate_top_level_jarm_iss = TRUE
   )
 }
 

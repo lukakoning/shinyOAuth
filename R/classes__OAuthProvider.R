@@ -121,6 +121,13 @@
 #' @param authorization_encryption_enc_values_supported Optional vector of JWE
 #'   content-encryption algorithms that the provider advertises for encrypted
 #'   JARM responses.
+#' @param tolerate_duplicate_top_level_jarm_iss Logical. Whether shinyOAuth
+#'   should tolerate repeated identical top-level `iss` members in signed JARM
+#'   payloads for this provider. This is an interoperability escape hatch for
+#'   providers that emit duplicate identical top-level `iss` claims. When
+#'   `TRUE`, shinyOAuth collapses repeated identical top-level `iss` members
+#'   before duplicate-member rejection. Conflicting duplicates and nested
+#'   duplicate `iss` members still fail closed. Defaults to `FALSE`.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
@@ -435,6 +442,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
       S7::class_character,
@@ -592,6 +603,7 @@ oauth_provider <- function(
   authorization_signing_alg_values_supported = character(),
   authorization_encryption_alg_values_supported = character(),
   authorization_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -912,6 +924,9 @@ oauth_provider <- function(
     authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
     authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
     authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
+    tolerate_duplicate_top_level_jarm_iss = isTRUE(
+      tolerate_duplicate_top_level_jarm_iss
+    ),
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -1624,6 +1639,19 @@ oauth_provider_validate <- function(self) {
         )
       )
     }
+  }
+
+  if (
+    !(is.logical(self@tolerate_duplicate_top_level_jarm_iss) &&
+      length(self@tolerate_duplicate_top_level_jarm_iss) == 1L &&
+      !is.na(self@tolerate_duplicate_top_level_jarm_iss))
+  ) {
+    return(
+      paste(
+        "OAuthProvider: tolerate_duplicate_top_level_jarm_iss",
+        "must be a single non-NA logical"
+      )
+    )
   }
 
   if (length(self@allowed_token_types) > 0) {

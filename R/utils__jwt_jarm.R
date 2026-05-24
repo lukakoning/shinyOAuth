@@ -357,52 +357,11 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   ))
 }
 
-#' Detect whether JARM duplicate `iss` interoperability is allowed
+#' Parse a JARM payload with optional duplicate-`iss` interoperability handling
 #'
-#' Keycloak currently emits duplicate identical top-level `iss` members in some
-#' signed JARM payloads. Keep that workaround narrowly scoped to Keycloak-like
-#' providers so all other providers stay on the strict duplicate-member path.
-#'
-#' @param provider [OAuthProvider] object.
-#' @return `TRUE` when the duplicate-top-level-`iss` workaround should run.
-#' @keywords internal
-#' @noRd
-provider_allows_duplicate_top_level_jarm_iss <- function(provider) {
-  S7::check_is_S7(provider, class = OAuthProvider)
-
-  provider_name <- if (is_valid_string(provider@name %||% NA_character_)) {
-    tolower(trimws(provider@name))
-  } else {
-    ""
-  }
-  issuer <- if (is_valid_string(provider@issuer %||% NA_character_)) {
-    tolower(trimws(provider@issuer))
-  } else {
-    ""
-  }
-  auth_url <- if (is_valid_string(provider@auth_url %||% NA_character_)) {
-    tolower(trimws(provider@auth_url))
-  } else {
-    ""
-  }
-  token_url <- if (is_valid_string(provider@token_url %||% NA_character_)) {
-    tolower(trimws(provider@token_url))
-  } else {
-    ""
-  }
-
-  startsWith(provider_name, "keycloak") ||
-    (grepl("/realms/", issuer, fixed = TRUE) &&
-      grepl("/protocol/openid-connect/", auth_url, fixed = TRUE) &&
-      grepl("/protocol/openid-connect/", token_url, fixed = TRUE))
-}
-
-#' Parse a JARM payload with optional Keycloak interoperability handling
-#'
-#' Keycloak currently emits a duplicate top-level `iss` member in signed JARM
-#' payloads. Preserve strict duplicate-member rejection by default, and only
-#' collapse repeated identical top-level `iss` members when the caller has
-#' explicitly enabled the Keycloak interoperability workaround.
+#' Preserve strict duplicate-member rejection by default, and only collapse
+#' repeated identical top-level `iss` members when the caller has explicitly
+#' enabled this narrow interoperability workaround.
 #'
 #' @param jwt_str Compact JWS string.
 #' @param tolerate_duplicate_top_level_iss Whether to collapse repeated
@@ -845,8 +804,8 @@ validate_jarm_response <- function(
   claims <- tryCatch(
     parse_jarm_payload(
       jwt_str,
-      tolerate_duplicate_top_level_iss = provider_allows_duplicate_top_level_jarm_iss(
-        oauth_client@provider
+      tolerate_duplicate_top_level_iss = isTRUE(
+        oauth_client@provider@tolerate_duplicate_top_level_jarm_iss
       )
     ),
     error = function(e) {

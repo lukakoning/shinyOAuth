@@ -29,6 +29,7 @@ oauth_provider(
   authorization_signing_alg_values_supported = character(),
   authorization_encryption_alg_values_supported = character(),
   authorization_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -180,6 +181,14 @@ responses.}
 \item{authorization_encryption_enc_values_supported}{Optional vector of JWE
 content-encryption algorithms that the provider advertises for encrypted
 JARM responses.}
+
+\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Whether shinyOAuth
+should tolerate repeated identical top-level \code{iss} members in signed JARM
+payloads for this provider. This is an interoperability escape hatch for
+providers that emit duplicate identical top-level \code{iss} claims. When
+\code{TRUE}, shinyOAuth collapses repeated identical top-level \code{iss} members
+before duplicate-member rejection. Conflicting duplicates and nested
+duplicate \code{iss} members still fail closed. Defaults to \code{FALSE}.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},

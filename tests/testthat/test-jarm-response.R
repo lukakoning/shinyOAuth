@@ -5,6 +5,7 @@ make_jarm_test_client <- function(
   authorization_encrypted_response_enc = NULL,
   authorization_response_decryption_private_key = NULL,
   authorization_response_decryption_private_key_kid = NULL,
+  provider_tolerate_duplicate_top_level_jarm_iss = FALSE,
   client_secret = "",
   issuer = "https://issuer.example.com"
 ) {
@@ -20,6 +21,8 @@ make_jarm_test_client <- function(
     authorization_encrypted_response_alg %||% character(0)
   prov@authorization_encryption_enc_values_supported <-
     authorization_encrypted_response_enc %||% character(0)
+  prov@tolerate_duplicate_top_level_jarm_iss <-
+    isTRUE(provider_tolerate_duplicate_top_level_jarm_iss)
 
   oauth_client(
     provider = prov,
@@ -708,22 +711,13 @@ test_that("validate_jarm_response rejects duplicate identical iss claims by defa
   )
 })
 
-test_that("validate_jarm_response tolerates duplicate identical iss claims for Keycloak", {
+test_that("validate_jarm_response tolerates duplicate identical iss claims when provider opts in", {
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
     authorization_signed_response_alg = "HS256",
-    client_secret = secret
-  )
-  client@provider@name <- "keycloak-test"
-  client@provider@issuer <- "https://keycloak.example.com/realms/test"
-  client@provider@auth_url <- paste0(
-    client@provider@issuer,
-    "/protocol/openid-connect/auth"
-  )
-  client@provider@token_url <- paste0(
-    client@provider@issuer,
-    "/protocol/openid-connect/token"
+    client_secret = secret,
+    provider_tolerate_duplicate_top_level_jarm_iss = TRUE
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
