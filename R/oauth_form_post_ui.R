@@ -623,7 +623,10 @@ oauth_form_post_validate_payload <- function(
 }
 
 oauth_form_post_redirect_location <- function(req, id, handle) {
-  clean_query <- strip_oauth_module_callback_query(req$QUERY_STRING %||% "")
+  clean_query <- strip_oauth_module_callback_query(
+    req$QUERY_STRING %||% "",
+    query_jarm_client = TRUE
+  )
   clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
     list(handle, id),

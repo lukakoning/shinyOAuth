@@ -159,6 +159,41 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
 })
 
+test_that("oauth_form_post_ui strips compact response params from bridge redirects", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(
+    shiny::fluidPage(),
+    id = "auth",
+    client = cli,
+    callback_path = "/callback"
+  )
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+
+  req <- make_form_post_req(
+    path = "/callback",
+    query = paste0(
+      "response=header.payload.signature",
+      "&return_to=dashboard"
+    ),
+    body = paste0("code=ok&state=", enc_state)
+  )
+  req$SCRIPT_NAME <- "/mounted/app"
+
+  resp <- ui(req)
+
+  expect_identical(resp$status, 303L)
+  expect_match(resp$headers$Location, "^\\?return_to=dashboard&")
+  expect_false(grepl(
+    "response=header.payload.signature",
+    resp$headers$Location,
+    fixed = TRUE
+  ))
+  expect_match(resp$headers$Location, "shinyOAuth_form_post=")
+  expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
+})
+
 test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
