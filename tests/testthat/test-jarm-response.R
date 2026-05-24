@@ -1912,6 +1912,66 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
   )
 })
 
+test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  keys_before <- sort(client@state_store$keys())
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = "wrong-client",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      resp <- ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE)
+        )
+      ))
+
+      expect_identical(resp$status, 400L)
+      expect_identical(
+        resp$content,
+        "OAuth form_post callback could not be processed."
+      )
+      expect_false("Location" %in% names(resp$headers))
+      expect_identical(sort(client@state_store$keys()), keys_before)
+    }
+  )
+
+  reject_events <- Filter(
+    function(e) {
+      identical(e$type, "audit_callback_validation_failed") &&
+        identical(e$phase, "form_post_request_validation")
+    },
+    events
+  )
+  expect_length(reject_events, 1L)
+  expect_match(
+    reject_events[[1L]]$error_class %||% "",
+    "shinyOAuth_state_error",
+    fixed = TRUE
+  )
+})
+
 test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

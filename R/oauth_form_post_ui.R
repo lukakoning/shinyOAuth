@@ -331,6 +331,28 @@ oauth_form_post_handle_request <- function(req, id, client) {
       oauth_form_post_error_response(e)
     },
     shinyOAuth_state_error = function(e) {
+      configured_jarm_transport <- tryCatch(
+        resolve_jarm_callback_transport(client),
+        error = function(...) NULL
+      )
+      if (
+        identical(configured_jarm_transport$transport %||% NULL, "form_post")
+      ) {
+        try(
+          audit_event(
+            "callback_validation_failed",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              issuer = client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id),
+              state_digest = NA_character_,
+              error_class = paste(class(e), collapse = ", "),
+              phase = "form_post_request_validation"
+            )
+          ),
+          silent = TRUE
+        )
+      }
       oauth_form_post_error_response(e, fallback_status = 400L)
     },
     error = function(e) {
