@@ -1530,40 +1530,64 @@ testthat::test_that("query size cap enforced even when token already exists", {
   )
 })
 
-testthat::test_that("callback query helpers ignore ordinary response params", {
+testthat::test_that("callback query helpers only treat response as callback for query JARM", {
   expect_false(shinyOAuth:::oauth_module_query_has_callback_keys(
     "?response=ok&foo=1"
   ))
-  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+  expect_false(shinyOAuth:::oauth_module_query_has_callback_keys(
     "?response=header.payload.signature&foo=1"
   ))
-  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+  expect_false(shinyOAuth:::oauth_module_query_has_callback_keys(
     "?response=ok&response=header.payload.signature&foo=1"
   ))
-  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+  expect_false(shinyOAuth:::oauth_module_query_has_callback_keys(
     "?response=header.payload.signature&response=ok&foo=1"
+  ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=header.payload.signature&foo=1",
+    query_jarm_client = TRUE
+  ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=ok&response=header.payload.signature&foo=1",
+    query_jarm_client = TRUE
+  ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=header.payload.signature&response=ok&foo=1",
+    query_jarm_client = TRUE
   ))
 
   expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
     "?response=ok&response=still-ok"
   ))
+  expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+    "?response=ok&response=one.two.three"
+  ))
+  expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+    "?response=one.two.three&response=ok"
+  ))
+  expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+    "?response=header.payload.signature&response=one.two.three"
+  ))
   expect_error(
     shinyOAuth:::reject_duplicate_oauth_module_callback_query(
-      "?response=ok&response=one.two.three"
+      "?response=ok&response=one.two.three",
+      query_jarm_client = TRUE
     ),
     class = "shinyOAuth_state_error",
     regexp = "duplicate OAuth parameter: response"
   )
   expect_error(
     shinyOAuth:::reject_duplicate_oauth_module_callback_query(
-      "?response=one.two.three&response=ok"
+      "?response=one.two.three&response=ok",
+      query_jarm_client = TRUE
     ),
     class = "shinyOAuth_state_error",
     regexp = "duplicate OAuth parameter: response"
   )
   expect_error(
     shinyOAuth:::reject_duplicate_oauth_module_callback_query(
-      "?response=header.payload.signature&response=one.two.three"
+      "?response=header.payload.signature&response=one.two.three",
+      query_jarm_client = TRUE
     ),
     class = "shinyOAuth_state_error",
     regexp = "duplicate OAuth parameter: response"
@@ -1577,17 +1601,31 @@ testthat::test_that("callback query helpers ignore ordinary response params", {
     shinyOAuth:::strip_oauth_module_callback_query(
       "?response=header.payload.signature&foo=1"
     ),
-    "?foo=1"
+    "?response=header.payload.signature&foo=1"
   )
   expect_identical(
     shinyOAuth:::strip_oauth_module_callback_query(
       "?response=ok&response=header.payload.signature&foo=1"
     ),
+    "?response=ok&foo=1"
+  )
+  expect_identical(
+    shinyOAuth:::strip_oauth_module_callback_query(
+      "?response=header.payload.signature&foo=1",
+      query_jarm_client = TRUE
+    ),
+    "?foo=1"
+  )
+  expect_identical(
+    shinyOAuth:::strip_oauth_module_callback_query(
+      "?response=ok&response=header.payload.signature&foo=1",
+      query_jarm_client = TRUE
+    ),
     "?foo=1"
   )
 })
 
-testthat::test_that("non-JARM clients still reject JARM-like response callbacks", {
+testthat::test_that("non-JARM clients ignore compact-looking response app params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1604,11 +1642,8 @@ testthat::test_that("non-JARM clients still reject JARM-like response callbacks"
       values$.process_query("?response=header.payload.signature")
       session$flushReact()
 
-      testthat::expect_identical(values$error, "invalid_state")
-      testthat::expect_match(
-        values$error_description %||% "",
-        "not configured to accept JARM responses"
-      )
+      testthat::expect_null(values$error)
+      testthat::expect_null(values$error_description)
       testthat::expect_false(isTRUE(values$authenticated))
     }
   )

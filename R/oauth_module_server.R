@@ -1393,7 +1393,18 @@ oauth_module_server <- function(
     # @param query_string Current browser query string.
     # @return `TRUE` when this module should clear the callback query now.
     .should_clear_authenticated_callback_query <- function(query_string) {
-      if (!isTRUE(oauth_module_query_has_callback_keys(query_string))) {
+      configured_jarm_transport <- resolve_jarm_callback_transport(client)
+      query_jarm_client <- identical(
+        configured_jarm_transport$transport %||% NULL,
+        "query"
+      )
+
+      if (
+        !isTRUE(oauth_module_query_has_callback_keys(
+          query_string,
+          query_jarm_client = query_jarm_client
+        ))
+      ) {
         return(FALSE)
       }
 
@@ -1520,13 +1531,22 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      configured_jarm_transport <- resolve_jarm_callback_transport(client)
+      jarm_client <- !is.null(configured_jarm_transport)
+      query_jarm_client <- identical(
+        configured_jarm_transport$transport %||% NULL,
+        "query"
+      )
+
       qs <- NULL
       ok <- tryCatch(
         {
-          reject_duplicate_oauth_module_callback_query(query_string %||% "")
+          reject_duplicate_oauth_module_callback_query(
+            query_string %||% "",
+            query_jarm_client = query_jarm_client
+          )
           qs <- shiny::parseQueryString(query_string %||% "")
           response <- qs[["response", exact = TRUE]]
-          response_is_jarm <- oauth_module_query_has_jarm_response(response)
 
           validate_untrusted_query_param(
             "code",
@@ -1866,12 +1886,9 @@ oauth_module_server <- function(
         logical(1)
       ))
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
-      jarm_client <- !is.null(configured_jarm_transport)
-      query_jarm_client <- identical(
-        configured_jarm_transport$transport %||% NULL,
-        "query"
-      )
-      response_is_jarm <- isTRUE(oauth_module_query_has_jarm_response(response))
+      response_is_jarm <-
+        isTRUE(query_jarm_client) &&
+        isTRUE(oauth_module_query_has_jarm_response(response))
 
       if (
         isTRUE(query_jarm_client) &&
@@ -1902,23 +1919,6 @@ oauth_module_server <- function(
         }
 
         .handle_jarm_response(response, transport = "query")
-        return(invisible(NULL))
-      }
-
-      if (
-        isTRUE(jarm_client) &&
-          !isTRUE(query_jarm_client) &&
-          !is.null(response)
-      ) {
-        .reject_callback_query(
-          description = paste(
-            "JARM clients must resume from the validated form_post",
-            "callback handle; direct OAuth callback parameters are not",
-            "accepted."
-          ),
-          reason = "direct_callback_params_for_jarm_client",
-          drop_response = TRUE
-        )
         return(invisible(NULL))
       }
 
@@ -3712,10 +3712,15 @@ oauth_module_query_has_raw_jarm_response <- function(query_string) {
 #' a callback-like query reaches a session that is already authenticated.
 #'
 #' @param query_string Raw query string, with or without a leading `?`.
+#' @param query_jarm_client Logical. Whether a compact-looking `response`
+#'   parameter should be treated as a query JARM callback.
 #' @return `TRUE` when OAuth callback keys are present; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
-oauth_module_query_has_callback_keys <- function(query_string) {
+oauth_module_query_has_callback_keys <- function(
+  query_string,
+  query_jarm_client = FALSE
+) {
   raw <- sub("^\\?", "", query_string %||% "")
   if (!nzchar(raw)) {
     return(FALSE)
@@ -3730,7 +3735,8 @@ oauth_module_query_has_callback_keys <- function(query_string) {
   }
 
   any(names(parsed) %in% oauth_module_callback_query_keys) ||
-    isTRUE(oauth_module_query_has_raw_jarm_response(query_string))
+    (isTRUE(query_jarm_client) &&
+      isTRUE(oauth_module_query_has_raw_jarm_response(query_string)))
 }
 
 #' Reject duplicate OAuth callback query parameters
@@ -3739,10 +3745,15 @@ oauth_module_query_has_callback_keys <- function(query_string) {
 #' cannot be smuggled through parser-specific first/last-value behavior.
 #'
 #' @param query_string Raw query string, with or without a leading `?`.
+#' @param query_jarm_client Logical. Whether a compact-looking `response`
+#'   parameter should be treated as a query JARM callback.
 #' @return Invisibly returns `NULL` on success.
 #' @keywords internal
 #' @noRd
-reject_duplicate_oauth_module_callback_query <- function(query_string) {
+reject_duplicate_oauth_module_callback_query <- function(
+  query_string,
+  query_jarm_client = FALSE
+) {
   raw <- sub("^\\?", "", query_string %||% "")
   if (!nzchar(raw)) {
     return(invisible(NULL))
@@ -3755,9 +3766,9 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
   }
 
   seen <- character(0)
-  response_is_callback_key <- oauth_module_query_has_raw_jarm_response(
-    query_string
-  )
+  response_is_callback_key <-
+    isTRUE(query_jarm_client) &&
+    isTRUE(oauth_module_query_has_raw_jarm_response(query_string))
   for (part in parts) {
     key <- sub("=.*$", "", part)
     if (grepl("(?i)%00|%(?![0-9a-f]{2})", key, perl = TRUE)) {
@@ -3811,11 +3822,16 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
 #' unrelated application parameters.
 #'
 #' @param query_string Raw query string, with or without a leading `?`.
+#' @param query_jarm_client Logical. Whether a compact-looking `response`
+#'   parameter should be treated as a query JARM callback.
 #' @return Cleaned query string beginning with `?`, or `""` when no non-OAuth
 #'   parameters remain.
 #' @keywords internal
 #' @noRd
-strip_oauth_module_callback_query <- function(query_string) {
+strip_oauth_module_callback_query <- function(
+  query_string,
+  query_jarm_client = FALSE
+) {
   raw <- sub("^\\?", "", query_string %||% "")
   if (!nzchar(raw)) {
     return("")
@@ -3832,7 +3848,10 @@ strip_oauth_module_callback_query <- function(query_string) {
   }
 
   drop_names <- oauth_module_callback_query_keys
-  if (isTRUE(oauth_module_query_has_raw_jarm_response(query_string))) {
+  if (
+    isTRUE(query_jarm_client) &&
+      isTRUE(oauth_module_query_has_raw_jarm_response(query_string))
+  ) {
     drop_names <- c(drop_names, "response")
   }
 

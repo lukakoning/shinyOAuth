@@ -1330,7 +1330,7 @@ test_that("oauth_module_server rejects direct query callbacks for form_post.jwt 
   )
 })
 
-test_that("oauth_module_server rejects malformed response params for form_post.jwt clients", {
+test_that("oauth_module_server ignores query response params for form_post.jwt clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
@@ -1349,16 +1349,16 @@ test_that("oauth_module_server rejects malformed response params for form_post.j
     fetch_jwks = function(...) {
       testthat::fail(
         paste(
-          "oauth_module_server should reject malformed form_post.jwt",
-          "response params before JWKS fetch"
+          "oauth_module_server should ignore query response params for",
+          "form_post.jwt clients before JWKS fetch"
         )
       )
     },
     swap_code_for_token_set = function(...) {
       testthat::fail(
         paste(
-          "oauth_module_server should reject malformed form_post.jwt",
-          "response params before token exchange"
+          "oauth_module_server should ignore query response params for",
+          "form_post.jwt clients before token exchange"
         )
       )
     },
@@ -1383,11 +1383,10 @@ test_that("oauth_module_server rejects malformed response params for form_post.j
           session$flushReact()
 
           expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "form_post")
+          expect_null(values$error)
+          expect_null(values$error_description)
           expect_length(client@state_store$keys(), 1L)
-          expect_length(cleared, 1L)
-          expect_true(isTRUE(cleared[[1L]]$dropResponse))
+          expect_length(cleared, 0L)
         }
       )
     }
@@ -1959,7 +1958,7 @@ test_that("oauth_module_server handles query.jwt callbacks", {
   )
 })
 
-test_that("oauth_module_server rejects query JARM callbacks for form_post.jwt clients before JWT processing", {
+test_that("oauth_module_server ignores query JARM-like response params for form_post.jwt clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -1970,16 +1969,16 @@ test_that("oauth_module_server rejects query JARM callbacks for form_post.jwt cl
     fetch_jwks = function(...) {
       testthat::fail(
         paste(
-          "oauth_module_server should reject query transport mismatches",
-          "before JARM signature validation"
+          "oauth_module_server should ignore query JARM-like params for",
+          "form_post.jwt clients before JARM signature validation"
         )
       )
     },
     swap_code_for_token_set = function(...) {
       testthat::fail(
         paste(
-          "oauth_module_server should reject query transport mismatches",
-          "before token exchange"
+          "oauth_module_server should ignore query JARM-like params for",
+          "form_post.jwt clients before token exchange"
         )
       )
     },
@@ -2019,11 +2018,8 @@ test_that("oauth_module_server rejects query JARM callbacks for form_post.jwt cl
           session$flushReact()
 
           expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_state")
-          expect_match(
-            values$error_description %||% "",
-            "transport mismatch"
-          )
+          expect_null(values$error)
+          expect_null(values$error_description)
           expect_length(client@state_store$keys(), 1L)
         }
       )
