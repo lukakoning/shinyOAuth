@@ -404,6 +404,44 @@ test_that("validate_jarm_response rejects alg none", {
   )
 })
 
+test_that("validate_jarm_response rejects signed JARM with invalid typ header", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- jose::jwt_encode_sig(
+    do.call(
+      jose::jwt_claim,
+      list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        code = "ok",
+        state = "state-1"
+      )
+    ),
+    key = sig_key,
+    header = list(alg = "RS256", kid = "sig-1", typ = "at+jwt")
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject invalid typ",
+          "before JWKS fetch"
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "typ header invalid"
+  )
+})
+
 test_that("validate_jarm_response rejects partially matched signed header names", {
   client <- make_jarm_test_client(response_mode = "query.jwt")
   now <- floor(as.numeric(Sys.time()))

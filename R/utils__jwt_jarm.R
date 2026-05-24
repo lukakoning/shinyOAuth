@@ -858,12 +858,7 @@ validate_jarm_response <- function(
     header,
     signal_error = err_invalid_state
   )
-  if (!is.null(header_fields$crit) && length(header_fields$crit) > 0L) {
-    err_invalid_state(paste0(
-      "JARM contains unsupported critical header parameter(s): ",
-      paste(header_fields$crit, collapse = ", ")
-    ))
-  }
+  enforce_inbound_jwt_header_policy(header_fields, err_invalid_state)
 
   alg <- canonicalize_jws_alg(header_fields$alg)
   expected_alg <- resolve_authorization_response_signing_alg(oauth_client)
