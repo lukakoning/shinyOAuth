@@ -179,6 +179,42 @@ test_that("oauth_client treats jwt as the query.jwt alias", {
   )
 })
 
+test_that("oauth_client validates exact outbound jwt mode against metadata", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- "query.jwt"
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "jwt"
+    ),
+    regexp = "response_mode = 'jwt' is not advertised"
+  )
+})
+
+test_that("oauth_client validates exact outbound query.jwt mode against metadata", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- "jwt"
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "query.jwt"
+    ),
+    regexp = "response_mode = 'query.jwt' is not advertised"
+  )
+})
+
 test_that("oauth_client preserves provider jwt response_mode when inherited", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@issuer <- "https://issuer.example.com"

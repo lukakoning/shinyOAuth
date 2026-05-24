@@ -291,21 +291,18 @@ resolve_oauth_client_response_mode <- function(
   }
   out$extra_auth_params <- extra_auth_params
 
+  outbound_mode <- out$explicit_mode %||% out$mode
   if (
-    !is.null(out$mode) &&
+    !is.null(outbound_mode) &&
       length(oauth_client@provider@response_modes_supported) > 0 &&
-      !out$mode %in%
-        {
-          supported_modes <- tolower(trimws(
-            oauth_client@provider@response_modes_supported
-          ))
-          supported_modes[supported_modes == "jwt"] <- "query.jwt"
-          supported_modes
-        }
+      !outbound_mode %in%
+        tolower(trimws(
+          oauth_client@provider@response_modes_supported
+        ))
   ) {
     out$error <- paste0(
       "OAuthClient: response_mode = ",
-      sQuote(out$mode),
+      sQuote(outbound_mode),
       " is not advertised in provider response_modes_supported"
     )
     return(out)
