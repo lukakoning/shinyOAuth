@@ -84,6 +84,82 @@ state_payload_decrypt_validate <- function(
   )
 }
 
+#' Revalidate a cached decrypted OAuth state payload
+#'
+#' Internal utility used when callback handling resumes from a cached,
+#' already-decrypted state payload such as the form_post bridge or async
+#' prefetch. It rechecks the original issued-at freshness and client/policy
+#' binding so cached payloads cannot outlive the sealed state lifetime or be
+#' resumed under a different client policy.
+#'
+#' @param client [OAuthClient] instance.
+#' @param payload Previously decrypted state payload list.
+#' @param shiny_session Optional pre-captured Shiny session context.
+#' @param audit_success Whether successful payload validation should emit the
+#'   standard callback validation audit event.
+#' @return The validated payload list on success; otherwise throws an error via
+#'   `err_invalid_state()`.
+#' @keywords internal
+#' @noRd
+state_payload_revalidate <- function(
+  client,
+  payload,
+  shiny_session = NULL,
+  audit_success = FALSE
+) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  tryCatch(
+    {
+      if (!is.list(payload)) {
+        err_invalid_state("Invalid payload: cached state payload is malformed")
+      }
+
+      payload_verify_issued_at(client, payload)
+      payload_verify_client_binding(client, payload)
+
+      if (isTRUE(audit_success)) {
+        audit_callback_validation_success(client, payload, shiny_session)
+      }
+
+      payload
+    },
+    error = function(e) {
+      payload_state <- tryCatch(
+        payload[["state", exact = TRUE]],
+        error = function(...) NULL
+      )
+      try(
+        audit_event(
+          "callback_validation_failed",
+          context = list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            state_digest = if (is_valid_string(payload_state)) {
+              string_digest(payload_state)
+            } else {
+              NA_character_
+            },
+            error_class = paste(class(e), collapse = ", "),
+            phase = "payload_validation"
+          ),
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+      rethrow_with_context(
+        e,
+        class = c("shinyOAuth_state_error", "shinyOAuth_error"),
+        message = c(
+          "State payload validation failed",
+          "i" = paste0("", conditionMessage(e))
+        )
+      )
+    }
+  )
+}
+
 #' Audit successful callback state validation
 #'
 #' Used after a callback has completed its state, browser-token, and single-use

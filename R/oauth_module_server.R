@@ -2235,8 +2235,13 @@ oauth_module_server <- function(
           consumed_state <- if (
             !is.null(decrypted_payload) && !is.null(state_store_values)
           ) {
+            cached_payload <- state_payload_revalidate(
+              client,
+              decrypted_payload,
+              audit_success = FALSE
+            )
             with_trace_id(
-              decrypted_payload$trace_id %||% NULL,
+              cached_payload$trace_id %||% NULL,
               try(
                 audit_event(
                   "error_state_consumed",
@@ -2244,14 +2249,14 @@ oauth_module_server <- function(
                     provider = client@provider@name %||% NA_character_,
                     issuer = client@provider@issuer %||% NA_character_,
                     client_id_digest = string_digest(client@client_id),
-                    state_digest = string_digest(decrypted_payload$state)
+                    state_digest = string_digest(cached_payload$state)
                   )
                 ),
                 silent = TRUE
               )
             )
             list(
-              payload = decrypted_payload,
+              payload = cached_payload,
               state_store_values = state_store_values
             )
           } else {
@@ -2316,12 +2321,19 @@ oauth_module_server <- function(
       consumed <- tryCatch(
         {
           # Decrypt and validate the state payload
-          payload <- decrypted_payload %||%
+          payload <- if (is.null(decrypted_payload)) {
             state_payload_decrypt_validate(
               client,
               state,
               audit_success = FALSE
             )
+          } else {
+            state_payload_revalidate(
+              client,
+              decrypted_payload,
+              audit_success = FALSE
+            )
+          }
           with_trace_id(
             payload$trace_id %||% NULL,
             {

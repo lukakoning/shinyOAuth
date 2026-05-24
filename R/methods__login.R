@@ -1260,7 +1260,12 @@ handle_callback_internal <- function(
   # Allow callers to provide a pre-decrypted/validated payload to support
   # async flows that prefetch state on the main thread.
   if (!is.null(decrypted_payload)) {
-    payload <- decrypted_payload
+    payload <- state_payload_revalidate(
+      oauth_client,
+      decrypted_payload,
+      shiny_session = shiny_session,
+      audit_success = FALSE
+    )
   } else {
     payload <- with_otel_span(
       "shinyOAuth.callback.validate",
