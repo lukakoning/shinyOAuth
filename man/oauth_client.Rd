@@ -295,18 +295,25 @@ callback transport.}
 
 \item{authorization_signed_response_alg}{Optional expected JWS algorithm for
 signed JWT Secured Authorization Responses (JARM). When omitted and the
-effective response mode is JARM, shinyOAuth defaults to \code{RS256}.}
+effective response mode is JARM, shinyOAuth defaults to \code{RS256}. This
+value is not sent dynamically on the authorization request; it must match
+the client metadata and provider behavior configured out-of-band for that
+client.}
 
 \item{authorization_encrypted_response_alg}{Optional expected JWE
 key-management algorithm for encrypted JARM responses. Current inbound
-support is limited to \code{RSA-OAEP}.}
+support is limited to \code{RSA-OAEP}. Like
+\code{authorization_signed_response_alg}, this reflects out-of-band client
+metadata and expected provider behavior rather than an authorization
+request parameter emitted by shinyOAuth.}
 
 \item{authorization_encrypted_response_enc}{Optional expected JWE
 content-encryption algorithm for encrypted JARM responses. Current inbound
 support is limited to the AES-CBC-HMAC family (\code{A128CBC-HS256},
 \code{A192CBC-HS384}, \code{A256CBC-HS512}). When omitted while
 \code{authorization_encrypted_response_alg} is set, shinyOAuth defaults to
-\code{A128CBC-HS256}.}
+\code{A128CBC-HS256}. This must also match the provider-side JARM client
+metadata when encrypted responses are enabled.}
 
 \item{authorization_response_decryption_private_key}{Optional private key
 used to decrypt encrypted JARM responses. Can be an \code{openssl::key} or a

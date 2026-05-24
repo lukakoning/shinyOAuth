@@ -348,6 +348,47 @@ request a JWT-wrapped authorization response on the normal query callback path;
 `"jwt"` preserves the RFC-defined shortcut value on the outbound authorization
 request, while `"query.jwt"` is the fully explicit form.
 
+The JARM algorithm settings on `oauth_client()` are validation expectations,
+not dynamic authorization-request parameters. In practice that means
+`authorization_signed_response_alg`,
+`authorization_encrypted_response_alg`, and
+`authorization_encrypted_response_enc` must match the provider-side client
+registration (or OIDC discovery metadata) that tells the authorization server
+ how to produce the JARM callback for this client.
+
+If your issuer publishes JARM metadata through OIDC discovery,
+`oauth_provider_oidc_discover()` fills those provider fields automatically. If
+you configure the provider manually, add the advertised JARM metadata to the
+provider object and tell the client which signed or encrypted callback to
+expect. A minimal signed-JARM setup looks like this:
+
+```{r, eval = FALSE}
+library(shinyOAuth)
+
+provider <- oauth_provider(
+  name = "Example OIDC",
+  auth_url = "https://issuer.example.com/authorize",
+  token_url = "https://issuer.example.com/token",
+  issuer = "https://issuer.example.com",
+  response_modes_supported = c("jwt", "form_post.jwt"),
+  authorization_signing_alg_values_supported = "RS256"
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "shiny-public",
+  client_secret = "",
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  scopes = c("openid", "profile"),
+  response_mode = "jwt",
+  authorization_signed_response_alg = "RS256"
+)
+```
+
+If the provider uses `response_mode = "form_post.jwt"`, keep the same JARM
+metadata settings and wrap the app UI with `oauth_form_post_ui()` exactly as in
+the `form_post` example below.
+
 ```{r, eval = FALSE}
 library(shiny)
 library(shinyOAuth)

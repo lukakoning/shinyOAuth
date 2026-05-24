@@ -139,16 +139,23 @@
 #'
 #' @param authorization_signed_response_alg Optional expected JWS algorithm for
 #'   signed JWT Secured Authorization Responses (JARM). When omitted and the
-#'   effective response mode is JARM, shinyOAuth defaults to `RS256`.
+#'   effective response mode is JARM, shinyOAuth defaults to `RS256`. This
+#'   value is not sent dynamically on the authorization request; it must match
+#'   the client metadata and provider behavior configured out-of-band for that
+#'   client.
 #' @param authorization_encrypted_response_alg Optional expected JWE
 #'   key-management algorithm for encrypted JARM responses. Current inbound
-#'   support is limited to `RSA-OAEP`.
+#'   support is limited to `RSA-OAEP`. Like
+#'   `authorization_signed_response_alg`, this reflects out-of-band client
+#'   metadata and expected provider behavior rather than an authorization
+#'   request parameter emitted by shinyOAuth.
 #' @param authorization_encrypted_response_enc Optional expected JWE
 #'   content-encryption algorithm for encrypted JARM responses. Current inbound
 #'   support is limited to the AES-CBC-HMAC family (`A128CBC-HS256`,
 #'   `A192CBC-HS384`, `A256CBC-HS512`). When omitted while
 #'   `authorization_encrypted_response_alg` is set, shinyOAuth defaults to
-#'   `A128CBC-HS256`.
+#'   `A128CBC-HS256`. This must also match the provider-side JARM client
+#'   metadata when encrypted responses are enabled.
 #' @param authorization_response_decryption_private_key Optional private key
 #'   used to decrypt encrypted JARM responses. Can be an `openssl::key` or a
 #'   PEM string containing a private key. Required when encrypted JARM is

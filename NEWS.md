@@ -14,6 +14,12 @@ the custom-server path.
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
+* The JARM docs now call out `response_mode = "jwt"`, `"query.jwt"`, and
+`"form_post.jwt"` explicitly, include a minimal JARM configuration example,
+and explain that `authorization_*_response_*` settings reflect provider/client
+metadata negotiated out-of-band rather than authorization-request parameters
+that shinyOAuth sends dynamically.
+
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
   `/.well-known/openid-configuration` URL. Full discovery URLs are normalized 
