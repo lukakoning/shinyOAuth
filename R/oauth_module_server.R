@@ -1671,11 +1671,15 @@ oauth_module_server <- function(
           }
           return(invisible(NULL))
         }
+        response_param <- qs[["response", exact = TRUE]]
+        code_param <- qs[["code", exact = TRUE]]
+        error_param <- qs[["error", exact = TRUE]]
+        state_param <- qs[["state", exact = TRUE]]
         if (
-          !is.null(qs$response) ||
-            !is.null(qs$code) ||
-            !is.null(qs$error) ||
-            !is.null(qs$state)
+          isTRUE(oauth_module_query_has_jarm_response(response_param)) ||
+            !is.null(code_param) ||
+            !is.null(error_param) ||
+            !is.null(state_param)
         ) {
           clear_oauth_module_callback_query(
             session,
