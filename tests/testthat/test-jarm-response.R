@@ -549,6 +549,111 @@ test_that("validate_jarm_response rejects partially matched JARM claim names", {
   }
 })
 
+test_that("validate_jarm_response validates JARM callback claim sizes and types", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  limits <- shinyOAuth:::oauth_callback_limits()
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+
+  cases <- list(
+    list(
+      name = "state vector",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        code = "ok",
+        state = c("state-1", "state-2")
+      ),
+      regexp = "Callback query parameter 'state' must be a single string"
+    ),
+    list(
+      name = "state oversized",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        code = "ok",
+        state = strrep("s", limits$state + 1L)
+      ),
+      regexp = "Callback query parameter 'state' exceeded maximum length"
+    ),
+    list(
+      name = "error_description numeric",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        error = "access_denied",
+        error_description = 1,
+        state = "state-1"
+      ),
+      regexp = paste(
+        "Callback query parameter 'error_description' must be a single string"
+      )
+    ),
+    list(
+      name = "error_description oversized",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        error = "access_denied",
+        error_description = strrep("d", limits$error_description + 1L),
+        state = "state-1"
+      ),
+      regexp = paste(
+        "Callback query parameter 'error_description' exceeded maximum length"
+      )
+    ),
+    list(
+      name = "error_uri numeric",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        error = "access_denied",
+        error_uri = 1,
+        state = "state-1"
+      ),
+      regexp = "Callback query parameter 'error_uri' must be a single string"
+    ),
+    list(
+      name = "error_uri oversized",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        error = "access_denied",
+        error_uri = strrep("u", limits$error_uri + 1L),
+        state = "state-1"
+      ),
+      regexp = "Callback query parameter 'error_uri' exceeded maximum length"
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  for (case in cases) {
+    response <- make_signed_jarm(
+      payload_list = case$payload,
+      key = sig_key,
+      kid = "sig-1"
+    )
+
+    expect_error(
+      shinyOAuth:::validate_jarm_response(client, response),
+      class = "shinyOAuth_state_error",
+      regexp = case$regexp,
+      info = case$name
+    )
+  }
+})
+
 test_that("validate_jarm_response rejects duplicate identical iss claims by default", {
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(

@@ -300,6 +300,7 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   error <- jarm_claim(claims, "error")
   error_description <- jarm_claim(claims, "error_description")
   error_uri <- jarm_claim(claims, "error_uri")
+  limits <- oauth_callback_limits()
 
   now <- floor(as.numeric(Sys.time()))
   leeway <- as.numeric(oauth_client@provider@leeway %||% 0)
@@ -319,8 +320,24 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
     err_invalid_state("JARM payload is not yet valid")
   }
 
-  has_code <- is_valid_string(code %||% NA_character_)
-  has_error <- is_valid_string(error %||% NA_character_)
+  validate_untrusted_query_param("code", code, limits$code)
+  validate_untrusted_query_param("state", state, limits$state)
+  validate_untrusted_query_param("error", error, limits$error)
+  validate_untrusted_query_param(
+    "error_description",
+    error_description,
+    max_bytes = limits$error_description,
+    allow_empty = TRUE
+  )
+  validate_untrusted_query_param(
+    "error_uri",
+    error_uri,
+    max_bytes = limits$error_uri,
+    allow_empty = TRUE
+  )
+
+  has_code <- !is.null(code)
+  has_error <- !is.null(error)
   if (isTRUE(has_code) && isTRUE(has_error)) {
     err_invalid_state("JARM payload must not contain both code and error")
   }
