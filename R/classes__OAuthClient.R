@@ -163,6 +163,13 @@
 #' @param authorization_response_decryption_private_key_kid Optional key
 #'   identifier (`kid`) associated with
 #'   `authorization_response_decryption_private_key`.
+#' @param jarm_max_lifetime Positive number of seconds. Maximum accepted
+#'   lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+#'   recommended 10-minute upper bound for authorization response JWTs. When a
+#'   JARM payload includes `iat`, shinyOAuth enforces
+#'   `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
+#'   remaining `exp` window at validation time. Applies only when
+#'   `response_mode` uses JARM.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a
@@ -530,6 +537,8 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    # Maximum accepted JARM JWT lifetime in seconds.
+    jarm_max_lifetime = S7::new_property(S7::class_numeric, default = 600),
     # Optional override for the signed authorization request alg.
     authorization_request_signing_alg = S7::new_property(
       S7::class_character,
@@ -686,6 +695,7 @@ oauth_client <- function(
   authorization_encrypted_response_enc = NULL,
   authorization_response_decryption_private_key = NULL,
   authorization_response_decryption_private_key_kid = NULL,
+  jarm_max_lifetime = 600,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -860,6 +870,7 @@ oauth_client <- function(
     authorization_response_decryption_private_key = authorization_response_decryption_private_key,
     authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid %||%
       NA_character_,
+    jarm_max_lifetime = jarm_max_lifetime,
     authorization_request_signing_alg = authorization_request_signing_alg %||%
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
@@ -960,6 +971,14 @@ oauth_client_validate <- function(self) {
   if (length(spma) != 1L || !is.finite(spma) || spma <= 0) {
     return(
       "OAuthClient: state_payload_max_age must be a finite positive number of seconds"
+    )
+  }
+
+  # Maximum accepted JARM response JWT lifetime
+  jml <- suppressWarnings(as.numeric(self@jarm_max_lifetime))
+  if (length(jml) != 1L || !is.finite(jml) || jml <= 0) {
+    return(
+      "OAuthClient: jarm_max_lifetime must be a finite positive number of seconds"
     )
   }
 

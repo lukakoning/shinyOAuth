@@ -24,6 +24,7 @@ OAuthClient(
   authorization_encrypted_response_enc = NA_character_,
   authorization_response_decryption_private_key = NULL,
   authorization_response_decryption_private_key_kid = NA_character_,
+  jarm_max_lifetime = 600,
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
   authorization_request_encryption_alg = NA_character_,
@@ -214,6 +215,14 @@ enabled.}
 \item{authorization_response_decryption_private_key_kid}{Optional key
 identifier (\code{kid}) associated with
 \code{authorization_response_decryption_private_key}.}
+
+\item{jarm_max_lifetime}{Positive number of seconds. Maximum accepted
+lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+recommended 10-minute upper bound for authorization response JWTs. When a
+JARM payload includes \code{iat}, shinyOAuth enforces
+\code{exp - iat <= jarm_max_lifetime}; otherwise it falls back to the
+remaining \code{exp} window at validation time. Applies only when
+\code{response_mode} uses JARM.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a

@@ -119,7 +119,8 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
     authorization_signed_response_alg = "RS256",
     authorization_encrypted_response_enc = "A128CBC-HS256",
     authorization_response_decryption_private_key,
-    authorization_response_decryption_private_key_kid = "enc-1"
+    authorization_response_decryption_private_key_kid = "enc-1",
+    jarm_max_lifetime = 600
   ) {
     prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
     prov@issuer <- "https://issuer.example.com"
@@ -143,6 +144,7 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
       authorization_encrypted_response_enc = authorization_encrypted_response_enc,
       authorization_response_decryption_private_key = authorization_response_decryption_private_key,
       authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
+      jarm_max_lifetime = jarm_max_lifetime,
       state_store = cachem::cache_mem(max_age = 600),
       state_payload_max_age = 300,
       state_entropy = 64,
@@ -199,6 +201,13 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
       authorization_response_decryption_private_key = key_one,
       authorization_response_decryption_private_key_kid = "enc-2"
+    ))
+  ))
+  expect_false(identical(
+    base_fingerprint,
+    shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
+      authorization_response_decryption_private_key = key_one,
+      jarm_max_lifetime = 60
     ))
   ))
 })

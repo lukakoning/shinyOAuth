@@ -361,6 +361,7 @@ method(format, OAuthClient) <- function(x, ...) {
       claims = x@claims,
       state_store = x@state_store,
       state_payload_max_age = x@state_payload_max_age,
+      jarm_max_lifetime = x@jarm_max_lifetime,
       state_entropy = x@state_entropy,
       state_key = x@state_key,
       scope_validation = x@scope_validation,

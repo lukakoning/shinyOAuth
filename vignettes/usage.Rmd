@@ -356,6 +356,12 @@ not dynamic authorization-request parameters. In practice that means
 registration (or OIDC discovery metadata) that tells the authorization server
  how to produce the JARM callback for this client.
 
+shinyOAuth also caps accepted JARM callback lifetime with
+`jarm_max_lifetime`, which defaults to 600 seconds in line with the JARM
+specification's recommended 10-minute maximum. If the provider includes `iat`,
+shinyOAuth enforces that bound against `exp - iat`; otherwise it falls back to
+the remaining `exp` window at validation time.
+
 If your issuer publishes JARM metadata through OIDC discovery,
 `oauth_provider_oidc_discover()` fills those provider fields automatically. If
 you configure the provider manually, add the advertised JARM metadata to the
@@ -381,7 +387,8 @@ client <- oauth_client(
   redirect_uri = "http://127.0.0.1:8100/callback",
   scopes = c("openid", "profile"),
   response_mode = "jwt",
-  authorization_signed_response_alg = "RS256"
+  authorization_signed_response_alg = "RS256",
+  jarm_max_lifetime = 600
 )
 ```
 

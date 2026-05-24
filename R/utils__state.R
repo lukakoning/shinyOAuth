@@ -398,6 +398,11 @@ state_client_policy_fingerprint <- function(client) {
     resource = state_policy_string_set(client@resource),
     claims = client@claims,
     state_payload_max_age = client_state_payload_max_age(client),
+    jarm_max_lifetime = if (isTRUE(jarm_response_mode)) {
+      client_jarm_max_lifetime(client)
+    } else {
+      NA_real_
+    },
     scope_validation = client@scope_validation,
     claims_validation = client@claims_validation,
     userinfo_jwt_required_temporal_claims = state_policy_string_set(

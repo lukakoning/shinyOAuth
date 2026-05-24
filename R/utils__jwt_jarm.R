@@ -348,6 +348,7 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
     )
 
   iss <- prechecked$iss
+  exp <- as.numeric(prechecked$exp)
   iat <- jarm_claim(claims, "iat")
   nbf <- jarm_claim(claims, "nbf")
   code <- jarm_claim(claims, "code")
@@ -373,6 +374,25 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   }
   if (!is.null(nbf) && as.numeric(nbf) > (now + leeway)) {
     err_invalid_state("JARM payload is not yet valid")
+  }
+
+  max_lifetime <- client_jarm_max_lifetime(oauth_client)
+  lifetime_seconds <- if (!is.null(iat)) {
+    exp - as.numeric(iat)
+  } else {
+    exp - now
+  }
+  max_allowed_lifetime <- if (!is.null(iat)) {
+    max_lifetime
+  } else {
+    max_lifetime + leeway
+  }
+  if (lifetime_seconds > max_allowed_lifetime) {
+    err_invalid_state(paste0(
+      "JARM payload lifetime exceeds configured maximum of ",
+      format(max_lifetime, trim = TRUE, scientific = FALSE),
+      " seconds"
+    ))
   }
 
   validate_untrusted_query_param("code", code, limits$code)

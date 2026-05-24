@@ -5,6 +5,7 @@ make_jarm_test_client <- function(
   authorization_encrypted_response_enc = NULL,
   authorization_response_decryption_private_key = NULL,
   authorization_response_decryption_private_key_kid = NULL,
+  jarm_max_lifetime = 600,
   provider_tolerate_duplicate_top_level_jarm_iss = FALSE,
   client_secret = "",
   issuer = "https://issuer.example.com"
@@ -36,6 +37,7 @@ make_jarm_test_client <- function(
     authorization_encrypted_response_enc = authorization_encrypted_response_enc,
     authorization_response_decryption_private_key = authorization_response_decryption_private_key,
     authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
+    jarm_max_lifetime = jarm_max_lifetime,
     state_store = cachem::cache_mem(max_age = 600),
     state_payload_max_age = 300,
     state_entropy = 64,
@@ -597,6 +599,69 @@ test_that("validate_jarm_response rejects malformed exp before signature verific
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
     regexp = "exp claim must be a single finite number"
+  )
+})
+
+test_that("validate_jarm_response enforces configured JARM max lifetime without iat", {
+  secret <- "hs256-jarm-max-lifetime-no-iat-secret!"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret,
+    jarm_max_lifetime = 600
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 1200,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "HS256", typ = "JWT"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "lifetime exceeds configured maximum"
+  )
+})
+
+test_that("validate_jarm_response enforces configured JARM max lifetime from iat", {
+  secret <- "hs256-jarm-max-lifetime-with-iat-secret"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret,
+    jarm_max_lifetime = 60
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      iat = now - 5,
+      exp = now + 120,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "HS256", typ = "JWT"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "lifetime exceeds configured maximum"
   )
 })
 
