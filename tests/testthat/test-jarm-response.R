@@ -727,6 +727,38 @@ test_that("validate_jarm_response enforces configured JARM max lifetime from iat
   )
 })
 
+test_that("validate_jarm_response rejects iat values after exp", {
+  secret <- "hs256-jarm-iat-after-exp-secret-value"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret,
+    jarm_max_lifetime = 600
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      iat = now + 60,
+      exp = now + 30,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "HS256", typ = "JWT"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "iat claim must not be after exp"
+  )
+})
+
 test_that("validate_jarm_response rejects payloads with both code and error", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")

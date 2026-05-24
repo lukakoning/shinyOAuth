@@ -397,6 +397,9 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   if (!is.null(iat) && !jwt_is_single_finite_number(iat)) {
     err_invalid_state("JARM iat claim must be a single finite number")
   }
+  if (!is.null(iat) && as.numeric(iat) > exp) {
+    err_invalid_state("JARM iat claim must not be after exp")
+  }
   if (!is.null(iat) && as.numeric(iat) > (now + leeway)) {
     err_invalid_state("JARM payload issued in the future")
   }
