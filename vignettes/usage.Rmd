@@ -348,6 +348,13 @@ request a JWT-wrapped authorization response on the normal query callback path;
 `"jwt"` preserves the RFC-defined shortcut value on the outbound authorization
 request, while `"query.jwt"` is the fully explicit form.
 
+Signed-only query JARM adds integrity to the callback, but it does not hide the
+authorization code from the browser URL. The compact JWT still travels in the
+query string, so the code can remain exposed in browser history or referrer
+logs. When that exposure matters, prefer encrypted JARM or `form_post.jwt`,
+and keep PKCE enabled because encryption reduces leakage but does not replace
+PKCE's protocol-run protection.
+
 The JARM algorithm settings on `oauth_client()` are validation expectations,
 not dynamic authorization-request parameters. In practice that means
 `authorization_signed_response_alg`,
