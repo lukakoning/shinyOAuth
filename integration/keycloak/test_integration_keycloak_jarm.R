@@ -149,6 +149,7 @@ make_signed_jarm_public_client <- function(
   client_id,
   redirect_uri = "http://localhost:3000/callback",
   scopes = c("openid"),
+  response_mode = "query.jwt",
   ...
 ) {
   shinyOAuth::oauth_client(
@@ -157,7 +158,7 @@ make_signed_jarm_public_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    response_mode = "query.jwt",
+    response_mode = response_mode,
     authorization_signed_response_alg = "RS256",
     ...
   )
@@ -212,6 +213,74 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
       testthat::expect_identical(
         parse_query_param(auth_url, "response_mode", decode = TRUE),
         "query.jwt"
+      )
+
+      login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
+      response_jwt <- extract_jarm_response(login)
+
+      testthat::expect_true(keycloak_nonempty_string(response_jwt))
+      testthat::expect_false(grepl("[?&]code=", login$callback_url))
+      testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      testthat::expect_identical(
+        shinyOAuth:::parse_jwt_header(response_jwt)$alg,
+        "RS256"
+      )
+      testthat::expect_match(
+        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)$payload_raw),
+        '"code"[[:space:]]*:',
+        perl = TRUE
+      )
+
+      values$.process_query(callback_query(login))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+    }
+  )
+})
+
+testthat::test_that("Keycloak signed jwt alias happy path", {
+  skip_common()
+  local_test_options()
+
+  setup <- create_signed_jarm_fixture("shiny-jarm-jwt-alias")
+  on.exit(
+    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    add = TRUE
+  )
+
+  prov <- make_provider()
+  testthat::expect_true(
+    "jwt" %in% (prov@response_modes_supported %||% character())
+  )
+  testthat::expect_true(
+    "RS256" %in%
+      (prov@authorization_signing_alg_values_supported %||% character())
+  )
+
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup$fixture$client_id,
+    response_mode = "jwt"
+  )
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+
+      testthat::expect_identical(
+        parse_query_param(auth_url, "response_mode", decode = TRUE),
+        "jwt"
       )
 
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
