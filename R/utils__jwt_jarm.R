@@ -806,13 +806,18 @@ validate_encrypted_jarm_protected_header <- function(
 #'
 #' @param oauth_client [OAuthClient] object.
 #' @param response Compact JARM JWT string.
+#' @param transport Callback transport carrying `response`.
+#' @param outer_iss Optional RFC 9207 `iss` parameter sent alongside the JARM
+#'   response. When present, it must match the issuer conveyed by the JARM
+#'   response.
 #' @return Normalized callback payload list.
 #' @keywords internal
 #' @noRd
 validate_jarm_response <- function(
   oauth_client,
   response,
-  transport = c("query", "form_post")
+  transport = c("query", "form_post"),
+  outer_iss = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   transport <- match.arg(transport)
@@ -835,6 +840,11 @@ validate_jarm_response <- function(
     "response",
     response,
     max_bytes = max(limits$query, limits$form_post_body)
+  )
+  validate_untrusted_query_param(
+    "iss",
+    outer_iss,
+    max_bytes = limits$iss
   )
   if (!is_valid_string(response)) {
     err_invalid_state("JARM response must be a single non-empty compact JWT")
@@ -955,6 +965,11 @@ validate_jarm_response <- function(
   )
   claims <- as.list(claims)
   prechecked <- validate_jarm_pre_signature_claims(oauth_client, claims)
+  if (!is.null(outer_iss) && !identical(outer_iss, prechecked$iss)) {
+    err_invalid_state(
+      "Outer iss parameter does not match JARM iss claim (RFC 9207)"
+    )
+  }
 
   verify_jarm_signature(
     oauth_client = oauth_client,

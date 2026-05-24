@@ -1184,6 +1184,79 @@ test_that("validate_jarm_response rejects nested duplicate iss claims", {
   )
 })
 
+test_that("validate_jarm_response accepts matching outer iss parameter", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      normalized <- shinyOAuth:::validate_jarm_response(
+        client,
+        response,
+        outer_iss = client@provider@issuer
+      )
+
+      expect_identical(normalized$type, "code")
+      expect_identical(normalized$iss, client@provider@issuer)
+    }
+  )
+})
+
+test_that("validate_jarm_response rejects mismatched outer iss parameter", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "outer iss mismatches should be rejected before JARM signature",
+          "verification"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      expect_error(
+        shinyOAuth:::validate_jarm_response(
+          client,
+          response,
+          outer_iss = "https://evil.example.com"
+        ),
+        class = "shinyOAuth_state_error",
+        regexp = "Outer iss parameter does not match JARM iss claim"
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server rejects mixed query.jwt and direct callback params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -1239,6 +1312,62 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
           expect_identical(values$error, "invalid_callback_query")
           expect_match(values$error_description %||% "", "must not be combined")
           expect_length(client@state_store$keys(), 1L)
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server accepts matching outer iss with query.jwt callbacks", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  browser_token <- valid_browser_token()
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    swap_code_for_token_set = function(...) {
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          now <- floor(as.numeric(Sys.time()))
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = client@client_id,
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          values$.process_query(paste0(
+            "?response=",
+            utils::URLencode(response, reserved = TRUE),
+            "&iss=",
+            utils::URLencode(client@provider@issuer, reserved = TRUE)
+          ))
+          session$flushReact()
+
+          expect_true(isTRUE(values$authenticated))
+          expect_identical(values$error, NULL)
         }
       )
     }
@@ -2295,6 +2424,114 @@ test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.j
       "OAuth form_post JARM callback must include the response",
       "parameter; direct OAuth callback parameters are not accepted."
     )
+  )
+  expect_false("Location" %in% names(resp$headers))
+  expect_identical(sort(client@state_store$keys()), keys_before)
+})
+
+test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  enc_state <- parse_query_param(auth_url, "state")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = enc_state
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+
+  resp <- testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE),
+          "&iss=",
+          utils::URLencode(client@provider@issuer, reserved = TRUE)
+        )
+      ))
+    }
+  )
+
+  expect_identical(resp$status, 303L)
+  handle <- parse_query_param(
+    resp$headers$Location,
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+  payload <- shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)
+
+  expect_identical(payload$type, "response")
+  expect_identical(payload$iss, client@provider@issuer)
+  expect_identical(
+    payload$normalized_response$iss,
+    client@provider@issuer
+  )
+})
+
+test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodies", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  enc_state <- parse_query_param(auth_url, "state")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = enc_state
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  keys_before <- sort(client@state_store$keys())
+
+  resp <- testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "mismatched outer iss should be rejected before JARM signature",
+          "verification"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE),
+          "&iss=",
+          utils::URLencode("https://evil.example.com", reserved = TRUE)
+        )
+      ))
+    }
+  )
+
+  expect_identical(resp$status, 400L)
+  expect_identical(
+    resp$content,
+    "OAuth form_post callback could not be processed."
   )
   expect_false("Location" %in% names(resp$headers))
   expect_identical(sort(client@state_store$keys()), keys_before)

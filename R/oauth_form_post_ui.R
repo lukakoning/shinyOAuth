@@ -218,7 +218,8 @@ oauth_form_post_handle_request <- function(req, id, client) {
           normalized <- validate_jarm_response(
             client,
             payload[["response", exact = TRUE]],
-            transport = "form_post"
+            transport = "form_post",
+            outer_iss = payload[["iss", exact = TRUE]] %||% NULL
           )
           # Persist the normalized JARM callback so the module can resume from
           # this prevalidated result without depending on a second JWKS fetch.
@@ -575,7 +576,7 @@ oauth_form_post_validate_payload <- function(
   if (!is.null(response)) {
     if (
       !all(vapply(
-        list(code, state, error, error_description, error_uri, iss),
+        list(code, state, error, error_description, error_uri),
         is.null,
         logical(1)
       ))

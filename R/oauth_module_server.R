@@ -1844,14 +1844,14 @@ oauth_module_server <- function(
       }
 
       response <- qs[["response", exact = TRUE]]
+      outer_iss <- qs[["iss", exact = TRUE]] %||% NULL
       direct_callback_params_present <- !all(vapply(
         qs[c(
           "code",
           "state",
           "error",
           "error_description",
-          "error_uri",
-          "iss"
+          "error_uri"
         )],
         is.null,
         logical(1)
@@ -1879,7 +1879,11 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
 
-        .handle_jarm_response(response, transport = "query")
+        .handle_jarm_response(
+          response,
+          transport = "query",
+          outer_iss = outer_iss
+        )
         return(invisible(NULL))
       }
 
@@ -2103,6 +2107,7 @@ oauth_module_server <- function(
     .handle_jarm_response <- function(
       response,
       transport = c("query", "form_post"),
+      outer_iss = NULL,
       decrypted_payload = NULL,
       phase = "callback_response_validation"
     ) {
@@ -2112,7 +2117,8 @@ oauth_module_server <- function(
         validate_jarm_response(
           client,
           response,
-          transport = transport
+          transport = transport,
+          outer_iss = outer_iss
         ),
         error = function(e) {
           clear_oauth_module_callback_query(
