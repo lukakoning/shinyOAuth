@@ -72,6 +72,95 @@ if (!exists("make_provider", mode = "function")) {
   paste(readLines(path, warn = FALSE), collapse = "\n")
 }
 
+.form_post_jarm_jwks_public_base_url <- function(port) {
+  override <- Sys.getenv("SHINYOAUTH_E2E_JARM_JWKS_BASE_URL", "")
+  if (nzchar(override)) {
+    return(override)
+  }
+
+  sprintf("http://host.docker.internal:%d", port)
+}
+
+.start_form_post_jarm_jwks_server <- function(
+  key,
+  port,
+  public_base_url,
+  .local_envir = parent.frame()
+) {
+  testthat::skip_if_not_installed("callr")
+  testthat::skip_if_not_installed("webfakes")
+
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = FALSE)
+  jwk$kid <- "form-post-jarm-enc-1"
+  jwk$use <- "enc"
+  jwk$alg <- "RSA-OAEP"
+  jwks_json <- jsonlite::toJSON(
+    list(keys = list(jwk)),
+    auto_unbox = TRUE,
+    null = "null"
+  )
+
+  stdout <- tempfile("form-post-jarm-jwks-stdout-", fileext = ".log")
+  stderr <- tempfile("form-post-jarm-jwks-stderr-", fileext = ".log")
+
+  process <- callr::r_bg(
+    func = function(port, jwks_json) {
+      app <- webfakes::new_app()
+      app$get("/jwks", function(req, res) {
+        res$set_type("application/json")
+        res$send(jwks_json)
+      })
+      app$listen(
+        port = as.integer(port),
+        opts = webfakes::server_opts(interfaces = "0.0.0.0")
+      )
+    },
+    args = list(port = as.integer(port), jwks_json = jwks_json),
+    stdout = stdout,
+    stderr = stderr,
+    supervise = TRUE
+  )
+
+  local_jwks_url <- paste0("http://127.0.0.1:", as.integer(port), "/jwks")
+  deadline <- Sys.time() + 5
+  repeat {
+    if (!process$is_alive()) {
+      stop(
+        paste(
+          "form_post JARM JWKS server exited before it was reachable.",
+          paste(readLines(stderr, warn = FALSE), collapse = "\n"),
+          sep = "\n"
+        ),
+        call. = FALSE
+      )
+    }
+
+    ready <- tryCatch(
+      {
+        resp <- httr2::request(local_jwks_url) |>
+          httr2::req_error(is_error = function(resp) FALSE) |>
+          httr2::req_perform()
+        identical(httr2::resp_status(resp), 200L)
+      },
+      error = function(...) FALSE
+    )
+    if (isTRUE(ready)) {
+      break
+    }
+    if (Sys.time() > deadline) {
+      stop("form_post JARM JWKS server did not start in time", call. = FALSE)
+    }
+    Sys.sleep(0.1)
+  }
+
+  list(
+    process = process,
+    stdout = stdout,
+    stderr = stderr,
+    jwks_url = paste0(sub("/+$", "", public_base_url), "/jwks")
+  )
+}
+
 .start_form_post_app <- function(
   repo_root,
   app_port,
@@ -81,7 +170,10 @@ if (!exists("make_provider", mode = "function")) {
   title = "Form Post E2E",
   client_id = "shiny-public",
   response_mode = "form_post",
-  authorization_signed_response_alg = NULL
+  authorization_signed_response_alg = NULL,
+  authorization_encrypted_response_alg = NULL,
+  authorization_encrypted_response_enc = NULL,
+  authorization_response_decryption_private_key = NULL
 ) {
   stdout <- tempfile("form-post-app-stdout-", fileext = ".log")
   stderr <- tempfile("form-post-app-stderr-", fileext = ".log")
@@ -96,7 +188,10 @@ if (!exists("make_provider", mode = "function")) {
       title,
       client_id,
       response_mode,
-      authorization_signed_response_alg
+      authorization_signed_response_alg,
+      authorization_encrypted_response_alg,
+      authorization_encrypted_response_enc,
+      authorization_response_decryption_private_key
     ) {
       setwd(repo_root)
       if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -166,6 +261,51 @@ if (!exists("make_provider", mode = "function")) {
           call. = FALSE
         )
       }
+      if (
+        !is.null(authorization_encrypted_response_alg) &&
+          (!is.character(authorization_encrypted_response_alg) ||
+            length(authorization_encrypted_response_alg) != 1L ||
+            is.na(authorization_encrypted_response_alg) ||
+            !nzchar(authorization_encrypted_response_alg))
+      ) {
+        stop(
+          paste(
+            "authorization_encrypted_response_alg must be NULL or a",
+            "single non-empty string"
+          ),
+          call. = FALSE
+        )
+      }
+      if (
+        !is.null(authorization_encrypted_response_enc) &&
+          (!is.character(authorization_encrypted_response_enc) ||
+            length(authorization_encrypted_response_enc) != 1L ||
+            is.na(authorization_encrypted_response_enc) ||
+            !nzchar(authorization_encrypted_response_enc))
+      ) {
+        stop(
+          paste(
+            "authorization_encrypted_response_enc must be NULL or a",
+            "single non-empty string"
+          ),
+          call. = FALSE
+        )
+      }
+      if (
+        !is.null(authorization_response_decryption_private_key) &&
+          (!is.character(authorization_response_decryption_private_key) ||
+            length(authorization_response_decryption_private_key) != 1L ||
+            is.na(authorization_response_decryption_private_key) ||
+            !nzchar(authorization_response_decryption_private_key))
+      ) {
+        stop(
+          paste(
+            "authorization_response_decryption_private_key must be NULL or a",
+            "single non-empty PEM string"
+          ),
+          call. = FALSE
+        )
+      }
 
       provider <- make_provider(use_par = use_par)
       redirect_uri <- paste0(app_url, redirect_path)
@@ -181,6 +321,22 @@ if (!exists("make_provider", mode = "function")) {
       if (keycloak_nonempty_string(authorization_signed_response_alg)) {
         client_args$authorization_signed_response_alg <-
           authorization_signed_response_alg
+      }
+      if (keycloak_nonempty_string(authorization_encrypted_response_alg)) {
+        client_args$authorization_encrypted_response_alg <-
+          authorization_encrypted_response_alg
+      }
+      if (keycloak_nonempty_string(authorization_encrypted_response_enc)) {
+        client_args$authorization_encrypted_response_enc <-
+          authorization_encrypted_response_enc
+      }
+      if (
+        keycloak_nonempty_string(
+          authorization_response_decryption_private_key
+        )
+      ) {
+        client_args$authorization_response_decryption_private_key <-
+          authorization_response_decryption_private_key
       }
 
       client <- do.call(shinyOAuth::oauth_client, client_args)
@@ -304,7 +460,10 @@ if (!exists("make_provider", mode = "function")) {
       title = title,
       client_id = client_id,
       response_mode = response_mode,
-      authorization_signed_response_alg = authorization_signed_response_alg
+      authorization_signed_response_alg = authorization_signed_response_alg,
+      authorization_encrypted_response_alg = authorization_encrypted_response_alg,
+      authorization_encrypted_response_enc = authorization_encrypted_response_enc,
+      authorization_response_decryption_private_key = authorization_response_decryption_private_key
     ),
     stdout = stdout,
     stderr = stderr,
@@ -594,6 +753,138 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
   drv <- shinytest2::AppDriver$new(
     app_url,
     name = "keycloak-form-post-jarm-e2e",
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .expect_successful_form_post_browser_flow(
+    drv,
+    validate_auth_url = function(auth_url) {
+      testthat::expect_identical(
+        parse_query_param(auth_url, "response_mode", decode = TRUE),
+        "form_post.jwt"
+      )
+      testthat::expect_identical(
+        parse_query_param(auth_url, "client_id", decode = TRUE),
+        fixture$client_id
+      )
+      testthat::expect_identical(
+        parse_query_param(auth_url, "redirect_uri", decode = TRUE),
+        app_url
+      )
+    }
+  )
+})
+
+testthat::test_that("browser encrypted form_post.jwt login authenticates through oauth_form_post_ui", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+  testthat::skip_if_not_installed("webfakes")
+
+  private_key <- get_pjwt_key()
+  testthat::skip_if(
+    is.null(private_key),
+    "private_key_jwt test key not available"
+  )
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_JARM_ENC",
+    "8126"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping encrypted form_post.jwt E2E"
+    ))
+  }
+
+  jwks_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_FORM_POST_JARM_JWKS_PORT",
+    "8127"
+  ))
+  if (keycloak_browser_port_in_use(jwks_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      jwks_port,
+      " is already in use; skipping encrypted form_post.jwt JWKS server"
+    ))
+  }
+
+  repo_root <- .repo_root()
+  app_url <- sprintf("http://127.0.0.1:%d", app_port)
+  public_base_url <- .form_post_jarm_jwks_public_base_url(jwks_port)
+  jwks_server <- .start_form_post_jarm_jwks_server(
+    key = private_key,
+    port = jwks_port,
+    public_base_url = public_base_url
+  )
+  on.exit(try(jwks_server$process$kill(), silent = TRUE), add = TRUE)
+
+  admin_token <- keycloak_admin_token()
+  fixture <- keycloak_create_client(
+    token = admin_token,
+    body = keycloak_oidc_client_body(
+      client_id = keycloak_temp_client_id("shiny-form-post-jarm-enc"),
+      public_client = TRUE,
+      redirect_uris = list(app_url, paste0(app_url, "/*")),
+      attributes = list(
+        "pkce.code.challenge.method" = "S256",
+        "use.jwks.url" = "true",
+        "jwks.url" = jwks_server$jwks_url,
+        "authorization.signed.response.alg" = "RS256",
+        "authorization.encrypted.response.alg" = "RSA-OAEP",
+        "authorization.encrypted.response.enc" = "A256CBC-HS512"
+      )
+    )
+  )
+  on.exit(
+    keycloak_delete_client(admin_token, id = fixture$id),
+    add = TRUE
+  )
+
+  provider <- make_provider()
+  testthat::expect_true(
+    "form_post.jwt" %in% (provider@response_modes_supported %||% character())
+  )
+  testthat::expect_true(
+    "RS256" %in%
+      (provider@authorization_signing_alg_values_supported %||% character())
+  )
+  testthat::expect_true(
+    "RSA-OAEP" %in%
+      (provider@authorization_encryption_alg_values_supported %||% character())
+  )
+  testthat::expect_true(
+    "A256CBC-HS512" %in%
+      (provider@authorization_encryption_enc_values_supported %||% character())
+  )
+
+  decryption_key_pem <- paste(
+    capture.output(openssl::write_pem(private_key)),
+    collapse = "\n"
+  )
+  app_process <- .start_form_post_app(
+    repo_root = repo_root,
+    app_port = app_port,
+    app_url = app_url,
+    title = "Encrypted Form Post JWT E2E",
+    client_id = fixture$client_id,
+    response_mode = "form_post.jwt",
+    authorization_signed_response_alg = "RS256",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = decryption_key_pem
+  )
+  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_form_post_app(app_process, app_port)
+
+  drv <- shinytest2::AppDriver$new(
+    app_url,
+    name = "keycloak-form-post-jarm-enc-e2e",
     load_timeout = 15000,
     wait = FALSE
   )
