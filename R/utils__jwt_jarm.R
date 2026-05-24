@@ -8,7 +8,7 @@
 
 #' Resolve the expected JARM signing algorithm for one client
 #'
-#' Used by JARM validation helpers after [OAuthClient] validation has already
+#' Used by JARM validation helpers after OAuthClient validation has already
 #' normalized the effective callback response mode.
 #'
 #' @param oauth_client [OAuthClient] object.
@@ -209,16 +209,17 @@ jarm_claim <- function(claims, name) {
   claims[[name, exact = TRUE]]
 }
 
-#' Validate required JARM claims and normalize one response payload
+#' Validate required pre-signature JARM claims
 #'
-#' Used after optional decryption and required signature verification.
+#' Used before JWKS fetch or signature verification so malformed audience or
+#' expiration claims fail closed without performing unnecessary key work.
 #'
 #' @param oauth_client [OAuthClient] object.
 #' @param claims Parsed JARM claim list.
-#' @return Normalized callback payload list.
+#' @return Named list with the validated `iss`, `aud`, and `exp` values.
 #' @keywords internal
 #' @noRd
-validate_jarm_claims <- function(oauth_client, claims) {
+validate_jarm_pre_signature_claims <- function(oauth_client, claims) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   if (!is.list(claims)) {
@@ -228,13 +229,6 @@ validate_jarm_claims <- function(oauth_client, claims) {
   iss <- jarm_claim(claims, "iss")
   aud <- jarm_claim(claims, "aud")
   exp <- jarm_claim(claims, "exp")
-  iat <- jarm_claim(claims, "iat")
-  nbf <- jarm_claim(claims, "nbf")
-  code <- jarm_claim(claims, "code")
-  state <- jarm_claim(claims, "state")
-  error <- jarm_claim(claims, "error")
-  error_description <- jarm_claim(claims, "error_description")
-  error_uri <- jarm_claim(claims, "error_uri")
 
   issuer <- oauth_client@provider@issuer %||% NA_character_
   if (!is_valid_string(iss)) {
@@ -270,6 +264,47 @@ validate_jarm_claims <- function(oauth_client, claims) {
   }
   if (as.numeric(exp) < (now - leeway)) {
     err_invalid_state("JARM payload expired")
+  }
+
+  list(iss = iss, aud = aud, exp = exp)
+}
+
+#' Validate required JARM claims and normalize one response payload
+#'
+#' Used after optional decryption and required signature verification.
+#'
+#' @param oauth_client [OAuthClient] object.
+#' @param claims Parsed JARM claim list.
+#' @param prechecked Optional result from validate_jarm_pre_signature_claims().
+#' @return Normalized callback payload list.
+#' @keywords internal
+#' @noRd
+validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!is.list(claims)) {
+    err_invalid_state("JARM payload must be a JSON object")
+  }
+
+  prechecked <- prechecked %||%
+    validate_jarm_pre_signature_claims(
+      oauth_client,
+      claims
+    )
+
+  iss <- prechecked$iss
+  iat <- jarm_claim(claims, "iat")
+  nbf <- jarm_claim(claims, "nbf")
+  code <- jarm_claim(claims, "code")
+  state <- jarm_claim(claims, "state")
+  error <- jarm_claim(claims, "error")
+  error_description <- jarm_claim(claims, "error_description")
+  error_uri <- jarm_claim(claims, "error_uri")
+
+  now <- floor(as.numeric(Sys.time()))
+  leeway <- as.numeric(oauth_client@provider@leeway %||% 0)
+  if (!is.finite(leeway) || is.na(leeway) || length(leeway) != 1L) {
+    leeway <- 0
   }
   if (!is.null(iat) && !jwt_is_single_finite_number(iat)) {
     err_invalid_state("JARM iat claim must be a single finite number")
@@ -574,13 +609,7 @@ validate_jarm_response <- function(
     }
   )
   claims <- as.list(claims)
-  iss <- jarm_claim(claims, "iss")
-  if (!is_valid_string(iss %||% NA_character_)) {
-    err_invalid_state("JARM payload missing required iss claim")
-  }
-  if (!identical(iss, oauth_client@provider@issuer)) {
-    err_invalid_state("JARM issuer does not match provider issuer")
-  }
+  prechecked <- validate_jarm_pre_signature_claims(oauth_client, claims)
 
   verify_jarm_signature(
     oauth_client = oauth_client,
@@ -589,5 +618,5 @@ validate_jarm_response <- function(
     kid = header_fields$kid %||% NULL
   )
 
-  validate_jarm_claims(oauth_client, claims)
+  validate_jarm_claims(oauth_client, claims, prechecked = prechecked)
 }

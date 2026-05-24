@@ -257,32 +257,111 @@ test_that("validate_jarm_response rejects issuer mismatch before JWKS fetch", {
   )
 })
 
-test_that("validate_jarm_response rejects aud mismatches", {
+test_that("validate_jarm_response rejects aud and exp failures before JWKS fetch", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
   now <- floor(as.numeric(Sys.time()))
-  response <- make_signed_jarm(
-    payload_list = list(
+  cases <- list(
+    list(
+      name = "missing aud",
+      payload = list(
+        iss = client@provider@issuer,
+        exp = now + 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "aud claim is invalid"
+    ),
+    list(
+      name = "wrong aud",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = "wrong-client",
+        exp = now + 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "aud claim does not include client_id"
+    ),
+    list(
+      name = "expired exp",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now - 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "payload expired"
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject bad aud or exp claims",
+          "before JWKS fetch"
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  for (case in cases) {
+    response <- make_signed_jarm(
+      payload_list = case$payload,
+      key = sig_key,
+      kid = "sig-1"
+    )
+
+    expect_error(
+      shinyOAuth:::validate_jarm_response(client, response),
+      class = "shinyOAuth_state_error",
+      regexp = case$regexp,
+      info = case$name
+    )
+  }
+})
+
+test_that("validate_jarm_response rejects malformed exp before signature verification", {
+  secret <- "hs256-jarm-malformed-exp-secret-32b!"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
       iss = client@provider@issuer,
-      aud = "wrong-client",
-      exp = now + 300,
+      aud = client@client_id,
+      exp = "not-a-number",
       code = "ok",
       state = "state-1"
     ),
-    key = sig_key,
-    kid = "sig-1"
+    secret = secret,
+    header = list(alg = "HS256", typ = "JWT"),
+    size = 256,
+    alg = "HS256"
   )
-  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
 
   testthat::local_mocked_bindings(
-    fetch_jwks = function(...) jwks,
+    verify_hmac_jws_signature_no_time = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject malformed exp",
+          "before signature verification"
+        )
+      )
+    },
     .package = "shinyOAuth"
   )
 
   expect_error(
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
-    regexp = "aud claim does not include client_id"
+    regexp = "exp claim must be a single finite number"
   )
 })
 
