@@ -404,35 +404,59 @@ test_that("validate_jarm_response rejects alg none", {
   )
 })
 
-test_that("validate_jarm_response rejects signed JARM with invalid typ header", {
-  sig_key <- openssl::rsa_keygen()
-  client <- make_jarm_test_client(response_mode = "query.jwt")
+test_that("validate_jarm_response accepts signed JARM with explicit JWT media type typ header", {
+  secret <- "hs256-jarm-explicit-typ-secret-value"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
-  response <- jose::jwt_encode_sig(
-    do.call(
-      jose::jwt_claim,
-      list(
-        iss = client@provider@issuer,
-        aud = client@client_id,
-        exp = now + 300,
-        code = "ok",
-        state = "state-1"
-      )
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
     ),
-    key = sig_key,
-    header = list(alg = "RS256", kid = "sig-1", typ = "at+jwt")
+    secret = secret,
+    header = list(
+      alg = "HS256",
+      typ = "application/oauth-authz-resp+jwt"
+    ),
+    size = 256,
+    alg = "HS256"
   )
 
-  testthat::local_mocked_bindings(
-    fetch_jwks = function(...) {
-      testthat::fail(
-        paste(
-          "validate_jarm_response should reject invalid typ",
-          "before JWKS fetch"
-        )
-      )
-    },
-    .package = "shinyOAuth"
+  normalized <- shinyOAuth:::validate_jarm_response(client, response)
+
+  expect_identical(normalized$code, "ok")
+  expect_identical(normalized$state, "state-1")
+})
+
+test_that("validate_jarm_response rejects signed JARM with non-JWT typ header", {
+  secret <- "hs256-jarm-invalid-typ-secret-value"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "HS256", typ = "application/json"),
+    size = 256,
+    alg = "HS256"
   )
 
   expect_error(

@@ -92,7 +92,38 @@ resolve_jarm_callback_transport <- function(oauth_client) {
   NULL
 }
 
-## 1.2 Signature and claim validation -----------------------------------------
+## 1.2 Header policy ----------------------------------------------------------
+
+#' Normalize accepted inbound JARM typ header values
+#'
+#' JARM does not define a required `typ` header, but providers may include one
+#' using the generic `JWT` value or an explicit JWT media type such as
+#' `oauth-authz-resp+jwt`. Normalize those accepted values to `JWT` before the
+#' shared inbound header policy runs so profile-specific JARM deployments remain
+#' interoperable.
+#'
+#' @param typ Raw `typ` header value.
+#' @return `"JWT"` when `typ` identifies a JWT media type, otherwise returns
+#'   `typ` unchanged.
+#' @keywords internal
+#' @noRd
+normalize_jarm_inbound_typ <- function(typ) {
+  if (!is_valid_string(typ)) {
+    return(typ)
+  }
+
+  bare_typ <- sub("^application/", "", tolower(typ))
+  if (
+    identical(bare_typ, "jwt") ||
+      grepl("^[a-z0-9][a-z0-9!#$&^_.+-]*\\+jwt$", bare_typ)
+  ) {
+    return("JWT")
+  }
+
+  typ
+}
+
+## 1.3 Signature and claim validation -----------------------------------------
 
 #' Verify one signed JARM signature
 #'
@@ -858,6 +889,7 @@ validate_jarm_response <- function(
     header,
     signal_error = err_invalid_state
   )
+  header_fields$typ <- normalize_jarm_inbound_typ(header_fields$typ)
   enforce_inbound_jwt_header_policy(header_fields, err_invalid_state)
 
   alg <- canonicalize_jws_alg(header_fields$alg)
