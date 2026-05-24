@@ -1539,6 +1539,15 @@ oauth_module_server <- function(
       )
 
       qs <- NULL
+      query_response <- NULL
+      query_code <- NULL
+      query_state <- NULL
+      query_error <- NULL
+      query_error_description <- NULL
+      query_error_uri <- NULL
+      query_iss <- NULL
+      query_form_post_handle <- NULL
+      query_form_post_id <- NULL
       ok <- tryCatch(
         {
           reject_duplicate_oauth_module_callback_query(
@@ -1546,55 +1555,66 @@ oauth_module_server <- function(
             query_jarm_client = query_jarm_client
           )
           qs <- shiny::parseQueryString(query_string %||% "")
-          response <- qs[["response", exact = TRUE]]
+          query_response <- qs[["response", exact = TRUE]]
+          query_code <- qs[["code", exact = TRUE]]
+          query_state <- qs[["state", exact = TRUE]]
+          query_error <- qs[["error", exact = TRUE]]
+          query_error_description <- qs[["error_description", exact = TRUE]]
+          query_error_uri <- qs[["error_uri", exact = TRUE]]
+          query_iss <- qs[["iss", exact = TRUE]]
+          query_form_post_handle <- qs[[
+            oauth_form_post_handle_param,
+            exact = TRUE
+          ]]
+          query_form_post_id <- qs[[oauth_form_post_id_param, exact = TRUE]]
 
           validate_untrusted_query_param(
             "code",
-            qs$code,
+            query_code,
             max_bytes = limits$code
           )
-          if (!is.null(response)) {
+          if (!is.null(query_response)) {
             validate_untrusted_query_param(
               "response",
-              response,
+              query_response,
               max_bytes = limits$query
             )
           }
           validate_untrusted_query_param(
             "state",
-            qs$state,
+            query_state,
             max_bytes = limits$state
           )
           validate_untrusted_query_param(
             "error",
-            qs$error,
+            query_error,
             max_bytes = limits$error
           )
           validate_untrusted_query_param(
             "error_description",
-            qs$error_description,
+            query_error_description,
             max_bytes = limits$error_description,
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "error_uri",
-            qs$error_uri,
+            query_error_uri,
             max_bytes = limits$error_uri,
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "iss",
-            qs$iss,
+            query_iss,
             max_bytes = limits$iss
           )
           validate_untrusted_query_param(
             oauth_form_post_handle_param,
-            qs[[oauth_form_post_handle_param]],
+            query_form_post_handle,
             max_bytes = limits$form_post_handle
           )
           validate_untrusted_query_param(
             oauth_form_post_id_param,
-            qs[[oauth_form_post_id_param]],
+            query_form_post_id,
             max_bytes = limits$form_post_id
           )
           TRUE
@@ -1629,9 +1649,9 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      form_post_handle <- qs[[oauth_form_post_handle_param]]
+      form_post_handle <- query_form_post_handle
       if (!is.null(form_post_handle)) {
-        form_post_id <- qs[[oauth_form_post_id_param]]
+        form_post_id <- query_form_post_id
         if (is.null(form_post_id)) {
           clear_oauth_module_callback_query(
             session,
@@ -1696,10 +1716,10 @@ oauth_module_server <- function(
           }
           return(invisible(NULL))
         }
-        response_param <- qs[["response", exact = TRUE]]
-        code_param <- qs[["code", exact = TRUE]]
-        error_param <- qs[["error", exact = TRUE]]
-        state_param <- qs[["state", exact = TRUE]]
+        response_param <- query_response
+        code_param <- query_code
+        error_param <- query_error
+        state_param <- query_state
         response_param_conflicts <- isTRUE(
           oauth_module_query_has_jarm_response(response_param)
         )
@@ -1843,16 +1863,16 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      response <- qs[["response", exact = TRUE]]
-      outer_iss <- qs[["iss", exact = TRUE]] %||% NULL
+      response <- query_response
+      outer_iss <- query_iss %||% NULL
       direct_callback_params_present <- !all(vapply(
-        qs[c(
-          "code",
-          "state",
-          "error",
-          "error_description",
-          "error_uri"
-        )],
+        list(
+          query_code,
+          query_state,
+          query_error,
+          query_error_description,
+          query_error_uri
+        ),
         is.null,
         logical(1)
       ))
@@ -1940,7 +1960,7 @@ oauth_module_server <- function(
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.
-      if (!is.null(qs$error)) {
+      if (!is.null(query_error)) {
         # Clear sensitive callback params even on failure paths to reduce
         # leak risk via referrers, browser history, or logs.
         clear_oauth_module_callback_query(
@@ -1949,21 +1969,21 @@ oauth_module_server <- function(
           tab_title_cleaning
         )
         .handle_error_response(
-          error = qs$error,
-          error_description = qs$error_description,
-          error_uri = qs$error_uri,
-          state = qs$state,
-          iss = qs$iss %||% NULL
+          error = query_error,
+          error_description = query_error_description,
+          error_uri = query_error_uri,
+          state = query_state,
+          iss = query_iss %||% NULL
         )
         return(invisible(NULL))
       }
 
       # If we're on the callback step, handle immediately and stop here
-      if (!is.null(qs$code)) {
+      if (!is.null(query_code)) {
         .handle_callback(
-          code = qs$code,
-          state = qs$state,
-          iss = qs$iss %||% NULL
+          code = query_code,
+          state = query_state,
+          iss = query_iss %||% NULL
         )
         return(invisible(NULL))
       }

@@ -2292,6 +2292,131 @@ test_that("oauth_module_server handles query.jwt callbacks", {
   )
 })
 
+test_that("oauth_module_server ignores prefixed direct code callbacks for query JARM clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cases <- expand.grid(
+    response_mode = c("query.jwt", "jwt"),
+    async = c(FALSE, TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  for (idx in seq_len(nrow(cases))) {
+    response_mode <- cases$response_mode[[idx]]
+    async <- cases$async[[idx]]
+    info <- paste("response_mode =", response_mode, ", async =", async)
+    client <- make_jarm_test_client(response_mode = response_mode)
+    browser_token <- valid_browser_token()
+
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) {
+        testthat::fail(paste(
+          "Prefixed direct callback params must not trigger JARM JWKS fetches",
+          info
+        ))
+      },
+      swap_code_for_token_set = function(...) {
+        testthat::fail(paste(
+          "Prefixed direct callback params must not trigger token exchange",
+          info
+        ))
+      },
+      .package = "shinyOAuth",
+      {
+        shiny::testServer(
+          app = oauth_module_server,
+          args = list(
+            id = "auth",
+            client = client,
+            auto_redirect = FALSE,
+            async = async,
+            indefinite_session = TRUE
+          ),
+          expr = {
+            values$browser_token <- browser_token
+            url <- values$build_auth_url()
+            enc_state <- parse_query_param(url, "state")
+            keys_before <- sort(client@state_store$keys())
+
+            expect_equal(length(keys_before), 1L, info = info)
+
+            values$.process_query(paste0(
+              "?code_alias=ok",
+              "&state_alias=",
+              enc_state,
+              "&iss_alias=",
+              utils::URLencode(client@provider@issuer, reserved = TRUE)
+            ))
+            session$flushReact()
+
+            expect_false(isTRUE(values$authenticated), info = info)
+            expect_null(values$error, info = info)
+            expect_identical(
+              sort(client@state_store$keys()),
+              keys_before,
+              info = info
+            )
+          }
+        )
+      }
+    )
+  }
+})
+
+test_that("oauth_module_server ignores prefixed error callbacks for query JARM clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cases <- expand.grid(
+    response_mode = c("query.jwt", "jwt"),
+    async = c(FALSE, TRUE),
+    stringsAsFactors = FALSE
+  )
+
+  for (idx in seq_len(nrow(cases))) {
+    response_mode <- cases$response_mode[[idx]]
+    async <- cases$async[[idx]]
+    info <- paste("response_mode =", response_mode, ", async =", async)
+    client <- make_jarm_test_client(response_mode = response_mode)
+    browser_token <- valid_browser_token()
+
+    shiny::testServer(
+      app = oauth_module_server,
+      args = list(
+        id = "auth",
+        client = client,
+        auto_redirect = FALSE,
+        async = async,
+        indefinite_session = TRUE
+      ),
+      expr = {
+        values$browser_token <- browser_token
+        url <- values$build_auth_url()
+        enc_state <- parse_query_param(url, "state")
+        keys_before <- sort(client@state_store$keys())
+
+        expect_equal(length(keys_before), 1L, info = info)
+
+        values$.process_query(paste0(
+          "?error_alias=access_denied",
+          "&state_alias=",
+          enc_state,
+          "&iss_alias=",
+          utils::URLencode(client@provider@issuer, reserved = TRUE)
+        ))
+        session$flushReact()
+
+        expect_false(isTRUE(values$authenticated), info = info)
+        expect_null(values$error, info = info)
+        expect_identical(
+          sort(client@state_store$keys()),
+          keys_before,
+          info = info
+        )
+      }
+    )
+  }
+})
+
 test_that("oauth_module_server rejects query JARM responses for form_post.jwt clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
