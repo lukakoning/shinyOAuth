@@ -1611,6 +1611,80 @@ test_that("oauth_module_server ignores unrelated query response params for jwt a
   )
 })
 
+test_that("oauth_module_server rejects malformed query JARM response params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  malformed_response <- make_compact_jose_token(
+    header_json = '{"alg":"RS256","typ":"JWT"}',
+    payload_list = list(code = "ok"),
+    signature = ""
+  )
+
+  for (mode in c("query.jwt", "jwt")) {
+    client <- make_jarm_test_client(response_mode = mode)
+    browser_token <- valid_browser_token()
+    cleared <- list()
+    sess <- shiny::MockShinySession$new()
+    orig <- sess$sendCustomMessage
+    sess$sendCustomMessage <- function(type, message) {
+      if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+        cleared[[length(cleared) + 1L]] <<- message
+      }
+      orig(type, message)
+    }
+
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) {
+        testthat::fail(
+          paste(
+            "oauth_module_server should reject malformed query JARM",
+            "before JWKS fetch"
+          )
+        )
+      },
+      swap_code_for_token_set = function(...) {
+        testthat::fail(
+          paste(
+            "oauth_module_server should reject malformed query JARM",
+            "before token exchange"
+          )
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shiny::testServer(
+          app = oauth_module_server,
+          args = list(
+            id = "auth",
+            client = client,
+            auto_redirect = TRUE,
+            indefinite_session = TRUE
+          ),
+          session = sess,
+          expr = {
+            values$browser_token <- browser_token
+            values$build_auth_url()
+
+            expect_length(client@state_store$keys(), 1L)
+
+            values$.process_query(paste0(
+              "?response=",
+              utils::URLencode(malformed_response, reserved = TRUE)
+            ))
+            session$flushReact()
+
+            expect_false(isTRUE(values$authenticated))
+            expect_identical(values$error, "invalid_callback_query")
+            expect_match(values$error_description %||% "", "malformed")
+            expect_length(client@state_store$keys(), 1L)
+            expect_length(cleared, 1L)
+          }
+        )
+      }
+    )
+  }
+})
+
 test_that("oauth_module_server handles query.jwt error callbacks and blocks replay", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

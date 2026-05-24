@@ -1862,6 +1862,10 @@ oauth_module_server <- function(
       response_is_jarm <-
         isTRUE(query_jarm_client) &&
         isTRUE(oauth_module_query_has_jarm_response(response))
+      response_is_malformed_jarm <-
+        isTRUE(query_jarm_client) &&
+        !isTRUE(response_is_jarm) &&
+        isTRUE(oauth_module_query_has_malformed_jarm_response(response))
 
       if (isTRUE(response_is_jarm)) {
         if (isTRUE(direct_callback_params_present)) {
@@ -1876,6 +1880,17 @@ oauth_module_server <- function(
         }
 
         .handle_jarm_response(response, transport = "query")
+        return(invisible(NULL))
+      }
+
+      if (isTRUE(response_is_malformed_jarm)) {
+        .reject_callback_query(
+          description = paste(
+            "JARM response parameter is malformed and could not be",
+            "validated."
+          ),
+          reason = "malformed_jarm_response"
+        )
         return(invisible(NULL))
       }
 
@@ -3660,6 +3675,53 @@ oauth_module_query_has_jarm_response <- function(response) {
     },
     logical(1)
   ))
+}
+
+#' Check whether a query response value looks like malformed JARM
+#'
+#' Used by callback-query helpers so query-based JARM clients can reject JWT-
+#' like `response` values that are malformed, while still ignoring unrelated
+#' app parameters such as `response=keep-me`.
+#'
+#' @param response Query parameter value.
+#' @return `TRUE` when `response` looks like an attempted JARM JWT but is not a
+#'   valid compact JWS/JWE.
+#' @keywords internal
+#' @noRd
+oauth_module_query_has_malformed_jarm_response <- function(response) {
+  if (
+    !is_valid_string(response) ||
+      isTRUE(oauth_module_query_has_jarm_response(response))
+  ) {
+    return(FALSE)
+  }
+
+  parts <- strsplit(response, ".", fixed = TRUE)[[1]]
+  if (is.null(jwt_probe_segment_raw(parts[[1]] %||% NULL))) {
+    return(FALSE)
+  }
+
+  header_text <- tryCatch(
+    base64url_decode(parts[[1]] %||% NULL),
+    error = function(...) NULL
+  )
+  if (!is_valid_string(header_text)) {
+    return(FALSE)
+  }
+
+  header <- tryCatch(
+    {
+      reject_duplicate_json_object_members(header_text, "JWT header")
+      assert_json_text_is_object(header_text, "JWT header")
+      jsonlite::fromJSON(header_text, simplifyVector = TRUE)
+    },
+    error = function(...) NULL
+  )
+  if (!is.list(header)) {
+    return(FALSE)
+  }
+
+  any(names(header) %in% c("alg", "enc", "kid", "typ", "cty", "crit"))
 }
 
 #' Collect repeated raw query parameter values
