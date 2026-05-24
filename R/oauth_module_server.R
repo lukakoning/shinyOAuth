@@ -1780,6 +1780,41 @@ oauth_module_server <- function(
         }
 
         if (identical(form_post_payload$type, "response")) {
+          normalized_response <- form_post_payload$normalized_response %||% NULL
+          if (
+            is.list(normalized_response) && length(normalized_response) > 0L
+          ) {
+            if (identical(normalized_response$type, "error")) {
+              clear_oauth_module_callback_query(
+                session,
+                tab_title_replacement,
+                tab_title_cleaning
+              )
+              .handle_error_response(
+                error = normalized_response$error,
+                error_description = normalized_response$error_description,
+                error_uri = normalized_response$error_uri,
+                state = normalized_response$state,
+                iss = normalized_response$iss %||% NULL,
+                decrypted_payload = form_post_payload$state_payload %||% NULL,
+                state_store_values = form_post_payload$state_store_values %||%
+                  NULL
+              )
+              return(invisible(NULL))
+            }
+
+            .handle_callback(
+              code = normalized_response$code,
+              state = normalized_response$state,
+              iss = normalized_response$iss %||% NULL,
+              decrypted_payload = form_post_payload$state_payload %||% NULL,
+              state_store_values = form_post_payload$state_store_values %||%
+                NULL,
+              callback_validated = TRUE
+            )
+            return(invisible(NULL))
+          }
+
           .handle_jarm_response(
             response = form_post_payload$response,
             transport = "form_post",

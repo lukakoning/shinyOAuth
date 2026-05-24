@@ -220,6 +220,9 @@ oauth_form_post_handle_request <- function(req, id, client) {
             payload[["response", exact = TRUE]],
             transport = "form_post"
           )
+          # Persist the normalized JARM callback so the module can resume from
+          # this prevalidated result without depending on a second JWKS fetch.
+          payload$normalized_response <- normalized
           state_payload <- state_payload_decrypt_validate(
             client,
             normalized$state %||% NA_character_,
