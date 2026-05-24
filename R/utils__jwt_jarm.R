@@ -469,6 +469,36 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   ))
 }
 
+#' Revalidate one cached JARM callback before resuming it
+#'
+#' Used when a previously validated JARM response is staged briefly while the
+#' module waits for the browser token or finishes the form_post bridge. This
+#' rechecks the time-based claims before grant-specific parameters are used.
+#'
+#' @param oauth_client [OAuthClient] object.
+#' @param normalized_response Normalized callback payload from
+#'   `validate_jarm_response()`.
+#' @return Normalized callback payload list.
+#' @keywords internal
+#' @noRd
+revalidate_cached_jarm_response <- function(
+  oauth_client,
+  normalized_response
+) {
+  S7::check_is_S7(oauth_client, class = OAuthClient)
+
+  if (!is.list(normalized_response)) {
+    err_invalid_state("Cached JARM callback is malformed")
+  }
+
+  claims <- normalized_response[["claims", exact = TRUE]] %||% NULL
+  if (!is.list(claims)) {
+    err_invalid_state("Cached JARM callback is missing claims")
+  }
+
+  validate_jarm_claims(oauth_client, claims)
+}
+
 #' Parse a JARM payload with optional duplicate-`iss` interoperability handling
 #'
 #' Preserve strict duplicate-member rejection by default, and only collapse

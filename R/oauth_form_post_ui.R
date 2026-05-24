@@ -521,6 +521,7 @@ oauth_form_post_validate_payload <- function(
   error_description <- payload[["error_description", exact = TRUE]]
   error_uri <- payload[["error_uri", exact = TRUE]]
   iss <- payload[["iss", exact = TRUE]]
+  normalized_response <- payload[["normalized_response", exact = TRUE]]
 
   validate_untrusted_query_param(
     "response",
@@ -560,6 +561,12 @@ oauth_form_post_validate_payload <- function(
       )
     }
     payload$type <- "response"
+    if (!is.null(client) && !is.null(normalized_response)) {
+      payload$normalized_response <- revalidate_cached_jarm_response(
+        client,
+        normalized_response
+      )
+    }
     return(payload)
   }
 

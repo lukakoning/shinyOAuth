@@ -1798,33 +1798,10 @@ oauth_module_server <- function(
           if (
             is.list(normalized_response) && length(normalized_response) > 0L
           ) {
-            if (identical(normalized_response$type, "error")) {
-              clear_oauth_module_callback_query(
-                session,
-                tab_title_replacement,
-                tab_title_cleaning
-              )
-              .handle_error_response(
-                error = normalized_response$error,
-                error_description = normalized_response$error_description,
-                error_uri = normalized_response$error_uri,
-                state = normalized_response$state,
-                iss = normalized_response$iss %||% NULL,
-                decrypted_payload = form_post_payload$state_payload %||% NULL,
-                state_store_values = form_post_payload$state_store_values %||%
-                  NULL
-              )
-              return(invisible(NULL))
-            }
-
-            .handle_callback(
-              code = normalized_response$code,
-              state = normalized_response$state,
-              iss = normalized_response$iss %||% NULL,
+            .resume_cached_jarm_response(
+              normalized_response = normalized_response,
               decrypted_payload = form_post_payload$state_payload %||% NULL,
-              state_store_values = form_post_payload$state_store_values %||%
-                NULL,
-              callback_validated = TRUE
+              phase = "form_post_callback_validation"
             )
             return(invisible(NULL))
           }
@@ -2020,6 +1997,88 @@ oauth_module_server <- function(
       )
     }
 
+    # Internal helper: recheck a cached normalized JARM response before it is
+    # resumed from the POST bridge or a pending callback wait.
+    .resume_cached_jarm_response <- function(
+      normalized_response,
+      decrypted_payload = NULL,
+      phase = "callback_response_validation"
+    ) {
+      normalized <- tryCatch(
+        revalidate_cached_jarm_response(client, normalized_response),
+        error = function(e) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning
+          )
+          .set_error(
+            oauth_module_callback_failure_error_code(e),
+            e,
+            phase = phase
+          )
+          try(
+            audit_event(
+              "callback_validation_failed",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                state_digest = NA_character_,
+                error_class = paste(class(e), collapse = ", "),
+                phase = phase
+              )
+            ),
+            silent = TRUE
+          )
+          NULL
+        }
+      )
+      if (is.null(normalized)) {
+        return(invisible(NULL))
+      }
+
+      if (!is_valid_string(values$browser_token)) {
+        clear_oauth_module_callback_query(
+          session,
+          tab_title_replacement,
+          tab_title_cleaning
+        )
+        values$pending_callback <- list(
+          type = "jarm",
+          normalized_response = normalized,
+          decrypted_payload = decrypted_payload
+        )
+        return(invisible(NULL))
+      }
+
+      if (identical(normalized$type, "error")) {
+        clear_oauth_module_callback_query(
+          session,
+          tab_title_replacement,
+          tab_title_cleaning
+        )
+        .handle_error_response(
+          error = normalized$error,
+          error_description = normalized$error_description,
+          error_uri = normalized$error_uri,
+          state = normalized$state,
+          iss = normalized$iss %||% NULL,
+          decrypted_payload = decrypted_payload
+        )
+        return(invisible(NULL))
+      }
+
+      .handle_callback(
+        code = normalized$code,
+        state = normalized$state,
+        iss = normalized$iss %||% NULL,
+        decrypted_payload = decrypted_payload,
+        callback_validated = TRUE
+      )
+      invisible(NULL)
+    }
+
     # Internal helper: validate one JARM callback response and dispatch the
     # normalized result into the existing error or code callback path.
     # @param response Raw compact JARM JWT from the callback transport.
@@ -2072,29 +2131,10 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (identical(normalized$type, "error")) {
-        clear_oauth_module_callback_query(
-          session,
-          tab_title_replacement,
-          tab_title_cleaning
-        )
-        .handle_error_response(
-          error = normalized$error,
-          error_description = normalized$error_description,
-          error_uri = normalized$error_uri,
-          state = normalized$state,
-          iss = normalized$iss %||% NULL,
-          decrypted_payload = decrypted_payload
-        )
-        return(invisible(NULL))
-      }
-
-      .handle_callback(
-        code = normalized$code,
-        state = normalized$state,
-        iss = normalized$iss %||% NULL,
+      .resume_cached_jarm_response(
+        normalized_response = normalized,
         decrypted_payload = decrypted_payload,
-        callback_validated = TRUE
+        phase = phase
       )
       invisible(NULL)
     }
@@ -2955,7 +2995,9 @@ oauth_module_server <- function(
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
           pending_type <- pc$type %||%
-            if (!is.null(pc$code)) {
+            if (!is.null(pc$normalized_response)) {
+              "jarm"
+            } else if (!is.null(pc$code)) {
               "code"
             } else if (!is.null(pc$error)) {
               "error"
@@ -2963,7 +3005,13 @@ oauth_module_server <- function(
               NULL
             }
 
-          if (identical(pending_type, "error")) {
+          if (identical(pending_type, "jarm")) {
+            .resume_cached_jarm_response(
+              normalized_response = pc$normalized_response %||% NULL,
+              decrypted_payload = pc$decrypted_payload %||% NULL,
+              phase = "callback_response_resume"
+            )
+          } else if (identical(pending_type, "error")) {
             .handle_error_response(
               error = pc$error,
               error_description = pc$error_description,
