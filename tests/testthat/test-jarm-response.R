@@ -819,6 +819,93 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
   expect_identical(normalized$state, "state-1")
 })
 
+test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  wrong_key <- openssl::rsa_keygen()
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = "https://issuer.example.com",
+      aud = "abc",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  encrypted_response <- shinyOAuth:::jwe_compact_encrypt(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "JWT"
+  )
+
+  parse_client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  parse_client@provider@authorization_encryption_alg_values_supported <-
+    "RSA-OAEP"
+  parse_client@provider@authorization_encryption_enc_values_supported <-
+    "A256CBC-HS512"
+
+  decrypt_client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = wrong_key
+  )
+  decrypt_client@provider@authorization_encryption_alg_values_supported <-
+    "RSA-OAEP"
+  decrypt_client@provider@authorization_encryption_enc_values_supported <-
+    "A256CBC-HS512"
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(parse_client, "a.b.c.d.e"),
+    class = "shinyOAuth_state_error",
+    regexp = "Encrypted JARM response could not be parsed"
+  )
+  expect_error(
+    shinyOAuth:::validate_jarm_response(decrypt_client, encrypted_response),
+    class = "shinyOAuth_state_error",
+    regexp = "Encrypted JARM response could not be decrypted"
+  )
+})
+
+test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks", {
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "form_post.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  client@provider@authorization_encryption_alg_values_supported <-
+    "RSA-OAEP"
+  client@provider@authorization_encryption_enc_values_supported <-
+    "A256CBC-HS512"
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  keys_before <- sort(client@state_store$keys())
+
+  resp <- ui(make_jarm_form_post_req(
+    body = "response=a.b.c.d.e"
+  ))
+
+  expect_identical(resp$status, 400L)
+  expect_identical(
+    resp$content,
+    "OAuth form_post callback could not be processed."
+  )
+  expect_false("Location" %in% names(resp$headers))
+  expect_identical(sort(client@state_store$keys()), keys_before)
+})
+
 test_that("oauth_module_server handles query.jwt callbacks", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

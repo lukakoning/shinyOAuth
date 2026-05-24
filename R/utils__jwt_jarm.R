@@ -527,7 +527,15 @@ validate_jarm_response <- function(
       )
     }
 
-    jwe_parts <- jwe_compact_parts(response)
+    jwe_parts <- tryCatch(
+      jwe_compact_parts(response),
+      error = function(e) {
+        err_invalid_state(paste0(
+          "Encrypted JARM response could not be parsed: ",
+          conditionMessage(e)
+        ))
+      }
+    )
     outer_alg <- canonicalize_jwe_alg(
       jwe_parts$protected_header$alg %||% ""
     )
@@ -551,9 +559,17 @@ validate_jarm_response <- function(
       ))
     }
 
-    decrypted <- jwe_compact_decrypt(
-      response,
-      encryption_config$private_key
+    decrypted <- tryCatch(
+      jwe_compact_decrypt(
+        response,
+        encryption_config$private_key
+      ),
+      error = function(e) {
+        err_invalid_state(paste0(
+          "Encrypted JARM response could not be decrypted: ",
+          conditionMessage(e)
+        ))
+      }
     )
     jwt_str <- decrypted$plaintext %||% NA_character_
     if (!is_valid_string(jwt_str)) {
