@@ -118,24 +118,29 @@
 #'   having that URI or a matching wildcard prefix registered for the client;
 #'   shinyOAuth cannot verify that server-side registration automatically.
 #' @param response_mode Authorization response mode for authorization-code
-#'   callbacks. Supported values are `"query"` and `"form_post"`. The
-#'   effective default is always `"query"`: omitting this argument keeps the
-#'   normal query-parameter callback flow and shinyOAuth does not send a
-#'   `response_mode` parameter. Pass `"query"` only if you need to explicitly
-#'   request the query response mode from the provider.
-#'   Set `"form_post"` only when the provider requires or explicitly
-#'   recommends POSTing the authorization response to the redirect URI. Shiny
-#'   apps using `"form_post"` must wrap their UI with [oauth_form_post_ui()].
-#'   Prefer this argument over setting `extra_auth_params$response_mode` on the
-#'   provider. When the provider advertises `response_modes_supported`, the
-#'   resolved mode must be included in that set.
-#'   Supported JARM values are `"jwt"`, `"query.jwt"`, and
-#'   `"form_post.jwt"`. `"jwt"` requests the RFC-defined default callback
-#'   transport for the response type; for the authorization-code flow that
-#'   still means a query callback, but shinyOAuth preserves and sends
-#'   `"jwt"` when you configure it explicitly. `"fragment.jwt"` is not
-#'   currently supported because shinyOAuth does not implement fragment
-#'   callback transport.
+#'   callbacks. Supported values are `"query"`, `"form_post"`, `"jwt"`,
+#'   `"query.jwt"`, and `"form_post.jwt"`. The effective default is always
+#'   `"query"`: omitting this argument keeps the normal query-parameter
+#'   callback flow and shinyOAuth does not send a `response_mode` parameter.
+#'   Pass `"query"` only if you need to explicitly request the query
+#'   response mode from the provider. Set `"form_post"` only when the
+#'   provider requires or explicitly recommends POSTing the authorization
+#'   response to the redirect URI. Shiny apps using `"form_post"` must wrap
+#'   their UI with [oauth_form_post_ui()]. Prefer this argument over setting
+#'   `extra_auth_params$response_mode` on the provider. When the provider
+#'   advertises `response_modes_supported`, the resolved mode must be included
+#'   in that set. `"jwt"` requests the RFC-defined default callback transport
+#'   for the response type; for the authorization-code flow that still means a
+#'   query callback, but shinyOAuth preserves and sends `"jwt"` when you
+#'   configure it explicitly. `"fragment.jwt"` is not currently supported
+#'   because shinyOAuth does not implement fragment callback transport.
+#'
+#'   JARM callbacks are currently module-only. For `"jwt"`, `"query.jwt"`,
+#'   and `"form_post.jwt"`, use [oauth_module_server()] and, for
+#'   `"form_post.jwt"`, wrap the app UI with [oauth_form_post_ui()]. The
+#'   exported [handle_callback()] helper still accepts only the classic
+#'   direct `code` + sealed `state` callback shape and does not expose a
+#'   public JARM validation/resume API.
 #'
 #' @param authorization_signed_response_alg Optional expected JWS algorithm for
 #'   signed JWT Secured Authorization Responses (JARM). When omitted and the
