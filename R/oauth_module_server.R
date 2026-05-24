@@ -1912,7 +1912,8 @@ oauth_module_server <- function(
             "JARM response parameter is malformed and could not be",
             "validated."
           ),
-          reason = "malformed_jarm_response"
+          reason = "malformed_jarm_response",
+          drop_response = TRUE
         )
         return(invisible(NULL))
       }

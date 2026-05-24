@@ -1807,6 +1807,7 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
             expect_match(values$error_description %||% "", "malformed")
             expect_length(client@state_store$keys(), 1L)
             expect_length(cleared, 1L)
+            expect_true(isTRUE(cleared[[1L]]$dropResponse))
           }
         )
       }
