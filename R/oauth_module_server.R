@@ -1417,6 +1417,38 @@ oauth_module_server <- function(
       !isTRUE(.form_post_module_registered(form_post_id))
     }
 
+    # Internal helper: surface callback-query validation failures before any
+    # state or token handling runs.
+    .reject_callback_query <- function(description, reason = NULL) {
+      clear_oauth_module_callback_query(
+        session,
+        tab_title_replacement,
+        tab_title_cleaning
+      )
+      .set_error(
+        "invalid_callback_query",
+        NULL,
+        phase = "callback_query_validation",
+        description = description
+      )
+      try(
+        audit_event(
+          "callback_query_rejected",
+          context = compact_list(list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            error_class = "invalid_callback_query",
+            phase = "callback_query_validation",
+            reason = reason %||% NULL
+          ))
+        ),
+        silent = TRUE
+      )
+
+      invisible(NULL)
+    }
+
     # Internal helper: process the current URL query string. Decides whether
     # to log in, handle a callback, or surface an error. Used by the
     # `url_search` observer and test hooks.
@@ -1496,7 +1528,7 @@ oauth_module_server <- function(
             qs$code,
             max_bytes = limits$code
           )
-          if (isTRUE(response_is_jarm)) {
+          if (!is.null(response)) {
             validate_untrusted_query_param(
               "response",
               response,
@@ -1767,53 +1799,64 @@ oauth_module_server <- function(
       }
 
       response <- qs[["response", exact = TRUE]]
-      if (isTRUE(oauth_module_query_has_jarm_response(response))) {
-        if (
-          !all(vapply(
-            qs[c(
-              "code",
-              "state",
-              "error",
-              "error_description",
-              "error_uri",
-              "iss"
-            )],
-            is.null,
-            logical(1)
-          ))
-        ) {
-          clear_oauth_module_callback_query(
-            session,
-            tab_title_replacement,
-            tab_title_cleaning
-          )
-          .set_error(
-            "invalid_callback_query",
-            NULL,
-            phase = "callback_query_validation",
+      direct_callback_params_present <- !all(vapply(
+        qs[c(
+          "code",
+          "state",
+          "error",
+          "error_description",
+          "error_uri",
+          "iss"
+        )],
+        is.null,
+        logical(1)
+      ))
+      configured_jarm_transport <- resolve_jarm_callback_transport(client)
+      query_jarm_client <- identical(
+        configured_jarm_transport$transport %||% NULL,
+        "query"
+      )
+      response_is_jarm <- isTRUE(oauth_module_query_has_jarm_response(response))
+
+      if (
+        isTRUE(query_jarm_client) &&
+          !is.null(response) &&
+          !isTRUE(response_is_jarm)
+      ) {
+        .reject_callback_query(
+          description = paste(
+            "JARM clients must receive the callback in the response",
+            "parameter as a compact JWT."
+          ),
+          reason = "malformed_jarm_response"
+        )
+        return(invisible(NULL))
+      }
+
+      if (isTRUE(response_is_jarm)) {
+        if (isTRUE(direct_callback_params_present)) {
+          .reject_callback_query(
             description = paste(
               "JARM response must not be combined with direct OAuth callback",
               "parameters"
-            )
-          )
-          try(
-            audit_event(
-              "callback_query_rejected",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                error_class = "invalid_callback_query",
-                phase = "callback_query_validation",
-                reason = "mixed_jarm_and_direct_callback_params"
-              )
             ),
-            silent = TRUE
+            reason = "mixed_jarm_and_direct_callback_params"
           )
           return(invisible(NULL))
         }
 
         .handle_jarm_response(response, transport = "query")
+        return(invisible(NULL))
+      }
+
+      if (isTRUE(query_jarm_client) && isTRUE(direct_callback_params_present)) {
+        .reject_callback_query(
+          description = paste(
+            "JARM clients must receive the callback in the response",
+            "parameter; direct OAuth callback parameters are not accepted."
+          ),
+          reason = "direct_callback_params_for_jarm_client"
+        )
         return(invisible(NULL))
       }
 

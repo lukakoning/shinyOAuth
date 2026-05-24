@@ -432,6 +432,109 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
   )
 })
 
+test_that("oauth_module_server rejects direct query callbacks for query.jwt clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  browser_token <- valid_browser_token()
+
+  testthat::with_mocked_bindings(
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject direct query callbacks for",
+          "JARM clients before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query(paste0(
+            "?code=attack",
+            "&state=",
+            utils::URLencode(enc_state, reserved = TRUE),
+            "&iss=",
+            utils::URLencode(client@provider@issuer, reserved = TRUE)
+          ))
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "response parameter")
+          expect_length(client@state_store$keys(), 1L)
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server rejects malformed response params for query.jwt clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  browser_token <- valid_browser_token()
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject malformed JARM response",
+          "params before JWKS fetch"
+        )
+      )
+    },
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject malformed JARM response",
+          "params before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          values$build_auth_url()
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query("?response=not-a-compact-jwt")
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "compact JWT")
+          expect_length(client@state_store$keys(), 1L)
+        }
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server handles query.jwt error callbacks and blocks replay", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -719,6 +822,32 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
     "shinyOAuth_form_post_http_error",
     fixed = TRUE
   )
+})
+
+test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.jwt clients", {
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  keys_before <- sort(client@state_store$keys())
+
+  resp <- ui(make_jarm_form_post_req(
+    body = paste0(
+      "code=attack",
+      "&state=state-1",
+      "&iss=",
+      utils::URLencode(client@provider@issuer, reserved = TRUE)
+    )
+  ))
+
+  expect_identical(resp$status, 400L)
+  expect_identical(
+    resp$content,
+    paste(
+      "OAuth form_post JARM callback must include the response",
+      "parameter; direct OAuth callback parameters are not accepted."
+    )
+  )
+  expect_false("Location" %in% names(resp$headers))
+  expect_identical(sort(client@state_store$keys()), keys_before)
 })
 
 test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner state before storing", {

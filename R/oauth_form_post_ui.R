@@ -213,7 +213,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
           max_bytes = limits$query
         )
         body <- oauth_form_post_read_body(req, limits$form_post_body)
-        payload <- oauth_form_post_parse_body(body, limits)
+        payload <- oauth_form_post_parse_body(body, limits, client = client)
         if (identical(payload[["type", exact = TRUE]], "response")) {
           normalized <- validate_jarm_response(
             client,
@@ -418,7 +418,11 @@ oauth_form_post_read_body <- function(req, max_bytes) {
   )
 }
 
-oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
+oauth_form_post_parse_body <- function(
+  body,
+  limits = oauth_callback_limits(),
+  client = NULL
+) {
   if (!is.character(body) || length(body) != 1L || is.na(body)) {
     err_form_post_http("OAuth form_post callback body must be a single string.")
   }
@@ -461,16 +465,27 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
     iss = parsed$iss
   ))
 
-  oauth_form_post_validate_payload(payload, limits)
+  oauth_form_post_validate_payload(payload, limits, client = client)
 }
 
 oauth_form_post_validate_payload <- function(
   payload,
-  limits = oauth_callback_limits()
+  limits = oauth_callback_limits(),
+  client = NULL
 ) {
   if (!is.list(payload)) {
     err_form_post_http("OAuth form_post callback payload must be a list.")
   }
+  if (!is.null(client)) {
+    S7::check_is_S7(client, class = OAuthClient)
+  }
+
+  jarm_transport <- if (is.null(client)) {
+    NULL
+  } else {
+    resolve_jarm_callback_transport(client)
+  }
+  jarm_client <- !is.null(jarm_transport)
 
   # Use exact indexing so helper-added fields like `state_payload` cannot
   # partially match OAuth parameter names during revalidation.
@@ -521,6 +536,15 @@ oauth_form_post_validate_payload <- function(
     }
     payload$type <- "response"
     return(payload)
+  }
+
+  if (isTRUE(jarm_client)) {
+    err_form_post_http(
+      paste(
+        "OAuth form_post JARM callback must include the response",
+        "parameter; direct OAuth callback parameters are not accepted."
+      )
+    )
   }
 
   if (is.null(state)) {
@@ -576,7 +600,7 @@ oauth_form_post_store_set <- function(client, id, payload) {
     err_invalid_state("Invalid form_post module id")
   }
 
-  payload <- oauth_form_post_validate_payload(payload)
+  payload <- oauth_form_post_validate_payload(payload, client = client)
   handle <- random_urlsafe(32)
   key <- oauth_form_post_cache_key(id, handle)
   payload$module_id <- id
@@ -695,7 +719,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
   }
 
   oauth_form_post_validate_handle_freshness(client, payload)
-  oauth_form_post_validate_payload(payload)
+  oauth_form_post_validate_payload(payload, client = client)
 }
 
 oauth_form_post_validate_handle_freshness <- function(client, payload) {

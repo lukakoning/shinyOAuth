@@ -246,6 +246,69 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
   )
 })
 
+testthat::test_that("Keycloak query.jwt clients reject direct query callbacks without consuming state", {
+  skip_common()
+  local_test_options()
+
+  setup <- create_signed_jarm_fixture("shiny-jarm-direct-query")
+  on.exit(
+    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    add = TRUE
+  )
+
+  prov <- make_provider()
+  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      enc_state <- parse_query_param(auth_url, "state", decode = TRUE)
+      login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
+
+      testthat::expect_true(keycloak_nonempty_string(extract_jarm_response(
+        login
+      )))
+      testthat::expect_length(client@state_store$keys(), 1L)
+
+      values$.process_query(paste0(
+        "?code=attacker-code",
+        "&state=",
+        utils::URLencode(enc_state, reserved = TRUE),
+        "&iss=",
+        utils::URLencode(client@provider@issuer, reserved = TRUE)
+      ))
+      session$flushReact()
+
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description %||% "",
+        "response parameter"
+      )
+      testthat::expect_length(client@state_store$keys(), 1L)
+
+      values$error <- NULL
+      values$error_description <- NULL
+      values$error_uri <- NULL
+
+      values$.process_query(callback_query(login))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+    }
+  )
+})
+
 testthat::test_that("Keycloak encrypted query.jwt happy path", {
   skip_common()
   local_test_options()

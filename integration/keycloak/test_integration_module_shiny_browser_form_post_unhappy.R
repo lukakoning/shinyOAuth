@@ -1478,6 +1478,90 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
   .wait_for_form_post_callback_cleanup(drv)
 })
 
+testthat::test_that("browser form_post.jwt direct callbacks are rejected before bridging", {
+  maybe_skip_keycloak()
+  testthat::skip_if_not_installed("shinytest2")
+  testthat::skip_if_not_installed("chromote")
+  testthat::skip_if_not_installed("callr")
+  testthat::skip_if_not_installed("xml2")
+  testthat::skip_if_not_installed("rvest")
+
+  app_port <- as.integer(Sys.getenv(
+    "SHINYOAUTH_E2E_PORT_FORM_POST_JARM_DIRECT",
+    "8128"
+  ))
+  if (keycloak_browser_port_in_use(app_port)) {
+    testthat::skip(paste0(
+      "Port ",
+      app_port,
+      " is already in use; skipping direct form_post.jwt E2E"
+    ))
+  }
+
+  repo_root <- .browser_form_post_repo_root()
+  app_url <- sprintf("http://127.0.0.1:%d", app_port)
+  setup <- .create_form_post_jarm_browser_fixture(
+    app_url = app_url,
+    prefix = "shiny-form-post-jarm-direct"
+  )
+  on.exit(
+    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    add = TRUE
+  )
+
+  app_process <- .start_form_post_jarm_browser_app(
+    repo_root = repo_root,
+    app_port = app_port,
+    app_url = app_url,
+    title = "Form post JWT direct callback",
+    client_id = setup$fixture$client_id
+  )
+  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  .wait_for_form_post_jarm_browser_app(app_process, app_port)
+
+  drv <- shinytest2::AppDriver$new(
+    app_url,
+    name = sprintf("keycloak-form-post-jarm-direct-%d", app_port),
+    load_timeout = 15000,
+    wait = FALSE
+  )
+  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+
+  .wait_for_form_post_ready(drv)
+  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  prepared <- .wait_for_form_post_auth_url(drv, timeout = 30000)
+  auth_url <- trimws(prepared$auth_url %||% "")
+  fields <- .fetch_form_post_jarm_callback_fields(auth_url, app_url)
+
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = app_url,
+    fields = list(
+      code = "attacker-code",
+      state = fields$state,
+      iss = fields$iss
+    )
+  )
+
+  attacked_page <- .wait_for_form_post_page_text(
+    drv,
+    pattern = "OAuth form_post JARM callback must include the response parameter"
+  )
+  testthat::expect_match(
+    attacked_page,
+    "direct OAuth callback parameters are not accepted",
+    fixed = TRUE
+  )
+
+  .navigate_form_post_browser_to_url(drv, app_url)
+  .wait_for_form_post_ready(drv)
+  .wait_for_form_post_state_store_count(drv, 1L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    1L
+  )
+})
+
 testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong app while the rightful target callback still succeeds", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
