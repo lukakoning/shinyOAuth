@@ -356,6 +356,14 @@ not dynamic authorization-request parameters. In practice that means
 registration (or OIDC discovery metadata) that tells the authorization server
  how to produce the JARM callback for this client.
 
+Encrypted JARM support is currently narrower than the generic JWE metadata
+fields might suggest. shinyOAuth presently accepts `RSA-OAEP` for
+`authorization_encrypted_response_alg` and the AES-CBC-HMAC family
+(`A128CBC-HS256`, `A192CBC-HS384`, `A256CBC-HS512`) for
+`authorization_encrypted_response_enc`. If your provider only offers values
+such as `RSA-OAEP-256` or `A256GCM`, encrypted JARM will not interoperate yet
+even though those values are valid JWE metadata in the underlying specs.
+
 shinyOAuth also caps accepted JARM callback lifetime with
 `jarm_max_lifetime`, which defaults to 600 seconds in line with the JARM
 specification's recommended 10-minute maximum. If the provider includes `iat`,
