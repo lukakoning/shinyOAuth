@@ -549,12 +549,76 @@ test_that("validate_jarm_response rejects partially matched JARM claim names", {
   }
 })
 
-test_that("validate_jarm_response tolerates duplicate identical iss claims", {
+test_that("validate_jarm_response rejects duplicate identical iss claims by default", {
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
     authorization_signed_response_alg = "HS256",
     client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+
+  header_json <- jsonlite::toJSON(
+    list(alg = "HS256", typ = "JWT"),
+    auto_unbox = TRUE,
+    null = "null",
+    digits = NA
+  )
+  payload_json <- paste0(
+    '{',
+    '"iss":"',
+    client@provider@issuer,
+    '",',
+    '"aud":"abc",',
+    '"exp":',
+    now + 300,
+    ',',
+    '"code":"ok",',
+    '"iss":"',
+    client@provider@issuer,
+    '",',
+    '"state":"state-1"',
+    '}'
+  )
+  signing_input <- paste0(
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
+    ".",
+    shinyOAuth:::base64url_encode(charToRaw(payload_json))
+  )
+  signature_raw <- openssl::sha256(
+    charToRaw(signing_input),
+    key = charToRaw(secret)
+  )
+  response <- paste0(
+    signing_input,
+    ".",
+    shinyOAuth:::base64url_encode(signature_raw)
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate member name: iss"
+  )
+})
+
+test_that("validate_jarm_response tolerates duplicate identical iss claims for Keycloak", {
+  secret <- "hs256-jarm-duplicate-iss-secret-32b!"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@name <- "keycloak-test"
+  client@provider@issuer <- "https://keycloak.example.com/realms/test"
+  client@provider@auth_url <- paste0(
+    client@provider@issuer,
+    "/protocol/openid-connect/auth"
+  )
+  client@provider@token_url <- paste0(
+    client@provider@issuer,
+    "/protocol/openid-connect/token"
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))

@@ -340,20 +340,68 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   ))
 }
 
-#' Parse a JARM payload with targeted Keycloak interoperability handling
+#' Detect whether JARM duplicate `iss` interoperability is allowed
+#'
+#' Keycloak currently emits duplicate identical top-level `iss` members in some
+#' signed JARM payloads. Keep that workaround narrowly scoped to Keycloak-like
+#' providers so all other providers stay on the strict duplicate-member path.
+#'
+#' @param provider [OAuthProvider] object.
+#' @return `TRUE` when the duplicate-top-level-`iss` workaround should run.
+#' @keywords internal
+#' @noRd
+provider_allows_duplicate_top_level_jarm_iss <- function(provider) {
+  S7::check_is_S7(provider, class = OAuthProvider)
+
+  provider_name <- if (is_valid_string(provider@name %||% NA_character_)) {
+    tolower(trimws(provider@name))
+  } else {
+    ""
+  }
+  issuer <- if (is_valid_string(provider@issuer %||% NA_character_)) {
+    tolower(trimws(provider@issuer))
+  } else {
+    ""
+  }
+  auth_url <- if (is_valid_string(provider@auth_url %||% NA_character_)) {
+    tolower(trimws(provider@auth_url))
+  } else {
+    ""
+  }
+  token_url <- if (is_valid_string(provider@token_url %||% NA_character_)) {
+    tolower(trimws(provider@token_url))
+  } else {
+    ""
+  }
+
+  startsWith(provider_name, "keycloak") ||
+    (grepl("/realms/", issuer, fixed = TRUE) &&
+      grepl("/protocol/openid-connect/", auth_url, fixed = TRUE) &&
+      grepl("/protocol/openid-connect/", token_url, fixed = TRUE))
+}
+
+#' Parse a JARM payload with optional Keycloak interoperability handling
 #'
 #' Keycloak currently emits a duplicate top-level `iss` member in signed JARM
-#' payloads. Preserve strict duplicate-member rejection everywhere else, but
-#' collapse repeated identical `iss` members before the payload is parsed.
+#' payloads. Preserve strict duplicate-member rejection by default, and only
+#' collapse repeated identical top-level `iss` members when the caller has
+#' explicitly enabled the Keycloak interoperability workaround.
 #'
 #' @param jwt_str Compact JWS string.
+#' @param tolerate_duplicate_top_level_iss Whether to collapse repeated
+#'   identical top-level `iss` members before parsing.
 #' @return Parsed JARM claim object.
 #' @keywords internal
 #' @noRd
-parse_jarm_payload <- function(jwt_str) {
+parse_jarm_payload <- function(
+  jwt_str,
+  tolerate_duplicate_top_level_iss = FALSE
+) {
   parts <- jwt_compact_parts(jwt_str)
   payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
-  payload_text <- normalize_duplicate_jarm_iss_claim(payload_text)
+  if (isTRUE(tolerate_duplicate_top_level_iss)) {
+    payload_text <- normalize_duplicate_jarm_iss_claim(payload_text)
+  }
   reject_duplicate_json_object_members(payload_text, "JWT payload")
   assert_json_text_is_object(payload_text, "JWT payload")
 
@@ -778,7 +826,12 @@ validate_jarm_response <- function(
   }
 
   claims <- tryCatch(
-    parse_jarm_payload(jwt_str),
+    parse_jarm_payload(
+      jwt_str,
+      tolerate_duplicate_top_level_iss = provider_allows_duplicate_top_level_jarm_iss(
+        oauth_client@provider
+      )
+    ),
     error = function(e) {
       err_invalid_state(paste0(
         "JARM payload could not be parsed: ",
