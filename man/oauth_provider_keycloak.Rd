@@ -8,7 +8,8 @@ oauth_provider_keycloak(
   base_url,
   realm,
   name = paste0("keycloak-", realm),
-  token_auth_style = "body"
+  token_auth_style = "body",
+  tolerate_duplicate_top_level_jarm_iss = TRUE
 )
 }
 \arguments{
@@ -27,6 +28,12 @@ to "body" for Keycloak, which works for many common setups. Use \code{"public"}
 if you need to suppress \code{client_secret} even when it is set in the
 environment. If you pass \code{NULL}, discovery will infer the method from the
 provider's \code{token_endpoint_auth_methods_supported} metadata.}
+
+\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Defaults to \code{TRUE}
+for Keycloak because current Keycloak JARM responses may repeat an
+identical top-level \code{iss} claim. Set \code{FALSE} to fail closed on duplicate
+top-level \code{iss} members instead of applying this interoperability
+workaround.}
 }
 \value{
 \link{OAuthProvider} object configured for the specified Keycloak realm
