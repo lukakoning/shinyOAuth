@@ -1419,11 +1419,16 @@ oauth_module_server <- function(
 
     # Internal helper: surface callback-query validation failures before any
     # state or token handling runs.
-    .reject_callback_query <- function(description, reason = NULL) {
+    .reject_callback_query <- function(
+      description,
+      reason = NULL,
+      drop_response = FALSE
+    ) {
       clear_oauth_module_callback_query(
         session,
         tab_title_replacement,
-        tab_title_cleaning
+        tab_title_cleaning,
+        drop_response = drop_response
       )
       .set_error(
         "invalid_callback_query",
@@ -1675,8 +1680,17 @@ oauth_module_server <- function(
         code_param <- qs[["code", exact = TRUE]]
         error_param <- qs[["error", exact = TRUE]]
         state_param <- qs[["state", exact = TRUE]]
+        form_post_jarm_client <- identical(
+          resolve_jarm_callback_transport(client)$transport %||% NULL,
+          "form_post"
+        )
+        response_param_conflicts <- if (isTRUE(form_post_jarm_client)) {
+          !is.null(response_param)
+        } else {
+          isTRUE(oauth_module_query_has_jarm_response(response_param))
+        }
         if (
-          isTRUE(oauth_module_query_has_jarm_response(response_param)) ||
+          isTRUE(response_param_conflicts) ||
             !is.null(code_param) ||
             !is.null(error_param) ||
             !is.null(state_param)
@@ -1684,7 +1698,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = !is.null(response_param)
           )
           .set_error(
             "invalid_callback_query",
@@ -1833,7 +1848,8 @@ oauth_module_server <- function(
             "JARM clients must receive the callback in the response",
             "parameter as a compact JWT."
           ),
-          reason = "malformed_jarm_response"
+          reason = "malformed_jarm_response",
+          drop_response = TRUE
         )
         return(invisible(NULL))
       }
@@ -1851,6 +1867,23 @@ oauth_module_server <- function(
         }
 
         .handle_jarm_response(response, transport = "query")
+        return(invisible(NULL))
+      }
+
+      if (
+        isTRUE(jarm_client) &&
+          !isTRUE(query_jarm_client) &&
+          !is.null(response)
+      ) {
+        .reject_callback_query(
+          description = paste(
+            "JARM clients must resume from the validated form_post",
+            "callback handle; direct OAuth callback parameters are not",
+            "accepted."
+          ),
+          reason = "direct_callback_params_for_jarm_client",
+          drop_response = TRUE
+        )
         return(invisible(NULL))
       }
 
@@ -3471,6 +3504,8 @@ send_oauth_module_redirect <- function(session, url) {
 #' @param session Shiny session object for the module instance.
 #' @param title_replacement Optional title to restore.
 #' @param clean_title Whether the browser should normalize the title text.
+#' @param drop_response Whether the browser should always remove the
+#'   `response` query parameter.
 #' @return Invisibly returns `NULL`.
 #'
 #' @keywords internal
@@ -3478,7 +3513,8 @@ send_oauth_module_redirect <- function(session, url) {
 clear_oauth_module_callback_query <- function(
   session,
   title_replacement,
-  clean_title
+  clean_title,
+  drop_response = FALSE
 ) {
   session$sendCustomMessage(
     type = "shinyOAuth:clearQueryAndFixTitle",
@@ -3488,7 +3524,8 @@ clear_oauth_module_callback_query <- function(
       } else {
         NULL
       },
-      cleanTitle = isTRUE(clean_title)
+      cleanTitle = isTRUE(clean_title),
+      dropResponse = isTRUE(drop_response)
     )
   )
 

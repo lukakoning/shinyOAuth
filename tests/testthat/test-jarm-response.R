@@ -1201,6 +1201,106 @@ test_that("oauth_module_server rejects direct query callbacks for form_post.jwt 
   )
 })
 
+test_that("oauth_module_server rejects malformed response params for form_post.jwt clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  browser_token <- valid_browser_token()
+  cleared <- list()
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+      cleared[[length(cleared) + 1L]] <<- message
+    }
+    orig(type, message)
+  }
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject malformed form_post.jwt",
+          "response params before JWKS fetch"
+        )
+      )
+    },
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should reject malformed form_post.jwt",
+          "response params before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        session = sess,
+        expr = {
+          values$browser_token <- browser_token
+          values$build_auth_url()
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query("?response=not-a-compact-jwt")
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "form_post")
+          expect_length(client@state_store$keys(), 1L)
+          expect_length(cleared, 1L)
+          expect_true(isTRUE(cleared[[1L]]$dropResponse))
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server rejects form_post.jwt handles mixed with malformed response params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  browser_token <- valid_browser_token()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = client,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$browser_token <- browser_token
+      values$build_auth_url()
+      handle <- shinyOAuth:::oauth_form_post_store_set(
+        client,
+        "auth",
+        list(response = "header.payload.signature")
+      )
+
+      values$.process_query(paste0(
+        jarm_form_post_query(handle, "auth"),
+        "&response=not-a-compact-jwt"
+      ))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description %||% "", "must not be combined")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
 test_that("oauth_module_server rejects malformed response params for query.jwt clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

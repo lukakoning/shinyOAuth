@@ -136,8 +136,8 @@
     return true;
   }
 
-  function shouldDropCallbackParam(key, value, drop){
-    if(key === 'response') return looksLikeCompactJarm(value);
+  function shouldDropCallbackParam(key, value, drop, dropResponse){
+    if(key === 'response') return !!dropResponse || looksLikeCompactJarm(value);
     return drop.indexOf(key) !== -1;
   }
 
@@ -148,6 +148,7 @@
   function handleClearQueryAndFixTitle(payload){
     var titleReplacement = payload && payload.titleReplacement;
     var cleanTitle = !!(payload && payload.cleanTitle);
+    var dropResponse = !!(payload && payload.dropResponse);
     try {
       if (typeof titleReplacement === 'string') {
         document.title = titleReplacement;
@@ -164,7 +165,7 @@
       var drop=['code','state','session_state','id_token','access_token','token_type','expires_in','error','error_description','error_uri','iss','shinyOAuth_form_post','shinyOAuth_form_post_id'];
       var keptSearch=new URLSearchParams();
       u.searchParams.forEach(function(value, key){
-        if(!shouldDropCallbackParam(key, value, drop)) keptSearch.append(key, value);
+        if(!shouldDropCallbackParam(key, value, drop, dropResponse)) keptSearch.append(key, value);
       });
       u.search=keptSearch.toString() ? ('?'+keptSearch.toString()) : '';
       var h=window.location.hash||'';
@@ -180,7 +181,7 @@
             if(kv.length===2){
               var k=decodeFormPart(kv[0]);
               var v=decodeFormPart(kv.slice(1).join('='));
-              if(!shouldDropCallbackParam(k, v, drop)){kept.push(parts[j]);}
+              if(!shouldDropCallbackParam(k, v, drop, dropResponse)){kept.push(parts[j]);}
             }else if(parts[j]){kept.push(parts[j]);}
           }
           u.hash=kept.length ? hpath+'?'+kept.join('&') : hpath;
@@ -195,7 +196,7 @@
             if(kv.length===2){
               var k=decodeFormPart(kv[0]);
               var v=decodeFormPart(kv.slice(1).join('='));
-              if(!shouldDropCallbackParam(k, v, drop)){kept.push(parts[j]);}
+              if(!shouldDropCallbackParam(k, v, drop, dropResponse)){kept.push(parts[j]);}
             }else{kept.push(parts[j]);}
           }
           u.hash=kept.length ? '#'+kept.join('&') : '';

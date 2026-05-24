@@ -201,7 +201,11 @@ capture_set_cookie_writes <- function(
   )$result$value
 }
 
-capture_clear_query_url <- function(href, clean_title = FALSE) {
+capture_clear_query_url <- function(
+  href,
+  clean_title = FALSE,
+  drop_response = FALSE
+) {
   js_source <- paste(
     readLines(
       system.file("www", "shinyOAuth.js", package = "shinyOAuth"),
@@ -215,7 +219,7 @@ capture_clear_query_url <- function(href, clean_title = FALSE) {
   browser$go_to("about:blank")
 
   expression <- paste0(
-    "(function(source, href, cleanTitle) {",
+    "(function(source, href, cleanTitle, dropResponse) {",
     "  var replaced = null;",
     "  var parsed = new URL(href);",
     "  var fakeDocument = { title: '', body: { textContent: '' } };",
@@ -240,7 +244,11 @@ capture_clear_query_url <- function(href, clean_title = FALSE) {
     "    var Shiny = fakeWindow.Shiny;",
     "    var console = fakeWindow.console;",
     "    eval(source);",
-    "    fakeWindow.Shiny.handlers['shinyOAuth:clearQueryAndFixTitle']({ cleanTitle: cleanTitle });",
+    paste(
+      "    fakeWindow.Shiny.handlers['shinyOAuth:clearQueryAndFixTitle'](",
+      "{ cleanTitle: cleanTitle, dropResponse: dropResponse }",
+      ");"
+    ),
     "  })();",
     "  return replaced;",
     "})(",
@@ -249,6 +257,8 @@ capture_clear_query_url <- function(href, clean_title = FALSE) {
     jsonlite::toJSON(href, auto_unbox = TRUE),
     ",",
     jsonlite::toJSON(clean_title, auto_unbox = TRUE),
+    ",",
+    jsonlite::toJSON(drop_response, auto_unbox = TRUE),
     ")"
   )
 
@@ -373,6 +383,25 @@ testthat::test_that("browser cleanup drops compact JARM response params", {
   testthat::expect_identical(
     capture_clear_query_url(
       "https://example.com/cb#/route?response=header.payload.signature&foo=1"
+    ),
+    "/cb#/route?foo=1"
+  )
+})
+
+testthat::test_that("browser cleanup drops flagged malformed response params", {
+  local_skip_env()
+
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb?response=not-a-compact-jwt&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb?foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?response=not-a-compact-jwt&foo=1",
+      drop_response = TRUE
     ),
     "/cb#/route?foo=1"
   )
