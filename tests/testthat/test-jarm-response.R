@@ -2341,6 +2341,55 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
   )
 })
 
+test_that("oauth_form_post_ui emits one audit event for invalid inner-state form_post.jwt callbacks", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = floor(as.numeric(Sys.time())) + 300,
+      code = "ok",
+      state = "definitely-not-a-valid-state"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  events <- list()
+  old <- options(shinyOAuth.audit_hook = function(e) {
+    events[[length(events) + 1L]] <<- e
+  })
+  on.exit(options(old), add = TRUE)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      resp <- ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE)
+        )
+      ))
+
+      expect_identical(resp$status, 400L)
+      expect_identical(
+        resp$content,
+        "OAuth form_post callback could not be processed."
+      )
+    }
+  )
+
+  reject_events <- Filter(
+    function(e) identical(e$type, "audit_callback_validation_failed"),
+    events
+  )
+  expect_length(reject_events, 1L)
+  expect_identical(reject_events[[1L]]$phase %||% NULL, "payload_validation")
+})
+
 test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "form_post.jwt")

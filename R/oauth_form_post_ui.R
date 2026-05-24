@@ -334,12 +334,39 @@ oauth_form_post_handle_request <- function(req, id, client) {
       oauth_form_post_error_response(e)
     },
     shinyOAuth_state_error = function(e) {
+      error_phase <- tryCatch(
+        e[["phase", exact = TRUE]],
+        error = function(...) NULL
+      ) %||%
+        tryCatch(
+          e[["parent", exact = TRUE]][["phase", exact = TRUE]],
+          error = function(...) NULL
+        ) %||%
+        tryCatch(
+          e[["context", exact = TRUE]][["phase", exact = TRUE]],
+          error = function(...) NULL
+        ) %||%
+        tryCatch(
+          e[["parent", exact = TRUE]][["context", exact = TRUE]][[
+            "phase",
+            exact = TRUE
+          ]],
+          error = function(...) NULL
+        )
+      already_audited_state_failure <-
+        identical(error_phase, "payload_validation") ||
+        grepl(
+          "State payload decryption or validation failed",
+          conditionMessage(e),
+          fixed = TRUE
+        )
       configured_jarm_transport <- tryCatch(
         resolve_jarm_callback_transport(client),
         error = function(...) NULL
       )
       if (
-        identical(configured_jarm_transport$transport %||% NULL, "form_post")
+        identical(configured_jarm_transport$transport %||% NULL, "form_post") &&
+          !isTRUE(already_audited_state_failure)
       ) {
         try(
           audit_event(
