@@ -566,6 +566,73 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
 
 ## 1.3 Main validation entry point --------------------------------------------
 
+#' Validate the protected header on one encrypted JARM response
+#'
+#' Used before JWE decryption so unsupported critical extensions, missing
+#' nested-JWT signaling, and configured decryption-key mismatches fail closed on
+#' the outer object.
+#'
+#' @param header Parsed JWE protected header.
+#' @param encryption_config Named list from
+#'   resolve_authorization_response_encryption_config().
+#' @return Normalized outer JWE header fields.
+#' @keywords internal
+#' @noRd
+validate_encrypted_jarm_protected_header <- function(
+  header,
+  encryption_config
+) {
+  stopifnot(is.list(encryption_config))
+
+  header_fields <- validate_jose_header_fields(
+    header,
+    signal_error = err_invalid_state
+  )
+  enc <- jwt_validate_scalar_string_field(
+    header$enc %||% NULL,
+    "enc",
+    signal_error = err_invalid_state,
+    required = TRUE
+  )
+  cty <- jwt_validate_scalar_string_field(
+    header$cty %||% NULL,
+    "cty",
+    signal_error = err_invalid_state
+  )
+
+  if (!is.null(header_fields$crit) && length(header_fields$crit) > 0L) {
+    err_invalid_state(paste0(
+      "Encrypted JARM contains unsupported critical header parameter(s): ",
+      paste(header_fields$crit, collapse = ", ")
+    ))
+  }
+
+  if (is.null(cty)) {
+    err_invalid_state("Encrypted JARM missing required cty header 'JWT'")
+  }
+  if (!identical(toupper(cty), "JWT")) {
+    err_invalid_state(paste0(
+      "Encrypted JARM cty header invalid: expected 'JWT', got ",
+      cty
+    ))
+  }
+
+  configured_kid <- encryption_config$kid %||% NA_character_
+  if (is_valid_string(configured_kid)) {
+    header_kid <- header_fields$kid %||% "<missing>"
+    if (!identical(header_kid, configured_kid)) {
+      err_invalid_state(paste0(
+        "Encrypted JARM kid mismatch: expected ",
+        configured_kid,
+        ", got ",
+        header_kid
+      ))
+    }
+  }
+
+  c(header_fields, list(enc = enc, cty = cty))
+}
+
 #' Validate a JWT Secured Authorization Response (JARM)
 #'
 #' Used by callback handling before any OAuth state, PKCE, or token-exchange
@@ -627,11 +694,15 @@ validate_jarm_response <- function(
         ))
       }
     )
+    outer_header_fields <- validate_encrypted_jarm_protected_header(
+      jwe_parts$protected_header,
+      encryption_config
+    )
     outer_alg <- canonicalize_jwe_alg(
-      jwe_parts$protected_header$alg %||% ""
+      outer_header_fields$alg %||% ""
     )
     outer_enc <- canonicalize_jwe_enc(
-      jwe_parts$protected_header$enc %||% ""
+      outer_header_fields$enc %||% ""
     )
     if (!identical(outer_alg, encryption_config$alg)) {
       err_invalid_state(paste0(

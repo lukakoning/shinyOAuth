@@ -4,6 +4,7 @@ make_jarm_test_client <- function(
   authorization_encrypted_response_alg = NULL,
   authorization_encrypted_response_enc = NULL,
   authorization_response_decryption_private_key = NULL,
+  authorization_response_decryption_private_key_kid = NULL,
   client_secret = "",
   issuer = "https://issuer.example.com"
 ) {
@@ -31,6 +32,7 @@ make_jarm_test_client <- function(
     authorization_encrypted_response_alg = authorization_encrypted_response_alg,
     authorization_encrypted_response_enc = authorization_encrypted_response_enc,
     authorization_response_decryption_private_key = authorization_response_decryption_private_key,
+    authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
     state_store = cachem::cache_mem(max_age = 600),
     state_payload_max_age = 300,
     state_entropy = 64,
@@ -63,6 +65,73 @@ make_signed_jarm <- function(
     do.call(jose::jwt_claim, payload_list),
     key = key,
     header = header
+  )
+}
+
+make_encrypted_jarm <- function(
+  plaintext,
+  public_key,
+  alg = "RSA-OAEP",
+  enc = "A256CBC-HS512",
+  kid = NULL,
+  cty = NULL,
+  extra_header = list()
+) {
+  alg <- shinyOAuth:::canonicalize_jwe_alg(alg)
+  enc <- shinyOAuth:::canonicalize_jwe_enc(enc)
+  spec <- shinyOAuth:::jwe_cbc_hmac_spec(enc)
+  recipient_key <- shinyOAuth:::normalize_jwe_recipient_public_key(public_key)
+  plaintext_raw <- charToRaw(enc2utf8(plaintext))
+
+  header <- list(alg = alg, enc = enc)
+  if (!is.null(kid)) {
+    header$kid <- kid
+  }
+  if (!is.null(cty)) {
+    header$cty <- cty
+  }
+  if (length(extra_header) > 0L) {
+    header <- utils::modifyList(header, extra_header)
+  }
+
+  header_json <- jsonlite::toJSON(
+    header,
+    auto_unbox = TRUE,
+    null = "null",
+    digits = NA
+  )
+  protected_header_b64 <- shinyOAuth:::base64url_encode(
+    charToRaw(enc2utf8(header_json))
+  )
+
+  cek_raw <- openssl::rand_bytes(spec$cek_bytes)
+  key_parts <- shinyOAuth:::split_jwe_cbc_hmac_cek(cek_raw, enc)
+  encrypted_key_raw <- openssl::rsa_encrypt(
+    cek_raw,
+    pubkey = recipient_key,
+    oaep = TRUE
+  )
+  iv_raw <- openssl::rand_bytes(spec$iv_bytes)
+  ciphertext_raw <- openssl::aes_cbc_encrypt(
+    plaintext_raw,
+    key = key_parts$enc_key,
+    iv = iv_raw
+  )
+  tag_raw <- shinyOAuth:::compute_compact_jwe_auth_tag(
+    enc = enc,
+    mac_key = key_parts$mac_key,
+    protected_header_b64 = protected_header_b64,
+    iv_raw = iv_raw,
+    ciphertext_raw = ciphertext_raw
+  )
+
+  paste(
+    protected_header_b64,
+    shinyOAuth:::base64url_encode(encrypted_key_raw),
+    shinyOAuth:::base64url_encode(iv_raw),
+    shinyOAuth:::base64url_encode(ciphertext_raw),
+    shinyOAuth:::base64url_encode(tag_raw),
+    sep = "."
   )
 }
 
@@ -878,6 +947,173 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
   expect_identical(normalized$type, "code")
   expect_identical(normalized$code, "ok")
   expect_identical(normalized$state, "state-1")
+})
+
+test_that("validate_jarm_response rejects encrypted JARM crit headers", {
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = "abc",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  response <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "JWT",
+    extra_header = list(crit = list("exp"), exp = TRUE)
+  )
+
+  testthat::local_mocked_bindings(
+    jwe_compact_decrypt = function(...) {
+      testthat::fail(
+        "outer JWE crit headers should be rejected before decryption"
+      )
+    },
+    fetch_jwks = function(...) {
+      testthat::fail(
+        "outer JWE crit headers should be rejected before signature verification"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "unsupported critical header parameter"
+  )
+})
+
+test_that("validate_jarm_response rejects encrypted JARM without JWT cty", {
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = "abc",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  missing_cty <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1"
+  )
+  wrong_cty <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "application/jwt"
+  )
+
+  testthat::local_mocked_bindings(
+    jwe_compact_decrypt = function(...) {
+      testthat::fail(
+        "outer JWE cty should be rejected before decryption"
+      )
+    },
+    fetch_jwks = function(...) {
+      testthat::fail(
+        "outer JWE cty should be rejected before signature verification"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, missing_cty),
+    class = "shinyOAuth_state_error",
+    regexp = "missing required cty header"
+  )
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, wrong_cty),
+    class = "shinyOAuth_state_error",
+    regexp = "cty header invalid"
+  )
+})
+
+test_that("validate_jarm_response rejects encrypted JARM with wrong kid", {
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key,
+    authorization_response_decryption_private_key_kid = "enc-expected"
+  )
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = "abc",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  response <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-actual",
+    cty = "JWT"
+  )
+
+  testthat::local_mocked_bindings(
+    jwe_compact_decrypt = function(...) {
+      testthat::fail(
+        "outer JWE kid mismatch should be rejected before decryption"
+      )
+    },
+    fetch_jwks = function(...) {
+      testthat::fail(
+        "outer JWE kid mismatch should be rejected before signature verification"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "Encrypted JARM kid mismatch"
+  )
 })
 
 test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
