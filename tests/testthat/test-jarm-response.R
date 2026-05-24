@@ -2555,6 +2555,58 @@ test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.j
   expect_identical(sort(client@state_store$keys()), keys_before)
 })
 
+test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt clients", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  enc_state <- parse_query_param(auth_url, "state")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = enc_state
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  keys_before <- sort(client@state_store$keys())
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "Prefixed response fields must be rejected before JARM validation",
+          "runs"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      resp <- ui(make_jarm_form_post_req(
+        body = paste0("response_alias=", response)
+      ))
+
+      expect_identical(resp$status, 400L)
+      expect_identical(
+        resp$content,
+        paste(
+          "OAuth form_post JARM callback must include the response",
+          "parameter; direct OAuth callback parameters are not accepted."
+        )
+      )
+      expect_false("Location" %in% names(resp$headers))
+      expect_identical(sort(client@state_store$keys()), keys_before)
+    }
+  )
+})
+
 test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "form_post.jwt")

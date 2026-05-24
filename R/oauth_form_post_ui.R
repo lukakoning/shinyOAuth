@@ -509,13 +509,13 @@ oauth_form_post_parse_body <- function(
   )
 
   payload <- compact_list(list(
-    response = parsed$response,
-    code = parsed$code,
-    state = parsed$state,
-    error = parsed$error,
-    error_description = parsed$error_description,
-    error_uri = parsed$error_uri,
-    iss = parsed$iss
+    response = parsed[["response", exact = TRUE]],
+    code = parsed[["code", exact = TRUE]],
+    state = parsed[["state", exact = TRUE]],
+    error = parsed[["error", exact = TRUE]],
+    error_description = parsed[["error_description", exact = TRUE]],
+    error_uri = parsed[["error_uri", exact = TRUE]],
+    iss = parsed[["iss", exact = TRUE]]
   ))
 
   oauth_form_post_validate_payload(payload, limits, client = client)
