@@ -164,12 +164,67 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
     pin_mode = prov@jwks_pin_mode %||% "any",
     provider = prov
   )
-  keys <- select_candidate_jwks(
-    jwks,
-    header_alg = alg,
-    kid = kid,
-    pins = prov@jwks_pins %||% character()
-  )
+  if (!is.null(kid)) {
+    keys <- select_candidate_jwks(
+      jwks,
+      header_alg = alg,
+      kid = kid,
+      pins = prov@jwks_pins %||% character()
+    )
+    if (length(keys) == 0L) {
+      did_force_refresh <- FALSE
+      if (
+        isTRUE(jwks_force_refresh_allowed(
+          prov@issuer,
+          prov@jwks_cache,
+          pins = prov@jwks_pins %||% character(),
+          pin_mode = prov@jwks_pin_mode %||% "any",
+          min_interval = 30,
+          issuer_match = provider_issuer_match(prov),
+          jwks_host_issuer_match = isTRUE(try(
+            prov@jwks_host_issuer_match,
+            silent = TRUE
+          )),
+          jwks_host_allow_only = {
+            ao <- try(prov@jwks_host_allow_only, silent = TRUE)
+            if (inherits(ao, "try-error")) NA_character_ else ao
+          }
+        ))
+      ) {
+        did_force_refresh <- TRUE
+        jwks <- fetch_jwks(
+          prov@issuer,
+          prov@jwks_cache,
+          force_refresh = TRUE,
+          pins = prov@jwks_pins %||% character(),
+          pin_mode = prov@jwks_pin_mode %||% "any",
+          provider = prov
+        )
+        keys <- select_candidate_jwks(
+          jwks,
+          header_alg = alg,
+          kid = kid,
+          pins = prov@jwks_pins %||% character()
+        )
+      }
+    }
+    if (length(keys) == 0L) {
+      if (isTRUE(did_force_refresh)) {
+        err_invalid_state("No provider JWKS key matches JARM kid")
+      } else {
+        err_invalid_state(
+          "No provider JWKS key matches JARM kid (JWKS refresh rate-limited)"
+        )
+      }
+    }
+  } else {
+    keys <- select_candidate_jwks(
+      jwks,
+      header_alg = alg,
+      kid = NULL,
+      pins = prov@jwks_pins %||% character()
+    )
+  }
   keys <- filter_jwks_for_alg(keys, alg)
   if (length(keys) == 0L) {
     err_invalid_state("No compatible provider JWKS keys found for JARM")

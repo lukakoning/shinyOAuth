@@ -284,6 +284,80 @@ test_that("validate_jarm_response verifies signed JARM payloads", {
   expect_identical(normalized$iss, client@provider@issuer)
 })
 
+test_that("validate_jarm_response refreshes JWKS once when JARM kid is missing", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "rotated-kid"
+  )
+  stale_jwks <- list(keys = list())
+  fresh_jwks <- list(
+    keys = list(
+      make_jarm_public_jwk(sig_key, kid = "rotated-kid")
+    )
+  )
+  fetch_call_count <- 0L
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      fetch_call_count <<- fetch_call_count + 1L
+      args <- list(...)
+      if (isTRUE(args$force_refresh)) {
+        fresh_jwks
+      } else {
+        stale_jwks
+      }
+    },
+    jwks_force_refresh_allowed = function(...) TRUE,
+    .package = "shinyOAuth"
+  )
+
+  normalized <- shinyOAuth:::validate_jarm_response(client, response)
+
+  expect_identical(normalized$type, "code")
+  expect_identical(normalized$code, "ok")
+  expect_identical(fetch_call_count, 2L)
+})
+
+test_that("validate_jarm_response fails closed when JARM JWKS refresh is rate-limited", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "unknown-kid"
+  )
+  stale_jwks <- list(keys = list())
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) stale_jwks,
+    jwks_force_refresh_allowed = function(...) FALSE,
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "rate-limited"
+  )
+})
+
 test_that("validate_jarm_response rejects alg none", {
   client <- make_jarm_test_client(response_mode = "query.jwt")
   now <- floor(as.numeric(Sys.time()))
