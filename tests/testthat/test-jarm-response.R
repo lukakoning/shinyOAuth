@@ -1548,6 +1548,69 @@ test_that("oauth_module_server ignores unrelated query response params for query
   )
 })
 
+test_that("oauth_module_server ignores unrelated query response params for jwt alias clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  client <- make_jarm_test_client(response_mode = "jwt")
+  browser_token <- valid_browser_token()
+  cleared <- list()
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+      cleared[[length(cleared) + 1L]] <<- message
+    }
+    orig(type, message)
+  }
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should ignore unrelated query response",
+          "params for the jwt alias before JWKS fetch"
+        )
+      )
+    },
+    swap_code_for_token_set = function(...) {
+      testthat::fail(
+        paste(
+          "oauth_module_server should ignore unrelated query response",
+          "params for the jwt alias before token exchange"
+        )
+      )
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        session = sess,
+        expr = {
+          values$browser_token <- browser_token
+          values$build_auth_url()
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query("?response=keep-me")
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_null(values$error)
+          expect_null(values$error_description)
+          expect_length(client@state_store$keys(), 1L)
+          expect_length(cleared, 0L)
+        }
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server handles query.jwt error callbacks and blocks replay", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
