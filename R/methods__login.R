@@ -1010,11 +1010,21 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'
 #' Completes the callback step of the login flow. It validates the callback
 #' state, exchanges the returned code for tokens, and verifies the result.
+#' This low-level helper accepts the classic authorization-code callback shape:
+#' a `code`, the sealed `state` payload returned as `payload`, and an optional
+#' RFC 9207 `iss` callback parameter. It does not accept a raw JARM `response`
+#' JWT. For clients configured with `response_mode = "jwt"`,
+#' `"query.jwt"`, or `"form_post.jwt"`, use [oauth_module_server()] (and
+#' [oauth_form_post_ui()] for `form_post.jwt`) so the JARM response is
+#' validated and unpacked before `handle_callback()` runs.
 #'
 #' @param oauth_client An [OAuthClient] object.
-#' @param code Authorization code received from the provider.
+#' @param code Authorization code received from the provider after any JARM
+#'   response has already been validated and unpacked.
 #' @param payload Encrypted state payload returned by the provider. This should
-#'   be the same value that was originally sent in [prepare_call()].
+#'   be the same value that was originally sent in [prepare_call()]. For JARM
+#'   clients, this is the `state` claim extracted from the validated JWT, not
+#'   the raw `response` JWT itself.
 #' @param browser_token Browser token present in the user's session. This is
 #'   usually managed by [oauth_module_server()].
 #' @param shiny_session Optional pre-captured Shiny session context (from
