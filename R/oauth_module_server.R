@@ -1816,6 +1816,7 @@ oauth_module_server <- function(
         logical(1)
       ))
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
+      jarm_client <- !is.null(configured_jarm_transport)
       query_jarm_client <- identical(
         configured_jarm_transport$transport %||% NULL,
         "query"
@@ -1853,12 +1854,20 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (isTRUE(query_jarm_client) && isTRUE(direct_callback_params_present)) {
+      if (isTRUE(jarm_client) && isTRUE(direct_callback_params_present)) {
         .reject_callback_query(
-          description = paste(
-            "JARM clients must receive the callback in the response",
-            "parameter; direct OAuth callback parameters are not accepted."
-          ),
+          description = if (isTRUE(query_jarm_client)) {
+            paste(
+              "JARM clients must receive the callback in the response",
+              "parameter; direct OAuth callback parameters are not accepted."
+            )
+          } else {
+            paste(
+              "JARM clients must resume from the validated form_post",
+              "callback handle; direct OAuth callback parameters are not",
+              "accepted."
+            )
+          },
           reason = "direct_callback_params_for_jarm_client"
         )
         return(invisible(NULL))

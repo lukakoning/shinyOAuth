@@ -1037,6 +1037,96 @@ test_that("oauth_module_server rejects direct query callbacks for query.jwt clie
   )
 })
 
+test_that("oauth_module_server rejects direct query callbacks for form_post.jwt clients", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  browser_token <- valid_browser_token()
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  exchanged_codes <- character(0)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      exchanged_codes <<- c(exchanged_codes, code)
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          now <- floor(as.numeric(Sys.time()))
+
+          expect_length(client@state_store$keys(), 1L)
+
+          values$.process_query(paste0(
+            "?code=attack",
+            "&state=",
+            utils::URLencode(enc_state, reserved = TRUE),
+            "&iss=",
+            utils::URLencode(client@provider@issuer, reserved = TRUE)
+          ))
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "form_post")
+          expect_length(client@state_store$keys(), 1L)
+          expect_identical(exchanged_codes, character(0))
+
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = "abc",
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          post_resp <- ui(make_jarm_form_post_req(
+            body = paste0(
+              "response=",
+              utils::URLencode(response, reserved = TRUE)
+            )
+          ))
+          expect_identical(post_resp$status, 303L)
+
+          handle <- parse_query_param(
+            post_resp$headers$Location,
+            "shinyOAuth_form_post",
+            decode = TRUE
+          )
+          values$error <- NULL
+          values$error_description <- NULL
+
+          values$.process_query(jarm_form_post_query(handle, "auth"))
+          session$flushReact()
+
+          expect_true(isTRUE(values$authenticated))
+          expect_identical(values$error, NULL)
+          expect_identical(exchanged_codes, "ok")
+          expect_length(client@state_store$keys(), 0L)
+        }
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server rejects malformed response params for query.jwt clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
