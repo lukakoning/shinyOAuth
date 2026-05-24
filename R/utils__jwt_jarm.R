@@ -188,6 +188,27 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
   err_invalid_state("JARM signature is invalid")
 }
 
+#' Read one JARM claim by exact name
+#'
+#' Used by JARM validation so near-match JSON member names cannot satisfy
+#' required claims or response parameters via R partial matching.
+#'
+#' @param claims Parsed JARM claim list.
+#' @param name Exact claim name to read.
+#' @return Claim value, or `NULL` when the claim is absent.
+#' @keywords internal
+#' @noRd
+jarm_claim <- function(claims, name) {
+  stopifnot(
+    is.list(claims),
+    is.character(name),
+    length(name) == 1L,
+    !is.na(name)
+  )
+
+  claims[[name, exact = TRUE]]
+}
+
 #' Validate required JARM claims and normalize one response payload
 #'
 #' Used after optional decryption and required signature verification.
@@ -204,15 +225,25 @@ validate_jarm_claims <- function(oauth_client, claims) {
     err_invalid_state("JARM payload must be a JSON object")
   }
 
+  iss <- jarm_claim(claims, "iss")
+  aud <- jarm_claim(claims, "aud")
+  exp <- jarm_claim(claims, "exp")
+  iat <- jarm_claim(claims, "iat")
+  nbf <- jarm_claim(claims, "nbf")
+  code <- jarm_claim(claims, "code")
+  state <- jarm_claim(claims, "state")
+  error <- jarm_claim(claims, "error")
+  error_description <- jarm_claim(claims, "error_description")
+  error_uri <- jarm_claim(claims, "error_uri")
+
   issuer <- oauth_client@provider@issuer %||% NA_character_
-  if (!is_valid_string(claims$iss)) {
+  if (!is_valid_string(iss)) {
     err_invalid_state("JARM payload missing required iss claim")
   }
-  if (!identical(claims$iss, issuer)) {
+  if (!identical(iss, issuer)) {
     err_invalid_state("JARM issuer does not match provider issuer")
   }
 
-  aud <- claims$aud
   if (
     !(is.character(aud) &&
       length(aud) >= 1L &&
@@ -225,10 +256,10 @@ validate_jarm_claims <- function(oauth_client, claims) {
     err_invalid_state("JARM aud claim does not include client_id")
   }
 
-  if (is.null(claims$exp)) {
+  if (is.null(exp)) {
     err_invalid_state("JARM payload missing required exp claim")
   }
-  if (!jwt_is_single_finite_number(claims$exp)) {
+  if (!jwt_is_single_finite_number(exp)) {
     err_invalid_state("JARM exp claim must be a single finite number")
   }
 
@@ -237,30 +268,24 @@ validate_jarm_claims <- function(oauth_client, claims) {
   if (!is.finite(leeway) || is.na(leeway) || length(leeway) != 1L) {
     leeway <- 0
   }
-  if (as.numeric(claims$exp) < (now - leeway)) {
+  if (as.numeric(exp) < (now - leeway)) {
     err_invalid_state("JARM payload expired")
   }
-  if (!is.null(claims$iat) && !jwt_is_single_finite_number(claims$iat)) {
+  if (!is.null(iat) && !jwt_is_single_finite_number(iat)) {
     err_invalid_state("JARM iat claim must be a single finite number")
   }
-  if (
-    !is.null(claims$iat) &&
-      as.numeric(claims$iat) > (now + leeway)
-  ) {
+  if (!is.null(iat) && as.numeric(iat) > (now + leeway)) {
     err_invalid_state("JARM payload issued in the future")
   }
-  if (!is.null(claims$nbf) && !jwt_is_single_finite_number(claims$nbf)) {
+  if (!is.null(nbf) && !jwt_is_single_finite_number(nbf)) {
     err_invalid_state("JARM nbf claim must be a single finite number")
   }
-  if (
-    !is.null(claims$nbf) &&
-      as.numeric(claims$nbf) > (now + leeway)
-  ) {
+  if (!is.null(nbf) && as.numeric(nbf) > (now + leeway)) {
     err_invalid_state("JARM payload is not yet valid")
   }
 
-  has_code <- is_valid_string(claims$code %||% NA_character_)
-  has_error <- is_valid_string(claims$error %||% NA_character_)
+  has_code <- is_valid_string(code %||% NA_character_)
+  has_error <- is_valid_string(error %||% NA_character_)
   if (isTRUE(has_code) && isTRUE(has_error)) {
     err_invalid_state("JARM payload must not contain both code and error")
   }
@@ -270,12 +295,12 @@ validate_jarm_claims <- function(oauth_client, claims) {
 
   compact_list(list(
     type = if (isTRUE(has_error)) "error" else "code",
-    code = claims$code,
-    state = claims$state,
-    iss = claims$iss,
-    error = claims$error,
-    error_description = claims$error_description,
-    error_uri = claims$error_uri,
+    code = code,
+    state = state,
+    iss = iss,
+    error = error,
+    error_description = error_description,
+    error_uri = error_uri,
     claims = claims
   ))
 }
@@ -548,10 +573,12 @@ validate_jarm_response <- function(
       ))
     }
   )
-  if (!is_valid_string(claims$iss %||% NA_character_)) {
+  claims <- as.list(claims)
+  iss <- jarm_claim(claims, "iss")
+  if (!is_valid_string(iss %||% NA_character_)) {
     err_invalid_state("JARM payload missing required iss claim")
   }
-  if (!identical(claims$iss, oauth_client@provider@issuer)) {
+  if (!identical(iss, oauth_client@provider@issuer)) {
     err_invalid_state("JARM issuer does not match provider issuer")
   }
 
@@ -562,5 +589,5 @@ validate_jarm_response <- function(
     kid = header_fields$kid %||% NULL
   )
 
-  validate_jarm_claims(oauth_client, as.list(claims))
+  validate_jarm_claims(oauth_client, claims)
 }

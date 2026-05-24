@@ -316,6 +316,91 @@ test_that("validate_jarm_response rejects payloads with both code and error", {
   )
 })
 
+test_that("validate_jarm_response rejects partially matched JARM claim names", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+
+  cases <- list(
+    list(
+      name = "issuer",
+      payload = list(
+        issuer = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "missing required iss claim"
+    ),
+    list(
+      name = "audience",
+      payload = list(
+        iss = client@provider@issuer,
+        audience = client@client_id,
+        exp = now + 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "aud claim is invalid"
+    ),
+    list(
+      name = "expiry",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        expiry = now + 300,
+        code = "ok",
+        state = "state-1"
+      ),
+      regexp = "missing required exp claim"
+    ),
+    list(
+      name = "code_challenge",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        code_challenge = "challenge",
+        state = "state-1"
+      ),
+      regexp = "missing code or error"
+    ),
+    list(
+      name = "error_description",
+      payload = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = now + 300,
+        error_description = "Denied",
+        state = "state-1"
+      ),
+      regexp = "missing code or error"
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+
+  for (case in cases) {
+    response <- make_signed_jarm(
+      payload_list = case$payload,
+      key = sig_key,
+      kid = "sig-1"
+    )
+
+    expect_error(
+      shinyOAuth:::validate_jarm_response(client, response),
+      class = "shinyOAuth_state_error",
+      regexp = case$regexp,
+      info = case$name
+    )
+  }
+})
+
 test_that("validate_jarm_response tolerates duplicate identical iss claims", {
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(
