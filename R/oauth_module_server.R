@@ -1859,13 +1859,32 @@ oauth_module_server <- function(
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
       # For query.jwt/jwt clients, only compact-looking response values are
       # treated as JARM callbacks so ordinary app query params survive.
+      response_looks_like_jarm <-
+        isTRUE(oauth_module_query_has_jarm_response(response))
       response_is_jarm <-
         isTRUE(query_jarm_client) &&
-        isTRUE(oauth_module_query_has_jarm_response(response))
+        isTRUE(response_looks_like_jarm)
       response_is_malformed_jarm <-
         isTRUE(query_jarm_client) &&
         !isTRUE(response_is_jarm) &&
         isTRUE(oauth_module_query_has_malformed_jarm_response(response))
+
+      if (
+        isTRUE(response_looks_like_jarm) &&
+          isTRUE(jarm_client) &&
+          !isTRUE(query_jarm_client)
+      ) {
+        .reject_callback_query(
+          description = paste(
+            "JARM clients configured for",
+            configured_jarm_transport$mode,
+            "must not receive compact query response parameters; resume from",
+            "the validated form_post callback handle instead."
+          ),
+          reason = "wrong_jarm_callback_transport"
+        )
+        return(invisible(NULL))
+      }
 
       if (isTRUE(response_is_jarm)) {
         if (isTRUE(direct_callback_params_present)) {
