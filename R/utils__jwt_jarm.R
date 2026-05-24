@@ -399,44 +399,124 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
     return(payload_text)
   }
 
-  matches <- gregexpr(
-    '"iss"[[:space:]]*:[[:space:]]*"(?:[^"\\\\]|\\\\.)*"',
-    payload_text,
-    perl = TRUE
-  )[[1]]
-  if (length(matches) <= 1L || identical(matches[[1]], -1L)) {
+  chars <- strsplit(enc2utf8(payload_text), "", fixed = TRUE)[[1]]
+
+  parse_json_string_token <- function(start_index) {
+    if (
+      start_index > length(chars) ||
+        !identical(chars[[start_index]], '"')
+    ) {
+      return(NULL)
+    }
+
+    token <- character(0)
+    index <- start_index + 1L
+    escaping <- FALSE
+
+    while (index <= length(chars)) {
+      ch <- chars[[index]]
+      if (isTRUE(escaping)) {
+        token <- c(token, ch)
+        escaping <- FALSE
+      } else if (identical(ch, "\\")) {
+        token <- c(token, ch)
+        escaping <- TRUE
+      } else if (identical(ch, '"')) {
+        return(list(
+          end = index,
+          value = jwt_decode_json_string_token(paste(token, collapse = ""))
+        ))
+      } else {
+        token <- c(token, ch)
+      }
+      index <- index + 1L
+    }
+
+    NULL
+  }
+
+  find_top_level_jarm_iss_members <- function() {
+    index <- 1L
+    container_stack <- character(0)
+    members <- list()
+
+    while (index <= length(chars)) {
+      ch <- chars[[index]]
+
+      if (identical(ch, '"')) {
+        token_start <- index
+        parsed_key <- parse_json_string_token(index)
+        if (is.null(parsed_key)) {
+          return(list())
+        }
+
+        lookahead <- parsed_key$end + 1L
+        while (
+          lookahead <= length(chars) &&
+            grepl("[[:space:]]", chars[[lookahead]])
+        ) {
+          lookahead <- lookahead + 1L
+        }
+
+        if (
+          length(container_stack) == 1L &&
+            identical(container_stack[[1L]], "object") &&
+            lookahead <= length(chars) &&
+            identical(chars[[lookahead]], ":") &&
+            identical(parsed_key$value, "iss")
+        ) {
+          value_start <- lookahead + 1L
+          while (
+            value_start <= length(chars) &&
+              grepl("[[:space:]]", chars[[value_start]])
+          ) {
+            value_start <- value_start + 1L
+          }
+
+          parsed_value <- parse_json_string_token(value_start)
+          if (is.null(parsed_value)) {
+            return(list())
+          }
+
+          members[[length(members) + 1L]] <- list(
+            start = token_start,
+            end = parsed_value$end,
+            value = parsed_value$value
+          )
+        }
+
+        index <- parsed_key$end
+      } else if (identical(ch, "{")) {
+        container_stack <- c(container_stack, "object")
+      } else if (identical(ch, "[")) {
+        container_stack <- c(container_stack, "array")
+      } else if (identical(ch, "}") || identical(ch, "]")) {
+        if (length(container_stack) > 0L) {
+          container_stack <- container_stack[-length(container_stack)]
+        }
+      }
+
+      index <- index + 1L
+    }
+
+    members
+  }
+
+  members <- find_top_level_jarm_iss_members()
+  if (length(members) <= 1L) {
     return(payload_text)
   }
 
-  match_lengths <- attr(matches, "match.length")
-  values <- vapply(
-    seq_along(matches),
-    function(idx) {
-      snippet <- substr(
-        payload_text,
-        matches[[idx]],
-        matches[[idx]] + match_lengths[[idx]] - 1L
-      )
-      token <- sub(
-        '^"iss"[[:space:]]*:[[:space:]]*',
-        "",
-        snippet,
-        perl = TRUE
-      )
-      token <- sub('^"', "", sub('"$', "", token))
-      jwt_decode_json_string_token(token)
-    },
-    character(1)
-  )
+  values <- vapply(members, `[[`, character(1), "value")
   if (!all(vapply(values, identical, logical(1), values[[1]]))) {
     return(payload_text)
   }
 
   normalized <- payload_text
-  duplicate_indices <- rev(seq_along(matches)[-1L])
+  duplicate_indices <- rev(seq_along(members)[-1L])
   for (idx in duplicate_indices) {
-    remove_start <- matches[[idx]]
-    remove_end <- matches[[idx]] + match_lengths[[idx]] - 1L
+    remove_start <- members[[idx]]$start
+    remove_end <- members[[idx]]$end
 
     before <- remove_start - 1L
     while (
@@ -468,6 +548,17 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
       substr(normalized, 1L, remove_start - 1L),
       substr(normalized, remove_end + 1L, nchar(normalized))
     )
+  }
+
+  normalized_duplicate_check <- tryCatch(
+    {
+      reject_duplicate_json_object_members(normalized, "JWT payload")
+      NULL
+    },
+    error = identity
+  )
+  if (!is.null(normalized_duplicate_check)) {
+    return(payload_text)
   }
 
   normalized
