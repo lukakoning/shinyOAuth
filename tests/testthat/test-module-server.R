@@ -1537,10 +1537,30 @@ testthat::test_that("callback query helpers ignore ordinary response params", {
   expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
     "?response=header.payload.signature&foo=1"
   ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=ok&response=header.payload.signature&foo=1"
+  ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=header.payload.signature&response=ok&foo=1"
+  ))
 
   expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
     "?response=ok&response=still-ok"
   ))
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+      "?response=ok&response=one.two.three"
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate OAuth parameter: response"
+  )
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+      "?response=one.two.three&response=ok"
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate OAuth parameter: response"
+  )
   expect_error(
     shinyOAuth:::reject_duplicate_oauth_module_callback_query(
       "?response=header.payload.signature&response=one.two.three"
@@ -1556,6 +1576,12 @@ testthat::test_that("callback query helpers ignore ordinary response params", {
   expect_identical(
     shinyOAuth:::strip_oauth_module_callback_query(
       "?response=header.payload.signature&foo=1"
+    ),
+    "?foo=1"
+  )
+  expect_identical(
+    shinyOAuth:::strip_oauth_module_callback_query(
+      "?response=ok&response=header.payload.signature&foo=1"
     ),
     "?foo=1"
   )

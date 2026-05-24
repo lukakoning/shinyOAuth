@@ -3552,6 +3552,78 @@ oauth_module_query_has_jarm_response <- function(response) {
   ))
 }
 
+#' Collect repeated raw query parameter values
+#'
+#' Used by callback-query helpers that must inspect repeated parameters before
+#' `shiny::parseQueryString()` can collapse them to a single value.
+#'
+#' @param query_string Raw query string, with or without a leading `?`.
+#' @param key Parameter name to collect.
+#' @return Character vector of decoded values for matching parameters.
+#' @keywords internal
+#' @noRd
+oauth_module_query_raw_values <- function(query_string, key) {
+  raw <- sub("^\\?", "", query_string %||% "")
+  if (!nzchar(raw) || !is_valid_string(key)) {
+    return(character())
+  }
+
+  parts <- strsplit(raw, "&", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) {
+    return(character())
+  }
+
+  values <- character(0)
+  for (part in parts) {
+    raw_key <- sub("=.*$", "", part)
+    decoded_key <- tryCatch(
+      utils::URLdecode(gsub("\\+", " ", raw_key)),
+      error = function(...) raw_key,
+      warning = function(...) raw_key
+    )
+    if (!identical(decoded_key, key)) {
+      next
+    }
+
+    raw_value <- if (grepl("=", part, fixed = TRUE)) {
+      sub("^[^=]*=", "", part)
+    } else {
+      ""
+    }
+    decoded_value <- tryCatch(
+      utils::URLdecode(gsub("\\+", " ", raw_value)),
+      error = function(...) raw_value,
+      warning = function(...) raw_value
+    )
+    values <- c(values, decoded_value)
+  }
+
+  values
+}
+
+#' Check whether any raw response value looks like compact JARM
+#'
+#' Used by callback-query helpers so repeated `response` parameters are treated
+#' as callback data whenever any individual value looks like compact JWS/JWE.
+#'
+#' @param query_string Raw query string, with or without a leading `?`.
+#' @return `TRUE` when any raw `response` value looks like compact JARM.
+#' @keywords internal
+#' @noRd
+oauth_module_query_has_raw_jarm_response <- function(query_string) {
+  response_values <- oauth_module_query_raw_values(query_string, "response")
+  if (!length(response_values)) {
+    return(FALSE)
+  }
+
+  any(vapply(
+    response_values,
+    oauth_module_query_has_jarm_response,
+    logical(1)
+  ))
+}
+
 #' Check whether a query string contains OAuth callback keys
 #'
 #' Used by [oauth_module_server()] to decide whether URL cleanup is needed when
@@ -3576,9 +3648,7 @@ oauth_module_query_has_callback_keys <- function(query_string) {
   }
 
   any(names(parsed) %in% oauth_module_callback_query_keys) ||
-    isTRUE(oauth_module_query_has_jarm_response(
-      parsed[["response", exact = TRUE]]
-    ))
+    isTRUE(oauth_module_query_has_raw_jarm_response(query_string))
 }
 
 #' Reject duplicate OAuth callback query parameters
@@ -3603,6 +3673,9 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
   }
 
   seen <- character(0)
+  response_is_callback_key <- oauth_module_query_has_raw_jarm_response(
+    query_string
+  )
   for (part in parts) {
     key <- sub("=.*$", "", part)
     if (grepl("(?i)%00|%(?![0-9a-f]{2})", key, perl = TRUE)) {
@@ -3629,9 +3702,7 @@ reject_duplicate_oauth_module_callback_query <- function(query_string) {
 
     is_callback_key <- key %in% oauth_module_callback_query_keys
     if (identical(key, "response")) {
-      value <- sub("^[^=]*=?", "", part)
-      value <- tryCatch(utils::URLdecode(value), error = function(...) value)
-      is_callback_key <- isTRUE(oauth_module_query_has_jarm_response(value))
+      is_callback_key <- isTRUE(response_is_callback_key)
     }
 
     if (isTRUE(is_callback_key)) {
@@ -3679,11 +3750,7 @@ strip_oauth_module_callback_query <- function(query_string) {
   }
 
   drop_names <- oauth_module_callback_query_keys
-  if (
-    isTRUE(oauth_module_query_has_jarm_response(
-      parsed[["response", exact = TRUE]]
-    ))
-  ) {
+  if (isTRUE(oauth_module_query_has_raw_jarm_response(query_string))) {
     drop_names <- c(drop_names, "response")
   }
 
