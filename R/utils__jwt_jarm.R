@@ -344,6 +344,9 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   if (!isTRUE(has_code) && !isTRUE(has_error)) {
     err_invalid_state("JARM payload missing code or error")
   }
+  if (!is_valid_string(state)) {
+    err_invalid_state("JARM payload missing required state")
+  }
 
   compact_list(list(
     type = if (isTRUE(has_error)) "error" else "code",

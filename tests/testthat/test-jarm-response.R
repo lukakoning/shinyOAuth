@@ -530,6 +530,40 @@ test_that("validate_jarm_response rejects payloads with both code and error", {
   )
 })
 
+test_that("validate_jarm_response requires state after signature verification", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  verified <- FALSE
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    verify_jws_signature_no_time = function(...) {
+      verified <<- TRUE
+      TRUE
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "missing required state"
+  )
+  expect_true(verified)
+})
+
 test_that("validate_jarm_response rejects partially matched JARM claim names", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
