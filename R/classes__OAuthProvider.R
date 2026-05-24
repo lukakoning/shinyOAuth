@@ -1850,6 +1850,9 @@ provider_fingerprint <- function(provider) {
     id_token_required = isTRUE(provider@id_token_required),
     id_token_validation = isTRUE(provider@id_token_validation),
     id_token_at_hash_required = isTRUE(provider@id_token_at_hash_required),
+    tolerate_duplicate_top_level_jarm_iss = isTRUE(
+      provider@tolerate_duplicate_top_level_jarm_iss
+    ),
     token_auth_style = provider@token_auth_style,
     tls_client_certificate_bound_access_tokens = isTRUE(
       provider@tls_client_certificate_bound_access_tokens
