@@ -1050,6 +1050,34 @@ handle_callback <- function(
   shiny_session = NULL,
   iss = NULL
 ) {
+  jarm_transport <- resolve_jarm_callback_transport(oauth_client)
+  if (!is.null(jarm_transport)) {
+    err_config(c(
+      paste(
+        "handle_callback() does not accept direct code/state callbacks for",
+        "JARM clients."
+      ),
+      "i" = paste0(
+        "Configured response_mode ",
+        sQuote(jarm_transport$mode),
+        " requires the callback JWT in the response parameter to be",
+        " validated before code/state are processed."
+      ),
+      "i" = if (identical(jarm_transport$transport, "form_post")) {
+        paste(
+          "Use oauth_form_post_ui() with oauth_module_server() so the",
+          "validated form_post handle resumes through the internal",
+          "prevalidated callback path."
+        )
+      } else {
+        paste(
+          "Use oauth_module_server() so the JARM response is validated",
+          "before callback processing continues."
+        )
+      }
+    ))
+  }
+
   validate_untrusted_query_param(
     "code",
     code,
