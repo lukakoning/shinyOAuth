@@ -1128,14 +1128,10 @@ oauth_provider_validate <- function(self) {
     )
   }
   if (
-    !is.null(response_mode_info$effective_mode) &&
+    !is.null(response_mode_info$mode) &&
       length(self@response_modes_supported) > 0 &&
-      !response_mode_info$effective_mode %in%
-        {
-          supported_modes <- tolower(trimws(self@response_modes_supported))
-          supported_modes[supported_modes == "jwt"] <- "query.jwt"
-          supported_modes
-        }
+      !response_mode_info$mode %in%
+        tolower(trimws(self@response_modes_supported))
   ) {
     return(paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",

@@ -75,6 +75,32 @@ test_that("OAuthProvider allows supported authorization-code response_mode value
   )
 })
 
+test_that("OAuthProvider validates exact outbound jwt aliases against metadata", {
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      response_modes_supported = "query.jwt",
+      extra_auth_params = list(response_mode = "jwt")
+    ),
+    regexp = "extra_auth_params\\$response_mode = 'jwt' is not advertised"
+  )
+
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      response_modes_supported = "jwt",
+      extra_auth_params = list(response_mode = "query.jwt")
+    ),
+    regexp = paste0(
+      "extra_auth_params\\$response_mode = 'query\\.jwt' is not advertised"
+    )
+  )
+})
+
 test_that("prepare_call normalizes explicit query response_mode", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@extra_auth_params <- list(
