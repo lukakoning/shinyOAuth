@@ -447,6 +447,27 @@ jwt_validate_scalar_string_field <- function(
   value
 }
 
+#' Internal: read one JOSE header field by exact name
+#'
+#' Used by JOSE validators so near-match member names such as `algx` or `ctyx`
+#' cannot satisfy security-critical checks via R partial matching.
+#'
+#' @param header Parsed JOSE header list.
+#' @param field Exact member name to read.
+#' @return The exact member value, or `NULL` when absent.
+#' @keywords internal
+#' @noRd
+jwt_header_field_exact <- function(header, field) {
+  stopifnot(
+    is.list(header),
+    is.character(field),
+    length(field) == 1L,
+    !is.na(field)
+  )
+
+  header[[field, exact = TRUE]]
+}
+
 #' Internal: validate the JOSE crit header
 #'
 #' Used by `validate_jose_header_fields()` to normalize supported `crit`
@@ -601,22 +622,25 @@ validate_jose_header_fields <- function(header, signal_error) {
     signal_error("JWT header must be a JSON object")
   }
   alg <- jwt_validate_scalar_string_field(
-    header$alg %||% NULL,
+    jwt_header_field_exact(header, "alg") %||% NULL,
     "alg",
     signal_error = signal_error,
     required = TRUE
   )
   kid <- jwt_validate_scalar_string_field(
-    header$kid %||% NULL,
+    jwt_header_field_exact(header, "kid") %||% NULL,
     "kid",
     signal_error = signal_error
   )
   typ <- jwt_validate_scalar_string_field(
-    header$typ %||% NULL,
+    jwt_header_field_exact(header, "typ") %||% NULL,
     "typ",
     signal_error = signal_error
   )
-  crit <- jwt_validate_crit_field(header$crit %||% NULL, signal_error)
+  crit <- jwt_validate_crit_field(
+    jwt_header_field_exact(header, "crit") %||% NULL,
+    signal_error
+  )
 
   list(
     alg = alg,

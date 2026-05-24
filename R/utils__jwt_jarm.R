@@ -613,13 +613,13 @@ validate_encrypted_jarm_protected_header <- function(
     signal_error = err_invalid_state
   )
   enc <- jwt_validate_scalar_string_field(
-    header$enc %||% NULL,
+    jwt_header_field_exact(header, "enc") %||% NULL,
     "enc",
     signal_error = err_invalid_state,
     required = TRUE
   )
   cty <- jwt_validate_scalar_string_field(
-    header$cty %||% NULL,
+    jwt_header_field_exact(header, "cty") %||% NULL,
     "cty",
     signal_error = err_invalid_state
   )

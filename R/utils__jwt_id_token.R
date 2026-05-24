@@ -269,7 +269,7 @@ validate_id_token <- function(
         err_id_token("ID token HMAC invalid")
       }
     } else {
-      err_id_token(paste0("Unsupported JWT alg: ", header$alg))
+      err_id_token(paste0("Unsupported JWT alg: ", header_fields$alg))
     }
   }
 

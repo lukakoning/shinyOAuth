@@ -780,8 +780,12 @@ jwe_compact_encrypt <- function(
 jwe_compact_decrypt <- function(jwe, private_key) {
   parts <- jwe_compact_parts(jwe)
   header <- parts$protected_header
-  alg <- canonicalize_jwe_alg(header$alg %||% "")
-  enc <- canonicalize_jwe_enc(header$enc %||% "")
+  alg <- canonicalize_jwe_alg(
+    jwt_header_field_exact(header, "alg") %||% ""
+  )
+  enc <- canonicalize_jwe_enc(
+    jwt_header_field_exact(header, "enc") %||% ""
+  )
 
   if (!identical(alg, "RSA-OAEP")) {
     err_parse(paste0("Unsupported compact JWE alg: ", alg))

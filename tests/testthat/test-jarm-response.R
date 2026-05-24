@@ -164,6 +164,39 @@ jarm_form_post_query <- function(handle, id = "auth") {
   )
 }
 
+make_compact_jose_token <- function(
+  header_json,
+  payload_list,
+  signature = "AA"
+) {
+  payload_json <- jsonlite::toJSON(
+    payload_list,
+    auto_unbox = TRUE,
+    null = "null",
+    na = "null",
+    digits = NA
+  )
+
+  paste0(
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
+    ".",
+    shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json))),
+    ".",
+    signature
+  )
+}
+
+make_compact_jwe_with_header <- function(header_json) {
+  paste(
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
+    "AA",
+    "AA",
+    "AA",
+    "AA",
+    sep = "."
+  )
+}
+
 test_that("OIDC discovery records JARM metadata", {
   discover_provider <- function(metadata) {
     testthat::local_mocked_bindings(
@@ -266,6 +299,36 @@ test_that("validate_jarm_response rejects alg none", {
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
     regexp = "alg=none"
+  )
+})
+
+test_that("validate_jarm_response rejects partially matched signed header names", {
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_compact_jose_token(
+    header_json = '{"algx":"RS256","kidx":"sig-1","typx":"JWT","critx":["exp"]}',
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        "validate_jarm_response should reject missing exact alg before JWKS fetch"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "header missing alg"
   )
 })
 
@@ -1224,6 +1287,55 @@ test_that("validate_jarm_response rejects encrypted JARM without JWT cty", {
     shinyOAuth:::validate_jarm_response(client, wrong_cty),
     class = "shinyOAuth_state_error",
     regexp = "cty header invalid"
+  )
+})
+
+test_that("validate_jarm_response rejects partially matched encrypted header names", {
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+
+  missing_enc <- make_compact_jwe_with_header(
+    '{"alg":"RSA-OAEP","encx":"A256CBC-HS512","cty":"JWT"}'
+  )
+  missing_cty <- make_compact_jwe_with_header(
+    '{"alg":"RSA-OAEP","enc":"A256CBC-HS512","ctyx":"JWT"}'
+  )
+
+  testthat::local_mocked_bindings(
+    jwe_compact_decrypt = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject exact-name encrypted header",
+          "mismatches before decryption"
+        )
+      )
+    },
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject exact-name encrypted header",
+          "mismatches before JWKS fetch"
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, missing_enc),
+    class = "shinyOAuth_state_error",
+    regexp = "header missing enc"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, missing_cty),
+    class = "shinyOAuth_state_error",
+    regexp = "missing required cty header"
   )
 })
 
