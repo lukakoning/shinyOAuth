@@ -2078,7 +2078,8 @@ oauth_module_server <- function(
         code = normalized$code,
         state = normalized$state,
         iss = normalized$iss %||% NULL,
-        decrypted_payload = decrypted_payload
+        decrypted_payload = decrypted_payload,
+        callback_validated = TRUE
       )
       invisible(NULL)
     }
@@ -2384,6 +2385,8 @@ oauth_module_server <- function(
     # @param code Authorization code from the callback.
     # @param state Encrypted callback state value.
     # @param iss Optional callback issuer.
+    # @param callback_validated Whether the callback transport and outer
+    #   callback shape were already validated on an internal path such as JARM.
     # @return No return value; completes or defers callback handling and
     #   updates module state.
     .handle_callback <- function(
@@ -2391,7 +2394,8 @@ oauth_module_server <- function(
       state,
       iss = NULL,
       decrypted_payload = NULL,
-      state_store_values = NULL
+      state_store_values = NULL,
+      callback_validated = FALSE
     ) {
       callback_parent <- NULL
       callback_hint <- otel_callback_parent_hint(client, state)
@@ -2422,7 +2426,8 @@ oauth_module_server <- function(
           state = state,
           iss = iss,
           decrypted_payload = decrypted_payload,
-          state_store_values = state_store_values
+          state_store_values = state_store_values,
+          callback_validated = callback_validated
         )
         return(invisible(NULL))
       }
@@ -2786,7 +2791,9 @@ oauth_module_server <- function(
                 )
               } else {
                 if (
-                  !is.null(decrypted_payload) && !is.null(state_store_values)
+                  isTRUE(callback_validated) ||
+                    !is.null(decrypted_payload) ||
+                    !is.null(state_store_values)
                 ) {
                   handle_callback_internal(
                     oauth_client = client,
@@ -2957,7 +2964,10 @@ oauth_module_server <- function(
               pc$state,
               pc$iss %||% NULL,
               decrypted_payload = pc$decrypted_payload %||% NULL,
-              state_store_values = pc$state_store_values %||% NULL
+              state_store_values = pc$state_store_values %||% NULL,
+              callback_validated = isTRUE(
+                pc$callback_validated %||% FALSE
+              )
             )
           }
         }

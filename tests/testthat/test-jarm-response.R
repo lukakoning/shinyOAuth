@@ -197,6 +197,32 @@ make_compact_jwe_with_header <- function(header_json) {
   )
 }
 
+test_that("handle_callback rejects direct code/state callbacks for JARM clients", {
+  modes <- c("jwt", "query.jwt", "form_post.jwt")
+
+  for (mode in modes) {
+    client <- make_jarm_test_client(response_mode = mode)
+    browser_token <- valid_browser_token()
+    auth_url <- shinyOAuth::prepare_call(client, browser_token = browser_token)
+    state <- parse_query_param(auth_url, "state")
+
+    expect_length(client@state_store$keys(), 1L)
+
+    expect_error(
+      shinyOAuth::handle_callback(
+        oauth_client = client,
+        code = "direct-code",
+        payload = state,
+        browser_token = browser_token
+      ),
+      class = "shinyOAuth_config_error",
+      regexp = "does not accept direct code/state callbacks for JARM clients"
+    )
+
+    expect_length(client@state_store$keys(), 1L)
+  }
+})
+
 test_that("OIDC discovery records JARM metadata", {
   discover_provider <- function(metadata) {
     testthat::local_mocked_bindings(
