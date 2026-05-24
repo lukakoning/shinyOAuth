@@ -1393,7 +1393,7 @@ test_that("oauth_module_server ignores query response params for form_post.jwt c
   )
 })
 
-test_that("oauth_module_server rejects form_post.jwt handles mixed with malformed response params", {
+test_that("oauth_module_server rejects form_post.jwt handles mixed with compact response params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
@@ -1418,7 +1418,7 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with malforme
 
       values$.process_query(paste0(
         jarm_form_post_query(handle, "auth"),
-        "&response=not-a-compact-jwt"
+        "&response=header.payload.signature"
       ))
       session$flushReact()
 
@@ -2335,6 +2335,75 @@ test_that("oauth_module_server reuses bridged form_post.jwt validation after the
           expect_true(isTRUE(values$authenticated))
           expect_identical(values$error, NULL)
           expect_identical(fetch_calls, 1L)
+        }
+      )
+    }
+  )
+})
+
+test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unrelated response query params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  browser_token <- valid_browser_token()
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          now <- floor(as.numeric(Sys.time()))
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = "abc",
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          post_resp <- ui(make_jarm_form_post_req(
+            query = "response=keep-me",
+            body = paste0(
+              "response=",
+              utils::URLencode(response, reserved = TRUE)
+            )
+          ))
+          expect_identical(post_resp$status, 303L)
+          expect_identical(
+            parse_query_param(
+              post_resp$headers$Location,
+              "response",
+              decode = TRUE
+            ),
+            "keep-me"
+          )
+
+          values$.process_query(post_resp$headers$Location)
+          session$flushReact()
+
+          expect_true(isTRUE(values$authenticated))
+          expect_identical(values$error, NULL)
         }
       )
     }

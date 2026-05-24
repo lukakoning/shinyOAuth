@@ -1700,15 +1700,9 @@ oauth_module_server <- function(
         code_param <- qs[["code", exact = TRUE]]
         error_param <- qs[["error", exact = TRUE]]
         state_param <- qs[["state", exact = TRUE]]
-        form_post_jarm_client <- identical(
-          resolve_jarm_callback_transport(client)$transport %||% NULL,
-          "form_post"
+        response_param_conflicts <- isTRUE(
+          oauth_module_query_has_jarm_response(response_param)
         )
-        response_param_conflicts <- if (isTRUE(form_post_jarm_client)) {
-          !is.null(response_param)
-        } else {
-          isTRUE(oauth_module_query_has_jarm_response(response_param))
-        }
         if (
           isTRUE(response_param_conflicts) ||
             !is.null(code_param) ||
