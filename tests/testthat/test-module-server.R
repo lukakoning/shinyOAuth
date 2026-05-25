@@ -1555,6 +1555,11 @@ testthat::test_that("callback query helpers only treat response as callback for 
     "?response=header.payload.signature&response=ok&foo=1",
     query_jarm_client = TRUE
   ))
+  expect_true(shinyOAuth:::oauth_module_query_has_callback_keys(
+    "?response=ok&foo=1",
+    query_jarm_client = TRUE,
+    response_is_callback = TRUE
+  ))
 
   expect_silent(shinyOAuth:::reject_duplicate_oauth_module_callback_query(
     "?response=ok&response=still-ok"
@@ -1588,6 +1593,15 @@ testthat::test_that("callback query helpers only treat response as callback for 
     shinyOAuth:::reject_duplicate_oauth_module_callback_query(
       "?response=header.payload.signature&response=one.two.three",
       query_jarm_client = TRUE
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "duplicate OAuth parameter: response"
+  )
+  expect_error(
+    shinyOAuth:::reject_duplicate_oauth_module_callback_query(
+      "?response=ok&response=still-ok",
+      query_jarm_client = TRUE,
+      response_is_callback = TRUE
     ),
     class = "shinyOAuth_state_error",
     regexp = "duplicate OAuth parameter: response"

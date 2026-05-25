@@ -371,26 +371,40 @@ testthat::test_that("browser cleanup preserves ordinary response params", {
   )
 })
 
-testthat::test_that("browser cleanup drops compact JARM response params", {
+testthat::test_that("browser cleanup preserves compact response params unless flagged", {
   local_skip_env()
 
   testthat::expect_identical(
     capture_clear_query_url(
       "https://example.com/cb?response=header.payload.signature&foo=1"
     ),
-    "/cb?foo=1"
+    "/cb?response=header.payload.signature&foo=1"
   )
   testthat::expect_identical(
     capture_clear_query_url(
       "https://example.com/cb#/route?response=header.payload.signature&foo=1"
     ),
-    "/cb#/route?foo=1"
+    "/cb#/route?response=header.payload.signature&foo=1"
   )
 })
 
-testthat::test_that("browser cleanup drops flagged malformed response params", {
+testthat::test_that("browser cleanup drops flagged response params", {
   local_skip_env()
 
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb?response=header.payload.signature&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb?foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?response=header.payload.signature&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb#/route?foo=1"
+  )
   testthat::expect_identical(
     capture_clear_query_url(
       "https://example.com/cb?response=not-a-compact-jwt&foo=1",

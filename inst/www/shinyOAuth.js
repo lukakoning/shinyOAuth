@@ -126,18 +126,8 @@
     window.location.assign(String(payload.url));
   }
 
-  function looksLikeCompactJarm(value){
-    if(!value || typeof value !== 'string') return false;
-    var parts = value.split('.');
-    if(parts.length !== 3 && parts.length !== 5) return false;
-    for(var i=0;i<parts.length;i++){
-      if(!parts[i] || !(/^[A-Za-z0-9_-]+$/).test(parts[i])) return false;
-    }
-    return true;
-  }
-
   function shouldDropCallbackParam(key, value, drop, dropResponse){
-    if(key === 'response') return !!dropResponse || looksLikeCompactJarm(value);
+    if(key === 'response') return !!dropResponse;
     return drop.indexOf(key) !== -1;
   }
 

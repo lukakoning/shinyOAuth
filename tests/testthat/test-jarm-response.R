@@ -1789,7 +1789,7 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with compact 
   )
 })
 
-test_that("oauth_module_server ignores unrelated query response params for query.jwt clients", {
+test_that("oauth_module_server rejects invalid query response params for query.jwt clients on the callback route", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -1838,21 +1838,25 @@ test_that("oauth_module_server ignores unrelated query response params for query
 
           expect_length(client@state_store$keys(), 1L)
 
-          values$.process_query("?response=not-a-compact-jwt")
+          values$.process_query(
+            "?response=not-a-compact-jwt",
+            current_path = "/"
+          )
           session$flushReact()
 
           expect_false(isTRUE(values$authenticated))
-          expect_null(values$error)
-          expect_null(values$error_description)
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "compact JWT")
           expect_length(client@state_store$keys(), 1L)
-          expect_length(cleared, 0L)
+          expect_length(cleared, 1L)
+          expect_true(isTRUE(cleared[[1L]]$dropResponse))
         }
       )
     }
   )
 })
 
-test_that("oauth_module_server ignores unrelated query response params for jwt alias clients", {
+test_that("oauth_module_server rejects invalid query response params for jwt alias clients on the callback route", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "jwt")
@@ -1901,18 +1905,90 @@ test_that("oauth_module_server ignores unrelated query response params for jwt a
 
           expect_length(client@state_store$keys(), 1L)
 
-          values$.process_query("?response=not-a-compact-jwt")
+          values$.process_query(
+            "?response=not-a-compact-jwt",
+            current_path = "/"
+          )
           session$flushReact()
 
           expect_false(isTRUE(values$authenticated))
-          expect_null(values$error)
-          expect_null(values$error_description)
+          expect_identical(values$error, "invalid_callback_query")
+          expect_match(values$error_description %||% "", "compact JWT")
           expect_length(client@state_store$keys(), 1L)
-          expect_length(cleared, 0L)
+          expect_length(cleared, 1L)
+          expect_true(isTRUE(cleared[[1L]]$dropResponse))
         }
       )
     }
   )
+})
+
+test_that("oauth_module_server ignores response app params off the query JARM callback route", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  for (mode in c("query.jwt", "jwt")) {
+    client <- make_jarm_test_client(response_mode = mode)
+    browser_token <- valid_browser_token()
+    cleared <- list()
+    sess <- shiny::MockShinySession$new()
+    orig <- sess$sendCustomMessage
+    sess$sendCustomMessage <- function(type, message) {
+      if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+        cleared[[length(cleared) + 1L]] <<- message
+      }
+      orig(type, message)
+    }
+
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) {
+        testthat::fail(
+          paste(
+            "oauth_module_server should ignore off-route response app",
+            "params before JWKS fetch"
+          )
+        )
+      },
+      swap_code_for_token_set = function(...) {
+        testthat::fail(
+          paste(
+            "oauth_module_server should ignore off-route response app",
+            "params before token exchange"
+          )
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shiny::testServer(
+          app = oauth_module_server,
+          args = list(
+            id = "auth",
+            client = client,
+            auto_redirect = FALSE,
+            indefinite_session = TRUE
+          ),
+          session = sess,
+          expr = {
+            values$browser_token <- browser_token
+            values$build_auth_url()
+
+            expect_length(client@state_store$keys(), 1L)
+
+            values$.process_query(
+              "?response=not-a-compact-jwt",
+              current_path = "/dashboard"
+            )
+            session$flushReact()
+
+            expect_false(isTRUE(values$authenticated))
+            expect_null(values$error)
+            expect_null(values$error_description)
+            expect_length(client@state_store$keys(), 1L)
+            expect_length(cleared, 0L)
+          }
+        )
+      }
+    )
+  }
 })
 
 test_that("oauth_module_server rejects malformed query JARM response params", {
@@ -1971,15 +2047,18 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
 
             expect_length(client@state_store$keys(), 1L)
 
-            values$.process_query(paste0(
-              "?response=",
-              utils::URLencode(malformed_response, reserved = TRUE)
-            ))
+            values$.process_query(
+              paste0(
+                "?response=",
+                utils::URLencode(malformed_response, reserved = TRUE)
+              ),
+              current_path = "/"
+            )
             session$flushReact()
 
             expect_false(isTRUE(values$authenticated))
             expect_identical(values$error, "invalid_callback_query")
-            expect_match(values$error_description %||% "", "malformed")
+            expect_match(values$error_description %||% "", "compact JWT")
             expect_length(client@state_store$keys(), 1L)
             expect_length(cleared, 1L)
             expect_true(isTRUE(cleared[[1L]]$dropResponse))

@@ -1386,6 +1386,42 @@ oauth_module_server <- function(
       priority = 100
     )
 
+    # Internal helper: query-based JARM reserves `response` on the configured
+    # callback path, even when the value is not a compact JWT.
+    .query_response_is_reserved_callback <- function(
+      query_string,
+      query_jarm_client = FALSE,
+      current_path = NULL
+    ) {
+      if (!isTRUE(query_jarm_client)) {
+        return(FALSE)
+      }
+
+      if (!length(oauth_module_query_raw_values(query_string, "response"))) {
+        return(FALSE)
+      }
+
+      callback_path <- tryCatch(
+        normalize_oauth_form_post_callback_path(
+          httr2::url_parse(client@redirect_uri)[["path"]] %||% "/"
+        ),
+        error = function(...) "/"
+      )
+      current_path <- tryCatch(
+        normalize_oauth_form_post_callback_path(
+          as.character(
+            current_path %||% session$clientData$url_pathname %||% callback_path
+          )
+        ),
+        error = function(...) callback_path
+      )
+      if (isTRUE(.is_test()) && identical(current_path, "/mockpath")) {
+        current_path <- callback_path
+      }
+
+      identical(current_path, callback_path)
+    }
+
     # Internal helper: decide whether an already-authenticated module should
     # clear callback-like query params immediately. Foreign registered
     # form_post handles must remain in the URL so the owning module can bridge
@@ -1398,11 +1434,16 @@ oauth_module_server <- function(
         configured_jarm_transport$transport %||% NULL,
         "query"
       )
+      response_is_callback <- .query_response_is_reserved_callback(
+        query_string,
+        query_jarm_client = query_jarm_client
+      )
 
       if (
         !isTRUE(oauth_module_query_has_callback_keys(
           query_string,
-          query_jarm_client = query_jarm_client
+          query_jarm_client = query_jarm_client,
+          response_is_callback = response_is_callback
         ))
       ) {
         return(FALSE)
@@ -1471,7 +1512,7 @@ oauth_module_server <- function(
     # @param query_string Current browser query string.
     # @return No return value; updates module state, clears query params, or
     #   triggers login or callback handling.
-    .process_query <- function(query_string) {
+    .process_query <- function(query_string, current_path = NULL) {
       # Defensive: cap untrusted callback query sizes to reduce DoS surface.
       # Apply a pre-parse guard on the raw query string so that
       # shiny::parseQueryString() doesn't have to process arbitrarily long
@@ -1520,23 +1561,37 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (!is.null(values$token)) {
-        if (isTRUE(.should_clear_authenticated_callback_query(query_string))) {
-          clear_oauth_module_callback_query(
-            session,
-            tab_title_replacement,
-            tab_title_cleaning
-          )
-        }
-        return(invisible(NULL))
-      }
-
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
       jarm_client <- !is.null(configured_jarm_transport)
       query_jarm_client <- identical(
         configured_jarm_transport[["transport"]] %||% NULL,
         "query"
       )
+
+      if (!is.null(values$token)) {
+        response_is_reserved_for_query_jarm <-
+          .query_response_is_reserved_callback(
+            query_string,
+            query_jarm_client = query_jarm_client,
+            current_path = current_path
+          )
+        if (isTRUE(.should_clear_authenticated_callback_query(query_string))) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning,
+            drop_response = response_is_reserved_for_query_jarm
+          )
+        }
+        return(invisible(NULL))
+      }
+
+      response_is_reserved_for_query_jarm <-
+        .query_response_is_reserved_callback(
+          query_string,
+          query_jarm_client = query_jarm_client,
+          current_path = current_path
+        )
 
       qs <- NULL
       query_response <- NULL
@@ -1552,7 +1607,8 @@ oauth_module_server <- function(
         {
           reject_duplicate_oauth_module_callback_query(
             query_string %||% "",
-            query_jarm_client = query_jarm_client
+            query_jarm_client = query_jarm_client,
+            response_is_callback = response_is_reserved_for_query_jarm
           )
           qs <- shiny::parseQueryString(query_string %||% "")
           query_response <- qs[["response"]]
@@ -1908,17 +1964,14 @@ oauth_module_server <- function(
         logical(1)
       ))
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
-      # For query.jwt/jwt clients, only compact-looking response values are
-      # treated as JARM callbacks so ordinary app query params survive.
       response_looks_like_jarm <-
         isTRUE(oauth_module_query_has_jarm_response(response))
       response_is_jarm <-
-        isTRUE(query_jarm_client) &&
+        isTRUE(response_is_reserved_for_query_jarm) &&
         isTRUE(response_looks_like_jarm)
-      response_is_malformed_jarm <-
-        isTRUE(query_jarm_client) &&
-        !isTRUE(response_is_jarm) &&
-        isTRUE(oauth_module_query_has_malformed_jarm_response(response))
+      response_is_invalid_query_jarm <-
+        isTRUE(response_is_reserved_for_query_jarm) &&
+        !isTRUE(response_is_jarm)
 
       if (
         isTRUE(response_looks_like_jarm) &&
@@ -1932,7 +1985,8 @@ oauth_module_server <- function(
             "must not receive compact query response parameters; resume from",
             "the validated form_post callback handle instead."
           ),
-          reason = "wrong_jarm_callback_transport"
+          reason = "wrong_jarm_callback_transport",
+          drop_response = TRUE
         )
         return(invisible(NULL))
       }
@@ -1957,13 +2011,13 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (isTRUE(response_is_malformed_jarm)) {
+      if (isTRUE(response_is_invalid_query_jarm)) {
         .reject_callback_query(
           description = paste(
-            "JARM response parameter is malformed and could not be",
-            "validated."
+            "Query-based JARM callbacks must carry a compact JWT in the",
+            "response parameter."
           ),
-          reason = "malformed_jarm_response",
+          reason = "invalid_query_jarm_response",
           drop_response = TRUE
         )
         return(invisible(NULL))
@@ -2092,7 +2146,8 @@ oauth_module_server <- function(
     .resume_cached_jarm_response <- function(
       normalized_response,
       decrypted_payload = NULL,
-      phase = "callback_response_validation"
+      phase = "callback_response_validation",
+      drop_response = FALSE
     ) {
       normalized <- tryCatch(
         revalidate_cached_jarm_response(client, normalized_response),
@@ -2100,7 +2155,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = drop_response
           )
           .set_error(
             oauth_module_callback_failure_error_code(e),
@@ -2132,12 +2188,14 @@ oauth_module_server <- function(
         clear_oauth_module_callback_query(
           session,
           tab_title_replacement,
-          tab_title_cleaning
+          tab_title_cleaning,
+          drop_response = drop_response
         )
         values$pending_callback <- list(
           type = "jarm",
           normalized_response = normalized,
-          decrypted_payload = decrypted_payload
+          decrypted_payload = decrypted_payload,
+          drop_response = drop_response
         )
         return(invisible(NULL))
       }
@@ -2146,7 +2204,8 @@ oauth_module_server <- function(
         clear_oauth_module_callback_query(
           session,
           tab_title_replacement,
-          tab_title_cleaning
+          tab_title_cleaning,
+          drop_response = drop_response
         )
         .handle_error_response(
           error = normalized$error,
@@ -2164,6 +2223,7 @@ oauth_module_server <- function(
         state = normalized$state,
         iss = normalized$iss %||% NULL,
         decrypted_payload = decrypted_payload,
+        drop_response = drop_response,
         callback_validated = TRUE
       )
       invisible(NULL)
@@ -2180,9 +2240,11 @@ oauth_module_server <- function(
       transport = c("query", "form_post"),
       outer_iss = NULL,
       decrypted_payload = NULL,
-      phase = "callback_response_validation"
+      phase = "callback_response_validation",
+      drop_response = FALSE
     ) {
       transport <- match.arg(transport)
+      drop_response <- isTRUE(drop_response) || identical(transport, "query")
 
       normalized <- tryCatch(
         validate_jarm_response(
@@ -2195,7 +2257,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = drop_response
           )
           .set_error(
             oauth_module_callback_failure_error_code(e),
@@ -2226,7 +2289,8 @@ oauth_module_server <- function(
       .resume_cached_jarm_response(
         normalized_response = normalized,
         decrypted_payload = decrypted_payload,
-        phase = phase
+        phase = phase,
+        drop_response = drop_response
       )
       invisible(NULL)
     }
@@ -2564,6 +2628,7 @@ oauth_module_server <- function(
       iss = NULL,
       decrypted_payload = NULL,
       state_store_values = NULL,
+      drop_response = FALSE,
       callback_validated = FALSE
     ) {
       callback_parent <- NULL
@@ -2575,7 +2640,8 @@ oauth_module_server <- function(
             clear_oauth_module_callback_query(
               session,
               tab_title_replacement,
-              tab_title_cleaning
+              tab_title_cleaning,
+              drop_response = drop_response
             ),
             silent = TRUE
           )
@@ -2596,6 +2662,7 @@ oauth_module_server <- function(
           iss = iss,
           decrypted_payload = decrypted_payload,
           state_store_values = state_store_values,
+          drop_response = drop_response,
           callback_validated = callback_validated
         )
         return(invisible(NULL))
@@ -3132,7 +3199,8 @@ oauth_module_server <- function(
             .resume_cached_jarm_response(
               normalized_response = pc$normalized_response %||% NULL,
               decrypted_payload = pc$decrypted_payload %||% NULL,
-              phase = "callback_response_resume"
+              phase = "callback_response_resume",
+              drop_response = isTRUE(pc$drop_response %||% FALSE)
             )
           } else if (identical(pending_type, "error")) {
             .handle_error_response(
@@ -3151,6 +3219,7 @@ oauth_module_server <- function(
               pc$iss %||% NULL,
               decrypted_payload = pc$decrypted_payload %||% NULL,
               state_store_values = pc$state_store_values %||% NULL,
+              drop_response = isTRUE(pc$drop_response %||% FALSE),
               callback_validated = isTRUE(
                 pc$callback_validated %||% FALSE
               )
@@ -3912,12 +3981,15 @@ oauth_module_query_has_raw_jarm_response <- function(query_string) {
 #' @param query_string Raw query string, with or without a leading `?`.
 #' @param query_jarm_client Logical. Whether a compact-looking `response`
 #'   parameter should be treated as a query JARM callback.
+#' @param response_is_callback Logical. Whether the caller has already decided
+#'   that `response` is reserved callback data for the current route.
 #' @return `TRUE` when OAuth callback keys are present; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 oauth_module_query_has_callback_keys <- function(
   query_string,
-  query_jarm_client = FALSE
+  query_jarm_client = FALSE,
+  response_is_callback = FALSE
 ) {
   raw <- sub("^\\?", "", query_string %||% "")
   if (!nzchar(raw)) {
@@ -3933,6 +4005,7 @@ oauth_module_query_has_callback_keys <- function(
   }
 
   any(names(parsed) %in% oauth_module_callback_query_keys) ||
+    isTRUE(response_is_callback) ||
     (isTRUE(query_jarm_client) &&
       isTRUE(oauth_module_query_has_raw_jarm_response(query_string)))
 }
@@ -3945,12 +4018,15 @@ oauth_module_query_has_callback_keys <- function(
 #' @param query_string Raw query string, with or without a leading `?`.
 #' @param query_jarm_client Logical. Whether a compact-looking `response`
 #'   parameter should be treated as a query JARM callback.
+#' @param response_is_callback Logical. Whether the caller has already decided
+#'   that `response` is reserved callback data for the current route.
 #' @return Invisibly returns `NULL` on success.
 #' @keywords internal
 #' @noRd
 reject_duplicate_oauth_module_callback_query <- function(
   query_string,
-  query_jarm_client = FALSE
+  query_jarm_client = FALSE,
+  response_is_callback = FALSE
 ) {
   raw <- sub("^\\?", "", query_string %||% "")
   if (!nzchar(raw)) {
@@ -3965,8 +4041,9 @@ reject_duplicate_oauth_module_callback_query <- function(
 
   seen <- character(0)
   response_is_callback_key <-
-    isTRUE(query_jarm_client) &&
-    isTRUE(oauth_module_query_has_raw_jarm_response(query_string))
+    isTRUE(response_is_callback) ||
+    (isTRUE(query_jarm_client) &&
+      isTRUE(oauth_module_query_has_raw_jarm_response(query_string)))
   for (part in parts) {
     key <- sub("=.*$", "", part)
     if (grepl("(?i)%00|%(?![0-9a-f]{2})", key, perl = TRUE)) {
