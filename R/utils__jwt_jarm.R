@@ -97,14 +97,13 @@ resolve_jarm_callback_transport <- function(oauth_client) {
 #' Normalize accepted inbound JARM typ header values
 #'
 #' JARM does not define a required `typ` header, but providers may include one
-#' using the generic `JWT` value or an explicit JWT media type such as
-#' `oauth-authz-resp+jwt`. Normalize those accepted values to `JWT` before the
-#' shared inbound header policy runs so profile-specific JARM deployments remain
-#' interoperable.
+#' using the generic `JWT` value or the JARM profile media type
+#' `oauth-authz-resp+jwt`. Normalize only those accepted values to `JWT` before
+#' the shared inbound header policy runs.
 #'
 #' @param typ Raw `typ` header value.
-#' @return `"JWT"` when `typ` identifies a JWT media type, otherwise returns
-#'   `typ` unchanged.
+#' @return `"JWT"` when `typ` identifies either the generic JWT type or the
+#'   JARM profile media type; otherwise returns `typ` unchanged.
 #' @keywords internal
 #' @noRd
 normalize_jarm_inbound_typ <- function(typ) {
@@ -113,10 +112,7 @@ normalize_jarm_inbound_typ <- function(typ) {
   }
 
   bare_typ <- sub("^application/", "", tolower(typ))
-  if (
-    identical(bare_typ, "jwt") ||
-      grepl("^[a-z0-9][a-z0-9!#$&^_.+-]*\\+jwt$", bare_typ)
-  ) {
+  if (bare_typ %in% c("jwt", "oauth-authz-resp+jwt")) {
     return("JWT")
   }
 

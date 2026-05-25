@@ -567,6 +567,36 @@ test_that("validate_jarm_response rejects signed JARM with non-JWT typ header", 
   )
 })
 
+test_that("validate_jarm_response rejects signed JARM with another JWT profile typ header", {
+  secret <- "hs256-jarm-other-profile-typ-secret-value"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "HS256", typ = "application/secevent+jwt"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "typ header invalid"
+  )
+})
+
 test_that("validate_jarm_response rejects partially matched signed header names", {
   client <- make_jarm_test_client(response_mode = "query.jwt")
   now <- floor(as.numeric(Sys.time()))
