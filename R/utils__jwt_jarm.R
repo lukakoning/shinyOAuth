@@ -348,7 +348,7 @@ validate_jarm_pre_signature_claims <- function(oauth_client, claims) {
   if (!is.finite(leeway) || is.na(leeway) || length(leeway) != 1L) {
     leeway <- 0
   }
-  if (as.numeric(exp) < (now - leeway)) {
+  if (as.numeric(exp) <= (now - leeway)) {
     err_invalid_state("JARM payload expired")
   }
 

@@ -736,6 +736,50 @@ test_that("validate_jarm_response rejects aud and exp failures before JWKS fetch
   }
 })
 
+test_that("validate_jarm_response rejects exp at the current second when leeway is zero", {
+  fixed_now <- as.POSIXct("2026-05-24 12:00:00", tz = "UTC")
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  client@provider@leeway <- 0
+  response <- testthat::with_mocked_bindings(
+    Sys.time = function() fixed_now,
+    .package = "base",
+    make_signed_jarm(
+      payload_list = list(
+        iss = client@provider@issuer,
+        aud = client@client_id,
+        exp = as.numeric(fixed_now),
+        code = "ok",
+        state = "state-1"
+      ),
+      key = sig_key,
+      kid = "sig-1"
+    )
+  )
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "validate_jarm_response should reject exp at the current second",
+          "before JWKS fetch"
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      Sys.time = function() fixed_now,
+      .package = "base",
+      shinyOAuth:::validate_jarm_response(client, response)
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "payload expired"
+  )
+})
+
 test_that("validate_jarm_response rejects malformed exp before signature verification", {
   secret <- "hs256-jarm-malformed-exp-secret-32b!"
   client <- make_jarm_test_client(
