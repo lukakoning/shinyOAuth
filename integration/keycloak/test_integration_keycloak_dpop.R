@@ -108,15 +108,15 @@ expect_keycloak_token_endpoint_rejection <- function(
   testthat::expect_identical(httr2::resp_status(resp), 400L)
 
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  testthat::expect_null(body$access_token)
-  testthat::expect_identical(body$error, "invalid_request")
+  testthat::expect_null(body[["access_token"]])
+  testthat::expect_identical(body[["error"]], "invalid_request")
   testthat::expect_match(
-    body$error_description %||% "",
+    body[["error_description"]] %||% "",
     expected_description,
     fixed = TRUE
   )
   testthat::expect_no_match(
-    paste(body$error %||% "", body$error_description %||% ""),
+    paste(body[["error"]] %||% "", body[["error_description"]] %||% ""),
     "invalid_grant",
     ignore.case = TRUE
   )
@@ -228,7 +228,7 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
   userinfo <- shinyOAuth::get_userinfo(client, login$token)
 
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo$sub, login$token@userinfo$sub)
+  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
   testthat::expect_true(isTRUE(prov@use_pkce))
 
   missing_proof_resp <- perform_raw_userinfo_request(
@@ -325,7 +325,10 @@ testthat::test_that("Keycloak DPoP plus PAR is either supported end-to-end or re
 
             userinfo <- shinyOAuth::get_userinfo(client, values$token)
             testthat::expect_true(is.list(userinfo))
-            testthat::expect_identical(userinfo$sub, values$token@userinfo$sub)
+            testthat::expect_identical(
+              userinfo[["sub"]],
+              values$token@userinfo[["sub"]]
+            )
 
             missing_proof_resp <- perform_raw_userinfo_request(
               client@provider,
@@ -359,7 +362,7 @@ testthat::test_that("DPoP strict guard fails closed on a real Keycloak Bearer re
   token_set <- httr2::resp_body_json(bearer_resp, simplifyVector = TRUE)
 
   testthat::expect_identical(httr2::resp_status(bearer_resp), 200L)
-  testthat::expect_identical(token_set$token_type, "Bearer")
+  testthat::expect_identical(token_set[["token_type"]], "Bearer")
 
   strict_client <- make_public_client(
     prov,

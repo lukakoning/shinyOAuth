@@ -95,7 +95,7 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
       } else {
         token@id_token_claims %||% list()
       }
-      username <- userinfo$preferred_username %||% NA_character_
+      username <- userinfo[["preferred_username"]] %||% NA_character_
 
       jsonlite::toJSON(
         list(
@@ -104,7 +104,7 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
           error = auth$error %||% NULL,
           error_description = auth$error_description %||% NULL,
           preferred_username = username,
-          userinfo_sub = userinfo$sub %||% NULL,
+          userinfo_sub = userinfo[["sub"]] %||% NULL,
           id_sub = id_claims$sub %||% NULL,
           app_policy_rejected = !is.null(token) && !identical(username, "alice")
         ),

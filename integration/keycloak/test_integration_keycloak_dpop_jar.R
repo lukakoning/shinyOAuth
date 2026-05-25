@@ -124,7 +124,7 @@ testthat::test_that("signed DPoP JAR emits dpop_jkt but live Keycloak rejects th
   testthat::expect_match(auth_url, "[?&]response_type=code")
   testthat::expect_match(auth_url, "[?&]scope=openid(?:%20|&|$)")
   testthat::expect_identical(
-    payload$dpop_jkt,
+    payload[["dpop_jkt"]],
     shinyOAuth:::client_dpop_jkt(client)
   )
 

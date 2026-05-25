@@ -457,7 +457,7 @@ OAuthProvider <- S7::new_class(
     userinfo_required = S7::new_property(S7::class_logical, default = FALSE),
     userinfo_id_selector = S7::new_property(
       S7::class_any,
-      default = quote(function(userinfo) userinfo$sub)
+      default = quote(function(userinfo) userinfo[["sub"]])
     ),
     userinfo_id_token_match = S7::new_property(
       S7::class_logical,
@@ -614,7 +614,9 @@ oauth_provider <- function(
   userinfo_required = NULL,
   userinfo_id_token_match = NULL,
   userinfo_signed_jwt_required = FALSE,
-  userinfo_id_selector = function(userinfo) userinfo$sub,
+  userinfo_id_selector = function(userinfo) {
+    userinfo[["sub"]]
+  },
   id_token_required = NULL,
   id_token_validation = NULL,
   extra_auth_params = list(),
@@ -987,7 +989,11 @@ oauth_provider_validate <- function(self) {
   )
   for (nm in names(fields)) {
     f <- fields[[nm]]
-    msg <- oauth_provider_check_host_field(f$val, nm, f$required)
+    msg <- oauth_provider_check_host_field(
+      f[["val"]],
+      nm,
+      f[["required"]]
+    )
     if (!is.null(msg)) {
       return(msg)
     }
@@ -998,8 +1004,8 @@ oauth_provider_validate <- function(self) {
     parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)
     if (
       !inherits(parsed_issuer, "try-error") &&
-        (length(parsed_issuer$query) > 0L ||
-          nzchar(parsed_issuer$fragment %||% ""))
+        (length(parsed_issuer[["query"]]) > 0L ||
+          nzchar(parsed_issuer[["fragment"]] %||% ""))
     ) {
       return(
         "OAuthProvider: issuer must not contain query or fragment components"
@@ -1110,8 +1116,8 @@ oauth_provider_validate <- function(self) {
   }
 
   response_mode_info <- inspect_auth_response_mode(self@extra_auth_params)
-  if (!is.null(response_mode_info$error)) {
-    return(response_mode_info$error)
+  if (!is.null(response_mode_info[["error"]])) {
+    return(response_mode_info[["error"]])
   }
   if (!is.character(self@response_modes_supported)) {
     return("OAuthProvider: response_modes_supported must be a character vector")
@@ -1128,21 +1134,21 @@ oauth_provider_validate <- function(self) {
     )
   }
   if (
-    !is.null(response_mode_info$mode) &&
+    !is.null(response_mode_info[["mode"]]) &&
       length(self@response_modes_supported) > 0 &&
-      !response_mode_info$mode %in%
+      !response_mode_info[["mode"]] %in%
         tolower(trimws(self@response_modes_supported))
   ) {
     return(paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",
-      sQuote(response_mode_info$mode),
+      sQuote(response_mode_info[["mode"]]),
       " is not advertised in response_modes_supported"
     ))
   }
 
   max_age_info <- inspect_auth_max_age(self@extra_auth_params)
-  if (!is.null(max_age_info$error)) {
-    return(max_age_info$error)
+  if (!is.null(max_age_info[["error"]])) {
+    return(max_age_info[["error"]])
   }
 
   default_reserved_auth_keys <- c(
@@ -1792,8 +1798,8 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
   parsed <- try(httr2::url_parse(value), silent = TRUE)
   if (
     inherits(parsed, "try-error") ||
-      !nzchar((parsed$scheme %||% "")) ||
-      !nzchar((parsed$hostname %||% ""))
+      !nzchar((parsed[["scheme"]] %||% "")) ||
+      !nzchar((parsed[["hostname"]] %||% ""))
   ) {
     return(sprintf(
       "OAuthProvider: %s must be an absolute URL (including scheme and hostname)",

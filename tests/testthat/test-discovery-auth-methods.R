@@ -138,8 +138,13 @@ testthat::test_that("public discovery auth does not send env client_secret", {
     client = cl,
     context = "token_exchange"
   )
-  testthat::expect_identical(prepared$params$client_id, "abc")
-  testthat::expect_null(prepared$params$client_secret)
+  testthat::expect_identical(
+    prepared[["params"]][["client_id"]],
+    "abc"
+  )
+  testthat::expect_null(
+    prepared[["params"]][["client_secret"]]
+  )
 })
 
 testthat::test_that("oidc discovery transport errors include discovery url and transport detail", {

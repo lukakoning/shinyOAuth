@@ -4,15 +4,15 @@ count_fixed_matches <- function(text, pattern) {
 }
 
 request_body_text <- function(req) {
-  body <- req$body %||% NULL
+  body <- req[["body"]] %||% NULL
   if (is.null(body)) {
     return(NA_character_)
   }
-  if (identical(body$type, "raw")) {
-    return(rawToChar(body$data))
+  if (identical(body[["type"]], "raw")) {
+    return(rawToChar(body[["data"]]))
   }
-  if (identical(body$type, "form")) {
-    data <- body$data %||% list()
+  if (identical(body[["type"]], "form")) {
+    data <- body[["data"]] %||% list()
     if (!length(data)) {
       return("")
     }
@@ -88,7 +88,7 @@ test_that("swap_code_for_token_set sends resource indicators in token body", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -106,7 +106,7 @@ test_that("swap_code_for_token_set sends resource indicators in token body", {
     }
   )
 
-  expect_identical(token_set$access_token, "at")
+  expect_identical(token_set[["access_token"]], "at")
   expect_identical(count_fixed_matches(body_text, "resource="), 2L)
   expect_match(body_text, "resource=https%3A%2F%2Fapi\\.example\\.com")
   expect_match(body_text, "resource=urn%3Aexample%3Aledger")
@@ -125,7 +125,7 @@ test_that("refresh_token sends resource indicators in refresh body", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(

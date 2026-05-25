@@ -59,16 +59,19 @@ expect_no_authorization_code <- function(auth_url, redirect_uri) {
     return(invisible(TRUE))
   }
 
-  code <- result$code %||% NA_character_
+  code <- result[["code"]] %||% NA_character_
   testthat::expect_false(
     is.character(code) && length(code) == 1L && !is.na(code) && nzchar(code),
     info = paste0(
       "Tampered authorization URL unexpectedly issued a code: ",
-      result$callback_url %||% "<no callback>"
+      result[["callback_url"]] %||% "<no callback>"
     )
   )
 
-  combo <- paste(result$callback_url %||% "", result$state_payload %||% "")
+  combo <- paste(
+    result[["callback_url"]] %||% "",
+    result[["state_payload"]] %||% ""
+  )
   testthat::expect_match(
     combo,
     "error|invalid|pkce|code_challenge",

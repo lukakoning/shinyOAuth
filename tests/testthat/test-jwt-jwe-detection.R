@@ -70,7 +70,7 @@ test_that("validate_id_token still accepts valid JWS tokens (3 segments)", {
     shinyOAuth:::validate_id_token(cli, id_token)
   )
 
-  expect_equal(result$sub, "user-jwe")
+  expect_equal(result[["sub"]], "user-jwe")
 })
 
 test_that("validate_id_token rejects JWE even when header looks like a valid JWT", {

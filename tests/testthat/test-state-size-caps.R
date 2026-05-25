@@ -17,7 +17,7 @@ test_that("state_decrypt_gcm enforces size caps and is configurable", {
 
   # Sanity: decrypt ok under limits
   dec <- shinyOAuth:::state_decrypt_gcm(tok, key = key)
-  expect_identical(dec$state, payload$state)
+  expect_identical(dec[["state"]], payload[["state"]])
 
   # 1) Oversized base64url token string
   too_big_token <- paste0(tok, strrep("A", 200))

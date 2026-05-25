@@ -196,9 +196,9 @@ warn_about_missing_form_post_ui <- function(id, client) {
   }
 
   response_mode_info <- resolve_oauth_client_response_mode(client)
-  response_mode <- response_mode_info$mode %||% NULL
+  response_mode <- response_mode_info[["mode"]] %||% NULL
   if (
-    !is.null(response_mode_info$error) ||
+    !is.null(response_mode_info[["error"]]) ||
       !response_mode %in% c("form_post", "form_post.jwt")
   ) {
     return(invisible(NULL))

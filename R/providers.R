@@ -113,7 +113,9 @@ oauth_provider_github <- function(name = "github") {
 
     userinfo_required = TRUE,
     userinfo_id_token_match = FALSE,
-    userinfo_id_selector = function(userinfo) as.character(userinfo$id)
+    userinfo_id_selector = function(userinfo) {
+      as.character(userinfo[["id"]])
+    }
   )
 }
 
@@ -283,7 +285,9 @@ oauth_provider_microsoft <- function(
 
     userinfo_required = TRUE,
     userinfo_id_token_match = isTRUE(id_token_validation),
-    userinfo_id_selector = function(userinfo) userinfo$sub,
+    userinfo_id_selector = function(userinfo) {
+      userinfo[["sub"]]
+    },
 
     id_token_required = isTRUE(id_token_validation),
     id_token_validation = isTRUE(id_token_validation)
@@ -330,7 +334,9 @@ oauth_provider_spotify <- function(
     extra_token_headers = character(),
     token_auth_style = "header",
 
-    userinfo_id_selector = function(userinfo) as.character(userinfo$id),
+    userinfo_id_selector = function(userinfo) {
+      as.character(userinfo[["id"]])
+    },
     userinfo_required = TRUE,
     userinfo_id_token_match = FALSE,
 
@@ -524,8 +530,12 @@ microsoft_tenant_independent_issuer <- function(issuer) {
     return(NULL)
   }
 
-  host <- tolower(parsed$hostname %||% "")
-  path <- tolower(gsub("^/+|/+$", "", parsed$path %||% ""))
+  host <- tolower(parsed[["hostname"]] %||% "")
+  path <- tolower(gsub(
+    "^/+|/+$",
+    "",
+    parsed[["path"]] %||% ""
+  ))
 
   if (!identical(host, "login.microsoftonline.com")) {
     return(NULL)
@@ -558,7 +568,7 @@ resolve_expected_id_token_issuer <- function(provider_issuer, token_payload) {
     ))
   }
 
-  token_tid <- token_payload$tid %||% NULL
+  token_tid <- token_payload[["tid"]] %||% NULL
   if (!is_guid_like(token_tid)) {
     err_id_token(c(
       "x" = "Microsoft ID token missing or invalid tid claim",
@@ -608,7 +618,7 @@ filter_microsoft_jwks_for_token_issuer <- function(
   keep <- vapply(
     keys,
     function(key) {
-      key_issuer <- key$issuer %||% NULL
+      key_issuer <- key[["issuer"]] %||% NULL
       if (!is_valid_string(key_issuer)) {
         return(FALSE)
       }

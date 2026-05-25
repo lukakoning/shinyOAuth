@@ -54,16 +54,19 @@ test_that("OAuthClient accepts duck-typed state_store and methods work", {
 
   # Entry exists in store: decrypt payload to recover random state value used as the cache key
   dec <- shinyOAuth:::state_decrypt_gcm(state_param, key = cli@state_key)
-  expect_true(is.list(dec) && is_valid_string(dec$state))
-  entry <- store$get(shinyOAuth:::state_cache_key(dec$state), missing = NULL)
+  expect_true(is.list(dec) && is_valid_string(dec[["state"]]))
+  entry <- store$get(
+    shinyOAuth:::state_cache_key(dec[["state"]]),
+    missing = NULL
+  )
   expect_type(entry, "list")
   expect_identical(entry$browser_token, browser_token)
 
   # Simulate callback verification path that removes the entry
   # Slightly hacky: call internal remove directly to test duck-typed remove
-  store$remove(shinyOAuth:::state_cache_key(dec$state))
+  store$remove(shinyOAuth:::state_cache_key(dec[["state"]]))
   expect_null(store$get(
-    shinyOAuth:::state_cache_key(dec$state),
+    shinyOAuth:::state_cache_key(dec[["state"]]),
     missing = NULL
   ))
 })

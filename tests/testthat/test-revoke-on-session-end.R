@@ -216,7 +216,7 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
     testthat::expect_true(isTRUE(call$shiny_session$is_async))
   }
 
-  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  types <- vapply(audit_events, function(e) e[["type"]] %||% "", character(1))
   logout_idx <- match("audit_logout", types)
   testthat::expect_false(is.na(logout_idx))
   testthat::expect_false(isTRUE(
@@ -380,7 +380,7 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   )
 
   # Find the session_ended_revoke audit event
-  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  types <- vapply(audit_events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true("audit_session_ended_revoke" %in% types)
 
   testthat::expect_true(is.character(session_token) && nzchar(session_token))
@@ -429,7 +429,7 @@ testthat::test_that("session_ended event is emitted even without revoke_on_sessi
   )
 
   # Find the session_ended audit event (should always be emitted)
-  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  types <- vapply(audit_events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true("audit_session_ended" %in% types)
 
   # Verify session_ended contains was_authenticated = TRUE
@@ -479,7 +479,7 @@ testthat::test_that("authenticated_changed event is emitted on token set", {
   )
 
   # Find the authenticated_changed audit event
-  types <- vapply(audit_events, function(e) e$type %||% "", character(1))
+  types <- vapply(audit_events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true("audit_authenticated_changed" %in% types)
 
   # Verify at least one change to TRUE was emitted

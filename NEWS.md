@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* List-like OAuth/request/test payload access now consistently uses exact
+`[[...]]` indexing instead of `$`, reducing accidental partial matches across
+runtime code, tests, and integration fixtures.
+
 * `oauth_provider_oidc_discover()` and helpers built on it now accept
 discovery metadata that differs from the configured issuer only by one
 trailing slash in the published `issuer`, while still storing the provider's

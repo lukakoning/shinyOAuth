@@ -783,10 +783,11 @@ oauth_client <- function(
     arg = "response_mode",
     context = "OAuthClient"
   )
-  if (!is.null(response_mode_info$error)) {
-    err_input(response_mode_info$error)
+  if (!is.null(response_mode_info[["error"]])) {
+    err_input(response_mode_info[["error"]])
   }
-  response_mode <- response_mode_info$mode %||% NA_character_
+  response_mode <- response_mode_info[["mode"]] %||%
+    NA_character_
   authorization_encrypted_response_alg <- authorization_encrypted_response_alg %||%
     NA_character_
   authorization_encrypted_response_enc <-
@@ -931,8 +932,8 @@ oauth_client_validate <- function(self) {
   parsed <- try(httr2::url_parse(self@redirect_uri), silent = TRUE)
   if (
     inherits(parsed, "try-error") ||
-      !nzchar((parsed$scheme %||% "")) ||
-      !nzchar((parsed$hostname %||% ""))
+      !nzchar((parsed[["scheme"]] %||% "")) ||
+      !nzchar((parsed[["hostname"]] %||% ""))
   ) {
     return(
       "OAuthClient: redirect_uri must be an absolute URL (including scheme and hostname)"
@@ -940,7 +941,7 @@ oauth_client_validate <- function(self) {
   }
 
   # RFC 6749 Section 3.1.2: redirect URI MUST NOT include a fragment
-  if (nzchar(parsed$fragment %||% "")) {
+  if (nzchar(parsed[["fragment"]] %||% "")) {
     return(
       "OAuthClient: redirect_uri must not contain a URI fragment (RFC 6749 Section 3.1.2)"
     )
@@ -1266,10 +1267,11 @@ oauth_client_validate <- function(self) {
     )
   }
   response_mode_info <- resolve_oauth_client_response_mode(self)
-  if (!is.null(response_mode_info$error)) {
-    return(response_mode_info$error)
+  if (!is.null(response_mode_info[["error"]])) {
+    return(response_mode_info[["error"]])
   }
-  effective_response_mode <- response_mode_info$mode %||% "query"
+  effective_response_mode <- response_mode_info[["mode"]] %||%
+    "query"
   jarm_response_mode <- effective_response_mode %in%
     c(
       "query.jwt",
@@ -2208,9 +2210,16 @@ oauth_client_validate <- function(self) {
     list(name = "tls_client_key_file", value = tls_client_key_file),
     list(name = "tls_client_ca_file", value = tls_client_ca_file)
   )) {
-    if (is_valid_string(field$value) && !file.exists(field$value)) {
+    if (
+      is_valid_string(field[["value"]]) &&
+        !file.exists(field[["value"]])
+    ) {
       return(
-        paste0("OAuthClient: ", field$name, " must point to an existing file")
+        paste0(
+          "OAuthClient: ",
+          field[["name"]],
+          " must point to an existing file"
+        )
       )
     }
   }

@@ -39,7 +39,7 @@ test_that("validate_id_token accepts multi-audience with azp", {
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     dec <- shinyOAuth:::validate_id_token(client, jwt)
     expect_true(is.list(dec))
-    expect_identical(dec$azp, "client-123")
+    expect_identical(dec[["azp"]], "client-123")
   })
 })
 

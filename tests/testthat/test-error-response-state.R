@@ -29,7 +29,7 @@ testthat::test_that("error response with state consumes state from store", {
 
       # Verify state is in store before error response
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
-      key <- shinyOAuth:::state_cache_key(payload$state)
+      key <- shinyOAuth:::state_cache_key(payload[["state"]])
       before <- cli@state_store$get(key, missing = NULL)
       testthat::expect_false(is.null(before))
 
@@ -48,7 +48,7 @@ testthat::test_that("error response with state consumes state from store", {
   )
 
   # Check audit event was emitted (type field has "audit_" prefix)
-  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  event_types <- vapply(events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true(
     "audit_error_state_consumed" %in% event_types,
     info = "Expected audit_error_state_consumed audit event"
@@ -231,7 +231,7 @@ testthat::test_that("error response with mismatched browser_token is rejected as
     }
   )
 
-  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  event_types <- vapply(events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true(
     "audit_callback_validation_failed" %in% event_types,
     info = "Expected audit_callback_validation_failed on browser-token mismatch"
@@ -255,7 +255,7 @@ testthat::test_that("error response without state is rejected after login initia
       url <- values$build_auth_url()
       enc <- parse_query_param(url, "state")
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
-      key <- shinyOAuth:::state_cache_key(payload$state)
+      key <- shinyOAuth:::state_cache_key(payload[["state"]])
 
       # Error callback missing state should be rejected as invalid_state,
       # even though a valid login state exists in the store.
@@ -299,7 +299,7 @@ testthat::test_that("state consumption failure rejects callback as invalid_state
 
       # Pre-remove the state from store to cause consumption failure
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
-      key <- shinyOAuth:::state_cache_key(payload$state)
+      key <- shinyOAuth:::state_cache_key(payload[["state"]])
       cli@state_store$remove(key)
 
       # Process error with valid-looking but already-consumed state
@@ -313,7 +313,7 @@ testthat::test_that("state consumption failure rejects callback as invalid_state
   )
 
   # Check that consumption failure was audited (type field has "audit_" prefix)
-  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  event_types <- vapply(events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true(
     "audit_error_state_consumption_failed" %in% event_types,
     info = "Expected audit_error_state_consumption_failed audit event"
@@ -351,7 +351,7 @@ testthat::test_that("error response with invalid state is rejected as invalid_st
   )
 
   # Check that consumption failure was audited (type field has "audit_" prefix)
-  event_types <- vapply(events, function(e) e$type %||% "", character(1))
+  event_types <- vapply(events, function(e) e[["type"]] %||% "", character(1))
   testthat::expect_true(
     "audit_error_state_consumption_failed" %in% event_types,
     info = "Expected audit_error_state_consumption_failed audit event for invalid state"
@@ -416,7 +416,7 @@ testthat::test_that("error response with valid state never triggers login", {
 
       # Verify state is valid and in store
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
-      key <- shinyOAuth:::state_cache_key(payload$state)
+      key <- shinyOAuth:::state_cache_key(payload[["state"]])
       state_entry <- cli@state_store$get(key, missing = NULL)
       testthat::expect_false(is.null(state_entry))
 

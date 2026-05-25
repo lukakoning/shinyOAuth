@@ -15,9 +15,9 @@ build_par_auth_url <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      result$auth_url <<- values$build_auth_url()
-      result$error <<- values$error
-      result$error_description <<- values$error_description
+      result[["auth_url"]] <<- values$build_auth_url()
+      result[["error"]] <<- values$error
+      result[["error_description"]] <<- values$error_description
     }
   )
 
@@ -37,7 +37,7 @@ keycloak_realm_attribute <- function(token, name, default = NA_character_) {
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
-  body$attributes[[name]] %||% default
+  body[["attributes"]][[name]] %||% default
 }
 
 keycloak_update_realm_attribute <- function(token, name, value) {
@@ -99,16 +99,16 @@ expect_par_auth_request_rejected <- function(
 
   if (identical(rejected$kind, "callback")) {
     result <- rejected$callback
-    code <- result$code %||% NA_character_
+    code <- result[["code"]] %||% NA_character_
     testthat::expect_false(
       is.character(code) && length(code) == 1L && !is.na(code) && nzchar(code),
       info = paste0(
         "Expected PAR authorization request to be rejected. Callback: ",
-        result$callback_url %||% "<no callback>"
+        result[["callback_url"]] %||% "<no callback>"
       )
     )
     callback_error <- parse_query_param(
-      result$callback_url,
+      result[["callback_url"]],
       "error",
       decode = TRUE
     )
@@ -117,7 +117,7 @@ expect_par_auth_request_rejected <- function(
     if (!is.null(description_pattern)) {
       testthat::expect_match(
         parse_query_param(
-          result$callback_url,
+          result[["callback_url"]],
           "error_description",
           decode = TRUE
         ),
@@ -263,7 +263,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
       expect_state_store_entry_consumed(client, state_info)
 
       access_token_before <- values$token@access_token %||% ""
-      username_before <- values$token@userinfo$preferred_username %||%
+      username_before <- values$token@userinfo[["preferred_username"]] %||%
         NA_character_
       rejected <- expect_par_auth_request_rejected(
         auth_url,
@@ -291,7 +291,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
           access_token_before
         )
         testthat::expect_identical(
-          values$token@userinfo$preferred_username %||% NA_character_,
+          values$token@userinfo[["preferred_username"]] %||% NA_character_,
           username_before
         )
         testthat::expect_true(

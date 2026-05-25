@@ -68,7 +68,7 @@ testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
       url <- testthat::with_mocked_bindings(
         req_with_retry = function(req, ...) {
           httr2::response(
-            url = as.character(req$url),
+            url = as.character(req[["url"]]),
             status = 201,
             headers = list("content-type" = "application/json"),
             body = charToRaw(
@@ -379,7 +379,7 @@ testthat::test_that("login fails when introspection validation fails", {
         },
         req_with_retry = function(req, ...) {
           httr2::response(
-            url = as.character(req$url),
+            url = as.character(req[["url"]]),
             status = 200,
             headers = list("content-type" = "application/json"),
             body = charToRaw('{"active":false}')
@@ -1378,7 +1378,7 @@ testthat::test_that("callback params are cleared when token already exists", {
       url <- values$build_auth_url()
       enc <- parse_query_param(url, "state")
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
-      key <- shinyOAuth:::state_cache_key(payload$state)
+      key <- shinyOAuth:::state_cache_key(payload[["state"]])
       before <- cli@state_store$get(key, missing = NULL)
       testthat::expect_false(is.null(before))
 
@@ -1875,7 +1875,7 @@ testthat::test_that("oauth_module_server proactive refresh forwards introspectio
     expr = {
       testthat::with_mocked_bindings(
         req_with_retry = function(req, ...) {
-          url <- as.character(req$url)
+          url <- as.character(req[["url"]])
           if (grepl("/token", url, fixed = TRUE)) {
             calls$token <- calls$token + 1L
             return(httr2::response(

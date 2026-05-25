@@ -478,9 +478,12 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
         strsplit(response_jwe, ".", fixed = TRUE)[[1]],
         5L
       )
-      testthat::expect_identical(outer$protected_header$alg, "RSA-OAEP")
       testthat::expect_identical(
-        outer$protected_header$enc,
+        outer[["protected_header"]][["alg"]],
+        "RSA-OAEP"
+      )
+      testthat::expect_identical(
+        outer[["protected_header"]][["enc"]],
         "A256CBC-HS512"
       )
 
@@ -801,9 +804,9 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
 
       testthat::expect_true(keycloak_nonempty_string(request_jwt))
       testthat::expect_false(grepl("[?&]response_mode=", auth_url))
-      testthat::expect_identical(payload$response_mode, "query.jwt")
-      testthat::expect_identical(payload$client_id, client@client_id)
-      testthat::expect_identical(payload$redirect_uri, client@redirect_uri)
+      testthat::expect_identical(payload[["response_mode"]], "query.jwt")
+      testthat::expect_identical(payload[["client_id"]], client@client_id)
+      testthat::expect_identical(payload[["redirect_uri"]], client@redirect_uri)
 
       resp <- httr2::request(auth_url) |>
         req_apply_keycloak_ca() |>

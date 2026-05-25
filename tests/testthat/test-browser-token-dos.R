@@ -67,7 +67,7 @@ test_that("prepare_call accepts valid token and caches state values", {
   expect_true(is.character(enc_payload) && nzchar(enc_payload))
 
   payload <- shinyOAuth:::state_decrypt_gcm(enc_payload, key = client@state_key)
-  st <- payload$state
+  st <- payload[["state"]]
   expect_true(is.character(st) && nzchar(st))
 
   key <- shinyOAuth:::state_cache_key(st)

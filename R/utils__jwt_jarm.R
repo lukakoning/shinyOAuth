@@ -77,11 +77,11 @@ resolve_jarm_callback_transport <- function(oauth_client) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   response_mode_info <- resolve_oauth_client_response_mode(oauth_client)
-  if (!is.null(response_mode_info$error)) {
-    err_config(response_mode_info$error)
+  if (!is.null(response_mode_info[["error"]])) {
+    err_config(response_mode_info[["error"]])
   }
 
-  mode <- response_mode_info$mode %||% "query"
+  mode <- response_mode_info[["mode"]] %||% "query"
   if (mode %in% c("query.jwt", "jwt")) {
     return(list(mode = mode, transport = "query"))
   }
@@ -292,7 +292,7 @@ jarm_claim <- function(claims, name) {
     !is.na(name)
   )
 
-  claims[[name, exact = TRUE]]
+  claims[[name]]
 }
 
 #' Validate required pre-signature JARM claims
@@ -378,8 +378,8 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
       claims
     )
 
-  iss <- prechecked$iss
-  exp <- as.numeric(prechecked$exp)
+  iss <- prechecked[["iss"]]
+  exp <- as.numeric(prechecked[["exp"]])
   iat <- jarm_claim(claims, "iat")
   nbf <- jarm_claim(claims, "nbf")
   code <- jarm_claim(claims, "code")
@@ -429,19 +429,19 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
     ))
   }
 
-  validate_untrusted_query_param("code", code, limits$code)
-  validate_untrusted_query_param("state", state, limits$state)
-  validate_untrusted_query_param("error", error, limits$error)
+  validate_untrusted_query_param("code", code, limits[["code"]])
+  validate_untrusted_query_param("state", state, limits[["state"]])
+  validate_untrusted_query_param("error", error, limits[["error"]])
   validate_untrusted_query_param(
     "error_description",
     error_description,
-    max_bytes = limits$error_description,
+    max_bytes = limits[["error_description"]],
     allow_empty = TRUE
   )
   validate_untrusted_query_param(
     "error_uri",
     error_uri,
-    max_bytes = limits$error_uri,
+    max_bytes = limits[["error_uri"]],
     allow_empty = TRUE
   )
 
@@ -491,7 +491,7 @@ revalidate_cached_jarm_response <- function(
     err_invalid_state("Cached JARM callback is malformed")
   }
 
-  claims <- normalized_response[["claims", exact = TRUE]] %||% NULL
+  claims <- normalized_response[["claims"]] %||% NULL
   if (!is.list(claims)) {
     err_invalid_state("Cached JARM callback is missing claims")
   }
@@ -516,7 +516,10 @@ parse_jarm_payload <- function(
   tolerate_duplicate_top_level_iss = FALSE
 ) {
   parts <- jwt_compact_parts(jwt_str)
-  payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
+  payload_text <- strict_decode_jwt_json_text(
+    parts[["payload_raw"]],
+    "payload"
+  )
   if (isTRUE(tolerate_duplicate_top_level_iss)) {
     payload_text <- normalize_duplicate_jarm_iss_claim(payload_text)
   }
@@ -616,7 +619,7 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
           return(list())
         }
 
-        lookahead <- parsed_key$end + 1L
+        lookahead <- parsed_key[["end"]] + 1L
         while (
           lookahead <= length(chars) &&
             grepl("[[:space:]]", chars[[lookahead]])
@@ -629,7 +632,7 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
             identical(container_stack[[1L]], "object") &&
             lookahead <= length(chars) &&
             identical(chars[[lookahead]], ":") &&
-            identical(parsed_key$value, "iss")
+            identical(parsed_key[["value"]], "iss")
         ) {
           value_start <- lookahead + 1L
           while (
@@ -646,12 +649,12 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
 
           members[[length(members) + 1L]] <- list(
             start = token_start,
-            end = parsed_value$end,
-            value = parsed_value$value
+            end = parsed_value[["end"]],
+            value = parsed_value[["value"]]
           )
         }
 
-        index <- parsed_key$end
+        index <- parsed_key[["end"]]
       } else if (identical(ch, "{")) {
         container_stack <- c(container_stack, "object")
       } else if (identical(ch, "[")) {
@@ -681,8 +684,8 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
   normalized <- payload_text
   duplicate_indices <- rev(seq_along(members)[-1L])
   for (idx in duplicate_indices) {
-    remove_start <- members[[idx]]$start
-    remove_end <- members[[idx]]$end
+    remove_start <- members[[idx]][["start"]]
+    remove_end <- members[[idx]][["end"]]
 
     before <- remove_start - 1L
     while (
@@ -766,10 +769,13 @@ validate_encrypted_jarm_protected_header <- function(
     signal_error = err_invalid_state
   )
 
-  if (!is.null(header_fields$crit) && length(header_fields$crit) > 0L) {
+  if (
+    !is.null(header_fields[["crit"]]) &&
+      length(header_fields[["crit"]]) > 0L
+  ) {
     err_invalid_state(paste0(
       "Encrypted JARM contains unsupported critical header parameter(s): ",
-      paste(header_fields$crit, collapse = ", ")
+      paste(header_fields[["crit"]], collapse = ", ")
     ))
   }
 
@@ -783,9 +789,9 @@ validate_encrypted_jarm_protected_header <- function(
     ))
   }
 
-  configured_kid <- encryption_config$kid %||% NA_character_
+  configured_kid <- encryption_config[["kid"]] %||% NA_character_
   if (is_valid_string(configured_kid)) {
-    header_kid <- header_fields$kid %||% "<missing>"
+    header_kid <- header_fields[["kid"]] %||% "<missing>"
     if (!identical(header_kid, configured_kid)) {
       err_invalid_state(paste0(
         "Encrypted JARM kid mismatch: expected ",
@@ -826,10 +832,10 @@ validate_jarm_response <- function(
   if (is.null(configured_transport)) {
     err_invalid_state("Client is not configured to accept JARM responses")
   }
-  if (!identical(configured_transport$transport, transport)) {
+  if (!identical(configured_transport[["transport"]], transport)) {
     err_invalid_state(paste0(
       "JARM callback transport mismatch: client requested ",
-      configured_transport$mode,
+      configured_transport[["mode"]],
       " but callback arrived via ",
       transport
     ))
@@ -839,12 +845,15 @@ validate_jarm_response <- function(
   validate_untrusted_query_param(
     "response",
     response,
-    max_bytes = max(limits$query, limits$form_post_body)
+    max_bytes = max(
+      limits[["query"]],
+      limits[["form_post_body"]]
+    )
   )
   validate_untrusted_query_param(
     "iss",
     outer_iss,
-    max_bytes = limits$iss
+    max_bytes = limits[["iss"]]
   )
   if (!is_valid_string(response)) {
     err_invalid_state("JARM response must be a single non-empty compact JWT")
@@ -871,27 +880,27 @@ validate_jarm_response <- function(
       }
     )
     outer_header_fields <- validate_encrypted_jarm_protected_header(
-      jwe_parts$protected_header,
+      jwe_parts[["protected_header"]],
       encryption_config
     )
     outer_alg <- canonicalize_jwe_alg(
-      outer_header_fields$alg %||% ""
+      outer_header_fields[["alg"]] %||% ""
     )
     outer_enc <- canonicalize_jwe_enc(
-      outer_header_fields$enc %||% ""
+      outer_header_fields[["enc"]] %||% ""
     )
-    if (!identical(outer_alg, encryption_config$alg)) {
+    if (!identical(outer_alg, encryption_config[["alg"]])) {
       err_invalid_state(paste0(
         "Encrypted JARM alg mismatch: expected ",
-        encryption_config$alg,
+        encryption_config[["alg"]],
         ", got ",
         outer_alg
       ))
     }
-    if (!identical(outer_enc, encryption_config$enc)) {
+    if (!identical(outer_enc, encryption_config[["enc"]])) {
       err_invalid_state(paste0(
         "Encrypted JARM enc mismatch: expected ",
-        encryption_config$enc,
+        encryption_config[["enc"]],
         ", got ",
         outer_enc
       ))
@@ -900,7 +909,7 @@ validate_jarm_response <- function(
     decrypted <- tryCatch(
       jwe_compact_decrypt(
         response,
-        encryption_config$private_key
+        encryption_config[["private_key"]]
       ),
       error = function(e) {
         err_invalid_state(paste0(
@@ -909,7 +918,7 @@ validate_jarm_response <- function(
         ))
       }
     )
-    jwt_str <- decrypted$plaintext %||% NA_character_
+    jwt_str <- decrypted[["plaintext"]] %||% NA_character_
     if (!is_valid_string(jwt_str)) {
       err_invalid_state("Encrypted JARM plaintext is not a valid compact JWT")
     }
@@ -932,10 +941,12 @@ validate_jarm_response <- function(
     header,
     signal_error = err_invalid_state
   )
-  header_fields$typ <- normalize_jarm_inbound_typ(header_fields$typ)
+  header_fields[["typ"]] <- normalize_jarm_inbound_typ(
+    header_fields[["typ"]]
+  )
   enforce_inbound_jwt_header_policy(header_fields, err_invalid_state)
 
-  alg <- canonicalize_jws_alg(header_fields$alg)
+  alg <- canonicalize_jws_alg(header_fields[["alg"]])
   expected_alg <- resolve_authorization_response_signing_alg(oauth_client)
   if (identical(toupper(alg), "NONE")) {
     err_invalid_state("JARM alg=none is not allowed")
@@ -965,7 +976,13 @@ validate_jarm_response <- function(
   )
   claims <- as.list(claims)
   prechecked <- validate_jarm_pre_signature_claims(oauth_client, claims)
-  if (!is.null(outer_iss) && !identical(outer_iss, prechecked$iss)) {
+  if (
+    !is.null(outer_iss) &&
+      !identical(
+        outer_iss,
+        prechecked[["iss"]]
+      )
+  ) {
     err_invalid_state(
       "Outer iss parameter does not match JARM iss claim (RFC 9207)"
     )
@@ -975,7 +992,7 @@ validate_jarm_response <- function(
     oauth_client = oauth_client,
     jwt_str = jwt_str,
     alg = alg,
-    kid = header_fields$kid %||% NULL
+    kid = header_fields[["kid"]] %||% NULL
   )
 
   validate_jarm_claims(oauth_client, claims, prechecked = prechecked)

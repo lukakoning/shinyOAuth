@@ -198,7 +198,7 @@ capture_set_cookie_writes <- function(
   browser$Runtime$evaluate(
     expression = expression,
     returnByValue = TRUE
-  )$result$value
+  )$result[["value"]]
 }
 
 capture_clear_query_url <- function(
@@ -265,7 +265,7 @@ capture_clear_query_url <- function(
   browser$Runtime$evaluate(
     expression = expression,
     returnByValue = TRUE
-  )$result$value
+  )$result[["value"]]
 }
 
 # Basic cookie set/clear lifecycle

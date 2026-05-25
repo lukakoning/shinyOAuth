@@ -13,7 +13,7 @@ testthat::test_that("get_userinfo errors consistently on malformed/non-JSON resp
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "text/plain"),
         body = charToRaw("this is not json")
@@ -29,7 +29,11 @@ testthat::test_that("get_userinfo errors consistently on malformed/non-JSON resp
   )
 
   # Audit trail should include a userinfo event even though parsing failed
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   testthat::expect_true(any(types == "audit_userinfo"))
 
   ui_events <- events[types == "audit_userinfo"]
@@ -49,7 +53,7 @@ testthat::test_that("get_userinfo rejects duplicate sub members in JSON response
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"alice","sub":"bob"}')
@@ -72,7 +76,7 @@ testthat::test_that("get_userinfo rejects non-object JSON responses", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('[{"sub":"alice"}]')

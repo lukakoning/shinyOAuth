@@ -39,7 +39,7 @@ test_that("state store is single-use; second callback cannot reuse same state", 
   url <- shinyOAuth:::prepare_call(client, browser_token = tok)
   enc_payload <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc_payload, key = client@state_key)
-  st <- payload$state
+  st <- payload[["state"]]
 
   # Simulate first retrieval (like handle_callback) which removes from store
   key <- shinyOAuth:::state_cache_key(st)
@@ -58,7 +58,7 @@ test_that("browser token mismatch triggers state error without deleting unrelate
   url <- shinyOAuth:::prepare_call(client, browser_token = tok)
   enc_payload <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc_payload, key = client@state_key)
-  st <- payload$state
+  st <- payload[["state"]]
   key <- shinyOAuth:::state_cache_key(st)
 
   # Use wrong browser token

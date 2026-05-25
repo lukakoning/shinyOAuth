@@ -39,7 +39,7 @@ mirai_daemons_active <- function() {
 #' @noRd
 mirai_connection_count <- function() {
   tryCatch(
-    as.integer(mirai::info()$connections),
+    as.integer(mirai::info()[["connections"]]),
     error = function(...) 0L
   )
 }
@@ -66,8 +66,8 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   captured_otel_option_gates <- capture_async_otel_option_gates()
   captured_trace_id <- get_current_trace_id()
   if (!is.null(otel_context)) {
-    otel_context$attributes <- otel_with_trace_attribute(
-      attributes = otel_context$attributes,
+    otel_context[["attributes"]] <- otel_with_trace_attribute(
+      attributes = otel_context[["attributes"]],
       trace_id = captured_trace_id
     )
   }
@@ -88,38 +88,44 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
         .otel_option_gates
       )
       on.exit(
-        .ns$restore_async_otel_option_gates(.otel_option_state$old_options),
+        .ns$restore_async_otel_option_gates(.otel_option_state[[
+          "old_options",
+          exact = TRUE
+        ]]),
         add = TRUE
       )
     }
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
       .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
-      if (isTRUE(.otel_env_state$changed)) {
+      if (isTRUE(.otel_env_state[["changed"]])) {
         on.exit(
-          .ns$restore_async_otel_envvars(.otel_env_state$old_envvars),
+          .ns$restore_async_otel_envvars(.otel_env_state[[
+            "old_envvars",
+            exact = TRUE
+          ]]),
           add = TRUE
         )
       }
     }
     if (!is.null(.otel_context)) {
       .otel_worker_span <- .ns$otel_restore_parent_in_worker(
-        otel_headers = if (!is.null(.otel_context$headers)) {
-          .otel_context$headers
+        otel_headers = if (!is.null(.otel_context[["headers"]])) {
+          .otel_context[["headers"]]
         } else {
           NULL
         },
-        name = if (!is.null(.otel_context$worker_span_name)) {
-          .otel_context$worker_span_name
+        name = if (!is.null(.otel_context[["worker_span_name"]])) {
+          .otel_context[["worker_span_name"]]
         } else {
           "shinyOAuth.async.worker"
         },
-        attributes = if (!is.null(.otel_context$attributes)) {
-          .otel_context$attributes
+        attributes = if (!is.null(.otel_context[["attributes"]])) {
+          .otel_context[["attributes"]]
         } else {
           list()
         },
-        shiny_session = if (!is.null(.otel_context$shiny_session)) {
-          .otel_context$shiny_session
+        shiny_session = if (!is.null(.otel_context[["shiny_session"]])) {
+          .otel_context[["shiny_session"]]
         } else {
           NULL
         }
@@ -221,17 +227,17 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
 replay_async_conditions <- function(result) {
   if (
     is.list(result) &&
-      isTRUE(result$.shinyOAuth_async_wrapped)
+      isTRUE(result[[".shinyOAuth_async_wrapped"]])
   ) {
     if (!isFALSE(getOption("shinyOAuth.replay_async_conditions", TRUE))) {
-      for (m in result$messages) {
+      for (m in result[["messages"]]) {
         message(m)
       }
-      for (w in result$warnings) {
+      for (w in result[["warnings"]]) {
         warning(w)
       }
     }
-    return(result$value)
+    return(result[["value"]])
   }
   result
 }

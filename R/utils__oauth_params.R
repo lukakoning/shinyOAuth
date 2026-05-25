@@ -115,7 +115,7 @@ resolve_auth_response_mode <- function(
       length(raw_mode) != 1L ||
       !nzchar(trimws(raw_mode))
   ) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       context,
       ": ",
       arg,
@@ -136,7 +136,7 @@ resolve_auth_response_mode <- function(
   )
   if (!mode %in% supported_modes) {
     if (identical(mode, "fragment.jwt")) {
-      out$error <- paste0(
+      out[["error"]] <- paste0(
         context,
         ": ",
         arg,
@@ -149,7 +149,7 @@ resolve_auth_response_mode <- function(
         "'query.jwt'."
       )
     } else {
-      out$error <- paste0(
+      out[["error"]] <- paste0(
         context,
         ": ",
         arg,
@@ -163,8 +163,8 @@ resolve_auth_response_mode <- function(
     return(out)
   }
 
-  out$mode <- mode
-  out$effective_mode <- effective_mode
+  out[["mode"]] <- mode
+  out[["effective_mode"]] <- effective_mode
   out
 }
 
@@ -199,21 +199,21 @@ inspect_auth_response_mode <- function(extra_auth_params) {
     return(out)
   }
   if (length(idx) > 1L) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthProvider: extra_auth_params$response_mode must be supplied at most once"
     )
     return(out)
   }
 
-  out$index <- idx[[1]]
+  out[["index"]] <- idx[[1]]
   resolved <- resolve_auth_response_mode(
-    extra_auth_params[[out$index]],
+    extra_auth_params[[out[["index"]]]],
     arg = "extra_auth_params$response_mode",
     context = "OAuthProvider"
   )
-  out$mode <- resolved$mode
-  out$effective_mode <- resolved$effective_mode
-  out$error <- resolved$error
+  out[["mode"]] <- resolved[["mode"]]
+  out[["effective_mode"]] <- resolved[["effective_mode"]]
+  out[["error"]] <- resolved[["error"]]
   out
 }
 
@@ -251,47 +251,57 @@ resolve_oauth_client_response_mode <- function(
     arg = "response_mode",
     context = "OAuthClient"
   )
-  if (!is.null(client_response_mode_info$error)) {
-    out$error <- client_response_mode_info$error
+  if (!is.null(client_response_mode_info[["error"]])) {
+    out[["error"]] <- client_response_mode_info[["error"]]
     return(out)
   }
 
   provider_response_mode_info <- inspect_auth_response_mode(extra_auth_params)
-  if (!is.null(provider_response_mode_info$error)) {
-    out$error <- provider_response_mode_info$error
+  if (!is.null(provider_response_mode_info[["error"]])) {
+    out[["error"]] <- provider_response_mode_info[["error"]]
     return(out)
   }
 
   if (
-    !is.null(client_response_mode_info$effective_mode) &&
-      !is.null(provider_response_mode_info$effective_mode) &&
+    !is.null(client_response_mode_info[["effective_mode"]]) &&
+      !is.null(provider_response_mode_info[["effective_mode"]]) &&
       !identical(
-        client_response_mode_info$effective_mode,
-        provider_response_mode_info$effective_mode
+        client_response_mode_info[["effective_mode"]],
+        provider_response_mode_info[["effective_mode"]]
       )
   ) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthClient: response_mode = ",
-      sQuote(client_response_mode_info$mode),
+      sQuote(client_response_mode_info[["mode"]]),
       " conflicts with OAuthProvider.extra_auth_params$response_mode = ",
-      sQuote(provider_response_mode_info$mode),
+      sQuote(provider_response_mode_info[["mode"]]),
       ". Configure response_mode on the client or provider extra_auth_params, not both."
     )
     return(out)
   }
 
-  out$explicit_mode <- client_response_mode_info$mode %||%
-    provider_response_mode_info$mode
-  out$mode <- client_response_mode_info$effective_mode %||%
-    provider_response_mode_info$effective_mode %||%
+  out[["explicit_mode"]] <- client_response_mode_info[[
+    "mode",
+    exact = TRUE
+  ]] %||%
+    provider_response_mode_info[["mode"]]
+  out[["mode"]] <- client_response_mode_info[[
+    "effective_mode",
+    exact = TRUE
+  ]] %||%
+    provider_response_mode_info[["effective_mode"]] %||%
     default_mode
 
-  if (length(provider_response_mode_info$index) == 1L) {
-    extra_auth_params[[provider_response_mode_info$index]] <- NULL
+  if (length(provider_response_mode_info[["index"]]) == 1L) {
+    extra_auth_params[[provider_response_mode_info[[
+      "index",
+      exact = TRUE
+    ]]]] <- NULL
   }
-  out$extra_auth_params <- extra_auth_params
+  out[["extra_auth_params"]] <- extra_auth_params
 
-  outbound_mode <- out$explicit_mode %||% out$mode
+  outbound_mode <- out[["explicit_mode"]] %||%
+    out[["mode"]]
   if (
     !is.null(outbound_mode) &&
       length(oauth_client@provider@response_modes_supported) > 0 &&
@@ -300,7 +310,7 @@ resolve_oauth_client_response_mode <- function(
           oauth_client@provider@response_modes_supported
         ))
   ) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthClient: response_mode = ",
       sQuote(outbound_mode),
       " is not advertised in provider response_modes_supported"
@@ -337,16 +347,16 @@ inspect_auth_max_age <- function(extra_auth_params) {
     return(out)
   }
   if (length(idx) > 1L) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthProvider: extra_auth_params$max_age must be supplied at most once"
     )
     return(out)
   }
 
-  out$index <- idx[[1]]
-  raw_max_age <- extra_auth_params[[out$index]]
+  out[["index"]] <- idx[[1]]
+  raw_max_age <- extra_auth_params[[out[["index"]]]]
   if (length(raw_max_age) != 1L) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthProvider: extra_auth_params$max_age must be a single non-negative number of seconds"
     )
     return(out)
@@ -359,13 +369,13 @@ inspect_auth_max_age <- function(extra_auth_params) {
       !is.finite(max_age) ||
       max_age < 0
   ) {
-    out$error <- paste0(
+    out[["error"]] <- paste0(
       "OAuthProvider: extra_auth_params$max_age must be a single non-negative number of seconds"
     )
     return(out)
   }
 
-  out$value <- as.numeric(max_age)
+  out[["value"]] <- as.numeric(max_age)
   out
 }
 
@@ -443,7 +453,7 @@ extract_essential_claims <- function(claims_spec, target) {
     entry <- target_claims[[nm]]
     # A claim is essential if it has a list value with essential = TRUE.
     # NULL entries (claim requested without parameters) are not essential.
-    if (is.list(entry) && isTRUE(entry$essential)) {
+    if (is.list(entry) && isTRUE(entry[["essential"]])) {
       essential_names <- c(essential_names, nm)
     }
   }
@@ -467,11 +477,11 @@ extract_requested_claim_values <- function(entry) {
   requested <- list()
 
   if ("value" %in% names(entry)) {
-    requested <- c(requested, list(entry$value))
+    requested <- c(requested, list(entry[["value"]]))
   }
 
-  if ("values" %in% names(entry) && !is.null(entry$values)) {
-    values <- entry$values
+  if ("values" %in% names(entry) && !is.null(entry[["values"]])) {
+    values <- entry[["values"]]
     if (is.list(values)) {
       value_names <- names(values)
       if (!is.null(value_names) && any(nzchar(value_names))) {
@@ -505,7 +515,9 @@ extract_claim_value_constraints <- function(claims_spec, target) {
 
   constraints <- list()
   for (nm in names(target_claims)) {
-    requested <- extract_requested_claim_values(target_claims[[nm]])
+    requested <- extract_requested_claim_values(
+      target_claims[[nm]]
+    )
     if (length(requested) > 0) {
       constraints[[nm]] <- requested
     }

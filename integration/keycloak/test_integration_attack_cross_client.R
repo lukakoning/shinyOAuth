@@ -51,7 +51,7 @@ testthat::test_that("Cross-client: code from public client rejected by confident
   body <- httr2::resp_body_json(direct_resp)
   testthat::expect_true(grepl(
     "invalid_grant|unauthorized_client",
-    paste(body$error, body$error_description),
+    paste(body[["error"]], body[["error_description"]]),
     ignore.case = TRUE
   ))
 })
@@ -94,7 +94,7 @@ testthat::test_that("Cross-client: code from confidential client rejected by pub
   body <- httr2::resp_body_json(direct_resp)
   testthat::expect_true(grepl(
     "invalid_grant|unauthorized_client",
-    paste(body$error, body$error_description),
+    paste(body[["error"]], body[["error_description"]]),
     ignore.case = TRUE
   ))
 })

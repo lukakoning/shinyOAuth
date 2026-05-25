@@ -32,8 +32,8 @@ warn_if_request_uri_is_non_https <- function(
     return(invisible(FALSE))
   }
 
-  scheme <- tolower(as.character(parsed$scheme %||% ""))
-  host <- as.character(parsed$hostname %||% "")
+  scheme <- tolower(as.character(parsed[["scheme"]] %||% ""))
+  host <- as.character(parsed[["hostname"]] %||% "")
 
   if (!nzchar(host) || identical(scheme, "https")) {
     return(invisible(FALSE))
@@ -93,8 +93,8 @@ normalize_request_uri_base_url <- function(
   )
 
   parsed <- httr2::url_parse(base_url)
-  query <- as.character(parsed$query %||% "")
-  fragment <- as.character(parsed$fragment %||% "")
+  query <- as.character(parsed[["query"]] %||% "")
+  fragment <- as.character(parsed[["fragment"]] %||% "")
 
   if (nzchar(query) || nzchar(fragment)) {
     err_input(
@@ -105,10 +105,10 @@ normalize_request_uri_base_url <- function(
     )
   }
 
-  port <- as.character(parsed$port %||% "")
+  port <- as.character(parsed[["port"]] %||% "")
   port <- if (!is.na(port) && nzchar(port)) paste0(":", port) else ""
 
-  path <- as.character(parsed$path %||% "")
+  path <- as.character(parsed[["path"]] %||% "")
   path <- if (!nzchar(path) || identical(path, "/")) {
     ""
   } else {
@@ -117,9 +117,9 @@ normalize_request_uri_base_url <- function(
   }
 
   paste0(
-    tolower(as.character(parsed$scheme %||% "")),
+    tolower(as.character(parsed[["scheme"]] %||% "")),
     "://",
-    tolower(as.character(parsed$hostname %||% "")),
+    tolower(as.character(parsed[["hostname"]] %||% "")),
     port,
     path
   )
@@ -225,7 +225,7 @@ serve_shiny_request_object <- function(data, req) {
     ))
   }
 
-  usage_state <- data$usage_state %||% NULL
+  usage_state <- data[["usage_state"]] %||% NULL
   if (is.environment(usage_state) && isTRUE(usage_state$consumed)) {
     return(list(
       status = 410L,
@@ -238,7 +238,7 @@ serve_shiny_request_object <- function(data, req) {
     ))
   }
 
-  expires_at <- data$expires_at %||% NULL
+  expires_at <- data[["expires_at"]] %||% NULL
   if (!is.null(expires_at) && isTRUE(Sys.time() > expires_at)) {
     return(list(
       status = 410L,
@@ -254,7 +254,11 @@ serve_shiny_request_object <- function(data, req) {
   list(
     status = 200L,
     headers = headers,
-    body = if (identical(method, "HEAD")) "" else data$request_object
+    body = if (identical(method, "HEAD")) {
+      ""
+    } else {
+      data[["request_object"]]
+    }
   )
 }
 

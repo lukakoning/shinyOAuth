@@ -224,7 +224,7 @@ otel_http_host <- function(url) {
     return(NULL)
   }
 
-  host <- parsed$hostname %||% NULL
+  host <- parsed[["hostname"]] %||% NULL
   if (!is_valid_string(host)) {
     return(NULL)
   }
@@ -250,12 +250,12 @@ otel_http_port <- function(url) {
     return(NULL)
   }
 
-  port <- parsed$port %||% NULL
+  port <- parsed[["port"]] %||% NULL
   if (!is.null(port) && !is.na(port) && nzchar(as.character(port))) {
     return(as.integer(port))
   }
 
-  scheme <- tolower(as.character(parsed$scheme %||% ""))
+  scheme <- tolower(as.character(parsed[["scheme"]] %||% ""))
   if (identical(scheme, "https")) {
     return(443L)
   }
@@ -286,12 +286,14 @@ otel_http_url_full <- function(url) {
     return(NULL)
   }
 
-  parsed$query <- NULL
-  parsed$fragment <- NULL
-  parsed$username <- NULL
-  parsed$password <- NULL
-  parsed$scheme <- tolower(parsed$scheme %||% "")
-  parsed$hostname <- tolower(parsed$hostname %||% "")
+  parsed[["query"]] <- NULL
+  parsed[["fragment"]] <- NULL
+  parsed[["username"]] <- NULL
+  parsed[["password"]] <- NULL
+  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
+  parsed[["hostname"]] <- tolower(
+    parsed[["hostname"]] %||% ""
+  )
 
   sanitized <- tryCatch(httr2::url_build(parsed), error = function(...) NULL)
   if (!is_valid_string(sanitized)) {
@@ -542,7 +544,7 @@ otel_requested_max_age <- function(provider) {
     return(NULL)
   }
 
-  inspect_auth_max_age(provider@extra_auth_params)$value
+  inspect_auth_max_age(provider@extra_auth_params)[["value"]]
 }
 
 #' Read the client auth style for telemetry
@@ -686,9 +688,10 @@ otel_sender_constraint_token_attributes <- function(
   explicit_token_type <- NA_character_
 
   if (is.list(token_set)) {
-    access_token <- token_set$access_token %||% NULL
-    cnf <- token_set$cnf %||% NULL
-    explicit_token_type <- token_set$token_type %||% NA_character_
+    access_token <- token_set[["access_token"]] %||% NULL
+    cnf <- token_set[["cnf"]] %||% NULL
+    explicit_token_type <- token_set[["token_type"]] %||%
+      NA_character_
   } else if (S7::S7_inherits(token, class = OAuthToken)) {
     access_token <- token@access_token
     cnf <- token@cnf
@@ -800,23 +803,27 @@ otel_token_response_attributes <- function(
   }
 
   scope_tokens <- otel_scope_tokens(
-    token_set$scope %||% NULL,
+    token_set[["scope"]] %||% NULL,
     allow_commas = TRUE
   )
-  expires_in_present <- !is.null(token_set$expires_in)
+  expires_in_present <- !is.null(token_set[["expires_in"]])
 
   compact_list(c(
     list(
-      oauth.token_type = otel_scalar_attribute(token_set$token_type %||% NULL),
-      oauth.received_id_token = isTRUE(is_valid_string(token_set$id_token)),
+      oauth.token_type = otel_scalar_attribute(
+        token_set[["token_type"]] %||% NULL
+      ),
+      oauth.received_id_token = isTRUE(is_valid_string(
+        token_set[["id_token"]]
+      )),
       oauth.received_refresh_token = isTRUE(is_valid_string(
-        token_set$refresh_token
+        token_set[["refresh_token"]]
       )),
       oauth.expires_in_present = isTRUE(expires_in_present),
       oauth.expires_in_synthesized = !isTRUE(expires_in_present),
       oauth.scope.present = length(scope_tokens) > 0L,
       oauth.scopes.granted = otel_scope_string(
-        token_set$scope %||% NULL,
+        token_set[["scope"]] %||% NULL,
         allow_commas = TRUE
       )
     ),
@@ -843,7 +850,7 @@ otel_current_shiny_session <- function() {
   event <- tryCatch(augment_with_shiny_context(list()), error = function(...) {
     list()
   })
-  event$shiny_session %||% NULL
+  event[["shiny_session"]] %||% NULL
 }
 
 #' Build Shiny session telemetry attributes
@@ -862,22 +869,24 @@ otel_shiny_attributes <- function(shiny_session = NULL) {
     return(list())
   }
 
-  http <- shiny_session$http %||% NULL
+  http <- shiny_session[["http"]] %||% NULL
   server_address <- NULL
   http_method <- NULL
   if (is.list(http)) {
-    server_address <- http$host %||% NULL
-    http_method <- http$method %||% NULL
+    server_address <- http[["host"]] %||% NULL
+    http_method <- http[["method"]] %||% NULL
   }
 
   compact_list(list(
-    shiny.session_token_digest = string_digest(shiny_session$token %||% NULL),
-    shiny.session.is_async = isTRUE(shiny_session$is_async),
+    shiny.session_token_digest = string_digest(
+      shiny_session[["token"]] %||% NULL
+    ),
+    shiny.session.is_async = isTRUE(shiny_session[["is_async"]]),
     shiny.session.main_process_id = as.integer(
-      shiny_session$main_process_id %||% NA_integer_
+      shiny_session[["main_process_id"]] %||% NA_integer_
     ),
     shiny.session.process_id = as.integer(
-      shiny_session$process_id %||% NA_integer_
+      shiny_session[["process_id"]] %||% NA_integer_
     ),
     http.request.method = http_method,
     server.address = server_address
@@ -1226,7 +1235,7 @@ with_otel_span <- function(
 
   span_options <- options %||% list()
   if (!is.null(parent) || (length(parent) == 1L && is.na(parent))) {
-    span_options$parent <- parent
+    span_options[["parent"]] <- parent
   }
 
   span_started <- FALSE
@@ -1503,18 +1512,18 @@ otel_end_async_parent <- function(
   status = c("ok", "error"),
   error = NULL
 ) {
-  if (is.null(parent) || is.null(parent$span)) {
+  if (is.null(parent) || is.null(parent[["span"]])) {
     return(invisible(NULL))
   }
 
   status <- match.arg(status)
   if (identical(status, "ok")) {
-    otel_mark_span_ok(parent$span)
+    otel_mark_span_ok(parent[["span"]])
   } else {
-    otel_note_error(error, span = parent$span)
+    otel_note_error(error, span = parent[["span"]])
   }
 
-  try(otel::end_span(parent$span), silent = TRUE)
+  try(otel::end_span(parent[["span"]]), silent = TRUE)
   invisible(NULL)
 }
 
@@ -1709,7 +1718,10 @@ otel_event_attributes <- function(event) {
     }
   }
 
-  c(attrs, otel_shiny_attributes(event$shiny_session %||% NULL))
+  c(
+    attrs,
+    otel_shiny_attributes(event[["shiny_session"]] %||% NULL)
+  )
 }
 
 #' Emit an OTEL log record
@@ -1730,12 +1742,12 @@ otel_emit_log <- function(event) {
   }
 
   severity <- otel_event_severity(
-    event$type %||% NULL,
-    status = event$status %||% NULL,
-    reason = event$reason %||% NULL
+    event[["type"]] %||% NULL,
+    status = event[["status"]] %||% NULL,
+    reason = event[["reason"]] %||% NULL
   )
-  msg <- otel_scalar_attribute(event$message %||% NULL) %||%
-    otel_scalar_attribute(event$type %||% NULL) %||%
+  msg <- otel_scalar_attribute(event[["message"]] %||% NULL) %||%
+    otel_scalar_attribute(event[["type"]] %||% NULL) %||%
     "shinyOAuth"
   otel::log(
     msg = msg,

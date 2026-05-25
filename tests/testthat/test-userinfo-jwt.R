@@ -70,7 +70,7 @@ test_that("get_userinfo rejects unsigned JWT response (alg=none) by default", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -96,7 +96,7 @@ test_that("get_userinfo still works with application/json content-type", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(claims, auto_unbox = TRUE))
@@ -106,8 +106,8 @@ test_that("get_userinfo still works with application/json content-type", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-456")
-  expect_equal(result$name, "JSON User")
+  expect_equal(result[["sub"]], "user-456")
+  expect_equal(result[["name"]], "JSON User")
 })
 
 test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
@@ -138,7 +138,7 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -149,8 +149,8 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-sig")
-  expect_equal(result$name, "Signed User")
+  expect_equal(result[["sub"]], "user-sig")
+  expect_equal(result[["name"]], "Signed User")
 })
 
 test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
@@ -197,7 +197,7 @@ test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -208,8 +208,8 @@ test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-ed25519")
-  expect_equal(result$name, "EdDSA User")
+  expect_equal(result[["sub"]], "user-ed25519")
+  expect_equal(result[["name"]], "EdDSA User")
 })
 
 test_that("get_userinfo rejects signed JWT userinfo with invalid typ header", {
@@ -240,7 +240,7 @@ test_that("get_userinfo rejects signed JWT userinfo with invalid typ header", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -286,7 +286,7 @@ test_that("get_userinfo accepts signed JWT with valid temporal claims", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -297,8 +297,8 @@ test_that("get_userinfo accepts signed JWT with valid temporal claims", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-time-valid")
-  expect_equal(result$name, "Signed Timely User")
+  expect_equal(result[["sub"]], "user-time-valid")
+  expect_equal(result[["name"]], "Signed Timely User")
 })
 
 test_that("get_userinfo honors provider leeway above 60 seconds", {
@@ -329,7 +329,7 @@ test_that("get_userinfo honors provider leeway above 60 seconds", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -340,8 +340,8 @@ test_that("get_userinfo honors provider leeway above 60 seconds", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-leeway-over-60")
-  expect_equal(result$name, "Leeway User")
+  expect_equal(result[["sub"]], "user-leeway-over-60")
+  expect_equal(result[["name"]], "Leeway User")
 })
 
 test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
@@ -375,7 +375,7 @@ test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -391,8 +391,8 @@ test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
     get_userinfo(cli, token = "access-token")
   )
 
-  expect_equal(result$sub, "user-leeway-boundary")
-  expect_equal(result$name, "Boundary User")
+  expect_equal(result[["sub"]], "user-leeway-boundary")
+  expect_equal(result[["name"]], "Boundary User")
 })
 
 test_that("get_userinfo can require exp on signed JWT userinfo", {
@@ -424,7 +424,7 @@ test_that("get_userinfo can require exp on signed JWT userinfo", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -435,7 +435,7 @@ test_that("get_userinfo can require exp on signed JWT userinfo", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-required-exp")
+  expect_equal(result[["sub"]], "user-required-exp")
 })
 
 test_that("get_userinfo errors when signed JWT is missing required exp", {
@@ -465,7 +465,7 @@ test_that("get_userinfo errors when signed JWT is missing required exp", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -528,7 +528,7 @@ test_that("get_userinfo errors when signed JWT is expired", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -571,7 +571,7 @@ test_that("get_userinfo errors when signed JWT has iat in the future", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -614,7 +614,7 @@ test_that("get_userinfo errors when signed JWT is not yet valid", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -657,7 +657,7 @@ test_that("get_userinfo rejects signed JWT when JWK alg mismatches header alg", 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -695,7 +695,7 @@ test_that("get_userinfo errors when JWKS has no compatible keys for signed JWT",
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -726,7 +726,7 @@ test_that("get_userinfo errors when JWKS fetch fails for signed JWT", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -766,7 +766,7 @@ test_that("get_userinfo errors when signed JWT has wrong issuer", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -805,7 +805,7 @@ test_that("get_userinfo errors when signed JWT has wrong audience", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -840,7 +840,7 @@ test_that("get_userinfo errors when signed JWT is missing iss claim", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -875,7 +875,7 @@ test_that("get_userinfo errors when signed JWT is missing aud claim", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -905,7 +905,7 @@ test_that("get_userinfo errors on encrypted JWT (JWE)", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwe_body)
@@ -928,7 +928,7 @@ test_that("get_userinfo errors on invalid JWT in application/jwt response", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw("not-a-valid-jwt")
@@ -958,7 +958,7 @@ test_that("get_userinfo emits audit event on JWT parse failure", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw("bad.jwt")
@@ -972,7 +972,11 @@ test_that("get_userinfo emits audit event on JWT parse failure", {
     class = "shinyOAuth_userinfo_error"
   )
 
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   expect_true(any(types == "audit_userinfo"))
 
   ui_events <- events[types == "audit_userinfo"]
@@ -1007,7 +1011,7 @@ test_that("get_userinfo handles application/jwt with charset parameter (signed)"
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt; charset=utf-8"),
         body = charToRaw(jwt_body)
@@ -1018,8 +1022,8 @@ test_that("get_userinfo handles application/jwt with charset parameter (signed)"
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-charset")
-  expect_equal(result$name, "Charset User")
+  expect_equal(result[["sub"]], "user-charset")
+  expect_equal(result[["name"]], "Charset User")
 })
 
 test_that("decode_userinfo_jwt rejects JWT without issuer configured", {
@@ -1063,7 +1067,7 @@ test_that("signed JWT required: non-JWT response fails with clear error + audit"
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(
@@ -1082,7 +1086,11 @@ test_that("signed JWT required: non-JWT response fails with clear error + audit"
   )
 
   # Verify audit event
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
@@ -1112,7 +1120,7 @@ test_that("signed JWT required: alg=none JWT fails with clear error + audit", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1127,7 +1135,11 @@ test_that("signed JWT required: alg=none JWT fails with clear error + audit", {
     regexp = "alg=none.*not allowed"
   )
 
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
@@ -1159,7 +1171,7 @@ test_that("signed JWT required: alg not in allowed_algs fails + audit", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1174,7 +1186,11 @@ test_that("signed JWT required: alg not in allowed_algs fails + audit", {
     regexp = "not in provider.*allowed"
   )
 
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
@@ -1209,7 +1225,7 @@ test_that("signed JWT required: valid signed JWT succeeds", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1220,8 +1236,8 @@ test_that("signed JWT required: valid signed JWT succeeds", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-signed-ok")
-  expect_equal(result$name, "Signed OK")
+  expect_equal(result[["sub"]], "user-signed-ok")
+  expect_equal(result[["name"]], "Signed OK")
 })
 
 test_that("signed JWT required: JWKS fetch failure still blocks", {
@@ -1242,7 +1258,7 @@ test_that("signed JWT required: JWKS fetch failure still blocks", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1269,7 +1285,7 @@ test_that("unsigned JWT is now rejected even without required flag (fail-closed)
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1295,7 +1311,7 @@ test_that("signed JWT NOT required: JSON response still works (backward compat)"
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(claims, auto_unbox = TRUE))
@@ -1305,8 +1321,8 @@ test_that("signed JWT NOT required: JSON response still works (backward compat)"
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-json-compat")
-  expect_equal(result$name, "JSON Compat")
+  expect_equal(result[["sub"]], "user-json-compat")
+  expect_equal(result[["name"]], "JSON Compat")
 })
 
 test_that("OAuthProvider validator: userinfo_signed_jwt_required without userinfo_required fails", {
@@ -1368,7 +1384,7 @@ test_that("signed JWT required: uses provider allowed_algs for verification", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1379,8 +1395,8 @@ test_that("signed JWT required: uses provider allowed_algs for verification", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-es256")
-  expect_equal(result$name, "ES256 User")
+  expect_equal(result[["sub"]], "user-es256")
+  expect_equal(result[["name"]], "ES256 User")
 })
 
 # ── Attacker / unhappy path tests ───────────────────────────────────────────
@@ -1421,7 +1437,7 @@ test_that("signed JWT required: wrong signature (attacker key) is rejected + aud
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1481,7 +1497,7 @@ test_that("signed JWT required: tampered payload is rejected", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(tampered_jwt)
@@ -1528,7 +1544,7 @@ test_that("signed JWT required: stripped signature (header.payload. with empty s
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(stripped_jwt)
@@ -1571,7 +1587,7 @@ test_that("signed JWT required: wrong iss claim is rejected even with valid sign
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1612,7 +1628,7 @@ test_that("signed JWT required: wrong aud claim is rejected even with valid sign
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1643,7 +1659,7 @@ test_that("alg=none is always rejected even WITHOUT required flag (fix for fail-
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1679,7 +1695,7 @@ test_that("content-type downgrade: attacker sends JSON when signed JWT is requir
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json; charset=utf-8"),
         body = charToRaw(jsonlite::toJSON(
@@ -1697,7 +1713,11 @@ test_that("content-type downgrade: attacker sends JSON when signed JWT is requir
     regexp = "not application/jwt.*signed JWT is required"
   )
 
-  types <- vapply(events, function(e) e$type %||% NA_character_, character(1))
+  types <- vapply(
+    events,
+    function(e) e[["type"]] %||% NA_character_,
+    character(1)
+  )
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
@@ -1718,7 +1738,7 @@ test_that("content-type downgrade: no content-type header when signed JWT is req
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list(),
         body = charToRaw(jsonlite::toJSON(
@@ -1749,7 +1769,7 @@ test_that("alg=none with unsafe opt-in allows unverified JWT (testing only)", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1772,8 +1792,8 @@ test_that("alg=none with unsafe opt-in allows unverified JWT (testing only)", {
   on.exit(options(shinyOAuth.allow_unsigned_userinfo_jwt = old_opt), add = TRUE)
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "test-unsafe")
-  expect_equal(result$name, "Unsafe Opt-in User")
+  expect_equal(result[["sub"]], "test-unsafe")
+  expect_equal(result[["name"]], "Unsafe Opt-in User")
 })
 
 test_that("application/jwt with missing issuer must fail by default", {
@@ -1788,7 +1808,7 @@ test_that("application/jwt with missing issuer must fail by default", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -1816,7 +1836,7 @@ test_that("application/jwt with HS256 algorithm must fail (non-asymmetric)", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)

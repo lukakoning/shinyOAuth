@@ -24,12 +24,18 @@ test_that("resource_req builds request metadata without network", {
   )
 
   expect_s3_class(req, "httr2_request")
-  expect_equal(req$method, "POST")
-  expect_equal(req$url, "https://example.com/base?a=1")
+  expect_equal(req[["method"]], "POST")
+  expect_equal(req[["url"]], "https://example.com/base?a=1")
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-  expect_equal(dry$headers$authorization, "Bearer tok")
-  expect_equal(dry$headers$`x-test`, "1")
+  expect_equal(
+    dry[["headers"]][["authorization"]],
+    "Bearer tok"
+  )
+  expect_equal(
+    dry[["headers"]][["x-test"]],
+    "1"
+  )
 })
 
 test_that("resource_req builds authorized request from string", {
@@ -61,10 +67,10 @@ test_that("resource_req builds authorized request from string", {
   resp <- httr2::req_perform(req)
   expect_false(httr2::resp_is_error(resp))
   j <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  expect_identical(tolower(j$method), "get")
-  expect_identical(j$path, "/v1/items")
-  expect_true(grepl("^Bearer ", j$auth, ignore.case = TRUE))
-  expect_true(nzchar(j$ua))
+  expect_identical(tolower(j[["method"]]), "get")
+  expect_identical(j[["path"]], "/v1/items")
+  expect_true(grepl("^Bearer ", j[["auth"]], ignore.case = TRUE))
+  expect_true(nzchar(j[["ua"]]))
 })
 
 test_that("resource_req accepts OAuthToken and sets headers/query/method", {
@@ -100,10 +106,10 @@ test_that("resource_req accepts OAuthToken and sets headers/query/method", {
   resp <- httr2::req_perform(req)
   expect_false(httr2::resp_is_error(resp))
   j <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  expect_identical(tolower(j$method), "post")
-  expect_identical(j$path, "/resource")
-  expect_true(grepl("^Bearer ", j$auth, ignore.case = TRUE))
-  expect_identical(j$xt, "1")
+  expect_identical(tolower(j[["method"]]), "post")
+  expect_identical(j[["path"]], "/resource")
+  expect_true(grepl("^Bearer ", j[["auth"]], ignore.case = TRUE))
+  expect_identical(j[["xt"]], "1")
 })
 
 test_that("client_bearer_req is a deprecated alias for resource_req", {
@@ -133,7 +139,7 @@ test_that("client_bearer_req is a deprecated alias for resource_req", {
     fixed = TRUE
   )
   expect_s3_class(req, "httr2_request")
-  expect_equal(req$url, "https://example.com/base?a=1")
+  expect_equal(req[["url"]], "https://example.com/base?a=1")
 })
 
 test_that("custom Authorization header is ignored and warned", {
@@ -149,8 +155,14 @@ test_that("custom Authorization header is ignored and warned", {
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
 
-  expect_equal(dry$headers$authorization, "Bearer tok")
-  expect_equal(dry$headers$`x-other`, "ok")
+  expect_equal(
+    dry[["headers"]][["authorization"]],
+    "Bearer tok"
+  )
+  expect_equal(
+    dry[["headers"]][["x-other"]],
+    "ok"
+  )
 })
 
 test_that("resource_req rejects non-scalar token_type overrides", {
@@ -171,7 +183,7 @@ test_that("resource_req disables redirects by default", {
     url = "https://example.com/resource"
   )
   # Check that followlocation is set to FALSE via req_no_redirect()
-  expect_false(req$options$followlocation)
+  expect_false(req[["options"]][["followlocation"]])
 })
 
 test_that("resource_req allows redirects when follow_redirect = TRUE", {
@@ -181,7 +193,7 @@ test_that("resource_req allows redirects when follow_redirect = TRUE", {
     follow_redirect = TRUE
   )
   # When follow_redirect is TRUE, followlocation should not be set to FALSE
-  expect_null(req$options$followlocation)
+  expect_null(req[["options"]][["followlocation"]])
 })
 
 test_that("resource_req does not follow redirects by default (token leak prevention)", {
@@ -244,7 +256,7 @@ test_that("resource_req follows redirects when follow_redirect = TRUE", {
   resp <- httr2::req_perform(req)
   expect_equal(httr2::resp_status(resp), 200L)
   j <- httr2::resp_body_json(resp)
-  expect_true(j$reached)
+  expect_true(j[["reached"]])
 })
 
 test_that("perform_resource_req infers idempotency from method", {
@@ -256,7 +268,7 @@ test_that("perform_resource_req infers idempotency from method", {
       req_with_retry = function(req, idempotent = TRUE) {
         seen$idempotent <- idempotent
         httr2::response(
-          url = as.character(req$url),
+          url = as.character(req[["url"]]),
           status = 200,
           headers = list("content-type" = "application/json"),
           body = charToRaw("{}")
@@ -278,12 +290,18 @@ test_that("perform_resource_req infers idempotency from method", {
     list(resp = resp, idempotent = seen$idempotent)
   }
 
-  expect_s3_class(run_case()$resp, "httr2_response")
-  expect_identical(run_case()$idempotent, TRUE)
-  expect_identical(run_case(method = "POST")$idempotent, FALSE)
-  expect_identical(run_case(method = "DELETE")$idempotent, TRUE)
+  expect_s3_class(run_case()[["resp"]], "httr2_response")
+  expect_identical(run_case()[["idempotent"]], TRUE)
   expect_identical(
-    run_case(method = "POST", idempotent = TRUE)$idempotent,
+    run_case(method = "POST")[["idempotent"]],
+    FALSE
+  )
+  expect_identical(
+    run_case(method = "DELETE")[["idempotent"]],
+    TRUE
+  )
+  expect_identical(
+    run_case(method = "POST", idempotent = TRUE)[["idempotent"]],
     TRUE
   )
 
@@ -311,13 +329,13 @@ test_that("perform_resource_req accepts prebuilt httr2 requests", {
     req_with_retry = function(req, idempotent = TRUE) {
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       seen$idempotent <- idempotent
-      seen$method <- req$method
-      seen$url <- as.character(req$url)
-      seen$authorization <- dry$headers$authorization
-      seen$x_from_req <- dry$headers$`x-from-req`
-      seen$x_extra <- dry$headers$`x-extra`
+      seen$method <- req[["method"]]
+      seen$url <- as.character(req[["url"]])
+      seen$authorization <- dry[["headers"]][["authorization"]]
+      seen$x_from_req <- dry[["headers"]][["x-from-req"]]
+      seen$x_extra <- dry[["headers"]][["x-extra"]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -361,12 +379,12 @@ test_that("perform_resource_req preserves original request body query and option
     req_with_retry = function(req, idempotent = TRUE) {
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       seen$idempotent <- idempotent
-      seen$url <- as.character(req$url)
-      seen$body <- rawToChar(dry$body)
-      seen$content_type <- dry$headers$`content-type`
-      seen$low_speed_time <- req$options$low_speed_time
+      seen$url <- as.character(req[["url"]])
+      seen$body <- rawToChar(dry[["body"]])
+      seen$content_type <- dry[["headers"]][["content-type"]]
+      seen$low_speed_time <- req[["options"]][["low_speed_time"]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -395,7 +413,7 @@ test_that("perform_resource_req preserves original request body query and option
   expect_match(seen$url, "[?&]from_req=1")
   expect_match(seen$url, "[?&]limit=5")
   expect_identical(
-    jsonlite::fromJSON(seen$body, simplifyVector = TRUE)$name,
+    jsonlite::fromJSON(seen$body, simplifyVector = TRUE)[["name"]],
     "example"
   )
   expect_identical(seen$content_type, "application/json")
@@ -408,7 +426,7 @@ test_that("perform_client_bearer_req is a deprecated alias for perform_resource_
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -467,9 +485,9 @@ test_that("perform_resource_req uses DPoP retry helper for DPoP tokens", {
       seen$access_token <- access_token
       seen$idempotent <- idempotent
       seen$nonce <- nonce
-      seen$authorization <- dry$headers$authorization
+      seen$authorization <- dry[["headers"]][["authorization"]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -523,14 +541,14 @@ test_that("perform_resource_req accepts prebuilt DPoP httr2 requests", {
       seen$access_token <- access_token
       seen$idempotent <- idempotent
       seen$nonce <- nonce
-      seen$authorization <- dry$headers$authorization
-      seen$has_dpop <- is.character(dry$headers$dpop) &&
-        nzchar(dry$headers$dpop)
-      seen$method <- req$method
-      seen$url <- as.character(req$url)
-      seen$x_from_req <- dry$headers$`x-from-req`
+      seen$authorization <- dry[["headers"]][["authorization"]]
+      seen$has_dpop <- is.character(dry[["headers"]][["dpop"]]) &&
+        nzchar(dry[["headers"]][["dpop"]])
+      seen$method <- req[["method"]]
+      seen$url <- as.character(req[["url"]])
+      seen$x_from_req <- dry[["headers"]][["x-from-req"]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -586,19 +604,23 @@ test_that("perform_resource_req preserves original DPoP request body query and o
       nonce = NULL
     ) {
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      proof_parts <- strsplit(dry$headers$dpop, ".", fixed = TRUE)[[1]]
+      proof_parts <- strsplit(
+        dry[["headers"]][["dpop"]],
+        ".",
+        fixed = TRUE
+      )[[1]]
       payload <- jsonlite::fromJSON(
         shinyOAuth:::base64url_decode(proof_parts[[2]])
       )
       seen$idempotent <- idempotent
-      seen$url <- as.character(req$url)
-      seen$body_name <- req$body$data$name
-      seen$content_type <- dry$headers$`content-type`
-      seen$low_speed_time <- req$options$low_speed_time
-      seen$htu <- payload$htu
-      seen$htm <- payload$htm
+      seen$url <- as.character(req[["url"]])
+      seen$body_name <- req[["body"]][["data"]][["name"]]
+      seen$content_type <- dry[["headers"]][["content-type"]]
+      seen$low_speed_time <- req[["options"]][["low_speed_time"]]
+      seen$htu <- payload[["htu"]]
+      seen$htm <- payload[["htm"]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")

@@ -85,7 +85,7 @@ testthat::test_that("Keycloak currently accepts a signed request object with a w
   token <- complete_jar_callback(client, login, browser_token)
 
   testthat::expect_true(S7::S7_inherits(token, shinyOAuth::OAuthToken))
-  testthat::expect_identical(token@userinfo$preferred_username, "alice")
+  testthat::expect_identical(token@userinfo[["preferred_username"]], "alice")
 })
 
 testthat::test_that("Keycloak currently accepts a signed request object with a wrong iss claim", {
@@ -112,7 +112,7 @@ testthat::test_that("Keycloak currently accepts a signed request object with a w
   token <- complete_jar_callback(client, login, browser_token)
 
   testthat::expect_true(S7::S7_inherits(token, shinyOAuth::OAuthToken))
-  testthat::expect_identical(token@userinfo$preferred_username, "alice")
+  testthat::expect_identical(token@userinfo[["preferred_username"]], "alice")
 })
 
 testthat::test_that("Keycloak currently accepts a signed request object with an expired exp claim", {
@@ -141,7 +141,7 @@ testthat::test_that("Keycloak currently accepts a signed request object with an 
   token <- complete_jar_callback(client, login, browser_token)
 
   testthat::expect_true(S7::S7_inherits(token, shinyOAuth::OAuthToken))
-  testthat::expect_identical(token@userinfo$preferred_username, "alice")
+  testthat::expect_identical(token@userinfo[["preferred_username"]], "alice")
 })
 
 testthat::test_that("Keycloak replays the same signed request object but shinyOAuth rejects the second callback", {
@@ -173,7 +173,10 @@ testthat::test_that("Keycloak replays the same signed request object but shinyOA
 
   first_token <- complete_jar_callback(client, first_login, browser_token)
   testthat::expect_true(S7::S7_inherits(first_token, shinyOAuth::OAuthToken))
-  testthat::expect_identical(first_token@userinfo$preferred_username, "alice")
+  testthat::expect_identical(
+    first_token@userinfo[["preferred_username"]],
+    "alice"
+  )
 
   testthat::expect_error(
     complete_jar_callback(client, second_login, browser_token),

@@ -77,14 +77,14 @@ parse_token_response <- function(resp) {
 #' @noRd
 parse_token_response_json <- function(body, resp = NULL) {
   parsed <- try_parse_token_response_json(body, resp = resp)
-  if (!isTRUE(parsed$ok)) {
+  if (!isTRUE(parsed[["ok"]])) {
     err_parse(c("x" = "Failed to parse JSON token response"))
   }
-  if (!isTRUE(parsed$is_object)) {
+  if (!isTRUE(parsed[["is_object"]])) {
     err_parse("Token response JSON must be a JSON object")
   }
 
-  parsed$value
+  parsed[["value"]]
 }
 
 #' Try to parse a token response as JSON
@@ -172,11 +172,11 @@ parse_token_response_form <- function(body) {
 #' @noRd
 parse_lenient_token_response <- function(body) {
   parsed_json <- try_parse_token_response_json(body)
-  if (isTRUE(parsed_json$ok)) {
-    if (!isTRUE(parsed_json$is_object)) {
+  if (isTRUE(parsed_json[["ok"]])) {
+    if (!isTRUE(parsed_json[["is_object"]])) {
       err_parse("Token response JSON must be a JSON object")
     }
-    return(parsed_json$value)
+    return(parsed_json[["value"]])
   }
 
   parse_token_response_form(body)

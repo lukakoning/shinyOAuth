@@ -80,7 +80,11 @@ testthat::test_that("audit events from async worker include shiny session token"
       seen_tokens <- vapply(
         audit_events,
         function(e) {
-          (e$shiny_session %||% list())$token %||% NA_character_
+          (e[["shiny_session"]] %||% list())[[
+            "token",
+            exact = TRUE
+          ]] %||%
+            NA_character_
         },
         character(1)
       )

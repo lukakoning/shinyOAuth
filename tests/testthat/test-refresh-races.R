@@ -209,12 +209,15 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
 
       # Key assertions:
       # 1. Refresh was attempted at least once
-      testthat::expect_true(result$calls >= 1)
+      testthat::expect_true(result[["calls"]] >= 1)
       # 2. Token was successfully refreshed (not cleared by expiry watcher)
-      testthat::expect_s3_class(result$token, "S7_object")
-      testthat::expect_true(startsWith(result$token@access_token, "refreshed-"))
+      testthat::expect_s3_class(result[["token"]], "S7_object")
+      testthat::expect_true(startsWith(
+        result[["token"]]@access_token,
+        "refreshed-"
+      ))
       # 3. No token_expired error was set (expiry watcher deferred)
-      testthat::expect_null(result$error)
+      testthat::expect_null(result[["error"]])
     }
   )
 })

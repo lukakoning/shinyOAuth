@@ -1,13 +1,13 @@
 request_body_text <- function(req) {
-  body <- req$body %||% NULL
+  body <- req[["body"]] %||% NULL
   if (is.null(body)) {
     return(NA_character_)
   }
-  if (identical(body$type, "raw")) {
-    return(rawToChar(body$data))
+  if (identical(body[["type"]], "raw")) {
+    return(rawToChar(body[["data"]]))
   }
-  if (identical(body$type, "form")) {
-    data <- body$data %||% list()
+  if (identical(body[["type"]], "form")) {
+    data <- body[["data"]] %||% list()
     if (!length(data)) {
       return("")
     }
@@ -92,7 +92,7 @@ test_that("prepare_call pushes authorization params and redirects with request_u
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -143,7 +143,7 @@ test_that("PAR pushes form_post response_mode in authorization request body", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -173,7 +173,7 @@ test_that("PAR minimal front-channel mode omits duplicated OIDC params", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -209,7 +209,7 @@ test_that("PAR requests keep nonce-challenge retries enabled", {
       retry_args <- list(...)
       retry_idempotent <<- retry_args$idempotent %||% NULL
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -246,7 +246,7 @@ test_that("PAR attaches DPoP proof and retries once on nonce challenge", {
 
       if (retry_count == 1L) {
         return(httr2::response(
-          url = as.character(req$url),
+          url = as.character(req[["url"]]),
           status = 400,
           headers = list(
             "content-type" = "application/json",
@@ -257,7 +257,7 @@ test_that("PAR attaches DPoP proof and retries once on nonce challenge", {
       }
 
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -295,7 +295,7 @@ test_that("PAR HTTP failures surface as PAR-specific errors", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 400,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -319,7 +319,7 @@ test_that("PAR rejects redirect responses", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 302,
         headers = list(location = "https://evil.example.com/par"),
         body = charToRaw("")
@@ -348,7 +348,7 @@ test_that("prepare_call preserves repeated resource indicators in PAR body", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -381,7 +381,7 @@ test_that("prepare_call forwards extra auth params into the PAR body", {
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -412,7 +412,7 @@ test_that("PAR response requires request_uri and expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"expires_in":90}')
@@ -430,7 +430,7 @@ test_that("PAR response requires request_uri and expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -454,7 +454,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -475,7 +475,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "text/plain"),
         body = charToRaw(
@@ -496,7 +496,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -517,7 +517,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -538,7 +538,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -652,7 +652,7 @@ test_that("OIDC discovery rejects inconsistent required PAR metadata", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(disc_body)
@@ -689,7 +689,7 @@ test_that("OIDC discovery applies the regular non-https host policy to PAR", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(disc_body)
@@ -734,7 +734,7 @@ test_that("OIDC discovery rejects PAR when the regular non-https host policy for
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(disc_body)
@@ -771,7 +771,7 @@ test_that("client_secret_jwt PAR request sends client assertion and omits secret
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -817,11 +817,11 @@ test_that("client_secret_jwt PAR retries rebuild client assertions", {
         decode = TRUE
       )
       payload <- shinyOAuth:::parse_jwt_payload(assertion)
-      seen_jtis <<- c(seen_jtis, payload$jti %||% NA_character_)
+      seen_jtis <<- c(seen_jtis, payload[["jti"]] %||% NA_character_)
 
       if (length(seen_jtis) == 1L) {
         return(httr2::response(
-          url = as.character(req$url),
+          url = as.character(req[["url"]]),
           status = 500,
           headers = list("content-type" = "application/json"),
           body = charToRaw("{}")
@@ -829,7 +829,7 @@ test_that("client_secret_jwt PAR retries rebuild client assertions", {
       }
 
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -865,7 +865,7 @@ test_that("PAR body auth omits client_secret for public clients and keeps extra 
       body_text <<- request_body_text(req)
       seen_header <<- req$headers$`X-Test-Par` %||% NULL
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -897,7 +897,7 @@ test_that("PAR header auth uses Basic auth and keeps client_secret out of body",
       body_text <<- request_body_text(req)
       auth_header_names <<- names(as.list(req[["headers"]]))
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -932,7 +932,7 @@ test_that("PAR JWT client assertions target par_url by default and allow audienc
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -966,7 +966,7 @@ test_that("PAR JWT client assertions target par_url by default and allow audienc
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1003,7 +1003,7 @@ test_that("PAR JWT client assertions prefer issuer when available", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1044,7 +1044,7 @@ test_that("OIDC discovery wires PAR metadata into provider", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(disc_body)

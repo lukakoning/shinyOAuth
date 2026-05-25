@@ -2229,12 +2229,12 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
     body = "response=a.b.c.d.e"
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     "OAuth form_post callback could not be processed."
   )
-  expect_false("Location" %in% names(resp$headers))
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
 })
 
@@ -2503,15 +2503,15 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
     )
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     paste(
       "OAuth form_post JARM callback must not contain both response and",
       "direct OAuth callback parameters."
     )
   )
-  expect_false("Location" %in% names(resp$headers))
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
 
   reject_events <- Filter(
@@ -2543,15 +2543,15 @@ test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.j
     )
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     paste(
       "OAuth form_post JARM callback must include the response",
       "parameter; direct OAuth callback parameters are not accepted."
     )
   )
-  expect_false("Location" %in% names(resp$headers))
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
 })
 
@@ -2593,15 +2593,15 @@ test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt
         body = paste0("response_alias=", response)
       ))
 
-      expect_identical(resp$status, 400L)
+      expect_identical(resp[["status"]], 400L)
       expect_identical(
-        resp$content,
+        resp[["content"]],
         paste(
           "OAuth form_post JARM callback must include the response",
           "parameter; direct OAuth callback parameters are not accepted."
         )
       )
-      expect_false("Location" %in% names(resp$headers))
+      expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store$keys()), keys_before)
     }
   )
@@ -2645,18 +2645,18 @@ test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies
     }
   )
 
-  expect_identical(resp$status, 303L)
+  expect_identical(resp[["status"]], 303L)
   handle <- parse_query_param(
-    resp$headers$Location,
+    resp[["headers"]]$Location,
     "shinyOAuth_form_post",
     decode = TRUE
   )
   payload <- shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)
 
-  expect_identical(payload$type, "response")
-  expect_identical(payload$iss, client@provider@issuer)
+  expect_identical(payload[["type"]], "response")
+  expect_identical(payload[["iss"]], client@provider@issuer)
   expect_identical(
-    payload$normalized_response$iss,
+    payload[["normalized_response"]]$iss,
     client@provider@issuer
   )
 })
@@ -2706,12 +2706,12 @@ test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodi
     }
   )
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     "OAuth form_post callback could not be processed."
   )
-  expect_false("Location" %in% names(resp$headers))
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
 })
 
@@ -2745,12 +2745,12 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
         )
       ))
 
-      expect_identical(resp$status, 400L)
+      expect_identical(resp[["status"]], 400L)
       expect_identical(
-        resp$content,
+        resp[["content"]],
         "OAuth form_post callback could not be processed."
       )
-      expect_false("Location" %in% names(resp$headers))
+      expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store$keys()), keys_before)
     }
   )
@@ -2789,9 +2789,9 @@ test_that("oauth_form_post_ui emits one audit event for invalid inner-state form
         )
       ))
 
-      expect_identical(resp$status, 400L)
+      expect_identical(resp[["status"]], 400L)
       expect_identical(
-        resp$content,
+        resp[["content"]],
         "OAuth form_post callback could not be processed."
       )
     }
@@ -2840,12 +2840,12 @@ test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
         )
       ))
 
-      expect_identical(resp$status, 400L)
+      expect_identical(resp[["status"]], 400L)
       expect_identical(
-        resp$content,
+        resp[["content"]],
         "OAuth form_post callback could not be processed."
       )
-      expect_false("Location" %in% names(resp$headers))
+      expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store$keys()), keys_before)
     }
   )

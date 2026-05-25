@@ -101,7 +101,7 @@ testthat::test_that("Code replay: Keycloak rejects already-exchanged code at tok
       body <- httr2::resp_body_json(direct_resp)
       testthat::expect_true(grepl(
         "invalid_grant|Code not valid",
-        body$error %||% body$error_description %||% "",
+        body[["error"]] %||% body[["error_description"]] %||% "",
         ignore.case = TRUE
       ))
     }

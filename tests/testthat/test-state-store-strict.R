@@ -27,7 +27,7 @@ test_that("state_store_get_remove errors on missing entry and audits lookup fail
   )
 
   # Assert an audit_state_store_lookup_failed event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(events, function(e) as.character(e[["type"]]), character(1))
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
@@ -77,7 +77,7 @@ test_that("state_store_get_remove errors when atomic take fails and audits failu
   )
 
   # Assert an audit_state_store_lookup_failed event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(events, function(e) as.character(e[["type"]]), character(1))
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
@@ -149,7 +149,7 @@ test_that("state_store_get_remove errors on malformed stored value and audits lo
   )
 
   # Assert an audit_state_store_lookup_failed event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(events, function(e) as.character(e[["type"]]), character(1))
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
@@ -198,7 +198,7 @@ test_that("state_store_get_remove errors on missing required fields", {
   )
 
   # Assert an audit_state_store_lookup_failed event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(events, function(e) as.character(e[["type"]]), character(1))
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
 
@@ -383,6 +383,6 @@ test_that("state_store_get_remove errors on invalid browser_token value", {
   )
 
   # Assert an audit_state_store_lookup_failed event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(events, function(e) as.character(e[["type"]]), character(1))
   expect_true(any(grepl("^audit_state_store_lookup_failed$", types)))
 })
