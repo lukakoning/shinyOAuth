@@ -1439,6 +1439,15 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
   client <- make_jarm_test_client(response_mode = "query.jwt")
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
   browser_token <- valid_browser_token()
+  cleared <- list()
+  sess <- shiny::MockShinySession$new()
+  orig <- sess$sendCustomMessage
+  sess$sendCustomMessage <- function(type, message) {
+    if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+      cleared[[length(cleared) + 1L]] <<- message
+    }
+    orig(type, message)
+  }
 
   testthat::with_mocked_bindings(
     fetch_jwks = function(...) jwks,
@@ -1457,6 +1466,7 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
           auto_redirect = FALSE,
           indefinite_session = TRUE
         ),
+        session = sess,
         expr = {
           values$browser_token <- browser_token
           url <- values$build_auth_url()
@@ -1487,10 +1497,120 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
           expect_identical(values$error, "invalid_callback_query")
           expect_match(values$error_description %||% "", "must not be combined")
           expect_length(client@state_store$keys(), 1L)
+          expect_length(cleared, 1L)
+          expect_true(isTRUE(cleared[[1L]]$dropResponse))
         }
       )
     }
   )
+})
+
+test_that("oauth_module_server drops reserved response for oversized query JARM callbacks", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  oversized_response <- strrep("r", 30000)
+
+  for (mode in c("query.jwt", "jwt")) {
+    client <- make_jarm_test_client(response_mode = mode)
+    browser_token <- valid_browser_token()
+    cleared <- list()
+    sess <- shiny::MockShinySession$new()
+    orig <- sess$sendCustomMessage
+    sess$sendCustomMessage <- function(type, message) {
+      if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+        cleared[[length(cleared) + 1L]] <<- message
+      }
+      orig(type, message)
+    }
+
+    shiny::testServer(
+      app = oauth_module_server,
+      args = list(
+        id = "auth",
+        client = client,
+        auto_redirect = FALSE,
+        indefinite_session = TRUE
+      ),
+      session = sess,
+      expr = {
+        values$browser_token <- browser_token
+        values$build_auth_url()
+
+        expect_length(client@state_store$keys(), 1L)
+
+        values$.process_query(
+          paste0(
+            "?response=",
+            utils::URLencode(oversized_response, reserved = TRUE)
+          ),
+          current_path = "/"
+        )
+        session$flushReact()
+
+        expect_false(isTRUE(values$authenticated))
+        expect_identical(values$error, "invalid_callback_query")
+        expect_match(values$error_description %||% "", "query string")
+        expect_length(client@state_store$keys(), 1L)
+        expect_length(cleared, 1L)
+        expect_true(isTRUE(cleared[[1L]]$dropResponse))
+      }
+    )
+  }
+})
+
+test_that("oauth_module_server drops reserved response for duplicate query JARM response params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  duplicate_response_query <- paste0(
+    "?response=",
+    utils::URLencode("header.payload.signature", reserved = TRUE),
+    "&response=",
+    utils::URLencode("attack.payload.signature", reserved = TRUE)
+  )
+
+  for (mode in c("query.jwt", "jwt")) {
+    client <- make_jarm_test_client(response_mode = mode)
+    browser_token <- valid_browser_token()
+    cleared <- list()
+    sess <- shiny::MockShinySession$new()
+    orig <- sess$sendCustomMessage
+    sess$sendCustomMessage <- function(type, message) {
+      if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
+        cleared[[length(cleared) + 1L]] <<- message
+      }
+      orig(type, message)
+    }
+
+    shiny::testServer(
+      app = oauth_module_server,
+      args = list(
+        id = "auth",
+        client = client,
+        auto_redirect = FALSE,
+        indefinite_session = TRUE
+      ),
+      session = sess,
+      expr = {
+        values$browser_token <- browser_token
+        values$build_auth_url()
+
+        expect_length(client@state_store$keys(), 1L)
+
+        values$.process_query(duplicate_response_query, current_path = "/")
+        session$flushReact()
+
+        expect_false(isTRUE(values$authenticated))
+        expect_identical(values$error, "invalid_callback_query")
+        expect_match(
+          values$error_description %||% "",
+          "duplicate OAuth parameter: response"
+        )
+        expect_length(client@state_store$keys(), 1L)
+        expect_length(cleared, 1L)
+        expect_true(isTRUE(cleared[[1L]]$dropResponse))
+      }
+    )
+  }
 })
 
 test_that("oauth_module_server accepts matching outer iss with query.jwt callbacks", {
