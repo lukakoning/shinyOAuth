@@ -304,7 +304,10 @@ signed JWT Secured Authorization Responses (JARM). When omitted and the
 effective response mode is JARM, shinyOAuth defaults to \code{RS256}. This
 value is not sent dynamically on the authorization request; it must match
 the client metadata and provider behavior configured out-of-band for that
-client.}
+client. Current inbound support accepts \code{HS256}, \code{HS384}, \code{HS512},
+\code{RS256}, \code{RS384}, \code{RS512}, \code{ES256}, \code{ES384}, \code{ES512}, and \code{EdDSA}.
+RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512}) and unsecured \code{none} are not accepted
+for inbound JARM.}
 
 \item{authorization_encrypted_response_alg}{Optional expected JWE
 key-management algorithm for encrypted JARM responses. Current inbound

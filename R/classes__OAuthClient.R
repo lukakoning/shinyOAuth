@@ -147,7 +147,10 @@
 #'   effective response mode is JARM, shinyOAuth defaults to `RS256`. This
 #'   value is not sent dynamically on the authorization request; it must match
 #'   the client metadata and provider behavior configured out-of-band for that
-#'   client.
+#'   client. Current inbound support accepts `HS256`, `HS384`, `HS512`,
+#'   `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`.
+#'   RSA-PSS (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted
+#'   for inbound JARM.
 #' @param authorization_encrypted_response_alg Optional expected JWE
 #'   key-management algorithm for encrypted JARM responses. Current inbound
 #'   support is limited to `RSA-OAEP`. Like
