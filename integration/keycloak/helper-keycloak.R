@@ -1164,12 +1164,14 @@ make_provider_for_issuer <- function(
   token_auth_style = "body",
   allowed_token_types = c("Bearer"),
   use_par = FALSE,
+  tolerate_duplicate_top_level_jarm_iss = TRUE,
   ...
 ) {
   prov <- shinyOAuth::oauth_provider_oidc_discover(
     issuer = issuer,
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
+    tolerate_duplicate_top_level_jarm_iss = tolerate_duplicate_top_level_jarm_iss,
     ...
   )
   if (!isTRUE(use_par)) {
@@ -1182,6 +1184,7 @@ make_provider <- function(
   token_auth_style = "body",
   allowed_token_types = c("Bearer"),
   use_par = FALSE,
+  tolerate_duplicate_top_level_jarm_iss = TRUE,
   ...
 ) {
   make_provider_for_issuer(
@@ -1189,6 +1192,7 @@ make_provider <- function(
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
     use_par = use_par,
+    tolerate_duplicate_top_level_jarm_iss = tolerate_duplicate_top_level_jarm_iss,
     ...
   )
 }
