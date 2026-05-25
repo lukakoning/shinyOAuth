@@ -167,29 +167,14 @@ fetch_authorization_server_metadata <- function(issuer) {
       next
     }
 
-    size_check <- try(
-      check_resp_body_size(resp, context = "jwks_discovery"),
-      silent = TRUE
-    )
-    if (inherits(size_check, "try-error")) {
-      msg <- try(conditionMessage(size_check), silent = TRUE)
-      if (!inherits(msg, "try-error")) {
-        last_error_message <- as.character(msg)
-      }
-      next
-    }
-
-    disc <- try(.discover_parse_json(resp), silent = TRUE)
-    if (inherits(disc, "try-error")) {
-      msg <- try(conditionMessage(disc), silent = TRUE)
-      if (!inherits(msg, "try-error")) {
-        last_error_message <- as.character(msg)
-      }
-      next
-    }
+    # Once a metadata endpoint returns 2xx, fail closed on body/JSON
+    # validation errors instead of falling through to another representation.
+    check_resp_body_size(resp, context = "jwks_discovery")
+    disc <- .discover_parse_json(resp)
     if (!is.list(disc)) {
-      last_error_message <- "Authorization server metadata JSON did not parse to an object"
-      next
+      err_parse(c(
+        "x" = "Authorization server metadata JSON did not parse to an object"
+      ))
     }
 
     return(list(

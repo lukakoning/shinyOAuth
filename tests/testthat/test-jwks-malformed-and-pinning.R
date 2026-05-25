@@ -71,6 +71,59 @@ test_that("fetch_jwks rejects duplicate discovery jwks_uri members", {
   )
 })
 
+test_that("fetch_jwks does not fall through after malformed metadata", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration/issuer1", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    base <- paste0("http://", host, "/issuer1")
+    res$set_status(200)$set_type("application/json")$send(
+      paste0(
+        '{"issuer":"',
+        base,
+        '","jwks_uri":"',
+        base,
+        '/jwks"',
+        ',"jwks_uri":"',
+        base,
+        '/alt-jwks"}'
+      )
+    )
+  })
+  app$get("/issuer1/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    base <- paste0("http://", host, "/issuer1")
+    res$send_json(
+      object = list(
+        issuer = base,
+        jwks_uri = paste0(base, "/jwks")
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/issuer1/jwks", function(req, res) {
+    res$send_json(
+      object = list(keys = list()),
+      auto_unbox = TRUE
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+  issuer <- paste0(srv$url(), "/issuer1")
+
+  expect_error(
+    shinyOAuth:::fetch_jwks(
+      issuer = issuer,
+      jwks_cache = cachem::cache_mem(max_age = 3600),
+      pins = NULL,
+      pin_mode = "any"
+    ),
+    class = "shinyOAuth_parse_error",
+    regexp = "duplicate member name: jwks_uri"
+  )
+})
+
 test_that("fetch_jwks rejects duplicate JWKS top-level members", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
