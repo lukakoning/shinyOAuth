@@ -942,6 +942,7 @@ oauth_module_server <- function(
         path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path
       )
       values$browser_token <- NULL
+      .clear_query_jarm_pending()
       # Reset redirect guard after a successful round-trip so future
       # logins/reauths that need to reissue the cookie won't stall.
       values$auto_redirected <- FALSE
@@ -959,6 +960,106 @@ oauth_module_server <- function(
         return(TRUE)
       }
       return(FALSE)
+    }
+
+    # Internal helpers: track whether a query-JARM callback is outstanding
+    # across the provider redirect round-trip. We persist this marker in the
+    # state store so malformed query `response` values can still be treated as
+    # callback input after the app reloads on the callback URL.
+    .query_jarm_pending_key <- "queryjarmpending"
+
+    .query_jarm_client_configured <- function() {
+      configured_transport <- resolve_jarm_callback_transport(client)
+      identical(configured_transport[["transport"]] %||% NULL, "query")
+    }
+
+    .query_jarm_pending_count <- function() {
+      if (!isTRUE(.query_jarm_client_configured())) {
+        return(0L)
+      }
+
+      stored <- tryCatch(
+        client@state_store$get(.query_jarm_pending_key, missing = NULL),
+        error = function(...) NULL
+      )
+      count <- tryCatch(stored[["count"]] %||% stored, error = function(...) {
+        stored
+      })
+      if (!is.numeric(count) || length(count) != 1L || is.na(count)) {
+        return(0L)
+      }
+
+      as.integer(max(0, floor(as.numeric(count))))
+    }
+
+    .persist_query_jarm_pending_count <- function(count) {
+      if (!isTRUE(.query_jarm_client_configured())) {
+        return(invisible(0L))
+      }
+
+      normalized_count <- suppressWarnings(as.integer(count))
+      if (is.na(normalized_count) || normalized_count <= 0L) {
+        .clear_query_jarm_pending()
+        return(invisible(0L))
+      }
+
+      tryCatch(
+        {
+          client@state_store$set(
+            .query_jarm_pending_key,
+            list(count = normalized_count)
+          )
+        },
+        error = function(e) {
+          abort_pkg(
+            paste(
+              "Failed to persist pending query JARM marker:",
+              conditionMessage(e)
+            ),
+            class = c("shinyOAuth_state_error", "shinyOAuth_error"),
+            call = rlang::current_env()
+          )
+        }
+      )
+
+      invisible(normalized_count)
+    }
+
+    .clear_query_jarm_pending <- function() {
+      if (isTRUE(.query_jarm_client_configured())) {
+        try(
+          client@state_store$remove(.query_jarm_pending_key),
+          silent = TRUE
+        )
+      }
+
+      invisible(NULL)
+    }
+
+    .increment_query_jarm_pending <- function() {
+      .persist_query_jarm_pending_count(.query_jarm_pending_count() + 1L)
+    }
+
+    .consume_query_jarm_pending <- function() {
+      if (!isTRUE(.query_jarm_client_configured())) {
+        return(invisible(0L))
+      }
+
+      current <- .query_jarm_pending_count()
+      if (current <= 1L) {
+        .clear_query_jarm_pending()
+        return(invisible(0L))
+      }
+
+      try(
+        client@state_store$set(
+          .query_jarm_pending_key,
+          list(count = current - 1L)
+        ),
+        silent = TRUE
+      )
+
+      invisible(current - 1L)
     }
 
     ## 2.5 Authentication state ------------------------------------------------
@@ -1182,24 +1283,32 @@ oauth_module_server <- function(
 
       # Build the auth URL (and set module errors on failure)
       tryCatch(
-        prepare_call(
-          client,
-          browser_token = values$browser_token,
-          request_uri_publisher = function(
-            request_object,
-            request_handle_id,
-            expires_at,
-            oauth_client
-          ) {
-            publish_shiny_request_object(
-              session = session,
-              request_object = request_object,
-              request_handle_id = request_handle_id,
-              expires_at = expires_at,
-              base_url = request_uri_base_url
-            )
+        {
+          auth_url <- prepare_call(
+            client,
+            browser_token = values$browser_token,
+            request_uri_publisher = function(
+              request_object,
+              request_handle_id,
+              expires_at,
+              oauth_client
+            ) {
+              publish_shiny_request_object(
+                session = session,
+                request_object = request_object,
+                request_handle_id = request_handle_id,
+                expires_at = expires_at,
+                base_url = request_uri_base_url
+              )
+            }
+          )
+
+          if (is_valid_string(auth_url)) {
+            .increment_query_jarm_pending()
           }
-        ),
+
+          auth_url
+        },
         error = function(e) {
           .set_error("auth_url_error", e, phase = "build_auth_url")
           NA_character_
@@ -1433,8 +1542,13 @@ oauth_module_server <- function(
     .reject_callback_query <- function(
       description,
       reason = NULL,
-      drop_response = FALSE
+      drop_response = FALSE,
+      consume_query_jarm_pending = FALSE
     ) {
+      if (isTRUE(consume_query_jarm_pending)) {
+        .consume_query_jarm_pending()
+      }
+
       clear_oauth_module_callback_query(
         session,
         tab_title_replacement,
@@ -1908,17 +2022,25 @@ oauth_module_server <- function(
         logical(1)
       ))
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
-      # For query.jwt/jwt clients, only compact-looking response values are
-      # treated as JARM callbacks so ordinary app query params survive.
+      pending_query_jarm_flow <-
+        isTRUE(query_jarm_client) &&
+        .query_jarm_pending_count() > 0L
+      response_param_present <- is_valid_string(response)
+      # Compact-looking response values are still treated as JARM callbacks.
+      # When a query-JARM auth request is outstanding, any other non-empty
+      # `response` value is rejected instead of being treated as unrelated app
+      # input so malformed callback JWTs fail closed and get cleared from the
+      # browser URL.
       response_looks_like_jarm <-
         isTRUE(oauth_module_query_has_jarm_response(response))
       response_is_jarm <-
         isTRUE(query_jarm_client) &&
         isTRUE(response_looks_like_jarm)
       response_is_malformed_jarm <-
-        isTRUE(query_jarm_client) &&
+        isTRUE(pending_query_jarm_flow) &&
+        isTRUE(response_param_present) &&
         !isTRUE(response_is_jarm) &&
-        isTRUE(oauth_module_query_has_malformed_jarm_response(response))
+        isTRUE(query_jarm_client)
 
       if (
         isTRUE(response_looks_like_jarm) &&
@@ -1932,7 +2054,8 @@ oauth_module_server <- function(
             "must not receive compact query response parameters; resume from",
             "the validated form_post callback handle instead."
           ),
-          reason = "wrong_jarm_callback_transport"
+          reason = "wrong_jarm_callback_transport",
+          consume_query_jarm_pending = isTRUE(pending_query_jarm_flow)
         )
         return(invisible(NULL))
       }
@@ -1944,7 +2067,8 @@ oauth_module_server <- function(
               "JARM response must not be combined with direct OAuth callback",
               "parameters"
             ),
-            reason = "mixed_jarm_and_direct_callback_params"
+            reason = "mixed_jarm_and_direct_callback_params",
+            consume_query_jarm_pending = TRUE
           )
           return(invisible(NULL))
         }
@@ -1964,7 +2088,8 @@ oauth_module_server <- function(
             "validated."
           ),
           reason = "malformed_jarm_response",
-          drop_response = TRUE
+          drop_response = TRUE,
+          consume_query_jarm_pending = TRUE
         )
         return(invisible(NULL))
       }
@@ -1983,7 +2108,8 @@ oauth_module_server <- function(
               "accepted."
             )
           },
-          reason = "direct_callback_params_for_jarm_client"
+          reason = "direct_callback_params_for_jarm_client",
+          consume_query_jarm_pending = isTRUE(query_jarm_client)
         )
         return(invisible(NULL))
       }
@@ -2183,6 +2309,9 @@ oauth_module_server <- function(
       phase = "callback_response_validation"
     ) {
       transport <- match.arg(transport)
+      if (identical(transport, "query")) {
+        .consume_query_jarm_pending()
+      }
 
       normalized <- tryCatch(
         validate_jarm_response(

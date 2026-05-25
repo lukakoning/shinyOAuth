@@ -55,6 +55,18 @@ make_jarm_public_jwk <- function(key, kid = "sig-1", use = "sig") {
   jwk
 }
 
+visible_test_state_store_keys <- function(client) {
+  sort(setdiff(client@state_store$keys(), "queryjarmpending"))
+}
+
+clear_test_state_store <- function(client) {
+  for (key in client@state_store$keys()) {
+    client@state_store$remove(key)
+  }
+
+  invisible(NULL)
+}
+
 make_signed_jarm <- function(
   payload_list,
   key,
@@ -1299,7 +1311,7 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
             kid = "sig-1"
           )
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(visible_test_state_store_keys(client), 1L)
 
           values$.process_query(paste0(
             "?response=",
@@ -1311,7 +1323,7 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
           expect_false(isTRUE(values$authenticated))
           expect_identical(values$error, "invalid_callback_query")
           expect_match(values$error_description %||% "", "must not be combined")
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(visible_test_state_store_keys(client), 1L)
         }
       )
     }
@@ -1404,7 +1416,7 @@ test_that("oauth_module_server rejects direct query callbacks for query.jwt clie
           url <- values$build_auth_url()
           enc_state <- parse_query_param(url, "state")
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(visible_test_state_store_keys(client), 1L)
 
           values$.process_query(paste0(
             "?code=attack",
@@ -1614,7 +1626,7 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with compact 
   )
 })
 
-test_that("oauth_module_server ignores unrelated query response params for query.jwt clients", {
+test_that("oauth_module_server ignores unrelated query response params without pending query.jwt flow", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -1659,9 +1671,7 @@ test_that("oauth_module_server ignores unrelated query response params for query
         session = sess,
         expr = {
           values$browser_token <- browser_token
-          values$build_auth_url()
-
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store$keys(), 0L)
 
           values$.process_query("?response=keep-me")
           session$flushReact()
@@ -1669,7 +1679,7 @@ test_that("oauth_module_server ignores unrelated query response params for query
           expect_false(isTRUE(values$authenticated))
           expect_null(values$error)
           expect_null(values$error_description)
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store$keys(), 0L)
           expect_length(cleared, 0L)
         }
       )
@@ -1677,7 +1687,7 @@ test_that("oauth_module_server ignores unrelated query response params for query
   )
 })
 
-test_that("oauth_module_server ignores unrelated query response params for jwt alias clients", {
+test_that("oauth_module_server ignores unrelated query response params without pending jwt alias flow", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "jwt")
@@ -1722,9 +1732,7 @@ test_that("oauth_module_server ignores unrelated query response params for jwt a
         session = sess,
         expr = {
           values$browser_token <- browser_token
-          values$build_auth_url()
-
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store$keys(), 0L)
 
           values$.process_query("?response=keep-me")
           session$flushReact()
@@ -1732,7 +1740,7 @@ test_that("oauth_module_server ignores unrelated query response params for jwt a
           expect_false(isTRUE(values$authenticated))
           expect_null(values$error)
           expect_null(values$error_description)
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store$keys(), 0L)
           expect_length(cleared, 0L)
         }
       )
@@ -1743,10 +1751,27 @@ test_that("oauth_module_server ignores unrelated query response params for jwt a
 test_that("oauth_module_server rejects malformed query JARM response params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
-  malformed_response <- make_compact_jose_token(
-    header_json = '{"alg":"RS256","typ":"JWT"}',
-    payload_list = list(code = "ok"),
-    signature = ""
+  malformed_responses <- list(
+    list(
+      name = "plain text",
+      response = "keep-me"
+    ),
+    list(
+      name = "corrupted header",
+      response = "@@@.payload.sig"
+    ),
+    list(
+      name = "truncated token",
+      response = "header.payload"
+    ),
+    list(
+      name = "empty signature",
+      response = make_compact_jose_token(
+        header_json = '{"alg":"RS256","typ":"JWT"}',
+        payload_list = list(code = "ok"),
+        signature = ""
+      )
+    )
   )
 
   for (mode in c("query.jwt", "jwt")) {
@@ -1792,22 +1817,47 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
           session = sess,
           expr = {
             values$browser_token <- browser_token
-            values$build_auth_url()
 
-            expect_length(client@state_store$keys(), 1L)
+            for (case in malformed_responses) {
+              values$error <- NULL
+              values$error_description <- NULL
+              values$error_uri <- NULL
+              cleared <<- list()
 
-            values$.process_query(paste0(
-              "?response=",
-              utils::URLencode(malformed_response, reserved = TRUE)
-            ))
-            session$flushReact()
+              clear_test_state_store(client)
+              values$build_auth_url()
 
-            expect_false(isTRUE(values$authenticated))
-            expect_identical(values$error, "invalid_callback_query")
-            expect_match(values$error_description %||% "", "malformed")
-            expect_length(client@state_store$keys(), 1L)
-            expect_length(cleared, 1L)
-            expect_true(isTRUE(cleared[[1L]]$dropResponse))
+              expect_equal(
+                length(visible_test_state_store_keys(client)),
+                1L,
+                info = case$name
+              )
+
+              values$.process_query(paste0(
+                "?response=",
+                utils::URLencode(case$response, reserved = TRUE)
+              ))
+              session$flushReact()
+
+              expect_false(isTRUE(values$authenticated), info = case$name)
+              expect_identical(
+                values$error,
+                "invalid_callback_query",
+                info = case$name
+              )
+              expect_match(
+                values$error_description %||% "",
+                "malformed",
+                info = case$name
+              )
+              expect_equal(
+                length(visible_test_state_store_keys(client)),
+                1L,
+                info = case$name
+              )
+              expect_equal(length(cleared), 1L, info = case$name)
+              expect_true(isTRUE(cleared[[1L]]$dropResponse), info = case$name)
+            }
           }
         )
       }
@@ -2336,7 +2386,7 @@ test_that("oauth_module_server ignores prefixed direct code callbacks for query 
             values$browser_token <- browser_token
             url <- values$build_auth_url()
             enc_state <- parse_query_param(url, "state")
-            keys_before <- sort(client@state_store$keys())
+            keys_before <- visible_test_state_store_keys(client)
 
             expect_equal(length(keys_before), 1L, info = info)
 
@@ -2352,7 +2402,7 @@ test_that("oauth_module_server ignores prefixed direct code callbacks for query 
             expect_false(isTRUE(values$authenticated), info = info)
             expect_null(values$error, info = info)
             expect_identical(
-              sort(client@state_store$keys()),
+              visible_test_state_store_keys(client),
               keys_before,
               info = info
             )
@@ -2392,7 +2442,7 @@ test_that("oauth_module_server ignores prefixed error callbacks for query JARM c
         values$browser_token <- browser_token
         url <- values$build_auth_url()
         enc_state <- parse_query_param(url, "state")
-        keys_before <- sort(client@state_store$keys())
+        keys_before <- visible_test_state_store_keys(client)
 
         expect_equal(length(keys_before), 1L, info = info)
 
@@ -2408,7 +2458,7 @@ test_that("oauth_module_server ignores prefixed error callbacks for query JARM c
         expect_false(isTRUE(values$authenticated), info = info)
         expect_null(values$error, info = info)
         expect_identical(
-          sort(client@state_store$keys()),
+          visible_test_state_store_keys(client),
           keys_before,
           info = info
         )
@@ -3331,7 +3381,7 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
           )
           expect_false("Location" %in% names(post_resp$headers))
           expect_false(isTRUE(values$authenticated))
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(visible_test_state_store_keys(client), 1L)
           expect_identical(values$error, NULL)
         }
       )
