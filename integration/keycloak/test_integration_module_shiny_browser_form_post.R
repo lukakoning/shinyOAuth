@@ -863,10 +863,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
       (provider@authorization_encryption_enc_values_supported %||% character())
   )
 
-  decryption_key_pem <- paste(
-    capture.output(openssl::write_pem(private_key)),
-    collapse = "\n"
-  )
+  decryption_key_pem <- openssl::write_pem(private_key)
   app_process <- .start_form_post_app(
     repo_root = repo_root,
     app_port = app_port,
