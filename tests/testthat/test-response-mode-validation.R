@@ -205,6 +205,35 @@ test_that("oauth_client treats jwt as the query.jwt alias", {
   )
 })
 
+test_that("oauth_client only validates jarm_max_lifetime for JARM response modes", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("query", "jwt", "query.jwt")
+
+  expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = "openid profile",
+    response_mode = "query",
+    jarm_max_lifetime = NA_real_
+  ))
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "jwt",
+      jarm_max_lifetime = NA_real_
+    ),
+    regexp = "jarm_max_lifetime must be a finite positive number"
+  )
+})
+
 test_that("oauth_client validates exact outbound jwt mode against metadata", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@issuer <- "https://issuer.example.com"

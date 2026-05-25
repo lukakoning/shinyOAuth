@@ -984,14 +984,6 @@ oauth_client_validate <- function(self) {
     )
   }
 
-  # Maximum accepted JARM response JWT lifetime
-  jml <- suppressWarnings(as.numeric(self@jarm_max_lifetime))
-  if (length(jml) != 1L || !is.finite(jml) || jml <= 0) {
-    return(
-      "OAuthClient: jarm_max_lifetime must be a finite positive number of seconds"
-    )
-  }
-
   # Validate client_secret presence based on provider auth style and PKCE
   tok_style <- normalize_token_auth_style(
     self@provider@token_auth_style %||% "header"
@@ -1281,6 +1273,16 @@ oauth_client_validate <- function(self) {
       "query.jwt",
       "form_post.jwt"
     )
+
+  if (isTRUE(jarm_response_mode)) {
+    jml <- suppressWarnings(as.numeric(self@jarm_max_lifetime))
+    if (length(jml) != 1L || !is.finite(jml) || jml <= 0) {
+      return(
+        "OAuthClient: jarm_max_lifetime must be a finite positive number of seconds"
+      )
+    }
+  }
+
   request_object_modes <- c("request", "request_uri")
 
   asra <- self@authorization_signed_response_alg %||% NA_character_
