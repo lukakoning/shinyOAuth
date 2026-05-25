@@ -1519,6 +1519,18 @@ oauth_module_server <- function(
       # input.  This MUST run before any code path that parses the query,
       # including the "already authenticated" early-return branch.
       limits <- oauth_callback_limits()
+      configured_jarm_transport <- resolve_jarm_callback_transport(client)
+      jarm_client <- !is.null(configured_jarm_transport)
+      query_jarm_client <- identical(
+        configured_jarm_transport[["transport"]] %||% NULL,
+        "query"
+      )
+      response_is_reserved_for_query_jarm <-
+        .query_response_is_reserved_callback(
+          query_string,
+          query_jarm_client = query_jarm_client,
+          current_path = current_path
+        )
 
       # Validate raw query size before any parsing (including the
       # already-authenticated branch that checks for OAuth callback keys).
@@ -1534,7 +1546,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = response_is_reserved_for_query_jarm
           )
           .set_error(
             "invalid_callback_query",
@@ -1561,20 +1574,7 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      configured_jarm_transport <- resolve_jarm_callback_transport(client)
-      jarm_client <- !is.null(configured_jarm_transport)
-      query_jarm_client <- identical(
-        configured_jarm_transport[["transport"]] %||% NULL,
-        "query"
-      )
-
       if (!is.null(values$token)) {
-        response_is_reserved_for_query_jarm <-
-          .query_response_is_reserved_callback(
-            query_string,
-            query_jarm_client = query_jarm_client,
-            current_path = current_path
-          )
         if (isTRUE(.should_clear_authenticated_callback_query(query_string))) {
           clear_oauth_module_callback_query(
             session,
@@ -1585,13 +1585,6 @@ oauth_module_server <- function(
         }
         return(invisible(NULL))
       }
-
-      response_is_reserved_for_query_jarm <-
-        .query_response_is_reserved_callback(
-          query_string,
-          query_jarm_client = query_jarm_client,
-          current_path = current_path
-        )
 
       qs <- NULL
       query_response <- NULL
@@ -1679,7 +1672,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = response_is_reserved_for_query_jarm
           )
           .set_error(
             "invalid_callback_query",
@@ -1712,7 +1706,8 @@ oauth_module_server <- function(
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
-            tab_title_cleaning
+            tab_title_cleaning,
+            drop_response = response_is_reserved_for_query_jarm
           )
           .set_error(
             "invalid_callback_query",
@@ -1745,7 +1740,8 @@ oauth_module_server <- function(
             clear_oauth_module_callback_query(
               session,
               tab_title_replacement,
-              tab_title_cleaning
+              tab_title_cleaning,
+              drop_response = response_is_reserved_for_query_jarm
             )
             .set_error(
               "invalid_callback_query",
@@ -1840,7 +1836,8 @@ oauth_module_server <- function(
             clear_oauth_module_callback_query(
               session,
               tab_title_replacement,
-              tab_title_cleaning
+              tab_title_cleaning,
+              drop_response = response_is_reserved_for_query_jarm
             )
             .set_error(
               oauth_module_callback_failure_error_code(e),
@@ -1998,7 +1995,8 @@ oauth_module_server <- function(
               "JARM response must not be combined with direct OAuth callback",
               "parameters"
             ),
-            reason = "mixed_jarm_and_direct_callback_params"
+            reason = "mixed_jarm_and_direct_callback_params",
+            drop_response = TRUE
           )
           return(invisible(NULL))
         }
