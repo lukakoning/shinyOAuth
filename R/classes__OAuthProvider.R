@@ -284,6 +284,10 @@
 #'   `cachem::cache_mem(max_age = 3600)`. You can also use another
 #'   cachem-compatible backend, including a shared cache created with
 #'   [custom_cache()].
+#' @param jwks_uri Optional explicit URL of the provider's JWK Set document.
+#'   Use this when a generic OAuth 2.0 or JARM deployment publishes signing
+#'   keys outside OIDC discovery, or when you intentionally want to override
+#'   runtime metadata-based JWKS resolution.
 #'
 #'   In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 #'   TTLs pick up new keys faster but do more network work; longer TTLs reduce
@@ -491,6 +495,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = "header"
     ),
+    jwks_uri = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     jwks_cache = S7::new_property(
       S7::class_any,
       default = quote(cachem::cache_mem(max_age = 3600))
@@ -623,6 +631,7 @@ oauth_provider <- function(
   extra_token_params = list(),
   extra_token_headers = character(),
   token_auth_style = "header",
+  jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
@@ -649,7 +658,8 @@ oauth_provider <- function(
     list("userinfo_url", userinfo_url),
     list("introspection_url", introspection_url),
     list("revocation_url", revocation_url),
-    list("par_url", par_url)
+    list("par_url", par_url),
+    list("jwks_uri", jwks_uri)
   )) {
     u_val <- url_arg[[2]]
     if (!is.null(u_val) && (!is.character(u_val) || length(u_val) != 1L)) {
@@ -669,6 +679,7 @@ oauth_provider <- function(
   introspection_url <- normalize_url(introspection_url)
   revocation_url <- normalize_url(revocation_url)
   par_url <- normalize_url(par_url)
+  jwks_uri <- normalize_url(jwks_uri)
 
   if (is.null(request_object_signing_alg_values_supported)) {
     request_object_signing_alg_values_supported <- character()
@@ -948,6 +959,7 @@ oauth_provider <- function(
       tls_client_certificate_bound_access_tokens
     ),
     token_auth_style = token_auth_style,
+    jwks_uri = jwks_uri,
     jwks_cache = jwks_cache,
     jwks_pins = jwks_pins,
     jwks_pin_mode = jwks_pin_mode,
@@ -981,6 +993,7 @@ oauth_provider_validate <- function(self) {
     userinfo_url = list(val = self@userinfo_url, required = FALSE),
     introspection_url = list(val = self@introspection_url, required = FALSE),
     revocation_url = list(val = self@revocation_url, required = FALSE),
+    jwks_uri = list(val = self@jwks_uri, required = FALSE),
     par_url = list(
       val = self@par_url,
       required = FALSE
@@ -1860,6 +1873,7 @@ provider_fingerprint <- function(provider) {
       provider@tolerate_duplicate_top_level_jarm_iss
     ),
     token_auth_style = provider@token_auth_style,
+    jwks_uri = provider@jwks_uri,
     tls_client_certificate_bound_access_tokens = isTRUE(
       provider@tls_client_certificate_bound_access_tokens
     ),

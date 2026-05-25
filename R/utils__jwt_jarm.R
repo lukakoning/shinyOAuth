@@ -215,7 +215,8 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
           jwks_host_allow_only = {
             ao <- try(prov@jwks_host_allow_only, silent = TRUE)
             if (inherits(ao, "try-error")) NA_character_ else ao
-          }
+          },
+          jwks_uri_override = provider_jwks_uri(prov)
         ))
       ) {
         did_force_refresh <- TRUE
