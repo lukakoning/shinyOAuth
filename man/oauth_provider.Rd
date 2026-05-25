@@ -40,13 +40,16 @@ oauth_provider(
   userinfo_required = NULL,
   userinfo_id_token_match = NULL,
   userinfo_signed_jwt_required = FALSE,
-  userinfo_id_selector = function(userinfo) userinfo$sub,
+  userinfo_id_selector = function(userinfo) {
+     userinfo[["sub"]]
+ },
   id_token_required = NULL,
   id_token_validation = NULL,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(),
   token_auth_style = "header",
+  jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
@@ -344,16 +347,21 @@ band with the provider
 (RFC 7523)
 }}
 
-\item{jwks_cache}{Cache used for the provider's signing keys (JWKS). If not
-provided, shinyOAuth creates an in-memory cache for 1 hour with
-\code{cachem::cache_mem(max_age = 3600)}. You can also use another
-cachem-compatible backend, including a shared cache created with
-\code{\link[=custom_cache]{custom_cache()}}.
+\item{jwks_uri}{Optional explicit URL of the provider's JWK Set document.
+Use this when a generic OAuth 2.0 or JARM deployment publishes signing
+keys outside OIDC discovery, or when you intentionally want to override
+runtime metadata-based JWKS resolution.
 
 In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 TTLs pick up new keys faster but do more network work; longer TTLs reduce
 traffic but may take longer to notice key rotation. If a new \code{kid} appears,
 shinyOAuth will also do a one-time refresh automatically.}
+
+\item{jwks_cache}{Cache used for the provider's signing keys (JWKS). If not
+provided, shinyOAuth creates an in-memory cache for 1 hour with
+\code{cachem::cache_mem(max_age = 3600)}. You can also use another
+cachem-compatible backend, including a shared cache created with
+\code{\link[=custom_cache]{custom_cache()}}.}
 
 \item{jwks_pins}{Optional character vector of RFC 7638 JWK thumbprints
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys
