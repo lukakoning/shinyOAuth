@@ -415,6 +415,7 @@ oauth_provider_oidc_discover <- function(
     introspection_url = endpoints[["introspection_url"]],
     revocation_url = endpoints[["revocation_url"]],
     par_url = endpoints[["par_url"]],
+    jwks_uri = disc[["jwks_uri"]] %||% NA_character_,
     require_pushed_authorization_requests = require_pushed_authorization_requests,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
