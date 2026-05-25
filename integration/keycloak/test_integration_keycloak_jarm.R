@@ -247,6 +247,78 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
   )
 })
 
+testthat::test_that("Keycloak signed query.jwt live flow exercises duplicate iss tolerance", {
+  skip_common()
+  local_test_options()
+
+  setup <- create_signed_jarm_fixture("shiny-jarm-duplicate-iss")
+  on.exit(
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
+    add = TRUE
+  )
+
+  tolerant_provider <- make_provider()
+  strict_provider <- make_provider(
+    tolerate_duplicate_top_level_jarm_iss = FALSE
+  )
+
+  client <- make_signed_jarm_public_client(
+    tolerant_provider,
+    setup[["fixture"]][["client_id"]]
+  )
+  strict_client <- make_signed_jarm_public_client(
+    strict_provider,
+    setup[["fixture"]][["client_id"]]
+  )
+
+  shiny::testServer(
+    app = shinyOAuth::oauth_module_server,
+    args = default_module_args(client),
+    expr = {
+      auth_url <- values$build_auth_url()
+      login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
+      response_jwt <- extract_jarm_response(login)
+      payload_raw <- rawToChar(
+        shinyOAuth:::jwt_compact_parts(response_jwt)[["payload_raw"]]
+      )
+      iss_matches <- gregexpr(
+        '"iss"[[:space:]]*:',
+        payload_raw,
+        perl = TRUE
+      )[[1]]
+      iss_count <- if (identical(iss_matches[[1]], -1L)) {
+        0L
+      } else {
+        length(iss_matches)
+      }
+
+      testthat::expect_true(keycloak_nonempty_string(response_jwt))
+      testthat::expect_gte(iss_count, 2L)
+      testthat::expect_error(
+        shinyOAuth:::validate_jarm_response(strict_client, response_jwt),
+        class = "shinyOAuth_state_error",
+        regexp = "duplicate member name: iss"
+      )
+
+      values$.process_query(callback_query(login))
+      session$flushReact()
+
+      expect_keycloak_module_login_invariants(
+        authenticated = values$authenticated,
+        error = values$error,
+        error_description = values$error_description,
+        error_uri = values$error_uri,
+        token = values$token,
+        client = client,
+        expected_username = "alice"
+      )
+    }
+  )
+})
+
 testthat::test_that("Keycloak signed jwt alias happy path", {
   skip_common()
   local_test_options()
