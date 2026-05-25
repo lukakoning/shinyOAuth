@@ -366,9 +366,16 @@ test_that("oauth_form_post_store_take rejects expired handles", {
     list(code = "ok", state = "state")
   )
   key <- ls(backing)[[1]]
-  payload <- get(key, envir = backing, inherits = FALSE)
+  payload <- shinyOAuth:::state_decrypt_gcm(
+    get(key, envir = backing, inherits = FALSE),
+    key = cli@state_key
+  )
   payload[["stored_at"]] <- as.numeric(Sys.time()) - 10
-  assign(key, payload, envir = backing)
+  assign(
+    key,
+    shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key),
+    envir = backing
+  )
 
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),

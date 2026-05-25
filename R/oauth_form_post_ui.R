@@ -696,6 +696,131 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
 
 # 3 One-time form_post callback storage ----------------------------------------
 
+## 3.1 Sealed bridge payloads -------------------------------------------------
+
+#' Internal: seal one form_post bridge payload before storing it
+#'
+#' Wraps the accepted callback payload in an authenticated AES-GCM envelope so
+#' a writable external state store cannot rewrite bridged callback values after
+#' the POST boundary succeeds.
+#'
+#' @param client [OAuthClient] object.
+#' @param id Module id.
+#' @param handle One-time bridge handle.
+#' @param payload Validated bridge payload.
+#' @return Compact encrypted envelope string.
+#' @keywords internal
+#' @noRd
+oauth_form_post_seal_payload <- function(client, id, handle, payload) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is_valid_string(id)) {
+    err_invalid_state("Invalid form_post module id")
+  }
+  if (!is_valid_string(handle)) {
+    err_invalid_state("Invalid form_post callback handle")
+  }
+
+  payload <- oauth_form_post_validate_payload(payload, client = client)
+  state_encrypt_gcm(
+    payload = list(
+      bridge_type = "form_post_handle",
+      module_id = id,
+      handle = handle,
+      stored_at = as.numeric(Sys.time()),
+      payload = payload
+    ),
+    key = client@state_key
+  )
+}
+
+#' Internal: unseal one stored form_post bridge payload
+#'
+#' Decrypts the authenticated bridge envelope and verifies that it still
+#' belongs to the expected module id and one-time handle before callback
+#' processing resumes.
+#'
+#' @param client [OAuthClient] object.
+#' @param id Module id.
+#' @param handle One-time bridge handle.
+#' @param sealed_payload Compact encrypted envelope string.
+#' @return Validated bridge payload list with `module_id` and `stored_at`
+#'   restored for downstream checks.
+#' @keywords internal
+#' @noRd
+oauth_form_post_unseal_payload <- function(client, id, handle, sealed_payload) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is_valid_string(id)) {
+    err_invalid_state(
+      "Invalid form_post module id",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!is_valid_string(handle)) {
+    err_invalid_state(
+      "Invalid form_post callback handle",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!is_valid_string(sealed_payload)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  envelope <- tryCatch(
+    state_decrypt_gcm(sealed_payload, key = client@state_key),
+    error = function(e) {
+      err_invalid_state(
+        paste0(
+          "form_post callback handle payload could not be validated: ",
+          conditionMessage(e)
+        ),
+        context = list(phase = "form_post_store_take")
+      )
+    }
+  )
+
+  if (!is.list(envelope)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["bridge_type"]] %||% NULL, "form_post_handle")) {
+    err_invalid_state(
+      "form_post callback handle payload type mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["module_id"]] %||% NULL, id)) {
+    err_invalid_state(
+      "form_post callback handle module mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["handle"]] %||% NULL, handle)) {
+    err_invalid_state(
+      "form_post callback handle mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  payload <- envelope[["payload"]] %||% NULL
+  if (!is.list(payload)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  payload[["module_id"]] <- envelope[["module_id"]] %||% NULL
+  payload[["stored_at"]] <- envelope[["stored_at"]] %||% NULL
+  payload
+}
+
+## 3.2 One-time handle storage ------------------------------------------------
+
 oauth_form_post_cache_key <- function(id, handle) {
   if (!is_valid_string(id) || !is_valid_string(handle)) {
     err_invalid_state("Invalid form_post callback handle")
@@ -716,11 +841,10 @@ oauth_form_post_store_set <- function(client, id, payload) {
   payload <- oauth_form_post_validate_payload(payload, client = client)
   handle <- random_urlsafe(32)
   key <- oauth_form_post_cache_key(id, handle)
-  payload[["module_id"]] <- id
-  payload[["stored_at"]] <- as.numeric(Sys.time())
+  sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
   tryCatch(
-    client@state_store$set(key, payload),
+    client@state_store$set(key, sealed_payload),
     error = function(e) {
       err_invalid_state(
         sprintf(
@@ -824,12 +948,8 @@ oauth_form_post_store_take <- function(client, id, handle) {
       context = list(phase = "form_post_store_take")
     )
   }
-  if (!identical(payload[["module_id"]] %||% NULL, id)) {
-    err_invalid_state(
-      "form_post callback handle module mismatch",
-      context = list(phase = "form_post_store_take")
-    )
-  }
+
+  payload <- oauth_form_post_unseal_payload(client, id, handle, payload)
 
   oauth_form_post_validate_handle_freshness(client, payload)
   oauth_form_post_validate_payload(payload, client = client)

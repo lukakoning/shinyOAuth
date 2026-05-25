@@ -3498,6 +3498,103 @@ test_that("oauth_module_server reuses bridged form_post.jwt validation after the
   )
 })
 
+test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  browser_token <- valid_browser_token()
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  exchanged_codes <- character(0)
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    swap_code_for_token_set = function(client, code, code_verifier) {
+      exchanged_codes <<- c(exchanged_codes, code)
+      list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+    },
+    .package = "shinyOAuth",
+    {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = TRUE
+        ),
+        expr = {
+          values$browser_token <- browser_token
+          url <- values$build_auth_url()
+          enc_state <- parse_query_param(url, "state")
+          state_payload <- shinyOAuth:::state_decrypt_gcm(
+            enc_state,
+            key = client@state_key
+          )
+          now <- floor(as.numeric(Sys.time()))
+          response <- make_signed_jarm(
+            payload_list = list(
+              iss = client@provider@issuer,
+              aud = client@client_id,
+              exp = now + 300,
+              code = "ok",
+              state = enc_state
+            ),
+            key = sig_key,
+            kid = "sig-1"
+          )
+
+          post_resp <- ui(make_jarm_form_post_req(
+            body = paste0(
+              "response=",
+              utils::URLencode(response, reserved = TRUE)
+            )
+          ))
+          expect_identical(post_resp$status, 303L)
+          handle <- parse_query_param(
+            post_resp$headers$Location,
+            "shinyOAuth_form_post",
+            decode = TRUE
+          )
+
+          client@state_store$set(
+            shinyOAuth:::oauth_form_post_cache_key("auth", handle),
+            list(
+              type = "response",
+              response = response,
+              iss = client@provider@issuer,
+              normalized_response = list(
+                type = "code",
+                code = "attack",
+                state = enc_state,
+                iss = client@provider@issuer,
+                claims = list(
+                  iss = client@provider@issuer,
+                  aud = client@client_id,
+                  exp = now + 300,
+                  code = "attack",
+                  state = enc_state
+                )
+              ),
+              state_payload = state_payload,
+              module_id = "auth",
+              stored_at = as.numeric(Sys.time())
+            )
+          )
+
+          values$.process_query(jarm_form_post_query(handle, "auth"))
+          session$flushReact()
+
+          expect_false(isTRUE(values$authenticated))
+          expect_length(exchanged_codes, 0L)
+          expect_false(is.null(values$error))
+        }
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JARM expiry", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
