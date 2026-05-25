@@ -2506,6 +2506,124 @@ test_that("oauth_module_server handles query.jwt callbacks", {
   )
 })
 
+test_that("oauth_module_server exposes one encrypted query.jwt decryption failure message", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  browser_token <- valid_browser_token()
+  mutation_cases <- list(
+    list(label = "encrypted_key", part_index = 2L),
+    list(label = "ciphertext", part_index = 4L),
+    list(label = "tag", part_index = 5L)
+  )
+
+  for (case in mutation_cases) {
+    client <- make_jarm_test_client(
+      response_mode = "query.jwt",
+      authorization_encrypted_response_alg = "RSA-OAEP",
+      authorization_encrypted_response_enc = "A256CBC-HS512",
+      authorization_response_decryption_private_key = enc_key
+    )
+    client@provider@authorization_encryption_alg_values_supported <-
+      "RSA-OAEP"
+    client@provider@authorization_encryption_enc_values_supported <-
+      "A256CBC-HS512"
+
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) jwks,
+      swap_code_for_token_set = function(...) {
+        testthat::fail(
+          paste(
+            "encrypted JARM decryption failures must be rejected before token exchange",
+            case[["label"]]
+          )
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        shiny::testServer(
+          app = oauth_module_server,
+          args = list(
+            id = "auth",
+            client = client,
+            auto_redirect = FALSE,
+            indefinite_session = TRUE
+          ),
+          expr = {
+            values$browser_token <- browser_token
+            url <- values$build_auth_url()
+            enc_state <- parse_query_param(url, "state")
+            now <- floor(as.numeric(Sys.time()))
+            inner_response <- make_signed_jarm(
+              payload_list = list(
+                iss = client@provider@issuer,
+                aud = client@client_id,
+                exp = now + 300,
+                code = "ok",
+                state = enc_state
+              ),
+              key = sig_key,
+              kid = "sig-1"
+            )
+            encrypted_response <- make_encrypted_jarm(
+              plaintext = inner_response,
+              public_key = enc_key$pubkey,
+              alg = "RSA-OAEP",
+              enc = "A256CBC-HS512",
+              cty = "JWT"
+            )
+            parts <- strsplit(encrypted_response, ".", fixed = TRUE)[[1]]
+            tampered_part <- shinyOAuth:::base64url_decode_raw(
+              parts[[case[["part_index"]]]]
+            )
+            tampered_part[1] <- as.raw(bitwXor(
+              as.integer(tampered_part[1]),
+              1L
+            ))
+            parts[[case[["part_index"]]]] <- shinyOAuth:::base64url_encode(
+              tampered_part
+            )
+
+            values$.process_query(paste0(
+              "?response=",
+              utils::URLencode(paste(parts, collapse = "."), reserved = TRUE)
+            ))
+            session$flushReact()
+
+            expect_false(isTRUE(values$authenticated), info = case[["label"]])
+            expect_identical(
+              values$error,
+              "invalid_state",
+              info = case[["label"]]
+            )
+            description <- gsub(
+              "\\s+",
+              " ",
+              trimws(values$error_description %||% "")
+            )
+
+            expect_match(
+              description,
+              "Encrypted JARM response could not be decrypted",
+              info = case[["label"]]
+            )
+            expect_false(
+              grepl(
+                "encrypted key|ciphertext|authentication tag",
+                description,
+                ignore.case = TRUE
+              ),
+              info = case[["label"]]
+            )
+          }
+        )
+      }
+    )
+  }
+})
+
 test_that("oauth_module_server ignores prefixed direct code callbacks for query JARM clients", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

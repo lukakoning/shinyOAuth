@@ -908,8 +908,16 @@ validate_jarm_response <- function(
         encryption_config[["private_key"]]
       ),
       error = function(e) {
+        failure_context <- tryCatch(
+          e[["context"]][["compact_jwe_failure"]],
+          error = function(...) NULL
+        )
+        if (identical(failure_context, "authenticated_decryption")) {
+          err_invalid_state("Encrypted JARM response could not be decrypted")
+        }
+
         err_invalid_state(paste0(
-          "Encrypted JARM response could not be decrypted: ",
+          "Encrypted JARM response could not be parsed: ",
           conditionMessage(e)
         ))
       }
