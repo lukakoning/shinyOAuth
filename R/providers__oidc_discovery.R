@@ -344,27 +344,27 @@ oauth_provider_oidc_discover <- function(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
   ))))
-  authorization_signing_alg_values_supported <- toupper(as.character(
+  authorization_signing_alg_values_supported <- as.character(
     unlist(
       disc[["authorization_signing_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
-  ))
-  authorization_encryption_alg_values_supported <- toupper(as.character(
+  )
+  authorization_encryption_alg_values_supported <- as.character(
     unlist(
       disc[["authorization_encryption_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
-  ))
-  authorization_encryption_enc_values_supported <- toupper(as.character(
+  )
+  authorization_encryption_enc_values_supported <- as.character(
     unlist(
       disc[["authorization_encryption_enc_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
-  ))
+  )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%

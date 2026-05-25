@@ -1496,13 +1496,13 @@ oauth_client_validate <- function(self) {
     }
   }
 
-  provider_authorization_signing_algs <- toupper(as.character(
+  provider_authorization_signing_algs <- as.character(
     self@provider@authorization_signing_alg_values_supported %||% character(0)
-  ))
+  )
   if (
     isTRUE(jarm_response_mode) &&
       length(provider_authorization_signing_algs) > 0 &&
-      !(toupper(signed_response_alg) %in% provider_authorization_signing_algs)
+      !(signed_response_alg %in% provider_authorization_signing_algs)
   ) {
     return(paste0(
       "OAuthClient: authorization_signed_response_alg '",
@@ -1511,14 +1511,14 @@ oauth_client_validate <- function(self) {
     ))
   }
 
-  provider_authorization_encryption_algs <- toupper(as.character(
+  provider_authorization_encryption_algs <- as.character(
     self@provider@authorization_encryption_alg_values_supported %||%
       character(0)
-  ))
+  )
   if (
     isTRUE(encrypted_jarm_enabled) &&
       length(provider_authorization_encryption_algs) > 0 &&
-      !(toupper(encrypted_response_alg) %in%
+      !(encrypted_response_alg %in%
         provider_authorization_encryption_algs)
   ) {
     return(paste0(
@@ -1528,14 +1528,14 @@ oauth_client_validate <- function(self) {
     ))
   }
 
-  provider_authorization_encryption_encs <- toupper(as.character(
+  provider_authorization_encryption_encs <- as.character(
     self@provider@authorization_encryption_enc_values_supported %||%
       character(0)
-  ))
+  )
   if (
     isTRUE(encrypted_jarm_enabled) &&
       length(provider_authorization_encryption_encs) > 0 &&
-      !(toupper(encrypted_response_enc) %in%
+      !(encrypted_response_enc %in%
         provider_authorization_encryption_encs)
   ) {
     return(paste0(

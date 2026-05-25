@@ -883,12 +883,8 @@ validate_jarm_response <- function(
       jwe_parts[["protected_header"]],
       encryption_config
     )
-    outer_alg <- canonicalize_jwe_alg(
-      outer_header_fields[["alg"]] %||% ""
-    )
-    outer_enc <- canonicalize_jwe_enc(
-      outer_header_fields[["enc"]] %||% ""
-    )
+    outer_alg <- outer_header_fields[["alg"]] %||% ""
+    outer_enc <- outer_header_fields[["enc"]] %||% ""
     if (!identical(outer_alg, encryption_config[["alg"]])) {
       err_invalid_state(paste0(
         "Encrypted JARM alg mismatch: expected ",
@@ -946,9 +942,9 @@ validate_jarm_response <- function(
   )
   enforce_inbound_jwt_header_policy(header_fields, err_invalid_state)
 
-  alg <- canonicalize_jws_alg(header_fields[["alg"]])
+  alg <- header_fields[["alg"]] %||% ""
   expected_alg <- resolve_authorization_response_signing_alg(oauth_client)
-  if (identical(toupper(alg), "NONE")) {
+  if (identical(tolower(alg), "none")) {
     err_invalid_state("JARM alg=none is not allowed")
   }
   if (!identical(alg, expected_alg)) {

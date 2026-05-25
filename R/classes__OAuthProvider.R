@@ -703,30 +703,30 @@ oauth_provider <- function(
   if (is.null(authorization_signing_alg_values_supported)) {
     authorization_signing_alg_values_supported <- character()
   }
-  authorization_signing_alg_values_supported <- toupper(as.character(
+  authorization_signing_alg_values_supported <- as.character(
     unlist(
       authorization_signing_alg_values_supported,
       use.names = FALSE
     )
-  ))
+  )
   if (is.null(authorization_encryption_alg_values_supported)) {
     authorization_encryption_alg_values_supported <- character()
   }
-  authorization_encryption_alg_values_supported <- toupper(as.character(
+  authorization_encryption_alg_values_supported <- as.character(
     unlist(
       authorization_encryption_alg_values_supported,
       use.names = FALSE
     )
-  ))
+  )
   if (is.null(authorization_encryption_enc_values_supported)) {
     authorization_encryption_enc_values_supported <- character()
   }
-  authorization_encryption_enc_values_supported <- toupper(as.character(
+  authorization_encryption_enc_values_supported <- as.character(
     unlist(
       authorization_encryption_enc_values_supported,
       use.names = FALSE
     )
-  ))
+  )
   request_parameter_supported <- normalize_optional_provider_boolean(
     request_parameter_supported,
     "request_parameter_supported"

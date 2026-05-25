@@ -282,6 +282,68 @@ test_that("OIDC discovery records JARM metadata", {
   )
 })
 
+test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
+  discover_provider <- function(metadata) {
+    testthat::local_mocked_bindings(
+      .discover_fetch_response = function(req, issuer) {
+        structure(list(), class = "mock_discovery_response")
+      },
+      .discover_parse_json = function(resp) metadata,
+      .package = "shinyOAuth"
+    )
+
+    oauth_provider_oidc_discover(
+      issuer = metadata$issuer,
+      id_token_validation = FALSE
+    )
+  }
+
+  metadata <- list(
+    issuer = "https://issuer.example.com",
+    authorization_endpoint = "https://issuer.example.com/auth",
+    token_endpoint = "https://issuer.example.com/token",
+    response_modes_supported = "query.jwt",
+    authorization_signing_alg_values_supported = "rs256",
+    authorization_encryption_alg_values_supported = "rsa-oaep",
+    authorization_encryption_enc_values_supported = "a256cbc-hs512"
+  )
+
+  prov <- discover_provider(metadata)
+
+  expect_identical(prov@authorization_signing_alg_values_supported, "rs256")
+  expect_identical(
+    prov@authorization_encryption_alg_values_supported,
+    "rsa-oaep"
+  )
+  expect_identical(
+    prov@authorization_encryption_enc_values_supported,
+    "a256cbc-hs512"
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "client-secret-value",
+      redirect_uri = "http://localhost:8100",
+      scopes = "openid",
+      response_mode = "query.jwt",
+      authorization_signed_response_alg = "RS256",
+      state_store = cachem::cache_mem(max_age = 600),
+      state_payload_max_age = 300,
+      state_entropy = 64,
+      state_key = paste0(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      )
+    ),
+    regexp = paste0(
+      "authorization_signed_response_alg 'RS256'",
+      " is not supported"
+    )
+  )
+})
+
 test_that("oauth_client defaults encrypted JARM enc when alg is set", {
   rsa_key <- openssl::rsa_keygen()
 
@@ -413,6 +475,45 @@ test_that("validate_jarm_response rejects alg none", {
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
     regexp = "alg=none"
+  )
+})
+
+test_that("validate_jarm_response rejects non-canonical signed alg casing", {
+  secret <- "hs256-jarm-noncanonical-alg-secret-value"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  response <- shinyOAuth:::encode_hmac_jwt_with_header(
+    claims = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    secret = secret,
+    header = list(alg = "hs256"),
+    size = 256,
+    alg = "HS256"
+  )
+
+  testthat::local_mocked_bindings(
+    verify_hmac_jws_signature_no_time = function(...) {
+      testthat::fail(
+        "non-canonical JARM alg should be rejected before signature verification"
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, response),
+    class = "shinyOAuth_state_error",
+    regexp = "expected HS256, got hs256"
   )
 })
 
@@ -1983,6 +2084,75 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
   expect_identical(normalized$type, "code")
   expect_identical(normalized$code, "ok")
   expect_identical(normalized$state, "state-1")
+})
+
+test_that("validate_jarm_response rejects non-canonical encrypted JARM header casing", {
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = "abc",
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  lower_alg <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "JWT",
+    extra_header = list(alg = "rsa-oaep")
+  )
+  lower_enc <- make_encrypted_jarm(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "JWT",
+    extra_header = list(enc = "a256cbc-hs512")
+  )
+
+  testthat::local_mocked_bindings(
+    jwe_compact_decrypt = function(...) {
+      testthat::fail(
+        "non-canonical encrypted JARM headers should be rejected before decryption"
+      )
+    },
+    fetch_jwks = function(...) {
+      testthat::fail(
+        paste(
+          "non-canonical encrypted JARM headers should be rejected before",
+          "signature verification"
+        )
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, lower_alg),
+    class = "shinyOAuth_state_error",
+    regexp = "expected RSA-OAEP, got rsa-oaep"
+  )
+  expect_error(
+    shinyOAuth:::validate_jarm_response(client, lower_enc),
+    class = "shinyOAuth_state_error",
+    regexp = "expected A256CBC-HS512, got a256cbc-hs512"
+  )
 })
 
 test_that("validate_jarm_response rejects encrypted JARM crit headers", {
