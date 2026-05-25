@@ -1,5 +1,6 @@
 # This file contains the low-level compact JWE helpers used for outbound
-# request-object encryption and test-only decryption of nested JWTs
+# request-object encryption and inbound decryption of nested JWTs such as
+# encrypted JARM responses
 # A JWE is the encrypted JWT form used when request objects need
 # confidentiality in addition to signature protection
 # Used for compact JWE encoding/decoding, recipient-key normalization, and
@@ -772,8 +773,8 @@ jwe_compact_encrypt <- function(
 
 #' Decrypt a compact JWE using RSA-OAEP and AES-CBC-HMAC
 #'
-#' Used by tests that need to inspect nested request objects after compact JWE
-#' encryption.
+#' Used by inbound encrypted JARM validation and tests that need to inspect
+#' nested JWTs after compact JWE encryption.
 #'
 #' @param jwe Compact JWE string.
 #' @param private_key Recipient private key input.
