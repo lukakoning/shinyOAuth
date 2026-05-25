@@ -398,6 +398,8 @@ provider <- oauth_provider(
   auth_url = "https://issuer.example.com/authorize",
   token_url = "https://issuer.example.com/token",
   issuer = "https://issuer.example.com",
+  jwks_uri = "https://issuer.example.com/jwks",
+  token_auth_style = "public",
   response_modes_supported = c("jwt", "form_post.jwt"),
   authorization_signing_alg_values_supported = "RS256"
 )
@@ -413,6 +415,10 @@ client <- oauth_client(
   jarm_max_lifetime = 600
 )
 ```
+
+When you configure the provider manually, include `jwks_uri` (or use discovery)
+so shinyOAuth can fetch the issuer's signing keys when it validates the JARM
+callback at runtime.
 
 If the provider uses `response_mode = "form_post.jwt"`, keep the same JARM
 metadata settings and wrap the app UI with `oauth_form_post_ui()` exactly as in

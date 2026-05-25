@@ -9,6 +9,8 @@ provider <- oauth_provider(
   auth_url = "https://issuer.example.com/authorize",
   token_url = "https://issuer.example.com/token",
   issuer = "https://issuer.example.com",
+  jwks_uri = "https://issuer.example.com/jwks",
+  token_auth_style = "public",
   response_modes_supported = c("jwt", "form_post.jwt"),
   authorization_signing_alg_values_supported = "RS256"
 )
