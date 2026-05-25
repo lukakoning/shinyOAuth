@@ -366,9 +366,9 @@ registration (or OIDC discovery metadata) that tells the authorization server
 Signed JARM support is also narrower than the generic JWS metadata fields
 might suggest. shinyOAuth currently accepts `HS256`, `HS384`, `HS512`,
 `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA` for
-`authorization_signed_response_alg`. RSA-PSS (`PS256`, `PS384`, `PS512`) and
-unsecured `none` do not interoperate yet even if a provider advertises them in
-its metadata.
+`authorization_signed_response_alg`. RSA-PSS (`PS256`, `PS384`, `PS512`) is
+currently unsupported even if a provider advertises it in metadata. Unsecured
+`none` is prohibited by JARM and shinyOAuth intentionally always rejects it.
 
 Encrypted JARM support is currently narrower than the generic JWE metadata
 fields might suggest. shinyOAuth presently accepts `RSA-OAEP` for
