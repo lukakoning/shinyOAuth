@@ -3102,6 +3102,54 @@ test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies
   )
 })
 
+test_that("oauth_form_post_ui records form_post.jwt telemetry for JARM bodies", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  enc_state <- parse_query_param(auth_url, "state")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = enc_state
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  recorded_modes <- character(0)
+
+  resp <- testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    otel_set_span_attributes = function(attributes, ...) {
+      mode <- attributes[["oauth.response_mode"]] %||% NULL
+      if (is_valid_string(mode)) {
+        recorded_modes <<- c(recorded_modes, mode)
+      }
+      invisible(NULL)
+    },
+    .package = "shinyOAuth",
+    {
+      ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE)
+        )
+      ))
+    }
+  )
+
+  expect_identical(resp[["status"]], 303L)
+  expect_true("form_post.jwt" %in% recorded_modes)
+})
+
 test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodies", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "form_post.jwt")

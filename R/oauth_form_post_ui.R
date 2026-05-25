@@ -221,6 +221,17 @@ oauth_form_post_handle_request <- function(req, id, client) {
           limits[["form_post_body"]]
         )
         payload <- oauth_form_post_parse_body(body, limits, client = client)
+        otel_set_span_attributes(
+          attributes = list(
+            oauth.response_mode = if (
+              identical(payload[["type"]], "response")
+            ) {
+              "form_post.jwt"
+            } else {
+              "form_post"
+            }
+          )
+        )
         if (identical(payload[["type"]], "response")) {
           normalized <- validate_jarm_response(
             client,
@@ -330,8 +341,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
       attributes = otel_client_attributes(
         client = client,
         module_id = id,
-        phase = "form_post.post",
-        extra = list(oauth.response_mode = "form_post")
+        phase = "form_post.post"
       ),
       parent = NA
     ),
