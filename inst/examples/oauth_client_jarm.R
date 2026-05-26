@@ -1,20 +1,12 @@
-# Minimal signed-JARM configuration example.
-#
-# These `authorization_*_response_*` settings describe the provider-side
-# client metadata and callback behavior that shinyOAuth should expect; they are
-# not emitted dynamically as authorization-request parameters.
-
 provider <- oauth_provider(
   name = "Example OIDC",
   auth_url = "https://issuer.example.com/authorize",
   token_url = "https://issuer.example.com/token",
   issuer = "https://issuer.example.com",
-  jwks_uri = "https://issuer.example.com/jwks",
-  token_auth_style = "public",
-  response_modes_supported = c("jwt", "form_post.jwt"),
-  authorization_signing_alg_values_supported = "RS256"
+  jwks_uri = "https://issuer.example.com/jwks"
 )
 
+# 'jwt' configured with a signed response:
 client <- oauth_client(
   provider = provider,
   client_id = "shiny-public",
@@ -25,5 +17,20 @@ client <- oauth_client(
   authorization_signed_response_alg = "RS256"
 )
 
-# For encrypted JARM, add the provider's advertised encryption metadata and
-# configure the matching client expectations plus the private decryption key.
+# 'form_post.jwt' configured with a signed and encrypted response
+# (Note: this also requires use of `oauth_form_post_ui()`)
+encrypted_client <- oauth_client(
+  provider = provider
+  client_id = "shiny-public",
+  client_secret = "",
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  scopes = c("openid", "profile"),
+  response_mode = "form_post.jwt",
+  authorization_signed_response_alg = "RS256",
+  authorization_encrypted_response_alg = "RSA-OAEP",
+  authorization_encrypted_response_enc = "A256CBC-HS512",
+  authorization_response_decryption_private_key = openssl::read_key(
+    "path/to/jarm-decryption-private-key.pem"
+  ),
+  authorization_response_decryption_private_key_kid = "jarm-enc-1"
+)

@@ -344,6 +344,35 @@ test_that("oauth_client defaults encrypted JARM enc when alg is set", {
   expect_identical(client@authorization_encrypted_response_enc, "A128CBC-HS256")
 })
 
+test_that("oauth_client allows JARM without manual provider capability metadata", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- character()
+  prov@authorization_signing_alg_values_supported <- character()
+  prov@authorization_encryption_alg_values_supported <- character()
+  prov@authorization_encryption_enc_values_supported <- character()
+
+  client <- oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid",
+    response_mode = "query.jwt",
+    authorization_signed_response_alg = "RS256",
+    state_store = cachem::cache_mem(max_age = 600),
+    state_payload_max_age = 300,
+    state_entropy = 64,
+    state_key = paste0(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+  )
+
+  expect_identical(client@response_mode, "query.jwt")
+  expect_identical(client@authorization_signed_response_alg, "RS256")
+})
+
 test_that("validate_jarm_response verifies signed JARM payloads", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
