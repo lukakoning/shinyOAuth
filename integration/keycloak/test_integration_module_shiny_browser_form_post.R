@@ -100,31 +100,26 @@ if (!exists("make_provider", mode = "function")) {
     null = "null"
   )
 
-  stdout <- tempfile("form-post-jarm-jwks-stdout-", fileext = ".log")
-  stderr <- tempfile("form-post-jarm-jwks-stderr-", fileext = ".log")
+  app <- webfakes::new_app()
+  app$get("/jwks", function(req, res) {
+    res$set_type("application/json")
+    res$send(jwks_json)
+  })
 
-  process <- callr::r_bg(
-    func = function(port, jwks_json) {
-      app <- webfakes::new_app()
-      app$get("/jwks", function(req, res) {
-        res$set_type("application/json")
-        res$send(jwks_json)
-      })
-      app$listen(
-        port = as.integer(port),
-        opts = webfakes::server_opts(interfaces = "0.0.0.0")
-      )
-    },
-    args = list(port = as.integer(port), jwks_json = jwks_json),
-    stdout = stdout,
-    stderr = stderr,
-    supervise = TRUE
+  process <- webfakes::new_app_process(
+    app = app,
+    port = as.integer(port),
+    opts = webfakes::server_opts(interfaces = "0.0.0.0"),
+    start = TRUE,
+    auto_start = FALSE
   )
+  stdout <- process$.access_log %||% NA_character_
+  stderr <- process$.error_log %||% NA_character_
 
   local_jwks_url <- paste0("http://127.0.0.1:", as.integer(port), "/jwks")
   deadline <- Sys.time() + 5
   repeat {
-    if (!process$is_alive()) {
+    if (!identical(process$get_state(), "live")) {
       stop(
         paste(
           "form_post JARM JWKS server exited before it was reachable.",
@@ -148,13 +143,21 @@ if (!exists("make_provider", mode = "function")) {
       break
     }
     if (Sys.time() > deadline) {
-      stop("form_post JARM JWKS server did not start in time", call. = FALSE)
+      stop(
+        paste(
+          "form_post JARM JWKS server did not start in time",
+          paste(readLines(stderr, warn = FALSE), collapse = "\n"),
+          sep = "\n"
+        ),
+        call. = FALSE
+      )
     }
     Sys.sleep(0.1)
   }
 
   list(
     process = process,
+    stop = function() process$stop(),
     stdout = stdout,
     stderr = stderr,
     jwks_url = paste0(sub("/+$", "", public_base_url), "/jwks")
@@ -822,7 +825,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     port = jwks_port,
     public_base_url = public_base_url
   )
-  on.exit(try(jwks_server$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(jwks_server$stop(), silent = TRUE), add = TRUE)
 
   admin_token <- keycloak_admin_token()
   fixture <- keycloak_create_client(
