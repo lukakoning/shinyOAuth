@@ -153,7 +153,7 @@ state_payload_revalidate <- function(
         class = c("shinyOAuth_state_error", "shinyOAuth_error"),
         message = c(
           "State payload validation failed",
-          "i" = paste0("", conditionMessage(e))
+          "i" = conditionMessage(e)
         )
       )
     }
