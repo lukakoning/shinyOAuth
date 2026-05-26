@@ -36,6 +36,34 @@ parse_jwt_payload <- function(jwt) {
   )
 }
 
+#' Internal: Parse JWT header (no validation)
+#'
+#' Used before JOSE header policy checks and key selection.
+#'
+#' @param jwt Compact JWT string.
+#' @return Parsed JOSE header list.
+#' @keywords internal
+#' @noRd
+parse_jwt_header <- function(jwt) {
+  parts <- jwt_compact_parts(jwt)
+  header_text <- strict_decode_jwt_json_text(
+    parts[["header_raw"]],
+    "header"
+  )
+  reject_duplicate_json_object_members(header_text, "JWT header")
+  assert_json_text_is_object(header_text, "JWT header")
+  # Normalize JSON parse failures to a consistent parse error class
+  tryCatch(
+    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
+    error = function(e) {
+      err_parse(c(
+        "Failed to parse JWT header JSON",
+        "i" = conditionMessage(e)
+      ))
+    }
+  )
+}
+
 ## 1.2 Compact JWT parsing and JSON decoding -----------------------------------
 
 #' Strictly decode one compact JWT segment

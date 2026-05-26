@@ -396,6 +396,7 @@ oauth_module_server <- function(
   has_request_uri_host_policy <-
     is.character(allowed_hosts) &&
     length(allowed_hosts) > 0L &&
+    any(vapply(allowed_hosts, is_valid_string, logical(1)))
 
   if (
     identical(
