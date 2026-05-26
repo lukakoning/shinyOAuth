@@ -1899,7 +1899,6 @@ oauth_module_server <- function(
           )
           return(invisible(NULL))
         }
-
         if (identical(form_post_payload[["type"]], "error")) {
           clear_oauth_module_callback_query(
             session,
@@ -2105,7 +2104,7 @@ oauth_module_server <- function(
           error_context <- tryCatch(e[["context"]], error = function(...) {
             NULL
           })
-          callback_error <- error_context$callback_error %||%
+          callback_error <- error_context[["callback_error"]] %||%
             "callback_iss_validation_error"
           expected_issuer <- client@provider@issuer %||% NA_character_
 

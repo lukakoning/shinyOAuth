@@ -20,7 +20,7 @@ client <- oauth_client(
 # 'form_post.jwt' configured with a signed and encrypted response
 # (Note: this also requires use of `oauth_form_post_ui()`)
 encrypted_client <- oauth_client(
-  provider = provider
+  provider = provider,
   client_id = "shiny-public",
   client_secret = "",
   redirect_uri = "http://127.0.0.1:8100/callback",

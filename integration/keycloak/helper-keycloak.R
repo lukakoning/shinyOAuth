@@ -915,7 +915,6 @@ callback_query <- function(
     ]] %||%
       NA_character_
   }
-
   if (
     !is.character(callback_url) ||
       length(callback_url) != 1L ||
