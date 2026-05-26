@@ -467,8 +467,8 @@ so shinyOAuth can fetch the issuer's signing keys when it validates the JARM
 callback at runtime.
 
 If the provider uses `response_mode = "form_post.jwt"`, keep the same JARM
-metadata settings and wrap the app UI with `oauth_form_post_ui()` exactly as in
-the `form_post` example below.
+metadata settings and wrap the app UI with `oauth_form_post_ui()` as shown in
+the example below.
 
 ```{r, eval = FALSE}
 library(shiny)
