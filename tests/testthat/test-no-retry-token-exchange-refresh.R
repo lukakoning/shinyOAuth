@@ -132,7 +132,7 @@ test_that("swap_code_for_token_set does not retry: server committed, response lo
     }
   )
   expect_equal(attempts, 1)
-  expect_equal(result$access_token, "at_123")
+  expect_equal(result[["access_token"]], "at_123")
 })
 
 # ---- Regression: refresh_token does not retry ----

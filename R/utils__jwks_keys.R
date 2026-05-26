@@ -34,8 +34,11 @@ select_candidate_jwks <- function(
 ) {
   # Normalize input to a list of key objects
   keys <- jwks_or_keys
-  if (is.list(jwks_or_keys) && !is.null(jwks_or_keys$keys)) {
-    keys <- jwks_or_keys$keys
+  if (
+    is.list(jwks_or_keys) &&
+      !is.null(jwks_or_keys[["keys"]])
+  ) {
+    keys <- jwks_or_keys[["keys"]]
   }
   if (is.data.frame(keys)) {
     keys <- unname(lapply(seq_len(nrow(keys)), function(i) {
@@ -60,7 +63,7 @@ select_candidate_jwks <- function(
   keep_use <- vapply(
     keys,
     function(k) {
-      u <- try(k$use, silent = TRUE)
+      u <- try(k[["use"]], silent = TRUE)
       if (inherits(u, "try-error") || is.null(u)) {
         return(TRUE)
       }
@@ -85,7 +88,7 @@ select_candidate_jwks <- function(
         "derivekey",
         "derivebits"
       )
-      ops <- try(k$key_ops, silent = TRUE)
+      ops <- try(k[["key_ops"]], silent = TRUE)
       if (inherits(ops, "try-error") || is.null(ops)) {
         return(TRUE)
       }
@@ -111,7 +114,7 @@ select_candidate_jwks <- function(
   if (!is.null(kid)) {
     keys <- Filter(
       function(k) {
-        kk <- k$kid %||% NA_character_
+        kk <- k[["kid"]] %||% NA_character_
         is.character(kk) && length(kk) == 1L && !is.na(kk) && identical(kk, kid)
       },
       keys
@@ -129,7 +132,7 @@ select_candidate_jwks <- function(
     ord_score <- vapply(
       keys,
       function(k) {
-        ka <- try(k$alg, silent = TRUE)
+        ka <- try(k[["alg"]], silent = TRUE)
         if (inherits(ka, "try-error") || is.null(ka)) {
           return(1L)
         }
@@ -186,7 +189,7 @@ filter_jwks_for_alg <- function(keys, alg) {
 
   Filter(
     function(k) {
-      ka <- k$alg %||% NULL
+      ka <- k[["alg"]] %||% NULL
       is.null(ka) || toupper(ka) == alg
     },
     keys
@@ -205,8 +208,8 @@ filter_jwks_for_alg <- function(keys, alg) {
 #' @keywords internal
 #' @noRd
 jwk_is_compatible_with_alg <- function(jwk, alg) {
-  kty <- toupper(jwk$kty %||% "")
-  crv <- toupper(jwk$crv %||% "")
+  kty <- toupper(jwk[["kty"]] %||% "")
+  crv <- toupper(jwk[["crv"]] %||% "")
   switch(
     alg,
     RS256 = kty == "RSA",
@@ -231,7 +234,7 @@ jwk_is_compatible_with_alg <- function(jwk, alg) {
 #' @keywords internal
 #' @noRd
 jwk_to_pubkey <- function(jwk) {
-  kty <- jwk$kty %||% err_parse("JWK missing kty")
+  kty <- jwk[["kty"]] %||% err_parse("JWK missing kty")
   if (!kty %in% c("RSA", "EC", "OKP")) {
     err_parse(paste0("Unsupported JWK kty: ", kty))
   }
@@ -261,10 +264,10 @@ compute_jwk_thumbprint <- function(jwk) {
   if (!is.list(jwk)) {
     err_parse("JWK must be a list")
   }
-  kty <- jwk$kty %||% err_parse("JWK missing kty")
+  kty <- jwk[["kty"]] %||% err_parse("JWK missing kty")
   if (kty == "RSA") {
-    e <- jwk$e %||% err_parse("RSA JWK missing e")
-    n <- jwk$n %||% err_parse("RSA JWK missing n")
+    e <- jwk[["e"]] %||% err_parse("RSA JWK missing e")
+    n <- jwk[["n"]] %||% err_parse("RSA JWK missing n")
     if (!is.character(e) || !is.character(n)) {
       err_parse("RSA JWK e/n must be character")
     }
@@ -272,17 +275,17 @@ compute_jwk_thumbprint <- function(jwk) {
     # Order keys explicitly as required by RFC 7638 (lexicographic)
     canon <- canon[c("e", "kty", "n")]
   } else if (kty == "EC") {
-    crv <- jwk$crv %||% err_parse("EC JWK missing crv")
-    x <- jwk$x %||% err_parse("EC JWK missing x")
-    y <- jwk$y %||% err_parse("EC JWK missing y")
+    crv <- jwk[["crv"]] %||% err_parse("EC JWK missing crv")
+    x <- jwk[["x"]] %||% err_parse("EC JWK missing x")
+    y <- jwk[["y"]] %||% err_parse("EC JWK missing y")
     if (!is.character(crv) || !is.character(x) || !is.character(y)) {
       err_parse("EC JWK crv/x/y must be character")
     }
     canon <- list(crv = crv, kty = "EC", x = x, y = y)
     canon <- canon[c("crv", "kty", "x", "y")]
   } else if (kty == "OKP") {
-    crv <- jwk$crv %||% err_parse("OKP JWK missing crv")
-    x <- jwk$x %||% err_parse("OKP JWK missing x")
+    crv <- jwk[["crv"]] %||% err_parse("OKP JWK missing crv")
+    x <- jwk[["x"]] %||% err_parse("OKP JWK missing x")
     if (!is.character(crv) || !is.character(x)) {
       err_parse("OKP JWK crv/x must be character")
     }
@@ -405,7 +408,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
   if (!is.list(jwks)) {
     err_parse("Invalid JWKS structure")
   }
-  ks <- jwks$keys
+  ks <- jwks[["keys"]]
   if (is.null(ks)) {
     err_parse("JWKS missing keys array")
   }
@@ -439,8 +442,8 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
     if (!is.list(k)) {
       err_parse("JWK entry must be an object")
     }
-    kty <- k$kty %||% err_parse("JWK missing kty")
-    kid <- k$kid %||% NA_character_
+    kty <- k[["kty"]] %||% err_parse("JWK missing kty")
+    kid <- k[["kid"]] %||% NA_character_
     if (!is.na(kid)) {
       if (!is.character(kid) || length(kid) != 1 || nchar(kid) > 128) {
         err_parse("JWK kid invalid")
@@ -454,25 +457,52 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
       supported_seen <- supported_seen + 1L
       # Minimal member presence
       if (kty == "RSA") {
-        if (!is.character(k$n) || !is.character(k$e)) {
+        if (
+          !is.character(k[["n"]]) ||
+            !is.character(k[["e"]])
+        ) {
           err_parse("RSA JWK missing n/e")
         }
-        modulus_raw <- strict_decode_jwk_base64url_uint(k$n, "RSA JWK n")
-        strict_decode_jwk_base64url_uint(k$e, "RSA JWK e")
+        modulus_raw <- strict_decode_jwk_base64url_uint(
+          k[["n"]],
+          "RSA JWK n"
+        )
+        strict_decode_jwk_base64url_uint(
+          k[["e"]],
+          "RSA JWK e"
+        )
         if (jwk_rsa_modulus_bits(modulus_raw) < 2048L) {
           err_parse("RSA JWK modulus must be at least 2048 bits")
         }
       } else if (kty == "EC") {
-        if (!is.character(k$crv) || !is.character(k$x) || !is.character(k$y)) {
+        if (
+          !is.character(k[["crv"]]) ||
+            !is.character(k[["x"]]) ||
+            !is.character(k[["y"]])
+        ) {
           err_parse("EC JWK missing crv/x/y")
         }
-        strict_decode_jwk_ec_coordinate(k$x, "EC JWK x", k$crv)
-        strict_decode_jwk_ec_coordinate(k$y, "EC JWK y", k$crv)
+        strict_decode_jwk_ec_coordinate(
+          k[["x"]],
+          "EC JWK x",
+          k[["crv"]]
+        )
+        strict_decode_jwk_ec_coordinate(
+          k[["y"]],
+          "EC JWK y",
+          k[["crv"]]
+        )
       } else if (kty == "OKP") {
-        if (!is.character(k$crv) || !is.character(k$x)) {
+        if (
+          !is.character(k[["crv"]]) ||
+            !is.character(k[["x"]])
+        ) {
           err_parse("OKP JWK missing crv/x")
         }
-        strict_decode_jwk_base64url_uint(k$x, "OKP JWK x")
+        strict_decode_jwk_base64url_uint(
+          k[["x"]],
+          "OKP JWK x"
+        )
       }
       # Compute thumbprint for pinning
       tp <- try(compute_jwk_thumbprint(k), silent = TRUE)

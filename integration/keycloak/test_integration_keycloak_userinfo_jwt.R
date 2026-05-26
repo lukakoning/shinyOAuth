@@ -56,21 +56,27 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
 
   result <- userinfo_jwt_login_via_module(client)
 
-  testthat::expect_true(isTRUE(result$authenticated))
-  testthat::expect_null(result$error)
-  testthat::expect_true(isTRUE(result$token@id_token_validated))
+  testthat::expect_true(isTRUE(result[["authenticated"]]))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_true(isTRUE(result[["token"]]@id_token_validated))
   testthat::expect_identical(
-    result$token@userinfo$preferred_username,
+    result[["token"]]@userinfo[["preferred_username"]],
     "alice"
   )
-  testthat::expect_identical(result$token@userinfo$email, "alice@example.com")
+  testthat::expect_identical(
+    result[["token"]]@userinfo[["email"]],
+    "alice@example.com"
+  )
 
-  id_payload <- shinyOAuth:::parse_jwt_payload(result$token@id_token)
-  testthat::expect_identical(result$token@userinfo$sub, id_payload$sub)
+  id_payload <- shinyOAuth:::parse_jwt_payload(result[["token"]]@id_token)
+  testthat::expect_identical(
+    result[["token"]]@userinfo[["sub"]],
+    id_payload$sub
+  )
 
   raw_resp <- httr2::request(prov@userinfo_url) |>
     httr2::req_headers(
-      Authorization = paste("Bearer", result$token@access_token),
+      Authorization = paste("Bearer", result[["token"]]@access_token),
       Accept = "application/jwt"
     ) |>
     httr2::req_error(is_error = function(resp) FALSE) |>
@@ -88,14 +94,17 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
   payload <- shinyOAuth:::parse_jwt_payload(jwt)
 
   testthat::expect_identical(toupper(header$alg), "RS256")
-  testthat::expect_identical(payload$iss, prov@issuer)
+  testthat::expect_identical(payload[["iss"]], prov@issuer)
   testthat::expect_true(userinfo_jwt_aud_includes(
-    payload$aud,
+    payload[["aud"]],
     client@client_id
   ))
-  testthat::expect_identical(payload$sub, result$token@userinfo$sub)
+  testthat::expect_identical(
+    payload[["sub"]],
+    result[["token"]]@userinfo[["sub"]]
+  )
 
-  fetched <- shinyOAuth::get_userinfo(client, result$token)
-  testthat::expect_identical(fetched$sub, result$token@userinfo$sub)
+  fetched <- shinyOAuth::get_userinfo(client, result[["token"]])
+  testthat::expect_identical(fetched$sub, result[["token"]]@userinfo[["sub"]])
   testthat::expect_identical(fetched$email, "alice@example.com")
 })

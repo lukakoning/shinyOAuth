@@ -300,7 +300,7 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  key <- shinyOAuth:::state_cache_key(payload$state)
+  key <- shinyOAuth:::state_cache_key(payload[["state"]])
 
   ssv <- cli@state_store$get(key, missing = NULL)
   # Simulate missing verifier (removing field from state store entry)
@@ -370,7 +370,7 @@ test_that("handle_callback fails when nonce is required but missing in state sto
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  key <- shinyOAuth:::state_cache_key(payload$state)
+  key <- shinyOAuth:::state_cache_key(payload[["state"]])
   ssv <- cli@state_store$get(key, missing = NULL)
 
   ssv$nonce <- NULL
@@ -397,7 +397,7 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  key <- shinyOAuth:::state_cache_key(payload$state)
+  key <- shinyOAuth:::state_cache_key(payload[["state"]])
   ssv <- cli@state_store$get(key, missing = NULL)
 
   # Set verifier to a too-short value (RFC 7636 requires 43-128 chars)
@@ -419,7 +419,7 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
   url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc2 <- parse_query_param(url2, "state")
   payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
-  key2 <- shinyOAuth:::state_cache_key(payload2$state)
+  key2 <- shinyOAuth:::state_cache_key(payload2[["state"]])
   ssv2 <- cli@state_store$get(key2, missing = NULL)
 
   # Valid length but invalid chars (contains '!')
@@ -445,7 +445,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  key <- shinyOAuth:::state_cache_key(payload$state)
+  key <- shinyOAuth:::state_cache_key(payload[["state"]])
   ssv <- cli@state_store$get(key, missing = NULL)
 
   # Set nonce to a too-short value (validate_oidc_nonce requires >= 22 chars)
@@ -481,7 +481,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
   url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc2 <- parse_query_param(url2, "state")
   payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
-  key2 <- shinyOAuth:::state_cache_key(payload2$state)
+  key2 <- shinyOAuth:::state_cache_key(payload2[["state"]])
   ssv2 <- cli@state_store$get(key2, missing = NULL)
 
   # Valid length but invalid chars (contains '!')

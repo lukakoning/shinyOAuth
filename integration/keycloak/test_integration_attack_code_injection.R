@@ -58,7 +58,7 @@ testthat::test_that("Login CSRF/account substitution: bob can finish alice's sta
       )
 
       testthat::expect_identical(
-        values$token@userinfo$sub,
+        values$token@userinfo[["sub"]],
         values$token@id_token_claims$sub
       )
     }
@@ -93,7 +93,7 @@ testthat::test_that("Login CSRF/account substitution: app can compare the verifi
         expected_username = "alice"
       )
 
-      expected_alice_sub <<- values$token@userinfo$sub
+      expected_alice_sub <<- values$token@userinfo[["sub"]]
     }
   )
 
@@ -127,7 +127,7 @@ testthat::test_that("Login CSRF/account substitution: app can compare the verifi
       )
 
       testthat::expect_false(
-        identical(values$token@userinfo$sub, expected_alice_sub)
+        identical(values$token@userinfo[["sub"]], expected_alice_sub)
       )
     }
   )
@@ -217,7 +217,7 @@ testthat::test_that("PKCE prevents stolen code exchange with wrong verifier", {
       body <- httr2::resp_body_json(direct_resp)
       testthat::expect_true(grepl(
         "invalid_grant|PKCE|code.verifier",
-        paste(body$error, body$error_description),
+        paste(body[["error"]], body[["error_description"]]),
         ignore.case = TRUE
       ))
     }
@@ -277,7 +277,7 @@ testthat::test_that("Code injection: bob's code with alice's state but different
       body <- httr2::resp_body_json(direct_resp)
       testthat::expect_true(grepl(
         "invalid_grant|unauthorized_client",
-        paste(body$error, body$error_description),
+        paste(body[["error"]], body[["error_description"]]),
         ignore.case = TRUE
       ))
     }

@@ -35,7 +35,7 @@ test_that("decode_userinfo_jwt rejects malformed header (fail-closed)", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -71,7 +71,7 @@ test_that("decode_userinfo_jwt errors for malformed header when require_signed =
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -101,7 +101,7 @@ test_that("unsupported alg (HS256) is rejected even when require_signed = FALSE"
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -131,7 +131,7 @@ test_that("unsupported alg (PS384 not in allowed_algs) is rejected", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -162,7 +162,7 @@ test_that("alg=none is always rejected even when issuer is set and require_signe
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -200,7 +200,7 @@ test_that("JWT with missing alg field is rejected even when require_signed = FAL
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -237,7 +237,7 @@ test_that("JWT with missing alg field is rejected when require_signed = TRUE", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)
@@ -281,7 +281,7 @@ test_that("RS256 JWT is rejected when provider has no issuer (fail-closed)", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)

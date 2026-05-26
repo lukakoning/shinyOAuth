@@ -18,7 +18,10 @@
 #' @noRd
 parse_jwt_payload <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
-  payload_text <- strict_decode_jwt_json_text(parts$payload_raw, "payload")
+  payload_text <- strict_decode_jwt_json_text(
+    parts[["payload_raw"]],
+    "payload"
+  )
   reject_duplicate_json_object_members(payload_text, "JWT payload")
   assert_json_text_is_object(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
@@ -27,31 +30,6 @@ parse_jwt_payload <- function(jwt) {
     error = function(e) {
       err_parse(c(
         "Failed to parse JWT payload JSON",
-        "i" = conditionMessage(e)
-      ))
-    }
-  )
-}
-
-#' Internal: Parse JWT header (no validation)
-#'
-#' Used before JOSE header policy checks and key selection.
-#'
-#' @param jwt Compact JWT string.
-#' @return Parsed JOSE header list.
-#' @keywords internal
-#' @noRd
-parse_jwt_header <- function(jwt) {
-  parts <- jwt_compact_parts(jwt)
-  header_text <- strict_decode_jwt_json_text(parts$header_raw, "header")
-  reject_duplicate_json_object_members(header_text, "JWT header")
-  assert_json_text_is_object(header_text, "JWT header")
-  # Normalize JSON parse failures to a consistent parse error class
-  tryCatch(
-    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
-    error = function(e) {
-      err_parse(c(
-        "Failed to parse JWT header JSON",
         "i" = conditionMessage(e)
       ))
     }
@@ -305,13 +283,16 @@ parse_jwt_payload_or_null <- function(jwt) {
     return(NULL)
   }
 
-  if (any(parts$payload_raw == as.raw(0))) {
+  if (any(parts[["payload_raw"]] == as.raw(0))) {
     return(NULL)
   }
 
-  payload_text <- tryCatch(rawToChar(parts$payload_raw), error = function(...) {
-    NULL
-  })
+  payload_text <- tryCatch(
+    rawToChar(parts[["payload_raw"]]),
+    error = function(...) {
+      NULL
+    }
+  )
   if (
     !is_valid_string(payload_text) ||
       !isTRUE(validUTF8(payload_text)) ||
@@ -647,7 +628,7 @@ enforce_inbound_jwt_header_policy <- function(
   on_typ_invalid = NULL,
   on_crit_invalid = NULL
 ) {
-  typ <- header_fields$typ
+  typ <- header_fields[["typ"]]
   if (!is.null(typ)) {
     if (
       !(is.character(typ) &&
@@ -664,7 +645,7 @@ enforce_inbound_jwt_header_policy <- function(
     }
   }
 
-  crit <- header_fields$crit
+  crit <- header_fields[["crit"]]
   if (!is.null(crit)) {
     unsupported <- setdiff(crit, supported_crit)
     if (length(unsupported) > 0L) {
@@ -694,8 +675,8 @@ enforce_inbound_jwt_header_policy <- function(
 jwt_verification_parts <- function(jwt) {
   parts <- jwt_compact_parts(jwt)
   list(
-    data = charToRaw(parts$signing_input),
-    sig = parts$signature_raw
+    data = charToRaw(parts[["signing_input"]]),
+    sig = parts[["signature_raw"]]
   )
 }
 
@@ -721,10 +702,10 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
     {
       if (alg_upper %in% c("RS256", "RS384", "RS512")) {
         size <- as.integer(substring(alg_upper, 3L))
-        digest <- openssl::sha2(parts$data, size = size)
+        digest <- openssl::sha2(parts[["data"]], size = size)
         return(isTRUE(openssl::signature_verify(
           digest,
-          parts$sig,
+          parts[["sig"]],
           hash = NULL,
           pubkey = key
         )))
@@ -740,18 +721,18 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
         )
         if (
           is.na(expected_width) ||
-            length(parts$sig) != expected_width
+            length(parts[["sig"]]) != expected_width
         ) {
           return(FALSE)
         }
 
         bitsize <- expected_width %/% 2L
         sig_der <- openssl::ecdsa_write(
-          parts$sig[seq_len(bitsize)],
-          parts$sig[seq_len(bitsize) + bitsize]
+          parts[["sig"]][seq_len(bitsize)],
+          parts[["sig"]][seq_len(bitsize) + bitsize]
         )
         digest <- openssl::sha2(
-          parts$data,
+          parts[["data"]],
           size = as.integer(substring(alg_upper, 3L))
         )
 
@@ -765,8 +746,8 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
 
       if (identical(alg_upper, "EDDSA")) {
         return(isTRUE(openssl::signature_verify(
-          parts$data,
-          parts$sig,
+          parts[["data"]],
+          parts[["sig"]],
           hash = NULL,
           pubkey = key
         )))
@@ -812,13 +793,13 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
   tryCatch(
     {
       expected <- openssl::sha2(
-        parts$data,
+        parts[["data"]],
         size = as.integer(substring(toupper(alg), 3L)),
         key = secret_raw
       )
       # Compare HMAC tags as raw bytes through the shared constant-time helper.
       constant_time_compare(
-        parts$sig,
+        parts[["sig"]],
         as.raw(expected)
       )
     },

@@ -91,7 +91,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
     {
       # Should verify using the RS256 key; the 'enc' key must be ignored
       dec <- shinyOAuth:::validate_id_token(cli, id_token)
-      expect_identical(dec$aud, "c1")
+      expect_identical(dec[["aud"]], "c1")
     }
   ))
 

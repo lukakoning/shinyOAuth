@@ -180,7 +180,7 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_identical(
-        values$token@userinfo$preferred_username,
+        values$token@userinfo[["preferred_username"]],
         "alice"
       )
     }
@@ -195,7 +195,7 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
       session$flushReact()
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_identical(
-        values$token@userinfo$preferred_username,
+        values$token@userinfo[["preferred_username"]],
         "bob"
       )
     }

@@ -27,7 +27,7 @@ make_signed_jwt_h <- function(payload_list, key, kid = NULL) {
 mock_jwt_response <- function(jwt_body) {
   function(req, ...) {
     httr2::response(
-      url = as.character(req$url),
+      url = as.character(req[["url"]]),
       status = 200,
       headers = list("content-type" = "application/jwt"),
       body = charToRaw(jwt_body)
@@ -154,7 +154,7 @@ test_that("UserInfo signed JWT without crit header still passes", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-ok")
+  expect_equal(result[["sub"]], "user-ok")
 })
 
 # --- JWKS refresh-on-kid-miss tests ------------------------------------------
@@ -199,7 +199,7 @@ test_that("UserInfo JWT triggers JWKS refresh when kid misses initially", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$sub, "user-rotated")
+  expect_equal(result[["sub"]], "user-rotated")
   # Should have fetched twice: once stale, once forced refresh
   expect_equal(fetch_call_count, 2L)
 })

@@ -67,7 +67,7 @@ local_parse_jwt_payload <- function(jwt, label = "jwt") {
 }
 
 local_jwk_to_pubkey <- function(jwk) {
-  kty <- jwk$kty %||% NA_character_
+  kty <- jwk[["kty"]] %||% NA_character_
   if (!kty %in% c("RSA", "EC", "OKP")) {
     stop("jwk_kty_unsupported", call. = FALSE)
   }
@@ -86,24 +86,31 @@ local_compute_jwk_thumbprint <- function(jwk) {
     stop("jwk_thumbprint_invalid_jwk", call. = FALSE)
   }
 
-  kty <- jwk$kty %||% NA_character_
+  kty <- jwk[["kty"]] %||% NA_character_
   canon <- switch(
     kty,
     RSA = list(
-      e = jwk$e %||% stop("jwk_thumbprint_missing_e", call. = FALSE),
+      e = jwk[["e"]] %||%
+        stop("jwk_thumbprint_missing_e", call. = FALSE),
       kty = "RSA",
-      n = jwk$n %||% stop("jwk_thumbprint_missing_n", call. = FALSE)
+      n = jwk[["n"]] %||%
+        stop("jwk_thumbprint_missing_n", call. = FALSE)
     ),
     EC = list(
-      crv = jwk$crv %||% stop("jwk_thumbprint_missing_crv", call. = FALSE),
+      crv = jwk[["crv"]] %||%
+        stop("jwk_thumbprint_missing_crv", call. = FALSE),
       kty = "EC",
-      x = jwk$x %||% stop("jwk_thumbprint_missing_x", call. = FALSE),
-      y = jwk$y %||% stop("jwk_thumbprint_missing_y", call. = FALSE)
+      x = jwk[["x"]] %||%
+        stop("jwk_thumbprint_missing_x", call. = FALSE),
+      y = jwk[["y"]] %||%
+        stop("jwk_thumbprint_missing_y", call. = FALSE)
     ),
     OKP = list(
-      crv = jwk$crv %||% stop("jwk_thumbprint_missing_crv", call. = FALSE),
+      crv = jwk[["crv"]] %||%
+        stop("jwk_thumbprint_missing_crv", call. = FALSE),
       kty = "OKP",
-      x = jwk$x %||% stop("jwk_thumbprint_missing_x", call. = FALSE)
+      x = jwk[["x"]] %||%
+        stop("jwk_thumbprint_missing_x", call. = FALSE)
     ),
     stop("jwk_thumbprint_kty_unsupported", call. = FALSE)
   )
@@ -114,7 +121,11 @@ local_compute_jwk_thumbprint <- function(jwk) {
 }
 
 local_extract_jwks_keys <- function(jwks) {
-  keys <- if (is.list(jwks) && !is.null(jwks$keys)) jwks$keys else jwks
+  keys <- if (is.list(jwks) && !is.null(jwks[["keys"]])) {
+    jwks[["keys"]]
+  } else {
+    jwks
+  }
 
   if (is.data.frame(keys)) {
     return(unname(lapply(seq_len(nrow(keys)), function(i) {
@@ -135,23 +146,23 @@ local_extract_jwks_keys <- function(jwks) {
 }
 
 local_jwk_matches_alg <- function(jwk, alg) {
-  kty <- toupper(as.character(jwk$kty %||% ""))
+  kty <- toupper(as.character(jwk[["kty"]] %||% ""))
   alg <- toupper(as.character(alg %||% ""))
 
-  if (length(jwk$alg %||% NULL)) {
-    key_alg <- toupper(as.character(jwk$alg))
+  if (length(jwk[["alg"]] %||% NULL)) {
+    key_alg <- toupper(as.character(jwk[["alg"]]))
     if (!identical(key_alg, alg)) {
       return(FALSE)
     }
   }
 
-  key_use <- toupper(as.character(jwk$use %||% ""))
+  key_use <- toupper(as.character(jwk[["use"]] %||% ""))
   if (nzchar(key_use) && !identical(key_use, "SIG")) {
     return(FALSE)
   }
 
   key_ops <- as.character(unlist(
-    jwk$key_ops %||% character(),
+    jwk[["key_ops"]] %||% character(),
     use.names = FALSE
   ))
   if (length(key_ops) > 0L && !"verify" %in% key_ops) {
@@ -179,7 +190,9 @@ local_select_candidate_jwks <- function(jwks, header_alg, kid = NULL) {
 
   if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
     keys <- Filter(
-      function(key) identical(key$kid %||% NA_character_, kid),
+      function(key) {
+        identical(key[["kid"]] %||% NA_character_, kid)
+      },
       keys
     )
   }
@@ -193,17 +206,25 @@ local_dpop_target_uri <- function(url) {
     stop("dpop_target_uri_invalid", call. = FALSE)
   }
 
-  parsed$query <- NULL
-  parsed$fragment <- NULL
-  parsed$scheme <- tolower(parsed$scheme %||% "")
-  parsed$hostname <- tolower(parsed$hostname %||% "")
+  parsed[["query"]] <- NULL
+  parsed[["fragment"]] <- NULL
+  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
+  parsed[["hostname"]] <- tolower(
+    parsed[["hostname"]] %||% ""
+  )
 
-  port <- as.character(parsed$port %||% "")
-  if (identical(parsed$scheme, "https") && identical(port, "443")) {
-    parsed$port <- NULL
+  port <- as.character(parsed[["port"]] %||% "")
+  if (
+    identical(parsed[["scheme"]], "https") &&
+      identical(port, "443")
+  ) {
+    parsed[["port"]] <- NULL
   }
-  if (identical(parsed$scheme, "http") && identical(port, "80")) {
-    parsed$port <- NULL
+  if (
+    identical(parsed[["scheme"]], "http") &&
+      identical(port, "80")
+  ) {
+    parsed[["port"]] <- NULL
   }
 
   httr2::url_build(parsed)
@@ -222,7 +243,7 @@ verify_signed_access_token <- function(access_token, issuer, jwks) {
   header <- shinyOAuth:::parse_jwt_header(access_token)
   payload <- shinyOAuth:::parse_jwt_payload(access_token)
 
-  alg <- toupper(header$alg %||% "")
+  alg <- toupper(header[["alg"]] %||% "")
   if (!nzchar(alg)) {
     stop("access_token_alg_missing", call. = FALSE)
   }
@@ -230,7 +251,7 @@ verify_signed_access_token <- function(access_token, issuer, jwks) {
   keys <- shinyOAuth:::select_candidate_jwks(
     jwks,
     header_alg = alg,
-    kid = header$kid %||% NULL
+    kid = header[["kid"]] %||% NULL
   )
   keys <- shinyOAuth:::filter_jwks_for_alg(keys, alg)
   if (length(keys) == 0L) {
@@ -255,11 +276,13 @@ verify_signed_access_token <- function(access_token, issuer, jwks) {
     stop("access_token_signature_invalid", call. = FALSE)
   }
 
-  if (!identical(payload$iss %||% NA_character_, issuer)) {
+  if (!identical(payload[["iss"]] %||% NA_character_, issuer)) {
     stop("access_token_issuer_invalid", call. = FALSE)
   }
 
-  exp <- suppressWarnings(as.numeric(payload$exp %||% NA_real_))
+  exp <- suppressWarnings(as.numeric(
+    payload[["exp"]] %||% NA_real_
+  ))
   if (!is.finite(exp) || exp <= as.numeric(Sys.time())) {
     stop("access_token_expired", call. = FALSE)
   }
@@ -321,7 +344,7 @@ verify_signed_access_token_independent <- function(access_token, issuer, jwks) {
   header <- local_parse_jwt_header(access_token, label = "access_token")
   payload <- local_parse_jwt_payload(access_token, label = "access_token")
 
-  alg <- toupper(header$alg %||% "")
+  alg <- toupper(header[["alg"]] %||% "")
   if (!nzchar(alg)) {
     stop("access_token_alg_missing", call. = FALSE)
   }
@@ -329,7 +352,7 @@ verify_signed_access_token_independent <- function(access_token, issuer, jwks) {
   keys <- local_select_candidate_jwks(
     jwks,
     header_alg = alg,
-    kid = header$kid %||% NULL
+    kid = header[["kid"]] %||% NULL
   )
   if (length(keys) == 0L) {
     stop("no_matching_jwks_key", call. = FALSE)
@@ -353,11 +376,13 @@ verify_signed_access_token_independent <- function(access_token, issuer, jwks) {
     stop("access_token_signature_invalid", call. = FALSE)
   }
 
-  if (!identical(payload$iss %||% NA_character_, issuer)) {
+  if (!identical(payload[["iss"]] %||% NA_character_, issuer)) {
     stop("access_token_issuer_invalid", call. = FALSE)
   }
 
-  exp <- suppressWarnings(as.numeric(payload$exp %||% NA_real_))
+  exp <- suppressWarnings(as.numeric(
+    payload[["exp"]] %||% NA_real_
+  ))
   if (!is.finite(exp) || exp <= as.numeric(Sys.time())) {
     stop("access_token_expired", call. = FALSE)
   }
@@ -377,12 +402,12 @@ verify_dpop_proof_independent <- function(
   header <- local_parse_jwt_header(proof, label = "dpop")
   payload <- local_parse_jwt_payload(proof, label = "dpop")
 
-  typ <- tolower(header$typ %||% "")
+  typ <- tolower(header[["typ"]] %||% "")
   if (!identical(typ, "dpop+jwt")) {
     stop("dpop_typ_invalid", call. = FALSE)
   }
 
-  jwk <- header$jwk %||% NULL
+  jwk <- header[["jwk"]] %||% NULL
   if (!is.list(jwk) || length(jwk) == 0L) {
     stop("dpop_jwk_missing", call. = FALSE)
   }
@@ -393,28 +418,39 @@ verify_dpop_proof_independent <- function(
   }
 
   verified <- try(
-    verify_dpop_jws_signature(proof, pub, header$alg %||% NA_character_),
+    verify_dpop_jws_signature(
+      proof,
+      pub,
+      header[["alg"]] %||% NA_character_
+    ),
     silent = TRUE
   )
   if (inherits(verified, "try-error")) {
     stop("dpop_signature_invalid", call. = FALSE)
   }
 
-  if (!identical(toupper(payload$htm %||% ""), toupper(req_method))) {
+  if (
+    !identical(
+      toupper(payload[["htm"]] %||% ""),
+      toupper(req_method)
+    )
+  ) {
     stop("dpop_htm_mismatch", call. = FALSE)
   }
 
   expected_htu <- local_dpop_target_uri(req_url)
-  if (!identical(payload$htu %||% NA_character_, expected_htu)) {
+  if (!identical(payload[["htu"]] %||% NA_character_, expected_htu)) {
     stop("dpop_htu_mismatch", call. = FALSE)
   }
 
   expected_ath <- local_dpop_access_token_hash(access_token)
-  if (!identical(payload$ath %||% NA_character_, expected_ath)) {
+  if (!identical(payload[["ath"]] %||% NA_character_, expected_ath)) {
     stop("dpop_ath_mismatch", call. = FALSE)
   }
 
-  iat <- suppressWarnings(as.numeric(payload$iat %||% NA_real_))
+  iat <- suppressWarnings(as.numeric(
+    payload[["iat"]] %||% NA_real_
+  ))
   if (!is.finite(iat)) {
     stop("dpop_iat_invalid", call. = FALSE)
   }
@@ -422,7 +458,7 @@ verify_dpop_proof_independent <- function(
     stop("dpop_iat_out_of_range", call. = FALSE)
   }
 
-  jti <- payload$jti %||% NA_character_
+  jti <- payload[["jti"]] %||% NA_character_
   if (!(is.character(jti) && length(jti) == 1L && nzchar(jti))) {
     stop("dpop_jti_missing", call. = FALSE)
   }
@@ -452,12 +488,12 @@ verify_dpop_proof <- function(
   header <- shinyOAuth:::parse_jwt_header(proof)
   payload <- shinyOAuth:::parse_jwt_payload(proof)
 
-  typ <- tolower(header$typ %||% "")
+  typ <- tolower(header[["typ"]] %||% "")
   if (!identical(typ, "dpop+jwt")) {
     stop("dpop_typ_invalid", call. = FALSE)
   }
 
-  jwk <- header$jwk %||% NULL
+  jwk <- header[["jwk"]] %||% NULL
   if (!is.list(jwk) || length(jwk) == 0L) {
     stop("dpop_jwk_missing", call. = FALSE)
   }
@@ -468,28 +504,39 @@ verify_dpop_proof <- function(
   }
 
   verified <- try(
-    verify_dpop_jws_signature(proof, pub, header$alg %||% NA_character_),
+    verify_dpop_jws_signature(
+      proof,
+      pub,
+      header[["alg"]] %||% NA_character_
+    ),
     silent = TRUE
   )
   if (inherits(verified, "try-error")) {
     stop("dpop_signature_invalid", call. = FALSE)
   }
 
-  if (!identical(toupper(payload$htm %||% ""), toupper(req_method))) {
+  if (
+    !identical(
+      toupper(payload[["htm"]] %||% ""),
+      toupper(req_method)
+    )
+  ) {
     stop("dpop_htm_mismatch", call. = FALSE)
   }
 
   expected_htu <- shinyOAuth:::dpop_target_uri(req_url)
-  if (!identical(payload$htu %||% NA_character_, expected_htu)) {
+  if (!identical(payload[["htu"]] %||% NA_character_, expected_htu)) {
     stop("dpop_htu_mismatch", call. = FALSE)
   }
 
   expected_ath <- shinyOAuth:::dpop_access_token_hash(access_token)
-  if (!identical(payload$ath %||% NA_character_, expected_ath)) {
+  if (!identical(payload[["ath"]] %||% NA_character_, expected_ath)) {
     stop("dpop_ath_mismatch", call. = FALSE)
   }
 
-  iat <- suppressWarnings(as.numeric(payload$iat %||% NA_real_))
+  iat <- suppressWarnings(as.numeric(
+    payload[["iat"]] %||% NA_real_
+  ))
   if (!is.finite(iat)) {
     stop("dpop_iat_invalid", call. = FALSE)
   }
@@ -497,7 +544,7 @@ verify_dpop_proof <- function(
     stop("dpop_iat_out_of_range", call. = FALSE)
   }
 
-  jti <- payload$jti %||% NA_character_
+  jti <- payload[["jti"]] %||% NA_character_
   if (!(is.character(jti) && length(jti) == 1L && nzchar(jti))) {
     stop("dpop_jti_missing", call. = FALSE)
   }
@@ -591,8 +638,11 @@ start_dpop_protected_resource <- function(
     # verifier a self-contained helper environment so nested local helpers are
     # still available after serialization.
     independent_helpers <- bind_independent_dpop_helpers()
-    verify_access_token <- independent_helpers$verify_access_token
-    verify_proof <- independent_helpers$verify_proof
+    verify_access_token <- independent_helpers[[
+      "verify_access_token",
+      exact = TRUE
+    ]]
+    verify_proof <- independent_helpers[["verify_proof"]]
   } else {
     verify_access_token <- verify_signed_access_token
     verify_proof <- verify_dpop_proof
@@ -648,8 +698,8 @@ start_dpop_protected_resource <- function(
         proof_info <- try(
           verify_proof(
             proof = proof,
-            req_method = req$method,
-            req_url = as.character(req$url),
+            req_method = req[["method"]],
+            req_url = as.character(req[["url"]]),
             access_token = access_token,
             enforce_jti_replay = enforce_jti_replay,
             jti_cache = jti_cache,
@@ -667,7 +717,10 @@ start_dpop_protected_resource <- function(
         }
 
         bound_jkt <- coalesce(
-          coalesce(access_payload$cnf, list())$jkt,
+          coalesce(
+            access_payload[["cnf"]],
+            list()
+          )[["jkt"]],
           NA_character_
         )
         if (
@@ -679,7 +732,12 @@ start_dpop_protected_resource <- function(
           return()
         }
 
-        if (!identical(bound_jkt, proof_info$jwk_thumbprint)) {
+        if (
+          !identical(
+            bound_jkt,
+            proof_info[["jwk_thumbprint"]]
+          )
+        ) {
           send_problem(res, 401L, "dpop_key_mismatch")
           return()
         }
@@ -688,9 +746,15 @@ start_dpop_protected_resource <- function(
         res$send(jsonlite::toJSON(
           list(
             ok = TRUE,
-            sub = coalesce(access_payload$sub, NA_character_),
+            sub = coalesce(
+              access_payload[["sub"]],
+              NA_character_
+            ),
             token_jkt = bound_jkt,
-            proof_jti = coalesce(proof_info$payload$jti, NA_character_)
+            proof_jti = coalesce(
+              proof_info[["payload"]][["jti"]],
+              NA_character_
+            )
           ),
           auto_unbox = TRUE,
           null = "null"

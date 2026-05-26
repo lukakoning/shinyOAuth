@@ -64,7 +64,7 @@ test_that("state is stored under hashed lowercase-hex cache key", {
       nzchar(enc_payload)
   )
   payload <- shinyOAuth:::state_decrypt_gcm(enc_payload, key = client@state_key)
-  raw_state <- payload$state
+  raw_state <- payload[["state"]]
   expect_true(
     is.character(raw_state) && length(raw_state) == 1L && nzchar(raw_state)
   )

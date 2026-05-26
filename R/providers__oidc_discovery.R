@@ -233,8 +233,9 @@ oauth_provider_oidc_discover <- function(
     issuer_discovered = disc[["issuer"]],
     issuer_match = issuer_match
   )
+  parsed_iss <- httr2::url_parse(iss)
   iss_host <- .discover_normalize_host(
-    httr2::url_parse(iss)$hostname %||% err_parse("Invalid issuer host")
+    parsed_iss[["hostname"]] %||% err_parse("Invalid issuer host")
   )
 
   # 6) Determine allowed hosts and validate endpoints
@@ -244,7 +245,8 @@ oauth_provider_oidc_discover <- function(
   # 6a) Read caller overrides before any JWKS-dependent policy checks so
   # both presence requirements and host pinning see the same values.
   dots <- list(...)
-  jwks_host_allow_only <- dots$jwks_host_allow_only %||% NULL
+  jwks_host_allow_only <- dots[["jwks_host_allow_only"]] %||%
+    NULL
 
   # 6b) Any mode that verifies ID-token or UserInfo JWT signatures needs JWKS.
   .discover_require_jwks_uri(
@@ -252,7 +254,9 @@ oauth_provider_oidc_discover <- function(
     iss = iss,
     id_token_validation = id_token_validation,
     use_nonce = use_nonce,
-    userinfo_signed_jwt_required = isTRUE(dots$userinfo_signed_jwt_required)
+    userinfo_signed_jwt_required = isTRUE(
+      dots[["userinfo_signed_jwt_required"]]
+    )
   )
 
   .discover_validate_jwks_uri(
@@ -279,7 +283,7 @@ oauth_provider_oidc_discover <- function(
     disc,
     use_pkce,
     iss,
-    endpoints$token_url
+    endpoints[["token_url"]]
   )
 
   # 10) Resolve PKCE method against discovery metadata
@@ -288,7 +292,7 @@ oauth_provider_oidc_discover <- function(
     use_pkce = use_pkce,
     iss = iss,
     iss_host = iss_host,
-    pkce_method = dots$pkce_method %||% NULL
+    pkce_method = dots[["pkce_method"]] %||% NULL
   )
 
   # 11) Negotiate allowed ID token algs
@@ -375,7 +379,7 @@ oauth_provider_oidc_discover <- function(
   #      Whether the userinfo response is application/jwt depends on per-client
   #      configuration at the provider. Therefore we do NOT auto-enable
   #      userinfo_signed_jwt_required from discovery; callers must opt in.
-  dots$pkce_method <- pkce_method
+  dots[["pkce_method"]] <- pkce_method
 
   # 12) Default provider name from issuer when needed
   name <- .discover_default_name(name, iss)
@@ -384,12 +388,12 @@ oauth_provider_oidc_discover <- function(
   # discovered defaults without passing duplicate named formals through do.call().
   provider_args <- list(
     name = name,
-    auth_url = endpoints$auth_url,
-    token_url = endpoints$token_url,
-    userinfo_url = endpoints$userinfo_url,
-    introspection_url = endpoints$introspection_url,
-    revocation_url = endpoints$revocation_url,
-    par_url = endpoints$par_url,
+    auth_url = endpoints[["auth_url"]],
+    token_url = endpoints[["token_url"]],
+    userinfo_url = endpoints[["userinfo_url"]],
+    introspection_url = endpoints[["introspection_url"]],
+    revocation_url = endpoints[["revocation_url"]],
+    par_url = endpoints[["par_url"]],
     require_pushed_authorization_requests = require_pushed_authorization_requests,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
@@ -474,8 +478,8 @@ oauth_provider_oidc_discover <- function(
   parsed <- try(httr2::url_parse(issuer), silent = TRUE)
   if (
     inherits(parsed, "try-error") ||
-      !nzchar((parsed$scheme %||% "")) ||
-      !nzchar((parsed$hostname %||% ""))
+      !nzchar((parsed[["scheme"]] %||% "")) ||
+      !nzchar((parsed[["hostname"]] %||% ""))
   ) {
     err_input(
       c(
@@ -495,7 +499,10 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
-  if (length(parsed$query) > 0L || nzchar(parsed$fragment %||% "")) {
+  if (
+    length(parsed[["query"]]) > 0L ||
+      nzchar(parsed[["fragment"]] %||% "")
+  ) {
     err_input(
       c(
         "x" = "issuer must not contain query or fragment components",
@@ -547,11 +554,14 @@ oauth_provider_oidc_discover <- function(
 
   if (inherits(resp, "try-error")) {
     cnd <- attr(resp, "condition")
-    while (!is.null(cnd) && !is.null(cnd$parent)) {
-      cnd <- cnd$parent
+    while (!is.null(cnd) && !is.null(cnd[["parent"]])) {
+      cnd <- cnd[["parent"]]
     }
     msg <- try(conditionMessage(cnd), silent = TRUE)
-    discovery_url <- try(as.character(req$url), silent = TRUE)
+    discovery_url <- try(
+      as.character(req[["url"]]),
+      silent = TRUE
+    )
     err_http(
       c("x" = "Failed to fetch OIDC discovery document"),
       resp = NULL,
@@ -742,12 +752,21 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_validate_endpoints <- function(endpoints, allowed_hosts_vec) {
-  validate_endpoint(endpoints$auth_url, allowed_hosts_vec)
-  validate_endpoint(endpoints$token_url, allowed_hosts_vec)
-  validate_endpoint(endpoints$userinfo_url, allowed_hosts_vec)
-  validate_endpoint(endpoints$introspection_url, allowed_hosts_vec)
-  validate_endpoint(endpoints$revocation_url, allowed_hosts_vec)
-  validate_endpoint(endpoints$par_url, allowed_hosts_vec)
+  validate_endpoint(endpoints[["auth_url"]], allowed_hosts_vec)
+  validate_endpoint(endpoints[["token_url"]], allowed_hosts_vec)
+  validate_endpoint(
+    endpoints[["userinfo_url"]],
+    allowed_hosts_vec
+  )
+  validate_endpoint(
+    endpoints[["introspection_url"]],
+    allowed_hosts_vec
+  )
+  validate_endpoint(
+    endpoints[["revocation_url"]],
+    allowed_hosts_vec
+  )
+  validate_endpoint(endpoints[["par_url"]], allowed_hosts_vec)
 
   invisible(TRUE)
 }
@@ -1410,7 +1429,11 @@ oauth_provider_oidc_discover <- function(
   }
 
   parsed <- try(httr2::url_parse(iss), silent = TRUE)
-  host <- if (!inherits(parsed, "try-error")) parsed$hostname else NA_character_
+  host <- if (!inherits(parsed, "try-error")) {
+    parsed[["hostname"]]
+  } else {
+    NA_character_
+  }
 
   if (is_valid_string(host)) {
     return(host)

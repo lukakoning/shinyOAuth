@@ -192,9 +192,10 @@ test_that("build_auth_url: includes acr_values when required_acr_values is set",
   )
 
   parsed <- httr2::url_parse(url)
-  expect_true("acr_values" %in% names(parsed$query))
+  query <- parsed[["query"]]
+  expect_true("acr_values" %in% names(query))
   expect_equal(
-    parsed$query$acr_values,
+    query[["acr_values"]],
     "urn:mace:incommon:iap:silver urn:mace:incommon:iap:gold"
   )
 })
@@ -211,7 +212,7 @@ test_that("build_auth_url: no acr_values when required_acr_values is empty", {
   )
 
   parsed <- httr2::url_parse(url)
-  expect_false("acr_values" %in% names(parsed$query))
+  expect_false("acr_values" %in% names(parsed[["query"]]))
 })
 
 # --- verify_token_set acr enforcement tests -----------------------------------

@@ -63,7 +63,7 @@ otel_exported_logs <- function(path) {
         scope_name <- scope_log$scope$name %||% NA_character_
         for (log_record in scope_log$logRecords %||% list()) {
           logs[[length(logs) + 1L]] <- list(
-            body = log_record$body$stringValue %||% NA_character_,
+            body = log_record$body[["stringValue"]] %||% NA_character_,
             trace_id = log_record$traceId %||% NA_character_,
             span_id = log_record$spanId %||% NA_character_,
             scope_name = scope_name,
@@ -295,9 +295,9 @@ otel_e2e("async parent span honors an explicit parent context", {
   outer <- r$traces[["reactive_update.async"]]
   parent <- r$traces[["shinyOAuth.test.async.explicit"]]
 
-  testthat::expect_identical(parent$trace_id, login$trace_id)
-  testthat::expect_identical(parent$parent, login$span_id)
-  testthat::expect_false(identical(parent$parent, outer$span_id))
+  testthat::expect_identical(parent[["trace_id"]], login[["trace_id"]])
+  testthat::expect_identical(parent[["parent"]], login[["span_id"]])
+  testthat::expect_false(identical(parent[["parent"]], outer[["span_id"]]))
 })
 
 # ---------------------------------------------------------------------------
@@ -363,7 +363,7 @@ otel_e2e("prepare_call emits PAR spans when PAR is used", {
       req_with_dpop_retry = function(req, client, idempotent = TRUE) {
         testthat::expect_true(isTRUE(idempotent))
         httr2::response(
-          url = req$url,
+          url = req[["url"]],
           status = 201,
           headers = list("content-type" = "application/json"),
           body = charToRaw(

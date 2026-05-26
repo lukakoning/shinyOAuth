@@ -28,7 +28,7 @@ duplicate_userinfo_response <- function(cli, jwt_body, verify_payload = FALSE) {
   bindings <- list(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)

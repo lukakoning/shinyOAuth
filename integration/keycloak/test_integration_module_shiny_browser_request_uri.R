@@ -1281,24 +1281,24 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
   payload <- .wait_for_request_uri_auth_url(drv)
   payload <- c(payload, .read_request_uri_csrf_payload(drv))
 
-  testthat::expect_true(nzchar(payload$cookie_name %||% ""))
-  testthat::expect_true(nzchar(payload$cookie_value %||% ""))
-  testthat::expect_true(nzchar(payload$auth_url %||% ""))
+  testthat::expect_true(nzchar(payload[["cookie_name"]] %||% ""))
+  testthat::expect_true(nzchar(payload[["cookie_value"]] %||% ""))
+  testthat::expect_true(nzchar(payload[["auth_url"]] %||% ""))
 
   attacker_cookie <- paste0(
     sample(c(0:9, letters[1:6]), 128, replace = TRUE),
     collapse = ""
   )
-  testthat::expect_false(identical(attacker_cookie, payload$cookie_value))
+  testthat::expect_false(identical(attacker_cookie, payload[["cookie_value"]]))
 
   tampered <- .tamper_browser_token_cookie(
     drv,
-    cookie_name = payload$cookie_name,
+    cookie_name = payload[["cookie_name"]],
     cookie_value = attacker_cookie
   )
   testthat::expect_identical(tampered$current_value, attacker_cookie)
 
-  .navigate_browser_to_url(drv, payload$auth_url)
+  .navigate_browser_to_url(drv, payload[["auth_url"]])
 
   login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 20000)
   if (identical(login_state, "login")) {

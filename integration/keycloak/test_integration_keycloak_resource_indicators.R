@@ -72,10 +72,10 @@ resource_indicator_login_via_module <- function(client) {
 
 resource_failure_text <- function(result) {
   paste(
-    result$error %||% "",
-    result$error_description %||% "",
-    result$callback_url %||% "",
-    result$login_error %||% ""
+    result[["error"]] %||% "",
+    result[["error_description"]] %||% "",
+    result[["callback_url"]] %||% "",
+    result[["login_error"]] %||% ""
   )
 }
 
@@ -92,7 +92,7 @@ normalize_resource_audience <- function(audience) {
 
 access_token_audience <- function(token) {
   payload <- shinyOAuth:::parse_jwt_payload(token@access_token)
-  normalize_resource_audience(payload$aud %||% NULL)
+  normalize_resource_audience(payload[["aud"]] %||% NULL)
 }
 
 start_resource_audience_server <- function(
@@ -139,7 +139,7 @@ start_resource_audience_server <- function(
       list(
         ok = TRUE,
         audience = expected_audience,
-        sub = payload$sub %||% NA_character_
+        sub = payload[["sub"]] %||% NA_character_
       ),
       auto_unbox = TRUE,
       null = "null"
@@ -190,24 +190,28 @@ testthat::test_that("Keycloak code flow accepts RFC 8707 resource indicators", {
   result <- resource_indicator_login_via_module(client)
 
   testthat::expect_match(
-    result$auth_url,
+    result[["auth_url"]],
     "resource=https%3A%2F%2Fapi\\.shinyoauth\\.test"
   )
   testthat::expect_true(
-    isTRUE(result$authenticated),
+    isTRUE(result[["authenticated"]]),
     info = resource_failure_text(result)
   )
-  testthat::expect_null(result$error)
-  testthat::expect_false(is.null(result$token))
-  testthat::expect_true(isTRUE(result$token@id_token_validated))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_false(is.null(result[["token"]]))
+  testthat::expect_true(isTRUE(result[["token"]]@id_token_validated))
 
-  intros <- shinyOAuth::introspect_token(client, result$token, which = "access")
+  intros <- shinyOAuth::introspect_token(
+    client,
+    result[["token"]],
+    which = "access"
+  )
   testthat::expect_true(isTRUE(intros$supported))
   testthat::expect_true(isTRUE(intros$active))
 
-  testthat::expect_length(access_token_audience(result$token), 0L)
+  testthat::expect_length(access_token_audience(result[["token"]]), 0L)
   testthat::expect_length(
-    normalize_resource_audience(intros$raw$aud %||% NULL),
+    normalize_resource_audience(intros$raw[["aud"]] %||% NULL),
     0L
   )
 })
@@ -230,15 +234,19 @@ testthat::test_that("audience-mapped Keycloak resource token is usable at an aud
   client <- make_resource_indicator_enforced_client(prov, resource = resource)
   result <- resource_indicator_login_via_module(client)
   testthat::expect_true(
-    isTRUE(result$authenticated),
+    isTRUE(result[["authenticated"]]),
     info = resource_failure_text(result)
   )
-  testthat::expect_null(result$error)
-  testthat::expect_false(is.null(result$token))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_false(is.null(result[["token"]]))
 
-  intros <- shinyOAuth::introspect_token(client, result$token, which = "access")
-  aud <- access_token_audience(result$token)
-  intros_aud <- normalize_resource_audience(intros$raw$aud %||% NULL)
+  intros <- shinyOAuth::introspect_token(
+    client,
+    result[["token"]],
+    which = "access"
+  )
+  aud <- access_token_audience(result[["token"]])
+  intros_aud <- normalize_resource_audience(intros$raw[["aud"]] %||% NULL)
 
   testthat::expect_true(resource %in% aud)
   testthat::expect_true(resource %in% intros_aud)
@@ -248,13 +256,13 @@ testthat::test_that("audience-mapped Keycloak resource token is usable at an aud
 
   ok_resp <- perform_resource_audience_request(
     protected$url,
-    result$token@access_token
+    result[["token"]]@access_token
   )
   ok_body <- httr2::resp_body_json(ok_resp, simplifyVector = TRUE)
   testthat::expect_identical(httr2::resp_status(ok_resp), 200L)
   testthat::expect_true(isTRUE(ok_body$ok))
   testthat::expect_identical(ok_body$audience, resource)
-  testthat::expect_identical(ok_body$sub, result$token@userinfo$sub)
+  testthat::expect_identical(ok_body$sub, result[["token"]]@userinfo[["sub"]])
 
   bad_resp <- perform_resource_audience_request(
     protected$url,

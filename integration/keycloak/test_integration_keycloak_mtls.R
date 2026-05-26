@@ -180,7 +180,7 @@ create_temp_certificate_bound_client_secret_jwt_client <- function() {
       "tls.client.certificate.bound.access.tokens" = "true"
     )
   )
-  body$secret <- get_client_secret_jwt_secret()
+  body[["secret"]] <- get_client_secret_jwt_secret()
 
   fixture <- keycloak_create_client(admin_token, body)
 
@@ -346,11 +346,11 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
 
   access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
-  testthat::expect_identical(login$token@cnf$`x5t#S256`, access_x5t)
+  testthat::expect_identical(login$token@cnf[["x5t#S256"]], access_x5t)
 
   userinfo <- shinyOAuth::get_userinfo(client, login$token)
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo$sub, login$token@userinfo$sub)
+  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,
@@ -424,11 +424,11 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
 
   access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
-  testthat::expect_identical(login$token@cnf$`x5t#S256`, access_x5t)
+  testthat::expect_identical(login$token@cnf[["x5t#S256"]], access_x5t)
 
   userinfo <- shinyOAuth::get_userinfo(client, login$token)
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo$sub, login$token@userinfo$sub)
+  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,
@@ -482,7 +482,7 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
 
   testthat::expect_identical(httr2::resp_status(resp), 201L)
   testthat::expect_match(
-    body$request_uri %||% "",
+    body[["request_uri"]] %||% "",
     "^urn:ietf:params:oauth:request_uri:"
   )
 
@@ -543,10 +543,10 @@ testthat::test_that("Keycloak mTLS protected resource helper reaches the userinf
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
 
   testthat::expect_identical(httr2::resp_status(resp), 200L)
-  testthat::expect_identical(body$sub, login$token@userinfo$sub)
+  testthat::expect_identical(body[["sub"]], login$token@userinfo[["sub"]])
   testthat::expect_identical(
-    body$preferred_username,
-    login$token@userinfo$preferred_username
+    body[["preferred_username"]],
+    login$token@userinfo[["preferred_username"]]
   )
 })
 
@@ -595,7 +595,7 @@ testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered en
       testthat::expect_false(is.null(values$token))
       testthat::expect_true(nzchar(values$token@access_token %||% ""))
       testthat::expect_identical(
-        values$token@userinfo$preferred_username,
+        values$token@userinfo[["preferred_username"]],
         "alice"
       )
       testthat::expect_identical(

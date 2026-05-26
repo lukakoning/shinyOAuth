@@ -217,7 +217,7 @@ test_that("swap_code_for_token_set surfaces structured error on 400", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 400,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -248,7 +248,7 @@ test_that("swap_code_for_token_set rejects oversized error bodies", {
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, client, idempotent = FALSE) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 400,
         headers = list("content-type" = "application/json"),
         body = charToRaw(paste0(
@@ -277,7 +277,7 @@ test_that("refresh_token surfaces structured error on 400", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 400,
         headers = list("content-type" = "application/json"),
         body = charToRaw(

@@ -25,12 +25,12 @@ mock_apple_discovery <- function(disc_json = make_apple_discovery_doc()) {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       testthat::expect_match(
-        as.character(req$url),
+        as.character(req[["url"]]),
         "appleid\\.apple\\.com/.well-known/openid-configuration"
       )
 
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -345,7 +345,7 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -377,7 +377,7 @@ test_that("oauth_provider_okta constructs correct issuer from domain + auth_serv
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -403,7 +403,7 @@ test_that("oauth_provider_okta can target the org authorization server", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -429,7 +429,7 @@ test_that("oauth_provider_auth0 constructs correct issuer from domain", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -452,7 +452,7 @@ test_that("oauth_provider_auth0 accepts discovery issuers with a trailing slash"
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -475,7 +475,7 @@ test_that("oauth_provider_auth0 includes audience in extra_auth_params", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))
@@ -502,7 +502,7 @@ test_that("oauth_provider_slack constructs correct issuer", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(as.character(disc_json))

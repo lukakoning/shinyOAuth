@@ -78,14 +78,17 @@ capture_test_otel_state <- function() {
   )
 
   if (requireNamespace("otel", quietly = TRUE)) {
-    state$otel_cache <- get("otel_save_cache", envir = asNamespace("otel"))()
+    state[["otel_cache"]] <- get(
+      "otel_save_cache",
+      envir = asNamespace("otel")
+    )()
   }
 
   if (requireNamespace("mirai", quietly = TRUE)) {
     mirai_otel_env <- environment(
       get("otel_cache_tracer", envir = asNamespace("mirai"))
     )
-    state$mirai_cache <- list(
+    state[["mirai_cache"]] <- list(
       env = mirai_otel_env,
       otel_is_tracing = get("otel_is_tracing", envir = mirai_otel_env),
       otel_tracer = get("otel_tracer", envir = mirai_otel_env)
@@ -100,7 +103,7 @@ restore_test_otel_state <- function(state) {
     return(invisible(NULL))
   }
 
-  envvars <- state$envvars %||% character()
+  envvars <- state[["envvars"]] %||% character()
   if (length(envvars)) {
     restore_values <- envvars[!is.na(envvars)]
     restore_unset <- names(envvars)[is.na(envvars)]
@@ -112,24 +115,31 @@ restore_test_otel_state <- function(state) {
     }
   }
 
-  do.call(options, state$options %||% list())
+  do.call(options, state[["options"]] %||% list())
 
-  if (!is.null(state$otel_cache) && requireNamespace("otel", quietly = TRUE)) {
-    get("otel_restore_cache", envir = asNamespace("otel"))(state$otel_cache)
+  if (
+    !is.null(state[["otel_cache"]]) &&
+      requireNamespace("otel", quietly = TRUE)
+  ) {
+    get("otel_restore_cache", envir = asNamespace("otel"))(
+      state[["otel_cache"]]
+    )
   }
 
   if (
-    !is.null(state$mirai_cache) && requireNamespace("mirai", quietly = TRUE)
+    !is.null(state[["mirai_cache"]]) &&
+      requireNamespace("mirai", quietly = TRUE)
   ) {
+    mirai_cache <- state[["mirai_cache"]]
     assign(
       "otel_is_tracing",
-      state$mirai_cache$otel_is_tracing,
-      envir = state$mirai_cache$env
+      mirai_cache[["otel_is_tracing"]],
+      envir = mirai_cache[["env"]]
     )
     assign(
       "otel_tracer",
-      state$mirai_cache$otel_tracer,
-      envir = state$mirai_cache$env
+      mirai_cache[["otel_tracer"]],
+      envir = mirai_cache[["env"]]
     )
   }
 

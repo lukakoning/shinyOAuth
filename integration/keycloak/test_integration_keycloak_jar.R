@@ -45,18 +45,19 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
 
       testthat::expect_identical(header$typ, "oauth-authz-req+jwt")
       testthat::expect_identical(header$alg, "RS256")
-      testthat::expect_identical(payload$iss, "shiny-jar-pjwt")
-      testthat::expect_identical(payload$aud, get_issuer())
-      testthat::expect_identical(payload$client_id, "shiny-jar-pjwt")
+      testthat::expect_identical(payload[["iss"]], "shiny-jar-pjwt")
+      testthat::expect_identical(payload[["aud"]], get_issuer())
+      testthat::expect_identical(payload[["client_id"]], "shiny-jar-pjwt")
       testthat::expect_identical(
-        payload$redirect_uri,
+        payload[["redirect_uri"]],
         client@redirect_uri
       )
       testthat::expect_true(
-        is.character(payload$state) && nzchar(payload$state)
+        is.character(payload[["state"]]) && nzchar(payload[["state"]])
       )
       testthat::expect_true(
-        is.character(payload$code_challenge) && nzchar(payload$code_challenge)
+        is.character(payload[["code_challenge"]]) &&
+          nzchar(payload[["code_challenge"]])
       )
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
@@ -99,10 +100,10 @@ testthat::test_that("Keycloak request-object carries form_post response_mode in 
       request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
       payload <- decode_compact_jwt_payload(request_jwt)
 
-      testthat::expect_identical(payload$response_mode, "form_post")
-      testthat::expect_identical(payload$client_id, client@client_id)
+      testthat::expect_identical(payload[["response_mode"]], "form_post")
+      testthat::expect_identical(payload[["client_id"]], client@client_id)
       testthat::expect_identical(
-        payload$redirect_uri,
+        payload[["redirect_uri"]],
         client@redirect_uri
       )
     }
@@ -144,19 +145,20 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
 
       testthat::expect_identical(header$typ, "oauth-authz-req+jwt")
       testthat::expect_identical(header$alg, "HS256")
-      testthat::expect_identical(payload$iss, client@client_id)
-      testthat::expect_identical(payload$aud, get_issuer())
-      testthat::expect_identical(payload$client_id, client@client_id)
+      testthat::expect_identical(payload[["iss"]], client@client_id)
+      testthat::expect_identical(payload[["aud"]], get_issuer())
+      testthat::expect_identical(payload[["client_id"]], client@client_id)
       testthat::expect_false("sub" %in% names(payload))
       testthat::expect_identical(
-        payload$redirect_uri,
+        payload[["redirect_uri"]],
         client@redirect_uri
       )
       testthat::expect_true(
-        is.character(payload$state) && nzchar(payload$state)
+        is.character(payload[["state"]]) && nzchar(payload[["state"]])
       )
       testthat::expect_true(
-        is.character(payload$code_challenge) && nzchar(payload$code_challenge)
+        is.character(payload[["code_challenge"]]) &&
+          nzchar(payload[["code_challenge"]])
       )
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
@@ -207,12 +209,18 @@ testthat::test_that("Keycloak encrypted request-object happy path (private_key_j
 
       testthat::expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
       testthat::expect_identical(
-        outer$protected_header$typ,
+        outer[["protected_header"]][["typ"]],
         "oauth-authz-req+jwt"
       )
-      testthat::expect_identical(outer$protected_header$cty, "JWT")
-      testthat::expect_identical(outer$protected_header$alg, "RSA-OAEP")
-      testthat::expect_identical(outer$protected_header$enc, "A256CBC-HS512")
+      testthat::expect_identical(outer[["protected_header"]][["cty"]], "JWT")
+      testthat::expect_identical(
+        outer[["protected_header"]][["alg"]],
+        "RSA-OAEP"
+      )
+      testthat::expect_identical(
+        outer[["protected_header"]][["enc"]],
+        "A256CBC-HS512"
+      )
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
@@ -264,12 +272,18 @@ testthat::test_that("Keycloak encrypted request-object happy path (HS256)", {
 
       testthat::expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
       testthat::expect_identical(
-        outer$protected_header$typ,
+        outer[["protected_header"]][["typ"]],
         "oauth-authz-req+jwt"
       )
-      testthat::expect_identical(outer$protected_header$cty, "JWT")
-      testthat::expect_identical(outer$protected_header$alg, "RSA-OAEP")
-      testthat::expect_identical(outer$protected_header$enc, "A256CBC-HS512")
+      testthat::expect_identical(outer[["protected_header"]][["cty"]], "JWT")
+      testthat::expect_identical(
+        outer[["protected_header"]][["alg"]],
+        "RSA-OAEP"
+      )
+      testthat::expect_identical(
+        outer[["protected_header"]][["enc"]],
+        "A256CBC-HS512"
+      )
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 

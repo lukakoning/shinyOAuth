@@ -305,7 +305,7 @@ testthat::test_that("mismatched callback issuer is rejected before state or code
       testthat::expect_false(is.null(values$token))
       testthat::expect_true(nzchar(values$token@access_token %||% ""))
       testthat::expect_identical(
-        values$token@userinfo$preferred_username,
+        values$token@userinfo[["preferred_username"]],
         "alice"
       )
     }

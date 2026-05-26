@@ -128,12 +128,14 @@ oauth_client_mtls_registration <- function(
     }
 
     if (is.null(jwks_uri)) {
-      metadata$jwks <- build_self_signed_mtls_registration_jwks(oauth_client)
+      metadata[["jwks"]] <- build_self_signed_mtls_registration_jwks(
+        oauth_client
+      )
       return(metadata)
     }
 
     validate_mtls_registration_jwks_uri(jwks_uri)
-    metadata$jwks_uri <- jwks_uri
+    metadata[["jwks_uri"]] <- jwks_uri
     return(metadata)
   }
 
@@ -250,7 +252,7 @@ resolve_mtls_registration_identifier_value <- function(
 
   cert_info <- read_mtls_registration_certificate_info(oauth_client)
   if (identical(tls_client_auth_type, "subject_dn")) {
-    subject <- cert_info$subject %||% NA_character_
+    subject <- cert_info[["subject"]] %||% NA_character_
     if (!is_valid_string(subject)) {
       err_config(
         "tls_client_cert_file does not expose a subject DN for tls_client_auth registration"
@@ -304,18 +306,22 @@ resolve_certificate_alt_name_value <- function(
   cert_info,
   tls_client_auth_type
 ) {
-  alt_names <- cert_info$alt_names %||% character(0)
+  alt_names <- cert_info[["alt_names"]] %||% character(0)
   parsed <- Filter(
     Negate(is.null),
     lapply(alt_names, parse_certificate_alt_name)
   )
   matches <- Filter(
     function(entry) {
-      identical(entry$type, tls_client_auth_type)
+      identical(entry[["type"]], tls_client_auth_type)
     },
     parsed
   )
-  values <- unique(vapply(matches, function(entry) entry$value, character(1)))
+  values <- unique(vapply(
+    matches,
+    function(entry) entry[["value"]],
+    character(1)
+  ))
   field_name <- mtls_registration_field_name(tls_client_auth_type)
 
   if (length(values) == 1L) {
@@ -680,13 +686,19 @@ build_mtls_registration_ipv6_literal <- function(hextets, zero_run = NULL) {
     return(paste(hextets, collapse = ":"))
   }
 
-  left <- if (zero_run$start > 1L) {
-    paste(hextets[seq_len(zero_run$start - 1L)], collapse = ":")
+  left <- if (zero_run[["start"]] > 1L) {
+    paste(
+      hextets[seq_len(zero_run[["start"]] - 1L)],
+      collapse = ":"
+    )
   } else {
     ""
   }
-  right <- if (zero_run$end < length(hextets)) {
-    paste(hextets[(zero_run$end + 1L):length(hextets)], collapse = ":")
+  right <- if (zero_run[["end"]] < length(hextets)) {
+    paste(
+      hextets[(zero_run[["end"]] + 1L):length(hextets)],
+      collapse = ":"
+    )
   } else {
     ""
   }
@@ -720,14 +732,14 @@ validate_mtls_registration_jwks_uri <- function(jwks_uri) {
   parsed <- try(httr2::url_parse(jwks_uri), silent = TRUE)
   if (
     inherits(parsed, "try-error") ||
-      !nzchar(parsed$scheme %||% "") ||
-      !nzchar(parsed$hostname %||% "")
+      !nzchar(parsed[["scheme"]] %||% "") ||
+      !nzchar(parsed[["hostname"]] %||% "")
   ) {
     err_input(
       "{.arg jwks_uri} must be an absolute URL (including scheme and hostname)."
     )
   }
-  if (nzchar(parsed$fragment %||% "")) {
+  if (nzchar(parsed[["fragment"]] %||% "")) {
     err_input("{.arg jwks_uri} must not contain a URI fragment.")
   }
   if (!is_ok_host(jwks_uri)) {
@@ -757,12 +769,30 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
     key_file = oauth_client@tls_client_key_file,
     key_password = oauth_client@tls_client_key_password
   )
-  leaf_fingerprint <- as.list(leaf_cert)$pubkey$fingerprint %||% NULL
+  leaf_fingerprint <- tryCatch(
+    {
+      as.list(leaf_cert)[["pubkey"]][[
+        "fingerprint",
+        exact = TRUE
+      ]] %||%
+        NULL
+    },
+    error = function(...) NULL
+  )
   ordered_certs <- c(
     list(leaf_cert),
     Filter(
       function(cert) {
-        cert_fingerprint <- as.list(cert)$pubkey$fingerprint %||% NULL
+        cert_fingerprint <- tryCatch(
+          {
+            as.list(cert)[["pubkey"]][[
+              "fingerprint",
+              exact = TRUE
+            ]] %||%
+              NULL
+          },
+          error = function(...) NULL
+        )
         !identical(cert_fingerprint, leaf_fingerprint)
       },
       certs
@@ -819,7 +849,7 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
     },
     character(1)
   )
-  jwk$x5c <- I(unname(x5c))
+  jwk[["x5c"]] <- I(unname(x5c))
 
   jwks <- list(keys = list(jwk))
   validate_jwks(jwks)

@@ -48,7 +48,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 404,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"error":"not_found"}')
@@ -78,7 +78,7 @@ testthat::test_that("introspect_token parses active variants and http errors", {
       i <<- i + 1
       body <- bodies[[i]]
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -128,7 +128,7 @@ testthat::test_that("introspect_token treats duplicate active members as invalid
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"active":false}')
@@ -165,7 +165,7 @@ testthat::test_that("introspect_token rejects malformed JSON shapes", {
     req_with_retry = function(req, ...) {
       i <<- i + 1
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(bodies[[i]])
@@ -218,7 +218,7 @@ testthat::test_that("introspect_token async returns a resolved promise", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')

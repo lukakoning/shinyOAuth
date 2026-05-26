@@ -98,18 +98,23 @@ dpop_nonce_cache_key <- function(
   if (inherits(parsed, "try-error")) {
     return(NA_character_)
   }
-  parsed$query <- NULL
-  parsed$fragment <- NULL
-  parsed$path <- "/"
-  parsed$scheme <- tolower(parsed$scheme %||% "")
-  parsed$hostname <- tolower(parsed$hostname %||% "")
+  parsed[["query"]] <- NULL
+  parsed[["fragment"]] <- NULL
+  parsed[["path"]] <- "/"
+  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
+  parsed[["hostname"]] <- tolower(
+    parsed[["hostname"]] %||% ""
+  )
 
-  port <- as.character(parsed$port %||% "")
-  if (identical(parsed$scheme, "https") && identical(port, "443")) {
-    parsed$port <- NULL
+  port <- as.character(parsed[["port"]] %||% "")
+  if (
+    identical(parsed[["scheme"]], "https") &&
+      identical(port, "443")
+  ) {
+    parsed[["port"]] <- NULL
   }
-  if (identical(parsed$scheme, "http") && identical(port, "80")) {
-    parsed$port <- NULL
+  if (identical(parsed[["scheme"]], "http") && identical(port, "80")) {
+    parsed[["port"]] <- NULL
   }
 
   server_uri <- try(httr2::url_build(parsed), silent = TRUE)
@@ -317,7 +322,7 @@ token_dpop_cnf_observable <- function(
 
   raw <- NULL
   if (is.list(introspection_result)) {
-    raw <- introspection_result$raw %||% NULL
+    raw <- introspection_result[["raw"]] %||% NULL
     if (is.data.frame(raw)) {
       raw <- as.list(raw)
     }
@@ -567,17 +572,22 @@ dpop_target_uri <- function(url) {
     err_input("Failed to parse DPoP target URL")
   }
 
-  parsed$query <- NULL
-  parsed$fragment <- NULL
-  parsed$scheme <- tolower(parsed$scheme %||% "")
-  parsed$hostname <- tolower(parsed$hostname %||% "")
+  parsed[["query"]] <- NULL
+  parsed[["fragment"]] <- NULL
+  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
+  parsed[["hostname"]] <- tolower(
+    parsed[["hostname"]] %||% ""
+  )
 
-  port <- as.character(parsed$port %||% "")
-  if (identical(parsed$scheme, "https") && identical(port, "443")) {
-    parsed$port <- NULL
+  port <- as.character(parsed[["port"]] %||% "")
+  if (
+    identical(parsed[["scheme"]], "https") &&
+      identical(port, "443")
+  ) {
+    parsed[["port"]] <- NULL
   }
-  if (identical(parsed$scheme, "http") && identical(port, "80")) {
-    parsed$port <- NULL
+  if (identical(parsed[["scheme"]], "http") && identical(port, "80")) {
+    parsed[["port"]] <- NULL
   }
 
   httr2::url_build(parsed)
@@ -663,7 +673,7 @@ build_dpop_proof <- function(
 
   kid <- client@dpop_private_key_kid %||% NA_character_
   if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
 
   claims <- list(
@@ -673,10 +683,10 @@ build_dpop_proof <- function(
     iat = as.integer(floor(as.numeric(Sys.time())))
   )
   if (is_valid_string(access_token)) {
-    claims$ath <- dpop_access_token_hash(access_token)
+    claims[["ath"]] <- dpop_access_token_hash(access_token)
   }
   if (is_valid_string(nonce)) {
-    claims$nonce <- nonce
+    claims[["nonce"]] <- nonce
   }
 
   clm <- do.call(jose::jwt_claim, claims)
@@ -722,7 +732,7 @@ req_add_dpop_proof <- function(
     return(req)
   }
 
-  method <- req$method %||% "GET"
+  method <- req[["method"]] %||% "GET"
   url <- req[["url"]] %||% NA_character_
   if (!is_valid_string(url)) {
     err_config("Request URL missing while building DPoP proof")
@@ -787,7 +797,7 @@ resp_is_dpop_nonce_challenge <- function(resp) {
     silent = TRUE
   )
   if (is.list(body)) {
-    err <- body$error %||% NA_character_
+    err <- body[["error"]] %||% NA_character_
     if (
       is.character(err) &&
         length(err) == 1L &&
@@ -839,7 +849,7 @@ req_with_dpop_retry <- function(
 
   url <- req[["url"]] %||% NA_character_
   request_kind <- if (is_valid_string(access_token)) "resource" else "token"
-  prior_prepare_attempt <- req$shinyOAuth_prepare_attempt %||% NULL
+  prior_prepare_attempt <- req[["shinyOAuth_prepare_attempt"]] %||% NULL
 
   build_prepare_attempt <- function(nonce_value) {
     function(attempt_req, attempt) {
@@ -862,7 +872,7 @@ req_with_dpop_retry <- function(
     access_token = access_token,
     nonce = nonce
   )
-  req_with_proof$shinyOAuth_prepare_attempt <- build_prepare_attempt(nonce)
+  req_with_proof[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt(nonce)
 
   resp <- req_with_retry(
     req_with_proof,
@@ -896,7 +906,7 @@ req_with_dpop_retry <- function(
     access_token = access_token,
     nonce = nonce
   )
-  retry_req$shinyOAuth_prepare_attempt <- build_prepare_attempt(nonce)
+  retry_req[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt(nonce)
 
   resp <- req_with_retry(retry_req, idempotent = idempotent)
 

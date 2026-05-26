@@ -50,7 +50,7 @@ outbound_alg_asym_cases <- function() {
 
 expect_jws_alg <- function(jwt, alg) {
   hdr <- shinyOAuth:::parse_jwt_header(jwt)
-  testthat::expect_identical(hdr$alg, alg)
+  testthat::expect_identical(hdr[["alg"]], alg)
 }
 
 outbound_alg_hash <- function(data, alg) {

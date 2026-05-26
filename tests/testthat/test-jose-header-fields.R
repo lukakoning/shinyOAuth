@@ -59,7 +59,7 @@ get_userinfo_with_jwt <- function(cli, jwt_body) {
   testthat::with_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/jwt"),
         body = charToRaw(jwt_body)

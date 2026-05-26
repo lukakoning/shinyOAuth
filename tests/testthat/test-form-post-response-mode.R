@@ -101,33 +101,53 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
 
   url <- prepare_call(cli, browser_token = valid_browser_token())
   enc_state <- parse_query_param(url, "state")
-  decoded_state <- shiny::parseQueryString(paste0("?state=", enc_state))$state
+  decoded_state <- shiny::parseQueryString(paste0(
+    "?state=",
+    enc_state
+  ))[["state"]]
 
   req <- make_form_post_req(
     body = paste0("code=ok&state=", enc_state, "&iss=https%3A%2F%2Fissuer")
   )
   resp <- ui(req)
 
-  expect_identical(resp$status, 303L)
-  expect_match(resp$headers$Location, "shinyOAuth_form_post=")
-  expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
-  expect_true(startsWith(resp$headers$Location, "?"))
-  expect_false(grepl("code=ok", resp$headers$Location, fixed = TRUE))
+  expect_identical(resp[["status"]], 303L)
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post="
+  )
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post_id=auth"
+  )
+  expect_true(startsWith(
+    resp[["headers"]][["Location"]],
+    "?"
+  ))
+  expect_false(grepl(
+    "code=ok",
+    resp[["headers"]][["Location"]],
+    fixed = TRUE
+  ))
   expect_false(grepl(
     "state=",
-    sub("shinyOAuth_form_post=[^&]+", "", resp$headers$Location)
+    sub(
+      "shinyOAuth_form_post=[^&]+",
+      "",
+      resp[["headers"]][["Location"]]
+    )
   ))
 
   handle <- parse_query_param(
-    resp$headers$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
   payload <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
-  expect_identical(payload$type, "code")
-  expect_identical(payload$code, "ok")
-  expect_identical(payload$state, decoded_state)
-  expect_identical(payload$iss, "https://issuer")
+  expect_identical(payload[["type"]], "code")
+  expect_identical(payload[["code"]], "ok")
+  expect_identical(payload[["state"]], decoded_state)
+  expect_identical(payload[["iss"]], "https://issuer")
 })
 
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
@@ -151,12 +171,27 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
 
   resp <- ui(req)
 
-  expect_identical(resp$status, 303L)
-  expect_true(startsWith(resp$headers$Location, "?"))
-  expect_false(startsWith(resp$headers$Location, "/"))
-  expect_match(resp$headers$Location, "^\\?return_to=dashboard&")
-  expect_match(resp$headers$Location, "shinyOAuth_form_post=")
-  expect_match(resp$headers$Location, "shinyOAuth_form_post_id=auth")
+  expect_identical(resp[["status"]], 303L)
+  expect_true(startsWith(
+    resp[["headers"]][["Location"]],
+    "?"
+  ))
+  expect_false(startsWith(
+    resp[["headers"]][["Location"]],
+    "/"
+  ))
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "^\\?return_to=dashboard&"
+  )
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post="
+  )
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post_id=auth"
+  )
 })
 
 test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
@@ -199,25 +234,25 @@ test_that("oauth_form_post_ui preserves state until browser-bound callback", {
   body <- paste0("code=ok&state=", enc_state)
 
   first <- ui(make_form_post_req(body = body))
-  expect_identical(first$status, 303L)
+  expect_identical(first[["status"]], 303L)
 
   second <- ui(make_form_post_req(body = body))
-  expect_identical(second$status, 303L)
+  expect_identical(second[["status"]], 303L)
 
   keys <- cli@state_store$keys()
   expect_equal(sum(startsWith(keys, "formpost")), 2L)
   expect_equal(sum(!startsWith(keys, "formpost")), 1L)
 
   handle <- parse_query_param(
-    first$headers$Location,
+    first[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
   payload <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
-  expect_identical(payload$type, "code")
-  expect_identical(payload$code, "ok")
-  expect_true(is.list(payload$state_payload))
-  expect_null(payload$state_store_values)
+  expect_identical(payload[["type"]], "code")
+  expect_identical(payload[["code"]], "ok")
+  expect_true(is.list(payload[["state_payload"]]))
+  expect_null(payload[["state_store_values"]])
   expect_equal(sum(!startsWith(cli@state_store$keys(), "formpost")), 1L)
 })
 
@@ -288,7 +323,7 @@ test_that("oauth_form_post_store_take rejects expired handles", {
   )
   key <- ls(backing)[[1]]
   payload <- get(key, envir = backing, inherits = FALSE)
-  payload$stored_at <- as.numeric(Sys.time()) - 10
+  payload[["stored_at"]] <- as.numeric(Sys.time()) - 10
   assign(key, payload, envir = backing)
 
   expect_error(
@@ -319,12 +354,12 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     body = paste0("code=ok&state=", enc_state),
     content_type = "application/json"
   ))
-  expect_identical(bad_type$status, 415L)
-  expect_match(bad_type$content, "application/x-www-form-urlencoded")
+  expect_identical(bad_type[["status"]], 415L)
+  expect_match(bad_type[["content"]], "application/x-www-form-urlencoded")
   form_post_reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_validation_failed") &&
-        identical(e$phase, "form_post_request_validation")
+      identical(e[["type"]], "audit_callback_validation_failed") &&
+        identical(e[["phase"]], "form_post_request_validation")
     },
     events
   )
@@ -333,12 +368,12 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   duplicate <- ui(make_form_post_req(
     body = paste0("code=ok&code=again&state=", enc_state)
   ))
-  expect_identical(duplicate$status, 400L)
+  expect_identical(duplicate[["status"]], 400L)
 
   malformed_name <- ui(make_form_post_req(body = "st%ZZate=x"))
-  expect_identical(malformed_name$status, 400L)
+  expect_identical(malformed_name[["status"]], 400L)
   expect_match(
-    malformed_name$content,
+    malformed_name[["content"]],
     "malformed percent-encoded parameter name",
     fixed = TRUE
   )
@@ -346,27 +381,27 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
   malformed_value <- ui(make_form_post_req(
     body = paste0("code=%ZZ&state=", enc_state)
   ))
-  expect_identical(malformed_value$status, 400L)
+  expect_identical(malformed_value[["status"]], 400L)
   expect_match(
-    malformed_value$content,
+    malformed_value[["content"]],
     "malformed percent-encoded parameter value",
     fixed = TRUE
   )
 
   missing_state <- ui(make_form_post_req(body = "code=ok"))
-  expect_identical(missing_state$status, 400L)
+  expect_identical(missing_state[["status"]], 400L)
 
   invalid_state <- ui(make_form_post_req(
     body = "code=ok&state=definitely-not-a-valid-state"
   ))
-  expect_identical(invalid_state$status, 400L)
+  expect_identical(invalid_state[["status"]], 400L)
   expect_identical(
-    invalid_state$content,
+    invalid_state[["content"]],
     "OAuth form_post callback could not be processed."
   )
   expect_false(grepl(
     "definitely-not-a-valid-state",
-    invalid_state$content,
+    invalid_state[["content"]],
     fixed = TRUE
   ))
 })
@@ -393,10 +428,14 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
     )
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(sort(cli@state_store$keys()), keys_before)
 
-  event_types <- vapply(events, function(e) as.character(e$type), character(1))
+  event_types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   expect_true("audit_callback_iss_mismatch" %in% event_types)
 })
 
@@ -415,12 +454,12 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
     body = paste0("code=ok&state=", enc_state)
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     "OAuth form_post callback could not be processed."
   )
-  expect_false("Location" %in% names(resp$headers))
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(cli@state_store$keys()), keys_before)
 })
 
@@ -438,9 +477,9 @@ test_that("oauth_form_post_ui rejects oversized callback bodies before storing",
     body = paste0("code=ok&state=", enc_state, "&pad=", strrep("x", 80))
   ))
 
-  expect_identical(resp$status, 413L)
-  expect_match(resp$content, "body exceeded maximum length", fixed = TRUE)
-  expect_false("Location" %in% names(resp$headers))
+  expect_identical(resp[["status"]], 413L)
+  expect_match(resp[["content"]], "body exceeded maximum length", fixed = TRUE)
+  expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(cli@state_store$keys()), keys_before)
 })
 
@@ -505,12 +544,12 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
     body = paste0("code=ok&state=", enc_state)
   ))
 
-  expect_identical(resp$status, 400L)
+  expect_identical(resp[["status"]], 400L)
   expect_identical(
-    resp$content,
+    resp[["content"]],
     "OAuth form_post callback could not be processed."
   )
-  expect_false(grepl("backend-secret-detail", resp$content, fixed = TRUE))
+  expect_false(grepl("backend-secret-detail", resp[["content"]], fixed = TRUE))
 })
 
 test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
@@ -569,7 +608,7 @@ test_that("oauth_module_server consumes form_post callback handles", {
       decoded_state <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state
-      ))$state
+      ))[["state"]]
       handle <- shinyOAuth:::oauth_form_post_store_set(
         cli,
         "auth",
@@ -605,17 +644,23 @@ test_that("form_post browser-token rejection does not consume login state", {
   url <- prepare_call(cli, browser_token = good_browser_token)
   enc_state <- parse_query_param(url, "state")
   decoded_state <- shiny::parseQueryString(paste0("?state=", enc_state))$state
+  decoded_state <- shiny::parseQueryString(paste0(
+    "?state=",
+    enc_state
+  ))[["state"]]
   state_payload <- shinyOAuth:::state_decrypt_gcm(
     decoded_state,
     key = cli@state_key
   )
-  state_key <- shinyOAuth:::state_cache_key(state_payload$state)
+  state_key <- shinyOAuth:::state_cache_key(
+    state_payload[["state"]]
+  )
 
   resp <- ui(make_form_post_req(
     body = paste0("code=ok&state=", enc_state)
   ))
   handle <- parse_query_param(
-    resp$headers$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
@@ -658,7 +703,7 @@ test_that("oauth_module_server consumes form_post error callbacks", {
       decoded_state <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state
-      ))$state
+      ))[["state"]]
       handle <- shinyOAuth:::oauth_form_post_store_set(
         cli,
         "auth",
@@ -696,7 +741,7 @@ test_that("oauth_module_server audits form_post error state consumption", {
     body = paste0("error=access_denied&state=", enc_state)
   ))
   handle <- parse_query_param(
-    resp$headers$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
@@ -717,7 +762,11 @@ test_that("oauth_module_server audits form_post error state consumption", {
     }
   )
 
-  event_types <- vapply(events, function(e) as.character(e$type), character(1))
+  event_types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   expect_true("audit_error_state_consumed" %in% event_types)
 })
 
@@ -751,7 +800,7 @@ test_that("oauth_module_server audits form_post handles missing module ids", {
 
   reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_query_rejected") &&
+      identical(e[["type"]], "audit_callback_query_rejected") &&
         identical(e$reason, "missing_form_post_id")
     },
     events
@@ -795,7 +844,7 @@ test_that("oauth_module_server rejects unknown form_post module ids", {
       decoded_state <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state
-      ))$state
+      ))[["state"]]
       handle <- shinyOAuth:::oauth_form_post_store_set(
         cli,
         "auth",
@@ -814,8 +863,8 @@ test_that("oauth_module_server rejects unknown form_post module ids", {
 
   reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_query_rejected") &&
-        identical(e$reason, "unknown_form_post_id")
+      identical(e[["type"]], "audit_callback_query_rejected") &&
+        identical(e[["reason"]], "unknown_form_post_id")
     },
     events
   )
@@ -846,7 +895,7 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
       decoded_state <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state
-      ))$state
+      ))[["state"]]
       handle <- shinyOAuth:::oauth_form_post_store_set(
         cli,
         "auth",
@@ -868,8 +917,11 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
 
   reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_query_rejected") &&
-        identical(e$reason, "mixed_form_post_and_direct_callback_params")
+      identical(e[["type"]], "audit_callback_query_rejected") &&
+        identical(
+          e[["reason"]],
+          "mixed_form_post_and_direct_callback_params"
+        )
     },
     events
   )
@@ -1084,13 +1136,15 @@ test_that("oauth_module_server rejects replayed form_post handles", {
 
       lookup_events <- Filter(
         function(e) {
-          identical(e$type, "audit_callback_validation_failed") &&
-            identical(e$phase, "form_post_callback_lookup")
+          identical(e[["type"]], "audit_callback_validation_failed") &&
+            identical(e[["phase"]], "form_post_callback_lookup")
         },
         events
       )
       expect_length(lookup_events, 1L)
-      expect_true(is.character(lookup_events[[1L]]$handle_digest))
+      expect_true(is.character(
+        lookup_events[[1L]][["handle_digest"]]
+      ))
     }
   )
 })
@@ -1136,7 +1190,7 @@ test_that("form_post handles are ignored until the owning module claims them", {
       decoded_state_b <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state_b
-      ))$state
+      ))[["state"]]
       handle_b <- shinyOAuth:::oauth_form_post_store_set(
         cli_b,
         "auth_b",
@@ -1212,7 +1266,7 @@ test_that("authenticated modules do not clear foreign form_post handles", {
       decoded_state_b <- shiny::parseQueryString(paste0(
         "?state=",
         enc_state_b
-      ))$state
+      ))[["state"]]
       handle_b <- shinyOAuth:::oauth_form_post_store_set(
         cli_b,
         "auth_b",
@@ -1260,7 +1314,7 @@ test_that("form_post bridge does not duplicate callback validation success audit
     body = paste0("code=ok&state=", enc_state)
   ))
   handle <- parse_query_param(
-    resp$headers$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
@@ -1289,7 +1343,11 @@ test_that("form_post bridge does not duplicate callback validation success audit
     }
   )
 
-  event_types <- vapply(events, function(e) as.character(e$type), character(1))
+  event_types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   expect_identical(sum(event_types == "audit_callback_validation_success"), 1L)
 })
 
@@ -1316,7 +1374,7 @@ test_that("form_post callback path emits existing OTel spans", {
         body = paste0("code=ok&state=", enc_state)
       ))
       handle <- parse_query_param(
-        resp$headers$Location,
+        resp[["headers"]][["Location"]],
         "shinyOAuth_form_post",
         decode = TRUE
       )

@@ -46,14 +46,15 @@ test_that("client_secret_jwt composes client_assertion and omits secret in body"
     code = "code",
     code_verifier = "ver"
   )
-  expect_equal(ts$access_token, "at")
+  expect_equal(ts[["access_token"]], "at")
   # Ensure client assertion fields present
   expect_identical(
-    captured$client_assertion_type,
+    captured[["client_assertion_type"]],
     "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   )
   expect_true(
-    is.character(captured$client_assertion) && nzchar(captured$client_assertion)
+    is.character(captured[["client_assertion"]]) &&
+      nzchar(captured[["client_assertion"]])
   )
   # Ensure client_secret not sent in body
   expect_false("client_secret" %in% names(captured))
@@ -156,19 +157,26 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
     code = "code",
     code_verifier = "ver"
   )
-  expect_equal(ts$access_token, "at")
+  expect_equal(ts[["access_token"]], "at")
   # Validate assertion header/payload basics
-  assertion <- captured$client_assertion
+  assertion <- captured[["client_assertion"]]
   hdr <- shinyOAuth:::parse_jwt_header(assertion)
   pl <- shinyOAuth:::parse_jwt_payload(assertion)
-  expect_identical(hdr$typ, "JWT")
-  expect_identical(hdr$alg, "RS256")
-  expect_identical(hdr$kid, "kid-123")
-  expect_identical(pl$iss, "abc")
-  expect_identical(pl$sub, "abc")
-  expect_identical(pl$aud, prov@token_url)
-  expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
-  expect_true(is.character(pl$jti) && nzchar(pl$jti))
+  expect_identical(hdr[["typ"]], "JWT")
+  expect_identical(hdr[["alg"]], "RS256")
+  expect_identical(hdr[["kid"]], "kid-123")
+  expect_identical(pl[["iss"]], "abc")
+  expect_identical(pl[["sub"]], "abc")
+  expect_identical(pl[["aud"]], prov@token_url)
+  expect_true(
+    is.numeric(pl[["iat"]]) &&
+      is.numeric(pl[["exp"]]) &&
+      pl[["exp"]] > pl[["iat"]]
+  )
+  expect_true(
+    is.character(pl[["jti"]]) &&
+      nzchar(pl[["jti"]])
+  )
 })
 
 test_that("provider metadata rejects unsupported JWT client assertion algs", {
@@ -283,10 +291,10 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
     code = "code",
     code_verifier = "ver"
   )
-  expect_equal(ts$access_token, "at")
+  expect_equal(ts[["access_token"]], "at")
 
-  pl <- shinyOAuth:::parse_jwt_payload(captured$client_assertion)
-  expect_identical(pl$aud, "https://example.com/token/")
+  pl <- shinyOAuth:::parse_jwt_payload(captured[["client_assertion"]])
+  expect_identical(pl[["aud"]], "https://example.com/token/")
 
   # Also cover refresh_token() path which uses the same resolver
   tok <- OAuthToken(
@@ -320,8 +328,8 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
 
   tok2 <- refresh_token(cli, tok, async = FALSE, introspect = FALSE)
   expect_identical(tok2@access_token, "at-new")
-  pl2 <- shinyOAuth:::parse_jwt_payload(captured2$client_assertion)
-  expect_identical(pl2$aud, "https://example.com/token/")
+  pl2 <- shinyOAuth:::parse_jwt_payload(captured2[["client_assertion"]])
+  expect_identical(pl2[["aud"]], "https://example.com/token/")
 })
 
 test_that("oauth_client_secret_apple composes expected ES256 JWT", {
@@ -340,13 +348,13 @@ test_that("oauth_client_secret_apple composes expected ES256 JWT", {
   header <- shinyOAuth:::parse_jwt_header(secret)
   payload <- shinyOAuth:::parse_jwt_payload(secret)
 
-  expect_identical(header$alg, "ES256")
-  expect_identical(header$kid, "ABC123DEFG")
-  expect_identical(payload$iss, "ABCDEFGHIJ")
-  expect_identical(payload$sub, "com.example.web")
-  expect_identical(payload$aud, "https://appleid.apple.com")
-  expect_equal(payload$iat, 1700000000)
-  expect_equal(payload$exp, 1700000300)
+  expect_identical(header[["alg"]], "ES256")
+  expect_identical(header[["kid"]], "ABC123DEFG")
+  expect_identical(payload[["iss"]], "ABCDEFGHIJ")
+  expect_identical(payload[["sub"]], "com.example.web")
+  expect_identical(payload[["aud"]], "https://appleid.apple.com")
+  expect_equal(payload[["iat"]], 1700000000)
+  expect_equal(payload[["exp"]], 1700000300)
 })
 
 test_that("oauth_client_secret_apple validates expiration and key type", {
@@ -423,10 +431,12 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
     }
   )
   res_revoke <- revoke_token(cli, tok, which = "access", async = FALSE)
-  expect_true(isTRUE(res_revoke$supported))
-  expect_true(isTRUE(res_revoke$revoked))
-  pl_revoke <- shinyOAuth:::parse_jwt_payload(captured_revoke$client_assertion)
-  expect_identical(pl_revoke$aud, "https://example.com/token/")
+  expect_true(isTRUE(res_revoke[["supported"]]))
+  expect_true(isTRUE(res_revoke[["revoked"]]))
+  pl_revoke <- shinyOAuth:::parse_jwt_payload(
+    captured_revoke[["client_assertion"]]
+  )
+  expect_identical(pl_revoke[["aud"]], "https://example.com/token/")
 
   # Introspection
   captured_intro <- NULL
@@ -448,23 +458,25 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
     }
   )
   res_intro <- introspect_token(cli, tok, which = "access", async = FALSE)
-  expect_true(isTRUE(res_intro$supported))
-  expect_true(isTRUE(res_intro$active))
-  pl_intro <- shinyOAuth:::parse_jwt_payload(captured_intro$client_assertion)
-  expect_identical(pl_intro$aud, "https://example.com/token/")
+  expect_true(isTRUE(res_intro[["supported"]]))
+  expect_true(isTRUE(res_intro[["active"]]))
+  pl_intro <- shinyOAuth:::parse_jwt_payload(
+    captured_intro[["client_assertion"]]
+  )
+  expect_identical(pl_intro[["aud"]], "https://example.com/token/")
 })
 
 test_that("revocation and introspection retries rebuild JWT client assertions", {
   request_body_text <- function(req) {
-    body <- req$body %||% NULL
+    body <- req[["body"]] %||% NULL
     if (is.null(body)) {
       return(NA_character_)
     }
-    if (identical(body$type, "raw")) {
-      return(rawToChar(body$data))
+    if (identical(body[["type"]], "raw")) {
+      return(rawToChar(body[["data"]]))
     }
-    if (identical(body$type, "form")) {
-      data <- body$data %||% list()
+    if (identical(body[["type"]], "form")) {
+      data <- body[["data"]] %||% list()
       if (!length(data)) {
         return("")
       }
@@ -532,19 +544,21 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
         decode = TRUE
       )
       payload <- shinyOAuth:::parse_jwt_payload(assertion)
-      bucket <- if (identical(as.character(req$url), prov@revocation_url)) {
+      bucket <- if (
+        identical(as.character(req[["url"]]), prov@revocation_url)
+      ) {
         "revoke"
       } else {
         "introspect"
       }
       seen_jtis[[bucket]] <- c(
         seen_jtis[[bucket]],
-        payload$jti %||% NA_character_
+        payload[["jti"]] %||% NA_character_
       )
 
       if (length(seen_jtis[[bucket]]) == 1L) {
         return(httr2::response(
-          url = as.character(req$url),
+          url = as.character(req[["url"]]),
           status = 500,
           headers = list("content-type" = "application/json"),
           body = charToRaw("{}")
@@ -553,7 +567,7 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
 
       if (identical(bucket, "revoke")) {
         return(httr2::response(
-          url = as.character(req$url),
+          url = as.character(req[["url"]]),
           status = 200,
           headers = list("content-type" = "text/plain"),
           body = raw(0)
@@ -561,7 +575,7 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
       }
 
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -577,8 +591,8 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
   revoke_res <- revoke_token(cli, tok, which = "access", async = FALSE)
   intro_res <- introspect_token(cli, tok, which = "access", async = FALSE)
 
-  expect_true(isTRUE(revoke_res$revoked))
-  expect_true(isTRUE(intro_res$active))
+  expect_true(isTRUE(revoke_res[["revoked"]]))
+  expect_true(isTRUE(intro_res[["active"]]))
   expect_length(seen_jtis$revoke, 2L)
   expect_length(unique(seen_jtis$revoke), 2L)
   expect_length(seen_jtis$introspect, 2L)

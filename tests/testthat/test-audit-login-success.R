@@ -74,12 +74,17 @@ testthat::test_that("audit_login_success marks unvalidated ID token subjects as 
   testthat::expect_false(token@id_token_validated)
 
   login_events <- Filter(
-    function(event) identical(as.character(event$type), "audit_login_success"),
+    function(event) {
+      identical(
+        as.character(event[["type"]]),
+        "audit_login_success"
+      )
+    },
     events
   )
   testthat::expect_length(login_events, 1L)
   testthat::expect_identical(
-    login_events[[1]]$sub_source,
+    login_events[[1]][["sub_source"]],
     "id_token_unverified"
   )
 })

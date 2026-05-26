@@ -79,11 +79,11 @@ with_trace_id <- function(trace_id = NULL, code) {
 #' @noRd
 rethrow_with_context <- function(e, class = NULL, ...) {
   extra <- list(...)
-  trace_id <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) {
+  trace_id <- tryCatch(e[["trace_id"]], error = function(...) {
     NULL
   })
-  message <- extra$message %||% conditionMessage(e)
-  extra$message <- NULL
+  message <- extra[["message"]] %||% conditionMessage(e)
+  extra[["message"]] <- NULL
 
   args <- c(
     list(
@@ -93,10 +93,10 @@ rethrow_with_context <- function(e, class = NULL, ...) {
     extra
   )
   if (!is.null(class)) {
-    args$class <- class
+    args[["class"]] <- class
   }
   if (is_valid_string(trace_id)) {
-    args$trace_id <- trace_id
+    args[["trace_id"]] <- trace_id
   }
 
   do.call(rlang::abort, args)

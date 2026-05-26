@@ -26,6 +26,7 @@
 - Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.
 - Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, `@param` entries, and `@return`. Use `@keywords internal` and `@noRd` for non-exported helpers.
 - Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.
+- For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact `[[...]]` access and `[[...]] <-` writes instead of `$`; `[[` is already exact by default, so do not add `exact = TRUE`.
 
 ## Core Code Paths
 - `oauth_module_server()` orchestrates redirect→callback→token→refresh, exposing a reactiveValues API (`request_login()`, `logout()`, `build_auth_url()`) and watchdogs for missing JS/browser tokens.

@@ -174,17 +174,24 @@ validate_discovery_issuer <- function(
     p_dc <- parse_url_components(issuer_discovered, "discovery issuer")
 
     if (
-      !identical(p_in$scheme, p_dc$scheme) || !identical(p_in$host, p_dc$host)
+      !identical(
+        p_in[["scheme"]],
+        p_dc[["scheme"]]
+      ) ||
+        !identical(
+          p_in[["host"]],
+          p_dc[["host"]]
+        )
     ) {
       err_config(
         c(
           "x" = "OIDC discovery issuer mismatch",
           "!" = sprintf(
             "Input '%s://%s' vs discovery '%s://%s'",
-            p_in$scheme,
-            p_in$host,
-            p_dc$scheme,
-            p_dc$host
+            p_in[["scheme"]],
+            p_in[["host"]],
+            p_dc[["scheme"]],
+            p_dc[["host"]]
           )
         )
       )
@@ -263,10 +270,10 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
 
   # absolute URL required
   if (
-    is.null(p$scheme) ||
-      !nzchar(p$scheme) ||
-      is.null(p$hostname) ||
-      !nzchar(p$hostname)
+    is.null(p[["scheme"]]) ||
+      !nzchar(p[["scheme"]]) ||
+      is.null(p[["hostname"]]) ||
+      !nzchar(p[["hostname"]])
   ) {
     err_config(
       c(
@@ -284,7 +291,7 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
   # This permits HTTP only for hosts in shinyOAuth.allowed_non_https_hosts,
   # while still pinning endpoints to the issuer host (or allowlist).
   if (!is_ok_host(u, allowed_hosts = allowed_hosts_vec)) {
-    chost <- tolower(trimws(p$hostname))
+    chost <- tolower(trimws(p[["hostname"]]))
     chost <- sub("\\.$", "", chost)
     err_config(
       c(
@@ -333,7 +340,7 @@ is_absolute_uri <- function(x) {
 
   parsed <- try(httr2::url_parse(x), silent = TRUE)
   if (!inherits(parsed, "try-error")) {
-    return(is_valid_string(parsed$scheme %||% NA_character_))
+    return(is_valid_string(parsed[["scheme"]] %||% NA_character_))
   }
 
   TRUE
@@ -377,8 +384,8 @@ sanitize_callback_error_uri <- function(x) {
     return(NULL)
   }
 
-  scheme <- tolower(parsed$scheme %||% "")
-  host <- trimws(parsed$hostname %||% "")
+  scheme <- tolower(parsed[["scheme"]] %||% "")
+  host <- trimws(parsed[["hostname"]] %||% "")
 
   if (!identical(scheme, "https") || !nzchar(host)) {
     return(NULL)
@@ -584,8 +591,8 @@ parse_url_components <- function(url, label = "url") {
     ))
   }
 
-  scheme <- tolower((parsed$scheme %||% ""))
-  host <- tolower(trimws(parsed$hostname %||% ""))
+  scheme <- tolower((parsed[["scheme"]] %||% ""))
+  host <- tolower(trimws(parsed[["hostname"]] %||% ""))
   host <- sub("^\\[([^\\]]+)\\](?::.*)?$", "\\1", host, perl = TRUE)
   host <- host_normalize_idna(host)
 
@@ -609,7 +616,7 @@ parse_url_components <- function(url, label = "url") {
 #' @keywords internal
 #' @noRd
 parse_url_host <- function(url, label = "url") {
-  h <- parse_url_components(url, label)$host
+  h <- parse_url_components(url, label)[["host"]]
   sub("^\\[([^\\]]+)\\]$", "\\1", h)
 }
 
@@ -665,8 +672,8 @@ is_ok_host_one <- function(x, allowed_non_https_hosts, allowed_hosts) {
     return(FALSE)
   }
 
-  scheme <- tolower(parsed$scheme %||% "")
-  host <- tolower(trimws(parsed$hostname %||% ""))
+  scheme <- tolower(parsed[["scheme"]] %||% "")
+  host <- tolower(trimws(parsed[["hostname"]] %||% ""))
 
   if (!nzchar(host)) {
     mm <- regexec("^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]+)", x, perl = TRUE)

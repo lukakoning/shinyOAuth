@@ -66,8 +66,8 @@ get_userinfo <- function(
     token = token,
     token_type = token_type
   )
-  access_token <- token_info$access_token
-  effective_token_type <- token_info$token_type
+  access_token <- token_info[["access_token"]]
+  effective_token_type <- token_info[["token_type"]]
 
   userinfo_url <- resolve_provider_endpoint_url(
     oauth_client@provider,
@@ -281,7 +281,9 @@ get_userinfo <- function(
 
         otel_set_span_attributes(
           attributes = list(
-            oauth.userinfo.subject_present = isTRUE(is_valid_string(ui$sub))
+            oauth.userinfo.subject_present = isTRUE(
+              is_valid_string(ui[["sub"]])
+            )
           )
         )
 
@@ -292,7 +294,7 @@ get_userinfo <- function(
           is_valid_string(oauth_client@provider@issuer) &&
             !is.na(oauth_client@provider@issuer)
         ) {
-          if (!is_valid_string(ui$sub)) {
+          if (!is_valid_string(ui[["sub"]])) {
             audit_userinfo_event(
               oauth_client,
               status = "userinfo_missing_sub",
@@ -504,8 +506,8 @@ decode_userinfo_jwt <- function(
     }
   )
 
-  alg <- toupper(header_fields$alg)
-  kid <- header_fields$kid
+  alg <- toupper(header_fields[["alg"]])
+  kid <- header_fields[["kid"]]
 
   # Always reject alg=none — unsigned JWTs cannot be trusted for userinfo.
 
@@ -753,7 +755,7 @@ validate_signed_userinfo_claims <- function(
   }
 
   # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
-  sub <- claims$sub
+  sub <- claims[["sub"]]
   if (!is_valid_string(sub)) {
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
@@ -768,7 +770,7 @@ validate_signed_userinfo_claims <- function(
   }
 
   # iss MUST be present and match the OP's Issuer Identifier
-  iss <- claims$iss
+  iss <- claims[["iss"]]
   if (!is_valid_string(iss)) {
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
@@ -798,7 +800,7 @@ validate_signed_userinfo_claims <- function(
   }
 
   # aud MUST be or include the RP's Client ID
-  aud <- claims$aud
+  aud <- claims[["aud"]]
   if (
     is.null(aud) ||
       (is.character(aud) && (length(aud) == 0L || !any(nzchar(aud))))
@@ -857,8 +859,8 @@ validate_signed_userinfo_claims <- function(
     )
   }
 
-  if (!is.null(claims$exp)) {
-    if (!jwt_is_single_finite_number(claims$exp)) {
+  if (!is.null(claims[["exp"]])) {
+    if (!jwt_is_single_finite_number(claims[["exp"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_exp",
         bullets = c(
@@ -869,7 +871,7 @@ validate_signed_userinfo_claims <- function(
       )
     }
 
-    exp_val <- as.numeric(claims$exp)
+    exp_val <- as.numeric(claims[["exp"]])
     if (exp_val < (now - lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_expired",
@@ -891,8 +893,8 @@ validate_signed_userinfo_claims <- function(
     }
   }
 
-  if (!is.null(claims$iat)) {
-    if (!jwt_is_single_finite_number(claims$iat)) {
+  if (!is.null(claims[["iat"]])) {
+    if (!jwt_is_single_finite_number(claims[["iat"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_iat",
         bullets = c(
@@ -903,7 +905,7 @@ validate_signed_userinfo_claims <- function(
       )
     }
 
-    iat_val <- as.numeric(claims$iat)
+    iat_val <- as.numeric(claims[["iat"]])
     if (iat_val > (now + lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_iat_future",
@@ -925,8 +927,8 @@ validate_signed_userinfo_claims <- function(
     }
   }
 
-  if (!is.null(claims$nbf)) {
-    if (!jwt_is_single_finite_number(claims$nbf)) {
+  if (!is.null(claims[["nbf"]])) {
+    if (!jwt_is_single_finite_number(claims[["nbf"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_nbf",
         bullets = c(
@@ -937,7 +939,7 @@ validate_signed_userinfo_claims <- function(
       )
     }
 
-    nbf_val <- as.numeric(claims$nbf)
+    nbf_val <- as.numeric(claims[["nbf"]])
     if (nbf_val > (now + lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_nbf_future",
@@ -1105,7 +1107,7 @@ verify_userinfo_id_token_subject_match <- function(
     ))
   }
 
-  id_sub <- id_payload$sub
+  id_sub <- id_payload[["sub"]]
   ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
   ui_sub <- normalize_userinfo_subject_value(ui_val, strict = TRUE)
 

@@ -33,7 +33,7 @@ keycloak_admin_token <- function() {
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  token <- body$access_token %||% NA_character_
+  token <- body[["access_token"]] %||% NA_character_
   if (!keycloak_nonempty_string(token)) {
     testthat::skip("Keycloak admin token response did not include access_token")
   }
@@ -75,7 +75,7 @@ keycloak_realm_id <- function(token) {
     testthat::skip("Keycloak admin realm endpoint failed")
   }
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  realm_id <- body$id %||% body$realm %||% NA_character_
+  realm_id <- body[["id"]] %||% body[["realm"]] %||% NA_character_
   if (!keycloak_nonempty_string(realm_id)) {
     testthat::skip("Could not determine Keycloak realm id")
   }
@@ -232,8 +232,8 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
   client <- make_public_client(prov)
 
   first <- jwks_rotation_login_via_module(client)
-  testthat::expect_true(isTRUE(first$authenticated))
-  first_header <- shinyOAuth:::parse_jwt_header(first$token@id_token)
+  testthat::expect_true(isTRUE(first[["authenticated"]]))
+  first_header <- shinyOAuth:::parse_jwt_header(first[["token"]]@id_token)
   first_kid <- first_header$kid %||% NA_character_
   testthat::expect_true(keycloak_nonempty_string(first_kid))
 
@@ -246,16 +246,19 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
   testthat::expect_false(identical(new_kid, first_kid))
 
   second <- jwks_rotation_login_via_module(client)
-  testthat::expect_true(isTRUE(second$authenticated))
-  second_header <- shinyOAuth:::parse_jwt_header(second$token@id_token)
+  testthat::expect_true(isTRUE(second[["authenticated"]]))
+  second_header <- shinyOAuth:::parse_jwt_header(second[["token"]]@id_token)
   testthat::expect_identical(second_header$kid, new_kid)
-  testthat::expect_true(isTRUE(second$token@id_token_validated))
+  testthat::expect_true(isTRUE(second[["token"]]@id_token_validated))
 
   rogue_old_kid <- make_rogue_id_token_with_kid(
-    second$token@id_token,
+    second[["token"]]@id_token,
     first_kid
   )
-  rogue_new_kid <- make_rogue_id_token_with_kid(second$token@id_token, new_kid)
+  rogue_new_kid <- make_rogue_id_token_with_kid(
+    second[["token"]]@id_token,
+    new_kid
+  )
 
   testthat::expect_error(
     shinyOAuth:::validate_id_token(client, rogue_old_kid),

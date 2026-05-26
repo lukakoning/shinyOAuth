@@ -109,14 +109,14 @@ testthat::test_that("OIDC max_age requests produce and validate auth_time", {
   client <- make_public_client(prov, scopes = c("openid", "profile"))
   result <- protocol_login_via_module(client)
 
-  max_age <- parse_query_param(result$auth_url, "max_age", decode = TRUE)
+  max_age <- parse_query_param(result[["auth_url"]], "max_age", decode = TRUE)
 
   testthat::expect_identical(max_age, "0")
-  testthat::expect_true(isTRUE(result$authenticated))
-  testthat::expect_null(result$error)
-  testthat::expect_true(isTRUE(result$token@id_token_validated))
+  testthat::expect_true(isTRUE(result[["authenticated"]]))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_true(isTRUE(result[["token"]]@id_token_validated))
 
-  id_payload <- shinyOAuth:::parse_jwt_payload(result$token@id_token)
+  id_payload <- shinyOAuth:::parse_jwt_payload(result[["token"]]@id_token)
   auth_time <- suppressWarnings(as.numeric(id_payload$auth_time))
 
   testthat::expect_true(is.finite(auth_time))
@@ -136,21 +136,25 @@ testthat::test_that("Keycloak introspection validates sub client_id and scope", 
 
   result <- protocol_login_via_module(client)
 
-  testthat::expect_true(isTRUE(result$authenticated))
-  testthat::expect_null(result$error)
-  testthat::expect_true(isTRUE(result$token@granted_scopes_verified))
+  testthat::expect_true(isTRUE(result[["authenticated"]]))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_true(isTRUE(result[["token"]]@granted_scopes_verified))
   testthat::expect_true(all(
-    c("openid", "profile", "email") %in% result$token@granted_scopes
+    c("openid", "profile", "email") %in% result[["token"]]@granted_scopes
   ))
 
-  intros <- shinyOAuth::introspect_token(client, result$token, which = "access")
+  intros <- shinyOAuth::introspect_token(
+    client,
+    result[["token"]],
+    which = "access"
+  )
   raw <- intros$raw %||% list()
-  intro_scopes <- strsplit(raw$scope %||% "", "\\s+")[[1]]
+  intro_scopes <- strsplit(raw[["scope"]] %||% "", "\\s+")[[1]]
 
   testthat::expect_true(isTRUE(intros$supported))
   testthat::expect_true(isTRUE(intros$active))
-  testthat::expect_identical(raw$client_id, client@client_id)
-  testthat::expect_identical(raw$sub, result$token@userinfo$sub)
+  testthat::expect_identical(raw[["client_id"]], client@client_id)
+  testthat::expect_identical(raw[["sub"]], result[["token"]]@userinfo[["sub"]])
   testthat::expect_true(all(c("openid", "profile", "email") %in% intro_scopes))
 })
 
@@ -162,9 +166,13 @@ testthat::test_that("introspection client_id mix-up is rejected for a live token
   client <- make_protocol_confidential_client(prov)
   result <- protocol_login_via_module(client)
 
-  testthat::expect_true(isTRUE(result$authenticated))
+  testthat::expect_true(isTRUE(result[["authenticated"]]))
 
-  intros <- shinyOAuth::introspect_token(client, result$token, which = "access")
+  intros <- shinyOAuth::introspect_token(
+    client,
+    result[["token"]],
+    which = "access"
+  )
   testthat::expect_true(isTRUE(intros$active))
 
   wrong_client <- make_protocol_confidential_client(
@@ -177,7 +185,7 @@ testthat::test_that("introspection client_id mix-up is rejected for a live token
   testthat::expect_error(
     shinyOAuth:::enforce_token_introspection_policy(
       oauth_client = wrong_client,
-      token = result$token,
+      token = result[["token"]],
       introspection_result = intros,
       requested_scopes = client@scopes,
       phase = "exchange_code"
@@ -202,8 +210,8 @@ testthat::test_that("UserInfo subject substitution is rejected across real users
   testthat::expect_true(isTRUE(alice$token@id_token_validated))
   testthat::expect_true(isTRUE(bob$token@id_token_validated))
   testthat::expect_false(identical(
-    alice$token@userinfo$sub,
-    bob$token@userinfo$sub
+    alice$token@userinfo[["sub"]],
+    bob$token@userinfo[["sub"]]
   ))
 
   testthat::expect_error(

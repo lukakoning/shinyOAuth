@@ -83,19 +83,21 @@ assert_shinyoauth_available_in_daemon <- function() {
   })
   mirai::call_mirai(pkg_check)
 
+  pkg_data <- pkg_check[["data"]]
+
   testthat::skip_if_not(
-    isTRUE(pkg_check$data$available),
+    isTRUE(pkg_data[["available"]]),
     "shinyOAuth must be installed for mirai daemon tests"
   )
 
   if (!is.null(source_root)) {
     testthat::skip_if_not(
-      identical(pkg_check$data$version, source_version),
+      identical(pkg_data[["version"]], source_version),
       paste0(
         "mirai daemon loaded shinyOAuth ",
-        pkg_check$data$version,
+        pkg_data[["version"]],
         " from ",
-        pkg_check$data$path,
+        pkg_data[["path"]],
         "; expected source version ",
         source_version,
         ". Install the current checkout first."
@@ -105,11 +107,11 @@ assert_shinyoauth_available_in_daemon <- function() {
 
   if (!is.null(source_root) && !is.na(source_mtime)) {
     testthat::skip_if_not(
-      is.na(pkg_check$data$built_mtime) ||
-        pkg_check$data$built_mtime >= source_mtime,
+      is.na(pkg_data[["built_mtime"]]) ||
+        pkg_data[["built_mtime"]] >= source_mtime,
       paste0(
         "mirai daemon loaded an older shinyOAuth install from ",
-        pkg_check$data$path,
+        pkg_data[["path"]],
         ". Install the current checkout first so worker code matches the source tree."
       )
     )

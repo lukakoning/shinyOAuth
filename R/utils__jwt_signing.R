@@ -95,7 +95,7 @@ build_client_assertion <- function(client, aud) {
   if (identical(style, "private_key_jwt")) {
     kid <- client@client_private_key_kid %||% NA_character_
     if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
-      header$kid <- kid
+      header[["kid"]] <- kid
     }
   }
 
@@ -155,11 +155,7 @@ build_client_assertion <- function(client, aud) {
       err_config(
         c(
           "x" = "Failed to sign client assertion",
-          "i" = paste0(
-            "Tried alg '",
-            alg,
-            "' with the configured private key"
-          )
+          "i" = paste0("Tried alg '", alg, "' with the configured private key")
         ),
         context = list(
           phase = "build_client_assertion",
@@ -179,8 +175,7 @@ build_client_assertion <- function(client, aud) {
 #' Resolve the audience (`aud`) value for a JWT client assertion.
 #'
 #' Uses an explicit client override when present. For PAR requests, this then
-#' prefers the provider issuer when known, matching RFC 9126 guidance for
-#' resolving the audience ambiguity at the pushed authorization request
+#' resolves the audience ambiguity at the pushed authorization request
 #' endpoint, even when the request itself is sent to an RFC 8705 mTLS alias.
 #' Without an issuer, PAR requests fall back to the provider's canonical
 #' `par_url` so the audience stays stable across conventional and mTLS alias
@@ -209,7 +204,7 @@ resolve_client_assertion_audience <- function(client, req) {
   }
 
   if (inherits(req, "httr2_request")) {
-    url0 <- req$url %||% NA_character_
+    url0 <- req[["url"]] %||% NA_character_
     url_chr <- as.character(url0[[1]])
     if (!is.na(url_chr) && nzchar(url_chr)) {
       provider_issuer <- client@provider@issuer %||% NA_character_
@@ -434,7 +429,7 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
       silent = TRUE
     )
     if (!inherits(jwk, "try-error") && is.list(jwk)) {
-      crv <- jwk$crv %||% NA_character_
+      crv <- jwk[["crv"]] %||% NA_character_
       if (identical(crv, "P-256")) {
         return(identical(alg, "ES256"))
       }
@@ -575,8 +570,8 @@ build_authorization_request_object <- function(client, params) {
   # RFC 9101 Section 10.8 recommends avoiding client_id as Request Object sub
   # so the JWT cannot be repurposed as a client authentication assertion.
   if (
-    is_valid_string(params$sub %||% NULL) &&
-      identical(params$sub, client@client_id)
+    is_valid_string(params[["sub"]] %||% NULL) &&
+      identical(params[["sub"]], client@client_id)
   ) {
     err_config(
       paste(
@@ -600,7 +595,7 @@ build_authorization_request_object <- function(client, params) {
   ttl <- as.numeric(client@authorization_request_ttl %||% 45)
   nbf_skew <- as.numeric(client@authorization_request_nbf_skew %||% NA_real_)
 
-  claims_param <- params$claims %||% NULL
+  claims_param <- params[["claims"]] %||% NULL
   if (
     is.character(claims_param) &&
       length(claims_param) == 1L &&
@@ -611,7 +606,7 @@ build_authorization_request_object <- function(client, params) {
       error = function(...) NULL
     )
     if (is.list(parsed_claims)) {
-      params$claims <- parsed_claims
+      params[["claims"]] <- parsed_claims
     }
   }
 
@@ -642,7 +637,7 @@ build_authorization_request_object <- function(client, params) {
   if (!(alg %in% c("HS256", "HS384", "HS512"))) {
     kid <- client@client_private_key_kid %||% NA_character_
     if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
-      header$kid <- kid
+      header[["kid"]] <- kid
     }
   }
 
@@ -696,16 +691,16 @@ build_authorization_request_object <- function(client, params) {
 
   encryption_key <- resolve_authorization_request_encryption_public_key(
     client = client,
-    alg = encryption_config$alg,
-    kid = encryption_config$kid
+    alg = encryption_config[["alg"]],
+    kid = encryption_config[["kid"]]
   )
 
   jwe_compact_encrypt(
     plaintext = signed_request_object,
-    public_key = encryption_key$public_key,
-    alg = encryption_config$alg,
-    enc = encryption_config$enc,
-    kid = encryption_key$kid,
+    public_key = encryption_key[["public_key"]],
+    alg = encryption_config[["alg"]],
+    enc = encryption_config[["enc"]],
+    kid = encryption_key[["kid"]],
     typ = "oauth-authz-req+jwt",
     cty = "JWT"
   )

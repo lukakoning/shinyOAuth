@@ -105,8 +105,8 @@ test_that("oauth_client_mtls_registration supports public certificate-bound clie
   expect_identical(metadata$token_endpoint_auth_method, "none")
   expect_true(isTRUE(metadata$tls_client_certificate_bound_access_tokens))
   expect_false(any(grepl("^tls_client_auth_", names(metadata))))
-  expect_null(metadata[["jwks", exact = TRUE]])
-  expect_null(metadata[["jwks_uri", exact = TRUE]])
+  expect_null(metadata[["jwks"]])
+  expect_null(metadata[["jwks_uri"]])
 })
 
 test_that("SAN helpers classify unique certificate alt names", {
@@ -210,5 +210,5 @@ test_that("oauth_client_mtls_registration supports self-signed jwks_uri", {
     "self_signed_tls_client_auth"
   )
   expect_identical(metadata$jwks_uri, "https://example.com/jwks.json")
-  expect_null(metadata[["jwks", exact = TRUE]])
+  expect_null(metadata[["jwks"]])
 })

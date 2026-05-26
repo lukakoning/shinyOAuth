@@ -195,5 +195,5 @@ test_that("userinfo success populates token userinfo when required", {
     )
   )
   expect_true(is.list(token@userinfo))
-  expect_identical(token@userinfo$sub, "u-1")
+  expect_identical(token@userinfo[["sub"]], "u-1")
 })

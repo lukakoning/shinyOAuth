@@ -53,14 +53,14 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
     userinfo = list(),
     cnf = list(`x5t#S256` = "thumbprint")
   )
-  expect_identical(tok@cnf$`x5t#S256`, "thumbprint")
+  expect_identical(tok@cnf[["x5t#S256"]], "thumbprint")
 
   dpop_tok <- OAuthToken(
     access_token = "at",
     userinfo = list(),
     cnf = list(jkt = "jkt-thumbprint")
   )
-  expect_identical(dpop_tok@cnf$jkt, "jkt-thumbprint")
+  expect_identical(dpop_tok@cnf[["jkt"]], "jkt-thumbprint")
 
   expect_identical(
     shinyOAuth:::resolve_token_cnf(cnf = list(jkt = "jkt-thumbprint")),

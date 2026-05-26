@@ -125,10 +125,10 @@ expect_successful_par_response <- function(resp) {
 
   testthat::expect_identical(httr2::resp_status(resp), 201L)
   testthat::expect_match(
-    body$request_uri %||% "",
+    body[["request_uri"]] %||% "",
     "^urn:ietf:params:oauth:request_uri:"
   )
-  testthat::expect_true(is.numeric(body$expires_in))
+  testthat::expect_true(is.numeric(body[["expires_in"]]))
 
   invisible(body)
 }
@@ -137,9 +137,9 @@ expect_replayed_par_assertion_rejected <- function(resp) {
   body <- safe_resp_body_json(resp)
 
   testthat::expect_identical(httr2::resp_status(resp), 401L)
-  testthat::expect_identical(body$error, "invalid_request")
+  testthat::expect_identical(body[["error"]], "invalid_request")
   testthat::expect_match(
-    body$error_description %||% "",
+    body[["error_description"]] %||% "",
     "Authentication failed",
     fixed = TRUE
   )
@@ -152,9 +152,9 @@ expect_successful_token_response <- function(resp) {
 
   testthat::expect_identical(httr2::resp_status(resp), 200L)
   testthat::expect_true(keycloak_nonempty_string(
-    body$access_token %||% NA_character_
+    body[["access_token"]] %||% NA_character_
   ))
-  testthat::expect_identical(body$token_type, "Bearer")
+  testthat::expect_identical(body[["token_type"]], "Bearer")
 
   invisible(body)
 }
@@ -163,9 +163,9 @@ expect_replayed_token_assertion_rejected <- function(resp) {
   body <- safe_resp_body_json(resp)
 
   testthat::expect_identical(httr2::resp_status(resp), 400L)
-  testthat::expect_identical(body$error, "invalid_client")
+  testthat::expect_identical(body[["error"]], "invalid_client")
   testthat::expect_match(
-    body$error_description %||% "",
+    body[["error_description"]] %||% "",
     "Token reuse detected",
     fixed = TRUE
   )
