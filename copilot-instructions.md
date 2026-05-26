@@ -62,6 +62,10 @@
   functions together, move functions that fit a different topic better,
   and rename functions whose names do not clearly describe their
   behavior.
+- For list-like objects, parsed JSON, request metadata, and test
+  fixtures, always use exact `[[...]]` access and `[[...]] <-` writes
+  instead of `$`; `[[` is already exact by default, so do not add
+  `exact = TRUE`.
 
 ## Core Code Paths
 

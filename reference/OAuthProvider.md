@@ -45,7 +45,7 @@ OAuthProvider(
   use_pkce = TRUE,
   pkce_method = "S256",
   userinfo_required = FALSE,
-  userinfo_id_selector = function(userinfo) userinfo$sub,
+  userinfo_id_selector = function(userinfo) userinfo[["sub"]],
   userinfo_id_token_match = FALSE,
   userinfo_signed_jwt_required = FALSE,
   id_token_required = FALSE,

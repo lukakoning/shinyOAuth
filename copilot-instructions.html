@@ -78,6 +78,7 @@
 <li>Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.</li>
 <li>Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, <code>@param</code> entries, and <code>@return</code>. Use <code>@keywords internal</code> and <code>@noRd</code> for non-exported helpers.</li>
 <li>Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.</li>
+<li>For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact <code>[[...]]</code> access and <code>[[...]] &lt;-</code> writes instead of <code>$</code>; <code>[[</code> is already exact by default, so do not add <code>exact = TRUE</code>.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="core-code-paths">Core Code Paths<a class="anchor" aria-label="anchor" href="#core-code-paths"></a></h2>

@@ -40,7 +40,9 @@ oauth_provider(
   userinfo_required = NULL,
   userinfo_id_token_match = NULL,
   userinfo_signed_jwt_required = FALSE,
-  userinfo_id_selector = function(userinfo) userinfo$sub,
+  userinfo_id_selector = function(userinfo) {
+userinfo[["sub"]]
+ },
   id_token_required = NULL,
   id_token_validation = NULL,
   extra_auth_params = list(),
