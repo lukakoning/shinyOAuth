@@ -361,7 +361,7 @@ not dynamic authorization-request parameters. In practice that means
 `authorization_encrypted_response_alg`, and
 `authorization_encrypted_response_enc` must match the provider-side client
 registration (or OIDC discovery metadata) that tells the authorization server
- how to produce the JARM callback for this client.
+how to produce the JARM callback for this client.
 
 Signed JARM support is also narrower than the generic JWS metadata fields
 might suggest. shinyOAuth currently accepts `HS256`, `HS384`, `HS512`,
