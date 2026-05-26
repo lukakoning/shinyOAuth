@@ -61,22 +61,43 @@ testthat::test_that("audit hook options propagate to async workers with async se
   testthat::expect_true(length(worker_events) > 0)
 
   async_events <- Filter(
-    function(e) isTRUE((e$shiny_session %||% list())$is_async),
+    function(e) {
+      isTRUE((e[["shiny_session"]] %||% list())[[
+        "is_async",
+        exact = TRUE
+      ]])
+    },
     worker_events
   )
   testthat::expect_true(length(async_events) > 0)
 
   event <- async_events[[1]]
-  testthat::expect_identical(event$type, "audit_test_async_worker")
-  testthat::expect_identical(event$shiny_session$token, ctx$token)
   testthat::expect_identical(
-    as.integer(event$shiny_session$main_process_id),
+    event[["type"]],
+    "audit_test_async_worker"
+  )
+  testthat::expect_identical(
+    event[["shiny_session"]][["token"]],
+    ctx[["token"]]
+  )
+  testthat::expect_identical(
+    as.integer(event[["shiny_session"]][[
+      "main_process_id",
+      exact = TRUE
+    ]]),
     as.integer(main_pid)
   )
-  testthat::expect_true(!is.null(event$shiny_session$process_id))
+  testthat::expect_true(
+    !is.null(
+      event[["shiny_session"]][["process_id"]]
+    )
+  )
   testthat::expect_false(
     identical(
-      as.integer(event$shiny_session$process_id),
+      as.integer(event[["shiny_session"]][[
+        "process_id",
+        exact = TRUE
+      ]]),
       as.integer(main_pid)
     )
   )
@@ -107,8 +128,8 @@ testthat::test_that("with_async_options correctly restores options in worker", {
     )
   })
 
-  testthat::expect_equal(result$timeout, 99)
-  testthat::expect_true(result$hook_is_fn)
+  testthat::expect_equal(result[["timeout"]], 99)
+  testthat::expect_true(result[["hook_is_fn"]])
 
   # After the block, options should be restored (NULL in this case)
   testthat::expect_null(getOption("shinyOAuth.timeout"))
@@ -203,7 +224,7 @@ testthat::test_that("with_async_options warns when otel cache reset hook is unav
     }
   )
 
-  testthat::expect_true(isTRUE(result$changed))
+  testthat::expect_true(isTRUE(result[["changed"]]))
   testthat::expect_identical(Sys.getenv("OTEL_TRACES_EXPORTER"), "none")
   testthat::expect_match(
     warned %||% "",
@@ -249,8 +270,11 @@ testthat::test_that("with_async_options rebuilds cached otel providers", {
     }
   )
 
-  testthat::expect_true(isTRUE(result$tracing_enabled))
-  testthat::expect_identical(result$traces_exporter, "console")
+  testthat::expect_true(isTRUE(result[["tracing_enabled"]]))
+  testthat::expect_identical(
+    result[["traces_exporter"]],
+    "console"
+  )
 })
 
 testthat::test_that("with_async_options rebuilds cached otel providers when exporters are disabled", {
@@ -298,10 +322,10 @@ testthat::test_that("with_async_options rebuilds cached otel providers when expo
     }
   )
 
-  testthat::expect_false(isTRUE(result$tracing_enabled))
-  testthat::expect_false(isTRUE(result$logging_enabled))
-  testthat::expect_identical(result$traces_exporter, "none")
-  testthat::expect_identical(result$logs_exporter, "none")
+  testthat::expect_false(isTRUE(result[["tracing_enabled"]]))
+  testthat::expect_false(isTRUE(result[["logging_enabled"]]))
+  testthat::expect_identical(result[["traces_exporter"]], "none")
+  testthat::expect_identical(result[["logs_exporter"]], "none")
 })
 
 testthat::test_that("with_async_options clears cached otel providers after restoring unset env", {
@@ -345,8 +369,11 @@ testthat::test_that("with_async_options clears cached otel providers after resto
     }
   )
 
-  testthat::expect_true(isTRUE(result$tracing_enabled))
-  testthat::expect_identical(result$traces_exporter, "console")
+  testthat::expect_true(isTRUE(result[["tracing_enabled"]]))
+  testthat::expect_identical(
+    result[["traces_exporter"]],
+    "console"
+  )
   testthat::expect_true(is.na(Sys.getenv(
     "OTEL_R_TRACES_EXPORTER",
     unset = NA_character_
@@ -438,9 +465,14 @@ testthat::test_that("augment_with_shiny_context normalizes borrowed async contex
 
   normalized <- shinyOAuth:::augment_with_shiny_context(event)
 
-  testthat::expect_false(isTRUE(normalized$shiny_session$is_async))
+  testthat::expect_false(isTRUE(
+    normalized[["shiny_session"]][["is_async"]]
+  ))
   testthat::expect_identical(
-    as.integer(normalized$shiny_session$process_id),
+    as.integer(normalized[["shiny_session"]][[
+      "process_id",
+      exact = TRUE
+    ]]),
     as.integer(main_pid)
   )
 })
@@ -464,9 +496,14 @@ testthat::test_that("augment_with_shiny_context fills worker process_id from asy
     )
 
     normalized <- shinyOAuth:::augment_with_shiny_context(event)
-    testthat::expect_true(isTRUE(normalized$shiny_session$is_async))
+    testthat::expect_true(isTRUE(
+      normalized[["shiny_session"]][["is_async"]]
+    ))
     testthat::expect_identical(
-      as.integer(normalized$shiny_session$process_id),
+      as.integer(normalized[["shiny_session"]][[
+        "process_id",
+        exact = TRUE
+      ]]),
       as.integer(Sys.getpid())
     )
   })
@@ -526,9 +563,12 @@ testthat::test_that("shinyOAuth options are propagated to async workers via mira
   })
 
   # Verify shinyOAuth options were available inside the "worker"
-  testthat::expect_equal(result$timeout, 123)
-  testthat::expect_equal(result$leeway, 456)
-  testthat::expect_equal(result$custom_test, "shinyOAuth_value")
+  testthat::expect_equal(result[["timeout"]], 123)
+  testthat::expect_equal(result[["leeway"]], 456)
+  testthat::expect_equal(
+    result[["custom_test"]],
+    "shinyOAuth_value"
+  )
 })
 
 testthat::test_that("options propagation works with actual mirai", {
@@ -587,9 +627,15 @@ testthat::test_that("options propagation works with actual mirai", {
   }
 
   testthat::expect_false(is.null(promise_result))
-  testthat::expect_equal(promise_result$value, "hello_from_main")
-  testthat::expect_equal(promise_result$number, 42)
-  testthat::expect_equal(promise_result$main_pid_from_opts, main_pid)
+  testthat::expect_equal(
+    promise_result[["value"]],
+    "hello_from_main"
+  )
+  testthat::expect_equal(promise_result[["number"]], 42)
+  testthat::expect_equal(
+    promise_result[["main_pid_from_opts"]],
+    main_pid
+  )
 })
 
 testthat::test_that("otel env vars propagate to actual mirai workers", {
@@ -735,15 +781,36 @@ testthat::test_that("reused async workers honor otel exporter disable transition
   ))
   second_result <- dispatch_state()
 
-  testthat::expect_true(isTRUE(first_result$tracing_enabled))
-  testthat::expect_true(isTRUE(first_result$logging_enabled))
-  testthat::expect_identical(first_result$traces_exporter, "console")
-  testthat::expect_identical(first_result$logs_exporter, "console")
-  testthat::expect_identical(second_result$pid, first_result$pid)
-  testthat::expect_false(isTRUE(second_result$tracing_enabled))
-  testthat::expect_false(isTRUE(second_result$logging_enabled))
-  testthat::expect_identical(second_result$traces_exporter, "none")
-  testthat::expect_identical(second_result$logs_exporter, "none")
+  testthat::expect_true(isTRUE(first_result[["tracing_enabled"]]))
+  testthat::expect_true(isTRUE(first_result[["logging_enabled"]]))
+  testthat::expect_identical(
+    first_result[["traces_exporter"]],
+    "console"
+  )
+  testthat::expect_identical(
+    first_result[["logs_exporter"]],
+    "console"
+  )
+  testthat::expect_identical(
+    second_result[["pid"]],
+    first_result[["pid"]]
+  )
+  testthat::expect_false(isTRUE(second_result[[
+    "tracing_enabled",
+    exact = TRUE
+  ]]))
+  testthat::expect_false(isTRUE(second_result[[
+    "logging_enabled",
+    exact = TRUE
+  ]]))
+  testthat::expect_identical(
+    second_result[["traces_exporter"]],
+    "none"
+  )
+  testthat::expect_identical(
+    second_result[["logs_exporter"]],
+    "none"
+  )
 })
 
 testthat::test_that("emit_trace_event surfaces trace_hook errors as warnings", {
@@ -811,9 +878,9 @@ testthat::test_that("hook errors in async workers propagate to main process", {
   poll_for_async(function() !is.null(resolved))
 
   # The hook error should have been captured as a warning
-  testthat::expect_length(resolved$warnings, 1)
+  testthat::expect_length(resolved[["warnings"]], 1)
   testthat::expect_match(
-    conditionMessage(resolved$warnings[[1]]),
+    conditionMessage(resolved[["warnings"]][[1]]),
     "audit_hook error: broken hook"
   )
 
@@ -863,26 +930,33 @@ testthat::test_that("true-async: conditions captured in daemon worker are replay
   })
   poll_for_async(function() !is.null(resolved), timeout = 10)
 
-  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
-  testthat::expect_equal(resolved$value$val, 99)
+  testthat::expect_true(
+    isTRUE(resolved[[".shinyOAuth_async_wrapped"]])
+  )
+  testthat::expect_equal(
+    resolved[["value"]][["val"]],
+    99
+  )
   # Worker ran in a different process
-  testthat::expect_false(resolved$value$pid == Sys.getpid())
-  testthat::expect_length(resolved$warnings, 2)
-  testthat::expect_length(resolved$messages, 2)
+  testthat::expect_false(
+    resolved[["value"]][["pid"]] == Sys.getpid()
+  )
+  testthat::expect_length(resolved[["warnings"]], 2)
+  testthat::expect_length(resolved[["messages"]], 2)
   testthat::expect_match(
-    conditionMessage(resolved$warnings[[1]]),
+    conditionMessage(resolved[["warnings"]][[1]]),
     "daemon warn beta"
   )
   testthat::expect_match(
-    conditionMessage(resolved$warnings[[2]]),
+    conditionMessage(resolved[["warnings"]][[2]]),
     "daemon warn delta"
   )
   testthat::expect_match(
-    conditionMessage(resolved$messages[[1]]),
+    conditionMessage(resolved[["messages"]][[1]]),
     "daemon msg alpha"
   )
   testthat::expect_match(
-    conditionMessage(resolved$messages[[2]]),
+    conditionMessage(resolved[["messages"]][[2]]),
     "daemon msg gamma"
   )
 
@@ -902,7 +976,7 @@ testthat::test_that("true-async: conditions captured in daemon worker are replay
     ),
     "daemon warn delta"
   )
-  testthat::expect_equal(val$val, 99)
+  testthat::expect_equal(val[["val"]], 99)
 })
 
 testthat::test_that("true-async: audit_hook takes precedence over trace_hook alias", {
@@ -946,11 +1020,17 @@ testthat::test_that("true-async: audit_hook takes precedence over trace_hook ali
   })
   poll_for_async(function() !is.null(resolved), timeout = 10)
 
-  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
-  testthat::expect_equal(resolved$value, "hook_test_done")
+  testthat::expect_true(
+    isTRUE(resolved[[".shinyOAuth_async_wrapped"]])
+  )
+  testthat::expect_equal(resolved[["value"]], "hook_test_done")
   # audit_hook should win when both options are set
-  testthat::expect_length(resolved$warnings, 1)
-  msgs <- vapply(resolved$warnings, conditionMessage, character(1))
+  testthat::expect_length(resolved[["warnings"]], 1)
+  msgs <- vapply(
+    resolved[["warnings"]],
+    conditionMessage,
+    character(1)
+  )
   testthat::expect_true(any(grepl("audit_hook error: audit kaboom", msgs)))
   testthat::expect_false(any(grepl("trace_hook error: trace kaboom", msgs)))
 
@@ -1013,16 +1093,29 @@ testthat::test_that("true-async: trace_hook alias captures conditions from daemo
   })
   poll_for_async(function() !is.null(resolved), timeout = 10)
 
-  testthat::expect_true(isTRUE(resolved$.shinyOAuth_async_wrapped))
-  testthat::expect_equal(resolved$value, "hook_conditions_done")
+  testthat::expect_true(
+    isTRUE(resolved[[".shinyOAuth_async_wrapped"]])
+  )
+  testthat::expect_equal(
+    resolved[["value"]],
+    "hook_conditions_done"
+  )
 
-  testthat::expect_length(resolved$warnings, 1)
-  w_msgs <- vapply(resolved$warnings, conditionMessage, character(1))
+  testthat::expect_length(resolved[["warnings"]], 1)
+  w_msgs <- vapply(
+    resolved[["warnings"]],
+    conditionMessage,
+    character(1)
+  )
   testthat::expect_true(any(grepl("trace hook user warning", w_msgs)))
   testthat::expect_false(any(grepl("audit hook user warning", w_msgs)))
 
-  testthat::expect_length(resolved$messages, 1)
-  m_msgs <- vapply(resolved$messages, conditionMessage, character(1))
+  testthat::expect_length(resolved[["messages"]], 1)
+  m_msgs <- vapply(
+    resolved[["messages"]],
+    conditionMessage,
+    character(1)
+  )
   testthat::expect_true(any(grepl("trace hook user message", m_msgs)))
   testthat::expect_false(any(grepl("audit hook user message", m_msgs)))
 
@@ -1081,8 +1174,8 @@ testthat::test_that("shinyOAuth.replay_async_conditions = FALSE suppresses repla
   poll_for_async(function() !is.null(resolved), timeout = 10)
 
   # Conditions were captured
-  testthat::expect_length(resolved$warnings, 1)
-  testthat::expect_length(resolved$messages, 1)
+  testthat::expect_length(resolved[["warnings"]], 1)
+  testthat::expect_length(resolved[["messages"]], 1)
 
   # With the option FALSE, replay should NOT emit them
   withr::local_options(list(shinyOAuth.replay_async_conditions = FALSE))

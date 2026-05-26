@@ -23,7 +23,7 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
       # Verify body form has grant_type=refresh_token
       # We can't easily read it here; assume methods__token builds it correctly.
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -49,7 +49,7 @@ testthat::test_that("refresh_token success updates tokens and preserves when not
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -78,7 +78,7 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -130,7 +130,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   calls <- list(token = 0L, userinfo = 0L, introspection = 0L)
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("/token", url, fixed = TRUE)) {
         calls$token <<- calls$token + 1L
         httr2::response(
@@ -173,7 +173,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   t4 <- refresh_token(cli, t, async = FALSE, introspect = TRUE)
   testthat::expect_true(S7::S7_inherits(t4, OAuthToken))
   testthat::expect_true(is.list(t4@userinfo))
-  testthat::expect_identical(t4@userinfo$sub, "u-42")
+  testthat::expect_identical(t4@userinfo[["sub"]], "u-42")
   # We expect at least one token call and one userinfo call
   testthat::expect_gte(calls$token, 1L)
   testthat::expect_gte(calls$userinfo, 1L)
@@ -191,7 +191,7 @@ expect_refresh_introspection_error <- function(
   testthat::with_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -361,7 +361,7 @@ testthat::test_that("refresh_token rejects introspection token_type conflicts", 
   testthat::with_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -401,7 +401,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
   calls <- list(token = 0L, userinfo = 0L)
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("/token", url, fixed = TRUE)) {
         calls$token <<- calls$token + 1L
         httr2::response(
@@ -448,7 +448,7 @@ testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -485,7 +485,7 @@ testthat::test_that("refresh_token rejects negative expires_in", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -542,7 +542,7 @@ testthat::test_that("refresh_token succeeds with id_token_validation=TRUE when r
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -643,7 +643,7 @@ testthat::test_that("refresh_token rejects new id_token with mismatched sub (OID
         new_id_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -743,7 +743,7 @@ testthat::test_that("refresh_token accepts new id_token with matching sub (OIDC 
         new_id_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -822,7 +822,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
         new_id_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -895,7 +895,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
         new_id_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -965,7 +965,7 @@ testthat::test_that("refresh_token preserves original id_token when refresh omit
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1047,7 +1047,7 @@ testthat::test_that("refresh_token fails when original id_token is unparseable b
         new_id_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -1103,7 +1103,7 @@ testthat::test_that("refresh with id_token_required=TRUE succeeds when response 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1205,7 +1205,7 @@ testthat::test_that("refresh_token validates new id_token claims (issuer, aud, e
         bad_issuer_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -1297,7 +1297,7 @@ testthat::test_that("refresh_token validates new id_token audience", {
         bad_aud_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -1389,7 +1389,7 @@ testthat::test_that("refresh_token rejects expired new id_token", {
         expired_token
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -1483,7 +1483,7 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
   # Mock userinfo to return DIFFERENT subject - should fail validation
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         # Userinfo returns different sub
         httr2::response(
@@ -1555,7 +1555,7 @@ testthat::test_that("refresh_token errors when userinfo_id_token_match lacks an 
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
@@ -1641,7 +1641,7 @@ testthat::test_that("refresh_token rejects refreshed userinfo that mismatches pr
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
@@ -1725,7 +1725,7 @@ testthat::test_that("refresh_token still binds refreshed userinfo to a preserved
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
@@ -1832,7 +1832,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
   # Mock userinfo to return MATCHING subject with updated info
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
@@ -1864,8 +1864,8 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "new_at")
   # Userinfo should be updated
-  testthat::expect_identical(t2@userinfo$name, "Updated Name")
-  testthat::expect_identical(t2@userinfo$email, "user@example.com")
+  testthat::expect_identical(t2@userinfo[["name"]], "Updated Name")
+  testthat::expect_identical(t2@userinfo[["email"]], "user@example.com")
   # ID token should be updated
   testthat::expect_identical(t2@id_token, new_id_token)
 })
@@ -1929,7 +1929,7 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("userinfo", url, fixed = TRUE)) {
         httr2::response(
           url = url,
@@ -1956,7 +1956,7 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
   testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   testthat::expect_identical(t2@access_token, "new_at")
   # Userinfo should be updated with fresh data.
-  testthat::expect_identical(t2@userinfo$name, "Fresh Name")
+  testthat::expect_identical(t2@userinfo[["name"]], "Fresh Name")
   # Original id_token should be preserved when refresh omits a new one.
   testthat::expect_identical(t2@id_token, original_id_token)
 })
@@ -1980,7 +1980,7 @@ testthat::test_that("refresh_token succeeds when provider omits scope (RFC 6749 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         # Provider omits scope from refresh response
@@ -2020,7 +2020,7 @@ testthat::test_that("refresh_token validates scope when provider returns it", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         # Provider returns scope matching requested scopes
@@ -2062,7 +2062,7 @@ testthat::test_that("refresh_token errors when provider returns reduced scope (s
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         # Provider returns only subset of requested scopes

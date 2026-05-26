@@ -17,11 +17,11 @@ test_that("decrypted payload preserves list shape and normalizes scopes", {
   dec <- shinyOAuth:::state_decrypt_gcm(tok, key = key)
 
   # extras remains a list-of-lists, not a data.frame
-  expect_true(is.list(dec$extras))
-  expect_false(is.data.frame(dec$extras))
-  expect_identical(names(dec$extras[[1]]), c("k", "v"))
+  expect_true(is.list(dec[["extras"]]))
+  expect_false(is.data.frame(dec[["extras"]]))
+  expect_identical(names(dec[["extras"]][[1]]), c("k", "v"))
 
   # scopes normalized to character vector
-  expect_true(is.character(dec$scopes))
-  expect_identical(dec$scopes, c("openid", "profile"))
+  expect_true(is.character(dec[["scopes"]]))
+  expect_identical(dec[["scopes"]], c("openid", "profile"))
 })

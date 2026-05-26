@@ -40,9 +40,9 @@ mtls_thumbprint_cache_file_signature <- function(path) {
 
   paste(
     normalized,
-    as.character(info$size[[1]]),
-    as.character(as.numeric(info$mtime[[1]])),
-    as.character(as.numeric(info$ctime[[1]])),
+    as.character(info[["size"]][[1]]),
+    as.character(as.numeric(info[["mtime"]][[1]])),
+    as.character(as.numeric(info[["ctime"]][[1]])),
     sep = "::"
   )
 }
@@ -383,7 +383,7 @@ token_cnf_from_access_token <- function(access_token) {
     return(list())
   }
 
-  normalize_token_cnf(payload$cnf %||% NULL)
+  normalize_token_cnf(payload[["cnf"]] %||% NULL)
 }
 
 #' Parse cnf data from an introspection result
@@ -397,7 +397,7 @@ token_cnf_from_introspection <- function(introspection_result) {
     return(list())
   }
 
-  raw <- introspection_result$raw %||% introspection_result
+  raw <- introspection_result[["raw"]] %||% introspection_result
   if (is.data.frame(raw)) {
     raw <- as.list(raw)
   }
@@ -405,7 +405,7 @@ token_cnf_from_introspection <- function(introspection_result) {
     return(list())
   }
 
-  normalize_token_cnf(raw$cnf %||% NULL)
+  normalize_token_cnf(raw[["cnf"]] %||% NULL)
 }
 
 #' Collect observable cnf data by token surface
@@ -573,13 +573,13 @@ resolve_token_cnf <- function(
   )
 
   compact_list(list(
-    `x5t#S256` = sources$introspection[["x5t#S256"]] %||%
-      sources$token_response[["x5t#S256"]] %||%
-      sources$access_token[["x5t#S256"]] %||%
+    `x5t#S256` = sources[["introspection"]][["x5t#S256"]] %||%
+      sources[["token_response"]][["x5t#S256"]] %||%
+      sources[["access_token"]][["x5t#S256"]] %||%
       NULL,
-    jkt = sources$introspection[["jkt"]] %||%
-      sources$token_response[["jkt"]] %||%
-      sources$access_token[["jkt"]] %||%
+    jkt = sources[["introspection"]][["jkt"]] %||%
+      sources[["token_response"]][["jkt"]] %||%
+      sources[["access_token"]][["jkt"]] %||%
       NULL
   ))
 }
@@ -698,10 +698,22 @@ read_keyed_client_certificate <- function(
   }
 
   key <- read_client_private_key(key_file, key_password = key_password)
-  key_fingerprint <- as.list(key)$pubkey$fingerprint %||% NULL
+  key_fingerprint <- tryCatch(
+    {
+      key_pubkey <- as.list(key)[["pubkey"]]
+      as.list(key_pubkey)[["fingerprint"]] %||% NULL
+    },
+    error = function(...) NULL
+  )
 
   for (cert in certs) {
-    cert_fingerprint <- as.list(cert)$pubkey$fingerprint %||% NULL
+    cert_fingerprint <- tryCatch(
+      {
+        cert_pubkey <- as.list(cert)[["pubkey"]]
+        as.list(cert_pubkey)[["fingerprint"]] %||% NULL
+      },
+      error = function(...) NULL
+    )
     if (
       !is.null(cert_fingerprint) && identical(cert_fingerprint, key_fingerprint)
     ) {

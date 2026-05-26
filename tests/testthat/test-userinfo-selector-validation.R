@@ -113,7 +113,7 @@ test_that("get_userinfo audit normalizes custom selector output", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(
@@ -126,7 +126,7 @@ test_that("get_userinfo audit normalizes custom selector output", {
   )
 
   result <- get_userinfo(cli, token = "access-token")
-  expect_equal(result$id, 12345)
+  expect_equal(result[["id"]], 12345)
 
   ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
   expect_length(ui_events, 1L)

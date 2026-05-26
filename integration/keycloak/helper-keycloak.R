@@ -57,7 +57,7 @@ keycloak_admin_token <- function() {
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  token <- body$access_token %||% NA_character_
+  token <- body[["access_token"]] %||% NA_character_
   if (!keycloak_nonempty_string(token)) {
     testthat::skip("Keycloak admin token response did not include access_token")
   }
@@ -100,7 +100,7 @@ keycloak_find_client <- function(token, client_id) {
   }
 
   for (candidate in body) {
-    candidate_id <- candidate$clientId %||% NA_character_
+    candidate_id <- candidate[["clientId"]] %||% NA_character_
     if (identical(candidate_id, client_id)) {
       return(candidate)
     }
@@ -117,7 +117,11 @@ keycloak_delete_client <- function(token, client_id = NULL, id = NULL) {
       keycloak_nonempty_string(client_id)
   ) {
     client_info <- keycloak_find_client(token, client_id)
-    resolved_id <- client_info$id %||% NA_character_
+    resolved_id <- if (is.list(client_info)) {
+      client_info[["id"]] %||% NA_character_
+    } else {
+      NA_character_
+    }
   }
 
   if (!keycloak_nonempty_string(resolved_id)) {
@@ -139,9 +143,9 @@ keycloak_delete_client <- function(token, client_id = NULL, id = NULL) {
 keycloak_create_client <- function(token, body, delete_existing = TRUE) {
   stopifnot(is.list(body))
 
-  client_id <- body$clientId %||% NA_character_
+  client_id <- body[["clientId"]] %||% NA_character_
   if (!keycloak_nonempty_string(client_id)) {
-    stop("body$clientId must be a non-empty string", call. = FALSE)
+    stop("body[['clientId']] must be a non-empty string", call. = FALSE)
   }
 
   if (isTRUE(delete_existing)) {
@@ -171,7 +175,11 @@ keycloak_create_client <- function(token, body, delete_existing = TRUE) {
     !keycloak_nonempty_string(created_id) || identical(created_id, location)
   ) {
     client_info <- keycloak_find_client(token, client_id)
-    created_id <- client_info$id %||% NA_character_
+    created_id <- if (is.list(client_info)) {
+      client_info[["id"]] %||% NA_character_
+    } else {
+      NA_character_
+    }
   }
 
   list(
@@ -208,9 +216,9 @@ keycloak_delete_realm <- function(token, realm) {
 keycloak_create_realm <- function(token, body, delete_existing = TRUE) {
   stopifnot(is.list(body))
 
-  realm <- body$realm %||% NA_character_
+  realm <- body[["realm"]] %||% NA_character_
   if (!keycloak_nonempty_string(realm)) {
-    stop("body$realm must be a non-empty string", call. = FALSE)
+    stop("body[['realm']] must be a non-empty string", call. = FALSE)
   }
 
   if (isTRUE(delete_existing)) {
@@ -391,7 +399,7 @@ get_keycloak_tls_client_key_file <- function(
 }
 
 req_apply_keycloak_ca <- function(req) {
-  url <- req$url %||% NA_character_
+  url <- req[["url"]] %||% NA_character_
   ca_file <- get_keycloak_tls_ca_file()
 
   if (
@@ -494,7 +502,7 @@ get_jwks <- function(force = FALSE) {
   }
 
   disc <- get_discovery_document(force = force)
-  jwks_url <- disc$jwks_uri %||% NA_character_
+  jwks_url <- disc[["jwks_uri"]] %||% NA_character_
   stopifnot(
     is.character(jwks_url) && length(jwks_url) == 1L && nzchar(jwks_url)
   )
@@ -534,7 +542,7 @@ get_request_object_encryption_kid <- function(alg = "RSA-OAEP") {
   candidates <- candidates[candidate_scores == max(candidate_scores)]
 
   for (candidate in candidates) {
-    kid <- candidate$kid %||% NA_character_
+    kid <- candidate[["kid"]] %||% NA_character_
     if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
       return(kid)
     }
@@ -547,7 +555,11 @@ keycloak_reachable <- function() {
   ok <- tryCatch(
     {
       disc <- get_discovery_document(force = TRUE)
-      is.list(disc) && identical(disc$issuer %||% NA_character_, get_issuer())
+      is.list(disc) &&
+        identical(
+          disc[["issuer"]] %||% NA_character_,
+          get_issuer()
+        )
     },
     error = function(...) FALSE
   )
@@ -560,7 +572,7 @@ keycloak_https_reachable <- function() {
       disc <- get_https_discovery_document(force = TRUE)
       is.list(disc) &&
         identical(
-          disc$issuer %||% NA_character_,
+          disc[["issuer"]] %||% NA_character_,
           get_https_issuer()
         )
     },
@@ -789,8 +801,14 @@ browser_cookie_candidates <- function(id) {
 }
 
 get_browser_cookie <- function(drv, name) {
-  cookies <- drv$get_chromote_session()$Network$getAllCookies()$cookies
-  matches <- Filter(function(cookie) identical(cookie$name, name), cookies)
+  cookies <- drv$get_chromote_session()$Network$getAllCookies()[[
+    "cookies",
+    exact = TRUE
+  ]]
+  matches <- Filter(
+    function(cookie) identical(cookie[["name"]], name),
+    cookies
+  )
   if (length(matches) == 0L) {
     return(NULL)
   }
@@ -875,15 +893,16 @@ parse_query_param <- function(url, name, decode = FALSE) {
 
 callback_query <- function(
   login_result,
-  code = login_result$code %||% NA_character_,
-  state = login_result$state_payload %||% NA_character_,
+  code = login_result[["code"]] %||% NA_character_,
+  state = login_result[["state_payload"]] %||% NA_character_,
   iss = parse_query_param(
-    login_result$callback_url %||% NA_character_,
+    login_result[["callback_url"]] %||% NA_character_,
     "iss",
     decode = TRUE
   )
 ) {
-  callback_url <- login_result$callback_url %||% NA_character_
+  callback_url <- login_result[["callback_url"]] %||%
+    NA_character_
   if (
     !is.character(callback_url) ||
       length(callback_url) != 1L ||
@@ -901,9 +920,9 @@ callback_query <- function(
     sub("^\\?", "", sub("^[^?]*", "", callback_url)),
     nested = FALSE
   )
-  parts$code <- code
-  parts$state <- state
-  parts$iss <- iss
+  parts[["code"]] <- code
+  parts[["state"]] <- state
+  parts[["iss"]] <- iss
 
   keep <- vapply(
     parts,
@@ -1033,7 +1052,7 @@ parse_form_post_authorization_response <- function(
       next
     }
 
-    base_url <- resp$url %||% redirect_uri
+    base_url <- resp[["url"]] %||% redirect_uri
     action_url <- to_abs(base_url, action)
     if (
       keycloak_nonempty_string(redirect_uri) &&
@@ -1052,8 +1071,8 @@ parse_form_post_authorization_response <- function(
 
     vals[is.na(vals)] <- ""
     fields <- as.list(stats::setNames(vals[keep], names[keep]))
-    code <- fields$code %||% NA_character_
-    state <- fields$state %||% NA_character_
+    code <- fields[["code"]] %||% NA_character_
+    state <- fields[["state"]] %||% NA_character_
 
     if (keycloak_nonempty_string(code) && keycloak_nonempty_string(state)) {
       return(list(
@@ -1074,7 +1093,7 @@ follow_once <- function(resp, cookie_hdr) {
   if (is.null(loc) || !nzchar(loc)) {
     return(list(done = TRUE, url = NA_character_, resp = resp))
   }
-  next_url <- to_abs(resp$url %||% loc, loc)
+  next_url <- to_abs(resp[["url"]] %||% loc, loc)
   r <- httr2::request(next_url) |>
     req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
@@ -1094,10 +1113,14 @@ to_abs <- function(base, path) {
   }
   u <- httr2::url_parse(base)
   paste0(
-    u$scheme,
+    u[["scheme"]],
     "://",
-    u$hostname,
-    if (!is.na(u$port)) paste0(":", u$port) else "",
+    u[["hostname"]],
+    if (!is.na(u[["port"]])) {
+      paste0(":", u[["port"]])
+    } else {
+      ""
+    },
     path
   )
 }
@@ -1463,11 +1486,17 @@ perform_mtls_code_login <- function(
 
   list(
     auth_url = auth_url,
-    code = login$code,
-    state_payload = login$state_payload,
+    code = login[["code"]],
+    state_payload = login[["state_payload"]],
     state = state,
-    code_verifier = state$entry$pkce_code_verifier,
-    browser_token = state$entry$browser_token
+    code_verifier = state[["entry"]][[
+      "pkce_code_verifier",
+      exact = TRUE
+    ]],
+    browser_token = state[["entry"]][[
+      "browser_token",
+      exact = TRUE
+    ]]
   )
 }
 
@@ -1503,9 +1532,9 @@ raw_mtls_auth_code_exchange <- function(
   cert_variant <- match.arg(cert_variant)
   params <- list(
     grant_type = "authorization_code",
-    code = code_login$code,
+    code = code_login[["code"]],
     redirect_uri = client@redirect_uri,
-    code_verifier = code_login$code_verifier,
+    code_verifier = code_login[["code_verifier"]],
     client_id = client_id
   )
 
@@ -1528,7 +1557,7 @@ raw_mtls_client_credentials_request <- function(
     client_id = client_id
   )
   if (is.character(scope) && length(scope) > 0L && any(nzchar(scope))) {
-    params$scope <- paste(scope, collapse = " ")
+    params[["scope"]] <- paste(scope, collapse = " ")
   }
 
   raw_mtls_token_request(
@@ -1581,7 +1610,10 @@ safe_resp_body_json <- function(resp) {
 expect_mtls_invalid_client <- function(resp) {
   testthat::expect_true(httr2::resp_status(resp) %in% c(400L, 401L))
   body <- safe_resp_body_json(resp)
-  combo <- paste(body$error %||% "", body$error_description %||% "")
+  combo <- paste(
+    body[["error"]] %||% "",
+    body[["error_description"]] %||% ""
+  )
   testthat::expect_match(
     combo,
     "invalid_client|unauthorized_client|invalid_client_credentials",
@@ -1595,7 +1627,7 @@ expect_mtls_sender_constraint_rejection <- function(resp) {
 
   body <- safe_resp_body_json(resp)
   challenge <- httr2::resp_header(resp, "www-authenticate") %||% ""
-  combo <- paste(body$error %||% "", challenge)
+  combo <- paste(body[["error"]] %||% "", challenge)
 
   testthat::expect_match(challenge, "Bearer", ignore.case = TRUE)
   testthat::expect_match(combo, "invalid_token", fixed = TRUE)
@@ -1834,11 +1866,14 @@ perform_login_form_as <- function(
     stopifnot(nzchar(loc))
 
     callback <- parse_callback_redirect(loc, redirect_uri)
-    if (isTRUE(callback$is_callback)) {
+    if (isTRUE(callback[["is_callback"]])) {
       callback_url <- loc
-      code <- callback$code
-      if (is.character(callback$state) && nzchar(callback$state)) {
-        state_payload <- callback$state
+      code <- callback[["code"]]
+      if (
+        is.character(callback[["state"]]) &&
+          nzchar(callback[["state"]])
+      ) {
+        state_payload <- callback[["state"]]
       }
       return(list(
         code = code,
@@ -1848,8 +1883,8 @@ perform_login_form_as <- function(
     }
 
     step <- follow_once(cur_resp, cookie_hdr)
-    cur_resp <- step$resp
-    current_url <- step$url %||% current_url
+    cur_resp <- step[["resp"]]
+    current_url <- step[["url"]] %||% current_url
     cookie_hdr <- merge_cookies(cookie_hdr, cur_resp)
   }
 
@@ -1890,17 +1925,20 @@ perform_login_form_as <- function(
       loc <- httr2::resp_header(cur_resp, "location")
       stopifnot(nzchar(loc))
       callback <- parse_callback_redirect(loc, redirect_uri)
-      if (isTRUE(callback$is_callback)) {
+      if (isTRUE(callback[["is_callback"]])) {
         callback_url <- loc
-        code <- callback$code
-        if (is.character(callback$state) && nzchar(callback$state)) {
-          state_payload <- callback$state
+        code <- callback[["code"]]
+        if (
+          is.character(callback[["state"]]) &&
+            nzchar(callback[["state"]])
+        ) {
+          state_payload <- callback[["state"]]
         }
         break
       }
       step <- follow_once(cur_resp, cookie_hdr)
-      cur_resp <- step$resp
-      current_url <- step$url %||% current_url
+      cur_resp <- step[["resp"]]
+      current_url <- step[["url"]] %||% current_url
       cookie_hdr <- merge_cookies(cookie_hdr, cur_resp)
     } else {
       break
@@ -1946,7 +1984,7 @@ get_state_info <- function(client, auth_url) {
       nzchar(sealed)
   ) {
     dec <- shinyOAuth:::state_payload_decrypt_validate(client, sealed)
-    key <- shinyOAuth:::state_cache_key(dec$state)
+    key <- shinyOAuth:::state_cache_key(dec[["state"]])
   } else {
     keys <- sort(client@state_store$keys())
     if (length(keys) != 1L || !nzchar(keys[[1]])) {
@@ -1964,7 +2002,7 @@ get_state_info <- function(client, auth_url) {
 #' Get the state store entry for the given auth URL
 get_state_store_entry <- function(client, auth_url) {
   info <- get_state_info(client, auth_url)
-  orig <- client@state_store$get(info$key, missing = NULL)
+  orig <- client@state_store$get(info[["key"]], missing = NULL)
   stopifnot(is.list(orig))
   list(info = info, entry = orig)
 }
@@ -1972,13 +2010,13 @@ get_state_store_entry <- function(client, auth_url) {
 resolve_state_store_key <- function(state_ref) {
   if (
     is.list(state_ref) &&
-      keycloak_nonempty_string(state_ref$key %||% NA_character_)
+      keycloak_nonempty_string(state_ref[["key"]] %||% NA_character_)
   ) {
-    return(state_ref$key)
+    return(state_ref[["key"]])
   }
 
   if (is.list(state_ref)) {
-    nested_info <- state_ref$info %||% NULL
+    nested_info <- state_ref[["info"]] %||% NULL
     if (is.list(nested_info)) {
       return(resolve_state_store_key(nested_info))
     }
@@ -2154,34 +2192,37 @@ expect_keycloak_module_login_invariants <- function(
 
     id_claims <- token@id_token_claims
     testthat::expect_identical(
-      id_claims$iss %||% NA_character_,
+      id_claims[["iss"]] %||% NA_character_,
       client@provider@issuer
     )
     testthat::expect_true(
-      client@client_id %in% normalize_claim_values(id_claims$aud %||% NULL)
+      client@client_id %in%
+        normalize_claim_values(
+          id_claims[["aud"]] %||% NULL
+        )
     )
     testthat::expect_true(
-      is.character(id_claims$sub) &&
-        length(id_claims$sub) == 1L &&
-        !is.na(id_claims$sub) &&
-        nzchar(id_claims$sub)
+      is.character(id_claims[["sub"]]) &&
+        length(id_claims[["sub"]]) == 1L &&
+        !is.na(id_claims[["sub"]]) &&
+        nzchar(id_claims[["sub"]])
     )
 
     if (isTRUE(client@provider@use_nonce)) {
       testthat::expect_true(
-        is.character(id_claims$nonce) &&
-          length(id_claims$nonce) == 1L &&
-          !is.na(id_claims$nonce) &&
-          nzchar(id_claims$nonce)
+        is.character(id_claims[["nonce"]]) &&
+          length(id_claims[["nonce"]]) == 1L &&
+          !is.na(id_claims[["nonce"]]) &&
+          nzchar(id_claims[["nonce"]])
       )
     }
 
     max_age_info <- shinyOAuth:::inspect_auth_max_age(
       client@provider@extra_auth_params
     )
-    if (!is.null(max_age_info$value)) {
+    if (!is.null(max_age_info[["value"]])) {
       auth_time <- suppressWarnings(as.numeric(
-        id_claims$auth_time %||% NA_real_
+        id_claims[["auth_time"]] %||% NA_real_
       ))
       testthat::expect_true(is.finite(auth_time))
     }
@@ -2191,14 +2232,17 @@ expect_keycloak_module_login_invariants <- function(
     userinfo <- token@userinfo %||% list()
     testthat::expect_true(is.list(userinfo) && length(userinfo) > 0L)
     testthat::expect_true(
-      is.character(userinfo$sub) &&
-        length(userinfo$sub) == 1L &&
-        !is.na(userinfo$sub) &&
-        nzchar(userinfo$sub)
+      is.character(userinfo[["sub"]]) &&
+        length(userinfo[["sub"]]) == 1L &&
+        !is.na(userinfo[["sub"]]) &&
+        nzchar(userinfo[["sub"]])
     )
 
     if (length(id_claims) > 0L && isTRUE(token@id_token_validated)) {
-      testthat::expect_identical(userinfo$sub, id_claims$sub)
+      testthat::expect_identical(
+        userinfo[["sub"]],
+        id_claims[["sub"]]
+      )
     }
 
     if (
@@ -2208,7 +2252,7 @@ expect_keycloak_module_login_invariants <- function(
         nzchar(expected_username)
     ) {
       testthat::expect_identical(
-        userinfo$preferred_username,
+        userinfo[["preferred_username"]],
         expected_username
       )
     }
@@ -2224,13 +2268,13 @@ expect_keycloak_module_login_invariants <- function(
 
 access_token_cnf_jkt <- function(access_token) {
   payload <- decode_compact_jwt_payload(access_token)
-  cnf <- payload$cnf %||% list()
-  cnf$jkt %||% NA_character_
+  cnf <- payload[["cnf"]] %||% list()
+  cnf[["jkt"]] %||% NA_character_
 }
 
 access_token_cnf_x5t_s256 <- function(access_token) {
   payload <- decode_compact_jwt_payload(access_token)
-  cnf <- payload$cnf %||% list()
+  cnf <- payload[["cnf"]] %||% list()
   cnf[["x5t#S256"]] %||% NA_character_
 }
 

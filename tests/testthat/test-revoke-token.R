@@ -43,7 +43,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 400,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"error":"invalid_request"}')
@@ -60,7 +60,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{}')
@@ -92,7 +92,7 @@ testthat::test_that("revoke_token async returns a resolved promise", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{}')

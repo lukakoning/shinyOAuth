@@ -10,7 +10,11 @@ testthat::test_that("every audit event fires and serializes to JSON", {
 
   # Helper: extract unique audit types from captured events
   audit_types <- function(ev) {
-    unique(vapply(ev, function(x) as.character(x$type), character(1)))
+    unique(vapply(
+      ev,
+      function(x) as.character(x[["type"]]),
+      character(1)
+    ))
   }
 
   # Build a baseline client we can reuse across flows
@@ -177,7 +181,7 @@ testthat::test_that("every audit event fires and serializes to JSON", {
     testthat::local_mocked_bindings(
       req_with_retry = function(req, ...) {
         # Return success responses; body content depends on URL
-        url <- req$url %||% ""
+        url <- req[["url"]] %||% ""
         if (grepl("/token", url, fixed = TRUE)) {
           httr2::response(
             url = url,

@@ -337,54 +337,54 @@ build_authorization_params <- function(
   )
 
   if (client_has_dpop(oauth_client)) {
-    params$dpop_jkt <- compute_jwk_thumbprint(
+    params[["dpop_jkt"]] <- compute_jwk_thumbprint(
       dpop_public_jwk(resolve_dpop_private_key(oauth_client))
     )
   }
 
   if (isTRUE(oauth_client@provider@use_pkce)) {
-    params$code_challenge <- pkce_code_challenge
-    params$code_challenge_method <- pkce_method
+    params[["code_challenge"]] <- pkce_code_challenge
+    params[["code_challenge_method"]] <- pkce_method
   }
   if (isTRUE(oauth_client@provider@use_nonce)) {
-    params$nonce <- nonce
+    params[["nonce"]] <- nonce
   }
 
   scopes <- as_scope_tokens(scopes %||% NULL)
   if (length(scopes) > 0) {
-    params$scope <- paste(scopes, collapse = " ")
+    params[["scope"]] <- paste(scopes, collapse = " ")
   }
   if (length(oauth_client@resource) > 0) {
-    params$resource <- oauth_client@resource
+    params[["resource"]] <- oauth_client@resource
   }
 
   # OIDC claims parameter (OIDC Core Section 5.5): JSON-encode claim lists while
   # preserving explicit null values used to request claims without parameters.
   if (!is.null(oauth_client@claims)) {
     if (is.list(oauth_client@claims)) {
-      params$claims <- jsonlite::toJSON(
+      params[["claims"]] <- jsonlite::toJSON(
         oauth_client@claims,
         auto_unbox = TRUE,
         null = "null"
       )
     } else {
-      params$claims <- oauth_client@claims
+      params[["claims"]] <- oauth_client@claims
     }
   }
 
   # OIDC Core allows acr_values as a voluntary hint to the provider.
   racr <- oauth_client@required_acr_values %||% character(0)
   if (length(racr) > 0) {
-    params$acr_values <- paste(racr, collapse = " ")
+    params[["acr_values"]] <- paste(racr, collapse = " ")
   }
 
   response_mode_info <- resolve_oauth_client_response_mode(oauth_client)
-  if (!is.null(response_mode_info$error)) {
-    err_config(response_mode_info$error)
+  if (!is.null(response_mode_info[["error"]])) {
+    err_config(response_mode_info[["error"]])
   }
 
-  explicit_response_mode <- response_mode_info$explicit_mode
-  extra <- response_mode_info$extra_auth_params
+  explicit_response_mode <- response_mode_info[["explicit_mode"]]
+  extra <- response_mode_info[["extra_auth_params"]]
 
   if (length(extra) > 0) {
     # Block overrides for security-critical parameters unless explicitly
@@ -431,7 +431,7 @@ build_authorization_params <- function(
   }
 
   if (!is.null(explicit_response_mode)) {
-    params$response_mode <- explicit_response_mode
+    params[["response_mode"]] <- explicit_response_mode
   }
 
   # Drop NULLs before building query strings or form bodies.
@@ -480,8 +480,8 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
         client = client,
         context = "pushed_authorization_request"
       )
-      req <- prepared$req
-      params <- prepared$params
+      req <- prepared[["req"]]
+      params <- prepared[["params"]]
       req <- req_apply_authorization_server_mtls(req, client)
 
       req <- add_req_defaults(req)
@@ -565,18 +565,18 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       }
       body_text <- httr2::resp_body_string(resp)
       out <- try_parse_token_response_json(body_text, resp = resp)
-      if (!isTRUE(out$ok)) {
+      if (!isTRUE(out[["ok"]])) {
         err_parse("Failed to parse pushed authorization request response")
       }
-      if (!isTRUE(out$is_object)) {
+      if (!isTRUE(out[["is_object"]])) {
         err_parse(
           "Pushed authorization request response JSON must be a JSON object"
         )
       }
-      out <- out$value
+      out <- out[["value"]]
 
-      request_uri <- out$request_uri %||% NULL
-      expires_in <- out$expires_in %||% NULL
+      request_uri <- out[["request_uri"]] %||% NULL
+      expires_in <- out[["expires_in"]] %||% NULL
 
       if (!is_valid_string(request_uri)) {
         err_token(
@@ -640,8 +640,8 @@ attach_par_auth_url_metadata <- function(
     return(auth_url)
   }
 
-  request_uri <- par_resp$request_uri %||% NULL
-  expires_in <- par_resp$expires_in %||% NULL
+  request_uri <- par_resp[["request_uri"]] %||% NULL
+  expires_in <- par_resp[["expires_in"]] %||% NULL
 
   if (!is_valid_string(request_uri)) {
     return(auth_url)
@@ -793,8 +793,8 @@ build_auth_url <- function(
   ) {
     compact_list(list(
       client_id = oauth_client@client_id,
-      response_type = params$response_type %||% NULL,
-      scope = params$scope %||% NULL
+      response_type = params[["response_type"]] %||% NULL,
+      scope = params[["scope"]] %||% NULL
     ))
   } else {
     list(client_id = oauth_client@client_id)
@@ -844,8 +844,8 @@ build_auth_url <- function(
       parsed_request_uri <- try(httr2::url_parse(request_uri), silent = TRUE)
       if (
         inherits(parsed_request_uri, "try-error") ||
-          !nzchar(parsed_request_uri$scheme %||% "") ||
-          !nzchar(parsed_request_uri$hostname %||% "")
+          !nzchar(parsed_request_uri[["scheme"]] %||% "") ||
+          !nzchar(parsed_request_uri[["hostname"]] %||% "")
       ) {
         err_config(
           "build_auth_url: request_uri_publisher must return a non-empty absolute URL"
@@ -880,16 +880,16 @@ build_auth_url <- function(
         )
       )
 
-      if (!is_valid_string(par_resp$request_uri)) {
+      if (!is_valid_string(par_resp[["request_uri"]])) {
         err_config("build_auth_url: PAR response missing valid request_uri")
       }
-      warn_if_request_uri_is_long(par_resp$request_uri)
+      warn_if_request_uri_is_long(par_resp[["request_uri"]])
 
       auth_url <- url_append_query_params(
         oauth_client@provider@auth_url,
         c(
           front_channel_params,
-          list(request_uri = par_resp$request_uri)
+          list(request_uri = par_resp[["request_uri"]])
         )
       )
 
@@ -911,7 +911,7 @@ build_auth_url <- function(
       params = params
     )
 
-    if (!is_valid_string(par_resp$request_uri)) {
+    if (!is_valid_string(par_resp[["request_uri"]])) {
       err_config("build_auth_url: PAR response missing valid request_uri")
     }
 
@@ -919,7 +919,7 @@ build_auth_url <- function(
       oauth_client@provider@auth_url,
       c(
         front_channel_params,
-        list(request_uri = par_resp$request_uri)
+        list(request_uri = par_resp[["request_uri"]])
       )
     )
 
@@ -974,13 +974,19 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
       pld <- state_decrypt_gcm(encrypted_payload, key = oauth_client@state_key)
       payload_verify_issued_at(oauth_client, pld)
       if (
-        !is_valid_string(pld$client_id %||% NULL) ||
-          !identical(pld$client_id, oauth_client@client_id)
+        !is_valid_string(pld[["client_id"]] %||% NULL) ||
+          !identical(
+            pld[["client_id"]],
+            oauth_client@client_id
+          )
       ) {
         NULL
       } else if (
-        !is_valid_string(pld$redirect_uri %||% NULL) ||
-          !identical(pld$redirect_uri, oauth_client@redirect_uri)
+        !is_valid_string(pld[["redirect_uri"]] %||% NULL) ||
+          !identical(
+            pld[["redirect_uri"]],
+            oauth_client@redirect_uri
+          )
       ) {
         NULL
       } else {
@@ -994,9 +1000,9 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
   }
 
   list(
-    trace_id = payload$trace_id %||% NULL,
+    trace_id = payload[["trace_id"]] %||% NULL,
     parent = otel_span_context_from_headers(
-      payload$otel_login_span_headers %||% NULL
+      payload[["otel_login_span_headers"]] %||% NULL
     )
   )
 }
@@ -1079,11 +1085,11 @@ handle_callback <- function(
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
     NULL
   })) ||
-    isTRUE(get_async_session_context()$is_async) ||
+    isTRUE(get_async_session_context()[["is_async"]]) ||
     isTRUE(is_async_worker_context())
 
   with_trace_id(
-    callback_hint$trace_id %||% NULL,
+    callback_hint[["trace_id"]] %||% NULL,
     with_otel_span(
       "shinyOAuth.callback",
       {
@@ -1099,7 +1105,7 @@ handle_callback <- function(
           decrypted_payload = NULL,
           state_store_values = NULL,
           trace_id_seeded = is_valid_string(
-            callback_hint$trace_id %||% NA_character_
+            callback_hint[["trace_id"]] %||% NA_character_
           ),
           shiny_session = shiny_session
         )
@@ -1128,8 +1134,8 @@ handle_callback <- function(
           )
         )
       ),
-      parent = if (!is.null(callback_hint$parent)) {
-        callback_hint$parent
+      parent = if (!is.null(callback_hint[["parent"]])) {
+        callback_hint[["parent"]]
       } else if (isTRUE(async_attr)) {
         NULL
       } else {
@@ -1239,7 +1245,8 @@ handle_callback_internal <- function(
         if (!isTRUE(trace_id_seeded)) {
           otel_set_span_attributes(
             attributes = list(
-              shinyoauth.trace_id = payload$trace_id %||% NULL
+              shinyoauth.trace_id = payload[["trace_id"]] %||%
+                NULL
             )
           )
         }
@@ -1254,12 +1261,13 @@ handle_callback_internal <- function(
   }
 
   with_trace_id(
-    payload$trace_id %||% NULL,
+    payload[["trace_id"]] %||% NULL,
     {
       if (is.null(decrypted_payload) && !isTRUE(trace_id_seeded)) {
         otel_set_span_attributes(
           attributes = list(
-            shinyoauth.trace_id = payload$trace_id %||% NULL
+            shinyoauth.trace_id = payload[["trace_id"]] %||%
+              NULL
           )
         )
       }
@@ -1274,7 +1282,9 @@ handle_callback_internal <- function(
               issuer = oauth_client@provider@issuer %||% NA_character_,
               client_id_digest = string_digest(oauth_client@client_id),
               code_digest = string_digest(code),
-              state_digest = string_digest(payload$state %||% payload),
+              state_digest = string_digest(
+                payload[["state"]] %||% payload
+              ),
               browser_token_digest = string_digest(browser_token)
             ),
             shiny_session = shiny_session
@@ -1292,7 +1302,7 @@ handle_callback_internal <- function(
           {
             state_store_get(
               oauth_client,
-              payload$state,
+              payload[["state"]],
               shiny_session = shiny_session
             )
           },
@@ -1331,7 +1341,7 @@ handle_callback_internal <- function(
             # early-exit string comparisons.
             if (
               !constant_time_compare(
-                state_store_values$browser_token,
+                state_store_values[["browser_token"]],
                 browser_token
               )
             ) {
@@ -1352,7 +1362,9 @@ handle_callback_internal <- function(
                 provider = oauth_client@provider@name %||% NA_character_,
                 issuer = oauth_client@provider@issuer %||% NA_character_,
                 client_id_digest = string_digest(oauth_client@client_id),
-                state_digest = string_digest(payload$state %||% NA_character_),
+                state_digest = string_digest(
+                  payload[["state"]] %||% NA_character_
+                ),
                 browser_token_digest = string_digest(browser_token),
                 error_class = paste(class(e), collapse = ", "),
                 phase = "browser_token_validation"
@@ -1373,7 +1385,7 @@ handle_callback_internal <- function(
             # state_store_get_remove().
             state_store_get_remove(
               oauth_client,
-              payload$state,
+              payload[["state"]],
               shiny_session = shiny_session
             )
           },
@@ -1391,7 +1403,7 @@ handle_callback_internal <- function(
       # Now we can call the token endpoint to swap the code for token(s)
 
       # Verify PKCE code verifier is present if needed
-      code_verifier <- state_store_values$pkce_code_verifier
+      code_verifier <- state_store_values[["pkce_code_verifier"]]
       tryCatch(
         with_otel_span(
           "shinyOAuth.callback.validate",
@@ -1416,7 +1428,9 @@ handle_callback_internal <- function(
                 provider = oauth_client@provider@name %||% NA_character_,
                 issuer = oauth_client@provider@issuer %||% NA_character_,
                 client_id_digest = string_digest(oauth_client@client_id),
-                state_digest = string_digest(payload$state %||% NA_character_),
+                state_digest = string_digest(
+                  payload[["state"]] %||% NA_character_
+                ),
                 error_class = paste(class(e), collapse = ", "),
                 phase = "pkce_verifier_validation"
               ),
@@ -1448,13 +1462,16 @@ handle_callback_internal <- function(
                 code_digest = string_digest(code),
                 used_pkce = isTRUE(oauth_client@provider@use_pkce),
                 received_id_token = isTRUE(is_valid_string(
-                  ts$id_token %||% NA_character_
+                  ts[["id_token"]] %||% NA_character_
                 )),
                 received_refresh_token = isTRUE(is_valid_string(
-                  ts$refresh_token %||% NA_character_
+                  ts[["refresh_token"]] %||% NA_character_
                 )),
-                expires_in_synthesized = !(is.numeric(ts$expires_in) &&
-                  is.finite(ts$expires_in))
+                expires_in_synthesized = !(is.numeric(ts[[
+                  "expires_in",
+                  exact = TRUE
+                ]]) &&
+                  is.finite(ts[["expires_in"]]))
               ),
               shiny_session = shiny_session
             ),
@@ -1502,7 +1519,7 @@ handle_callback_internal <- function(
       # external calls or exposing PII via userinfo endpoint.
 
       # Verify nonce is present if needed
-      nonce <- state_store_values$nonce
+      nonce <- state_store_values[["nonce"]]
       tryCatch(
         with_otel_span(
           "shinyOAuth.callback.validate",
@@ -1527,7 +1544,9 @@ handle_callback_internal <- function(
                 provider = oauth_client@provider@name %||% NA_character_,
                 issuer = oauth_client@provider@issuer %||% NA_character_,
                 client_id_digest = string_digest(oauth_client@client_id),
-                state_digest = string_digest(payload$state %||% NA_character_),
+                state_digest = string_digest(
+                  payload[["state"]] %||% NA_character_
+                ),
                 error_class = paste(class(e), collapse = ", "),
                 phase = "nonce_validation"
               ),
@@ -1555,7 +1574,7 @@ handle_callback_internal <- function(
         token_set = token_set,
         nonce = nonce,
         is_refresh = FALSE,
-        requested_scopes = payload$scopes %||% NULL,
+        requested_scopes = payload[["scopes"]] %||% NULL,
         shiny_session = shiny_session,
         defer_certificate_binding = defer_certificate_binding
       )
@@ -1568,21 +1587,29 @@ handle_callback_internal <- function(
         access_token = token_set[["access_token"]] %||%
           err_token("Token response missing access_token"),
         token_type = effective_token_type,
-        refresh_token = token_set$refresh_token %||% NA_character_,
+        refresh_token = token_set[["refresh_token"]] %||%
+          NA_character_,
         expires_at = if (
-          is.numeric(token_set$expires_in) && is.finite(token_set$expires_in)
+          is.numeric(token_set[["expires_in"]]) &&
+            is.finite(token_set[["expires_in"]])
         ) {
-          as.numeric(Sys.time()) + as.numeric(token_set$expires_in)
+          as.numeric(Sys.time()) +
+            as.numeric(
+              token_set[["expires_in"]]
+            )
         } else {
           resolve_missing_expires_in(phase = "exchange_code")
         },
-        id_token = token_set$id_token %||% NA_character_,
+        id_token = token_set[["id_token"]] %||% NA_character_,
         cnf = resolve_token_cnf(
-          cnf = token_set$cnf,
+          cnf = token_set[["cnf"]],
           access_token = token_set[["access_token"]]
         ),
-        granted_scopes = token_set$granted_scopes %||% character(0),
-        granted_scopes_verified = isTRUE(token_set$granted_scopes_verified),
+        granted_scopes = token_set[["granted_scopes"]] %||%
+          character(0),
+        granted_scopes_verified = isTRUE(
+          token_set[["granted_scopes_verified"]]
+        ),
         id_token_validated = isTRUE(token_set[[".id_token_validated"]])
       )
 
@@ -1598,13 +1625,13 @@ handle_callback_internal <- function(
         )
         validate_token_cnf_consistency(
           access_token = token@access_token,
-          cnf = token_set$cnf,
+          cnf = token_set[["cnf"]],
           introspection_result = intro_res,
           error_context = "token",
           phase = "exchange_code"
         )
         token@cnf <- resolve_token_cnf(
-          cnf = token_set$cnf,
+          cnf = token_set[["cnf"]],
           access_token = token@access_token,
           introspection_result = intro_res
         )
@@ -1677,10 +1704,10 @@ handle_callback_internal <- function(
           oauth_client = oauth_client,
           token = token,
           introspection_result = intro_res,
-          requested_scopes = payload$scopes %||%
+          requested_scopes = payload[["scopes"]] %||%
             effective_client_scopes(oauth_client),
           phase = "exchange_code",
-          token_response_cnf = token_set$cnf
+          token_response_cnf = token_set[["cnf"]]
         )
       }
 
@@ -1701,7 +1728,7 @@ handle_callback_internal <- function(
             if (is_valid_string(it)) {
               pl <- try(parse_jwt_payload(it), silent = TRUE)
               if (!inherits(pl, "try-error")) {
-                sub_val <- pl$sub %||% NA_character_
+                sub_val <- pl[["sub"]] %||% NA_character_
                 if (is_valid_string(sub_val)) {
                   # Mark whether this specific ID token was actually validated
                   id_token_was_validated <- isTRUE(token@id_token_validated)
@@ -1782,7 +1809,7 @@ resolve_userinfo_subject <- function(oauth_client, userinfo) {
     return(NA_character_)
   }
 
-  subject <- userinfo$sub %||% NA_character_
+  subject <- userinfo[["sub"]] %||% NA_character_
   if (!is_valid_string(subject)) {
     return(NA_character_)
   }
@@ -1828,19 +1855,19 @@ enforce_token_introspection_policy <- function(
     err_token("Invalid token introspection result")
   }
 
-  if (!isTRUE(introspection_result$supported)) {
+  if (!isTRUE(introspection_result[["supported"]])) {
     err_token(c(
       "x" = "Token introspection required but provider does not support it",
       "i" = "Set `introspect = FALSE` or configure an introspection_url on the provider"
     ))
   }
 
-  if (!isTRUE(introspection_result$active)) {
+  if (!isTRUE(introspection_result[["active"]])) {
     err_token(c(
       "x" = "Token introspection indicates the access token is not active",
       "i" = paste0(
         "Introspection status: ",
-        introspection_result$status %||% "unknown"
+        introspection_result[["status"]] %||% "unknown"
       )
     ))
   }
@@ -1859,7 +1886,7 @@ enforce_token_introspection_policy <- function(
     introspection_result = introspection_result
   )
 
-  raw <- introspection_result$raw %||% list()
+  raw <- introspection_result[["raw"]] %||% list()
   if (!is.list(raw)) {
     raw <- list()
   }
@@ -1890,7 +1917,7 @@ enforce_token_introspection_policy <- function(
   }
 
   if ("client_id" %in% introspect_elements) {
-    cid <- raw$client_id %||% NA_character_
+    cid <- raw[["client_id"]] %||% NA_character_
     if (!is_valid_string(cid)) {
       err_token(c(
         "x" = "Token introspection response missing required client_id",
@@ -1908,7 +1935,7 @@ enforce_token_introspection_policy <- function(
   }
 
   if ("sub" %in% introspect_elements) {
-    intro_sub <- raw$sub %||% NA_character_
+    intro_sub <- raw[["sub"]] %||% NA_character_
     if (!is_valid_string(intro_sub)) {
       err_token(c(
         "x" = "Token introspection response missing required sub",
@@ -1920,7 +1947,7 @@ enforce_token_introspection_policy <- function(
     if (isTRUE(token@id_token_validated) && is_valid_string(token@id_token)) {
       pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
       if (!inherits(pl, "try-error")) {
-        expected_sub <- pl$sub %||% NA_character_
+        expected_sub <- pl[["sub"]] %||% NA_character_
       }
     }
     if (!is_valid_string(expected_sub)) {
@@ -1950,7 +1977,7 @@ enforce_token_introspection_policy <- function(
     requested_scopes <- normalize_scope_tokens(
       requested_scopes %||% effective_client_scopes(oauth_client)
     )
-    intro_scope_raw <- raw$scope %||% NULL
+    intro_scope_raw <- raw[["scope"]] %||% NULL
 
     if (!is.null(intro_scope_raw)) {
       token@granted_scopes <- normalize_scope_tokens(intro_scope_raw)
@@ -2123,7 +2150,7 @@ swap_code_for_token_set <- function(
         code_verifier = code_verifier
       )
       if (length(client@resource) > 0) {
-        params$resource <- client@resource
+        params[["resource"]] <- client@resource
       }
 
       if (length(client@provider@extra_token_params) > 0) {
@@ -2143,8 +2170,8 @@ swap_code_for_token_set <- function(
         client = client,
         context = "token_exchange"
       )
-      req <- prepared$req
-      params <- prepared$params
+      req <- prepared[["req"]]
+      params <- prepared[["params"]]
       req <- req_apply_authorization_server_mtls(req, client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
@@ -2211,8 +2238,10 @@ swap_code_for_token_set <- function(
       # Some providers return expires_in as a character string (e.g., form-encoded
       # responses or JSON where the value is quoted). Convert digit-only strings to
       # numeric prior to validation to avoid false negatives.
-      if (!is.null(token_set$expires_in)) {
-        token_set$expires_in <- coerce_expires_in(token_set$expires_in)
+      if (!is.null(token_set[["expires_in"]])) {
+        token_set[["expires_in"]] <- coerce_expires_in(
+          token_set[["expires_in"]]
+        )
       }
 
       otel_set_span_attributes(
@@ -2237,19 +2266,19 @@ swap_code_for_token_set <- function(
       }
 
       # Verify expires at is valid if present
-      if (!is.null(token_set$expires_in)) {
+      if (!is.null(token_set[["expires_in"]])) {
         if (
-          !is.numeric(token_set$expires_in) ||
-            length(token_set$expires_in) != 1L ||
-            !is.finite(token_set$expires_in) ||
-            token_set$expires_in < 0
+          !is.numeric(token_set[["expires_in"]]) ||
+            length(token_set[["expires_in"]]) != 1L ||
+            !is.finite(token_set[["expires_in"]]) ||
+            token_set[["expires_in"]] < 0
         ) {
           err_token("Invalid expires_in in token response")
         }
 
-        if (token_set$expires_in <= 0) {
+        if (token_set[["expires_in"]] <= 0) {
           warn_about_nonpositive_expires_in(
-            token_set$expires_in,
+            token_set[["expires_in"]],
             phase = "exchange_code"
           )
         }
@@ -2326,17 +2355,22 @@ verify_token_set <- function(
     requested_scopes %||% effective_client_scopes(client)
   )
   granted_scope_state <- resolve_granted_scope_state(
-    token_scope = token_set$scope,
+    token_scope = token_set[["scope"]],
     requested_scopes = requested_scopes,
     is_refresh = is_refresh,
     previous_granted_scopes = prior_granted_scopes
   )
-  granted_scopes <- granted_scope_state$granted_scopes %||% character(0)
+  granted_scopes <- granted_scope_state[["granted_scopes"]] %||%
+    character(0)
   granted_scopes_verified <- isTRUE(
-    granted_scope_state$granted_scopes_verified
+    granted_scope_state[["granted_scopes_verified"]]
   )
-  scope_is_omitted <- isTRUE(granted_scope_state$scope_is_omitted)
-  scope_is_empty <- isTRUE(granted_scope_state$scope_is_empty)
+  scope_is_omitted <- isTRUE(
+    granted_scope_state[["scope_is_omitted"]]
+  )
+  scope_is_empty <- isTRUE(
+    granted_scope_state[["scope_is_empty"]]
+  )
   requested_scope_string <- otel_scope_string(requested_scopes %||% NULL)
   granted_scope_string <- otel_scope_string(granted_scopes %||% NULL)
   granted_scope_count <- {
@@ -2472,8 +2506,8 @@ verify_token_set <- function(
         }
       }
 
-      token_set$granted_scopes <- granted_scopes
-      token_set$granted_scopes_verified <- granted_scopes_verified
+      token_set[["granted_scopes"]] <- granted_scopes
+      token_set[["granted_scopes_verified"]] <- granted_scopes_verified
 
       # ID token -------------------------------------------------------------------
 
@@ -2527,10 +2561,10 @@ verify_token_set <- function(
             "Cannot parse original ID token to verify sub claim (OIDC 12.2)"
           )
         }
-        if (!is_valid_string(original_payload$sub)) {
+        if (!is_valid_string(original_payload[["sub"]])) {
           err_id_token("Original ID token missing sub claim (OIDC 12.2)")
         }
-        expected_sub <- original_payload$sub
+        expected_sub <- original_payload[["sub"]]
 
         if (!isTRUE(should_validate_id_token)) {
           # Even when full ID token validation is disabled (id_token_validation = FALSE),
@@ -2546,10 +2580,10 @@ verify_token_set <- function(
               "Cannot parse refreshed ID token to verify sub claim (OIDC 12.2)"
             )
           }
-          if (!is_valid_string(new_payload$sub)) {
+          if (!is_valid_string(new_payload[["sub"]])) {
             err_id_token("Refreshed ID token missing sub claim (OIDC 12.2)")
           }
-          if (!identical(new_payload$sub, expected_sub)) {
+          if (!identical(new_payload[["sub"]], expected_sub)) {
             err_id_token(
               "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
             )
@@ -2569,7 +2603,7 @@ verify_token_set <- function(
         if (!isTRUE(is_refresh)) {
           requested_max_age <- inspect_auth_max_age(
             client@provider@extra_auth_params
-          )$value
+          )[["value"]]
         }
         id_token_validation_result <- validate_id_token(
           client,
@@ -2664,7 +2698,7 @@ verify_token_set <- function(
             "Cannot parse ID token to verify acr claim"
           )
         }
-        acr_value <- acr_payload$acr
+        acr_value <- acr_payload[["acr"]]
         if (is.null(acr_value) || !is_valid_string(acr_value)) {
           err_id_token(c(
             "x" = "ID token missing required acr claim (OIDC Core Section 2)",
@@ -2780,7 +2814,7 @@ verify_token_type_allowlist <- function(client, token_set) {
     allowed_vec <- c(allowed_vec, "DPoP")
   }
 
-  tt <- token_set$token_type
+  tt <- token_set[["token_type"]]
   if (!is.null(tt)) {
     if (!is_valid_string(tt)) {
       err_token("Invalid token_type in token response")
@@ -2841,7 +2875,7 @@ token_type_from_introspection <- function(introspection_result) {
     return(NA_character_)
   }
 
-  raw <- introspection_result$raw %||% introspection_result
+  raw <- introspection_result[["raw"]] %||% introspection_result
   if (is.data.frame(raw)) {
     raw <- as.list(raw)
   }
@@ -2849,7 +2883,7 @@ token_type_from_introspection <- function(introspection_result) {
     return(NA_character_)
   }
 
-  token_type <- raw$token_type %||% NA_character_
+  token_type <- raw[["token_type"]] %||% NA_character_
   if (!is_valid_string(token_type)) {
     return(NA_character_)
   }
@@ -2887,7 +2921,8 @@ resolve_effective_access_token_type <- function(
   }
 
   intro_token_type <- token_type_from_introspection(introspection_result)
-  effective_token_type <- token_set$token_type %||% NA_character_
+  effective_token_type <- token_set[["token_type"]] %||%
+    NA_character_
   if (
     is_valid_string(effective_token_type) &&
       is_valid_string(intro_token_type) &&
@@ -2944,15 +2979,15 @@ compare_refresh_id_token_continuity <- function(
   new_payload,
   original_payload
 ) {
-  original_iss <- original_payload$iss
-  original_aud <- original_payload$aud
-  original_auth_time <- original_payload$auth_time
-  original_nonce <- original_payload$nonce %||% NULL
-  original_azp <- original_payload$azp %||% NULL
+  original_iss <- original_payload[["iss"]]
+  original_aud <- original_payload[["aud"]]
+  original_auth_time <- original_payload[["auth_time"]]
+  original_nonce <- original_payload[["nonce"]] %||% NULL
+  original_azp <- original_payload[["azp"]] %||% NULL
 
   if (
     is_valid_string(original_iss) &&
-      !identical(new_payload$iss %||% "", original_iss)
+      !identical(new_payload[["iss"]] %||% "", original_iss)
   ) {
     err_id_token(
       "Refresh returned an ID token with iss that does not match the original (OIDC 12.2)"
@@ -2961,7 +2996,7 @@ compare_refresh_id_token_continuity <- function(
   if (
     !is.null(original_aud) &&
       !identical(
-        sort(as.character(new_payload$aud %||% character())),
+        sort(as.character(new_payload[["aud"]] %||% character())),
         sort(as.character(original_aud))
       )
   ) {
@@ -2982,17 +3017,17 @@ compare_refresh_id_token_continuity <- function(
         "Original ID token auth_time claim must be a single finite number to verify refresh continuity (OIDC 12.2)"
       )
     }
-    if (is.null(new_payload$auth_time)) {
+    if (is.null(new_payload[["auth_time"]])) {
       err_id_token(
         "Refresh returned an ID token missing auth_time from the original authentication (OIDC 12.2)"
       )
     }
 
     new_auth_time_val <- suppressWarnings(as.numeric(
-      new_payload$auth_time
+      new_payload[["auth_time"]]
     ))
     if (
-      length(new_payload$auth_time) != 1L ||
+      length(new_payload[["auth_time"]]) != 1L ||
         !is.numeric(new_auth_time_val) ||
         !is.finite(new_auth_time_val)
     ) {
@@ -3007,16 +3042,20 @@ compare_refresh_id_token_continuity <- function(
     }
   }
   if (
-    !is.null(new_payload$nonce) &&
-      !identical(new_payload$nonce, original_nonce)
+    !is.null(new_payload[["nonce"]]) &&
+      !identical(new_payload[["nonce"]], original_nonce)
   ) {
     err_id_token(
       "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
     )
   }
   if (
-    (!is.null(original_azp) || !is.null(new_payload$azp)) &&
-      !identical(new_payload$azp %||% NULL, original_azp)
+    (!is.null(original_azp) ||
+      !is.null(new_payload[["azp"]])) &&
+      !identical(
+        new_payload[["azp"]] %||% NULL,
+        original_azp
+      )
   ) {
     err_id_token(
       "Refresh returned an ID token with azp that does not match the original (OIDC 12.2)"

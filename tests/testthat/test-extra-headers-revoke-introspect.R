@@ -18,7 +18,7 @@ testthat::test_that("extra_token_headers are sent on revoke requests", {
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -58,7 +58,7 @@ testthat::test_that("extra_token_headers are sent on introspect requests", {
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -94,7 +94,7 @@ testthat::test_that("revoke and introspect work without extra_token_headers", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')

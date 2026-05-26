@@ -1437,7 +1437,7 @@ oauth_module_server <- function(
         {
           validate_untrusted_query_string(
             query_string %||% "",
-            max_bytes = limits$query
+            max_bytes = limits[["query"]]
           )
           TRUE
         },
@@ -1488,48 +1488,56 @@ oauth_module_server <- function(
         {
           reject_duplicate_oauth_module_callback_query(query_string %||% "")
           qs <- shiny::parseQueryString(query_string %||% "")
+          query_code <- qs[["code"]]
+          query_state <- qs[["state"]]
+          query_error <- qs[["error"]]
+          query_error_description <- qs[["error_description"]]
+          query_error_uri <- qs[["error_uri"]]
+          query_iss <- qs[["iss"]]
+          query_form_post_handle <- qs[[oauth_form_post_handle_param]]
+          query_form_post_id <- qs[[oauth_form_post_id_param]]
 
           validate_untrusted_query_param(
             "code",
-            qs$code,
-            max_bytes = limits$code
+            query_code,
+            max_bytes = limits[["code"]]
           )
           validate_untrusted_query_param(
             "state",
-            qs$state,
-            max_bytes = limits$state
+            query_state,
+            max_bytes = limits[["state"]]
           )
           validate_untrusted_query_param(
             "error",
-            qs$error,
-            max_bytes = limits$error
+            query_error,
+            max_bytes = limits[["error"]]
           )
           validate_untrusted_query_param(
             "error_description",
-            qs$error_description,
-            max_bytes = limits$error_description,
+            query_error_description,
+            max_bytes = limits[["error_description"]],
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "error_uri",
-            qs$error_uri,
-            max_bytes = limits$error_uri,
+            query_error_uri,
+            max_bytes = limits[["error_uri"]],
             allow_empty = TRUE
           )
           validate_untrusted_query_param(
             "iss",
-            qs$iss,
-            max_bytes = limits$iss
+            query_iss,
+            max_bytes = limits[["iss"]]
           )
           validate_untrusted_query_param(
             oauth_form_post_handle_param,
-            qs[[oauth_form_post_handle_param]],
-            max_bytes = limits$form_post_handle
+            query_form_post_handle,
+            max_bytes = limits[["form_post_handle"]]
           )
           validate_untrusted_query_param(
             oauth_form_post_id_param,
-            qs[[oauth_form_post_id_param]],
-            max_bytes = limits$form_post_id
+            query_form_post_id,
+            max_bytes = limits[["form_post_id"]]
           )
           TRUE
         },
@@ -1630,7 +1638,11 @@ oauth_module_server <- function(
           }
           return(invisible(NULL))
         }
-        if (!is.null(qs$code) || !is.null(qs$error) || !is.null(qs$state)) {
+        if (
+          !is.null(qs[["code"]]) ||
+            !is.null(qs[["error"]]) ||
+            !is.null(qs[["state"]])
+        ) {
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
@@ -1714,30 +1726,49 @@ oauth_module_server <- function(
           return(invisible(NULL))
         }
 
-        if (identical(form_post_payload$type, "error")) {
+        if (identical(form_post_payload[["type"]], "error")) {
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
             tab_title_cleaning
           )
           .handle_error_response(
-            error = form_post_payload$error,
-            error_description = form_post_payload$error_description,
-            error_uri = form_post_payload$error_uri,
-            state = form_post_payload$state,
-            iss = form_post_payload$iss %||% NULL,
-            decrypted_payload = form_post_payload$state_payload %||% NULL,
-            state_store_values = form_post_payload$state_store_values %||% NULL
+            error = form_post_payload[["error"]],
+            error_description = form_post_payload[[
+              "error_description",
+              exact = TRUE
+            ]],
+            error_uri = form_post_payload[["error_uri"]],
+            state = form_post_payload[["state"]],
+            iss = form_post_payload[["iss"]] %||% NULL,
+            decrypted_payload = form_post_payload[[
+              "state_payload",
+              exact = TRUE
+            ]] %||%
+              NULL,
+            state_store_values = form_post_payload[[
+              "state_store_values",
+              exact = TRUE
+            ]] %||%
+              NULL
           )
           return(invisible(NULL))
         }
 
         .handle_callback(
-          code = form_post_payload$code,
-          state = form_post_payload$state,
-          iss = form_post_payload$iss %||% NULL,
-          decrypted_payload = form_post_payload$state_payload %||% NULL,
-          state_store_values = form_post_payload$state_store_values %||% NULL
+          code = form_post_payload[["code"]],
+          state = form_post_payload[["state"]],
+          iss = form_post_payload[["iss"]] %||% NULL,
+          decrypted_payload = form_post_payload[[
+            "state_payload",
+            exact = TRUE
+          ]] %||%
+            NULL,
+          state_store_values = form_post_payload[[
+            "state_store_values",
+            exact = TRUE
+          ]] %||%
+            NULL
         )
         return(invisible(NULL))
       }
@@ -1745,7 +1776,7 @@ oauth_module_server <- function(
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.
-      if (!is.null(qs$error)) {
+      if (!is.null(qs[["error"]])) {
         # Clear sensitive callback params even on failure paths to reduce
         # leak risk via referrers, browser history, or logs.
         clear_oauth_module_callback_query(
@@ -1754,21 +1785,21 @@ oauth_module_server <- function(
           tab_title_cleaning
         )
         .handle_error_response(
-          error = qs$error,
-          error_description = qs$error_description,
-          error_uri = qs$error_uri,
-          state = qs$state,
-          iss = qs$iss %||% NULL
+          error = qs[["error"]],
+          error_description = qs[["error_description"]],
+          error_uri = qs[["error_uri"]],
+          state = qs[["state"]],
+          iss = qs[["iss"]] %||% NULL
         )
         return(invisible(NULL))
       }
 
       # If we're on the callback step, handle immediately and stop here
-      if (!is.null(qs$code)) {
+      if (!is.null(qs[["code"]])) {
         .handle_callback(
-          code = qs$code,
-          state = qs$state,
-          iss = qs$iss %||% NULL
+          code = qs[["code"]],
+          state = qs[["state"]],
+          iss = qs[["iss"]] %||% NULL
         )
         return(invisible(NULL))
       }
@@ -1807,7 +1838,7 @@ oauth_module_server <- function(
           error_context <- tryCatch(e[["context"]], error = function(...) {
             NULL
           })
-          callback_error <- error_context$callback_error %||%
+          callback_error <- error_context[["callback_error"]] %||%
             "callback_iss_validation_error"
           expected_issuer <- client@provider@issuer %||% NA_character_
 
@@ -1898,7 +1929,7 @@ oauth_module_server <- function(
             !is.null(decrypted_payload) && !is.null(state_store_values)
           ) {
             with_trace_id(
-              decrypted_payload$trace_id %||% NULL,
+              decrypted_payload[["trace_id"]] %||% NULL,
               try(
                 audit_event(
                   "error_state_consumed",
@@ -1906,7 +1937,7 @@ oauth_module_server <- function(
                     provider = client@provider@name %||% NA_character_,
                     issuer = client@provider@issuer %||% NA_character_,
                     client_id_digest = string_digest(client@client_id),
-                    state_digest = string_digest(decrypted_payload$state)
+                    state_digest = string_digest(decrypted_payload[["state"]])
                   )
                 ),
                 silent = TRUE
@@ -1985,13 +2016,13 @@ oauth_module_server <- function(
               audit_success = FALSE
             )
           with_trace_id(
-            payload$trace_id %||% NULL,
+            payload[["trace_id"]] %||% NULL,
             {
               if (isTRUE(consume)) {
                 # Consume the state store entry (single-use enforcement)
                 state_store_values <- state_store_get_remove(
                   client,
-                  payload$state
+                  payload[["state"]]
                 )
 
                 # Audit success using the logical state digest for correlation.
@@ -2002,13 +2033,19 @@ oauth_module_server <- function(
                       provider = client@provider@name %||% NA_character_,
                       issuer = client@provider@issuer %||% NA_character_,
                       client_id_digest = string_digest(client@client_id),
-                      state_digest = string_digest(payload$state)
+                      state_digest = string_digest(payload[[
+                        "state",
+                        exact = TRUE
+                      ]])
                     )
                   ),
                   silent = TRUE
                 )
               } else {
-                state_store_values <- state_store_get(client, payload$state)
+                state_store_values <- state_store_get(
+                  client,
+                  payload[["state"]]
+                )
               }
             }
           )
@@ -2020,17 +2057,18 @@ oauth_module_server <- function(
         },
         error = function(e) {
           event_trace_id <- if (!is.null(payload)) {
-            payload$trace_id %||% NULL
+            payload[["trace_id"]] %||% NULL
           } else {
             tryCatch(
-              e[["trace_id", exact = TRUE]],
+              e[["trace_id"]],
               error = function(...) NULL
             )
           }
           state_digest <- if (
-            !is.null(payload) && is_valid_string(payload$state)
+            !is.null(payload) &&
+              is_valid_string(payload[["state"]])
           ) {
-            string_digest(payload$state)
+            string_digest(payload[["state"]])
           } else {
             string_digest(state %||% NA_character_)
           }
@@ -2073,13 +2111,13 @@ oauth_module_server <- function(
     # @return `TRUE` when browser-token validation succeeds; otherwise this
     #   helper signals invalid state.
     .validate_error_response_browser_token <- function(consumed_state) {
-      payload <- consumed_state$payload
-      state_store_values <- consumed_state$state_store_values
+      payload <- consumed_state[["payload"]]
+      state_store_values <- consumed_state[["state_store_values"]]
 
       validated <- tryCatch(
         {
           with_trace_id(
-            payload$trace_id %||% NULL,
+            payload[["trace_id"]] %||% NULL,
             {
               tryCatch(
                 validate_browser_token(values$browser_token),
@@ -2095,7 +2133,7 @@ oauth_module_server <- function(
 
               if (
                 !constant_time_compare(
-                  state_store_values$browser_token,
+                  state_store_values[["browser_token"]],
                   values$browser_token
                 )
               ) {
@@ -2109,7 +2147,7 @@ oauth_module_server <- function(
         error = function(e) {
           try(
             with_trace_id(
-              payload$trace_id %||% NULL,
+              payload[["trace_id"]] %||% NULL,
               audit_event(
                 "callback_validation_failed",
                 context = list(
@@ -2117,7 +2155,7 @@ oauth_module_server <- function(
                   issuer = client@provider@issuer %||% NA_character_,
                   client_id_digest = string_digest(client@client_id),
                   state_digest = string_digest(
-                    payload$state %||% NA_character_
+                    payload[["state"]] %||% NA_character_
                   ),
                   browser_token_digest = string_digest(
                     values$browser_token %||% NA_character_
@@ -2188,7 +2226,7 @@ oauth_module_server <- function(
       tryCatch(
         {
           with_trace_id(
-            callback_hint$trace_id %||% NULL,
+            callback_hint[["trace_id"]] %||% NULL,
             {
               async_fallback <- FALSE
               res <- if (isTRUE(async)) {
@@ -2227,7 +2265,7 @@ oauth_module_server <- function(
                       )
                     )
                   ),
-                  parent = callback_hint$parent %||% NA
+                  parent = callback_hint[["parent"]] %||% NA
                 )
 
                 otel_with_active_span(
@@ -2252,12 +2290,16 @@ oauth_module_server <- function(
                             )
                             if (
                               !is_valid_string(
-                                callback_hint$trace_id %||% NA_character_
+                                callback_hint[["trace_id"]] %||%
+                                  NA_character_
                               )
                             ) {
                               otel_set_span_attributes(
                                 attributes = list(
-                                  shinyoauth.trace_id = payload$trace_id %||%
+                                  shinyoauth.trace_id = payload[[
+                                    "trace_id",
+                                    exact = TRUE
+                                  ]] %||%
                                     NULL
                                 )
                               )
@@ -2286,7 +2328,10 @@ oauth_module_server <- function(
                       )
                     }
 
-                    captured_trace_id <- pre_payload$trace_id %||%
+                    captured_trace_id <- pre_payload[[
+                      "trace_id",
+                      exact = TRUE
+                    ]] %||%
                       resolve_trace_id()
 
                     with_trace_id(
@@ -2294,7 +2339,8 @@ oauth_module_server <- function(
                       {
                         if (
                           !is_valid_string(
-                            callback_hint$trace_id %||% NA_character_
+                            callback_hint[["trace_id"]] %||%
+                              NA_character_
                           )
                         ) {
                           otel_set_span_attributes(
@@ -2320,7 +2366,7 @@ oauth_module_server <- function(
                               {
                                 state_store_get(
                                   client,
-                                  pre_payload$state,
+                                  pre_payload[["state"]],
                                   shiny_session = captured_shiny_session
                                 )
                               },
@@ -2367,7 +2413,7 @@ oauth_module_server <- function(
                                 )
                                 if (
                                   !constant_time_compare(
-                                    pre_state$browser_token,
+                                    pre_state[["browser_token"]],
                                     captured_browser_token
                                   )
                                 ) {
@@ -2395,7 +2441,8 @@ oauth_module_server <- function(
                                       client@client_id
                                     ),
                                     state_digest = string_digest(
-                                      pre_payload$state %||% NA_character_
+                                      pre_payload[["state"]] %||%
+                                        NA_character_
                                     ),
                                     browser_token_digest = string_digest(
                                       captured_browser_token %||%
@@ -2429,7 +2476,7 @@ oauth_module_server <- function(
                               {
                                 state_store_get_remove(
                                   client,
-                                  pre_payload$state,
+                                  pre_payload[["state"]],
                                   shiny_session = captured_shiny_session
                                 )
                               },
@@ -2591,7 +2638,7 @@ oauth_module_server <- function(
                   }) |>
                   promises::catch(function(e) {
                     failure_phase <- tryCatch(
-                      e[["phase", exact = TRUE]],
+                      e[["phase"]],
                       error = function(...) NULL
                     ) %||%
                       "async_token_exchange"
@@ -2649,7 +2696,7 @@ oauth_module_server <- function(
         },
         error = function(e) {
           failure_phase <- tryCatch(
-            e[["phase", exact = TRUE]],
+            e[["phase"]],
             error = function(...) NULL
           ) %||%
             "sync_token_exchange"
@@ -3452,7 +3499,7 @@ strip_oauth_module_callback_query <- function(query_string) {
 #' @keywords internal
 #' @noRd
 oauth_module_extract_trace_id <- function(e) {
-  tid <- tryCatch(e[["trace_id", exact = TRUE]], error = function(...) NULL)
+  tid <- tryCatch(e[["trace_id"]], error = function(...) NULL)
   if (!is.null(tid) && length(tid) && nzchar(as.character(tid)[1])) {
     return(as.character(tid)[1])
   }
@@ -3506,7 +3553,7 @@ oauth_module_condition_inherits <- function(e, class_name) {
     }
 
     cur <- tryCatch(
-      cur[["parent", exact = TRUE]],
+      cur[["parent"]],
       error = function(...) NULL
     )
   }

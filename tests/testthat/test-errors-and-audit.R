@@ -54,7 +54,10 @@ test_that("string_digest keying is controlled by shinyOAuth.audit_digest_key", {
 test_that("err_abort/err_pkce attach classes and trace ids", {
   expect_error(shinyOAuth:::err_pkce("boom"), class = "shinyOAuth_pkce_error")
   e <- tryCatch(shinyOAuth:::err_pkce("boom2"), error = identity)
-  expect_true(is.character(e$trace_id) && nzchar(e$trace_id))
+  expect_true(
+    is.character(e[["trace_id"]]) &&
+      nzchar(e[["trace_id"]])
+  )
 })
 
 test_that("err_http includes status and optional body when exposure enabled", {
@@ -89,8 +92,8 @@ test_that("audit_event emits audit_ events via audit hook", {
   )
   # Check at least one event captured
   expect_true(length(events) >= 1)
-  expect_identical(events[[1]]$type, "audit_token_exchange")
-  expect_identical(events[[1]]$foo, "bar")
+  expect_identical(events[[1]][["type"]], "audit_token_exchange")
+  expect_identical(events[[1]][["foo"]], "bar")
 })
 
 test_that("log_condition prints only when explicitly enabled", {
@@ -294,11 +297,11 @@ test_that("redact_headers removes cookie and authorization", {
   result <- shinyOAuth:::redact_headers(hdrs)
 
   # Sensitive headers should be removed
-  expect_null(result$cookie)
-  expect_null(result$authorization)
+  expect_null(result[["cookie"]])
+  expect_null(result[["authorization"]])
   # Safe headers should remain
-  expect_equal(result$user_agent, "TestClient/1.0")
-  expect_equal(result$accept, "application/json")
+  expect_equal(result[["user_agent"]], "TestClient/1.0")
+  expect_equal(result[["accept"]], "application/json")
 })
 
 test_that("redact_headers redacts x_ prefixed headers", {
@@ -311,11 +314,11 @@ test_that("redact_headers redacts x_ prefixed headers", {
   result <- shinyOAuth:::redact_headers(hdrs)
 
   # x_ headers should be redacted (not removed)
-  expect_equal(result$x_forwarded_for, "[REDACTED]")
-  expect_equal(result$x_real_ip, "[REDACTED]")
-  expect_equal(result$x_request_id, "[REDACTED]")
+  expect_equal(result[["x_forwarded_for"]], "[REDACTED]")
+  expect_equal(result[["x_real_ip"]], "[REDACTED]")
+  expect_equal(result[["x_request_id"]], "[REDACTED]")
   # Safe headers should remain unchanged
-  expect_equal(result$user_agent, "TestClient/1.0")
+  expect_equal(result[["user_agent"]], "TestClient/1.0")
 })
 
 test_that("redact_headers handles empty/null input gracefully", {
@@ -338,16 +341,22 @@ test_that("sanitize_http_summary sanitizes both query_string and headers", {
   result <- shinyOAuth:::sanitize_http_summary(summary)
 
   # Query string should be sanitized
-  expect_no_match(result$query_string, "secret")
-  expect_match(result$query_string, "REDACTED")
+  expect_no_match(result[["query_string"]], "secret")
+  expect_match(result[["query_string"]], "REDACTED")
   # Headers should be sanitized
-  expect_null(result$headers$cookie)
-  expect_equal(result$headers$user_agent, "Test/1.0")
-  expect_equal(result$headers$x_forwarded_for, "[REDACTED]")
+  expect_null(result[["headers"]][["cookie"]])
+  expect_equal(
+    result[["headers"]][["user_agent"]],
+    "Test/1.0"
+  )
+  expect_equal(
+    result[["headers"]][["x_forwarded_for"]],
+    "[REDACTED]"
+  )
   # Other fields should remain
-  expect_equal(result$method, "GET")
-  expect_equal(result$path, "/callback")
-  expect_equal(result$host, "example.com")
+  expect_equal(result[["method"]], "GET")
+  expect_equal(result[["path"]], "/callback")
+  expect_equal(result[["host"]], "example.com")
 })
 
 test_that("sanitize_http_summary handles NULL input", {
@@ -378,20 +387,30 @@ test_that("build_http_summary returns sanitized output", {
   result <- shinyOAuth:::build_http_summary(req)
 
   # Sensitive values should be redacted
-  expect_no_match(result$query_string, "authcode123")
-  expect_no_match(result$query_string, "mystate")
-  expect_no_match(result$query_string, "signed.request.jwt")
-  expect_no_match(result$query_string, "request_uri%3Aabc123")
-  expect_no_match(result$query_string, "alice%40example.com")
-  expect_null(result$headers$cookie)
-  expect_null(result$headers$authorization)
-  expect_null(result$headers$proxy_authorization)
-  expect_null(result$headers$www_authenticate)
-  expect_equal(result$headers$x_forwarded_for, "[REDACTED]")
+  expect_no_match(result[["query_string"]], "authcode123")
+  expect_no_match(result[["query_string"]], "mystate")
+  expect_no_match(result[["query_string"]], "signed.request.jwt")
+  expect_no_match(result[["query_string"]], "request_uri%3Aabc123")
+  expect_no_match(result[["query_string"]], "alice%40example.com")
+  expect_null(result[["headers"]][["cookie"]])
+  expect_null(result[["headers"]][["authorization"]])
+  expect_null(
+    result[["headers"]][["proxy_authorization"]]
+  )
+  expect_null(
+    result[["headers"]][["www_authenticate"]]
+  )
+  expect_equal(
+    result[["headers"]][["x_forwarded_for"]],
+    "[REDACTED]"
+  )
   # Safe values should remain
-  expect_equal(result$headers$user_agent, "TestClient/1.0")
-  expect_equal(result$method, "GET")
-  expect_equal(result$path, "/callback")
+  expect_equal(
+    result[["headers"]][["user_agent"]],
+    "TestClient/1.0"
+  )
+  expect_equal(result[["method"]], "GET")
+  expect_equal(result[["path"]], "/callback")
 })
 
 test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
@@ -413,24 +432,42 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     result <- shinyOAuth:::build_http_summary(req)
 
     # Sensitive values should NOT be redacted
-    expect_match(result$query_string, "authcode123")
-    expect_match(result$query_string, "mystate")
-    expect_equal(result$headers$cookie, "session=secret123")
-    expect_equal(result$headers$authorization, "Bearer token123")
-    expect_equal(result$headers$proxy_authorization, "Basic proxysecret123")
-    expect_equal(result$headers$www_authenticate, "Bearer realm=example")
-    expect_equal(result$headers$x_forwarded_for, "192.168.1.1")
-    expect_equal(result$remote_addr, "192.168.1.1")
-    expect_equal(result$headers$user_agent, "TestClient/1.0")
+    expect_match(result[["query_string"]], "authcode123")
+    expect_match(result[["query_string"]], "mystate")
+    expect_equal(
+      result[["headers"]][["cookie"]],
+      "session=secret123"
+    )
+    expect_equal(
+      result[["headers"]][["authorization"]],
+      "Bearer token123"
+    )
+    expect_equal(
+      result[["headers"]][["proxy_authorization"]],
+      "Basic proxysecret123"
+    )
+    expect_equal(
+      result[["headers"]][["www_authenticate"]],
+      "Bearer realm=example"
+    )
+    expect_equal(
+      result[["headers"]][["x_forwarded_for"]],
+      "192.168.1.1"
+    )
+    expect_equal(result[["remote_addr"]], "192.168.1.1")
+    expect_equal(
+      result[["headers"]][["user_agent"]],
+      "TestClient/1.0"
+    )
   })
 
   # When option is TRUE (explicit), should still redact
 
   withr::with_options(list(shinyOAuth.audit_redact_http = TRUE), {
     result <- shinyOAuth:::build_http_summary(req)
-    expect_no_match(result$query_string, "authcode123")
-    expect_null(result$headers$cookie)
-    expect_equal(result$remote_addr, "[REDACTED]")
+    expect_no_match(result[["query_string"]], "authcode123")
+    expect_null(result[["headers"]][["cookie"]])
+    expect_equal(result[["remote_addr"]], "[REDACTED]")
   })
 })
 
@@ -445,7 +482,7 @@ test_that("capture_shiny_session_context sets is_async = TRUE", {
       ctx <- shinyOAuth:::capture_shiny_session_context()
       # Context should be captured (or NULL if no session info)
       if (!is.null(ctx)) {
-        expect_true(isTRUE(ctx$is_async))
+        expect_true(isTRUE(ctx[["is_async"]]))
       }
     },
     expr = {}
@@ -459,8 +496,10 @@ test_that("augment_with_shiny_context sets is_async = FALSE for main thread even
       event <- list(type = "test_event", trace_id = "abc123")
       augmented <- shinyOAuth:::augment_with_shiny_context(event)
       # Should have shiny_session with is_async = FALSE
-      if (!is.null(augmented$shiny_session)) {
-        expect_false(isTRUE(augmented$shiny_session$is_async))
+      if (!is.null(augmented[["shiny_session"]])) {
+        expect_false(isTRUE(
+          augmented[["shiny_session"]][["is_async"]]
+        ))
       }
     },
     expr = {}
@@ -486,8 +525,13 @@ test_that("augment_with_shiny_context preserves pre-captured is_async = TRUE", {
       )
       augmented <- shinyOAuth:::augment_with_shiny_context(event)
       # Should preserve the pre-captured context with is_async = TRUE
-      expect_true(isTRUE(augmented$shiny_session$is_async))
-      expect_equal(augmented$shiny_session$token, "test-token")
+      expect_true(isTRUE(
+        augmented[["shiny_session"]][["is_async"]]
+      ))
+      expect_equal(
+        augmented[["shiny_session"]][["token"]],
+        "test-token"
+      )
     },
     expr = {}
   )
@@ -520,21 +564,31 @@ test_that("audit_event normalizes borrowed async context on the main thread", {
   )
 
   # Find our test events
-  async_event <- Filter(function(e) e$type == "audit_test_async", events)
-  sync_event <- Filter(function(e) e$type == "audit_test_sync", events)
+  async_event <- Filter(
+    function(e) e[["type"]] == "audit_test_async",
+    events
+  )
+  sync_event <- Filter(
+    function(e) e[["type"]] == "audit_test_sync",
+    events
+  )
 
   expect_length(async_event, 1)
   expect_length(sync_event, 1)
 
   # Borrowed async context is normalized back to main-thread semantics
   # when the event is still emitted on the main process.
-  if (!is.null(async_event[[1]]$shiny_session)) {
-    expect_false(isTRUE(async_event[[1]]$shiny_session$is_async))
+  if (!is.null(async_event[[1]][["shiny_session"]])) {
+    expect_false(isTRUE(
+      async_event[[1]][["shiny_session"]][["is_async"]]
+    ))
   }
 
   # Sync event should have is_async = FALSE (from augment on main thread)
-  if (!is.null(sync_event[[1]]$shiny_session)) {
-    expect_false(isTRUE(sync_event[[1]]$shiny_session$is_async))
+  if (!is.null(sync_event[[1]][["shiny_session"]])) {
+    expect_false(isTRUE(
+      sync_event[[1]][["shiny_session"]][["is_async"]]
+    ))
   }
 })
 
@@ -557,12 +611,17 @@ test_that("audit_event preserves is_async inside async session context", {
   })
 
   async_event <- Filter(
-    function(e) e$type == "audit_test_async_context",
+    function(e) e[["type"]] == "audit_test_async_context",
     events
   )
   expect_length(async_event, 1)
-  expect_equal(async_event[[1]]$shiny_session$token, "mock-session-token")
-  expect_true(isTRUE(async_event[[1]]$shiny_session$is_async))
+  expect_equal(
+    async_event[[1]][["shiny_session"]][["token"]],
+    "mock-session-token"
+  )
+  expect_true(isTRUE(
+    async_event[[1]][["shiny_session"]][["is_async"]]
+  ))
 })
 
 test_that("get_userinfo preserves explicit async shiny_session in audit events", {
@@ -603,12 +662,17 @@ test_that("get_userinfo preserves explicit async shiny_session in audit events",
   })
 
   userinfo_events <- Filter(
-    function(e) identical(e$type, "audit_userinfo"),
+    function(e) identical(e[["type"]], "audit_userinfo"),
     events
   )
   expect_length(userinfo_events, 1L)
-  expect_equal(userinfo_events[[1L]]$shiny_session$token, "mock-session-token")
-  expect_true(isTRUE(userinfo_events[[1L]]$shiny_session$is_async))
+  expect_equal(
+    userinfo_events[[1L]][["shiny_session"]][["token"]],
+    "mock-session-token"
+  )
+  expect_true(isTRUE(
+    userinfo_events[[1L]][["shiny_session"]][["is_async"]]
+  ))
 })
 
 
@@ -637,12 +701,20 @@ test_that("with_async_session_context makes errors include async session info", 
   )
 
   # Find the error trace event
-  error_events <- Filter(function(e) e$type == "error", events)
+  error_events <- Filter(
+    function(e) e[["type"]] == "error",
+    events
+  )
   expect_length(error_events, 1)
 
   # Error should have the async session context
-  expect_equal(error_events[[1]]$shiny_session$token, "mock-session-token")
-  expect_true(isTRUE(error_events[[1]]$shiny_session$is_async))
+  expect_equal(
+    error_events[[1]][["shiny_session"]][["token"]],
+    "mock-session-token"
+  )
+  expect_true(isTRUE(
+    error_events[[1]][["shiny_session"]][["is_async"]]
+  ))
 })
 
 test_that("errors on main thread have is_async = FALSE", {
@@ -664,11 +736,16 @@ test_that("errors on main thread have is_async = FALSE", {
   )
 
   # Find the error trace event
-  error_events <- Filter(function(e) e$type == "error", events)
+  error_events <- Filter(
+    function(e) e[["type"]] == "error",
+    events
+  )
   expect_length(error_events, 1)
 
   # Error should have is_async = FALSE (main thread)
-  if (!is.null(error_events[[1]]$shiny_session)) {
-    expect_false(isTRUE(error_events[[1]]$shiny_session$is_async))
+  if (!is.null(error_events[[1]][["shiny_session"]])) {
+    expect_false(isTRUE(
+      error_events[[1]][["shiny_session"]][["is_async"]]
+    ))
   }
 })

@@ -272,7 +272,10 @@ test_that("build_client_assertion clamps sub-60 TTL values to 60 seconds", {
     shinyOAuth:::build_client_assertion(cli, prov@token_url)
   )
 
-  expect_identical(as.integer(payload$exp - payload$iat), 60L)
+  expect_identical(
+    as.integer(payload[["exp"]] - payload[["iat"]]),
+    60L
+  )
 })
 
 test_that("build_client_assertion falls back to the default TTL for invalid values", {
@@ -297,7 +300,10 @@ test_that("build_client_assertion falls back to the default TTL for invalid valu
     shinyOAuth:::build_client_assertion(cli, prov@token_url)
   )
 
-  expect_identical(as.integer(payload$exp - payload$iat), 120L)
+  expect_identical(
+    as.integer(payload[["exp"]] - payload[["iat"]]),
+    120L
+  )
 })
 
 test_that("build_client_assertion clamps supra-300 TTL values to 300 seconds", {
@@ -325,7 +331,10 @@ test_that("build_client_assertion clamps supra-300 TTL values to 300 seconds", {
   )
   payload <- decode_jwt_payload(jwt)
 
-  expect_identical(as.integer(payload$exp - payload$iat), 300L)
+  expect_identical(
+    as.integer(payload[["exp"]] - payload[["iat"]]),
+    300L
+  )
 })
 
 test_that("resolve_client_assertion_audience handles NA sentinel without crash", {

@@ -203,23 +203,23 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
 
   payload <- read_browser_csrf_payload(drv)
   testthat::expect_true(
-    grepl("browser_ready: TRUE", payload$ready_state, fixed = TRUE),
+    grepl("browser_ready: TRUE", payload[["ready_state"]], fixed = TRUE),
     info = paste0(
       "Expected browser_ready before preparing login. Got: ",
-      payload$ready_state
+      payload[["ready_state"]]
     )
   )
-  testthat::expect_true(nzchar(payload$cookie_name))
-  testthat::expect_true(nzchar(payload$cookie_value))
-  testthat::expect_true(nzchar(payload$auth_url))
-  testthat::expect_false(identical(payload$auth_url, "<none>"))
+  testthat::expect_true(nzchar(payload[["cookie_name"]]))
+  testthat::expect_true(nzchar(payload[["cookie_value"]]))
+  testthat::expect_true(nzchar(payload[["auth_url"]]))
+  testthat::expect_false(identical(payload[["auth_url"]], "<none>"))
 
   attacker_cookie <- random_browser_token_hex()
-  testthat::expect_false(identical(attacker_cookie, payload$cookie_value))
+  testthat::expect_false(identical(attacker_cookie, payload[["cookie_value"]]))
 
   tampered <- tamper_browser_token_cookie(
     drv,
-    cookie_name = payload$cookie_name,
+    cookie_name = payload[["cookie_name"]],
     cookie_value = attacker_cookie
   )
   testthat::expect_identical(tampered$current_value, attacker_cookie)
@@ -227,7 +227,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
   drv$run_js(
     paste0(
       "window.location = ",
-      jsonlite::toJSON(payload$auth_url, auto_unbox = TRUE),
+      jsonlite::toJSON(payload[["auth_url"]], auto_unbox = TRUE),
       ";"
     )
   )

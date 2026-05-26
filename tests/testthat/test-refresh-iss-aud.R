@@ -54,7 +54,7 @@ mock_refresh_response <- function(new_jwt, action) {
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -104,7 +104,7 @@ test_that("refresh rejects new id_token with mismatched iss (validated path)", {
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -157,7 +157,7 @@ test_that("refresh rejects new id_token with mismatched iss (non-validated path)
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -212,7 +212,7 @@ test_that("refresh rejects new id_token with mismatched aud (validated path)", {
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -262,7 +262,7 @@ test_that("refresh rejects new id_token with mismatched aud (non-validated path)
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -314,7 +314,7 @@ test_that("refresh accepts new id_token with matching iss and aud (validated pat
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -366,7 +366,7 @@ test_that("refresh accepts matching iss/aud with multi-audience (validated path)
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -413,7 +413,7 @@ test_that("refresh accepts matching iss/aud (non-validated path)", {
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -464,7 +464,7 @@ test_that("refresh iss comparison rejects trailing slash difference", {
         new_jwt
       )
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -750,5 +750,5 @@ test_that("verify_token_set accepts matching iss/aud on refresh (direct call)", 
     is_refresh = TRUE,
     original_id_token = original
   )
-  expect_identical(result$access_token, "new_at")
+  expect_identical(result[["access_token"]], "new_at")
 })

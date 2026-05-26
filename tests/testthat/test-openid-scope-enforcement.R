@@ -234,7 +234,7 @@ test_that("prepare_call seals the effective scopes sent in the auth request", {
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
 
-  expect_identical(payload$scopes, c("openid", "profile", "email"))
+  expect_identical(payload[["scopes"]], c("openid", "profile", "email"))
 })
 
 test_that("handle_callback validates scopes against auto-added openid scope in strict mode", {

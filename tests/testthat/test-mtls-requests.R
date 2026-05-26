@@ -73,7 +73,7 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -94,14 +94,14 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
     code_verifier = "verifier"
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/token")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(captured_req$options$keypasswd, "password")
   expect_identical(captured_req$options$cainfo, files$ca_file)
   expect_identical(captured_form$client_id, "abc")
   expect_false("client_secret" %in% names(captured_form))
-  expect_identical(token_set$cnf$`x5t#S256`, thumbprint)
+  expect_identical(token_set[["cnf"]]$`x5t#S256`, thumbprint)
 })
 
 test_that("public clients keep the standard token endpoint by default", {
@@ -138,7 +138,7 @@ test_that("public clients keep the standard token endpoint by default", {
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -155,8 +155,8 @@ test_that("public clients keep the standard token endpoint by default", {
     code_verifier = "verifier"
   )
 
-  expect_identical(captured_req$url, "https://example.com/token")
-  expect_null(token_set$cnf)
+  expect_identical(captured_req[["url"]], "https://example.com/token")
+  expect_null(token_set[["cnf"]])
 })
 
 test_that("public clients use mTLS token aliases when they explicitly request certificate-bound tokens", {
@@ -203,7 +203,7 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -224,13 +224,13 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
     code_verifier = "verifier"
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/token")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(captured_form$client_id, "abc")
   expect_false("client_secret" %in% names(captured_form))
-  expect_identical(token_set$access_token, "at")
-  expect_identical(token_set$cnf$`x5t#S256`, thumbprint)
+  expect_identical(token_set[["access_token"]], "at")
+  expect_identical(token_set[["cnf"]]$`x5t#S256`, thumbprint)
 })
 
 test_that("public clients reject missing cnf when they explicitly request certificate-bound tokens", {
@@ -263,7 +263,7 @@ test_that("public clients reject missing cnf when they explicitly request certif
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -343,10 +343,10 @@ test_that("requested certificate-bound login can backfill cnf from introspection
       )
     },
     req_with_retry = function(req, ...) {
-      req_url <- as.character(req$url)
+      req_url <- as.character(req[["url"]])
       if (identical(req_url, "https://example.com/mtls/introspect")) {
         return(httr2::response(
-          url = req$url,
+          url = req[["url"]],
           status = 200,
           headers = list("content-type" = "application/json"),
           body = charToRaw(
@@ -361,7 +361,7 @@ test_that("requested certificate-bound login can backfill cnf from introspection
 
       captured_userinfo_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"user-1"}')
@@ -376,10 +376,10 @@ test_that("requested certificate-bound login can backfill cnf from introspection
         browser_token = browser_token
       )
 
-      testthat::expect_identical(token@cnf$`x5t#S256`, thumbprint)
-      testthat::expect_identical(token@userinfo$sub, "user-1")
+      testthat::expect_identical(token@cnf[["x5t#S256"]], thumbprint)
+      testthat::expect_identical(token@userinfo[["sub"]], "user-1")
       testthat::expect_identical(
-        captured_userinfo_req$url,
+        captured_userinfo_req[["url"]],
         "https://example.com/mtls/userinfo"
       )
     }
@@ -427,7 +427,7 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -447,11 +447,14 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
     )
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/par")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(captured_form$response_mode, "form_post")
-  expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
+  expect_identical(
+    result[["request_uri"]],
+    "urn:ietf:params:oauth:request_uri:test"
+  )
 })
 
 test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", {
@@ -496,7 +499,7 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -512,12 +515,15 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
     params = list(response_type = "code", client_id = client@client_id)
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/par")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
   expect_identical(
     shinyOAuth:::parse_jwt_payload(captured_form$client_assertion)$aud,
     provider@issuer
   )
-  expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
+  expect_identical(
+    result[["request_uri"]],
+    "urn:ietf:params:oauth:request_uri:test"
+  )
 })
 
 test_that("explicit certificate-bound requests honor the standard PAR alias name", {
@@ -553,7 +559,7 @@ test_that("explicit certificate-bound requests honor the standard PAR alias name
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -569,10 +575,13 @@ test_that("explicit certificate-bound requests honor the standard PAR alias name
     params = list(response_type = "code", client_id = client@client_id)
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/par")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(result$request_uri, "urn:ietf:params:oauth:request_uri:test")
+  expect_identical(
+    result[["request_uri"]],
+    "urn:ietf:params:oauth:request_uri:test"
+  )
 })
 
 test_that("refresh token uses mTLS alias and preserves confirmation claims", {
@@ -622,7 +631,7 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -639,13 +648,13 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
 
   refreshed <- shinyOAuth::refresh_token(client, token)
 
-  expect_identical(captured_req$url, "https://example.com/mtls/token")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
+  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
   expect_identical(captured_form$client_id, "abc")
   expect_false("client_secret" %in% names(captured_form))
   expect_identical(refreshed@access_token, "new-at")
   expect_identical(refreshed@refresh_token, "new-rt")
-  expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
+  expect_identical(refreshed@cnf[["x5t#S256"]], thumbprint)
 })
 
 test_that("refresh token derives confirmation claims from JWT access tokens", {
@@ -688,7 +697,7 @@ test_that("refresh token derives confirmation claims from JWT access tokens", {
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(
@@ -707,7 +716,7 @@ test_that("refresh token derives confirmation claims from JWT access tokens", {
 
   refreshed <- shinyOAuth::refresh_token(client, token)
 
-  expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
+  expect_identical(refreshed@cnf[["x5t#S256"]], thumbprint)
 })
 
 test_that("refresh rejects mismatched certificate-bound token responses", {
@@ -749,7 +758,7 @@ test_that("refresh rejects mismatched certificate-bound token responses", {
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -809,7 +818,7 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -826,11 +835,11 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
 
   refreshed <- shinyOAuth::refresh_token(client, token)
 
-  expect_identical(captured_req$url, "https://example.com/mtls/token")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
+  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
+  expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
   expect_identical(refreshed@access_token, "new-at")
-  expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
+  expect_identical(refreshed@cnf[["x5t#S256"]], thumbprint)
 })
 
 test_that("requested certificate-bound refresh rejects token responses missing cnf", {
@@ -869,7 +878,7 @@ test_that("requested certificate-bound refresh rejects token responses missing c
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -929,7 +938,7 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -939,7 +948,7 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -958,7 +967,7 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
 
   expect_identical(refreshed@access_token, "new-at")
   expect_identical(refreshed@refresh_token, "new-rt")
-  expect_identical(refreshed@cnf$`x5t#S256`, thumbprint)
+  expect_identical(refreshed@cnf[["x5t#S256"]], thumbprint)
 })
 
 test_that("requested certificate-bound refresh rejects stale prior cnf after introspection", {
@@ -1004,7 +1013,7 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1014,7 +1023,7 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -1070,7 +1079,7 @@ test_that("refresh uses prior token cnf for the token endpoint but does not keep
     req_with_dpop_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1083,7 +1092,7 @@ test_that("refresh uses prior token cnf for the token endpoint but does not keep
 
   refreshed <- shinyOAuth::refresh_token(client, token)
 
-  expect_identical(captured_req$url, "https://example.com/mtls/token")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_identical(refreshed@access_token, "new-at")
@@ -1137,7 +1146,7 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")
@@ -1153,7 +1162,7 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
     async = FALSE
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/revoke")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/revoke")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_true(isTRUE(revoked$revoked))
@@ -1204,7 +1213,7 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -1220,7 +1229,7 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
     async = FALSE
   )
 
-  expect_identical(captured_req$url, "https://example.com/mtls/introspect")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/introspect")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
   expect_true(isTRUE(inspected$active))
@@ -1399,7 +1408,7 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"user-123"}')
@@ -1410,10 +1419,10 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
 
   userinfo <- shinyOAuth::get_userinfo(client, token)
 
-  expect_identical(captured_req$url, "https://example.com/mtls/userinfo")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/userinfo")
   expect_identical(captured_req$options$sslcert, files$cert_file)
   expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(userinfo$sub, "user-123")
+  expect_identical(userinfo[["sub"]], "user-123")
 })
 
 test_that("userinfo ignores mTLS alias when only provider metadata is present", {
@@ -1450,7 +1459,7 @@ test_that("userinfo ignores mTLS alias when only provider metadata is present", 
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"user-123"}')
@@ -1466,10 +1475,10 @@ test_that("userinfo ignores mTLS alias when only provider metadata is present", 
     req_options <- list()
   }
 
-  expect_identical(captured_req$url, "https://example.com/userinfo")
+  expect_identical(captured_req[["url"]], "https://example.com/userinfo")
   expect_false("sslcert" %in% names(req_options))
   expect_false("sslkey" %in% names(req_options))
-  expect_identical(userinfo$sub, "user-123")
+  expect_identical(userinfo[["sub"]], "user-123")
 })
 
 test_that("handle_callback preserves certificate-bound context for automatic userinfo", {
@@ -1530,7 +1539,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"user-123"}')
@@ -1545,11 +1554,14 @@ test_that("handle_callback preserves certificate-bound context for automatic use
         browser_token = browser_token
       )
 
-      expect_identical(captured_req$url, "https://example.com/mtls/userinfo")
-      expect_identical(captured_req$options$sslcert, files$cert_file)
-      expect_identical(captured_req$options$sslkey, files$key_file)
-      expect_identical(token@userinfo$sub, "user-123")
-      expect_identical(token@cnf$`x5t#S256`, cert_thumbprint)
+      expect_identical(
+        captured_req[["url"]],
+        "https://example.com/mtls/userinfo"
+      )
+      expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
+      expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
+      expect_identical(token@userinfo[["sub"]], "user-123")
+      expect_identical(token@cnf[["x5t#S256"]], cert_thumbprint)
     }
   )
 })
@@ -1594,7 +1606,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(
@@ -1615,7 +1627,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
     req_with_retry = function(req, ...) {
       captured_req <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"sub":"user-123"}')
@@ -1626,11 +1638,11 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
 
   refreshed <- shinyOAuth::refresh_token(client, token, introspect = FALSE)
 
-  expect_identical(captured_req$url, "https://example.com/mtls/userinfo")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(refreshed@userinfo$sub, "user-123")
-  expect_identical(refreshed@cnf$`x5t#S256`, "thumbprint")
+  expect_identical(captured_req[["url"]], "https://example.com/mtls/userinfo")
+  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
+  expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
+  expect_identical(refreshed@userinfo[["sub"]], "user-123")
+  expect_identical(refreshed@cnf[["x5t#S256"]], "thumbprint")
 })
 
 test_that("resource_req rejects certificate-bound tokens when thumbprint mismatches", {
@@ -1765,12 +1777,12 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
       stop("DPoP retry should not run for revocation or introspection")
     },
     req_with_retry = function(req, ...) {
-      captured_urls <<- c(captured_urls, as.character(req$url))
+      captured_urls <<- c(captured_urls, as.character(req[["url"]]))
       captured_reqs[[length(captured_urls)]] <<- req
 
-      if (grepl("introspect", as.character(req$url), fixed = TRUE)) {
+      if (grepl("introspect", as.character(req[["url"]]), fixed = TRUE)) {
         return(httr2::response(
-          url = req$url,
+          url = req[["url"]],
           status = 200,
           headers = list("content-type" = "application/json"),
           body = charToRaw('{"active":true}')
@@ -1778,7 +1790,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
       }
 
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw("{}")

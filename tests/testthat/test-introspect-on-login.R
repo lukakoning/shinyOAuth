@@ -175,7 +175,7 @@ test_that("handle_callback with introspect=TRUE fails when token is inactive", {
     # Mock introspection to return inactive
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":false}')
@@ -215,7 +215,7 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
     # Mock introspection to return active
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -252,7 +252,7 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -270,7 +270,7 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
       )
 
       testthat::expect_identical(
-        tok_obj@cnf$`x5t#S256`,
+        tok_obj@cnf[["x5t#S256"]],
         "intro-thumbprint"
       )
     }
@@ -308,7 +308,7 @@ test_that("introspect_elements can require sub match from a validated id_token",
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"u1"}')
@@ -350,7 +350,7 @@ test_that("introspect_elements can require sub match from a validated id_token",
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"u2"}')
@@ -398,7 +398,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"u2"}')
@@ -412,7 +412,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
         payload = enc,
         browser_token = tok
       )
-      testthat::expect_equal(tok_obj@userinfo$sub, "u2")
+      testthat::expect_equal(tok_obj@userinfo[["sub"]], "u2")
       testthat::expect_false(tok_obj@id_token_validated)
     }
   )
@@ -433,7 +433,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"u1"}')
@@ -461,7 +461,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@userinfo_required <- TRUE
   cli@provider@userinfo_id_selector <- function(userinfo) {
-    as.character(userinfo$id)
+    as.character(userinfo[["id"]])
   }
 
   tok <- valid_browser_token()
@@ -484,7 +484,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"42"}')
@@ -498,7 +498,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
         payload = enc,
         browser_token = tok
       )
-      testthat::expect_identical(tok_obj@userinfo$id, 42)
+      testthat::expect_identical(tok_obj@userinfo[["id"]], 42)
       testthat::expect_false(tok_obj@id_token_validated)
     }
   )
@@ -519,7 +519,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"sub":"userinfo-sub"}')
@@ -555,7 +555,7 @@ test_that("introspect_elements can require client_id match", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"client_id":"abc"}')
@@ -582,7 +582,7 @@ test_that("introspect_elements can require client_id match", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"client_id":"wrong"}')
@@ -628,7 +628,7 @@ test_that("introspect_elements can require scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"openid profile"}')
@@ -671,7 +671,7 @@ test_that("introspect_elements can require scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"openid"}')
@@ -723,7 +723,7 @@ test_that("introspect_elements can require scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"openid"}')
@@ -763,7 +763,7 @@ test_that("introspect_elements can require scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"openid"}')
@@ -795,7 +795,7 @@ test_that("introspect_elements can require scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"openid"}')
@@ -866,7 +866,7 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":""}')
@@ -912,7 +912,7 @@ test_that("introspection scope validation does not split comma-bearing tokens", 
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true,"scope":"read,write"}')
@@ -956,7 +956,7 @@ test_that("introspect_elements errors when required fields are missing", {
     # Missing sub in introspection
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -1072,7 +1072,7 @@ test_that("introspect_elements can require token_type for DPoP tokens", {
       )
 
       testthat::expect_identical(tok_ok@token_type, "DPoP")
-      testthat::expect_identical(tok_ok@cnf$jkt, jkt)
+      testthat::expect_identical(tok_ok@cnf[["jkt"]], jkt)
     }
   )
 })
@@ -1095,7 +1095,7 @@ test_that("handle_callback with introspect=TRUE fails on introspection http erro
     # Mock introspection to return HTTP error
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 500,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"error":"server_error"}')
@@ -1142,7 +1142,7 @@ test_that("introspect_token emits audit events during login", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -1159,14 +1159,14 @@ test_that("introspect_token emits audit events during login", {
     }
   )
 
-  event_types <- vapply(events, function(e) e$type, character(1))
+  event_types <- vapply(events, function(e) e[["type"]], character(1))
   testthat::expect_true("audit_token_introspection" %in% event_types)
 
   intro_evt <- events[[which(event_types == "audit_token_introspection")]]
-  testthat::expect_true(isTRUE(intro_evt$supported))
-  testthat::expect_true(isTRUE(intro_evt$active))
-  testthat::expect_equal(intro_evt$status, "ok")
-  testthat::expect_equal(intro_evt$which, "access")
+  testthat::expect_true(isTRUE(intro_evt[["supported"]]))
+  testthat::expect_true(isTRUE(intro_evt[["active"]]))
+  testthat::expect_equal(intro_evt[["status"]], "ok")
+  testthat::expect_equal(intro_evt[["which"]], "access")
 })
 
 test_that("introspect_token emits audit events even when login fails", {
@@ -1193,7 +1193,7 @@ test_that("introspect_token emits audit events even when login fails", {
     },
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":false}')
@@ -1214,14 +1214,14 @@ test_that("introspect_token emits audit events even when login fails", {
     }
   )
 
-  event_types <- vapply(events, function(e) e$type, character(1))
+  event_types <- vapply(events, function(e) e[["type"]], character(1))
   testthat::expect_true("audit_token_introspection" %in% event_types)
 
   intro_evt <- events[[which(event_types == "audit_token_introspection")[1]]]
-  testthat::expect_true(isTRUE(intro_evt$supported))
-  testthat::expect_false(isTRUE(intro_evt$active))
-  testthat::expect_equal(intro_evt$status, "ok")
-  testthat::expect_equal(intro_evt$which, "access")
+  testthat::expect_true(isTRUE(intro_evt[["supported"]]))
+  testthat::expect_false(isTRUE(intro_evt[["active"]]))
+  testthat::expect_equal(intro_evt[["status"]], "ok")
+  testthat::expect_equal(intro_evt[["which"]], "access")
 })
 
 test_that("handle_callback forwards shiny_session to introspect_token", {

@@ -77,7 +77,7 @@ start_dpop_nonce_challenge_resource <- function(
         proof_info <- verify_proof(
           proof = proof,
           req_method = req$method,
-          req_url = as.character(req$url),
+          req_url = as.character(req[["url"]]),
           access_token = access_token,
           enforce_jti_replay = TRUE,
           jti_cache = jti_cache
@@ -111,7 +111,7 @@ start_dpop_nonce_challenge_resource <- function(
 
         retry_payload <- proof_info$payload
         expected_ath <- shinyOAuth:::dpop_access_token_hash(access_token)
-        expected_htu <- shinyOAuth:::dpop_target_uri(as.character(req$url))
+        expected_htu <- shinyOAuth:::dpop_target_uri(as.character(req[["url"]]))
 
         if (!identical(retry_payload$nonce %||% NA_character_, nonce)) {
           send_problem(res, 401L, "dpop_nonce_mismatch")
@@ -123,7 +123,7 @@ start_dpop_nonce_challenge_resource <- function(
           list(
             ok = TRUE,
             count = state$count,
-            first_jti = state$first$jti %||% NA_character_,
+            first_jti = state$first[["jti"]] %||% NA_character_,
             retry_jti = retry_payload$jti %||% NA_character_,
             first_nonce_present = "nonce" %in% names(state$first),
             retry_nonce = retry_payload$nonce %||% NA_character_,
@@ -197,20 +197,20 @@ testthat::test_that("perform_resource_req retries DPoP nonce challenge with fres
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
 
   testthat::expect_identical(httr2::resp_status(resp), 200L)
-  testthat::expect_true(isTRUE(body$ok))
-  testthat::expect_identical(as.integer(body$count), 2L)
-  testthat::expect_false(isTRUE(body$first_nonce_present))
-  testthat::expect_identical(body$retry_nonce, resource$nonce)
-  testthat::expect_false(identical(body$first_jti, body$retry_jti))
-  testthat::expect_identical(body$retry_htm, "GET")
-  testthat::expect_identical(body$retry_htu, body$expected_htu)
+  testthat::expect_true(isTRUE(body[["ok"]]))
+  testthat::expect_identical(as.integer(body[["count"]]), 2L)
+  testthat::expect_false(isTRUE(body[["first_nonce_present"]]))
+  testthat::expect_identical(body[["retry_nonce"]], resource$nonce)
+  testthat::expect_false(identical(body[["first_jti"]], body[["retry_jti"]]))
+  testthat::expect_identical(body[["retry_htm"]], "GET")
+  testthat::expect_identical(body[["retry_htu"]], body[["expected_htu"]])
   testthat::expect_identical(
-    body$retry_htu,
+    body[["retry_htu"]],
     shinyOAuth:::dpop_target_uri(resource$url)
   )
-  testthat::expect_identical(body$retry_ath, body$expected_ath)
+  testthat::expect_identical(body[["retry_ath"]], body[["expected_ath"]])
   testthat::expect_identical(
-    body$retry_ath,
+    body[["retry_ath"]],
     shinyOAuth:::dpop_access_token_hash(login$token@access_token)
   )
 })

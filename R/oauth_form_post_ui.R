@@ -94,14 +94,14 @@ oauth_form_post_ui <- function(
 
     if (is.function(base_ui)) {
       out <- base_ui(req)
-      if (identical(req$REQUEST_METHOD, "GET")) {
+      if (identical(req[["REQUEST_METHOD"]], "GET")) {
         return(ensure_dependency(out))
       }
 
       return(out)
     }
 
-    if (identical(req$REQUEST_METHOD, "GET")) {
+    if (identical(req[["REQUEST_METHOD"]], "GET")) {
       return(ensure_dependency(base_ui))
     }
 
@@ -139,7 +139,9 @@ oauth_form_post_ensure_ui_dependency <- function(ui) {
   )
   has_dependency <- any(vapply(
     deps,
-    function(dep) identical(dep$name %||% NA_character_, "shinyOAuth"),
+    function(dep) {
+      identical(dep[["name"]] %||% NA_character_, "shinyOAuth")
+    },
     logical(1)
   ))
 
@@ -157,7 +159,9 @@ oauth_form_post_id_param <- "shinyOAuth_form_post_id"
 
 oauth_form_post_redirect_path <- function(client) {
   parsed <- httr2::url_parse(client@redirect_uri)
-  normalize_oauth_form_post_callback_path(parsed$path %||% "/")
+  normalize_oauth_form_post_callback_path(
+    parsed[["path"]] %||% "/"
+  )
 }
 
 normalize_oauth_form_post_callback_path <- function(path) {
@@ -190,12 +194,12 @@ normalize_oauth_form_post_callback_path <- function(path) {
 }
 
 oauth_form_post_request_path <- function(req) {
-  path <- tryCatch(req$PATH_INFO %||% "/", error = function(...) "/")
+  path <- tryCatch(req[["PATH_INFO"]] %||% "/", error = function(...) "/")
   normalize_oauth_form_post_callback_path(path)
 }
 
 oauth_form_post_request_matches <- function(req, callback_path) {
-  identical(req$REQUEST_METHOD, "POST") &&
+  identical(req[["REQUEST_METHOD"]], "POST") &&
     identical(oauth_form_post_request_path(req), callback_path)
 }
 
@@ -207,34 +211,37 @@ oauth_form_post_handle_request <- function(req, id, client) {
         oauth_form_post_validate_content_type(req)
         limits <- oauth_callback_limits()
         validate_untrusted_query_string(
-          req$QUERY_STRING %||% "",
-          max_bytes = limits$query
+          req[["QUERY_STRING"]] %||% "",
+          max_bytes = limits[["query"]]
         )
-        body <- oauth_form_post_read_body(req, limits$form_post_body)
+        body <- oauth_form_post_read_body(
+          req,
+          limits[["form_post_body"]]
+        )
         payload <- oauth_form_post_parse_body(body, limits)
         # Reject invalid state/issuer before persisting any pre-session
         # form_post handle. Do not consume the logical state here: the Shiny
         # session still needs to prove possession of the browser-bound token.
         state_payload <- state_payload_decrypt_validate(
           client,
-          payload$state,
+          payload[["state"]],
           audit_success = FALSE
         )
         otel_set_span_attributes(
           attributes = list(
-            shinyoauth.trace_id = state_payload$trace_id %||% NULL
+            shinyoauth.trace_id = state_payload[["trace_id"]] %||% NULL
           )
         )
         tryCatch(
           enforce_callback_issuer(
             oauth_client = client,
-            iss = payload$iss %||% NULL
+            iss = payload[["iss"]] %||% NULL
           ),
           error = function(e) {
             error_context <- tryCatch(e[["context"]], error = function(...) {
               NULL
             })
-            callback_error <- error_context$callback_error %||%
+            callback_error <- error_context[["callback_error"]] %||%
               "callback_iss_validation_error"
             audit_name <- switch(
               callback_error,
@@ -248,7 +255,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
                 context = compact_list(list(
                   provider = client@provider@name %||% NA_character_,
                   expected_issuer = client@provider@issuer %||% NA_character_,
-                  callback_issuer = payload$iss %||% NULL,
+                  callback_issuer = payload[["iss"]] %||% NULL,
                   client_id_digest = string_digest(client@client_id),
                   error_class = paste(class(e), collapse = ", ")
                 ))
@@ -258,7 +265,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
             stop(e)
           }
         )
-        payload$state_payload <- state_payload
+        payload[["state_payload"]] <- state_payload
         handle <- oauth_form_post_store_set(client, id, payload)
         location <- oauth_form_post_redirect_location(req, id, handle)
 
@@ -319,7 +326,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
 }
 
 oauth_form_post_validate_content_type <- function(req) {
-  content_type <- req$CONTENT_TYPE %||% req$HTTP_CONTENT_TYPE %||% ""
+  content_type <- req[["CONTENT_TYPE"]] %||% req[["HTTP_CONTENT_TYPE"]] %||% ""
   content_type <- tolower(trimws(strsplit(
     content_type,
     ";",
@@ -359,7 +366,7 @@ oauth_form_post_read_body <- function(req, max_bytes) {
   }
 
   content_length <- suppressWarnings(as.numeric(
-    req$CONTENT_LENGTH %||% req$HTTP_CONTENT_LENGTH %||% NA_real_
+    req[["CONTENT_LENGTH"]] %||% req[["HTTP_CONTENT_LENGTH"]] %||% NA_real_
   ))
   if (
     length(content_length) == 1L &&
@@ -373,7 +380,7 @@ oauth_form_post_read_body <- function(req, max_bytes) {
     )
   }
 
-  input <- req$rook.input
+  input <- req[["rook.input"]]
   if (is.null(input) || !is.function(input$read)) {
     err_form_post_http("OAuth form_post callback body is unavailable.")
   }
@@ -406,7 +413,7 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
   if (!is.finite(actual_bytes) || is.na(actual_bytes)) {
     err_form_post_http("OAuth form_post callback body had invalid length.")
   }
-  if (actual_bytes > limits$form_post_body) {
+  if (actual_bytes > limits[["form_post_body"]]) {
     err_form_post_http(
       "OAuth form_post callback body exceeded maximum length.",
       status = 413L
@@ -431,12 +438,12 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
   )
 
   payload <- compact_list(list(
-    code = parsed$code,
-    state = parsed$state,
-    error = parsed$error,
-    error_description = parsed$error_description,
-    error_uri = parsed$error_uri,
-    iss = parsed$iss
+    code = parsed[["code"]],
+    state = parsed[["state"]],
+    error = parsed[["error"]],
+    error_description = parsed[["error_description"]],
+    error_uri = parsed[["error_uri"]],
+    iss = parsed[["iss"]]
   ))
 
   oauth_form_post_validate_payload(payload, limits)
@@ -450,41 +457,67 @@ oauth_form_post_validate_payload <- function(
     err_form_post_http("OAuth form_post callback payload must be a list.")
   }
 
-  validate_untrusted_query_param("code", payload$code, limits$code)
-  validate_untrusted_query_param("state", payload$state, limits$state)
-  validate_untrusted_query_param("error", payload$error, limits$error)
+  # Use exact indexing so helper-added fields like `state_payload` cannot
+  # partially match OAuth parameter names during revalidation.
+  code <- payload[["code"]]
+  state <- payload[["state"]]
+  error <- payload[["error"]]
+  error_description <- payload[["error_description"]]
+  error_uri <- payload[["error_uri"]]
+  iss <- payload[["iss"]]
+  validate_untrusted_query_param(
+    "code",
+    code,
+    limits[["code"]]
+  )
+  validate_untrusted_query_param(
+    "state",
+    state,
+    limits[["state"]]
+  )
+  validate_untrusted_query_param(
+    "error",
+    error,
+    limits[["error"]]
+  )
   validate_untrusted_query_param(
     "error_description",
-    payload$error_description,
-    max_bytes = limits$error_description,
+    error_description,
+    max_bytes = limits[["error_description"]],
     allow_empty = TRUE
   )
   validate_untrusted_query_param(
     "error_uri",
-    payload$error_uri,
-    max_bytes = limits$error_uri,
+    error_uri,
+    max_bytes = limits[["error_uri"]],
     allow_empty = TRUE
   )
-  validate_untrusted_query_param("iss", payload$iss, limits$iss)
+  validate_untrusted_query_param(
+    "iss",
+    iss,
+    limits[["iss"]]
+  )
 
-  if (is.null(payload$state)) {
+  if (is.null(state)) {
     err_form_post_http("OAuth form_post callback missing state.")
   }
-  if (!is.null(payload$code) && !is.null(payload$error)) {
+  if (!is.null(code) && !is.null(error)) {
     err_form_post_http(
       "OAuth form_post callback must not contain both code and error."
     )
   }
-  if (is.null(payload$code) && is.null(payload$error)) {
+  if (is.null(code) && is.null(error)) {
     err_form_post_http("OAuth form_post callback missing code or error.")
   }
 
-  payload$type <- if (!is.null(payload$error)) "error" else "code"
+  payload[["type"]] <- if (!is.null(error)) "error" else "code"
   payload
 }
 
 oauth_form_post_redirect_location <- function(req, id, handle) {
-  clean_query <- strip_oauth_module_callback_query(req$QUERY_STRING %||% "")
+  clean_query <- strip_oauth_module_callback_query(
+    req[["QUERY_STRING"]] %||% ""
+  )
   clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
     list(handle, id),
@@ -523,8 +556,8 @@ oauth_form_post_store_set <- function(client, id, payload) {
   payload <- oauth_form_post_validate_payload(payload)
   handle <- random_urlsafe(32)
   key <- oauth_form_post_cache_key(id, handle)
-  payload$module_id <- id
-  payload$stored_at <- as.numeric(Sys.time())
+  payload[["module_id"]] <- id
+  payload[["stored_at"]] <- as.numeric(Sys.time())
 
   tryCatch(
     client@state_store$set(key, payload),
@@ -552,7 +585,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
   validate_untrusted_query_param(
     oauth_form_post_handle_param,
     handle,
-    max_bytes = limits$form_post_handle
+    max_bytes = limits[["form_post_handle"]]
   )
 
   key <- oauth_form_post_cache_key(id, handle)
@@ -631,7 +664,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
       context = list(phase = "form_post_store_take")
     )
   }
-  if (!identical(payload$module_id %||% NULL, id)) {
+  if (!identical(payload[["module_id"]] %||% NULL, id)) {
     err_invalid_state(
       "form_post callback handle module mismatch",
       context = list(phase = "form_post_store_take")
@@ -651,7 +684,7 @@ oauth_form_post_validate_handle_freshness <- function(client, payload) {
     )
   }
 
-  stored_at <- payload$stored_at
+  stored_at <- payload[["stored_at"]]
   if (
     !is.numeric(stored_at) ||
       length(stored_at) != 1L ||
@@ -711,7 +744,7 @@ oauth_form_post_error_response <- function(
   fallback_status = 400L,
   expose_message = inherits(e, "shinyOAuth_form_post_http_error")
 ) {
-  status <- tryCatch(e$status, error = function(...) NULL)
+  status <- tryCatch(e[["status"]], error = function(...) NULL)
   if (
     !is.numeric(status) ||
       length(status) != 1L ||

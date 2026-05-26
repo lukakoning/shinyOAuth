@@ -32,13 +32,17 @@ test_that("audit events fire on malformed state tokens", {
   expect_error(state_cache_key(""), class = "shinyOAuth_state_error")
 
   # Assert at least one audit_state_parse_failure event was emitted
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   expect_true(any(grepl("audit_state_parse_failure", types, fixed = TRUE)))
 
   # Validate context shape for one event
   idx <- which(grepl("audit_state_parse_failure", types))[1]
   ctx <- events[[idx]]
-  expect_true(!is.null(ctx$trace_id))
-  expect_equal(ctx$phase %||% NA_character_, "decrypt")
-  expect_true(!is.null(ctx$reason))
+  expect_true(!is.null(ctx[["trace_id"]]))
+  expect_equal(ctx[["phase"]] %||% NA_character_, "decrypt")
+  expect_true(!is.null(ctx[["reason"]]))
 })

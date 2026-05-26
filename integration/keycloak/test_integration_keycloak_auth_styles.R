@@ -51,10 +51,10 @@ fetch_access_token_cc <- function(provider) {
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   stopifnot(
     is.list(body),
-    is.character(body$access_token),
-    nzchar(body$access_token)
+    is.character(body[["access_token"]]),
+    nzchar(body[["access_token"]])
   )
-  body$access_token
+  body[["access_token"]]
 }
 
 make_provider <- function(style) {

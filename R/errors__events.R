@@ -53,7 +53,7 @@ audit_event <- function(
   # normalize it for the current process so borrowed async contexts pick up
   # worker-local fields or are corrected when emitted on the main thread.
   if (!is.null(shiny_session)) {
-    event$shiny_session <- shiny_session
+    event[["shiny_session"]] <- shiny_session
   }
   emit_trace_event(event)
   invisible(trace_id)
@@ -169,9 +169,16 @@ log_condition <- function(
 
       if (isTRUE(include_traceback)) {
         # Prefer rlang backtrace if present (after entrace())
-        if (inherits(e, "rlang_error") && !is.null(e$trace)) {
+        if (
+          inherits(e, "rlang_error") &&
+            !is.null(e[["trace"]])
+        ) {
           cat("-- Backtrace (rlang) --\n")
-          cat(paste(format(e$trace), collapse = "\n"), "\n", sep = "")
+          cat(
+            paste(format(e[["trace"]]), collapse = "\n"),
+            "\n",
+            sep = ""
+          )
         } else {
           # Fall back to base call stack available inside the handler
           cat("-- Call stack (base) --\n")

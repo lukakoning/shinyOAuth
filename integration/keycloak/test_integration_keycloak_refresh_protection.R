@@ -59,10 +59,10 @@ refresh_login_via_module <- function(
 token_subject <- function(token) {
   if (
     is.list(token@userinfo) &&
-      is.character(token@userinfo$sub) &&
-      nzchar(token@userinfo$sub)
+      is.character(token@userinfo[["sub"]]) &&
+      nzchar(token@userinfo[["sub"]])
   ) {
-    return(token@userinfo$sub)
+    return(token@userinfo[["sub"]])
   }
 
   if (is.character(token@id_token) && nzchar(token@id_token)) {
@@ -76,7 +76,7 @@ expect_live_userinfo_subject <- function(client, token, expected_subject) {
   userinfo <- shinyOAuth::get_userinfo(client, token)
 
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo$sub, expected_subject)
+  testthat::expect_identical(userinfo[["sub"]], expected_subject)
   invisible(userinfo)
 }
 

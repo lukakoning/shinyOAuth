@@ -27,7 +27,7 @@ testthat::test_that("revoke and introspect apply extra_token_headers with identi
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("revoke", url)) {
         captured_revoke_req <<- req
       } else {
@@ -102,7 +102,7 @@ testthat::test_that("reserved Authorization header in extra_token_headers is rej
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("revoke", url)) {
         revoke_called <<- TRUE
       } else {
@@ -152,7 +152,7 @@ testthat::test_that("extra_token_headers with special characters are preserved",
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("revoke", url)) {
         captured_revoke_hdrs <<- req$headers
       } else {
@@ -212,7 +212,7 @@ testthat::test_that("extra_token_headers include Content-Type without breaking b
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -249,7 +249,7 @@ testthat::test_that("revoke and introspect both apply add_req_defaults", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      url <- as.character(req$url)
+      url <- as.character(req[["url"]])
       if (grepl("revoke", url)) {
         captured_revoke_req <<- req
       } else {

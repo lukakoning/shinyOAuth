@@ -30,15 +30,15 @@ oauth_request_url_param_names <- function(
 }
 
 request_body_text <- function(req) {
-  body <- req$body %||% NULL
+  body <- req[["body"]] %||% NULL
   if (is.null(body)) {
     return(NA_character_)
   }
-  if (identical(body$type, "raw")) {
-    return(rawToChar(body$data))
+  if (identical(body[["type"]], "raw")) {
+    return(rawToChar(body[["data"]]))
   }
-  if (identical(body$type, "form")) {
-    data <- body$data %||% list()
+  if (identical(body[["type"]], "form")) {
+    data <- body[["data"]] %||% list()
     if (!length(data)) {
       return("")
     }
@@ -182,20 +182,26 @@ test_that("prepare_call emits a signed request object instead of raw auth params
   hdr <- shinyOAuth:::parse_jwt_header(request_jwt)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_identical(hdr$typ, "oauth-authz-req+jwt")
-  expect_identical(hdr$alg, "HS256")
-  expect_identical(pl$iss, "abc")
-  expect_identical(pl$aud, "https://issuer.example.com")
+  expect_identical(hdr[["typ"]], "oauth-authz-req+jwt")
+  expect_identical(hdr[["alg"]], "HS256")
+  expect_identical(pl[["iss"]], "abc")
+  expect_identical(pl[["aud"]], "https://issuer.example.com")
   expect_false("sub" %in% names(pl))
-  expect_identical(pl$response_type, "code")
-  expect_identical(pl$client_id, "abc")
-  expect_identical(pl$redirect_uri, "http://localhost:8100")
-  expect_identical(pl$scope, "openid profile")
-  expect_identical(pl$code_challenge_method, "S256")
-  expect_true(is.character(pl$state) && nzchar(pl$state))
-  expect_true(is.character(pl$code_challenge) && nzchar(pl$code_challenge))
-  expect_true(is.numeric(pl$iat) && is.numeric(pl$exp) && pl$exp > pl$iat)
-  expect_true(is.character(pl$jti) && nzchar(pl$jti))
+  expect_identical(pl[["response_type"]], "code")
+  expect_identical(pl[["client_id"]], "abc")
+  expect_identical(pl[["redirect_uri"]], "http://localhost:8100")
+  expect_identical(pl[["scope"]], "openid profile")
+  expect_identical(pl[["code_challenge_method"]], "S256")
+  expect_true(is.character(pl[["state"]]) && nzchar(pl[["state"]]))
+  expect_true(
+    is.character(pl[["code_challenge"]]) && nzchar(pl[["code_challenge"]])
+  )
+  expect_true(
+    is.numeric(pl[["iat"]]) &&
+      is.numeric(pl[["exp"]]) &&
+      pl[["exp"]] > pl[["iat"]]
+  )
+  expect_true(is.character(pl[["jti"]]) && nzchar(pl[["jti"]]))
 })
 
 test_that("request mode includes dpop_jkt inside the signed request object", {
@@ -210,7 +216,7 @@ test_that("request mode includes dpop_jkt inside the signed request object", {
   )
 
   expect_false("dpop_jkt" %in% query_param_names(auth_url))
-  expect_identical(pl$dpop_jkt, expected_jkt)
+  expect_identical(pl[["dpop_jkt"]], expected_jkt)
 })
 
 test_that("request mode includes form_post response_mode inside request object", {
@@ -221,7 +227,7 @@ test_that("request mode includes form_post response_mode inside request object",
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
   expect_false("response_mode" %in% query_param_names(auth_url))
-  expect_identical(pl$response_mode, "form_post")
+  expect_identical(pl[["response_mode"]], "form_post")
 })
 
 test_that("request objects default to private-key signing and honor audience overrides", {
@@ -238,10 +244,10 @@ test_that("request objects default to private-key signing and honor audience ove
   hdr <- shinyOAuth:::parse_jwt_header(request_jwt)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_identical(hdr$typ, "oauth-authz-req+jwt")
-  expect_identical(hdr$alg, "RS256")
-  expect_identical(hdr$kid, "kid-123")
-  expect_identical(pl$aud, "https://example.com/custom-aud")
+  expect_identical(hdr[["typ"]], "oauth-authz-req+jwt")
+  expect_identical(hdr[["alg"]], "RS256")
+  expect_identical(hdr[["kid"]], "kid-123")
+  expect_identical(pl[["aud"]], "https://example.com/custom-aud")
 })
 
 test_that("prepare_call encrypts signed request objects when configured", {
@@ -267,19 +273,19 @@ test_that("prepare_call encrypts signed request objects when configured", {
   expect_length(strsplit(request_jwe, ".", fixed = TRUE)[[1]], 5L)
 
   outer <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
-  inner_hdr <- shinyOAuth:::parse_jwt_header(outer$plaintext)
-  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+  inner_hdr <- shinyOAuth:::parse_jwt_header(outer[["plaintext"]])
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer[["plaintext"]])
 
-  expect_identical(outer$header$alg, "RSA-OAEP")
-  expect_identical(outer$header$enc, "A256CBC-HS512")
-  expect_identical(outer$header$kid, "enc-kid")
-  expect_identical(outer$header$typ, "oauth-authz-req+jwt")
-  expect_identical(outer$header$cty, "JWT")
-  expect_identical(inner_hdr$alg, "HS256")
-  expect_identical(inner_hdr$typ, "oauth-authz-req+jwt")
-  expect_identical(inner_pl$iss, "abc")
-  expect_identical(inner_pl$aud, "https://issuer.example.com")
-  expect_identical(inner_pl$client_id, "abc")
+  expect_identical(outer[["header"]][["alg"]], "RSA-OAEP")
+  expect_identical(outer[["header"]][["enc"]], "A256CBC-HS512")
+  expect_identical(outer[["header"]][["kid"]], "enc-kid")
+  expect_identical(outer[["header"]][["typ"]], "oauth-authz-req+jwt")
+  expect_identical(outer[["header"]][["cty"]], "JWT")
+  expect_identical(inner_hdr[["alg"]], "HS256")
+  expect_identical(inner_hdr[["typ"]], "oauth-authz-req+jwt")
+  expect_identical(inner_pl[["iss"]], "abc")
+  expect_identical(inner_pl[["aud"]], "https://issuer.example.com")
+  expect_identical(inner_pl[["client_id"]], "abc")
 })
 
 test_that("request objects require issuer or explicit audience binding", {
@@ -303,7 +309,7 @@ test_that("request objects require issuer or explicit audience binding", {
     shinyOAuth:::resolve_authorization_request_audience(cli),
     "https://issuer.example.com"
   )
-  expect_identical(pl$aud, "https://issuer.example.com")
+  expect_identical(pl[["aud"]], "https://issuer.example.com")
   expect_setequal(
     query_param_names(auth_url),
     oauth_request_url_param_names("request")
@@ -320,8 +326,8 @@ test_that("request objects honor ttl and optional nbf skew controls", {
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_equal(pl$exp - pl$iat, 300)
-  expect_equal(pl$iat - pl$nbf, 15)
+  expect_equal(pl[["exp"]] - pl[["iat"]], 300)
+  expect_equal(pl[["iat"]] - pl[["nbf"]], 15)
 })
 
 test_that("oauth_client validates request-object ttl and nbf skew", {
@@ -424,18 +430,20 @@ test_that("request_uri mode publishes signed request objects", {
   )
   expect_true(is.list(published))
   expect_true(
-    is.character(published$request_handle_id) &&
-      length(published$request_handle_id) == 1L &&
-      !is.na(published$request_handle_id) &&
-      nzchar(published$request_handle_id)
+    is.character(published[["request_handle_id"]]) &&
+      length(published[["request_handle_id"]]) == 1L &&
+      !is.na(published[["request_handle_id"]]) &&
+      nzchar(published[["request_handle_id"]])
   )
-  expect_identical(published$client_id, "abc")
+  expect_identical(published[["client_id"]], "abc")
 
-  request_payload <- shinyOAuth:::parse_jwt_payload(published$request_object)
+  request_payload <- shinyOAuth:::parse_jwt_payload(published[[
+    "request_object"
+  ]])
   expect_identical(request_payload$client_id, "abc")
   expect_identical(request_payload$redirect_uri, "http://localhost:8100")
   expect_lt(
-    as.numeric(difftime(published$expires_at, Sys.time(), units = "secs")),
+    as.numeric(difftime(published[["expires_at"]], Sys.time(), units = "secs")),
     60
   )
 })
@@ -484,26 +492,29 @@ test_that("request_uri mode publishes encrypted request objects", {
     "https://client.example.com/encrypted-request-object"
   )
   expect_true(is.list(published))
-  expect_identical(published$client_id, "abc")
-  expect_length(strsplit(published$request_object, ".", fixed = TRUE)[[1]], 5L)
+  expect_identical(published[["client_id"]], "abc")
+  expect_length(
+    strsplit(published[["request_object"]], ".", fixed = TRUE)[[1]],
+    5L
+  )
 
   outer <- shinyOAuth:::jwe_compact_decrypt(
-    published$request_object,
+    published[["request_object"]],
     encryption_key
   )
-  inner_hdr <- shinyOAuth:::parse_jwt_header(outer$plaintext)
-  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+  inner_hdr <- shinyOAuth:::parse_jwt_header(outer[["plaintext"]])
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer[["plaintext"]])
 
-  expect_identical(outer$header$alg, "RSA-OAEP")
-  expect_identical(outer$header$enc, "A256CBC-HS512")
-  expect_identical(outer$header$kid, "enc-kid")
-  expect_identical(outer$header$typ, "oauth-authz-req+jwt")
-  expect_identical(outer$header$cty, "JWT")
-  expect_identical(inner_hdr$alg, "HS256")
-  expect_identical(inner_hdr$typ, "oauth-authz-req+jwt")
-  expect_identical(inner_pl$iss, "abc")
-  expect_identical(inner_pl$aud, "https://issuer.example.com")
-  expect_identical(inner_pl$client_id, "abc")
+  expect_identical(outer[["header"]][["alg"]], "RSA-OAEP")
+  expect_identical(outer[["header"]][["enc"]], "A256CBC-HS512")
+  expect_identical(outer[["header"]][["kid"]], "enc-kid")
+  expect_identical(outer[["header"]][["typ"]], "oauth-authz-req+jwt")
+  expect_identical(outer[["header"]][["cty"]], "JWT")
+  expect_identical(inner_hdr[["alg"]], "HS256")
+  expect_identical(inner_hdr[["typ"]], "oauth-authz-req+jwt")
+  expect_identical(inner_pl[["iss"]], "abc")
+  expect_identical(inner_pl[["aud"]], "https://issuer.example.com")
+  expect_identical(inner_pl[["client_id"]], "abc")
 })
 
 test_that("request_uri mode requires a publisher", {
@@ -622,7 +633,7 @@ test_that("request_uri mode bypasses optional PAR and publishes by reference", {
     "https://client.example.com/published-request-object"
   )
   expect_true(is.list(published))
-  expect_identical(published$client_id, "abc")
+  expect_identical(published[["client_id"]], "abc")
 })
 
 test_that("request_uri mode rejects providers that require PAR", {
@@ -691,7 +702,7 @@ test_that("request mode pushes signed request objects through PAR when available
     req_with_retry = function(req, ...) {
       body_text <<- request_body_text(req)
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -720,9 +731,9 @@ test_that("request mode pushes signed request objects through PAR when available
   expect_match(body_text, "client_id=abc")
   expect_match(body_text, "request=")
   expect_false(grepl("response_type=code", body_text, fixed = TRUE))
-  expect_identical(pl$client_id, "abc")
-  expect_identical(pl$redirect_uri, "http://localhost:8100")
-  expect_true(is.character(pl$state) && nzchar(pl$state))
+  expect_identical(pl[["client_id"]], "abc")
+  expect_identical(pl[["redirect_uri"]], "http://localhost:8100")
+  expect_true(is.character(pl[["state"]]) && nzchar(pl[["state"]]))
 })
 
 test_that("OAuth request_uri mode keeps the front channel minimal without an issuer", {
@@ -757,9 +768,9 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      body_data <<- req$body$data %||% list()
+      body_data <<- req[["body"]][["data"]] %||% list()
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -771,7 +782,7 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
-  pl <- shinyOAuth:::parse_jwt_payload(body_data$request)
+  pl <- shinyOAuth:::parse_jwt_payload(body_data[["request"]])
   expected_jkt <- shinyOAuth:::compute_jwk_thumbprint(
     shinyOAuth:::dpop_public_jwk(key)
   )
@@ -781,7 +792,7 @@ test_that("request mode through PAR keeps dpop_jkt inside the request object", {
     oidc_request_url_param_names("request_uri")
   )
   expect_false("dpop_jkt" %in% names(body_data))
-  expect_identical(pl$dpop_jkt, expected_jkt)
+  expect_identical(pl[["dpop_jkt"]], expected_jkt)
 })
 
 test_that("request mode through PAR pushes encrypted request objects", {
@@ -800,9 +811,9 @@ test_that("request mode through PAR pushes encrypted request objects", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      body_data <<- req$body$data %||% list()
+      body_data <<- req[["body"]][["data"]] %||% list()
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -814,20 +825,23 @@ test_that("request mode through PAR pushes encrypted request objects", {
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
-  outer <- shinyOAuth:::jwe_compact_decrypt(body_data$request, encryption_key)
-  inner_pl <- shinyOAuth:::parse_jwt_payload(outer$plaintext)
+  outer <- shinyOAuth:::jwe_compact_decrypt(
+    body_data[["request"]],
+    encryption_key
+  )
+  inner_pl <- shinyOAuth:::parse_jwt_payload(outer[["plaintext"]])
 
   expect_setequal(
     query_param_names(auth_url),
     oidc_request_url_param_names("request_uri")
   )
   expect_false(grepl("[?&]request=", auth_url))
-  expect_length(strsplit(body_data$request, ".", fixed = TRUE)[[1]], 5L)
-  expect_identical(outer$header$alg, "RSA-OAEP")
-  expect_identical(outer$header$enc, "A256CBC-HS512")
-  expect_identical(outer$header$cty, "JWT")
-  expect_identical(inner_pl$client_id, "abc")
-  expect_identical(inner_pl$redirect_uri, "http://localhost:8100")
+  expect_length(strsplit(body_data[["request"]], ".", fixed = TRUE)[[1]], 5L)
+  expect_identical(outer[["header"]][["alg"]], "RSA-OAEP")
+  expect_identical(outer[["header"]][["enc"]], "A256CBC-HS512")
+  expect_identical(outer[["header"]][["cty"]], "JWT")
+  expect_identical(inner_pl[["client_id"]], "abc")
+  expect_identical(inner_pl[["redirect_uri"]], "http://localhost:8100")
 })
 
 test_that("OIDC request minimal front-channel mode is rejected without PAR", {
@@ -926,7 +940,7 @@ test_that("request mode through PAR keeps client_id in the body for header auth"
       body_text <<- request_body_text(req)
       auth_header_names <<- names(as.list(req[["headers"]]))
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -961,9 +975,9 @@ test_that("request mode through PAR keeps extra auth params inside the request o
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      body_data <<- req$body$data %||% list()
+      body_data <<- req[["body"]][["data"]] %||% list()
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -975,7 +989,7 @@ test_that("request mode through PAR keeps extra auth params inside the request o
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
-  pl <- shinyOAuth:::parse_jwt_payload(body_data$request)
+  pl <- shinyOAuth:::parse_jwt_payload(body_data[["request"]])
 
   expect_setequal(
     query_param_names(auth_url),
@@ -987,9 +1001,12 @@ test_that("request mode through PAR keeps extra auth params inside the request o
   expect_false("login_hint" %in% names(body_data))
   expect_false("response_type" %in% names(body_data))
   expect_false("redirect_uri" %in% names(body_data))
-  expect_identical(pl$prompt, "login")
-  expect_identical(pl$login_hint, "alice")
-  expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
+  expect_identical(pl[["prompt"]], "login")
+  expect_identical(pl[["login_hint"]], "alice")
+  expect_identical(
+    unname(as.character(pl[["custom_multi"]])),
+    c("alpha", "beta")
+  )
 })
 
 test_that("request mode through PAR supports client_secret_jwt client auth", {
@@ -1003,9 +1020,9 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      body_data <<- req$body$data %||% list()
+      body_data <<- req[["body"]][["data"]] %||% list()
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1017,12 +1034,14 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
-  request_value <- utils::URLdecode(as.character(body_data$request)[[1]])
-  assertion_value <- utils::URLdecode(as.character(body_data$client_assertion)[[
+  request_value <- utils::URLdecode(as.character(body_data[["request"]])[[1]])
+  assertion_value <- utils::URLdecode(as.character(body_data[[
+    "client_assertion"
+  ]])[[
     1
   ]])
   assertion_type <- utils::URLdecode(
-    as.character(body_data$client_assertion_type)[[1]]
+    as.character(body_data[["client_assertion_type"]])[[1]]
   )
   request_payload <- shinyOAuth:::parse_jwt_payload(request_value)
   assertion_payload <- shinyOAuth:::parse_jwt_payload(assertion_value)
@@ -1062,9 +1081,9 @@ test_that("request mode through PAR supports private_key_jwt client auth", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      body_data <<- req$body$data %||% list()
+      body_data <<- req[["body"]][["data"]] %||% list()
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 201,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -1076,12 +1095,14 @@ test_that("request mode through PAR supports private_key_jwt client auth", {
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())
-  request_value <- utils::URLdecode(as.character(body_data$request)[[1]])
-  assertion_value <- utils::URLdecode(as.character(body_data$client_assertion)[[
+  request_value <- utils::URLdecode(as.character(body_data[["request"]])[[1]])
+  assertion_value <- utils::URLdecode(as.character(body_data[[
+    "client_assertion"
+  ]])[[
     1
   ]])
   assertion_type <- utils::URLdecode(
-    as.character(body_data$client_assertion_type)[[1]]
+    as.character(body_data[["client_assertion_type"]])[[1]]
   )
   request_header <- shinyOAuth:::parse_jwt_header(request_value)
   request_payload <- shinyOAuth:::parse_jwt_payload(request_value)
@@ -1124,7 +1145,7 @@ test_that("request object preserves repeated resource indicators", {
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
   expect_identical(
-    unname(as.character(pl$resource)),
+    unname(as.character(pl[["resource"]])),
     c("https://api.example.com", "urn:example:ledger")
   )
 })
@@ -1146,13 +1167,19 @@ test_that("request object preserves JSON-encoded claims requests", {
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_type(pl$claims, "list")
-  expect_true("userinfo" %in% names(pl$claims))
-  expect_true("id_token" %in% names(pl$claims))
-  expect_true("email" %in% names(pl$claims$userinfo))
-  expect_true("given_name" %in% names(pl$claims$userinfo))
-  expect_identical(pl$claims$userinfo$given_name$essential, TRUE)
-  expect_identical(pl$claims$id_token$auth_time$essential, TRUE)
+  expect_type(pl[["claims"]], "list")
+  expect_true("userinfo" %in% names(pl[["claims"]]))
+  expect_true("id_token" %in% names(pl[["claims"]]))
+  expect_true("email" %in% names(pl[["claims"]][["userinfo"]]))
+  expect_true("given_name" %in% names(pl[["claims"]][["userinfo"]]))
+  expect_identical(
+    pl[["claims"]][["userinfo"]][["given_name"]][["essential"]],
+    TRUE
+  )
+  expect_identical(
+    pl[["claims"]][["id_token"]][["auth_time"]][["essential"]],
+    TRUE
+  )
 })
 
 test_that("request object preserves acr_values hints", {
@@ -1173,7 +1200,7 @@ test_that("request object preserves acr_values hints", {
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
   expect_identical(
-    pl$acr_values,
+    pl[["acr_values"]],
     paste(
       c(
         "urn:mace:incommon:iap:silver",
@@ -1182,7 +1209,7 @@ test_that("request object preserves acr_values hints", {
       collapse = " "
     )
   )
-  expect_true(is.character(pl$nonce) && nzchar(pl$nonce))
+  expect_true(is.character(pl[["nonce"]]) && nzchar(pl[["nonce"]]))
 })
 
 test_that("request object preserves safe provider extra auth params", {
@@ -1200,9 +1227,12 @@ test_that("request object preserves safe provider extra auth params", {
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_identical(pl$prompt, "login")
-  expect_identical(pl$login_hint, "alice")
-  expect_identical(unname(as.character(pl$custom_multi)), c("alpha", "beta"))
+  expect_identical(pl[["prompt"]], "login")
+  expect_identical(pl[["login_hint"]], "alice")
+  expect_identical(
+    unname(as.character(pl[["custom_multi"]])),
+    c("alpha", "beta")
+  )
 })
 
 test_that("request mode preserves non-client-id sub while overriding managed JWT claims", {
@@ -1224,17 +1254,19 @@ test_that("request mode preserves non-client-id sub while overriding managed JWT
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_identical(pl$sub, "248289761001")
-  expect_null(pl$nbf)
-  expect_identical(pl$iss, cli@client_id)
+  expect_identical(pl[["sub"]], "248289761001")
+  expect_null(pl[["nbf"]])
+  expect_identical(pl[["iss"]], cli@client_id)
   expect_identical(
-    pl$aud,
+    pl[["aud"]],
     shinyOAuth:::resolve_authorization_request_audience(cli)
   )
-  expect_true(is.numeric(pl$iat) && pl$iat != 3)
-  expect_true(is.numeric(pl$exp) && pl$exp != 1)
+  expect_true(is.numeric(pl[["iat"]]) && pl[["iat"]] != 3)
+  expect_true(is.numeric(pl[["exp"]]) && pl[["exp"]] != 1)
   expect_true(
-    is.character(pl$jti) && nzchar(pl$jti) && pl$jti != "user-supplied-jti"
+    is.character(pl[["jti"]]) &&
+      nzchar(pl[["jti"]]) &&
+      pl[["jti"]] != "user-supplied-jti"
   )
 })
 
@@ -1255,8 +1287,8 @@ test_that("request mode only emits nbf from authorization_request_nbf_skew", {
   request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
   pl <- shinyOAuth:::parse_jwt_payload(request_jwt)
 
-  expect_identical(pl$nbf, 1778673570L)
-  expect_identical(pl$iat, 1778673600L)
+  expect_identical(pl[["nbf"]], 1778673570L)
+  expect_identical(pl[["iat"]], 1778673600L)
 })
 
 test_that("request mode rejects client_id as request object sub", {

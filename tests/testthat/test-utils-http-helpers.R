@@ -10,8 +10,14 @@ test_that("add_req_defaults applies timeout and user agent options", {
     shinyOAuth.user_agent = "ua-test"
   ))
   req2 <- shinyOAuth:::add_req_defaults(req)
-  expect_equal(req2$options$timeout_ms, 4000)
-  expect_equal(req2$options$useragent, "ua-test")
+  expect_equal(
+    req2[["options"]][["timeout_ms"]],
+    4000
+  )
+  expect_equal(
+    req2[["options"]][["useragent"]],
+    "ua-test"
+  )
 })
 
 test_that("add_req_defaults falls back to default timeout when invalid", {
@@ -20,7 +26,10 @@ test_that("add_req_defaults falls back to default timeout when invalid", {
     shinyOAuth.timeout = "-2"
   ))
   req2 <- shinyOAuth:::add_req_defaults(req)
-  expect_equal(req2$options$timeout_ms, 10000)
+  expect_equal(
+    req2[["options"]][["timeout_ms"]],
+    10000
+  )
 })
 
 test_that("req_with_retry passes through non-httr2 requests", {
@@ -320,7 +329,7 @@ test_that("req_with_retry returns 400 response immediately (no retry)", {
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
-  ))$attempts
+  ))[["attempts"]]
   # Should NOT have retried a 400 (not in retry_status)
   expect_equal(attempts, 1)
 })
@@ -358,7 +367,7 @@ test_that("req_with_retry returns 401 response immediately (no retry)", {
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
-  ))$attempts
+  ))[["attempts"]]
   expect_equal(attempts, 1)
 })
 

@@ -140,7 +140,11 @@ add_req_defaults <- function(req) {
         utils::packageDescription("shinyOAuth"),
         error = function(...) NULL
       )
-      ver <- if (!is.null(d$Version)) d$Version else "dev"
+      ver <- if (!is.null(d[["Version"]])) {
+        d[["Version"]]
+      } else {
+        "dev"
+      }
     }
     ua <- sprintf(
       "shinyOAuth/%s R/%s httr2/%s",
@@ -184,23 +188,27 @@ apply_direct_client_auth <- function(req, params, client, context) {
     req <- req |>
       httr2::req_auth_basic(client@client_id, client@client_secret)
   } else if (identical(tas, "body")) {
-    params$client_id <- params$client_id %||% client@client_id
+    params[["client_id"]] <- params[["client_id"]] %||%
+      client@client_id
     # client_secret_post can omit client_secret for PKCE/public-like flows,
     # but it still sends the secret when one is configured.
     if (is_valid_string(client@client_secret)) {
-      params$client_secret <- client@client_secret
+      params[["client_secret"]] <- client@client_secret
     }
   } else if (identical(tas, "public")) {
-    params$client_id <- params$client_id %||% client@client_id
+    params[["client_id"]] <- params[["client_id"]] %||%
+      client@client_id
   } else if (tas %in% MTLS_TOKEN_AUTH_STYLES) {
-    params$client_id <- params$client_id %||% client@client_id
+    params[["client_id"]] <- params[["client_id"]] %||%
+      client@client_id
   } else if (
     identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
   ) {
-    params$client_id <- params$client_id %||% client@client_id
-    params$client_assertion_type <-
+    params[["client_id"]] <- params[["client_id"]] %||%
+      client@client_id
+    params[["client_assertion_type"]] <-
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-    params$client_assertion <- build_client_assertion(
+    params[["client_assertion"]] <- build_client_assertion(
       client,
       aud = resolve_client_assertion_audience(client, req)
     )
@@ -261,15 +269,15 @@ req_refresh_jwt_client_assertion_on_retry <- function(
   body_mode <- match.arg(body_mode)
   base_params <- compact_list(params)
 
-  req$shinyOAuth_prepare_attempt <- function(attempt_req, attempt) {
+  req[["shinyOAuth_prepare_attempt"]] <- function(attempt_req, attempt) {
     prepared <- apply_direct_client_auth(
       req = attempt_req,
       params = base_params,
       client = client,
       context = context
     )
-    attempt_req <- prepared$req
-    attempt_params <- compact_list(prepared$params)
+    attempt_req <- prepared[["req"]]
+    attempt_params <- compact_list(prepared[["params"]])
 
     if (identical(body_mode, "encoded")) {
       return(req_body_form_encoded(attempt_req, attempt_params))
@@ -323,7 +331,7 @@ check_resp_body_size <- function(
   if (!inherits(resp, "httr2_response")) {
     return(invisible(TRUE))
   }
-  body_len <- length(resp$body)
+  body_len <- length(resp[["body"]])
   if (body_len > max_bytes) {
     err_parse(
       c(
@@ -395,7 +403,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
   # immediately returning non-retryable error responses to the caller.
   req <- httr2::req_error(req, is_error = \(resp) FALSE)
 
-  prepare_attempt <- req$shinyOAuth_prepare_attempt %||% NULL
+  prepare_attempt <- req[["shinyOAuth_prepare_attempt"]] %||% NULL
 
   prepare_attempt_req <- function(attempt) {
     attempt_req <- req
@@ -403,7 +411,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
       attempt_req <- prepare_attempt(req, attempt)
     }
     if (inherits(attempt_req, "httr2_request")) {
-      attempt_req$shinyOAuth_prepare_attempt <- NULL
+      attempt_req[["shinyOAuth_prepare_attempt"]] <- NULL
     }
     attempt_req
   }
@@ -424,11 +432,11 @@ req_with_retry <- function(req, idempotent = TRUE) {
         "Transport error performing HTTP request",
         context = compact_list(list(
           method = tryCatch(
-            toupper(as.character(attempt_req$method)),
+            toupper(as.character(attempt_req[["method"]])),
             error = function(...) NA_character_
           ),
           url = tryCatch(
-            as.character(attempt_req$url),
+            as.character(attempt_req[["url"]]),
             error = function(...) NA_character_
           )
         )),
@@ -512,7 +520,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
 
   # Out of tries: if we have a response, return it for caller to handle
   if (inherits(last_err, "shinyOAuth_transient_response")) {
-    return(last_err$response)
+    return(last_err[["response"]])
   }
   # Otherwise, rethrow transport error as a simple error for caller logic
   parent <- attr(last_err, "condition")
@@ -524,10 +532,12 @@ req_with_retry <- function(req, idempotent = TRUE) {
     "Transport error performing HTTP request",
     context = compact_list(list(
       method = tryCatch(
-        toupper(as.character(req$method)),
+        toupper(as.character(req[["method"]])),
         error = function(...) NA_character_
       ),
-      url = tryCatch(as.character(req$url), error = function(...) NA_character_)
+      url = tryCatch(as.character(req[["url"]]), error = function(...) {
+        NA_character_
+      })
     )),
     parent = parent
   )

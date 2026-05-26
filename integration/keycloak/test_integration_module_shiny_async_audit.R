@@ -136,7 +136,11 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   )
 
   # 7) Categorize events by type
-  event_types <- vapply(events, function(e) e$type %||% "unknown", character(1))
+  event_types <- vapply(
+    events,
+    function(e) e[["type"]] %||% "unknown",
+    character(1)
+  )
   cat("\n=== Captured audit event types ===\n")
   print(table(event_types))
 
@@ -198,7 +202,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   if (length(async_events) > 0) {
     async_types <- vapply(
       async_events,
-      function(e) e$type %||% "unknown",
+      function(e) e[["type"]] %||% "unknown",
       character(1)
     )
     cat("Async event types:", paste(async_types, collapse = ", "), "\n")

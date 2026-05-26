@@ -101,7 +101,7 @@ audit_callback_validation_success <- function(
   shiny_session = NULL
 ) {
   with_trace_id(
-    payload$trace_id %||% NULL,
+    payload[["trace_id"]] %||% NULL,
     try(
       audit_event(
         "callback_validation_success",
@@ -109,7 +109,7 @@ audit_callback_validation_success <- function(
           provider = client@provider@name %||% NA_character_,
           issuer = client@provider@issuer %||% NA_character_,
           client_id_digest = string_digest(client@client_id),
-          state_digest = string_digest(payload$state)
+          state_digest = string_digest(payload[["state"]])
         ),
         shiny_session = shiny_session
       ),
@@ -404,7 +404,7 @@ payload_verify_issued_at <- function(client, payload) {
   max_age <- client_state_payload_max_age(client)
 
   # Validate issued_at (integer seconds OK)
-  ia <- payload$issued_at
+  ia <- payload[["issued_at"]]
   if (length(ia) != 1L || !is.numeric(ia) || !is.finite(ia)) {
     err_invalid_state("Invalid payload: missing or invalid issued_at")
   }
@@ -452,7 +452,7 @@ payload_verify_client_binding <- function(client, payload) {
   # Client ID ------------------------------------------------------------------
 
   expected_client_id <- client@client_id
-  payload_client_id <- payload$client_id
+  payload_client_id <- payload[["client_id"]]
 
   if (!is_valid_string(payload_client_id)) {
     err_invalid_state("Invalid payload: missing or invalid client_id")
@@ -467,7 +467,7 @@ payload_verify_client_binding <- function(client, payload) {
   # Redirect_uri ---------------------------------------------------------------
 
   expected_redirect <- client@redirect_uri
-  payload_redirect <- payload$redirect_uri
+  payload_redirect <- payload[["redirect_uri"]]
 
   if (!is_valid_string(payload_redirect)) {
     err_invalid_state("Invalid payload: missing or invalid redirect_uri")
@@ -483,7 +483,7 @@ payload_verify_client_binding <- function(client, payload) {
   # Scopes (order-insensitive set comparison) ----------------------------------
 
   expected_scopes <- as_scope_tokens(effective_client_scopes(client))
-  payload_scopes <- as_scope_tokens(payload$scopes %||% NULL)
+  payload_scopes <- as_scope_tokens(payload[["scopes"]] %||% NULL)
 
   # Normalize by unique + sort so we can produce clear differences
   exp_norm <- sort(unique(expected_scopes))
@@ -517,7 +517,7 @@ payload_verify_client_binding <- function(client, payload) {
   # Provider fingerprint -------------------------------------------------------
 
   expected_fp <- provider_fingerprint(client@provider)
-  payload_fp <- payload$provider
+  payload_fp <- payload[["provider"]]
 
   if (!is_valid_string(payload_fp)) {
     err_invalid_state(
@@ -534,7 +534,7 @@ payload_verify_client_binding <- function(client, payload) {
   # Client-side callback policy fingerprint -----------------------------------
 
   expected_client_policy <- state_client_policy_fingerprint(client)
-  payload_client_policy <- payload$client_policy
+  payload_client_policy <- payload[["client_policy"]]
 
   if (!is_valid_string(payload_client_policy)) {
     err_invalid_state(

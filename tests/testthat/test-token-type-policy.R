@@ -185,7 +185,7 @@ test_that("DPoP clients still reject missing token_type on refresh", {
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(req, client, idempotent = FALSE) {
       httr2::response(
-        url = as.character(req$url),
+        url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(

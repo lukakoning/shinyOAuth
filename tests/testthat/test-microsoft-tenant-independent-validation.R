@@ -41,7 +41,7 @@ test_that("validate_id_token accepts Microsoft common issuer template", {
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     dec <- shinyOAuth:::validate_id_token(client, jwt)
-    expect_identical(dec$tid, tid)
+    expect_identical(dec[["tid"]], tid)
   })
 })
 
@@ -63,7 +63,7 @@ test_that("validate_id_token accepts Microsoft organizations issuer template", {
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     dec <- shinyOAuth:::validate_id_token(client, jwt)
-    expect_identical(dec$tid, tid)
+    expect_identical(dec[["tid"]], tid)
   })
 })
 
@@ -138,7 +138,7 @@ test_that("validate_id_token accepts templated Microsoft key issuers", {
     .package = "shinyOAuth",
     {
       dec <- shinyOAuth:::validate_id_token(client, id_token)
-      expect_identical(dec$tid, tid)
+      expect_identical(dec[["tid"]], tid)
     }
   ))
 })

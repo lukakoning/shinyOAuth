@@ -42,10 +42,10 @@ fetch_access_token_cc <- function(provider) {
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   stopifnot(
     is.list(body),
-    is.character(body$access_token),
-    nzchar(body$access_token)
+    is.character(body[["access_token"]]),
+    nzchar(body[["access_token"]])
   )
-  body$access_token
+  body[["access_token"]]
 }
 
 make_provider <- function(style) {
@@ -117,11 +117,11 @@ perform_raw_introspection_request <- function(client, token_value) {
 }
 
 expect_keycloak_auth_failure <- function(result) {
-  testthat::expect_identical(result$status_code, 401L)
-  testthat::expect_true(is.list(result$body))
-  testthat::expect_identical(result$body$error, "invalid_request")
+  testthat::expect_identical(result[["status_code"]], 401L)
+  testthat::expect_true(is.list(result[["body"]]))
+  testthat::expect_identical(result[["body"]][["error"]], "invalid_request")
   testthat::expect_identical(
-    result$body$error_description,
+    result[["body"]][["error_description"]],
     "Authentication failed."
   )
 }

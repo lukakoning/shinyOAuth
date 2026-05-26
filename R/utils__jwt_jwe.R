@@ -227,8 +227,8 @@ normalize_jwe_recipient_public_key <- function(
 #' @noRd
 normalize_request_object_encryption_jwks <- function(jwks_or_keys) {
   keys <- jwks_or_keys
-  if (is.list(jwks_or_keys) && !is.null(jwks_or_keys$keys)) {
-    keys <- jwks_or_keys$keys
+  if (is.list(jwks_or_keys) && !is.null(jwks_or_keys[["keys"]])) {
+    keys <- jwks_or_keys[["keys"]]
   }
   if (is.data.frame(keys)) {
     keys <- unname(lapply(seq_len(nrow(keys)), function(index) {
@@ -263,7 +263,7 @@ normalize_request_object_encryption_jwks <- function(jwks_or_keys) {
 #' @keywords internal
 #' @noRd
 jwk_is_compatible_with_jwe_alg <- function(jwk, alg) {
-  kty <- toupper(jwk$kty %||% "")
+  kty <- toupper(jwk[["kty"]] %||% "")
 
   switch(
     canonicalize_jwe_alg(alg),
@@ -293,7 +293,7 @@ select_candidate_jwks_for_encryption <- function(
   keep_use <- vapply(
     keys,
     function(key) {
-      use <- try(key$use, silent = TRUE)
+      use <- try(key[["use"]], silent = TRUE)
       if (inherits(use, "try-error") || is.null(use)) {
         return(TRUE)
       }
@@ -316,7 +316,7 @@ select_candidate_jwks_for_encryption <- function(
         "derivekey",
         "derivebits"
       )
-      key_ops <- try(key$key_ops, silent = TRUE)
+      key_ops <- try(key[["key_ops"]], silent = TRUE)
       if (inherits(key_ops, "try-error") || is.null(key_ops)) {
         return(TRUE)
       }
@@ -340,7 +340,7 @@ select_candidate_jwks_for_encryption <- function(
   if (is_valid_string(kid)) {
     keys <- Filter(
       function(key) {
-        key_kid <- key$kid %||% NA_character_
+        key_kid <- key[["kid"]] %||% NA_character_
         is.character(key_kid) &&
           length(key_kid) == 1L &&
           !is.na(key_kid) &&
@@ -359,7 +359,7 @@ select_candidate_jwks_for_encryption <- function(
 
   Filter(
     function(key) {
-      key_alg <- canonicalize_jwe_alg(key$alg %||% "")
+      key_alg <- canonicalize_jwe_alg(key[["alg"]] %||% "")
       !nzchar(key_alg) || identical(key_alg, canonicalize_jwe_alg(alg))
     },
     keys
@@ -379,17 +379,17 @@ select_candidate_jwks_for_encryption <- function(
 rank_request_object_encryption_jwk <- function(jwk, alg) {
   score <- 0L
 
-  use <- tolower(jwk$use %||% "")
+  use <- tolower(jwk[["use"]] %||% "")
   if (identical(use, "enc")) {
     score <- score + 4L
   }
 
-  key_ops <- tolower(jwk$key_ops %||% character(0))
+  key_ops <- tolower(jwk[["key_ops"]] %||% character(0))
   if (length(key_ops) > 0 && any(key_ops %in% c("encrypt", "wrapkey"))) {
     score <- score + 2L
   }
 
-  key_alg <- canonicalize_jwe_alg(jwk$alg %||% "")
+  key_alg <- canonicalize_jwe_alg(jwk[["alg"]] %||% "")
   if (nzchar(key_alg) && identical(key_alg, canonicalize_jwe_alg(alg))) {
     score <- score + 4L
   }
@@ -457,8 +457,10 @@ resolve_authorization_request_encryption_public_key <- function(
   explicit_key <- client@provider@request_object_encryption_jwk %||% NULL
   if (!is.null(explicit_key)) {
     explicit_jwk <- if (is.list(explicit_key)) explicit_key else NULL
-    explicit_kid <- explicit_jwk$kid %||% NULL
-    explicit_alg <- canonicalize_jwe_alg(explicit_jwk$alg %||% "")
+    explicit_kid <- explicit_jwk[["kid"]] %||% NULL
+    explicit_alg <- canonicalize_jwe_alg(
+      explicit_jwk[["alg"]] %||% ""
+    )
 
     if (
       is_valid_string(kid) &&
@@ -550,7 +552,7 @@ resolve_authorization_request_encryption_public_key <- function(
 
   list(
     public_key = jwk_to_pubkey(selected_jwk),
-    kid = selected_jwk$kid %||% kid
+    kid = selected_jwk[["kid"]] %||% kid
   )
 }
 
@@ -597,19 +599,20 @@ uint64_to_big_endian_raw <- function(value) {
 #' @noRd
 split_jwe_cbc_hmac_cek <- function(cek_raw, enc) {
   spec <- jwe_cbc_hmac_spec(enc)
-  if (!is.raw(cek_raw) || length(cek_raw) != spec$cek_bytes) {
+  if (!is.raw(cek_raw) || length(cek_raw) != spec[["cek_bytes"]]) {
     err_config(paste0(
-      spec$enc,
+      spec[["enc"]],
       " requires a CEK of ",
-      spec$cek_bytes,
+      spec[["cek_bytes"]],
       " bytes"
     ))
   }
 
   list(
-    mac_key = cek_raw[seq_len(spec$mac_key_bytes)],
+    mac_key = cek_raw[seq_len(spec[["mac_key_bytes"]])],
     enc_key = cek_raw[
-      (spec$mac_key_bytes + 1L):(spec$mac_key_bytes + spec$enc_key_bytes)
+      (spec[["mac_key_bytes"]] + 1L):(spec[["mac_key_bytes"]] +
+        spec[["enc_key_bytes"]])
     ]
   )
 }
@@ -635,11 +638,11 @@ compute_compact_jwe_auth_tag <- function(
 ) {
   spec <- jwe_cbc_hmac_spec(enc)
 
-  if (!is.raw(mac_key) || length(mac_key) != spec$mac_key_bytes) {
+  if (!is.raw(mac_key) || length(mac_key) != spec[["mac_key_bytes"]]) {
     err_config(paste0(
-      spec$enc,
+      spec[["enc"]],
       " requires a MAC key of ",
-      spec$mac_key_bytes,
+      spec[["mac_key_bytes"]],
       " bytes"
     ))
   }
@@ -649,17 +652,17 @@ compute_compact_jwe_auth_tag <- function(
   mac_input <- c(aad_raw, iv_raw, ciphertext_raw, al_raw)
 
   full_tag <- switch(
-    spec$hmac_alg,
+    spec[["hmac_alg"]],
     HS256 = openssl::sha256(mac_input, key = mac_key),
     HS384 = openssl::sha384(mac_input, key = mac_key),
     HS512 = openssl::sha512(mac_input, key = mac_key),
     err_config(paste0(
       "Unsupported compact JWE HMAC algorithm: ",
-      spec$hmac_alg
+      spec[["hmac_alg"]]
     ))
   )
 
-  full_tag[seq_len(spec$tag_bytes)]
+  full_tag[seq_len(spec[["tag_bytes"]])]
 }
 
 ## 1.5 Compact JWE encryption and decryption ----------------------------------
@@ -711,13 +714,13 @@ jwe_compact_encrypt <- function(
 
   header <- list(alg = alg, enc = enc)
   if (is_valid_string(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
   if (is_valid_string(typ)) {
-    header$typ <- typ
+    header[["typ"]] <- typ
   }
   if (is_valid_string(cty)) {
-    header$cty <- cty
+    header[["cty"]] <- cty
   }
 
   header_json <- jsonlite::toJSON(
@@ -728,7 +731,7 @@ jwe_compact_encrypt <- function(
   )
   protected_header_b64 <- base64url_encode(charToRaw(enc2utf8(header_json)))
 
-  cek_raw <- openssl::rand_bytes(spec$cek_bytes)
+  cek_raw <- openssl::rand_bytes(spec[["cek_bytes"]])
   key_parts <- split_jwe_cbc_hmac_cek(cek_raw, enc)
   encrypted_key_raw <- try(
     openssl::rsa_encrypt(
@@ -743,15 +746,15 @@ jwe_compact_encrypt <- function(
       "Failed to encrypt compact JWE CEK with the recipient public key"
     )
   }
-  iv_raw <- openssl::rand_bytes(spec$iv_bytes)
+  iv_raw <- openssl::rand_bytes(spec[["iv_bytes"]])
   ciphertext_raw <- openssl::aes_cbc_encrypt(
     plaintext_raw,
-    key = key_parts$enc_key,
+    key = key_parts[["enc_key"]],
     iv = iv_raw
   )
   tag_raw <- compute_compact_jwe_auth_tag(
     enc = enc,
-    mac_key = key_parts$mac_key,
+    mac_key = key_parts[["mac_key"]],
     protected_header_b64 = protected_header_b64,
     iv_raw = iv_raw,
     ciphertext_raw = ciphertext_raw
@@ -779,9 +782,9 @@ jwe_compact_encrypt <- function(
 #' @noRd
 jwe_compact_decrypt <- function(jwe, private_key) {
   parts <- jwe_compact_parts(jwe)
-  header <- parts$protected_header
-  alg <- canonicalize_jwe_alg(header$alg %||% "")
-  enc <- canonicalize_jwe_enc(header$enc %||% "")
+  header <- parts[["protected_header"]]
+  alg <- canonicalize_jwe_alg(header[["alg"]] %||% "")
+  enc <- canonicalize_jwe_enc(header[["enc"]] %||% "")
 
   if (!identical(alg, "RSA-OAEP")) {
     err_parse(paste0("Unsupported compact JWE alg: ", alg))
@@ -793,18 +796,22 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     arg_name = "request_object_encryption_private_key"
   )
   cek_raw <- try(
-    openssl::rsa_decrypt(parts$encrypted_key_raw, key = key, oaep = TRUE),
+    openssl::rsa_decrypt(
+      parts[["encrypted_key_raw"]],
+      key = key,
+      oaep = TRUE
+    ),
     silent = TRUE
   )
   if (inherits(cek_raw, "try-error")) {
     err_parse("Failed to decrypt compact JWE encrypted key")
   }
-  if (!is.raw(cek_raw) || length(cek_raw) != spec$cek_bytes) {
+  if (!is.raw(cek_raw) || length(cek_raw) != spec[["cek_bytes"]]) {
     err_parse(paste0(
       "Compact JWE CEK length mismatch for ",
       enc,
       ": expected ",
-      spec$cek_bytes,
+      spec[["cek_bytes"]],
       " bytes"
     ))
   }
@@ -812,20 +819,20 @@ jwe_compact_decrypt <- function(jwe, private_key) {
   key_parts <- split_jwe_cbc_hmac_cek(cek_raw, enc)
   expected_tag <- compute_compact_jwe_auth_tag(
     enc = enc,
-    mac_key = key_parts$mac_key,
-    protected_header_b64 = parts$protected,
-    iv_raw = parts$iv_raw,
-    ciphertext_raw = parts$ciphertext_raw
+    mac_key = key_parts[["mac_key"]],
+    protected_header_b64 = parts[["protected"]],
+    iv_raw = parts[["iv_raw"]],
+    ciphertext_raw = parts[["ciphertext_raw"]]
   )
-  if (!constant_time_compare(parts$tag_raw, expected_tag)) {
+  if (!constant_time_compare(parts[["tag_raw"]], expected_tag)) {
     err_parse("Compact JWE authentication tag validation failed")
   }
 
   plaintext_raw <- try(
     openssl::aes_cbc_decrypt(
-      parts$ciphertext_raw,
-      key = key_parts$enc_key,
-      iv = parts$iv_raw
+      parts[["ciphertext_raw"]],
+      key = key_parts[["enc_key"]],
+      iv = parts[["iv_raw"]]
     ),
     silent = TRUE
   )

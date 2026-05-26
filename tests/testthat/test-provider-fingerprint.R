@@ -32,7 +32,7 @@ test_that("provider_fingerprint avoids delimiter collisions", {
       ),
       userinfo_id_selector = S7::new_property(
         S7::class_any,
-        default = quote(function(userinfo) userinfo$sub)
+        default = quote(function(userinfo) userinfo[["sub"]])
       ),
       userinfo_id_token_match = S7::new_property(
         S7::class_logical,
@@ -161,7 +161,7 @@ test_that("provider_fingerprint changes when callback security policy changes", 
       ),
       userinfo_id_selector = S7::new_property(
         S7::class_any,
-        default = quote(function(userinfo) userinfo$sub)
+        default = quote(function(userinfo) userinfo[["sub"]])
       ),
       userinfo_id_token_match = S7::new_property(
         S7::class_logical,

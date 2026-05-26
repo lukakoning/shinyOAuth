@@ -115,7 +115,7 @@ fetch_jwks <- function(
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
-    cached_jwks_uri <- entry$jwks_uri %||% NULL
+    cached_jwks_uri <- entry[["jwks_uri"]] %||% NULL
     if (
       is.character(cached_jwks_uri) &&
         length(cached_jwks_uri) == 1L &&
@@ -138,7 +138,7 @@ fetch_jwks <- function(
       return(!inherits(host_ok, "try-error"))
     }
 
-    cached_jwks_host <- entry$jwks_uri_host %||% NULL
+    cached_jwks_host <- entry[["jwks_uri_host"]] %||% NULL
     if (
       is.character(cached_jwks_host) &&
         length(cached_jwks_host) == 1L &&
@@ -162,10 +162,14 @@ fetch_jwks <- function(
   # Rely entirely on cachem's own eviction policy (max_age). If an entry is
   # present, treat it as fresh; if it has been evicted/expired, $get() will
   # return NULL and we'll refetch. We still record fetched_at for diagnostics.
-  if (!force_refresh && !is.null(entry) && !is.null(entry$jwks)) {
+  if (!force_refresh && !is.null(entry) && !is.null(entry[["jwks"]])) {
     # Defense-in-depth: re-validate cached JWKS under current pinning policy
     ok <- try(
-      validate_jwks(entry$jwks, pins = pins, pin_mode = pin_mode),
+      validate_jwks(
+        entry[["jwks"]],
+        pins = pins,
+        pin_mode = pin_mode
+      ),
       silent = TRUE
     )
     if (inherits(ok, "try-error")) {
@@ -174,7 +178,7 @@ fetch_jwks <- function(
         jwks_cache$remove(cache_key)
       }
     } else {
-      discovery_issuer <- entry$discovery_issuer
+      discovery_issuer <- entry[["discovery_issuer"]]
       if (
         is.character(discovery_issuer) &&
           length(discovery_issuer) == 1L &&
@@ -195,7 +199,7 @@ fetch_jwks <- function(
           }
         } else {
           if (isTRUE(cached_jwks_source_valid(entry))) {
-            return(entry$jwks)
+            return(entry[["jwks"]])
           }
           if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
             jwks_cache$remove(cache_key)
@@ -203,7 +207,7 @@ fetch_jwks <- function(
         }
       } else {
         if (isTRUE(cached_jwks_source_valid(entry))) {
-          return(entry$jwks)
+          return(entry[["jwks"]])
         }
         if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
           jwks_cache$remove(cache_key)

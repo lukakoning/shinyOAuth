@@ -27,15 +27,18 @@ test_that("state_encrypt_gcm <-> state_decrypt_gcm roundtrip and properties", {
   expect_true(is.list(dec))
   # Validate expected fields present
   expect_true(all(names(payload) %in% names(dec)))
-  expect_identical(dec$state, payload$state)
-  expect_identical(dec$client_id, payload$client_id)
-  expect_identical(dec$redirect_uri, payload$redirect_uri)
+  expect_identical(dec[["state"]], payload[["state"]])
+  expect_identical(dec[["client_id"]], payload[["client_id"]])
+  expect_identical(dec[["redirect_uri"]], payload[["redirect_uri"]])
   # Scopes should round-trip as character vector
-  expect_true(is.character(dec$scopes))
-  expect_identical(dec$scopes, payload$scopes)
-  expect_identical(dec$provider, payload$provider)
+  expect_true(is.character(dec[["scopes"]]))
+  expect_identical(dec[["scopes"]], payload[["scopes"]])
+  expect_identical(dec[["provider"]], payload[["provider"]])
   # Numeric may become integer; compare numerically
-  expect_equal(as.numeric(dec$issued_at), as.numeric(payload$issued_at))
+  expect_equal(
+    as.numeric(dec[["issued_at"]]),
+    as.numeric(payload[["issued_at"]])
+  )
 
   # Decrypt with a wrong key must fail GCM authentication
   wrong_key <- strrep("x", 64)

@@ -3,7 +3,8 @@
 # Helper: parse query parameter from URL
 parse_query_param <- function(url, name, decode = FALSE) {
   parsed <- httr2::url_parse(url)
-  val <- parsed$query[[name]]
+  query <- parsed[["query"]]
+  val <- query[[name]]
   if (is.null(val)) {
     return(NULL)
   }
@@ -165,10 +166,18 @@ test_that("build_auth_url includes JSON-encoded claims when claims is a list", {
   claims_parsed <- jsonlite::fromJSON(claims_val)
   expect_true("userinfo" %in% names(claims_parsed))
   expect_true("id_token" %in% names(claims_parsed))
-  expect_true("email" %in% names(claims_parsed$userinfo))
-  expect_true("given_name" %in% names(claims_parsed$userinfo))
-  expect_equal(claims_parsed$userinfo$given_name$essential, TRUE)
-  expect_equal(claims_parsed$id_token$auth_time$essential, TRUE)
+  expect_true("email" %in% names(claims_parsed[["userinfo"]]))
+  expect_true(
+    "given_name" %in% names(claims_parsed[["userinfo"]])
+  )
+  expect_equal(
+    claims_parsed[["userinfo"]][["given_name"]][["essential"]],
+    TRUE
+  )
+  expect_equal(
+    claims_parsed[["id_token"]][["auth_time"]][["essential"]],
+    TRUE
+  )
 })
 
 test_that("build_auth_url preserves explicit nulls in claims list", {
@@ -186,11 +195,11 @@ test_that("build_auth_url preserves explicit nulls in claims list", {
 
   # Per OIDC spec, null values request the claim without additional parameters
   claims_parsed <- jsonlite::fromJSON(claims_val)
-  expect_true("email" %in% names(claims_parsed$userinfo))
-  expect_true("picture" %in% names(claims_parsed$userinfo))
+  expect_true("email" %in% names(claims_parsed[["userinfo"]]))
+  expect_true("picture" %in% names(claims_parsed[["userinfo"]]))
   # jsonlite should preserve null
-  expect_null(claims_parsed$userinfo$email)
-  expect_null(claims_parsed$userinfo$picture)
+  expect_null(claims_parsed[["userinfo"]][["email"]])
+  expect_null(claims_parsed[["userinfo"]][["picture"]])
 })
 
 test_that("build_auth_url uses pre-encoded JSON string claims as-is", {
@@ -225,12 +234,23 @@ test_that("build_auth_url handles complex claims with essential and values", {
   claims_val <- parse_query_param(url, "claims", decode = TRUE)
 
   claims_parsed <- jsonlite::fromJSON(claims_val)
-  expect_equal(claims_parsed$userinfo$email$essential, TRUE)
-  expect_equal(claims_parsed$userinfo$email_verified$essential, TRUE)
-  expect_true("acr" %in% names(claims_parsed$id_token))
-  expect_true("values" %in% names(claims_parsed$id_token$acr))
   expect_equal(
-    claims_parsed$id_token$acr$values,
+    claims_parsed[["userinfo"]][["email"]][["essential"]],
+    TRUE
+  )
+  expect_equal(
+    claims_parsed[["userinfo"]][["email_verified"]][["essential"]],
+    TRUE
+  )
+  expect_true("acr" %in% names(claims_parsed[["id_token"]]))
+  expect_true(
+    "values" %in%
+      names(
+        claims_parsed[["id_token"]][["acr"]]
+      )
+  )
+  expect_equal(
+    claims_parsed[["id_token"]][["acr"]][["values"]],
     c("urn:mace:incommon:iap:silver", "urn:mace:incommon:iap:bronze")
   )
 })
@@ -249,7 +269,10 @@ test_that("build_auth_url handles custom claims with URI identifiers", {
 
   claims_parsed <- jsonlite::fromJSON(claims_val)
   expect_true(
-    "http://example.info/claims/groups" %in% names(claims_parsed$userinfo)
+    "http://example.info/claims/groups" %in%
+      names(
+        claims_parsed[["userinfo"]]
+      )
   )
 })
 
@@ -309,7 +332,7 @@ test_that("I() forces array encoding for single-element values field", {
 
   claims_parsed <- jsonlite::fromJSON(claims_val)
   expect_equal(
-    claims_parsed$id_token$acr$values,
+    claims_parsed[["id_token"]][["acr"]][["values"]],
     "urn:mace:incommon:iap:silver"
   )
 })
@@ -371,7 +394,7 @@ test_that("full spec example from OIDC Core §5.5 encodes correctly", {
 
   # Verify all userinfo claims present
   expect_setequal(
-    names(claims_parsed$userinfo),
+    names(claims_parsed[["userinfo"]]),
     c(
       "given_name",
       "nickname",
@@ -382,16 +405,26 @@ test_that("full spec example from OIDC Core §5.5 encodes correctly", {
     )
   )
   # essential = TRUE preserved
-  expect_true(claims_parsed$userinfo$given_name$essential)
-  expect_true(claims_parsed$userinfo$email$essential)
+  expect_true(
+    claims_parsed[["userinfo"]][["given_name"]][["essential"]]
+  )
+  expect_true(
+    claims_parsed[["userinfo"]][["email"]][["essential"]]
+  )
   # null claims preserved
-  expect_null(claims_parsed$userinfo$nickname)
-  expect_null(claims_parsed$userinfo$picture)
+  expect_null(
+    claims_parsed[["userinfo"]][["nickname"]]
+  )
+  expect_null(
+    claims_parsed[["userinfo"]][["picture"]]
+  )
   # id_token claims
-  expect_true(claims_parsed$id_token$auth_time$essential)
+  expect_true(
+    claims_parsed[["id_token"]][["auth_time"]][["essential"]]
+  )
   # values as array (via I())
   expect_equal(
-    claims_parsed$id_token$acr$values,
+    claims_parsed[["id_token"]][["acr"]][["values"]],
     "urn:mace:incommon:iap:silver"
   )
 })

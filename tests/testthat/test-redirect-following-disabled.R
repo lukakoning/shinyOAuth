@@ -301,9 +301,9 @@ test_that("token introspection does not follow redirects", {
 
   result <- shinyOAuth::introspect_token(cli, token)
   # A 302 is an HTTP error, so we get a status like "http_302"
-  expect_true(result$supported)
-  expect_true(is.na(result$active))
-  expect_match(result$status, "^http_")
+  expect_true(result[["supported"]])
+  expect_true(is.na(result[["active"]]))
+  expect_match(result[["status"]], "^http_")
   expect_false(redirect_target_hit)
 })
 
@@ -366,9 +366,9 @@ test_that("token revocation does not follow redirects", {
 
   result <- shinyOAuth::revoke_token(cli, token)
   # 307 returns HTTP error status
-  expect_true(result$supported)
-  expect_true(is.na(result$revoked))
-  expect_match(result$status, "^http_")
+  expect_true(result[["supported"]])
+  expect_true(is.na(result[["revoked"]]))
+  expect_match(result[["status"]], "^http_")
   expect_false(redirect_target_hit)
 })
 
@@ -470,8 +470,8 @@ test_that("userinfo follows redirects when shinyOAuth.allow_redirect = TRUE", {
   # Should succeed - redirect is followed to /real which returns valid userinfo
   result <- shinyOAuth::get_userinfo(cli, token = "test_token")
   # Verify we got the response from /real, not /userinfo
-  expect_equal(result$sub, "redirected_user")
-  expect_true(result$followed)
+  expect_equal(result[["sub"]], "redirected_user")
+  expect_true(result[["followed"]])
 })
 
 test_that("token revocation follows redirects when shinyOAuth.allow_redirect = TRUE", {
@@ -535,6 +535,6 @@ test_that("token revocation follows redirects when shinyOAuth.allow_redirect = T
   # Should succeed - redirect is followed to /real which returns 200
   result <- shinyOAuth::revoke_token(cli, token)
   # If we didn't follow the redirect, we'd get an error from the 307 response
-  expect_true(result$revoked)
-  expect_equal(result$status, "ok")
+  expect_true(result[["revoked"]])
+  expect_equal(result[["status"]], "ok")
 })

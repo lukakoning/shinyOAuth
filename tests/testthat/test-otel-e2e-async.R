@@ -1300,7 +1300,7 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
 
       testthat::expect_true(isTRUE(values$authenticated))
       testthat::expect_identical(
-        values$token@userinfo$sub %||% NA_character_,
+        values$token@userinfo[["sub"]] %||% NA_character_,
         "user-123"
       )
     }

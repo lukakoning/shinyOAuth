@@ -102,13 +102,20 @@ testthat::test_that("Keycloak satisfies essential userinfo claims on happy path"
   )
 
   result <- validation_login_via_module(client)
-  claims_param <- parse_query_param(result$auth_url, "claims", decode = TRUE)
+  claims_param <- parse_query_param(
+    result[["auth_url"]],
+    "claims",
+    decode = TRUE
+  )
 
   testthat::expect_true(nzchar(claims_param))
   testthat::expect_match(claims_param, "email")
-  testthat::expect_true(isTRUE(result$authenticated))
-  testthat::expect_null(result$error)
-  testthat::expect_identical(result$token@userinfo$email, "alice@example.com")
+  testthat::expect_true(isTRUE(result[["authenticated"]]))
+  testthat::expect_null(result[["error"]])
+  testthat::expect_identical(
+    result[["token"]]@userinfo[["email"]],
+    "alice@example.com"
+  )
 })
 
 testthat::test_that("Keycloak missing essential ID token claim fails closed", {
@@ -129,14 +136,14 @@ testthat::test_that("Keycloak missing essential ID token claim fails closed", {
 
   result <- validation_login_via_module(client)
 
-  testthat::expect_false(isTRUE(result$authenticated))
-  testthat::expect_identical(result$error, "token_exchange_error")
+  testthat::expect_false(isTRUE(result[["authenticated"]]))
+  testthat::expect_identical(result[["error"]], "token_exchange_error")
   testthat::expect_match(
-    result$error_description %||% "",
+    result[["error_description"]] %||% "",
     "website|claim",
     ignore.case = TRUE
   )
-  testthat::expect_null(result$token)
+  testthat::expect_null(result[["token"]])
 })
 
 testthat::test_that("Keycloak ACR downgrade fails required_acr_values enforcement", {
@@ -152,17 +159,21 @@ testthat::test_that("Keycloak ACR downgrade fails required_acr_values enforcemen
   )
 
   result <- validation_login_via_module(client)
-  acr_values <- parse_query_param(result$auth_url, "acr_values", decode = TRUE)
+  acr_values <- parse_query_param(
+    result[["auth_url"]],
+    "acr_values",
+    decode = TRUE
+  )
 
   testthat::expect_identical(acr_values, required_acr)
-  testthat::expect_false(isTRUE(result$authenticated))
-  testthat::expect_identical(result$error, "token_exchange_error")
+  testthat::expect_false(isTRUE(result[["authenticated"]]))
+  testthat::expect_identical(result[["error"]], "token_exchange_error")
   testthat::expect_match(
-    result$error_description %||% "",
+    result[["error_description"]] %||% "",
     "acr|required_acr_values",
     ignore.case = TRUE
   )
-  testthat::expect_null(result$token)
+  testthat::expect_null(result[["token"]])
 })
 
 testthat::test_that("strict scope validation rejects a real Keycloak token set missing a required scope", {
@@ -185,7 +196,7 @@ testthat::test_that("strict scope validation rejects a real Keycloak token set m
   token_set <- exchange_keycloak_code_for_token_set(client, auth_url, login)
 
   testthat::skip_if(
-    is.null(token_set$scope) || !nzchar(token_set$scope),
+    is.null(token_set[["scope"]]) || !nzchar(token_set[["scope"]]),
     "Keycloak token response omitted scope; RFC 6749 treats this as unchanged"
   )
 

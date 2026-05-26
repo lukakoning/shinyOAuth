@@ -26,18 +26,25 @@ testthat::test_that("session_started audit event is emitted and enriched", {
   )
 
   # Extract types and find session_started
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   idx <- grep("^audit_session_started$", types)
   testthat::expect_true(length(idx) >= 1)
 
   ev <- events[[idx[[1]]]]
   # Basic shape checks (non-sensitive fields only)
-  testthat::expect_equal(ev$module_id %||% NA_character_, "auth")
-  testthat::expect_true(!is.null(ev$client_id_digest))
+  testthat::expect_equal(
+    ev[["module_id"]] %||% NA_character_,
+    "auth"
+  )
+  testthat::expect_true(!is.null(ev[["client_id_digest"]]))
 
   # Shiny enrichment is grouped under `shiny_session`
   testthat::expect_true("shiny_session" %in% names(ev))
-  ss <- ev$shiny_session
+  ss <- ev[["shiny_session"]]
   # Subfields may be NULL in test env; we only assert presence of names
   testthat::expect_true(all(c("http", "token") %in% names(ss)))
 
@@ -75,16 +82,20 @@ testthat::test_that("shinyOAuth.audit_include_http = FALSE excludes http from ev
   )
 
   # Find session_started event
-  types <- vapply(events, function(e) as.character(e$type), character(1))
+  types <- vapply(
+    events,
+    function(e) as.character(e[["type"]]),
+    character(1)
+  )
   idx <- grep("^audit_session_started$", types)
   testthat::expect_true(length(idx) >= 1)
 
   ev <- events[[idx[[1]]]]
-  ss <- ev$shiny_session
+  ss <- ev[["shiny_session"]]
 
   # http should be NULL when audit_include_http = FALSE
 
-  testthat::expect_null(ss$http)
+  testthat::expect_null(ss[["http"]])
   # token should still be present
   testthat::expect_true("token" %in% names(ss))
 })
@@ -138,26 +149,60 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
     }
   )
 
-  http_event <- Filter(function(e) e$type == "audit_http_context", events)
+  http_event <- Filter(
+    function(e) e[["type"]] == "audit_http_context",
+    events
+  )
   testthat::expect_length(http_event, 1L)
 
-  http <- http_event[[1L]]$shiny_session$http
-  testthat::expect_equal(http$method, "GET")
-  testthat::expect_match(http$query_string, "safe=keep_me")
-  testthat::expect_no_match(http$query_string, "authcode123")
-  testthat::expect_no_match(http$query_string, "mystate")
-  testthat::expect_no_match(http$query_string, "super-secret")
-  testthat::expect_no_match(http$query_string, "jwt-assertion")
-  testthat::expect_no_match(http$query_string, "signed.request.jwt")
-  testthat::expect_no_match(http$query_string, "request_uri%3Aabc123")
-  testthat::expect_no_match(http$query_string, "challenge123")
-  testthat::expect_no_match(http$query_string, "alice%40example.com")
-  testthat::expect_no_match(http$query_string, "Sensitive%20provider%20detail")
-  testthat::expect_null(http$headers$cookie)
-  testthat::expect_null(http$headers$authorization)
-  testthat::expect_equal(http$headers$user_agent, "TestClient/1.0")
-  testthat::expect_equal(http$headers$x_forwarded_for, "[REDACTED]")
-  testthat::expect_equal(http$remote_addr, "[REDACTED]")
+  http <- http_event[[1L]][["shiny_session"]][[
+    "http",
+    exact = TRUE
+  ]]
+  headers <- http[["headers"]]
+  testthat::expect_equal(http[["method"]], "GET")
+  testthat::expect_match(http[["query_string"]], "safe=keep_me")
+  testthat::expect_no_match(http[["query_string"]], "authcode123")
+  testthat::expect_no_match(http[["query_string"]], "mystate")
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "super-secret"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "jwt-assertion"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "signed.request.jwt"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "request_uri%3Aabc123"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "challenge123"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "alice%40example.com"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "Sensitive%20provider%20detail"
+  )
+  testthat::expect_null(headers[["cookie"]])
+  testthat::expect_null(headers[["authorization"]])
+  testthat::expect_equal(
+    headers[["user_agent"]],
+    "TestClient/1.0"
+  )
+  testthat::expect_equal(
+    headers[["x_forwarded_for"]],
+    "[REDACTED]"
+  )
+  testthat::expect_equal(http[["remote_addr"]], "[REDACTED]")
 })
 
 testthat::test_that("audit_event redacts malformed callback query strings", {
@@ -195,17 +240,26 @@ testthat::test_that("audit_event redacts malformed callback query strings", {
   )
 
   http_event <- Filter(
-    function(e) e$type == "audit_http_context_malformed",
+    function(e) e[["type"]] == "audit_http_context_malformed",
     events
   )
   testthat::expect_length(http_event, 1L)
 
-  http <- http_event[[1L]]$shiny_session$http
-  testthat::expect_match(http$query_string, "safe=keep_me")
-  testthat::expect_no_match(http$query_string, "authcode123")
-  testthat::expect_no_match(http$query_string, "mystate")
-  testthat::expect_no_match(http$query_string, "signed.request.jwt")
-  testthat::expect_no_match(http$query_string, "request_uri:abc123")
+  http <- http_event[[1L]][["shiny_session"]][[
+    "http",
+    exact = TRUE
+  ]]
+  testthat::expect_match(http[["query_string"]], "safe=keep_me")
+  testthat::expect_no_match(http[["query_string"]], "authcode123")
+  testthat::expect_no_match(http[["query_string"]], "mystate")
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "signed.request.jwt"
+  )
+  testthat::expect_no_match(
+    http[["query_string"]],
+    "request_uri:abc123"
+  )
 })
 
 testthat::test_that("raw query fallback redacts sensitive callback values", {
@@ -287,14 +341,27 @@ testthat::test_that("audit_event can include raw HTTP context when redaction is 
     }
   )
 
-  http_event <- Filter(function(e) e$type == "audit_http_context_raw", events)
+  http_event <- Filter(
+    function(e) e[["type"]] == "audit_http_context_raw",
+    events
+  )
   testthat::expect_length(http_event, 1L)
 
-  http <- http_event[[1L]]$shiny_session$http
-  testthat::expect_match(http$query_string, "authcode123")
-  testthat::expect_match(http$query_string, "mystate")
-  testthat::expect_equal(http$headers$cookie, "session=secret123")
-  testthat::expect_equal(http$headers$authorization, "Bearer token123")
-  testthat::expect_equal(http$headers$x_forwarded_for, "192.168.1.1")
-  testthat::expect_equal(http$remote_addr, "192.168.1.1")
+  http <- http_event[[1L]][["shiny_session"]][[
+    "http",
+    exact = TRUE
+  ]]
+  headers <- http[["headers"]]
+  testthat::expect_match(http[["query_string"]], "authcode123")
+  testthat::expect_match(http[["query_string"]], "mystate")
+  testthat::expect_equal(headers[["cookie"]], "session=secret123")
+  testthat::expect_equal(
+    headers[["authorization"]],
+    "Bearer token123"
+  )
+  testthat::expect_equal(
+    headers[["x_forwarded_for"]],
+    "192.168.1.1"
+  )
+  testthat::expect_equal(http[["remote_addr"]], "192.168.1.1")
 })

@@ -89,7 +89,7 @@ resource_req <- function(
     oauth_client = oauth_client,
     token_type = token_type,
     dpop_nonce = dpop_nonce
-  )$req
+  )[["req"]]
 }
 
 #' @title
@@ -205,12 +205,12 @@ perform_resource_req <- function(
     dpop_nonce = dpop_nonce
   )
 
-  req <- prepared$req
-  token_info <- prepared$token_info
+  req <- prepared[["req"]]
+  token_info <- prepared[["token_info"]]
 
   if (is.null(idempotent)) {
     request_method <- tryCatch(
-      toupper(as.character(req$method %||% method)[[1]]),
+      toupper(as.character(req[["method"]] %||% method)[[1]]),
       error = function(...) "GET"
     )
     idempotent <- request_method %in%
@@ -228,11 +228,11 @@ perform_resource_req <- function(
     err_input("idempotent must be NULL or a single non-NA logical")
   }
 
-  if (is_dpop_token_type(token_info$token_type)) {
+  if (is_dpop_token_type(token_info[["token_type"]])) {
     return(req_with_dpop_retry(
       req,
       oauth_client,
-      access_token = token_info$access_token,
+      access_token = token_info[["access_token"]],
       idempotent = isTRUE(idempotent),
       nonce = dpop_nonce
     ))
@@ -332,14 +332,14 @@ prepare_client_bearer_request <- function(
   )
 
   validate_client_bearer_token_context(
-    token_type = token_info$token_type,
+    token_type = token_info[["token_type"]],
     oauth_client = oauth_client
   )
 
   validate_client_bearer_sender_constraints(
     token = token,
-    access_token = token_info$access_token,
-    token_type = token_info$token_type,
+    access_token = token_info[["access_token"]],
+    token_type = token_info[["token_type"]],
     oauth_client = oauth_client
   )
 
@@ -351,8 +351,8 @@ prepare_client_bearer_request <- function(
     req = req,
     method = method,
     token = token,
-    access_token = token_info$access_token,
-    token_type = token_info$token_type,
+    access_token = token_info[["access_token"]],
+    token_type = token_info[["token_type"]],
     oauth_client = oauth_client,
     dpop_nonce = dpop_nonce
   )
