@@ -136,7 +136,7 @@ oauth_module_server(
 - request_uri_base_url:
 
   Optional absolute base URL used when
-  `authorization_request_mode = "request_uri"` publishes Request Objects
+  `request_object_mode = "request_uri"` publishes Request Objects
   through Shiny. By default (`NULL`), shinyOAuth derives the base URL
   from the current browser-visible app origin, but only when
   `options(shinyOAuth.allowed_hosts = ...)` pins the permitted public

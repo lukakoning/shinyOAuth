@@ -55,48 +55,48 @@ oauth_module_server() starts login or callback handling."></head><body>
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
 <span>  <span class="va">redirect_uri</span>,</span>
-<span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  response_mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"warn"</span>, <span class="st">"strict"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
+<span>  claims_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"warn"</span>, <span class="st">"strict"</span><span class="op">)</span>,</span>
+<span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  userinfo_jwt_required_time_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
 <span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
 <span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
 <span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span><span class="fl">128</span><span class="op">)</span>,</span>
-<span>  client_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  client_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client_assertion_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client_assertion_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tls_client_cert_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tls_client_key_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tls_client_key_password <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tls_client_ca_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  mtls_request_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  authorization_request_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span>, <span class="st">"request_uri"</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_signed_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_encrypted_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_encrypted_response_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_response_decryption_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_response_decryption_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span>,</span>
-<span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_encryption_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_encryption_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_ttl <span class="op">=</span> <span class="fl">45</span>,</span>
-<span>  authorization_request_nbf_skew <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_require_access_token <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  scope_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"warn"</span>, <span class="st">"strict"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
-<span>  claims_validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"warn"</span>, <span class="st">"strict"</span><span class="op">)</span>,</span>
-<span>  userinfo_jwt_required_temporal_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span>  request_object_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span>, <span class="st">"request_uri"</span><span class="op">)</span>,</span>
+<span>  request_object_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_object_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_object_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_object_encryption_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_object_encryption_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_object_ttl <span class="op">=</span> <span class="fl">45</span>,</span>
+<span>  request_object_nbf_skew <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_signed_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_encrypted_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_encrypted_response_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_decryption_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_decryption_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -133,25 +133,38 @@ enabled, a non-empty <code>client_secret</code> is required for signature valida
 <dd><p>Redirect URI registered with provider</p></dd>
 
 
-<dt id="arg-enforce-callback-issuer">enforce_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-enforce-callback-issuer"></a></dt>
-<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code>, enforce that
-authorization responses handled through this client include an RFC 9207
-<code>iss</code> parameter and reject callbacks unless it exactly matches
-<code>provider@issuer</code>. This is recommended when one callback URL can receive
-responses from more than one authorization server. Requires the provider
-to have a configured <code>issuer</code>.</p>
-<p>When <code>NULL</code> (the <code>oauth_client()</code> helper default), shinyOAuth
-auto-enables this check for providers that advertise
-<code>authorization_response_iss_parameter_supported = TRUE</code> and have a
-configured <code>issuer</code>, such as OIDC discovery providers that expose RFC 9207
-support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
-
-
 <dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
 <dd><p>Vector of scopes to request. For OIDC providers (those with an
 <code>issuer</code>), shinyOAuth automatically prepends <code>openid</code> when it is missing;
 that effective scope set is what gets sent in the authorization request
 and used for later state and token-scope validation.</p></dd>
+
+
+<dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
+<dd><p>Authorization response mode for authorization-code
+callbacks. Supported values are <code>"query"</code>, <code>"form_post"</code>, <code>"jwt"</code>,
+<code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. The effective default is always
+<code>"query"</code>: omitting this argument keeps the normal query-parameter
+callback flow and shinyOAuth does not send a <code>response_mode</code> parameter.
+Pass <code>"query"</code> only if you need to explicitly request the query
+response mode from the provider. Set <code>"form_post"</code> only when the
+provider requires or explicitly recommends POSTing the authorization
+response to the redirect URI. Shiny apps using <code>"form_post"</code> must wrap
+their UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Prefer this argument over setting
+<code>extra_auth_params$response_mode</code> on the provider. When the provider
+advertises <code>response_modes_supported</code>, the resolved mode must be included
+in that set. <code>"jwt"</code> requests the JARM-defined default callback
+transport for the response type; for the authorization-code flow that
+still means a query callback, but shinyOAuth preserves and sends <code>"jwt"</code>
+when you configure it explicitly. <code>"fragment.jwt"</code> is not currently
+supported because shinyOAuth does not implement fragment callback
+transport.</p>
+<p>JARM callbacks are currently module-only. For <code>"jwt"</code>, <code>"query.jwt"</code>,
+and <code>"form_post.jwt"</code>, use <code><a href="oauth_module_server.html">oauth_module_server()</a></code> and, for
+<code>"form_post.jwt"</code>, wrap the app UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. The
+exported <code><a href="handle_callback.html">handle_callback()</a></code> helper still accepts only the classic
+direct <code>code</code> + sealed <code>state</code> callback shape and does not expose a
+public JARM validation/resume API.</p></dd>
 
 
 <dt id="arg-resource">resource<a class="anchor" aria-label="anchor" href="#arg-resource"></a></dt>
@@ -185,6 +198,116 @@ that common input pattern serializes incorrectly for OIDC.</p></li>
 be valid JSON. Use this when you need full control over JSON encoding.
 Note: The <code>claims</code> parameter is OPTIONAL per OIDC Core §5.5. Not all
 providers support it; consult your provider's documentation.</p></li>
+</ul></dd>
+
+
+<dt id="arg-enforce-callback-issuer">enforce_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-enforce-callback-issuer"></a></dt>
+<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code>, enforce that
+authorization responses handled through this client include an RFC 9207
+<code>iss</code> parameter and reject callbacks unless it exactly matches
+<code>provider@issuer</code>. This is recommended when one callback URL can receive
+responses from more than one authorization server. Requires the provider
+to have a configured <code>issuer</code>.</p>
+<p>When <code>NULL</code> (the <code>oauth_client()</code> helper default), shinyOAuth
+auto-enables this check for providers that advertise
+<code>authorization_response_iss_parameter_supported = TRUE</code> and have a
+configured <code>issuer</code>, such as OIDC discovery providers that expose RFC 9207
+support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
+
+
+<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
+<dd><p>Controls how scope discrepancies are handled when
+the authorization server grants fewer scopes than requested. RFC 6749
+Section 3.3 permits servers to issue tokens with reduced scope, and
+Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
+from the requested scope.</p><ul><li><p><code>"warn"</code> (default): Emits a warning but continues authentication if
+scopes are missing.</p></li>
+<li><p><code>"strict"</code>: Throws an error if any requested scope is missing from the
+granted scopes. Omitted <code>scope</code> is treated as unchanged, not as an
+error.</p></li>
+<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
+</ul></dd>
+
+
+<dt id="arg-claims-validation">claims_validation<a class="anchor" aria-label="anchor" href="#arg-claims-validation"></a></dt>
+<dd><p>Controls validation of requested claims supplied via
+the <code>claims</code> parameter (OIDC Core §5.5). When <code>claims</code> includes entries
+with <code>essential = TRUE</code> for <code>id_token</code> or <code>userinfo</code>, or explicit <code>value</code>
+/ <code>values</code> constraints for individual claims, this setting determines what
+happens if the returned ID token or userinfo response does not satisfy
+those requests.</p><ul><li><p><code>"none"</code>: Skips claims validation entirely. This remains the effective
+default when the supplied <code>claims</code> request has no enforceable
+<code>essential</code>, <code>value</code>, or <code>values</code> constraints, and when you explicitly
+set <code>claims_validation = "none"</code>.</p></li>
+<li><p><code>"warn"</code>: Emits a warning but continues authentication if requested
+essential claims are missing or requested claim values are not
+satisfied.</p></li>
+<li><p><code>"strict"</code>: Throws an error if any requested essential claims are
+missing or requested claim <code>value</code> / <code>values</code> constraints are not
+satisfied by the response.</p></li>
+</ul><p>If <code>claims_validation</code> is omitted and the supplied <code>claims</code> request does
+include enforceable <code>essential</code>, <code>value</code>, or <code>values</code> constraints,
+<code>oauth_client()</code> promotes the effective default to <code>"warn"</code> so those
+mismatches are surfaced by default.</p>
+<p>Enforceable requests under <code>claims$id_token</code> require a validated ID token.
+Configure the provider with <code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>
+so shinyOAuth validates the ID token before checking those claims.</p></dd>
+
+
+<dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
+<dd><p>Optional character vector of acceptable
+Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
+When non-empty, the ID token returned by the provider must contain an
+<code>acr</code> claim whose value is one of the specified entries; otherwise the
+login fails with a <code>shinyOAuth_id_token_error</code>.</p>
+<p>Additionally, when non-empty, the authorization request automatically
+includes an <code>acr_values</code> query parameter (space-separated) as a voluntary
+hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
+not required to honour this hint; the client-side validation is the
+authoritative enforcement.</p>
+<p>Requires an OIDC-capable provider with <code>id_token_validation = TRUE</code> and
+an <code>issuer</code> configured.  Default is <code>character(0)</code> (no enforcement).</p></dd>
+
+
+<dt id="arg-userinfo-jwt-required-time-claims">userinfo_jwt_required_time_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-time-claims"></a></dt>
+<dd><p>Optional character vector of
+temporal JWT claims that must be present when the UserInfo response is a
+signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
+<code>"nbf"</code>.</p>
+<p>Default is <code>character(0)</code>, which means these claims are validated only when
+present. Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
+to require an expiry on signed UserInfo JWTs, or pass multiple values to
+require additional temporal claims. For security-sensitive deployments that
+accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
+
+
+<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
+<dd><p>If TRUE, the login flow will call the provider's token
+introspection endpoint (RFC 7662) to validate the access token. The login
+is not considered complete unless introspection succeeds and returns
+<code>active = TRUE</code>; otherwise the login fails and <code>authenticated</code> remains
+FALSE. When <code><a href="oauth_module_server.html">oauth_module_server()</a></code> later performs proactive refresh, it
+also forwards this setting so refreshed access tokens are introspected
+through the same client policy. Default is FALSE. Requires the provider to
+have an <code>introspection_url</code> configured.</p></dd>
+
+
+<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
+<dd><p>Optional character vector of additional
+requirements to enforce on the introspection response when
+<code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
+(from a validated ID token <code>sub</code> when available, else from userinfo
+<code>sub</code>).</p></li>
+<li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
+client id.</p></li>
+<li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes
+(respects the client's <code>scope_validation</code> mode).</p></li>
+<li><p><code>"token_type"</code>: require introspection to return <code>token_type</code>. This is
+useful for sender-constrained deployments such as DPoP, where
+introspection can authoritatively report <code>token_type = "DPoP"</code>.
+Default is <code>character(0)</code>.
+(Note that not all providers may return each of these fields in
+introspection responses.)</p></li>
 </ul></dd>
 
 
@@ -245,7 +368,7 @@ the same <code>state_key</code> across all workers. Otherwise callbacks that lan
 a different worker will fail state validation.</p></dd>
 
 
-<dt id="arg-client-private-key">client_private_key<a class="anchor" aria-label="anchor" href="#arg-client-private-key"></a></dt>
+<dt id="arg-client-assertion-private-key">client_assertion_private_key<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key"></a></dt>
 <dd><p>Optional private key for <code>private_key_jwt</code> client authentication
 at the token endpoint. Can be an <code>openssl::key</code> or a PEM string containing a
 private key. Required when the provider's <code>token_auth_style = 'private_key_jwt'</code>.
@@ -255,7 +378,7 @@ limited to <code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-P
 are not supported. Ed25519/Ed448 keys are also not currently supported.</p></dd>
 
 
-<dt id="arg-client-private-key-kid">client_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-private-key-kid"></a></dt>
+<dt id="arg-client-assertion-private-key-kid">client_assertion_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key-kid"></a></dt>
 <dd><p>Optional key identifier (kid) to include in the JWT header
 for <code>private_key_jwt</code> assertions. Useful when the authorization server uses kid to
 select the correct verification key.</p></dd>
@@ -310,7 +433,7 @@ mainly useful for local or test environments that use self-signed server
 certificates.</p></dd>
 
 
-<dt id="arg-mtls-request-certificate-bound-access-tokens">mtls_request_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-request-certificate-bound-access-tokens"></a></dt>
+<dt id="arg-mtls-certificate-bound-access-tokens">mtls_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-certificate-bound-access-tokens"></a></dt>
 <dd><p>Logical. Whether this
 client intends to request RFC 8705 certificate-bound access tokens when
 the provider advertises that capability. Default is <code>FALSE</code>.</p>
@@ -321,171 +444,6 @@ closed if the returned access token omits <code>cnf.x5t#S256</code>.</p>
 <p>Requires <code>tls_client_cert_file</code> and <code>tls_client_key_file</code>, and the
 provider must be configured with
 <code>tls_client_certificate_bound_access_tokens = TRUE</code>.</p></dd>
-
-
-<dt id="arg-authorization-request-mode">authorization_request_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-mode"></a></dt>
-<dd><p>Controls how the authorization request is
-transported to the provider.</p><ul><li><p><code>"parameters"</code> (default): send OAuth parameters directly on the browser
-redirect URL.</p></li>
-<li><p><code>"request"</code>: send a signed JWT-secured authorization request (JAR;
-RFC 9101) via the <code>request</code> parameter.</p></li>
-<li><p><code>"request_uri"</code>: publish a signed Request Object by reference and send
-its URL via the <code>request_uri</code> parameter.</p></li>
-</ul><p>Most users can keep the default. Request mode is an advanced option that
-requires signing material on the client. shinyOAuth prefers
-<code>client_private_key</code> when present; otherwise it falls back to HMAC signing
-with <code>client_secret</code>. When Request Object encryption is configured,
-shinyOAuth signs first and then wraps the signed Request Object in a JWE.
-If a caller-managed <code>request_uri</code> uses HTTP and the configured host policy
-explicitly allows it, shinyOAuth still publishes it but warns once per R
-session because RFC 9101 Section 5.2 expects client-provided
-<code>request_uri</code> values to use HTTPS.
-If the provider advertises <code>require_request_uri_registration = TRUE</code>,
-caller-managed <code>request_uri</code> publication still depends on the provider
-having that URI or a matching wildcard prefix registered for the client;
-shinyOAuth cannot verify that server-side registration automatically.</p></dd>
-
-
-<dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
-<dd><p>Authorization response mode for authorization-code
-callbacks. Supported values are <code>"query"</code>, <code>"form_post"</code>, <code>"jwt"</code>,
-<code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. The effective default is always
-<code>"query"</code>: omitting this argument keeps the normal query-parameter
-callback flow and shinyOAuth does not send a <code>response_mode</code> parameter.
-Pass <code>"query"</code> only if you need to explicitly request the query
-response mode from the provider. Set <code>"form_post"</code> only when the
-provider requires or explicitly recommends POSTing the authorization
-response to the redirect URI. Shiny apps using <code>"form_post"</code> must wrap
-their UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Prefer this argument over setting
-<code>extra_auth_params$response_mode</code> on the provider. When the provider
-advertises <code>response_modes_supported</code>, the resolved mode must be included
-in that set. <code>"jwt"</code> requests the JARM-defined default callback
-transport for the response type; for the authorization-code flow that
-still means a query callback, but shinyOAuth preserves and sends <code>"jwt"</code>
-when you configure it explicitly. <code>"fragment.jwt"</code> is not currently
-supported because shinyOAuth does not implement fragment callback
-transport.</p>
-<p>JARM callbacks are currently module-only. For <code>"jwt"</code>, <code>"query.jwt"</code>,
-and <code>"form_post.jwt"</code>, use <code><a href="oauth_module_server.html">oauth_module_server()</a></code> and, for
-<code>"form_post.jwt"</code>, wrap the app UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. The
-exported <code><a href="handle_callback.html">handle_callback()</a></code> helper still accepts only the classic
-direct <code>code</code> + sealed <code>state</code> callback shape and does not expose a
-public JARM validation/resume API.</p></dd>
-
-
-<dt id="arg-authorization-signed-response-alg">authorization_signed_response_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-signed-response-alg"></a></dt>
-<dd><p>Optional expected JWS algorithm for
-signed JWT Secured Authorization Responses (JARM). When omitted and the
-effective response mode is JARM, shinyOAuth defaults to <code>RS256</code>. This
-value is not sent dynamically on the authorization request; it must match
-the client metadata and provider behavior configured out-of-band for that
-client. Current inbound support accepts <code>HS256</code>, <code>HS384</code>, <code>HS512</code>,
-<code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code>.
-RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) and unsecured <code>none</code> are not accepted
-for inbound JARM.</p></dd>
-
-
-<dt id="arg-authorization-encrypted-response-alg">authorization_encrypted_response_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-encrypted-response-alg"></a></dt>
-<dd><p>Optional expected JWE
-key-management algorithm for encrypted JARM responses. Current inbound
-support is limited to <code>RSA-OAEP</code>. Like
-<code>authorization_signed_response_alg</code>, this reflects out-of-band client
-metadata and expected provider behavior rather than an authorization
-request parameter emitted by shinyOAuth.</p></dd>
-
-
-<dt id="arg-authorization-encrypted-response-enc">authorization_encrypted_response_enc<a class="anchor" aria-label="anchor" href="#arg-authorization-encrypted-response-enc"></a></dt>
-<dd><p>Optional expected JWE
-content-encryption algorithm for encrypted JARM responses. Current inbound
-support is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
-<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When omitted while
-<code>authorization_encrypted_response_alg</code> is set, shinyOAuth defaults to
-<code>A128CBC-HS256</code>. This must also match the provider-side JARM client
-metadata when encrypted responses are enabled.</p></dd>
-
-
-<dt id="arg-authorization-response-decryption-private-key">authorization_response_decryption_private_key<a class="anchor" aria-label="anchor" href="#arg-authorization-response-decryption-private-key"></a></dt>
-<dd><p>Optional private key
-used to decrypt encrypted JARM responses. Can be an <code>openssl::key</code> or a
-PEM string containing a private key. Required when encrypted JARM is
-enabled.</p></dd>
-
-
-<dt id="arg-authorization-response-decryption-private-key-kid">authorization_response_decryption_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-authorization-response-decryption-private-key-kid"></a></dt>
-<dd><p>Optional key
-identifier (<code>kid</code>) associated with
-<code>authorization_response_decryption_private_key</code>.</p></dd>
-
-
-<dt id="arg-jarm-max-lifetime">jarm_max_lifetime<a class="anchor" aria-label="anchor" href="#arg-jarm-max-lifetime"></a></dt>
-<dd><p>Positive number of seconds. Maximum accepted
-lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
-recommended 10-minute upper bound for authorization response JWTs. When a
-JARM payload includes <code>iat</code>, shinyOAuth enforces
-<code>exp - iat &lt;= jarm_max_lifetime</code>; otherwise it falls back to the
-remaining <code>exp</code> window at validation time. Applies only when
-<code>response_mode</code> uses JARM.</p></dd>
-
-
-<dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>
-<dd><p>Optional JWS algorithm override for
-signed authorization requests when <code>authorization_request_mode</code> uses a
-Request Object (<code>"request"</code> or <code>"request_uri"</code>).
-When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
-compatible asymmetric default based on <code>client_private_key</code> (for example
-<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or <code>ES512</code>). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
-<code>PS384</code>, <code>PS512</code>, and <code>EdDSA</code> are not currently supported for outbound
-signed authorization requests.</p></dd>
-
-
-<dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
-<dd><p>Optional override for the <code>aud</code> claim
-used in signed authorization requests. By default, shinyOAuth uses the
-provider issuer when available. When
-<code>authorization_request_mode = "request"</code> or <code>"request_uri"</code>, the provider
-must have a configured issuer or you must supply an explicit override so
-the signed Request Object remains audience-bound to the intended
-authorization server.</p></dd>
-
-
-<dt id="arg-authorization-request-encryption-alg">authorization_request_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-alg"></a></dt>
-<dd><p>Optional JWE key-management
-algorithm override for encrypted Request Objects. Current outbound support
-is limited to <code>RSA-OAEP</code>. When set, you must also set
-<code>authorization_request_encryption_enc</code>.</p></dd>
-
-
-<dt id="arg-authorization-request-encryption-enc">authorization_request_encryption_enc<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-enc"></a></dt>
-<dd><p>Optional JWE content-encryption
-algorithm override for encrypted Request Objects. Current outbound support
-is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
-<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When set, you must also set
-<code>authorization_request_encryption_alg</code>.</p></dd>
-
-
-<dt id="arg-authorization-request-encryption-kid">authorization_request_encryption_kid<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-kid"></a></dt>
-<dd><p>Optional key identifier (<code>kid</code>)
-used to select one provider encryption key and emit the outer JWE <code>kid</code>
-header. This is mainly useful when the provider publishes more than one
-Request Object encryption key.</p></dd>
-
-
-<dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>
-<dd><p>Positive number of seconds to keep signed
-authorization request objects (<code>request</code> JWTs) valid. When
-<code>authorization_request_mode = "request_uri"</code>, shinyOAuth also uses this
-value as the default publication window for the referenced Request Object
-URI. Default is <code>45</code>.</p></dd>
-
-
-<dt id="arg-authorization-request-nbf-skew">authorization_request_nbf_skew<a class="anchor" aria-label="anchor" href="#arg-authorization-request-nbf-skew"></a></dt>
-<dd><p>Optional non-negative number of
-seconds. When provided, shinyOAuth adds an <code>nbf</code> claim set to
-<code>iat - authorization_request_nbf_skew</code> so deployments can tolerate small
-clock skew while still emitting bounded request-object validity windows.
-Leave <code>NULL</code> (the default) to omit <code>nbf</code>. Request-object <code>nbf</code> is reserved
-by shinyOAuth and cannot be supplied through extra authorization
-parameters.</p></dd>
 
 
 <dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>
@@ -537,100 +495,142 @@ to allow Bearer access tokens, such as deployments where DPoP is used only
 to bind refresh tokens.</p></dd>
 
 
-<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
-<dd><p>Controls how scope discrepancies are handled when
-the authorization server grants fewer scopes than requested. RFC 6749
-Section 3.3 permits servers to issue tokens with reduced scope, and
-Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
-from the requested scope.</p><ul><li><p><code>"warn"</code> (default): Emits a warning but continues authentication if
-scopes are missing.</p></li>
-<li><p><code>"strict"</code>: Throws an error if any requested scope is missing from the
-granted scopes. Omitted <code>scope</code> is treated as unchanged, not as an
-error.</p></li>
-<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
-</ul></dd>
+<dt id="arg-request-object-mode">request_object_mode<a class="anchor" aria-label="anchor" href="#arg-request-object-mode"></a></dt>
+<dd><p>Controls how the authorization request is
+transported to the provider.</p><ul><li><p><code>"parameters"</code> (default): send OAuth parameters directly on the browser
+redirect URL.</p></li>
+<li><p><code>"request"</code>: send a signed JWT-secured authorization request (JAR;
+RFC 9101) via the <code>request</code> parameter.</p></li>
+<li><p><code>"request_uri"</code>: publish a signed Request Object by reference and send
+its URL via the <code>request_uri</code> parameter.</p></li>
+</ul><p>Most users can keep the default. Request mode is an advanced option that
+requires signing material on the client. shinyOAuth prefers
+<code>client_assertion_private_key</code> when present; otherwise it falls back to HMAC signing
+with <code>client_secret</code>. When Request Object encryption is configured,
+shinyOAuth signs first and then wraps the signed Request Object in a JWE.
+If a caller-managed <code>request_uri</code> uses HTTP and the configured host policy
+explicitly allows it, shinyOAuth still publishes it but warns once per R
+session because RFC 9101 Section 5.2 expects client-provided
+<code>request_uri</code> values to use HTTPS.
+If the provider advertises <code>require_request_uri_registration = TRUE</code>,
+caller-managed <code>request_uri</code> publication still depends on the provider
+having that URI or a matching wildcard prefix registered for the client;
+shinyOAuth cannot verify that server-side registration automatically.</p></dd>
 
 
-<dt id="arg-claims-validation">claims_validation<a class="anchor" aria-label="anchor" href="#arg-claims-validation"></a></dt>
-<dd><p>Controls validation of requested claims supplied via
-the <code>claims</code> parameter (OIDC Core §5.5). When <code>claims</code> includes entries
-with <code>essential = TRUE</code> for <code>id_token</code> or <code>userinfo</code>, or explicit <code>value</code>
-/ <code>values</code> constraints for individual claims, this setting determines what
-happens if the returned ID token or userinfo response does not satisfy
-those requests.</p><ul><li><p><code>"none"</code>: Skips claims validation entirely. This remains the effective
-default when the supplied <code>claims</code> request has no enforceable
-<code>essential</code>, <code>value</code>, or <code>values</code> constraints, and when you explicitly
-set <code>claims_validation = "none"</code>.</p></li>
-<li><p><code>"warn"</code>: Emits a warning but continues authentication if requested
-essential claims are missing or requested claim values are not
-satisfied.</p></li>
-<li><p><code>"strict"</code>: Throws an error if any requested essential claims are
-missing or requested claim <code>value</code> / <code>values</code> constraints are not
-satisfied by the response.</p></li>
-</ul><p>If <code>claims_validation</code> is omitted and the supplied <code>claims</code> request does
-include enforceable <code>essential</code>, <code>value</code>, or <code>values</code> constraints,
-<code>oauth_client()</code> promotes the effective default to <code>"warn"</code> so those
-mismatches are surfaced by default.</p>
-<p>Enforceable requests under <code>claims$id_token</code> require a validated ID token.
-Configure the provider with <code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>
-so shinyOAuth validates the ID token before checking those claims.</p></dd>
+<dt id="arg-request-object-signing-alg">request_object_signing_alg<a class="anchor" aria-label="anchor" href="#arg-request-object-signing-alg"></a></dt>
+<dd><p>Optional JWS algorithm override for
+signed authorization requests when <code>request_object_mode</code> uses a
+Request Object (<code>"request"</code> or <code>"request_uri"</code>).
+When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
+compatible asymmetric default based on <code>client_assertion_private_key</code> (for example
+<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or <code>ES512</code>). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
+<code>PS384</code>, <code>PS512</code>, and <code>EdDSA</code> are not currently supported for outbound
+signed authorization requests.</p></dd>
 
 
-<dt id="arg-userinfo-jwt-required-temporal-claims">userinfo_jwt_required_temporal_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-temporal-claims"></a></dt>
-<dd><p>Optional character vector of
-temporal JWT claims that must be present when the UserInfo response is a
-signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
-<code>"nbf"</code>.</p>
-<p>Default is <code>character(0)</code>, which means these claims are validated only when
-present. Set, for example, <code>userinfo_jwt_required_temporal_claims = "exp"</code>
-to require an expiry on signed UserInfo JWTs, or pass multiple values to
-require additional temporal claims. For security-sensitive deployments that
-accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
+<dt id="arg-request-object-audience">request_object_audience<a class="anchor" aria-label="anchor" href="#arg-request-object-audience"></a></dt>
+<dd><p>Optional override for the <code>aud</code> claim
+used in signed authorization requests. By default, shinyOAuth uses the
+provider issuer when available. When
+<code>request_object_mode = "request"</code> or <code>"request_uri"</code>, the provider
+must have a configured issuer or you must supply an explicit override so
+the signed Request Object remains audience-bound to the intended
+authorization server.</p></dd>
 
 
-<dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
-<dd><p>Optional character vector of acceptable
-Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
-When non-empty, the ID token returned by the provider must contain an
-<code>acr</code> claim whose value is one of the specified entries; otherwise the
-login fails with a <code>shinyOAuth_id_token_error</code>.</p>
-<p>Additionally, when non-empty, the authorization request automatically
-includes an <code>acr_values</code> query parameter (space-separated) as a voluntary
-hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
-not required to honour this hint; the client-side validation is the
-authoritative enforcement.</p>
-<p>Requires an OIDC-capable provider with <code>id_token_validation = TRUE</code> and
-an <code>issuer</code> configured.  Default is <code>character(0)</code> (no enforcement).</p></dd>
+<dt id="arg-request-object-encryption-alg">request_object_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg"></a></dt>
+<dd><p>Optional JWE key-management
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to <code>RSA-OAEP</code>. When set, you must also set
+<code>request_object_encryption_enc</code>.</p></dd>
 
 
-<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
-<dd><p>If TRUE, the login flow will call the provider's token
-introspection endpoint (RFC 7662) to validate the access token. The login
-is not considered complete unless introspection succeeds and returns
-<code>active = TRUE</code>; otherwise the login fails and <code>authenticated</code> remains
-FALSE. When <code><a href="oauth_module_server.html">oauth_module_server()</a></code> later performs proactive refresh, it
-also forwards this setting so refreshed access tokens are introspected
-through the same client policy. Default is FALSE. Requires the provider to
-have an <code>introspection_url</code> configured.</p></dd>
+<dt id="arg-request-object-encryption-enc">request_object_encryption_enc<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-enc"></a></dt>
+<dd><p>Optional JWE content-encryption
+algorithm override for encrypted Request Objects. Current outbound support
+is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
+<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When set, you must also set
+<code>request_object_encryption_alg</code>.</p></dd>
 
 
-<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
-<dd><p>Optional character vector of additional
-requirements to enforce on the introspection response when
-<code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
-(from a validated ID token <code>sub</code> when available, else from userinfo
-<code>sub</code>).</p></li>
-<li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
-client id.</p></li>
-<li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes
-(respects the client's <code>scope_validation</code> mode).</p></li>
-<li><p><code>"token_type"</code>: require introspection to return <code>token_type</code>. This is
-useful for sender-constrained deployments such as DPoP, where
-introspection can authoritatively report <code>token_type = "DPoP"</code>.
-Default is <code>character(0)</code>.
-(Note that not all providers may return each of these fields in
-introspection responses.)</p></li>
-</ul></dd>
+<dt id="arg-request-object-encryption-kid">request_object_encryption_kid<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-kid"></a></dt>
+<dd><p>Optional key identifier (<code>kid</code>)
+used to select one provider encryption key and emit the outer JWE <code>kid</code>
+header. This is mainly useful when the provider publishes more than one
+Request Object encryption key.</p></dd>
+
+
+<dt id="arg-request-object-ttl">request_object_ttl<a class="anchor" aria-label="anchor" href="#arg-request-object-ttl"></a></dt>
+<dd><p>Positive number of seconds to keep signed
+authorization request objects (<code>request</code> JWTs) valid. When
+<code>request_object_mode = "request_uri"</code>, shinyOAuth also uses this
+value as the default publication window for the referenced Request Object
+URI. Default is <code>45</code>.</p></dd>
+
+
+<dt id="arg-request-object-nbf-skew">request_object_nbf_skew<a class="anchor" aria-label="anchor" href="#arg-request-object-nbf-skew"></a></dt>
+<dd><p>Optional non-negative number of
+seconds. When provided, shinyOAuth adds an <code>nbf</code> claim set to
+<code>iat - request_object_nbf_skew</code> so deployments can tolerate small
+clock skew while still emitting bounded request-object validity windows.
+Leave <code>NULL</code> (the default) to omit <code>nbf</code>. Request-object <code>nbf</code> is reserved
+by shinyOAuth and cannot be supplied through extra authorization
+parameters.</p></dd>
+
+
+<dt id="arg-jarm-signed-response-alg">jarm_signed_response_alg<a class="anchor" aria-label="anchor" href="#arg-jarm-signed-response-alg"></a></dt>
+<dd><p>Optional expected JWS algorithm for
+signed JWT Secured Authorization Responses (JARM). When omitted and the
+effective response mode is JARM, shinyOAuth defaults to <code>RS256</code>. This
+value is not sent dynamically on the authorization request; it must match
+the client metadata and provider behavior configured out-of-band for that
+client. Current inbound support accepts <code>HS256</code>, <code>HS384</code>, <code>HS512</code>,
+<code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code>.
+RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) and unsecured <code>none</code> are not accepted
+for inbound JARM.</p></dd>
+
+
+<dt id="arg-jarm-encrypted-response-alg">jarm_encrypted_response_alg<a class="anchor" aria-label="anchor" href="#arg-jarm-encrypted-response-alg"></a></dt>
+<dd><p>Optional expected JWE
+key-management algorithm for encrypted JARM responses. Current inbound
+support is limited to <code>RSA-OAEP</code>. Like
+<code>jarm_signed_response_alg</code>, this reflects out-of-band client
+metadata and expected provider behavior rather than an authorization
+request parameter emitted by shinyOAuth.</p></dd>
+
+
+<dt id="arg-jarm-encrypted-response-enc">jarm_encrypted_response_enc<a class="anchor" aria-label="anchor" href="#arg-jarm-encrypted-response-enc"></a></dt>
+<dd><p>Optional expected JWE
+content-encryption algorithm for encrypted JARM responses. Current inbound
+support is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
+<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When omitted while
+<code>jarm_encrypted_response_alg</code> is set, shinyOAuth defaults to
+<code>A128CBC-HS256</code>. This must also match the provider-side JARM client
+metadata when encrypted responses are enabled.</p></dd>
+
+
+<dt id="arg-jarm-decryption-private-key">jarm_decryption_private_key<a class="anchor" aria-label="anchor" href="#arg-jarm-decryption-private-key"></a></dt>
+<dd><p>Optional private key
+used to decrypt encrypted JARM responses. Can be an <code>openssl::key</code> or a
+PEM string containing a private key. Required when encrypted JARM is
+enabled.</p></dd>
+
+
+<dt id="arg-jarm-decryption-private-key-kid">jarm_decryption_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-jarm-decryption-private-key-kid"></a></dt>
+<dd><p>Optional key
+identifier (<code>kid</code>) associated with
+<code>jarm_decryption_private_key</code>.</p></dd>
+
+
+<dt id="arg-jarm-max-lifetime">jarm_max_lifetime<a class="anchor" aria-label="anchor" href="#arg-jarm-max-lifetime"></a></dt>
+<dd><p>Positive number of seconds. Maximum accepted
+lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+recommended 10-minute upper bound for authorization response JWTs. When a
+JARM payload includes <code>iat</code>, shinyOAuth enforces
+<code>exp - iat &lt;= jarm_max_lifetime</code>; otherwise it falls back to the
+remaining <code>exp</code> window at validation time. Applies only when
+<code>response_mode</code> uses JARM.</p></dd>
 
 </dl></div>
     <div class="section level2">

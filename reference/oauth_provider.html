@@ -172,8 +172,8 @@ outer <code>scope</code> containing <code>openid</code>.</p></dd>
 <dd><p>Optional vector of JWS
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an <a href="OAuthClient.html">OAuthClient</a>
-sends <code>authorization_request_mode = "request"</code> or
-<code>authorization_request_mode = "request_uri"</code>.</p></dd>
+sends <code>request_object_mode = "request"</code> or
+<code>request_object_mode = "request_uri"</code>.</p></dd>
 
 
 <dt id="arg-request-object-encryption-alg-values-supported">request_object_encryption_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg-values-supported"></a></dt>
@@ -201,8 +201,8 @@ JSON string.</p></dd>
 <dt id="arg-require-signed-request-object">require_signed_request_object<a class="anchor" aria-label="anchor" href="#arg-require-signed-request-object"></a></dt>
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
-should use <code>authorization_request_mode = "request"</code> or
-<code>authorization_request_mode = "request_uri"</code>.</p></dd>
+should use <code>request_object_mode = "request"</code> or
+<code>request_object_mode = "request_uri"</code>.</p></dd>
 
 
 <dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>

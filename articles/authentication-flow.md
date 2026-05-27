@@ -83,7 +83,7 @@ derived key based on the plain state value:
 
 These values are used later during callback validation.
 
-If the client has `authorization_request_mode = "request"`, ‘shinyOAuth’
+If the client has `request_object_mode = "request"`, ‘shinyOAuth’
 switches from plain query parameters to a JWT-based authorization
 request. This is the JAR pattern (RFC 9101). In that mode, the package
 builds a Request Object JWT containing the OAuth authorization
@@ -94,10 +94,10 @@ from tampering. When Request Object encryption is configured,
 JWE, as RFC 9101 requires for nested JWTs, so the request gains
 confidentiality as well.
 
-If the client has `authorization_request_mode = "request_uri"`,
-‘shinyOAuth’ builds the same Request Object but publishes it by
-reference and redirects the browser with a `request_uri` instead of an
-inline `request` JWT. In
+If the client has `request_object_mode = "request_uri"`, ‘shinyOAuth’
+builds the same Request Object but publishes it by reference and
+redirects the browser with a `request_uri` instead of an inline
+`request` JWT. In
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
 the default publisher serves that Request Object from the current Shiny
 app origin, and `request_uri_base_url` lets you override the public base
@@ -112,9 +112,9 @@ Shiny path layout, so prefer PAR when you need provider-facing opaque
 handles.
 
 If the provider has a `par_url` configured and the client is not using
-caller-managed `authorization_request_mode = "request_uri"`, the module
-uses Pushed Authorization Requests (PAR, RFC 9126) before redirecting
-the browser. In that mode, the authorization request is first sent
+caller-managed `request_object_mode = "request_uri"`, the module uses
+Pushed Authorization Requests (PAR, RFC 9126) before redirecting the
+browser. In that mode, the authorization request is first sent
 server-to-server to the provider’s PAR endpoint as a form-encoded POST.
 The browser is then redirected with a provider-issued `request_uri`
 handle instead of the raw authorization parameters. By default, OIDC
@@ -125,9 +125,9 @@ Set
 `oauth_provider(authorization_request_front_channel_mode = "minimal")`
 for stricter authorization servers that expect only `client_id` plus
 `request_uri`. Plain OAuth PAR flows already use that minimal shape. If
-the provider requires PAR, `authorization_request_mode = "request_uri"`
-is not allowed, because RFC 9126 assigns the `request_uri` handle to the
-PAR response and the PAR request itself must not include a `request_uri`
+the provider requires PAR, `request_object_mode = "request_uri"` is not
+allowed, because RFC 9126 assigns the `request_uri` handle to the PAR
+response and the PAR request itself must not include a `request_uri`
 parameter.
 
 ### 4. App redirects to the provider
@@ -362,8 +362,8 @@ discovered `mtls_endpoint_aliases`.
 Certificate-bound access tokens are a separate RFC 8705 policy. When the
 provider advertises `tls_client_certificate_bound_access_tokens = TRUE`
 and the client opts in with
-`mtls_request_certificate_bound_access_tokens = TRUE`, ‘shinyOAuth’
-prefers the mTLS endpoints for authorization-server requests even when
+`mtls_certificate_bound_access_tokens = TRUE`, ‘shinyOAuth’ prefers the
+mTLS endpoints for authorization-server requests even when
 `token_auth_style` itself is not an mTLS auth style, and then treats the
 resulting access tokens as sender-constrained when the binding is
 observable:
@@ -512,7 +512,7 @@ even if HS\* is otherwise enabled for ID tokens.
 
 For security-sensitive deployments that rely on signed UserInfo JWTs,
 consider requiring at least an expiry claim with
-`oauth_client(userinfo_jwt_required_temporal_claims = "exp")`. OIDC Core
+`oauth_client(userinfo_jwt_required_time_claims = "exp")`. OIDC Core
 does not require `exp` on signed UserInfo responses, so ‘shinyOAuth’
 leaves that policy opt-in and validates `exp`, `iat`, and `nbf` whenever
 they are present.

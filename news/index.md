@@ -72,9 +72,8 @@ CRAN release: 2026-05-23
 - Added JWT-Secured Authorization Request (‘JAR’, RFC 9101) support.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   can now send signed and encrypted Request Objects via
-  `authorization_request_mode = "request"` (sent as parameter) or via
-  `authorization_request_mode = "request_uri"` (served from your Shiny
-  app).
+  `request_object_mode = "request"` (sent as parameter) or via
+  `request_object_mode = "request_uri"` (served from your Shiny app).
 
 - Added Pushed Authorization Request (‘PAR’, RFC 9126) support.
   Providers can now configure `par_url` directly or pick it up from OIDC
@@ -350,7 +349,7 @@ CRAN release: 2026-05-23
     instead of accepting them based only on signature/issuer/audience.
     [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
     can also require specific UserInfo JWT temporal claims to be present
-    via `userinfo_jwt_required_temporal_claims`.
+    via `userinfo_jwt_required_time_claims`.
   - Uses internal JWS verifier instead of
     [`jose::jwt_decode_sig()`](https://r-lib.r-universe.dev/jose/reference/jwt_encode.html),
     so EdDSA UserInfo JWTs can verify correctly, provider `leeway` is

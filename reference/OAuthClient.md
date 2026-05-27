@@ -15,49 +15,49 @@ OAuthClient(
   provider = NULL,
   client_id = character(0),
   client_secret = character(0),
-  client_private_key = NULL,
-  client_private_key_kid = NA_character_,
+  redirect_uri = character(0),
+  scopes = character(0),
+  response_mode = NA_character_,
+  resource = character(0),
+  claims = NULL,
+  enforce_callback_issuer = FALSE,
+  scope_validation = "warn",
+  claims_validation = "none",
+  required_acr_values = character(0),
+  userinfo_jwt_required_time_claims = character(0),
+  introspect = FALSE,
+  introspect_elements = character(0),
+  state_store = cachem::cache_mem(max_age = 300),
+  state_payload_max_age = 300,
+  state_entropy = 64,
+  state_key = random_urlsafe(n = 128),
+  client_assertion_private_key = NULL,
+  client_assertion_private_key_kid = NA_character_,
   client_assertion_alg = NA_character_,
   client_assertion_audience = NA_character_,
   tls_client_cert_file = NA_character_,
   tls_client_key_file = NA_character_,
   tls_client_key_password = NA_character_,
   tls_client_ca_file = NA_character_,
-  mtls_request_certificate_bound_access_tokens = FALSE,
-  authorization_request_mode = "parameters",
-  response_mode = NA_character_,
-  authorization_signed_response_alg = NA_character_,
-  authorization_encrypted_response_alg = NA_character_,
-  authorization_encrypted_response_enc = NA_character_,
-  authorization_response_decryption_private_key = NULL,
-  authorization_response_decryption_private_key_kid = NA_character_,
-  jarm_max_lifetime = 600,
-  authorization_request_signing_alg = NA_character_,
-  authorization_request_audience = NA_character_,
-  authorization_request_encryption_alg = NA_character_,
-  authorization_request_encryption_enc = NA_character_,
-  authorization_request_encryption_kid = NA_character_,
-  authorization_request_ttl = 45,
-  authorization_request_nbf_skew = NA_real_,
+  mtls_certificate_bound_access_tokens = FALSE,
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
   dpop_signing_alg = NA_character_,
   dpop_require_access_token = FALSE,
-  redirect_uri = character(0),
-  enforce_callback_issuer = FALSE,
-  scopes = character(0),
-  resource = character(0),
-  claims = NULL,
-  state_store = cachem::cache_mem(max_age = 300),
-  state_payload_max_age = 300,
-  state_entropy = 64,
-  state_key = random_urlsafe(n = 128),
-  scope_validation = "warn",
-  claims_validation = "none",
-  userinfo_jwt_required_temporal_claims = character(0),
-  required_acr_values = character(0),
-  introspect = FALSE,
-  introspect_elements = character(0)
+  request_object_mode = "parameters",
+  request_object_signing_alg = NA_character_,
+  request_object_audience = NA_character_,
+  request_object_encryption_alg = NA_character_,
+  request_object_encryption_enc = NA_character_,
+  request_object_encryption_kid = NA_character_,
+  request_object_ttl = 45,
+  request_object_nbf_skew = NA_real_,
+  jarm_signed_response_alg = NA_character_,
+  jarm_encrypted_response_alg = NA_character_,
+  jarm_encrypted_response_enc = NA_character_,
+  jarm_decryption_private_key = NULL,
+  jarm_decryption_private_key_kid = NA_character_,
+  jarm_max_lifetime = 600
 )
 ```
 
@@ -97,117 +97,17 @@ OAuthClient(
   `id_token_validation` is enabled, a non-empty `client_secret` is
   required for signature validation.
 
-- client_private_key:
+- redirect_uri:
 
-  Optional private key for `private_key_jwt` client authentication at
-  the token endpoint. Can be an `openssl::key` or a PEM string
-  containing a private key. Required when the provider's
-  `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
-  Current outbound private-key JWT signing supports RSA and EC private
-  keys. For RSA keys, outbound signing is currently limited to `RS256`;
-  `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
-  supported. Ed25519/Ed448 keys are also not currently supported.
+  Redirect URI registered with provider
 
-- client_private_key_kid:
+- scopes:
 
-  Optional key identifier (kid) to include in the JWT header for
-  `private_key_jwt` assertions. Useful when the authorization server
-  uses kid to select the correct verification key.
-
-- client_assertion_alg:
-
-  Optional JWT signing algorithm to use for client assertions. When
-  omitted, defaults to `HS256` for `client_secret_jwt`. For
-  `private_key_jwt`, a compatible default is selected based on the
-  private key type/curve (e.g., `RS256` for RSA or
-  `ES256`/`ES384`/`ES512` for EC P-256/384/521). If an explicit value is
-  provided but incompatible with the key, validation fails early with a
-  configuration error. When the provider advertises
-  `token_endpoint_auth_signing_alg_values_supported`, both explicit
-  values and inferred defaults must be included in that set. Supported
-  values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
-  asymmetric algorithms supported for outbound signing (`RS256`,
-  `ES256`, `ES384`, `ES512`) for private keys. `RS384`, `RS512`,
-  `PS256`, `PS384`, `PS512`, and `EdDSA` are not currently supported for
-  outbound client assertions.
-
-- client_assertion_audience:
-
-  Optional override for the `aud` claim used when building JWT client
-  assertions (`client_secret_jwt` / `private_key_jwt`). By default,
-  shinyOAuth uses the exact token endpoint request URL. Some identity
-  providers require a different audience value; set this to the exact
-  value your IdP expects.
-
-- tls_client_cert_file:
-
-  Optional path to the PEM-encoded client certificate (or certificate
-  chain) used for RFC 8705 mutual TLS client authentication and
-  certificate-bound protected-resource requests. Required when
-  `provider@token_auth_style` is `"tls_client_auth"` or
-  `"self_signed_tls_client_auth"`.
-
-- tls_client_key_file:
-
-  Optional path to the PEM-encoded private key used with
-  `tls_client_cert_file`. Must be supplied together with
-  `tls_client_cert_file`, and is required for RFC 8705 mTLS client
-  authentication.
-
-- tls_client_key_password:
-
-  Optional password used to decrypt an encrypted PEM private key
-  referenced by `tls_client_key_file`.
-
-- tls_client_ca_file:
-
-  Optional path to a PEM CA bundle used to validate the remote HTTPS
-  server certificate when making mTLS requests. This is mainly useful
-  for local or test environments that use self-signed server
-  certificates.
-
-- mtls_request_certificate_bound_access_tokens:
-
-  Logical. Whether this client intends to request RFC 8705
-  certificate-bound access tokens when the provider advertises that
-  capability. Default is `FALSE`.
-
-  Set this to `TRUE` for clients that should prefer discovered
-  `mtls_endpoint_aliases` on authorization-server requests even when
-  `token_auth_style` itself is not an mTLS auth style, and that should
-  fail closed if the returned access token omits `cnf.x5t#S256`.
-
-  Requires `tls_client_cert_file` and `tls_client_key_file`, and the
-  provider must be configured with
-  `tls_client_certificate_bound_access_tokens = TRUE`.
-
-- authorization_request_mode:
-
-  Controls how the authorization request is transported to the provider.
-
-  - `"parameters"` (default): send OAuth parameters directly on the
-    browser redirect URL.
-
-  - `"request"`: send a signed JWT-secured authorization request (JAR;
-    RFC 9101) via the `request` parameter.
-
-  - `"request_uri"`: publish a signed Request Object by reference and
-    send its URL via the `request_uri` parameter.
-
-  Most users can keep the default. Request mode is an advanced option
-  that requires signing material on the client. shinyOAuth prefers
-  `client_private_key` when present; otherwise it falls back to HMAC
-  signing with `client_secret`. When Request Object encryption is
-  configured, shinyOAuth signs first and then wraps the signed Request
-  Object in a JWE. If a caller-managed `request_uri` uses HTTP and the
-  configured host policy explicitly allows it, shinyOAuth still
-  publishes it but warns once per R session because RFC 9101 Section 5.2
-  expects client-provided `request_uri` values to use HTTPS. If the
-  provider advertises `require_request_uri_registration = TRUE`,
-  caller-managed `request_uri` publication still depends on the provider
-  having that URI or a matching wildcard prefix registered for the
-  client; shinyOAuth cannot verify that server-side registration
-  automatically.
+  Vector of scopes to request. For OIDC providers (those with an
+  `issuer`), shinyOAuth automatically prepends `openid` when it is
+  missing; that effective scope set is what gets sent in the
+  authorization request and used for later state and token-scope
+  validation.
 
 - response_mode:
 
@@ -241,193 +141,6 @@ OAuthClient(
   helper still accepts only the classic direct `code` + sealed `state`
   callback shape and does not expose a public JARM validation/resume
   API.
-
-- authorization_signed_response_alg:
-
-  Optional expected JWS algorithm for signed JWT Secured Authorization
-  Responses (JARM). When omitted and the effective response mode is
-  JARM, shinyOAuth defaults to `RS256`. This value is not sent
-  dynamically on the authorization request; it must match the client
-  metadata and provider behavior configured out-of-band for that client.
-  Current inbound support accepts `HS256`, `HS384`, `HS512`, `RS256`,
-  `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS
-  (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted for
-  inbound JARM.
-
-- authorization_encrypted_response_alg:
-
-  Optional expected JWE key-management algorithm for encrypted JARM
-  responses. Current inbound support is limited to `RSA-OAEP`. Like
-  `authorization_signed_response_alg`, this reflects out-of-band client
-  metadata and expected provider behavior rather than an authorization
-  request parameter emitted by shinyOAuth.
-
-- authorization_encrypted_response_enc:
-
-  Optional expected JWE content-encryption algorithm for encrypted JARM
-  responses. Current inbound support is limited to the AES-CBC-HMAC
-  family (`A128CBC-HS256`, `A192CBC-HS384`, `A256CBC-HS512`). When
-  omitted while `authorization_encrypted_response_alg` is set,
-  shinyOAuth defaults to `A128CBC-HS256`. This must also match the
-  provider-side JARM client metadata when encrypted responses are
-  enabled.
-
-- authorization_response_decryption_private_key:
-
-  Optional private key used to decrypt encrypted JARM responses. Can be
-  an `openssl::key` or a PEM string containing a private key. Required
-  when encrypted JARM is enabled.
-
-- authorization_response_decryption_private_key_kid:
-
-  Optional key identifier (`kid`) associated with
-  `authorization_response_decryption_private_key`.
-
-- jarm_max_lifetime:
-
-  Positive number of seconds. Maximum accepted lifetime for a JARM
-  response JWT. Default is 600 seconds, matching JARM's recommended
-  10-minute upper bound for authorization response JWTs. When a JARM
-  payload includes `iat`, shinyOAuth enforces
-  `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
-  remaining `exp` window at validation time. Applies only when
-  `response_mode` uses JARM.
-
-- authorization_request_signing_alg:
-
-  Optional JWS algorithm override for signed authorization requests when
-  `authorization_request_mode` uses a Request Object (`"request"` or
-  `"request_uri"`). When omitted, shinyOAuth chooses `HS256` for
-  HMAC-based signing or a compatible asymmetric default based on
-  `client_private_key` (for example `RS256`, `ES256`, `ES384`, or
-  `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are
-  not currently supported for outbound signed authorization requests.
-
-- authorization_request_audience:
-
-  Optional override for the `aud` claim used in signed authorization
-  requests. By default, shinyOAuth uses the provider issuer when
-  available. When `authorization_request_mode = "request"` or
-  `"request_uri"`, the provider must have a configured issuer or you
-  must supply an explicit override so the signed Request Object remains
-  audience-bound to the intended authorization server.
-
-- authorization_request_encryption_alg:
-
-  Optional JWE key-management algorithm override for encrypted Request
-  Objects. Current outbound support is limited to `RSA-OAEP`. When set,
-  you must also set `authorization_request_encryption_enc`.
-
-- authorization_request_encryption_enc:
-
-  Optional JWE content-encryption algorithm override for encrypted
-  Request Objects. Current outbound support is limited to the
-  AES-CBC-HMAC family (`A128CBC-HS256`, `A192CBC-HS384`,
-  `A256CBC-HS512`). When set, you must also set
-  `authorization_request_encryption_alg`.
-
-- authorization_request_encryption_kid:
-
-  Optional key identifier (`kid`) used to select one provider encryption
-  key and emit the outer JWE `kid` header. This is mainly useful when
-  the provider publishes more than one Request Object encryption key.
-
-- authorization_request_ttl:
-
-  Positive number of seconds to keep signed authorization request
-  objects (`request` JWTs) valid. When
-  `authorization_request_mode = "request_uri"`, shinyOAuth also uses
-  this value as the default publication window for the referenced
-  Request Object URI. Default is `45`.
-
-- authorization_request_nbf_skew:
-
-  Optional non-negative number of seconds. When provided, shinyOAuth
-  adds an `nbf` claim set to `iat - authorization_request_nbf_skew` so
-  deployments can tolerate small clock skew while still emitting bounded
-  request-object validity windows. Leave `NULL` (the default) to omit
-  `nbf`. Request-object `nbf` is reserved by shinyOAuth and cannot be
-  supplied through extra authorization parameters.
-
-- dpop_private_key:
-
-  Optional private key used to generate DPoP proofs (RFC 9449). Can be
-  an `openssl::key` or a PEM string containing an asymmetric private
-  key. When provided, shinyOAuth can attach `DPoP` proofs to token
-  endpoint requests and use DPoP-bound access tokens in downstream
-  request helpers. In
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-  configuring this key also makes `dpop_require_access_token` default to
-  `TRUE`, so access-token responses reject `token_type = "Bearer"`
-  unless you explicitly set `dpop_require_access_token = FALSE`. Current
-  outbound DPoP signing supports RSA and EC private keys. For RSA keys,
-  outbound signing is currently limited to `RS256`; `RS384`, `RS512`,
-  and RSA-PSS (`PS256`, `PS384`, `PS512`) are not supported.
-  Ed25519/Ed448 keys are also not currently supported. This is an
-  advanced setting; most clients do not need DPoP unless their provider
-  or resource server asks for it.
-
-- dpop_private_key_kid:
-
-  Optional key identifier (`kid`) to include in the JOSE header of DPoP
-  proofs. Useful when the authorization or resource server expects a
-  stable key identifier alongside the embedded public JWK.
-
-- dpop_signing_alg:
-
-  Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
-  compatible asymmetric default is selected based on the private key
-  type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`).
-  `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are not
-  currently supported for outbound DPoP proofs. If an explicit value is
-  provided but incompatible with the key, validation fails early with a
-  configuration error. When the provider advertises
-  `dpop_signing_alg_values_supported`, both explicit values and inferred
-  defaults must be included in that set.
-
-- dpop_require_access_token:
-
-  Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
-  shinyOAuth requires the authorization server to return
-  `token_type = "DPoP"` for access tokens and fails fast otherwise. When
-  shinyOAuth can observe token binding data from a JWT access token or
-  an introspection response, this strict mode also requires `cnf$jkt` to
-  be present and match the configured `dpop_private_key`. Opaque access
-  tokens that expose no `cnf` data still pass this check unless
-  introspection later reveals the binding. In
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-  the default `NULL` resolves to `TRUE` when `dpop_private_key` is
-  configured and to `FALSE` otherwise. Set `FALSE` explicitly only when
-  you intentionally want to allow Bearer access tokens, such as
-  deployments where DPoP is used only to bind refresh tokens.
-
-- redirect_uri:
-
-  Redirect URI registered with provider
-
-- enforce_callback_issuer:
-
-  Logical or `NULL`. When `TRUE`, enforce that authorization responses
-  handled through this client include an RFC 9207 `iss` parameter and
-  reject callbacks unless it exactly matches `provider@issuer`. This is
-  recommended when one callback URL can receive responses from more than
-  one authorization server. Requires the provider to have a configured
-  `issuer`.
-
-  When `NULL` (the
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  helper default), shinyOAuth auto-enables this check for providers that
-  advertise `authorization_response_iss_parameter_supported = TRUE` and
-  have a configured `issuer`, such as OIDC discovery providers that
-  expose RFC 9207 support. Set `FALSE` to opt out explicitly.
-
-- scopes:
-
-  Vector of scopes to request. For OIDC providers (those with an
-  `issuer`), shinyOAuth automatically prepends `openid` when it is
-  missing; that effective scope set is what gets sent in the
-  authorization request and used for later state and token-scope
-  validation.
 
 - resource:
 
@@ -469,6 +182,138 @@ OAuthClient(
     valid JSON. Use this when you need full control over JSON encoding.
     Note: The `claims` parameter is OPTIONAL per OIDC Core §5.5. Not all
     providers support it; consult your provider's documentation.
+
+- enforce_callback_issuer:
+
+  Logical or `NULL`. When `TRUE`, enforce that authorization responses
+  handled through this client include an RFC 9207 `iss` parameter and
+  reject callbacks unless it exactly matches `provider@issuer`. This is
+  recommended when one callback URL can receive responses from more than
+  one authorization server. Requires the provider to have a configured
+  `issuer`.
+
+  When `NULL` (the
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  helper default), shinyOAuth auto-enables this check for providers that
+  advertise `authorization_response_iss_parameter_supported = TRUE` and
+  have a configured `issuer`, such as OIDC discovery providers that
+  expose RFC 9207 support. Set `FALSE` to opt out explicitly.
+
+- scope_validation:
+
+  Controls how scope discrepancies are handled when the authorization
+  server grants fewer scopes than requested. RFC 6749 Section 3.3
+  permits servers to issue tokens with reduced scope, and Section 5.1
+  allows token responses to omit `scope` when it is unchanged from the
+  requested scope.
+
+  - `"warn"` (default): Emits a warning but continues authentication if
+    scopes are missing.
+
+  - `"strict"`: Throws an error if any requested scope is missing from
+    the granted scopes. Omitted `scope` is treated as unchanged, not as
+    an error.
+
+  - `"none"`: Skips scope validation entirely.
+
+- claims_validation:
+
+  Controls validation of requested claims supplied via the `claims`
+  parameter (OIDC Core §5.5). When `claims` includes entries with
+  `essential = TRUE` for `id_token` or `userinfo`, or explicit `value` /
+  `values` constraints for individual claims, this setting determines
+  what happens if the returned ID token or userinfo response does not
+  satisfy those requests.
+
+  - `"none"`: Skips claims validation entirely. This remains the
+    effective default when the supplied `claims` request has no
+    enforceable `essential`, `value`, or `values` constraints, and when
+    you explicitly set `claims_validation = "none"`.
+
+  - `"warn"`: Emits a warning but continues authentication if requested
+    essential claims are missing or requested claim values are not
+    satisfied.
+
+  - `"strict"`: Throws an error if any requested essential claims are
+    missing or requested claim `value` / `values` constraints are not
+    satisfied by the response.
+
+  If `claims_validation` is omitted and the supplied `claims` request
+  does include enforceable `essential`, `value`, or `values`
+  constraints,
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  promotes the effective default to `"warn"` so those mismatches are
+  surfaced by default.
+
+  Enforceable requests under `claims$id_token` require a validated ID
+  token. Configure the provider with `id_token_validation = TRUE` or
+  `use_nonce = TRUE` so shinyOAuth validates the ID token before
+  checking those claims.
+
+- required_acr_values:
+
+  Optional character vector of acceptable Authentication Context Class
+  Reference values (OIDC Core §2, §3.1.2.1). When non-empty, the ID
+  token returned by the provider must contain an `acr` claim whose value
+  is one of the specified entries; otherwise the login fails with a
+  `shinyOAuth_id_token_error`.
+
+  Additionally, when non-empty, the authorization request automatically
+  includes an `acr_values` query parameter (space-separated) as a
+  voluntary hint to the provider (OIDC Core §3.1.2.1). Note that the
+  provider is not required to honour this hint; the client-side
+  validation is the authoritative enforcement.
+
+  Requires an OIDC-capable provider with `id_token_validation = TRUE`
+  and an `issuer` configured. Default is `character(0)` (no
+  enforcement).
+
+- userinfo_jwt_required_time_claims:
+
+  Optional character vector of temporal JWT claims that must be present
+  when the UserInfo response is a signed JWT (`application/jwt`).
+  Allowed values are `"exp"`, `"iat"`, and `"nbf"`.
+
+  Default is `character(0)`, which means these claims are validated only
+  when present. Set, for example,
+  `userinfo_jwt_required_time_claims = "exp"` to require an expiry on
+  signed UserInfo JWTs, or pass multiple values to require additional
+  temporal claims. For security-sensitive deployments that accept signed
+  UserInfo JWTs, prefer requiring at least `"exp"`.
+
+- introspect:
+
+  If TRUE, the login flow will call the provider's token introspection
+  endpoint (RFC 7662) to validate the access token. The login is not
+  considered complete unless introspection succeeds and returns
+  `active = TRUE`; otherwise the login fails and `authenticated` remains
+  FALSE. When
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  later performs proactive refresh, it also forwards this setting so
+  refreshed access tokens are introspected through the same client
+  policy. Default is FALSE. Requires the provider to have an
+  `introspection_url` configured.
+
+- introspect_elements:
+
+  Optional character vector of additional requirements to enforce on the
+  introspection response when `introspect = TRUE`. Supported values:
+
+  - `"sub"`: require the introspected `sub` to match the session subject
+    (from a validated ID token `sub` when available, else from userinfo
+    `sub`).
+
+  - `"client_id"`: require the introspected `client_id` to match your
+    OAuth client id.
+
+  - `"scope"`: validate introspected `scope` against requested scopes
+    (respects the client's `scope_validation` mode).
+
+  - `"token_type"`: require introspection to return `token_type`. This
+    is useful for sender-constrained deployments such as DPoP, where
+    introspection can authoritatively report `token_type = "DPoP"`.
+    Default is `character(0)`. (Note that not all providers may return
+    each of these fields in introspection responses.)
 
 - state_store:
 
@@ -538,121 +383,276 @@ OAuthClient(
   and the same `state_key` across all workers. Otherwise callbacks that
   land on a different worker will fail state validation.
 
-- scope_validation:
+- client_assertion_private_key:
 
-  Controls how scope discrepancies are handled when the authorization
-  server grants fewer scopes than requested. RFC 6749 Section 3.3
-  permits servers to issue tokens with reduced scope, and Section 5.1
-  allows token responses to omit `scope` when it is unchanged from the
-  requested scope.
+  Optional private key for `private_key_jwt` client authentication at
+  the token endpoint. Can be an `openssl::key` or a PEM string
+  containing a private key. Required when the provider's
+  `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
+  Current outbound private-key JWT signing supports RSA and EC private
+  keys. For RSA keys, outbound signing is currently limited to `RS256`;
+  `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
+  supported. Ed25519/Ed448 keys are also not currently supported.
 
-  - `"warn"` (default): Emits a warning but continues authentication if
-    scopes are missing.
+- client_assertion_private_key_kid:
 
-  - `"strict"`: Throws an error if any requested scope is missing from
-    the granted scopes. Omitted `scope` is treated as unchanged, not as
-    an error.
+  Optional key identifier (kid) to include in the JWT header for
+  `private_key_jwt` assertions. Useful when the authorization server
+  uses kid to select the correct verification key.
 
-  - `"none"`: Skips scope validation entirely.
+- client_assertion_alg:
 
-- claims_validation:
+  Optional JWT signing algorithm to use for client assertions. When
+  omitted, defaults to `HS256` for `client_secret_jwt`. For
+  `private_key_jwt`, a compatible default is selected based on the
+  private key type/curve (e.g., `RS256` for RSA or
+  `ES256`/`ES384`/`ES512` for EC P-256/384/521). If an explicit value is
+  provided but incompatible with the key, validation fails early with a
+  configuration error. When the provider advertises
+  `token_endpoint_auth_signing_alg_values_supported`, both explicit
+  values and inferred defaults must be included in that set. Supported
+  values are `HS256`, `HS384`, `HS512` for client_secret_jwt and
+  asymmetric algorithms supported for outbound signing (`RS256`,
+  `ES256`, `ES384`, `ES512`) for private keys. `RS384`, `RS512`,
+  `PS256`, `PS384`, `PS512`, and `EdDSA` are not currently supported for
+  outbound client assertions.
 
-  Controls validation of requested claims supplied via the `claims`
-  parameter (OIDC Core §5.5). When `claims` includes entries with
-  `essential = TRUE` for `id_token` or `userinfo`, or explicit `value` /
-  `values` constraints for individual claims, this setting determines
-  what happens if the returned ID token or userinfo response does not
-  satisfy those requests.
+- client_assertion_audience:
 
-  - `"none"`: Skips claims validation entirely. This remains the
-    effective default when the supplied `claims` request has no
-    enforceable `essential`, `value`, or `values` constraints, and when
-    you explicitly set `claims_validation = "none"`.
+  Optional override for the `aud` claim used when building JWT client
+  assertions (`client_secret_jwt` / `private_key_jwt`). By default,
+  shinyOAuth uses the exact token endpoint request URL. Some identity
+  providers require a different audience value; set this to the exact
+  value your IdP expects.
 
-  - `"warn"`: Emits a warning but continues authentication if requested
-    essential claims are missing or requested claim values are not
-    satisfied.
+- tls_client_cert_file:
 
-  - `"strict"`: Throws an error if any requested essential claims are
-    missing or requested claim `value` / `values` constraints are not
-    satisfied by the response.
+  Optional path to the PEM-encoded client certificate (or certificate
+  chain) used for RFC 8705 mutual TLS client authentication and
+  certificate-bound protected-resource requests. Required when
+  `provider@token_auth_style` is `"tls_client_auth"` or
+  `"self_signed_tls_client_auth"`.
 
-  If `claims_validation` is omitted and the supplied `claims` request
-  does include enforceable `essential`, `value`, or `values`
-  constraints,
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  promotes the effective default to `"warn"` so those mismatches are
-  surfaced by default.
+- tls_client_key_file:
 
-  Enforceable requests under `claims$id_token` require a validated ID
-  token. Configure the provider with `id_token_validation = TRUE` or
-  `use_nonce = TRUE` so shinyOAuth validates the ID token before
-  checking those claims.
+  Optional path to the PEM-encoded private key used with
+  `tls_client_cert_file`. Must be supplied together with
+  `tls_client_cert_file`, and is required for RFC 8705 mTLS client
+  authentication.
 
-- userinfo_jwt_required_temporal_claims:
+- tls_client_key_password:
 
-  Optional character vector of temporal JWT claims that must be present
-  when the UserInfo response is a signed JWT (`application/jwt`).
-  Allowed values are `"exp"`, `"iat"`, and `"nbf"`.
+  Optional password used to decrypt an encrypted PEM private key
+  referenced by `tls_client_key_file`.
 
-  Default is `character(0)`, which means these claims are validated only
-  when present. Set, for example,
-  `userinfo_jwt_required_temporal_claims = "exp"` to require an expiry
-  on signed UserInfo JWTs, or pass multiple values to require additional
-  temporal claims. For security-sensitive deployments that accept signed
-  UserInfo JWTs, prefer requiring at least `"exp"`.
+- tls_client_ca_file:
 
-- required_acr_values:
+  Optional path to a PEM CA bundle used to validate the remote HTTPS
+  server certificate when making mTLS requests. This is mainly useful
+  for local or test environments that use self-signed server
+  certificates.
 
-  Optional character vector of acceptable Authentication Context Class
-  Reference values (OIDC Core §2, §3.1.2.1). When non-empty, the ID
-  token returned by the provider must contain an `acr` claim whose value
-  is one of the specified entries; otherwise the login fails with a
-  `shinyOAuth_id_token_error`.
+- mtls_certificate_bound_access_tokens:
 
-  Additionally, when non-empty, the authorization request automatically
-  includes an `acr_values` query parameter (space-separated) as a
-  voluntary hint to the provider (OIDC Core §3.1.2.1). Note that the
-  provider is not required to honour this hint; the client-side
-  validation is the authoritative enforcement.
+  Logical. Whether this client intends to request RFC 8705
+  certificate-bound access tokens when the provider advertises that
+  capability. Default is `FALSE`.
 
-  Requires an OIDC-capable provider with `id_token_validation = TRUE`
-  and an `issuer` configured. Default is `character(0)` (no
-  enforcement).
+  Set this to `TRUE` for clients that should prefer discovered
+  `mtls_endpoint_aliases` on authorization-server requests even when
+  `token_auth_style` itself is not an mTLS auth style, and that should
+  fail closed if the returned access token omits `cnf.x5t#S256`.
 
-- introspect:
+  Requires `tls_client_cert_file` and `tls_client_key_file`, and the
+  provider must be configured with
+  `tls_client_certificate_bound_access_tokens = TRUE`.
 
-  If TRUE, the login flow will call the provider's token introspection
-  endpoint (RFC 7662) to validate the access token. The login is not
-  considered complete unless introspection succeeds and returns
-  `active = TRUE`; otherwise the login fails and `authenticated` remains
-  FALSE. When
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  later performs proactive refresh, it also forwards this setting so
-  refreshed access tokens are introspected through the same client
-  policy. Default is FALSE. Requires the provider to have an
-  `introspection_url` configured.
+- dpop_private_key:
 
-- introspect_elements:
+  Optional private key used to generate DPoP proofs (RFC 9449). Can be
+  an `openssl::key` or a PEM string containing an asymmetric private
+  key. When provided, shinyOAuth can attach `DPoP` proofs to token
+  endpoint requests and use DPoP-bound access tokens in downstream
+  request helpers. In
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+  configuring this key also makes `dpop_require_access_token` default to
+  `TRUE`, so access-token responses reject `token_type = "Bearer"`
+  unless you explicitly set `dpop_require_access_token = FALSE`. Current
+  outbound DPoP signing supports RSA and EC private keys. For RSA keys,
+  outbound signing is currently limited to `RS256`; `RS384`, `RS512`,
+  and RSA-PSS (`PS256`, `PS384`, `PS512`) are not supported.
+  Ed25519/Ed448 keys are also not currently supported. This is an
+  advanced setting; most clients do not need DPoP unless their provider
+  or resource server asks for it.
 
-  Optional character vector of additional requirements to enforce on the
-  introspection response when `introspect = TRUE`. Supported values:
+- dpop_private_key_kid:
 
-  - `"sub"`: require the introspected `sub` to match the session subject
-    (from a validated ID token `sub` when available, else from userinfo
-    `sub`).
+  Optional key identifier (`kid`) to include in the JOSE header of DPoP
+  proofs. Useful when the authorization or resource server expects a
+  stable key identifier alongside the embedded public JWK.
 
-  - `"client_id"`: require the introspected `client_id` to match your
-    OAuth client id.
+- dpop_signing_alg:
 
-  - `"scope"`: validate introspected `scope` against requested scopes
-    (respects the client's `scope_validation` mode).
+  Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
+  compatible asymmetric default is selected based on the private key
+  type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`).
+  `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA` are not
+  currently supported for outbound DPoP proofs. If an explicit value is
+  provided but incompatible with the key, validation fails early with a
+  configuration error. When the provider advertises
+  `dpop_signing_alg_values_supported`, both explicit values and inferred
+  defaults must be included in that set.
 
-  - `"token_type"`: require introspection to return `token_type`. This
-    is useful for sender-constrained deployments such as DPoP, where
-    introspection can authoritatively report `token_type = "DPoP"`.
-    Default is `character(0)`. (Note that not all providers may return
-    each of these fields in introspection responses.)
+- dpop_require_access_token:
+
+  Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
+  shinyOAuth requires the authorization server to return
+  `token_type = "DPoP"` for access tokens and fails fast otherwise. When
+  shinyOAuth can observe token binding data from a JWT access token or
+  an introspection response, this strict mode also requires `cnf$jkt` to
+  be present and match the configured `dpop_private_key`. Opaque access
+  tokens that expose no `cnf` data still pass this check unless
+  introspection later reveals the binding. In
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+  the default `NULL` resolves to `TRUE` when `dpop_private_key` is
+  configured and to `FALSE` otherwise. Set `FALSE` explicitly only when
+  you intentionally want to allow Bearer access tokens, such as
+  deployments where DPoP is used only to bind refresh tokens.
+
+- request_object_mode:
+
+  Controls how the authorization request is transported to the provider.
+
+  - `"parameters"` (default): send OAuth parameters directly on the
+    browser redirect URL.
+
+  - `"request"`: send a signed JWT-secured authorization request (JAR;
+    RFC 9101) via the `request` parameter.
+
+  - `"request_uri"`: publish a signed Request Object by reference and
+    send its URL via the `request_uri` parameter.
+
+  Most users can keep the default. Request mode is an advanced option
+  that requires signing material on the client. shinyOAuth prefers
+  `client_assertion_private_key` when present; otherwise it falls back
+  to HMAC signing with `client_secret`. When Request Object encryption
+  is configured, shinyOAuth signs first and then wraps the signed
+  Request Object in a JWE. If a caller-managed `request_uri` uses HTTP
+  and the configured host policy explicitly allows it, shinyOAuth still
+  publishes it but warns once per R session because RFC 9101 Section 5.2
+  expects client-provided `request_uri` values to use HTTPS. If the
+  provider advertises `require_request_uri_registration = TRUE`,
+  caller-managed `request_uri` publication still depends on the provider
+  having that URI or a matching wildcard prefix registered for the
+  client; shinyOAuth cannot verify that server-side registration
+  automatically.
+
+- request_object_signing_alg:
+
+  Optional JWS algorithm override for signed authorization requests when
+  `request_object_mode` uses a Request Object (`"request"` or
+  `"request_uri"`). When omitted, shinyOAuth chooses `HS256` for
+  HMAC-based signing or a compatible asymmetric default based on
+  `client_assertion_private_key` (for example `RS256`, `ES256`, `ES384`,
+  or `ES512`). `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, and `EdDSA`
+  are not currently supported for outbound signed authorization
+  requests.
+
+- request_object_audience:
+
+  Optional override for the `aud` claim used in signed authorization
+  requests. By default, shinyOAuth uses the provider issuer when
+  available. When `request_object_mode = "request"` or `"request_uri"`,
+  the provider must have a configured issuer or you must supply an
+  explicit override so the signed Request Object remains audience-bound
+  to the intended authorization server.
+
+- request_object_encryption_alg:
+
+  Optional JWE key-management algorithm override for encrypted Request
+  Objects. Current outbound support is limited to `RSA-OAEP`. When set,
+  you must also set `request_object_encryption_enc`.
+
+- request_object_encryption_enc:
+
+  Optional JWE content-encryption algorithm override for encrypted
+  Request Objects. Current outbound support is limited to the
+  AES-CBC-HMAC family (`A128CBC-HS256`, `A192CBC-HS384`,
+  `A256CBC-HS512`). When set, you must also set
+  `request_object_encryption_alg`.
+
+- request_object_encryption_kid:
+
+  Optional key identifier (`kid`) used to select one provider encryption
+  key and emit the outer JWE `kid` header. This is mainly useful when
+  the provider publishes more than one Request Object encryption key.
+
+- request_object_ttl:
+
+  Positive number of seconds to keep signed authorization request
+  objects (`request` JWTs) valid. When
+  `request_object_mode = "request_uri"`, shinyOAuth also uses this value
+  as the default publication window for the referenced Request Object
+  URI. Default is `45`.
+
+- request_object_nbf_skew:
+
+  Optional non-negative number of seconds. When provided, shinyOAuth
+  adds an `nbf` claim set to `iat - request_object_nbf_skew` so
+  deployments can tolerate small clock skew while still emitting bounded
+  request-object validity windows. Leave `NULL` (the default) to omit
+  `nbf`. Request-object `nbf` is reserved by shinyOAuth and cannot be
+  supplied through extra authorization parameters.
+
+- jarm_signed_response_alg:
+
+  Optional expected JWS algorithm for signed JWT Secured Authorization
+  Responses (JARM). When omitted and the effective response mode is
+  JARM, shinyOAuth defaults to `RS256`. This value is not sent
+  dynamically on the authorization request; it must match the client
+  metadata and provider behavior configured out-of-band for that client.
+  Current inbound support accepts `HS256`, `HS384`, `HS512`, `RS256`,
+  `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS
+  (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted for
+  inbound JARM.
+
+- jarm_encrypted_response_alg:
+
+  Optional expected JWE key-management algorithm for encrypted JARM
+  responses. Current inbound support is limited to `RSA-OAEP`. Like
+  `jarm_signed_response_alg`, this reflects out-of-band client metadata
+  and expected provider behavior rather than an authorization request
+  parameter emitted by shinyOAuth.
+
+- jarm_encrypted_response_enc:
+
+  Optional expected JWE content-encryption algorithm for encrypted JARM
+  responses. Current inbound support is limited to the AES-CBC-HMAC
+  family (`A128CBC-HS256`, `A192CBC-HS384`, `A256CBC-HS512`). When
+  omitted while `jarm_encrypted_response_alg` is set, shinyOAuth
+  defaults to `A128CBC-HS256`. This must also match the provider-side
+  JARM client metadata when encrypted responses are enabled.
+
+- jarm_decryption_private_key:
+
+  Optional private key used to decrypt encrypted JARM responses. Can be
+  an `openssl::key` or a PEM string containing a private key. Required
+  when encrypted JARM is enabled.
+
+- jarm_decryption_private_key_kid:
+
+  Optional key identifier (`kid`) associated with
+  `jarm_decryption_private_key`.
+
+- jarm_max_lifetime:
+
+  Positive number of seconds. Maximum accepted lifetime for a JARM
+  response JWT. Default is 600 seconds, matching JARM's recommended
+  10-minute upper bound for authorization response JWTs. When a JARM
+  payload includes `iat`, shinyOAuth enforces
+  `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
+  remaining `exp` window at validation time. Applies only when
+  `response_mode` uses JARM.
 
 ## Examples
 

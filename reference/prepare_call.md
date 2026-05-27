@@ -26,9 +26,8 @@ prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
 
 - request_uri_publisher:
 
-  Optional function used when
-  `authorization_request_mode = "request_uri"`. It must accept
-  `request_object`, `request_handle_id`, `expires_at`, and
+  Optional function used when `request_object_mode = "request_uri"`. It
+  must accept `request_object`, `request_handle_id`, `expires_at`, and
   `oauth_client` arguments and return an absolute request-object URL.
 
 ## Value

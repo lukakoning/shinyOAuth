@@ -127,8 +127,8 @@ userinfo[["sub"]]
   signed Request Objects (RFC 9101). This is mainly used for early
   validation when an
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  sends `authorization_request_mode = "request"` or
-  `authorization_request_mode = "request_uri"`.
+  sends `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`.
 
 - request_object_encryption_alg_values_supported:
 
@@ -157,8 +157,8 @@ userinfo[["sub"]]
 
   Logical. Whether the provider requires signed Request Objects for
   authorization requests. When `TRUE`, clients should use
-  `authorization_request_mode = "request"` or
-  `authorization_request_mode = "request_uri"`.
+  `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`.
 
 - request_parameter_supported:
 
