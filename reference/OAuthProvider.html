@@ -100,12 +100,12 @@ presence of an issuer and available endpoints.</p>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  require_pushed_authorization_requests <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  par_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"compat"</span>,</span>
-<span>  require_signed_request_object <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  signed_request_object_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  require_request_uri_registration <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  request_uri_registration_required <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  request_object_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  request_object_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -414,7 +414,7 @@ handle instead of the full request payload. Most users only need this when
 their provider specifically supports or requires PAR.</p></dd>
 
 
-<dt id="arg-require-pushed-authorization-requests">require_pushed_authorization_requests<a class="anchor" aria-label="anchor" href="#arg-require-pushed-authorization-requests"></a></dt>
+<dt id="arg-par-required">par_required<a class="anchor" aria-label="anchor" href="#arg-par-required"></a></dt>
 <dd><p>Logical. Whether the provider
 requires authorization requests to be sent via PAR. When <code>TRUE</code>,
 <code>par_url</code> must also be configured.</p></dd>
@@ -434,7 +434,7 @@ by-value <code>request</code> and caller-managed <code>request_uri</code> transp
 outer <code>scope</code> containing <code>openid</code>.</p></dd>
 
 
-<dt id="arg-require-signed-request-object">require_signed_request_object<a class="anchor" aria-label="anchor" href="#arg-require-signed-request-object"></a></dt>
+<dt id="arg-signed-request-object-required">signed_request_object_required<a class="anchor" aria-label="anchor" href="#arg-signed-request-object-required"></a></dt>
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
 should use <code>request_object_mode = "request"</code> or
@@ -458,7 +458,7 @@ default (<code>TRUE</code>) when this metadata is omitted. PAR-issued <code>requ
 handles remain valid even when this metadata is <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-require-request-uri-registration">require_request_uri_registration<a class="anchor" aria-label="anchor" href="#arg-require-request-uri-registration"></a></dt>
+<dt id="arg-request-uri-registration-required">request_uri_registration_required<a class="anchor" aria-label="anchor" href="#arg-request-uri-registration-required"></a></dt>
 <dd><p>Logical or <code>NA</code>. Whether discovery
 metadata says caller-managed <code>request_uri</code> values must be pre-registered.
 <code>NA</code> means the provider did not say. Discovery-derived providers apply the

@@ -43,12 +43,12 @@ userinfo[["sub"]]
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
-  require_pushed_authorization_requests = FALSE,
+  par_required = FALSE,
   authorization_request_front_channel_mode = "compat",
-  require_signed_request_object = FALSE,
+  signed_request_object_required = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
-  require_request_uri_registration = NA,
+  request_uri_registration_required = NA,
   request_object_signing_alg_values_supported = character(),
   request_object_encryption_alg_values_supported = character(),
   request_object_encryption_enc_values_supported = character(),
@@ -397,7 +397,7 @@ userinfo[["sub"]]
   only need this when their provider specifically supports or requires
   PAR.
 
-- require_pushed_authorization_requests:
+- par_required:
 
   Logical. Whether the provider requires authorization requests to be
   sent via PAR. When `TRUE`, `par_url` must also be configured.
@@ -416,7 +416,7 @@ userinfo[["sub"]]
   requires outer `response_type` and an outer `scope` containing
   `openid`.
 
-- require_signed_request_object:
+- signed_request_object_required:
 
   Logical. Whether the provider requires signed Request Objects for
   authorization requests. When `TRUE`, clients should use
@@ -439,7 +439,7 @@ userinfo[["sub"]]
   when this metadata is omitted. PAR-issued `request_uri` handles remain
   valid even when this metadata is `FALSE`.
 
-- require_request_uri_registration:
+- request_uri_registration_required:
 
   Logical or `NA`. Whether discovery metadata says caller-managed
   `request_uri` values must be pre-registered. `NA` means the provider

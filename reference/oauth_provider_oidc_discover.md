@@ -147,16 +147,17 @@ discovery might fail early.
 - PAR metadata: when the discovery document advertises
   `pushed_authorization_request_endpoint` or
   `require_pushed_authorization_requests`, the resulting provider stores
-  that PAR capability and policy metadata so authorization requests can
-  use RFC 9126 PAR and fail fast on PAR-only provider policies.
+  that PAR capability and policy metadata in `par_required` so
+  authorization requests can use RFC 9126 PAR and fail fast on PAR-only
+  provider policies.
 
 - Request Object metadata: when the discovery document advertises
   `request_object_signing_alg_values_supported` or
   `require_signed_request_object`, the resulting provider stores that
-  metadata so `OAuthClient` can fail fast when a request-object
-  algorithm is unsupported or when the provider requires signed Request
-  Objects. When the discovery document also advertises
-  `request_object_encryption_alg_values_supported` or
+  metadata in `signed_request_object_required` so `OAuthClient` can fail
+  fast when a request-object algorithm is unsupported or when the
+  provider requires signed Request Objects. When the discovery document
+  also advertises `request_object_encryption_alg_values_supported` or
   `request_object_encryption_enc_values_supported`, the resulting
   provider stores that encryption metadata so Request Object JWE
   configuration can be validated early as well.
@@ -169,13 +170,14 @@ discovery might fail early.
   disallows the front-channel `request` transport used by JAR or
   caller-managed `request_uri` values. The registration requirement
   itself remains deployment-specific: shinyOAuth stores
-  `require_request_uri_registration` for caller awareness, but it cannot
-  independently verify whether the provider has already registered a
-  matching public `request_uri` or wildcard prefix for the client. When
-  PAR is configured, shinyOAuth sends signed Request Objects to the PAR
-  endpoint and the browser redirect only carries the PAR-issued
-  `request_uri` handle, regardless of `request_uri_parameter_supported`
-  or `require_request_uri_registration`. When discovery omits these
+  `request_uri_registration_required` for caller awareness, but it
+  cannot independently verify whether the provider has already
+  registered a matching public `request_uri` or wildcard prefix for the
+  client. When PAR is configured, shinyOAuth sends signed Request
+  Objects to the PAR endpoint and the browser redirect only carries the
+  PAR-issued `request_uri` handle, regardless of
+  `request_uri_parameter_supported` or
+  `request_uri_registration_required`. When discovery omits these
   booleans, this helper applies the OpenID Connect defaults instead of
   storing `NA`.
 
