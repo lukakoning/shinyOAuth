@@ -117,7 +117,8 @@ if (!exists("make_provider", mode = "function")) {
         shiny::tags$hr(),
         shiny::verbatimTextOutput("ready_state"),
         shiny::verbatimTextOutput("auth_url"),
-        shiny::verbatimTextOutput("auth_state")
+        shiny::verbatimTextOutput("auth_state"),
+        shiny::verbatimTextOutput("state_store_count")
       )
       ui <- shinyOAuth::oauth_form_post_ui(
         base_ui,
@@ -187,6 +188,11 @@ if (!exists("make_provider", mode = "function")) {
             "error_description:",
             auth$error_description %||% "<none>"
           )
+        })
+
+        output$state_store_count <- shiny::renderText({
+          shiny::invalidateLater(100, session)
+          as.character(length(client@state_store$keys()))
         })
       }
 

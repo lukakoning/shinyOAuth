@@ -446,9 +446,15 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     body = "code=ok&state=definitely-not-a-valid-state"
   ))
   expect_identical(invalid_state[["status"]], 400L)
-  expect_identical(
+  expect_match(
     invalid_state[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  expect_match(
+    invalid_state[["content"]],
+    "State payload decryption or validation failed",
+    fixed = TRUE
   )
   expect_false(grepl(
     "definitely-not-a-valid-state",
@@ -480,6 +486,12 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
   ))
 
   expect_identical(resp[["status"]], 400L)
+  expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
+  expect_match(
+    resp[["content"]],
+    "Callback iss parameter does not match expected issuer",
+    fixed = TRUE
+  )
   expect_identical(sort(cli@state_store$keys()), keys_before)
 
   event_types <- vapply(
@@ -506,9 +518,10 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
   ))
 
   expect_identical(resp[["status"]], 400L)
-  expect_identical(
+  expect_match(
     resp[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Callback query string exceeded maximum length",
+    fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(cli@state_store$keys()), keys_before)
@@ -849,7 +862,7 @@ test_that("oauth_module_server keeps ordinary response params with form_post han
   )
 })
 
-test_that("form_post browser-token rejection does not consume login state", {
+test_that("form_post browser-token rejection consumes login state", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
@@ -893,7 +906,7 @@ test_that("form_post browser-token rejection does not consume login state", {
       session$flushReact()
 
       expect_identical(values$error, "invalid_state")
-      expect_true(is.list(cli@state_store$get(state_key, missing = NULL)))
+      expect_null(cli@state_store$get(state_key, missing = NULL))
     }
   )
 })

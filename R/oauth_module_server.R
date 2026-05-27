@@ -1899,6 +1899,77 @@ oauth_module_server <- function(
           )
           return(invisible(NULL))
         }
+
+        form_post_state_payload <- form_post_payload[[
+          "state_payload",
+          exact = TRUE
+        ]] %||%
+          NULL
+        form_post_state_store_values <- form_post_payload[[
+          "state_store_values",
+          exact = TRUE
+        ]] %||%
+          NULL
+        if (
+          is.null(form_post_state_store_values) &&
+            is.list(form_post_state_payload) &&
+            is_valid_string(form_post_state_payload[["state"]] %||% NULL)
+        ) {
+          form_post_state_store_values <- tryCatch(
+            with_otel_span(
+              "shinyOAuth.form_post.callback.consume_state",
+              {
+                state_store_get_remove(
+                  client,
+                  form_post_state_payload[["state"]],
+                  shiny_session = session
+                )
+              },
+              attributes = otel_client_attributes(
+                client = client,
+                module_id = id,
+                shiny_session = session,
+                phase = "form_post.callback_state_consume"
+              ),
+              parent = NA
+            ),
+            error = function(e) {
+              clear_oauth_module_callback_query(
+                session,
+                tab_title_replacement,
+                tab_title_cleaning,
+                drop_response = response_is_reserved_for_query_jarm
+              )
+              .set_error(
+                oauth_module_callback_failure_error_code(e),
+                e,
+                phase = "form_post_callback_state_consume"
+              )
+              try(
+                audit_event(
+                  "callback_validation_failed",
+                  context = list(
+                    provider = client@provider@name %||% NA_character_,
+                    issuer = client@provider@issuer %||% NA_character_,
+                    client_id_digest = string_digest(client@client_id),
+                    state_digest = string_digest(
+                      form_post_state_payload[["state"]] %||% NA_character_
+                    ),
+                    error_class = paste(class(e), collapse = ", "),
+                    phase = "form_post_callback_state_consume"
+                  ),
+                  shiny_session = session
+                ),
+                silent = TRUE
+              )
+              NULL
+            }
+          )
+          if (is.null(form_post_state_store_values)) {
+            return(invisible(NULL))
+          }
+        }
+
         if (identical(form_post_payload[["type"]], "error")) {
           clear_oauth_module_callback_query(
             session,
@@ -1919,11 +1990,7 @@ oauth_module_server <- function(
               exact = TRUE
             ]] %||%
               NULL,
-            state_store_values = form_post_payload[[
-              "state_store_values",
-              exact = TRUE
-            ]] %||%
-              NULL
+            state_store_values = form_post_state_store_values
           )
           return(invisible(NULL))
         }
@@ -1937,11 +2004,7 @@ oauth_module_server <- function(
             exact = TRUE
           ]] %||%
             NULL,
-          state_store_values = form_post_payload[[
-            "state_store_values",
-            exact = TRUE
-          ]] %||%
-            NULL
+          state_store_values = form_post_state_store_values
         )
         return(invisible(NULL))
       }

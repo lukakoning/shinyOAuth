@@ -363,25 +363,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
       oauth_form_post_error_response(e)
     },
     shinyOAuth_state_error = function(e) {
-      error_phase <- tryCatch(
-        e[["phase"]],
-        error = function(...) NULL
-      ) %||%
-        tryCatch(
-          e[["parent"]][["phase"]],
-          error = function(...) NULL
-        ) %||%
-        tryCatch(
-          e[["context"]][["phase"]],
-          error = function(...) NULL
-        ) %||%
-        tryCatch(
-          e[["parent"]][["context"]][[
-            "phase",
-            exact = TRUE
-          ]],
-          error = function(...) NULL
-        )
+      error_phase <- oauth_form_post_error_phase(e)
       already_audited_state_failure <-
         identical(error_phase, "payload_validation") ||
         grepl(
@@ -581,6 +563,10 @@ oauth_form_post_validate_payload <- function(
   error_uri <- payload[["error_uri"]]
   iss <- payload[["iss"]]
   normalized_response <- payload[["normalized_response"]]
+  has_cached_normalized_response <-
+    !is.null(client) &&
+    is.list(normalized_response) &&
+    is.list(normalized_response[["claims"]] %||% NULL)
 
   validate_untrusted_query_param(
     "response",
@@ -645,6 +631,30 @@ oauth_form_post_validate_payload <- function(
         normalized_response
       )
     }
+    return(payload)
+  }
+
+  if (isTRUE(jarm_client) && isTRUE(has_cached_normalized_response)) {
+    if (
+      !all(vapply(
+        list(code, state, error, error_description, error_uri),
+        is.null,
+        logical(1)
+      ))
+    ) {
+      err_form_post_http(
+        paste(
+          "OAuth form_post JARM bridge payload must not contain cached",
+          "normalized response data and direct OAuth callback parameters."
+        )
+      )
+    }
+
+    payload[["type"]] <- "response"
+    payload[["normalized_response"]] <- revalidate_cached_jarm_response(
+      client,
+      normalized_response
+    )
     return(payload)
   }
 
@@ -720,7 +730,9 @@ oauth_form_post_seal_payload <- function(client, id, handle, payload) {
     err_invalid_state("Invalid form_post callback handle")
   }
 
-  payload <- oauth_form_post_validate_payload(payload, client = client)
+  payload <- oauth_form_post_compact_stored_payload(
+    oauth_form_post_validate_payload(payload, client = client)
+  )
   state_encrypt_gcm(
     payload = list(
       bridge_type = "form_post_handle",
@@ -832,13 +844,46 @@ oauth_form_post_cache_key <- function(id, handle) {
   )
 }
 
+#' Internal: compact one stored form_post JARM payload
+#'
+#' After oauth_form_post_ui() validates a JARM callback, the bridge only needs
+#' the original claims for time-based revalidation on resume. Dropping the raw
+#' compact JWT and redundant normalized fields keeps signed and encrypted JARM
+#' callbacks within the generic state-envelope size budget.
+#'
+#' @param payload Validated bridge payload list.
+#' @return Payload list reduced to the minimal cached JARM fields when
+#'   applicable.
+#' @keywords internal
+#' @noRd
+oauth_form_post_compact_stored_payload <- function(payload) {
+  if (!is.list(payload)) {
+    return(payload)
+  }
+  if (!identical(payload[["type"]] %||% NULL, "response")) {
+    return(payload)
+  }
+
+  normalized_response <- payload[["normalized_response"]] %||% NULL
+  claims <- normalized_response[["claims"]] %||% NULL
+  if (!is.list(claims)) {
+    return(payload)
+  }
+
+  payload[["response"]] <- NULL
+  payload[["normalized_response"]] <- list(claims = claims)
+  payload
+}
+
 oauth_form_post_store_set <- function(client, id, payload) {
   S7::check_is_S7(client, class = OAuthClient)
   if (!is_valid_string(id)) {
     err_invalid_state("Invalid form_post module id")
   }
 
-  payload <- oauth_form_post_validate_payload(payload, client = client)
+  payload <- oauth_form_post_compact_stored_payload(
+    oauth_form_post_validate_payload(payload, client = client)
+  )
   handle <- random_urlsafe(32)
   key <- oauth_form_post_cache_key(id, handle)
   sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
@@ -1011,6 +1056,74 @@ oauth_form_post_validate_handle_freshness <- function(client, payload) {
 
 # 4 HTTP errors ----------------------------------------------------------------
 
+#' Internal: extract one form_post error phase
+#'
+#' Used by the POST wrapper to distinguish user-facing validation failures from
+#' storage/backend failures that should keep the generic error page.
+#'
+#' @param e Condition object.
+#' @return Scalar phase string when present, otherwise `NULL`.
+#' @keywords internal
+#' @noRd
+oauth_form_post_error_phase <- function(e) {
+  tryCatch(
+    e[["phase"]],
+    error = function(...) NULL
+  ) %||%
+    tryCatch(
+      e[["parent"]][["phase"]],
+      error = function(...) NULL
+    ) %||%
+    tryCatch(
+      e[["context"]][["phase"]],
+      error = function(...) NULL
+    ) %||%
+    tryCatch(
+      e[["parent"]][["context"]][["phase"]],
+      error = function(...) NULL
+    )
+}
+
+#' Internal: decide whether a form_post error message is safe to expose
+#'
+#' Validation failures caused by the callback payload itself are safe to show
+#' on the POST boundary so browser-based unhappy-path tests can assert the exact
+#' rejection reason. Storage/backend failures remain generic to avoid leaking
+#' implementation details.
+#'
+#' @param e Condition object.
+#' @return Logical scalar indicating whether the HTTP response should include
+#'   the condition message.
+#' @keywords internal
+#' @noRd
+oauth_form_post_should_expose_error_message <- function(e) {
+  if (inherits(e, "shinyOAuth_form_post_http_error")) {
+    return(TRUE)
+  }
+  if (!inherits(e, "shinyOAuth_state_error")) {
+    return(FALSE)
+  }
+
+  phase <- oauth_form_post_error_phase(e)
+  if (
+    length(phase) == 1L &&
+      !is.na(phase) &&
+      phase %in% c(
+        "form_post_store_set",
+        "form_post_store_get",
+        "form_post_store_remove",
+        "form_post_store_take"
+      )
+  ) {
+    return(FALSE)
+  }
+
+  !grepl(
+    "Failed to (persist|consume|read|remove) form_post callback",
+    conditionMessage(e)
+  )
+}
+
 err_form_post_http <- function(message, status = 400L) {
   rlang::abort(
     message,
@@ -1022,7 +1135,7 @@ err_form_post_http <- function(message, status = 400L) {
 oauth_form_post_error_response <- function(
   e,
   fallback_status = 400L,
-  expose_message = inherits(e, "shinyOAuth_form_post_http_error")
+  expose_message = oauth_form_post_should_expose_error_message(e)
 ) {
   status <- tryCatch(e[["status"]], error = function(...) NULL)
   if (

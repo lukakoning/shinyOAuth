@@ -2702,9 +2702,10 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
   ))
 
   expect_identical(resp[["status"]], 400L)
-  expect_identical(
+  expect_match(
     resp[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Encrypted JARM response could not be parsed",
+    fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
@@ -3244,11 +3245,87 @@ test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies
   payload <- shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)
 
   expect_identical(payload[["type"]], "response")
+  expect_null(payload[["response"]])
   expect_identical(payload[["iss"]], client@provider@issuer)
   expect_identical(
     payload[["normalized_response"]]$iss,
     client@provider@issuer
   )
+})
+
+test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payloads", {
+  withr::local_options(list(shinyOAuth.state_max_token_chars = 3200))
+
+  sig_key <- openssl::rsa_keygen()
+  enc_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(
+    response_mode = "form_post.jwt",
+    authorization_encrypted_response_alg = "RSA-OAEP",
+    authorization_encrypted_response_enc = "A256CBC-HS512",
+    authorization_response_decryption_private_key = enc_key
+  )
+  client@provider@authorization_encryption_alg_values_supported <-
+    "RSA-OAEP"
+  client@provider@authorization_encryption_enc_values_supported <-
+    "A256CBC-HS512"
+
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  auth_url <- shinyOAuth::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  enc_state <- parse_query_param(auth_url, "state")
+  now <- floor(as.numeric(Sys.time()))
+  inner_jwt <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = enc_state
+    ),
+    key = sig_key,
+    kid = "sig-1"
+  )
+  response <- shinyOAuth:::jwe_compact_encrypt(
+    plaintext = inner_jwt,
+    public_key = enc_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A256CBC-HS512",
+    kid = "enc-1",
+    cty = "JWT"
+  )
+
+  resp <- testthat::with_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth",
+    {
+      ui(make_jarm_form_post_req(
+        body = paste0(
+          "response=",
+          utils::URLencode(response, reserved = TRUE)
+        )
+      ))
+    }
+  )
+
+  expect_identical(resp[["status"]], 303L)
+  handle <- parse_query_param(
+    resp[["headers"]]$Location,
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+  cache_key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle)
+  sealed_payload <- client@state_store$get(cache_key, missing = NULL)
+
+  expect_type(sealed_payload, "character")
+  expect_lte(nchar(sealed_payload, type = "bytes"), 3200)
+
+  payload <- shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)
+
+  expect_null(payload[["response"]])
+  expect_identical(payload[["normalized_response"]]$code, "ok")
 })
 
 test_that("oauth_form_post_ui records form_post.jwt telemetry for JARM bodies", {
@@ -3345,9 +3422,10 @@ test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodi
   )
 
   expect_identical(resp[["status"]], 400L)
-  expect_identical(
+  expect_match(
     resp[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Outer iss parameter does not match JARM iss claim",
+    fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(client@state_store$keys()), keys_before)
@@ -3384,10 +3462,7 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
       ))
 
       expect_identical(resp[["status"]], 400L)
-      expect_identical(
-        resp[["content"]],
-        "OAuth form_post callback could not be processed."
-      )
+      expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
       expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store$keys()), keys_before)
     }
@@ -3428,10 +3503,7 @@ test_that("oauth_form_post_ui emits one audit event for invalid inner-state form
       ))
 
       expect_identical(resp[["status"]], 400L)
-      expect_identical(
-        resp[["content"]],
-        "OAuth form_post callback could not be processed."
-      )
+      expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
     }
   )
 
@@ -3479,9 +3551,10 @@ test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
       ))
 
       expect_identical(resp[["status"]], 400L)
-      expect_identical(
+      expect_match(
         resp[["content"]],
-        "OAuth form_post callback could not be processed."
+        "JARM aud claim does not include client_id",
+        fixed = TRUE
       )
       expect_false("Location" %in% names(resp[["headers"]]))
       expect_identical(sort(client@state_store$keys()), keys_before)
@@ -4060,9 +4133,10 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
             )
           ))
           expect_identical(post_resp$status, 400L)
-          expect_identical(
+          expect_match(
             post_resp$content,
-            "OAuth form_post callback could not be processed."
+            "JARM callback transport mismatch",
+            fixed = TRUE
           )
           expect_false("Location" %in% names(post_resp$headers))
           expect_false(isTRUE(values$authenticated))
@@ -4132,9 +4206,10 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
             )
           ))
           expect_identical(bad_post_resp$status, 400L)
-          expect_identical(
+          expect_match(
             bad_post_resp$content,
-            "OAuth form_post callback could not be processed."
+            "JARM aud claim does not include client_id",
+            fixed = TRUE
           )
           expect_false("Location" %in% names(bad_post_resp$headers))
           expect_false(isTRUE(values$authenticated))
