@@ -80,8 +80,8 @@ client <- oauth_client(
   client_secret = "",
   redirect_uri = redirect_uri,
   scopes = c("openid"),
-  client_private_key = pem,
-  client_private_key_kid = if (nzchar(key_kid)) key_kid else NULL
+  client_assertion_private_key = pem,
+  client_assertion_private_key_kid = if (nzchar(key_kid)) key_kid else NULL
 )
 
 # ---------- Shiny app ----------

@@ -120,7 +120,7 @@
 #'   browser tab title after the OAuth callback. If provided, it takes
 #'   precedence over `tab_title_cleaning`
 #' @param request_uri_base_url Optional absolute base URL used when
-#'   `authorization_request_mode = "request_uri"` publishes Request Objects
+#'   `request_object_mode = "request_uri"` publishes Request Objects
 #'   through Shiny. By default (`NULL`), shinyOAuth derives the base URL from
 #'   the current browser-visible app origin, but only when
 #'   `options(shinyOAuth.allowed_hosts = ...)` pins the permitted public host.
@@ -400,7 +400,7 @@ oauth_module_server <- function(
 
   if (
     identical(
-      client@authorization_request_mode %||% "parameters",
+      client@request_object_mode %||% "parameters",
       "request_uri"
     ) &&
       is.null(request_uri_base_url) &&
@@ -408,7 +408,7 @@ oauth_module_server <- function(
   ) {
     err_config(c(
       paste(
-        "oauth_module_server() with authorization_request_mode =",
+        "oauth_module_server() with request_object_mode =",
         "'request_uri' requires either request_uri_base_url or",
         "options(shinyOAuth.allowed_hosts = ...) so the published",
         "Request Object origin is pinned explicitly."

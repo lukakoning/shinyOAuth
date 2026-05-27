@@ -98,8 +98,8 @@ outer \code{scope} containing \code{openid}.}
 \item{request_object_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed Request Objects (RFC
 9101). This is mainly used for early validation when an \link{OAuthClient}
-sends \code{authorization_request_mode = "request"} or
-\code{authorization_request_mode = "request_uri"}.}
+sends \code{request_object_mode = "request"} or
+\code{request_object_mode = "request_uri"}.}
 
 \item{request_object_encryption_alg_values_supported}{Optional vector of JWE
 key-management algorithms that the provider advertises for encrypted
@@ -119,8 +119,8 @@ JSON string.}
 
 \item{require_signed_request_object}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients
-should use \code{authorization_request_mode = "request"} or
-\code{authorization_request_mode = "request_uri"}.}
+should use \code{request_object_mode = "request"} or
+\code{request_object_mode = "request_uri"}.}
 
 \item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request

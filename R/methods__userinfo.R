@@ -834,7 +834,7 @@ validate_signed_userinfo_claims <- function(
 
   required_temporal_claims <- if (!is.null(oauth_client)) {
     unique(tolower(
-      oauth_client@userinfo_jwt_required_temporal_claims %||% character(0)
+      oauth_client@userinfo_jwt_required_time_claims %||% character(0)
     ))
   } else {
     character(0)
@@ -852,7 +852,7 @@ validate_signed_userinfo_claims <- function(
           paste(missing_temporal_claims, collapse = ", ")
         ),
         "i" = paste(
-          "Configure userinfo_jwt_required_temporal_claims = character(0) to accept signed UserInfo JWTs without those temporal claims."
+          "Configure userinfo_jwt_required_time_claims = character(0) to accept signed UserInfo JWTs without those temporal claims."
         )
       ),
       oauth_client = oauth_client,

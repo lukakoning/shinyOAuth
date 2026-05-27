@@ -429,13 +429,13 @@ state_policy_mtls_cert_thumbprint <- function(client) {
 #' @keywords internal
 #' @noRd
 state_policy_jarm_decryption_key_thumbprint <- function(client) {
-  if (is.null(client@authorization_response_decryption_private_key)) {
+  if (is.null(client@jarm_decryption_private_key)) {
     return(NA_character_)
   }
 
   key <- normalize_private_key_input(
-    client@authorization_response_decryption_private_key,
-    arg_name = "authorization_response_decryption_private_key"
+    client@jarm_decryption_private_key,
+    arg_name = "jarm_decryption_private_key"
   )
   key_pubkey <- as.list(key)[["pubkey"]]
   jwk <- jsonlite::fromJSON(jose::write_jwk(key_pubkey), simplifyVector = TRUE)
@@ -482,41 +482,39 @@ state_client_policy_fingerprint <- function(client) {
     },
     scope_validation = client@scope_validation,
     claims_validation = client@claims_validation,
-    userinfo_jwt_required_temporal_claims = state_policy_string_set(
-      client@userinfo_jwt_required_temporal_claims,
+    userinfo_jwt_required_time_claims = state_policy_string_set(
+      client@userinfo_jwt_required_time_claims,
       transform = tolower
     ),
     required_acr_values = state_policy_string_set(client@required_acr_values),
     introspect = isTRUE(client@introspect),
     introspect_elements = state_policy_string_set(client@introspect_elements),
     dpop_require_access_token = isTRUE(client@dpop_require_access_token),
-    mtls_request_certificate_bound_access_tokens = isTRUE(
-      client@mtls_request_certificate_bound_access_tokens
+    mtls_certificate_bound_access_tokens = isTRUE(
+      client@mtls_certificate_bound_access_tokens
     ),
     dpop_signing_alg = if (client_has_dpop(client)) {
       resolve_dpop_alg(client)
     } else {
       NA_character_
     },
-    authorization_signed_response_alg = if (isTRUE(jarm_response_mode)) {
+    jarm_signed_response_alg = if (isTRUE(jarm_response_mode)) {
       resolve_authorization_response_signing_alg(client)
     } else {
       NA_character_
     },
-    authorization_encrypted_response_alg = jarm_encryption_config[[
+    jarm_encrypted_response_alg = jarm_encryption_config[[
       "alg",
       exact = TRUE
     ]] %||%
       NA_character_,
-    authorization_encrypted_response_enc = jarm_encryption_config[[
+    jarm_encrypted_response_enc = jarm_encryption_config[[
       "enc",
       exact = TRUE
     ]] %||%
       NA_character_,
-    authorization_response_decryption_private_key_kid = if (
-      !is.null(jarm_encryption_config)
-    ) {
-      client@authorization_response_decryption_private_key_kid %||%
+    jarm_decryption_private_key_kid = if (!is.null(jarm_encryption_config)) {
+      client@jarm_decryption_private_key_kid %||%
         NA_character_
     } else {
       NA_character_

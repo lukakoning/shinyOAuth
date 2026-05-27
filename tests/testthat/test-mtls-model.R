@@ -168,7 +168,7 @@ test_that("certificate-bound sender constraint requires token binding or explici
     tls_client_cert_file = cert_file,
     tls_client_key_file = key_file,
     tls_client_ca_file = ca_file,
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
   plain_token <- OAuthToken(
     access_token = "at",
@@ -259,7 +259,7 @@ test_that("certificate-bound clients reject tokens missing cnf thumbprints", {
     tls_client_cert_file = cert_file,
     tls_client_key_file = key_file,
     tls_client_ca_file = ca_file,
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
 
   expect_error(
@@ -304,7 +304,7 @@ test_that("requesting certificate-bound tokens requires provider support and cer
       tls_client_cert_file = cert_file,
       tls_client_key_file = key_file,
       tls_client_ca_file = ca_file,
-      mtls_request_certificate_bound_access_tokens = TRUE
+      mtls_certificate_bound_access_tokens = TRUE
     ),
     regexp = "requires provider@tls_client_certificate_bound_access_tokens = TRUE"
   )
@@ -328,7 +328,7 @@ test_that("requesting certificate-bound tokens requires provider support and cer
       client_secret = "",
       redirect_uri = "http://localhost:8100/callback",
       scopes = character(0),
-      mtls_request_certificate_bound_access_tokens = TRUE
+      mtls_certificate_bound_access_tokens = TRUE
     ),
     regexp = "requires tls_client_cert_file and tls_client_key_file"
   )

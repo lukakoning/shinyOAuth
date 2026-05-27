@@ -130,7 +130,7 @@ testthat::test_that("client assertions self-verify for every outbound alg", {
     cli <- outbound_alg_client(
       provider = outbound_alg_provider("private_key_jwt"),
       client_secret = "",
-      client_private_key = key,
+      client_assertion_private_key = key,
       client_assertion_alg = alg
     )
     jwt <- shinyOAuth:::build_client_assertion(cli, cli@provider@token_url)
@@ -153,8 +153,8 @@ testthat::test_that("authorization request objects self-verify for every outboun
   for (alg in c("HS256", "HS384", "HS512")) {
     cli <- outbound_alg_client(
       client_secret = secret,
-      authorization_request_mode = "request",
-      authorization_request_signing_alg = alg
+      request_object_mode = "request",
+      request_object_signing_alg = alg
     )
     jwt <- shinyOAuth:::build_authorization_request_object(cli, params)
     expect_hmac_jwt_verifies(jwt, alg, secret)
@@ -165,9 +165,9 @@ testthat::test_that("authorization request objects self-verify for every outboun
     key <- asym_cases[[alg]]
     cli <- outbound_alg_client(
       client_secret = "",
-      client_private_key = key,
-      authorization_request_mode = "request",
-      authorization_request_signing_alg = alg
+      client_assertion_private_key = key,
+      request_object_mode = "request",
+      request_object_signing_alg = alg
     )
     jwt <- shinyOAuth:::build_authorization_request_object(cli, params)
     expect_sig_jwt_verifies(jwt, alg, key)
@@ -204,7 +204,7 @@ testthat::test_that("unsupported RSA-family outbound algs are rejected", {
       outbound_alg_client(
         provider = outbound_alg_provider("private_key_jwt"),
         client_secret = "",
-        client_private_key = rsa,
+        client_assertion_private_key = rsa,
         client_assertion_alg = alg
       ),
       regexp = "client_assertion_alg"
@@ -213,11 +213,11 @@ testthat::test_that("unsupported RSA-family outbound algs are rejected", {
     testthat::expect_error(
       outbound_alg_client(
         client_secret = "",
-        client_private_key = rsa,
-        authorization_request_mode = "request",
-        authorization_request_signing_alg = alg
+        client_assertion_private_key = rsa,
+        request_object_mode = "request",
+        request_object_signing_alg = alg
       ),
-      regexp = "authorization_request_signing_alg"
+      regexp = "request_object_signing_alg"
     )
 
     testthat::expect_error(

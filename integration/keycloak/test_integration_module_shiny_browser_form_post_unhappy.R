@@ -107,7 +107,7 @@ if (!exists("make_provider", mode = "function")) {
         redirect_uri = app_url,
         scopes = c("openid", "profile", "email"),
         response_mode = "form_post.jwt",
-        authorization_signed_response_alg = "RS256"
+        jarm_signed_response_alg = "RS256"
       )
 
       base_ui <- shiny::fluidPage(

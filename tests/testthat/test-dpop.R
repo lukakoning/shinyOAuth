@@ -972,7 +972,7 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = openssl::rsa_keygen(),
+    client_assertion_private_key = openssl::rsa_keygen(),
     redirect_uri = "http://localhost:8100",
     scopes = character(0),
     state_store = cachem::cache_mem(max_age = 600),

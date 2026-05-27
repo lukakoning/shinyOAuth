@@ -26,8 +26,8 @@ testthat::test_that("private_key_jwt picks EC-compatible default alg", {
       provider = prov,
       client_id = "abc",
       client_secret = "",
-      client_private_key = key_ec,
-      client_private_key_kid = NA_character_,
+      client_assertion_private_key = key_ec,
+      client_assertion_private_key_kid = NA_character_,
       redirect_uri = "http://localhost:8100",
       scopes = c("openid")
     )
@@ -101,7 +101,7 @@ testthat::test_that("JWT client assertions fall back to token_url without issuer
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = openssl::rsa_keygen(),
+    client_assertion_private_key = openssl::rsa_keygen(),
     redirect_uri = "http://localhost:8100",
     scopes = c("openid")
   )

@@ -1,10 +1,10 @@
 make_jarm_test_client <- function(
   response_mode = "query.jwt",
-  authorization_signed_response_alg = "RS256",
-  authorization_encrypted_response_alg = NULL,
-  authorization_encrypted_response_enc = NULL,
-  authorization_response_decryption_private_key = NULL,
-  authorization_response_decryption_private_key_kid = NULL,
+  jarm_signed_response_alg = "RS256",
+  jarm_encrypted_response_alg = NULL,
+  jarm_encrypted_response_enc = NULL,
+  jarm_decryption_private_key = NULL,
+  jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
   provider_tolerate_duplicate_top_level_jarm_iss = FALSE,
   client_secret = "",
@@ -17,11 +17,11 @@ make_jarm_test_client <- function(
     if (identical(response_mode, "query.jwt")) "jwt" else character(0)
   ))
   prov@authorization_signing_alg_values_supported <-
-    authorization_signed_response_alg %||% character(0)
+    jarm_signed_response_alg %||% character(0)
   prov@authorization_encryption_alg_values_supported <-
-    authorization_encrypted_response_alg %||% character(0)
+    jarm_encrypted_response_alg %||% character(0)
   prov@authorization_encryption_enc_values_supported <-
-    authorization_encrypted_response_enc %||% character(0)
+    jarm_encrypted_response_enc %||% character(0)
   prov@tolerate_duplicate_top_level_jarm_iss <-
     isTRUE(provider_tolerate_duplicate_top_level_jarm_iss)
 
@@ -32,11 +32,11 @@ make_jarm_test_client <- function(
     redirect_uri = "http://localhost:8100",
     scopes = "openid",
     response_mode = response_mode,
-    authorization_signed_response_alg = authorization_signed_response_alg,
-    authorization_encrypted_response_alg = authorization_encrypted_response_alg,
-    authorization_encrypted_response_enc = authorization_encrypted_response_enc,
-    authorization_response_decryption_private_key = authorization_response_decryption_private_key,
-    authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
+    jarm_signed_response_alg = jarm_signed_response_alg,
+    jarm_encrypted_response_alg = jarm_encrypted_response_alg,
+    jarm_encrypted_response_enc = jarm_encrypted_response_enc,
+    jarm_decryption_private_key = jarm_decryption_private_key,
+    jarm_decryption_private_key_kid = jarm_decryption_private_key_kid,
     jarm_max_lifetime = jarm_max_lifetime,
     state_store = cachem::cache_mem(max_age = 600),
     state_payload_max_age = 300,
@@ -316,7 +316,7 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
       redirect_uri = "http://localhost:8100",
       scopes = "openid",
       response_mode = "query.jwt",
-      authorization_signed_response_alg = "RS256",
+      jarm_signed_response_alg = "RS256",
       state_store = cachem::cache_mem(max_age = 600),
       state_payload_max_age = 300,
       state_entropy = 64,
@@ -326,7 +326,7 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
       )
     ),
     regexp = paste0(
-      "authorization_signed_response_alg 'RS256'",
+      "jarm_signed_response_alg 'RS256'",
       " is not supported"
     )
   )
@@ -337,11 +337,11 @@ test_that("oauth_client defaults encrypted JARM enc when alg is set", {
 
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_response_decryption_private_key = rsa_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_decryption_private_key = rsa_key
   )
 
-  expect_identical(client@authorization_encrypted_response_enc, "A128CBC-HS256")
+  expect_identical(client@jarm_encrypted_response_enc, "A128CBC-HS256")
 })
 
 test_that("oauth_client allows JARM without manual provider capability metadata", {
@@ -359,7 +359,7 @@ test_that("oauth_client allows JARM without manual provider capability metadata"
     redirect_uri = "http://localhost:8100",
     scopes = "openid",
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256",
+    jarm_signed_response_alg = "RS256",
     state_store = cachem::cache_mem(max_age = 600),
     state_payload_max_age = 300,
     state_entropy = 64,
@@ -370,7 +370,7 @@ test_that("oauth_client allows JARM without manual provider capability metadata"
   )
 
   expect_identical(client@response_mode, "query.jwt")
-  expect_identical(client@authorization_signed_response_alg, "RS256")
+  expect_identical(client@jarm_signed_response_alg, "RS256")
 })
 
 test_that("validate_jarm_response verifies signed JARM payloads", {
@@ -499,7 +499,7 @@ test_that("validate_jarm_response rejects non-canonical signed alg casing", {
   secret <- "hs256-jarm-noncanonical-alg-secret-value"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -538,7 +538,7 @@ test_that("validate_jarm_response accepts signed JARM with explicit JWT media ty
   secret <- "hs256-jarm-explicit-typ-secret-value"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -570,7 +570,7 @@ test_that("validate_jarm_response rejects signed JARM with non-JWT typ header", 
   secret <- "hs256-jarm-invalid-typ-secret-value"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -600,7 +600,7 @@ test_that("validate_jarm_response rejects signed JARM with another JWT profile t
   secret <- "hs256-jarm-other-profile-typ-secret-value"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -831,7 +831,7 @@ test_that("validate_jarm_response rejects malformed exp before signature verific
   secret <- "hs256-jarm-malformed-exp-secret-32b!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -872,7 +872,7 @@ test_that("validate_jarm_response enforces configured JARM max lifetime without 
   secret <- "hs256-jarm-max-lifetime-no-iat-secret!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret,
     jarm_max_lifetime = 600
   )
@@ -903,7 +903,7 @@ test_that("validate_jarm_response enforces configured JARM max lifetime from iat
   secret <- "hs256-jarm-max-lifetime-with-iat-secret"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret,
     jarm_max_lifetime = 60
   )
@@ -935,7 +935,7 @@ test_that("validate_jarm_response rejects iat values after exp", {
   secret <- "hs256-jarm-iat-after-exp-secret-value"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret,
     jarm_max_lifetime = 600
   )
@@ -1221,7 +1221,7 @@ test_that("validate_jarm_response rejects duplicate identical iss claims by defa
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -1275,7 +1275,7 @@ test_that("validate_jarm_response tolerates duplicate identical iss claims when 
   secret <- "hs256-jarm-duplicate-iss-secret-32b!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret,
     provider_tolerate_duplicate_top_level_jarm_iss = TRUE
   )
@@ -1331,7 +1331,7 @@ test_that("validate_jarm_response rejects nested duplicate iss claims", {
   secret <- "hs256-jarm-nested-duplicate-iss-secret!"
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "HS256",
+    jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
   client@provider@authorization_signing_alg_values_supported <- "HS256"
@@ -2298,9 +2298,9 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   client@provider@authorization_encryption_alg_values_supported <- "RSA-OAEP"
   client@provider@authorization_encryption_enc_values_supported <- "A256CBC-HS512"
@@ -2343,9 +2343,9 @@ test_that("validate_jarm_response rejects non-canonical encrypted JARM header ca
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   now <- floor(as.numeric(Sys.time()))
   inner_jwt <- make_signed_jarm(
@@ -2412,9 +2412,9 @@ test_that("validate_jarm_response rejects encrypted JARM crit headers", {
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   now <- floor(as.numeric(Sys.time()))
   inner_jwt <- make_signed_jarm(
@@ -2464,9 +2464,9 @@ test_that("validate_jarm_response rejects encrypted JARM without JWT cty", {
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   now <- floor(as.numeric(Sys.time()))
   inner_jwt <- make_signed_jarm(
@@ -2526,9 +2526,9 @@ test_that("validate_jarm_response rejects partially matched encrypted header nam
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
 
   missing_enc <- make_compact_jwe_with_header(
@@ -2576,10 +2576,10 @@ test_that("validate_jarm_response rejects encrypted JARM with wrong kid", {
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key,
-    authorization_response_decryption_private_key_kid = "enc-expected"
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key,
+    jarm_decryption_private_key_kid = "enc-expected"
   )
   now <- floor(as.numeric(Sys.time()))
   inner_jwt <- make_signed_jarm(
@@ -2650,9 +2650,9 @@ test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
 
   parse_client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   parse_client@provider@authorization_encryption_alg_values_supported <-
     "RSA-OAEP"
@@ -2661,9 +2661,9 @@ test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
 
   decrypt_client <- make_jarm_test_client(
     response_mode = "query.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = wrong_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = wrong_key
   )
   decrypt_client@provider@authorization_encryption_alg_values_supported <-
     "RSA-OAEP"
@@ -2686,9 +2686,9 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "form_post.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   client@provider@authorization_encryption_alg_values_supported <-
     "RSA-OAEP"
@@ -2781,9 +2781,9 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
   for (case in mutation_cases) {
     client <- make_jarm_test_client(
       response_mode = "query.jwt",
-      authorization_encrypted_response_alg = "RSA-OAEP",
-      authorization_encrypted_response_enc = "A256CBC-HS512",
-      authorization_response_decryption_private_key = enc_key
+      jarm_encrypted_response_alg = "RSA-OAEP",
+      jarm_encrypted_response_enc = "A256CBC-HS512",
+      jarm_decryption_private_key = enc_key
     )
     client@provider@authorization_encryption_alg_values_supported <-
       "RSA-OAEP"
@@ -3260,9 +3260,9 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
   enc_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(
     response_mode = "form_post.jwt",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = enc_key
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = enc_key
   )
   client@provider@authorization_encryption_alg_values_supported <-
     "RSA-OAEP"

@@ -1108,12 +1108,13 @@ oauth_form_post_should_expose_error_message <- function(e) {
   if (
     length(phase) == 1L &&
       !is.na(phase) &&
-      phase %in% c(
-        "form_post_store_set",
-        "form_post_store_get",
-        "form_post_store_remove",
-        "form_post_store_take"
-      )
+      phase %in%
+        c(
+          "form_post_store_set",
+          "form_post_store_get",
+          "form_post_store_remove",
+          "form_post_store_take"
+        )
   ) {
     return(FALSE)
   }

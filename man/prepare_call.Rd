@@ -13,7 +13,7 @@ prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
 current browser session.}
 
 \item{request_uri_publisher}{Optional function used when
-\code{authorization_request_mode = "request_uri"}. It must accept
+\code{request_object_mode = "request_uri"}. It must accept
 \code{request_object}, \code{request_handle_id}, \code{expires_at}, and \code{oauth_client}
 arguments and return an absolute request-object URL.}
 }

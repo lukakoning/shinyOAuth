@@ -19,7 +19,7 @@ resolve_authorization_response_signing_alg <- function(oauth_client) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   alg <- canonicalize_jws_alg(
-    oauth_client@authorization_signed_response_alg %||% NA_character_
+    oauth_client@jarm_signed_response_alg %||% NA_character_
   )
   if (!nzchar(alg)) {
     return("RS256")
@@ -41,10 +41,10 @@ resolve_authorization_response_encryption_config <- function(oauth_client) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   alg <- canonicalize_jwe_alg(
-    oauth_client@authorization_encrypted_response_alg %||% NA_character_
+    oauth_client@jarm_encrypted_response_alg %||% NA_character_
   )
   enc <- canonicalize_jwe_enc(
-    oauth_client@authorization_encrypted_response_enc %||% NA_character_
+    oauth_client@jarm_encrypted_response_enc %||% NA_character_
   )
   if (nzchar(alg) && !nzchar(enc)) {
     enc <- "A128CBC-HS256"
@@ -57,8 +57,8 @@ resolve_authorization_response_encryption_config <- function(oauth_client) {
   list(
     alg = alg,
     enc = enc,
-    private_key = oauth_client@authorization_response_decryption_private_key,
-    kid = oauth_client@authorization_response_decryption_private_key_kid %||%
+    private_key = oauth_client@jarm_decryption_private_key,
+    kid = oauth_client@jarm_decryption_private_key_kid %||%
       NA_character_
   )
 }

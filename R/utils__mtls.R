@@ -162,7 +162,7 @@ client_requests_certificate_bound_tokens <- function(oauth_client) {
     return(FALSE)
   }
 
-  isTRUE(oauth_client@mtls_request_certificate_bound_access_tokens) &&
+  isTRUE(oauth_client@mtls_certificate_bound_access_tokens) &&
     isTRUE(oauth_client@provider@tls_client_certificate_bound_access_tokens) &&
     client_has_mtls_certificate(oauth_client)
 }

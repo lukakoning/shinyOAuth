@@ -51,7 +51,7 @@ build_client_assertion <- function(client, aud) {
       alg <- "HS256"
     } else if (identical(style, "private_key_jwt")) {
       # Pick a sensible default based on the private key type/curve.
-      key0 <- normalize_private_key_input(client@client_private_key)
+      key0 <- normalize_private_key_input(client@client_assertion_private_key)
       alg <- choose_default_alg_for_private_key(key0)
     }
   }
@@ -93,7 +93,7 @@ build_client_assertion <- function(client, aud) {
     alg = alg
   )
   if (identical(style, "private_key_jwt")) {
-    kid <- client@client_private_key_kid %||% NA_character_
+    kid <- client@client_assertion_private_key_kid %||% NA_character_
     if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
       header[["kid"]] <- kid
     }
@@ -128,7 +128,7 @@ build_client_assertion <- function(client, aud) {
   }
 
   if (identical(style, "private_key_jwt")) {
-    key <- normalize_private_key_input(client@client_private_key)
+    key <- normalize_private_key_input(client@client_assertion_private_key)
     clm <- do.call(jose::jwt_claim, claims)
     # Hard-fail impossible alg/key pairs before signing. jose::jwt_encode_sig()
     # can otherwise emit mismatched JOSE alg headers instead of rejecting them.
@@ -255,10 +255,10 @@ resolve_client_assertion_audience <- function(client, req) {
 #' @return JOSE signing algorithm string.
 #' @keywords internal
 #' @noRd
-resolve_authorization_request_signing_alg <- function(client) {
+resolve_request_object_signing_alg <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  alg_cfg <- client@authorization_request_signing_alg %||% NA_character_
+  alg_cfg <- client@request_object_signing_alg %||% NA_character_
   if (!is.character(alg_cfg) || length(alg_cfg) != 1L) {
     alg_cfg <- NA_character_
   }
@@ -273,23 +273,23 @@ resolve_authorization_request_signing_alg <- function(client) {
   )
 
   if (!nzchar(alg)) {
-    if (!is.null(client@client_private_key)) {
-      key0 <- normalize_private_key_input(client@client_private_key)
+    if (!is.null(client@client_assertion_private_key)) {
+      key0 <- normalize_private_key_input(client@client_assertion_private_key)
       return(choose_default_alg_for_private_key(key0))
     }
     if (!is_valid_string(client@client_secret)) {
       err_config(
         paste(
-          "authorization_request_mode = 'request' or 'request_uri' requires",
-          "client_private_key or client_secret"
+          "request_object_mode = 'request' or 'request_uri' requires",
+          "client_assertion_private_key or client_secret"
         )
       )
     }
     if (nchar(client@client_secret, type = "bytes") < 32) {
       err_config(
         paste(
-          "authorization_request_mode = 'request' or 'request_uri' requires",
-          "client_secret >= 32 bytes when no client_private_key is",
+          "request_object_mode = 'request' or 'request_uri' requires",
+          "client_secret >= 32 bytes when no client_assertion_private_key is",
           "configured"
         )
       )
@@ -298,32 +298,32 @@ resolve_authorization_request_signing_alg <- function(client) {
   }
 
   if (identical(toupper(alg), "NONE")) {
-    err_config("authorization_request_signing_alg = 'none' is not supported")
+    err_config("request_object_signing_alg = 'none' is not supported")
   }
 
   if (alg %in% allowed_hmac) {
     if (!is_valid_string(client@client_secret)) {
-      err_config("HS* authorization_request_signing_alg requires client_secret")
+      err_config("HS* request_object_signing_alg requires client_secret")
     }
     if (nchar(client@client_secret, type = "bytes") < 32) {
       err_config(
-        "HS* authorization_request_signing_alg requires client_secret >= 32 bytes"
+        "HS* request_object_signing_alg requires client_secret >= 32 bytes"
       )
     }
     return(alg)
   }
 
   if (alg %in% allowed_asym) {
-    if (is.null(client@client_private_key)) {
+    if (is.null(client@client_assertion_private_key)) {
       err_config(
-        "asymmetric authorization_request_signing_alg requires client_private_key"
+        "asymmetric request_object_signing_alg requires client_assertion_private_key"
       )
     }
     return(alg)
   }
 
   err_config(paste0(
-    "Unsupported authorization_request_signing_alg: ",
+    "Unsupported request_object_signing_alg: ",
     as.character(alg)
   ))
 }
@@ -340,10 +340,10 @@ resolve_authorization_request_signing_alg <- function(client) {
 #'   issuer.
 #' @keywords internal
 #' @noRd
-resolve_authorization_request_audience <- function(client) {
+resolve_request_object_audience <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  override <- client@authorization_request_audience %||% NA_character_
+  override <- client@request_object_audience %||% NA_character_
   if (!is.character(override) || length(override) != 1L) {
     override <- NA_character_
   }
@@ -581,19 +581,19 @@ build_authorization_request_object <- function(client, params) {
     )
   }
 
-  alg <- resolve_authorization_request_signing_alg(client)
-  aud <- resolve_authorization_request_audience(client)
+  alg <- resolve_request_object_signing_alg(client)
+  aud <- resolve_request_object_audience(client)
   if (!is_valid_string(aud)) {
     err_config(
       paste(
-        "authorization_request_mode = 'request' or 'request_uri' requires either",
-        "provider issuer or authorization_request_audience so Request Objects stay audience-bound"
+        "request_object_mode = 'request' or 'request_uri' requires either",
+        "provider issuer or request_object_audience so Request Objects stay audience-bound"
       )
     )
   }
   now <- floor(as.numeric(Sys.time()))
-  ttl <- as.numeric(client@authorization_request_ttl %||% 45)
-  nbf_skew <- as.numeric(client@authorization_request_nbf_skew %||% NA_real_)
+  ttl <- as.numeric(client@request_object_ttl %||% 45)
+  nbf_skew <- as.numeric(client@request_object_nbf_skew %||% NA_real_)
 
   claims_param <- params[["claims"]] %||% NULL
   if (
@@ -635,7 +635,7 @@ build_authorization_request_object <- function(client, params) {
   )
 
   if (!(alg %in% c("HS256", "HS384", "HS512"))) {
-    kid <- client@client_private_key_kid %||% NA_character_
+    kid <- client@client_assertion_private_key_kid %||% NA_character_
     if (is.character(kid) && length(kid) == 1L && !is.na(kid) && nzchar(kid)) {
       header[["kid"]] <- kid
     }
@@ -654,12 +654,12 @@ build_authorization_request_object <- function(client, params) {
       alg = alg
     )
   } else {
-    key <- normalize_private_key_input(client@client_private_key)
+    key <- normalize_private_key_input(client@client_assertion_private_key)
     if (!private_key_can_sign_jws_alg(key, alg, typ = "oauth-authz-req+jwt")) {
       err_config(
         c(
           "x" = paste0(
-            "authorization_request_signing_alg '",
+            "request_object_signing_alg '",
             alg,
             "' is incompatible with the provided private key"
           )
@@ -718,7 +718,10 @@ build_authorization_request_object <- function(client, params) {
 #' @return Normalized OpenSSL private-key object.
 #' @keywords internal
 #' @noRd
-normalize_private_key_input <- function(key, arg_name = "client_private_key") {
+normalize_private_key_input <- function(
+  key,
+  arg_name = "client_assertion_private_key"
+) {
   if (inherits(key, "key") || inherits(key, "rsa") || inherits(key, "ecdsa")) {
     return(key)
   }

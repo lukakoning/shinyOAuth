@@ -50,8 +50,8 @@
 #' @param request_object_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed Request Objects (RFC
 #'   9101). This is mainly used for early validation when an [OAuthClient]
-#'   sends `authorization_request_mode = "request"` or
-#'   `authorization_request_mode = "request_uri"`.
+#'   sends `request_object_mode = "request"` or
+#'   `request_object_mode = "request_uri"`.
 #' @param request_object_encryption_alg_values_supported Optional vector of JWE
 #'   key-management algorithms that the provider advertises for encrypted
 #'   Request Objects. This metadata is used for early validation when an
@@ -67,8 +67,8 @@
 #'   JSON string.
 #' @param require_signed_request_object Logical. Whether the provider requires
 #'   signed Request Objects for authorization requests. When `TRUE`, clients
-#'   should use `authorization_request_mode = "request"` or
-#'   `authorization_request_mode = "request_uri"`.
+#'   should use `request_object_mode = "request"` or
+#'   `request_object_mode = "request_uri"`.
 #' @param request_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
 #'   `request` parameter. `NA` means the provider did not say. Discovery-derived

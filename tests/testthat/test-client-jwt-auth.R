@@ -125,8 +125,8 @@ test_that("private_key_jwt composes client_assertion with kid and claims", {
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = key,
-    client_private_key_kid = "kid-123",
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = "kid-123",
     redirect_uri = "http://localhost:8100",
     scopes = c("openid")
   )
@@ -199,7 +199,7 @@ test_that("provider metadata rejects unsupported JWT client assertion algs", {
       provider = prov_private,
       client_id = "abc",
       client_secret = "",
-      client_private_key = key,
+      client_assertion_private_key = key,
       redirect_uri = "http://localhost:8100",
       scopes = c("openid")
     ),
@@ -255,7 +255,7 @@ test_that("client_assertion_audience overrides aud for token endpoint assertions
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = key,
+    client_assertion_private_key = key,
     redirect_uri = "http://localhost:8100",
     scopes = c("openid"),
     # Intentionally differ from token_url to verify override is respected
@@ -399,7 +399,7 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = key,
+    client_assertion_private_key = key,
     redirect_uri = "http://localhost:8100",
     scopes = c("openid"),
     client_assertion_audience = "https://example.com/token/"
@@ -515,7 +515,7 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = openssl::rsa_keygen(),
+    client_assertion_private_key = openssl::rsa_keygen(),
     redirect_uri = "http://localhost:8100",
     scopes = c("openid")
   )

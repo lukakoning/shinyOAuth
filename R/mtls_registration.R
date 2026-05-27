@@ -91,7 +91,7 @@ oauth_client_mtls_registration <- function(
     err_input(
       paste(
         "{.arg oauth_client} must use an RFC 8705 mTLS token_auth_style or",
-        "set mtls_request_certificate_bound_access_tokens = TRUE."
+        "set mtls_certificate_bound_access_tokens = TRUE."
       )
     )
   }

@@ -173,10 +173,10 @@ if (!exists("make_provider", mode = "function")) {
   title = "Form Post E2E",
   client_id = "shiny-public",
   response_mode = "form_post",
-  authorization_signed_response_alg = NULL,
-  authorization_encrypted_response_alg = NULL,
-  authorization_encrypted_response_enc = NULL,
-  authorization_response_decryption_private_key = NULL
+  jarm_signed_response_alg = NULL,
+  jarm_encrypted_response_alg = NULL,
+  jarm_encrypted_response_enc = NULL,
+  jarm_decryption_private_key = NULL
 ) {
   stdout <- tempfile("form-post-app-stdout-", fileext = ".log")
   stderr <- tempfile("form-post-app-stderr-", fileext = ".log")
@@ -191,10 +191,10 @@ if (!exists("make_provider", mode = "function")) {
       title,
       client_id,
       response_mode,
-      authorization_signed_response_alg,
-      authorization_encrypted_response_alg,
-      authorization_encrypted_response_enc,
-      authorization_response_decryption_private_key
+      jarm_signed_response_alg,
+      jarm_encrypted_response_alg,
+      jarm_encrypted_response_enc,
+      jarm_decryption_private_key
     ) {
       setwd(repo_root)
       if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -250,60 +250,60 @@ if (!exists("make_provider", mode = "function")) {
         stop("response_mode must be a single non-empty string", call. = FALSE)
       }
       if (
-        !is.null(authorization_signed_response_alg) &&
-          (!is.character(authorization_signed_response_alg) ||
-            length(authorization_signed_response_alg) != 1L ||
-            is.na(authorization_signed_response_alg) ||
-            !nzchar(authorization_signed_response_alg))
+        !is.null(jarm_signed_response_alg) &&
+          (!is.character(jarm_signed_response_alg) ||
+            length(jarm_signed_response_alg) != 1L ||
+            is.na(jarm_signed_response_alg) ||
+            !nzchar(jarm_signed_response_alg))
       ) {
         stop(
           paste(
-            "authorization_signed_response_alg must be NULL or a",
+            "jarm_signed_response_alg must be NULL or a",
             "single non-empty string"
           ),
           call. = FALSE
         )
       }
       if (
-        !is.null(authorization_encrypted_response_alg) &&
-          (!is.character(authorization_encrypted_response_alg) ||
-            length(authorization_encrypted_response_alg) != 1L ||
-            is.na(authorization_encrypted_response_alg) ||
-            !nzchar(authorization_encrypted_response_alg))
+        !is.null(jarm_encrypted_response_alg) &&
+          (!is.character(jarm_encrypted_response_alg) ||
+            length(jarm_encrypted_response_alg) != 1L ||
+            is.na(jarm_encrypted_response_alg) ||
+            !nzchar(jarm_encrypted_response_alg))
       ) {
         stop(
           paste(
-            "authorization_encrypted_response_alg must be NULL or a",
+            "jarm_encrypted_response_alg must be NULL or a",
             "single non-empty string"
           ),
           call. = FALSE
         )
       }
       if (
-        !is.null(authorization_encrypted_response_enc) &&
-          (!is.character(authorization_encrypted_response_enc) ||
-            length(authorization_encrypted_response_enc) != 1L ||
-            is.na(authorization_encrypted_response_enc) ||
-            !nzchar(authorization_encrypted_response_enc))
+        !is.null(jarm_encrypted_response_enc) &&
+          (!is.character(jarm_encrypted_response_enc) ||
+            length(jarm_encrypted_response_enc) != 1L ||
+            is.na(jarm_encrypted_response_enc) ||
+            !nzchar(jarm_encrypted_response_enc))
       ) {
         stop(
           paste(
-            "authorization_encrypted_response_enc must be NULL or a",
+            "jarm_encrypted_response_enc must be NULL or a",
             "single non-empty string"
           ),
           call. = FALSE
         )
       }
       if (
-        !is.null(authorization_response_decryption_private_key) &&
-          (!is.character(authorization_response_decryption_private_key) ||
-            length(authorization_response_decryption_private_key) != 1L ||
-            is.na(authorization_response_decryption_private_key) ||
-            !nzchar(authorization_response_decryption_private_key))
+        !is.null(jarm_decryption_private_key) &&
+          (!is.character(jarm_decryption_private_key) ||
+            length(jarm_decryption_private_key) != 1L ||
+            is.na(jarm_decryption_private_key) ||
+            !nzchar(jarm_decryption_private_key))
       ) {
         stop(
           paste(
-            "authorization_response_decryption_private_key must be NULL or a",
+            "jarm_decryption_private_key must be NULL or a",
             "single non-empty PEM string"
           ),
           call. = FALSE
@@ -321,25 +321,25 @@ if (!exists("make_provider", mode = "function")) {
         scopes = c("openid", "profile", "email"),
         response_mode = response_mode
       )
-      if (keycloak_nonempty_string(authorization_signed_response_alg)) {
-        client_args$authorization_signed_response_alg <-
-          authorization_signed_response_alg
+      if (keycloak_nonempty_string(jarm_signed_response_alg)) {
+        client_args$jarm_signed_response_alg <-
+          jarm_signed_response_alg
       }
-      if (keycloak_nonempty_string(authorization_encrypted_response_alg)) {
-        client_args$authorization_encrypted_response_alg <-
-          authorization_encrypted_response_alg
+      if (keycloak_nonempty_string(jarm_encrypted_response_alg)) {
+        client_args$jarm_encrypted_response_alg <-
+          jarm_encrypted_response_alg
       }
-      if (keycloak_nonempty_string(authorization_encrypted_response_enc)) {
-        client_args$authorization_encrypted_response_enc <-
-          authorization_encrypted_response_enc
+      if (keycloak_nonempty_string(jarm_encrypted_response_enc)) {
+        client_args$jarm_encrypted_response_enc <-
+          jarm_encrypted_response_enc
       }
       if (
         keycloak_nonempty_string(
-          authorization_response_decryption_private_key
+          jarm_decryption_private_key
         )
       ) {
-        client_args$authorization_response_decryption_private_key <-
-          authorization_response_decryption_private_key
+        client_args$jarm_decryption_private_key <-
+          jarm_decryption_private_key
       }
 
       client <- do.call(shinyOAuth::oauth_client, client_args)
@@ -463,10 +463,10 @@ if (!exists("make_provider", mode = "function")) {
       title = title,
       client_id = client_id,
       response_mode = response_mode,
-      authorization_signed_response_alg = authorization_signed_response_alg,
-      authorization_encrypted_response_alg = authorization_encrypted_response_alg,
-      authorization_encrypted_response_enc = authorization_encrypted_response_enc,
-      authorization_response_decryption_private_key = authorization_response_decryption_private_key
+      jarm_signed_response_alg = jarm_signed_response_alg,
+      jarm_encrypted_response_alg = jarm_encrypted_response_alg,
+      jarm_encrypted_response_enc = jarm_encrypted_response_enc,
+      jarm_decryption_private_key = jarm_decryption_private_key
     ),
     stdout = stdout,
     stderr = stderr,
@@ -748,7 +748,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     title = "Form Post JWT E2E",
     client_id = fixture$client_id,
     response_mode = "form_post.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
   on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
@@ -874,10 +874,10 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     title = "Encrypted Form Post JWT E2E",
     client_id = fixture$client_id,
     response_mode = "form_post.jwt",
-    authorization_signed_response_alg = "RS256",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = decryption_key_pem
+    jarm_signed_response_alg = "RS256",
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = decryption_key_pem
   )
   on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)

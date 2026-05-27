@@ -411,12 +411,12 @@ resolve_authorization_request_encryption_config <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 
   alg <- canonicalize_jwe_alg(
-    client@authorization_request_encryption_alg %||% NA_character_
+    client@request_object_encryption_alg %||% NA_character_
   )
   enc <- canonicalize_jwe_enc(
-    client@authorization_request_encryption_enc %||% NA_character_
+    client@request_object_encryption_enc %||% NA_character_
   )
-  kid <- client@authorization_request_encryption_kid %||% NA_character_
+  kid <- client@request_object_encryption_kid %||% NA_character_
 
   if (!nzchar(alg) && !nzchar(enc)) {
     return(NULL)
@@ -424,8 +424,8 @@ resolve_authorization_request_encryption_config <- function(client) {
   if (!nzchar(alg) || !nzchar(enc)) {
     err_config(
       paste(
-        "authorization_request_encryption_alg and",
-        "authorization_request_encryption_enc must both be provided"
+        "request_object_encryption_alg and",
+        "request_object_encryption_enc must both be provided"
       )
     )
   }
@@ -470,7 +470,7 @@ resolve_authorization_request_encryption_public_key <- function(
     ) {
       err_config(
         paste(
-          "authorization_request_encryption_kid does not match the provider's",
+          "request_object_encryption_kid does not match the provider's",
           "explicit request_object_encryption_jwk kid"
         )
       )
@@ -542,7 +542,7 @@ resolve_authorization_request_encryption_public_key <- function(
       err_config(
         paste(
           "Multiple provider Request Object encryption keys matched; set",
-          "authorization_request_encryption_kid or provider",
+          "request_object_encryption_kid or provider",
           "request_object_encryption_jwk"
         )
       )

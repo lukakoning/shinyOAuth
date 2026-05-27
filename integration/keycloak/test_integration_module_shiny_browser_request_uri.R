@@ -120,7 +120,7 @@ if (!exists("make_provider", mode = "function")) {
   prepare_only = FALSE,
   client_id = NULL,
   module_id = "auth",
-  authorization_request_ttl = NULL
+  request_object_ttl = NULL
 ) {
   stdout <- tempfile("request-uri-app-stdout-", fileext = ".log")
   stderr <- tempfile("request-uri-app-stderr-", fileext = ".log")
@@ -135,7 +135,7 @@ if (!exists("make_provider", mode = "function")) {
       prepare_only,
       client_id,
       module_id,
-      authorization_request_ttl
+      request_object_ttl
     ) {
       setwd(repo_root)
       if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -257,10 +257,10 @@ if (!exists("make_provider", mode = "function")) {
         stop("private_key_jwt test key not available", call. = FALSE)
       }
 
-      client@authorization_request_mode <- "request_uri"
-      if (!is.null(authorization_request_ttl)) {
-        client@authorization_request_ttl <- as.numeric(
-          authorization_request_ttl
+      client@request_object_mode <- "request_uri"
+      if (!is.null(request_object_ttl)) {
+        client@request_object_ttl <- as.numeric(
+          request_object_ttl
         )
       }
       ui <- shiny::fluidPage(
@@ -472,7 +472,7 @@ if (!exists("make_provider", mode = "function")) {
       prepare_only = prepare_only,
       client_id = client_id,
       module_id = module_id,
-      authorization_request_ttl = authorization_request_ttl
+      request_object_ttl = request_object_ttl
     ),
     stdout = stdout,
     stderr = stderr,
@@ -991,7 +991,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
     public_base_url = public_base_url,
     app_url = app_url,
     prepare_only = TRUE,
-    authorization_request_ttl = 1
+    request_object_ttl = 1
   )
   on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)

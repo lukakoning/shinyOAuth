@@ -78,7 +78,7 @@ testthat::test_that("Keycloak request-object rejects wrong signing key", {
   prov <- make_provider(token_auth_style = "private_key_jwt")
   client <- make_private_key_jar_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
-  client@client_private_key <- openssl::rsa_keygen()
+  client@client_assertion_private_key <- openssl::rsa_keygen()
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -103,7 +103,7 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
   prov <- make_provider(token_auth_style = "private_key_jwt", use_par = TRUE)
   client <- make_private_key_jar_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
-  client@client_private_key <- openssl::rsa_keygen()
+  client@client_assertion_private_key <- openssl::rsa_keygen()
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,

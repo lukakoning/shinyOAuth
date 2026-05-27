@@ -1,7 +1,7 @@
 make_mtls_registration_client <- function(
   token_auth_style,
   tls_client_certificate_bound_access_tokens = FALSE,
-  mtls_request_certificate_bound_access_tokens = FALSE
+  mtls_certificate_bound_access_tokens = FALSE
 ) {
   provider <- oauth_provider(
     name = "example",
@@ -24,7 +24,7 @@ make_mtls_registration_client <- function(
     tls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
     tls_client_key_file = mtls_pem_fixture("client-key.pem"),
     tls_client_ca_file = mtls_pem_fixture("ca-cert.pem"),
-    mtls_request_certificate_bound_access_tokens = mtls_request_certificate_bound_access_tokens
+    mtls_certificate_bound_access_tokens = mtls_certificate_bound_access_tokens
   )
 }
 
@@ -80,7 +80,7 @@ test_that("oauth_client_mtls_registration emits certificate-bound token intent",
   client <- make_mtls_registration_client(
     token_auth_style = "tls_client_auth",
     tls_client_certificate_bound_access_tokens = TRUE,
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
 
   metadata <- shinyOAuth::oauth_client_mtls_registration(client)
@@ -97,7 +97,7 @@ test_that("oauth_client_mtls_registration supports public certificate-bound clie
   client <- make_mtls_registration_client(
     token_auth_style = "public",
     tls_client_certificate_bound_access_tokens = TRUE,
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
 
   metadata <- shinyOAuth::oauth_client_mtls_registration(client)

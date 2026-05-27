@@ -203,7 +203,7 @@ make_certificate_bound_public_client <- function(
     tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
     tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
     tls_client_ca_file = get_keycloak_tls_ca_file(),
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
 }
 
@@ -226,7 +226,7 @@ make_certificate_bound_client_secret_jwt_client <- function(
     tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
     tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
     tls_client_ca_file = get_keycloak_tls_ca_file(),
-    mtls_request_certificate_bound_access_tokens = TRUE
+    mtls_certificate_bound_access_tokens = TRUE
   )
 }
 

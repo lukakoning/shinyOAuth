@@ -346,15 +346,15 @@ method(format, OAuthClient) <- function(x, ...) {
       provider = x@provider,
       client_id = x@client_id,
       client_secret = x@client_secret,
-      client_private_key = x@client_private_key,
-      client_private_key_kid = x@client_private_key_kid,
+      client_assertion_private_key = x@client_assertion_private_key,
+      client_assertion_private_key_kid = x@client_assertion_private_key_kid,
       client_assertion_alg = x@client_assertion_alg,
       client_assertion_audience = x@client_assertion_audience,
       dpop_private_key = x@dpop_private_key,
       dpop_private_key_kid = x@dpop_private_key_kid,
       dpop_signing_alg = x@dpop_signing_alg,
       dpop_require_access_token = x@dpop_require_access_token,
-      mtls_request_certificate_bound_access_tokens = x@mtls_request_certificate_bound_access_tokens,
+      mtls_certificate_bound_access_tokens = x@mtls_certificate_bound_access_tokens,
       redirect_uri = x@redirect_uri,
       enforce_callback_issuer = x@enforce_callback_issuer,
       scopes = x@scopes,
@@ -372,7 +372,7 @@ method(format, OAuthClient) <- function(x, ...) {
     ),
     secret_fields = c(
       "client_secret",
-      "client_private_key",
+      "client_assertion_private_key",
       "dpop_private_key",
       "state_key"
     )

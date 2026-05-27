@@ -205,7 +205,7 @@ testthat::test_that("private_key_jwt: wrong private key is rejected (http_ error
     client_id = "shiny-pjwt",
     redirect_uri = "http://localhost:3000/callback",
     scopes = character(),
-    client_private_key = bad_key
+    client_assertion_private_key = bad_key
   )
   tok <- shinyOAuth::OAuthToken(access_token = token_value)
 
@@ -241,7 +241,7 @@ testthat::test_that("private_key_jwt: incompatible alg (HS256) fails fast with c
       client_id = "shiny-pjwt",
       redirect_uri = "http://localhost:3000/callback",
       scopes = character(),
-      client_private_key = good_key,
+      client_assertion_private_key = good_key,
       client_assertion_alg = "HS256"
     ),
     regexp = "client_assertion_alg 'HS256' is incompatible",

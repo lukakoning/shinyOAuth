@@ -42,7 +42,7 @@ testthat::test_that("introspect_token uses JWT client assertion for client_secre
 testthat::test_that("introspect_token uses JWT client assertion for private_key_jwt with introspection aud", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   # Provide a dummy private key before switching auth style to satisfy validation
-  cli@client_private_key <- openssl::rsa_keygen()
+  cli@client_assertion_private_key <- openssl::rsa_keygen()
   cli@provider@introspection_url <- "https://example.com/introspect"
   cli@provider@token_auth_style <- "private_key_jwt"
   t <- OAuthToken(

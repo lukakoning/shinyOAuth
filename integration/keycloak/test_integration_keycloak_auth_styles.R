@@ -150,8 +150,8 @@ cases <- list(
         client_secret = "", # not used
         redirect_uri = "http://localhost:3000/callback",
         scopes = character(),
-        client_private_key = get_pjwt_key(),
-        client_private_key_kid = NA_character_,
+        client_assertion_private_key = get_pjwt_key(),
+        client_assertion_private_key_kid = NA_character_,
         client_assertion_alg = NA_character_
       )
     }

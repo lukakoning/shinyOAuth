@@ -55,8 +55,8 @@ can require `token_type = "DPoP"` plus `cnf.jkt` binding, and replay one
 
 * Added JWT-Secured Authorization Request ('JAR', RFC 9101) support.
 `oauth_client()` can now send signed and encrypted Request Objects via
-`authorization_request_mode = "request"` (sent as parameter) or 
-via `authorization_request_mode = "request_uri"` (served from your Shiny app).
+`request_object_mode = "request"` (sent as parameter) or 
+via `request_object_mode = "request_uri"` (served from your Shiny app).
 
 * Added Pushed Authorization Request ('PAR', RFC 9126) support.
 Providers can now configure `par_url` directly or pick it up from OIDC
@@ -280,7 +280,7 @@ instead of being normalized from the first parsed element.
   those temporal claims are present, rejecting expired or not-yet-valid UserInfo
   JWT responses instead of accepting them based only on 
   signature/issuer/audience. `oauth_client()` can also require specific UserInfo 
-  JWT temporal claims to be present via `userinfo_jwt_required_temporal_claims`.
+  JWT temporal claims to be present via `userinfo_jwt_required_time_claims`.
   - Uses internal JWS verifier instead of `jose::jwt_decode_sig()`, so EdDSA 
   UserInfo JWTs can verify correctly,  provider `leeway` is honored 
   consistently, and invalid `typ` headers are rejected.

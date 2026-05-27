@@ -1696,8 +1696,8 @@ make_private_key_jwt_client <- function(prov) {
     client_secret = "",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    client_private_key = key,
-    client_private_key_kid = NA_character_,
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_
   )
 }
@@ -1720,11 +1720,11 @@ make_private_key_jar_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    client_private_key = key,
-    client_private_key_kid = NA_character_,
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256",
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256",
     response_mode = response_mode
   )
 }
@@ -1746,14 +1746,14 @@ make_private_key_jar_jwe_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    client_private_key = key,
-    client_private_key_kid = NA_character_,
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256",
-    authorization_request_encryption_alg = "RSA-OAEP",
-    authorization_request_encryption_enc = "A256CBC-HS512",
-    authorization_request_encryption_kid = get_request_object_encryption_kid()
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256",
+    request_object_encryption_alg = "RSA-OAEP",
+    request_object_encryption_enc = "A256CBC-HS512",
+    request_object_encryption_kid = get_request_object_encryption_kid()
   )
 }
 
@@ -1779,10 +1779,10 @@ make_mtls_private_key_jar_client <- function(
     tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
     tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
     tls_client_ca_file = get_keycloak_tls_ca_file(),
-    client_private_key = key,
-    client_private_key_kid = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256"
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = NA_character_,
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256"
   )
 }
 
@@ -1808,13 +1808,13 @@ make_mtls_private_key_jar_jwe_client <- function(
     tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
     tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
     tls_client_ca_file = get_keycloak_tls_ca_file(),
-    client_private_key = key,
-    client_private_key_kid = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256",
-    authorization_request_encryption_alg = "RSA-OAEP",
-    authorization_request_encryption_enc = "A256CBC-HS512",
-    authorization_request_encryption_kid = get_request_object_encryption_kid()
+    client_assertion_private_key = key,
+    client_assertion_private_key_kid = NA_character_,
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256",
+    request_object_encryption_alg = "RSA-OAEP",
+    request_object_encryption_enc = "A256CBC-HS512",
+    request_object_encryption_kid = get_request_object_encryption_kid()
   )
 }
 
@@ -1825,8 +1825,8 @@ make_hmac_jar_client <- function(prov) {
     client_secret = "hs256-request-object-secret-32b!",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "HS256"
+    request_object_mode = "request",
+    request_object_signing_alg = "HS256"
   )
 }
 
@@ -1837,11 +1837,11 @@ make_hmac_jar_jwe_client <- function(prov) {
     client_secret = "hs256-request-object-secret-32b!",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "HS256",
-    authorization_request_encryption_alg = "RSA-OAEP",
-    authorization_request_encryption_enc = "A256CBC-HS512",
-    authorization_request_encryption_kid = get_request_object_encryption_kid()
+    request_object_mode = "request",
+    request_object_signing_alg = "HS256",
+    request_object_encryption_alg = "RSA-OAEP",
+    request_object_encryption_enc = "A256CBC-HS512",
+    request_object_encryption_kid = get_request_object_encryption_kid()
   )
 }
 

@@ -162,7 +162,7 @@ make_signed_jarm_public_client <- function(
     redirect_uri = redirect_uri,
     scopes = scopes,
     response_mode = response_mode,
-    authorization_signed_response_alg = "RS256",
+    jarm_signed_response_alg = "RS256",
     ...
   )
 }
@@ -204,7 +204,7 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
 
   shiny::testServer(
@@ -525,10 +525,10 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256",
-    authorization_encrypted_response_alg = "RSA-OAEP",
-    authorization_encrypted_response_enc = "A256CBC-HS512",
-    authorization_response_decryption_private_key = private_key
+    jarm_signed_response_alg = "RS256",
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = private_key
   )
 
   shiny::testServer(
@@ -862,10 +862,10 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
   client <- make_signed_jarm_public_client(
     provider = prov,
     client_id = setup$fixture$client_id,
-    client_private_key = private_key,
-    client_private_key_kid = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256"
+    client_assertion_private_key = private_key,
+    client_assertion_private_key_kid = NA_character_,
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256"
   )
 
   shiny::testServer(

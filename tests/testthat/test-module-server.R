@@ -114,8 +114,8 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
-  cli@authorization_request_audience <- "https://issuer.example.com"
-  cli@authorization_request_mode <- "request_uri"
+  cli@request_object_audience <- "https://issuer.example.com"
+  cli@request_object_mode <- "request_uri"
 
   shiny::testServer(
     app = oauth_module_server,
@@ -180,7 +180,7 @@ testthat::test_that("manual build_auth_url keeps OIDC outer params in request_ur
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE, scopes = "openid")
   cli@provider@issuer <- "https://example.com"
   cli@client_secret <- paste(rep("s", 32), collapse = "")
-  cli@authorization_request_mode <- "request_uri"
+  cli@request_object_mode <- "request_uri"
 
   shiny::testServer(
     app = oauth_module_server,
@@ -222,8 +222,8 @@ testthat::test_that("request_uri mode requires a pinned public origin policy", {
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
-  cli@authorization_request_audience <- "https://issuer.example.com"
-  cli@authorization_request_mode <- "request_uri"
+  cli@request_object_audience <- "https://issuer.example.com"
+  cli@request_object_mode <- "request_uri"
 
   testthat::expect_error(
     shiny::testServer(
@@ -245,8 +245,8 @@ testthat::test_that("manual build_auth_url forwards request_uri_base_url through
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@client_secret <- paste(rep("s", 32), collapse = "")
-  cli@authorization_request_audience <- "https://issuer.example.com"
-  cli@authorization_request_mode <- "request_uri"
+  cli@request_object_audience <- "https://issuer.example.com"
+  cli@request_object_mode <- "request_uri"
 
   shiny::testServer(
     app = oauth_module_server,

@@ -116,10 +116,10 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
 test_that("state_client_policy_fingerprint includes JARM callback policy", {
   make_jarm_client <- function(
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256",
-    authorization_encrypted_response_enc = "A128CBC-HS256",
-    authorization_response_decryption_private_key,
-    authorization_response_decryption_private_key_kid = "enc-1",
+    jarm_signed_response_alg = "RS256",
+    jarm_encrypted_response_enc = "A128CBC-HS256",
+    jarm_decryption_private_key,
+    jarm_decryption_private_key_kid = "enc-1",
     jarm_max_lifetime = 600
   ) {
     prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
@@ -139,11 +139,11 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
       redirect_uri = "http://localhost:8100",
       scopes = "openid",
       response_mode = response_mode,
-      authorization_signed_response_alg = authorization_signed_response_alg,
-      authorization_encrypted_response_alg = "RSA-OAEP",
-      authorization_encrypted_response_enc = authorization_encrypted_response_enc,
-      authorization_response_decryption_private_key = authorization_response_decryption_private_key,
-      authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid,
+      jarm_signed_response_alg = jarm_signed_response_alg,
+      jarm_encrypted_response_alg = "RSA-OAEP",
+      jarm_encrypted_response_enc = jarm_encrypted_response_enc,
+      jarm_decryption_private_key = jarm_decryption_private_key,
+      jarm_decryption_private_key_kid = jarm_decryption_private_key_kid,
       jarm_max_lifetime = jarm_max_lifetime,
       state_store = cachem::cache_mem(max_age = 600),
       state_payload_max_age = 300,
@@ -158,7 +158,7 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
   key_one <- openssl::rsa_keygen()
   key_two <- openssl::rsa_keygen()
   base <- make_jarm_client(
-    authorization_response_decryption_private_key = key_one
+    jarm_decryption_private_key = key_one
   )
   base_fingerprint <- shinyOAuth:::state_client_policy_fingerprint(base)
 
@@ -166,47 +166,47 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
       response_mode = "jwt",
-      authorization_response_decryption_private_key = key_one
+      jarm_decryption_private_key = key_one
     ))
   )
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
       response_mode = "form_post.jwt",
-      authorization_response_decryption_private_key = key_one
+      jarm_decryption_private_key = key_one
     ))
   ))
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
-      authorization_signed_response_alg = "ES256",
-      authorization_response_decryption_private_key = key_one
+      jarm_signed_response_alg = "ES256",
+      jarm_decryption_private_key = key_one
     ))
   ))
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
-      authorization_encrypted_response_enc = "A256CBC-HS512",
-      authorization_response_decryption_private_key = key_one
+      jarm_encrypted_response_enc = "A256CBC-HS512",
+      jarm_decryption_private_key = key_one
     ))
   ))
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
-      authorization_response_decryption_private_key = key_two
+      jarm_decryption_private_key = key_two
     ))
   ))
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
-      authorization_response_decryption_private_key = key_one,
-      authorization_response_decryption_private_key_kid = "enc-2"
+      jarm_decryption_private_key = key_one,
+      jarm_decryption_private_key_kid = "enc-2"
     ))
   ))
   expect_false(identical(
     base_fingerprint,
     shinyOAuth:::state_client_policy_fingerprint(make_jarm_client(
-      authorization_response_decryption_private_key = key_one,
+      jarm_decryption_private_key = key_one,
       jarm_max_lifetime = 60
     ))
   ))

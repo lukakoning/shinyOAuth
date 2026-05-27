@@ -47,7 +47,7 @@ test_that("OAuthClient printing redacts secrets and private keys", {
     "state-key-secret-",
     "abcdefghijklmnopqrstuvwxyz0123456789"
   )
-  client_private_key <- openssl::write_pem(openssl::rsa_keygen())
+  client_assertion_private_key <- openssl::write_pem(openssl::rsa_keygen())
   dpop_private_key <- openssl::write_pem(openssl::rsa_keygen())
 
   prov <- oauth_provider(
@@ -65,8 +65,8 @@ test_that("OAuthClient printing redacts secrets and private keys", {
     provider = prov,
     client_id = "abc",
     client_secret = client_secret,
-    client_private_key = client_private_key,
-    client_private_key_kid = "kid-123",
+    client_assertion_private_key = client_assertion_private_key,
+    client_assertion_private_key_kid = "kid-123",
     redirect_uri = "http://localhost:8100",
     scopes = c("openid", "profile"),
     state_store = cachem::cache_mem(max_age = 600),
@@ -87,7 +87,7 @@ test_that("OAuthClient printing redacts secrets and private keys", {
       c(
         client_secret,
         state_key,
-        client_private_key,
+        client_assertion_private_key,
         dpop_private_key
       )
     )

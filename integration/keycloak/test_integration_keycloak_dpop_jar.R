@@ -63,10 +63,10 @@ make_dynamic_dpop_jar_client <- function(
     scopes = c("openid"),
     dpop_private_key = dpop_private_key,
     dpop_require_access_token = TRUE,
-    client_private_key = get_pjwt_key(),
-    client_private_key_kid = NA_character_,
-    authorization_request_mode = "request",
-    authorization_request_signing_alg = "RS256"
+    client_assertion_private_key = get_pjwt_key(),
+    client_assertion_private_key_kid = NA_character_,
+    request_object_mode = "request",
+    request_object_signing_alg = "RS256"
   )
 }
 

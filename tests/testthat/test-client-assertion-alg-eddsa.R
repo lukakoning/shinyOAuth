@@ -16,7 +16,7 @@ testthat::test_that("OAuthClient rejects unsupported outbound EdDSA for private_
       provider = prov,
       client_id = "abc",
       client_secret = "",
-      client_private_key = openssl::rsa_keygen(),
+      client_assertion_private_key = openssl::rsa_keygen(),
       client_assertion_alg = "eddsa",
       redirect_uri = "http://localhost:8100",
       scopes = c("openid")
@@ -36,7 +36,7 @@ testthat::test_that("OAuthClient rejects unsupported outbound EdDSA for private_
       provider = prov,
       client_id = "abc",
       client_secret = "",
-      client_private_key = key_ec,
+      client_assertion_private_key = key_ec,
       client_assertion_alg = "ES512",
       redirect_uri = "http://localhost:8100",
       scopes = c("openid")
@@ -71,7 +71,7 @@ testthat::test_that("OAuthClient rejects Ed25519 keys for outbound client assert
       provider = prov,
       client_id = "abc",
       client_secret = "",
-      client_private_key = key_ed,
+      client_assertion_private_key = key_ed,
       redirect_uri = "http://localhost:8100",
       scopes = c("openid")
     ),
@@ -98,7 +98,7 @@ testthat::test_that("build_client_assertion rejects incompatible resolved algs",
     provider = prov,
     client_id = "abc",
     client_secret = "",
-    client_private_key = openssl::rsa_keygen(),
+    client_assertion_private_key = openssl::rsa_keygen(),
     redirect_uri = "http://localhost:8100",
     scopes = c("openid")
   )

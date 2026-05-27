@@ -130,8 +130,8 @@ make_bad_private_key_jwt_client <- function(prov, ...) {
     client_secret = "",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    client_private_key = openssl::rsa_keygen(bits = 2048),
-    client_private_key_kid = NA_character_,
+    client_assertion_private_key = openssl::rsa_keygen(bits = 2048),
+    client_assertion_private_key_kid = NA_character_,
     client_assertion_alg = NA_character_,
     ...
   )
@@ -198,7 +198,7 @@ testthat::test_that("JARM code flow fails with wrong client_secret_jwt secret", 
   client <- make_bad_client_secret_jwt_client(
     prov,
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
 
   expect_jwt_auth_code_flow_failure(
@@ -216,7 +216,7 @@ testthat::test_that("JARM code flow fails with wrong client_secret_jwt audience"
   client <- make_bad_client_secret_jwt_aud_client(
     prov,
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
 
   expect_jwt_auth_code_flow_failure(
@@ -234,7 +234,7 @@ testthat::test_that("JARM code flow fails with client_secret_jwt alg not allowed
   client <- make_bad_client_secret_jwt_alg_client(
     prov,
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
 
   expect_jwt_auth_code_flow_failure(
@@ -253,7 +253,7 @@ testthat::test_that("JARM code flow fails with wrong private_key_jwt key", {
   client <- make_bad_private_key_jwt_client(
     prov,
     response_mode = "query.jwt",
-    authorization_signed_response_alg = "RS256"
+    jarm_signed_response_alg = "RS256"
   )
 
   expect_jwt_auth_code_flow_failure(

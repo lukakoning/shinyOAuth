@@ -16,7 +16,7 @@
 #' @param browser_token Browser-bound token used to tie the login attempt to the
 #'   current browser session.
 #' @param request_uri_publisher Optional function used when
-#'   `authorization_request_mode = "request_uri"`. It must accept
+#'   `request_object_mode = "request_uri"`. It must accept
 #'   `request_object`, `request_handle_id`, `expires_at`, and `oauth_client`
 #'   arguments and return an absolute request-object URL.
 #'
@@ -52,7 +52,7 @@ prepare_call <- function(
 
   flow_trace_id <- gen_trace_id()
   effective_scopes <- effective_client_scopes(oauth_client)
-  request_mode <- oauth_client@authorization_request_mode %||% "parameters"
+  request_mode <- oauth_client@request_object_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
     length(request_mode) == 1L &&
@@ -689,7 +689,7 @@ attach_par_auth_url_metadata <- function(
 #' @param pkce_method PKCE method when PKCE is enabled.
 #' @param nonce OIDC nonce when required.
 #' @param request_uri_publisher Optional function used to publish Request
-#'   Objects when `authorization_request_mode = "request_uri"`.
+#'   Objects when `request_object_mode = "request_uri"`.
 #' @param request_handle_id Optional stable handle identifier for
 #'   `request_uri_publisher` implementations.
 #' @return A length-1 authorization URL string. When PAR is used, the string
@@ -735,7 +735,7 @@ build_auth_url <- function(
     invisible(NULL)
   }
 
-  request_mode <- oauth_client@authorization_request_mode %||% "parameters"
+  request_mode <- oauth_client@request_object_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
     length(request_mode) == 1L &&
@@ -752,7 +752,7 @@ build_auth_url <- function(
   ) {
     err_config(
       paste(
-        "build_auth_url: authorization_request_mode = 'request_uri' cannot",
+        "build_auth_url: request_object_mode = 'request_uri' cannot",
         "be used when the provider requires PAR"
       )
     )
@@ -810,14 +810,14 @@ build_auth_url <- function(
       if (!is.function(request_uri_publisher)) {
         err_config(
           paste(
-            "build_auth_url: authorization_request_mode = 'request_uri'",
+            "build_auth_url: request_object_mode = 'request_uri'",
             "requires a request_uri_publisher"
           )
         )
       }
 
       request_expires_at <- Sys.time() +
-        (oauth_client@authorization_request_ttl %||% 45)
+        (oauth_client@request_object_ttl %||% 45)
       request_uri <- tryCatch(
         {
           request_uri_publisher(

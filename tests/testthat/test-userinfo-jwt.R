@@ -416,7 +416,7 @@ test_that("get_userinfo can require exp on signed JWT userinfo", {
   cli <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
-    userinfo_jwt_required_temporal_claims = "exp"
+    userinfo_jwt_required_time_claims = "exp"
   )
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -457,7 +457,7 @@ test_that("get_userinfo errors when signed JWT is missing required exp", {
   cli <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
-    userinfo_jwt_required_temporal_claims = "exp"
+    userinfo_jwt_required_time_claims = "exp"
   )
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://issuer.example.com"
@@ -497,9 +497,9 @@ test_that("oauth_client rejects invalid required UserInfo JWT temporal claims", 
         "0123456789abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       ),
-      userinfo_jwt_required_temporal_claims = c("exp", "foo")
+      userinfo_jwt_required_time_claims = c("exp", "foo")
     ),
-    regexp = "invalid userinfo_jwt_required_temporal_claims"
+    regexp = "invalid userinfo_jwt_required_time_claims"
   )
 })
 

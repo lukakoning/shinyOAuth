@@ -90,7 +90,7 @@ browser tab title after the OAuth callback. If provided, it takes
 precedence over \code{tab_title_cleaning}}
 
 \item{request_uri_base_url}{Optional absolute base URL used when
-\code{authorization_request_mode = "request_uri"} publishes Request Objects
+\code{request_object_mode = "request_uri"} publishes Request Objects
 through Shiny. By default (\code{NULL}), shinyOAuth derives the base URL from
 the current browser-visible app origin, but only when
 \code{options(shinyOAuth.allowed_hosts = ...)} pins the permitted public host.

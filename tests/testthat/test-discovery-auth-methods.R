@@ -412,7 +412,7 @@ test_that("request mode remains available when PAR carries the request object", 
         "0123456789abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       ),
-      authorization_request_mode = "request"
+      request_object_mode = "request"
     )
   )
 
@@ -455,11 +455,11 @@ test_that("discovery blocks request mode when request transport is unsupported a
         "0123456789abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
       ),
-      authorization_request_mode = "request"
+      request_object_mode = "request"
     ),
     regexp = paste(
       "provider discovery metadata says request parameter transport is not supported;",
-      "authorization_request_mode = 'request' cannot be used unless PAR is configured"
+      "request_object_mode = 'request' cannot be used unless PAR is configured"
     )
   )
 })
