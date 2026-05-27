@@ -247,17 +247,6 @@
 #' @param par_required Logical. Whether the provider
 #'   requires authorization requests to be sent via PAR. When `TRUE`,
 #'   `par_url` must also be configured.
-#' @param authorization_request_front_channel_mode Character scalar controlling
-#'   which browser-visible outer parameters shinyOAuth keeps when the actual
-#'   authorization request is carried by JAR or PAR. Use `"compat"`
-#'   (default) to keep the current OIDC-compatible shape with outer
-#'   `client_id`, `response_type`, and `scope` when an issuer is configured.
-#'   Use `"minimal"` for plain OAuth browser redirects and for PAR
-#'   deployments whose authorization endpoint accepts only `client_id`
-#'   plus the provider-issued `request_uri` handle. OpenID Connect
-#'   by-value `request` and caller-managed `request_uri` transports reject
-#'   `"minimal"` because OIDC still requires outer `response_type` and an
-#'   outer `scope` containing `openid`.
 #' @param signed_request_object_required Logical. Whether the provider requires
 #'   signed Request Objects for authorization requests. When `TRUE`, clients
 #'   should use `request_object_mode = "request"` or
@@ -300,6 +289,23 @@
 #'   available or when you need to pin one specific encryption key. Accepts an
 #'   OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
 #'   JSON string.
+#' @param authorization_request_front_channel_mode Character scalar controlling
+#'   which browser-visible outer parameters shinyOAuth keeps when the actual
+#'   authorization request is carried by JAR or PAR. Use `"compat"`
+#'   (default) to keep the current OIDC-compatible shape with outer
+#'   `client_id`, `response_type`, and `scope` when an issuer is configured.
+#'   Use `"minimal"` for plain OAuth browser redirects and for PAR
+#'   deployments whose authorization endpoint accepts only `client_id`
+#'   plus the provider-issued `request_uri` handle. OpenID Connect
+#'   by-value `request` and caller-managed `request_uri` transports reject
+#'   `"minimal"` because OIDC still requires outer `response_type` and an
+#'   outer `scope` containing `openid`.
+#' @param authorization_response_iss_parameter_supported Logical. Whether the
+#'   provider advertises RFC 9207 support for returning an `iss` parameter on
+#'   the authorization response. When `TRUE`, the [oauth_client()] helper can
+#'   auto-enable callback issuer enforcement when the caller leaves
+#'   `enforce_callback_issuer` unset and the provider also has a configured
+#'   `issuer`.
 #' @param response_modes_supported Optional character vector of OAuth/OIDC
 #'   `response_mode` values advertised by the provider. Discovery-backed
 #'   providers use the discovery metadata value, defaulting to `c("query",
@@ -307,12 +313,6 @@
 #'   may leave this empty when capabilities are not known. Provider metadata may
 #'   include response modes that shinyOAuth does not implement; clients still
 #'   fail fast if they request one of those unsupported modes.
-#' @param authorization_response_iss_parameter_supported Logical. Whether the
-#'   provider advertises RFC 9207 support for returning an `iss` parameter on
-#'   the authorization response. When `TRUE`, the [oauth_client()] helper can
-#'   auto-enable callback issuer enforcement when the caller leaves
-#'   `enforce_callback_issuer` unset and the provider also has a configured
-#'   `issuer`.
 #' @param jarm_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed JWT Secured
 #'   Authorization Responses (JARM).
@@ -455,10 +455,6 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
-    authorization_request_front_channel_mode = S7::new_property(
-      S7::class_character,
-      default = "compat"
-    ),
     signed_request_object_required = S7::new_property(
       S7::class_logical,
       default = FALSE
@@ -491,13 +487,17 @@ OAuthProvider <- S7::new_class(
       S7::class_any,
       default = NULL
     ),
-    response_modes_supported = S7::new_property(
+    authorization_request_front_channel_mode = S7::new_property(
       S7::class_character,
-      default = character()
+      default = "compat"
     ),
     authorization_response_iss_parameter_supported = S7::new_property(
       S7::class_logical,
       default = FALSE
+    ),
+    response_modes_supported = S7::new_property(
+      S7::class_character,
+      default = character()
     ),
     jarm_signing_alg_values_supported = S7::new_property(
       S7::class_character,
@@ -630,7 +630,6 @@ oauth_provider <- function(
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
   par_required = FALSE,
-  authorization_request_front_channel_mode = "compat",
   signed_request_object_required = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
@@ -639,8 +638,9 @@ oauth_provider <- function(
   request_object_encryption_alg_values_supported = character(),
   request_object_encryption_enc_values_supported = character(),
   request_object_encryption_jwk = NULL,
-  response_modes_supported = character(),
+  authorization_request_front_channel_mode = "compat",
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(),
   jarm_signing_alg_values_supported = character(),
   jarm_encryption_alg_values_supported = character(),
   jarm_encryption_enc_values_supported = character(),
@@ -944,7 +944,6 @@ oauth_provider <- function(
     par_required = isTRUE(
       par_required
     ),
-    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
     signed_request_object_required = isTRUE(signed_request_object_required),
     request_parameter_supported = request_parameter_supported,
     request_uri_parameter_supported = request_uri_parameter_supported,
@@ -953,10 +952,11 @@ oauth_provider <- function(
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
     request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
     request_object_encryption_jwk = request_object_encryption_jwk,
-    response_modes_supported = response_modes_supported,
+    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
     authorization_response_iss_parameter_supported = isTRUE(
       authorization_response_iss_parameter_supported
     ),
+    response_modes_supported = response_modes_supported,
     jarm_signing_alg_values_supported = jarm_signing_alg_values_supported,
     jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
     jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,

@@ -37,7 +37,6 @@ OAuthProvider(
   allowed_token_types = "Bearer",
   par_url = NA_character_,
   par_required = FALSE,
-  authorization_request_front_channel_mode = "compat",
   signed_request_object_required = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
@@ -46,8 +45,9 @@ OAuthProvider(
   request_object_encryption_alg_values_supported = character(0),
   request_object_encryption_enc_values_supported = character(0),
   request_object_encryption_jwk = NULL,
-  response_modes_supported = character(0),
+  authorization_request_front_channel_mode = "compat",
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(0),
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
   jarm_encryption_enc_values_supported = character(0),
@@ -304,18 +304,6 @@ their provider specifically supports or requires PAR.}
 requires authorization requests to be sent via PAR. When \code{TRUE},
 \code{par_url} must also be configured.}
 
-\item{authorization_request_front_channel_mode}{Character scalar controlling
-which browser-visible outer parameters shinyOAuth keeps when the actual
-authorization request is carried by JAR or PAR. Use \code{"compat"}
-(default) to keep the current OIDC-compatible shape with outer
-\code{client_id}, \code{response_type}, and \code{scope} when an issuer is configured.
-Use \code{"minimal"} for plain OAuth browser redirects and for PAR
-deployments whose authorization endpoint accepts only \code{client_id}
-plus the provider-issued \code{request_uri} handle. OpenID Connect
-by-value \code{request} and caller-managed \code{request_uri} transports reject
-\code{"minimal"} because OIDC still requires outer \code{response_type} and an
-outer \code{scope} containing \code{openid}.}
-
 \item{signed_request_object_required}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients
 should use \code{request_object_mode = "request"} or
@@ -366,12 +354,17 @@ available or when you need to pin one specific encryption key. Accepts an
 OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
 JSON string.}
 
-\item{response_modes_supported}{Optional character vector of OAuth/OIDC
-\code{response_mode} values advertised by the provider. Discovery-backed
-providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
-may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.}
+\item{authorization_request_front_channel_mode}{Character scalar controlling
+which browser-visible outer parameters shinyOAuth keeps when the actual
+authorization request is carried by JAR or PAR. Use \code{"compat"}
+(default) to keep the current OIDC-compatible shape with outer
+\code{client_id}, \code{response_type}, and \code{scope} when an issuer is configured.
+Use \code{"minimal"} for plain OAuth browser redirects and for PAR
+deployments whose authorization endpoint accepts only \code{client_id}
+plus the provider-issued \code{request_uri} handle. OpenID Connect
+by-value \code{request} and caller-managed \code{request_uri} transports reject
+\code{"minimal"} because OIDC still requires outer \code{response_type} and an
+outer \code{scope} containing \code{openid}.}
 
 \item{authorization_response_iss_parameter_supported}{Logical. Whether the
 provider advertises RFC 9207 support for returning an \code{iss} parameter on
@@ -379,6 +372,13 @@ the authorization response. When \code{TRUE}, the \code{\link[=oauth_client]{oau
 auto-enable callback issuer enforcement when the caller leaves
 \code{enforce_callback_issuer} unset and the provider also has a configured
 \code{issuer}.}
+
+\item{response_modes_supported}{Optional character vector of OAuth/OIDC
+\code{response_mode} values advertised by the provider. Discovery-backed
+providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
+may leave this empty when capabilities are not known. Provider metadata may
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.}
 
 \item{jarm_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed JWT Secured
