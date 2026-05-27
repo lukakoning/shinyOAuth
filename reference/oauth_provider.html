@@ -103,7 +103,7 @@ used by the built-in provider helpers.</p>
 <span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  tolerate_duplicate_top_level_jarm_iss <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  jarm_tolerate_duplicate_top_level_iss <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -529,7 +529,7 @@ content-encryption algorithms that the provider advertises for encrypted
 JARM responses.</p></dd>
 
 
-<dt id="arg-tolerate-duplicate-top-level-jarm-iss">tolerate_duplicate_top_level_jarm_iss<a class="anchor" aria-label="anchor" href="#arg-tolerate-duplicate-top-level-jarm-iss"></a></dt>
+<dt id="arg-jarm-tolerate-duplicate-top-level-iss">jarm_tolerate_duplicate_top_level_iss<a class="anchor" aria-label="anchor" href="#arg-jarm-tolerate-duplicate-top-level-iss"></a></dt>
 <dd><p>Logical. Whether shinyOAuth
 should tolerate repeated identical top-level <code>iss</code> members in signed JARM
 payloads for this provider. This is an interoperability escape hatch for

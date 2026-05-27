@@ -12,7 +12,7 @@ oauth_provider_keycloak(
   realm,
   name = paste0("keycloak-", realm),
   token_auth_style = "body",
-  tolerate_duplicate_top_level_jarm_iss = TRUE
+  jarm_tolerate_duplicate_top_level_iss = TRUE
 )
 ```
 
@@ -41,7 +41,7 @@ oauth_provider_keycloak(
   environment. If you pass `NULL`, discovery will infer the method from
   the provider's `token_endpoint_auth_methods_supported` metadata.
 
-- tolerate_duplicate_top_level_jarm_iss:
+- jarm_tolerate_duplicate_top_level_iss:
 
   Logical. Defaults to `TRUE` for Keycloak because current Keycloak JARM
   responses may repeat an identical top-level `iss` claim. Set `FALSE`
