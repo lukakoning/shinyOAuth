@@ -8,47 +8,27 @@ oauth_provider(
   name,
   auth_url,
   token_url,
-  userinfo_url = NA_character_,
-  introspection_url = NA_character_,
-  revocation_url = NA_character_,
-  par_url = NA_character_,
-  require_pushed_authorization_requests = FALSE,
-  authorization_request_front_channel_mode = "compat",
-  request_object_signing_alg_values_supported = character(),
-  request_object_encryption_alg_values_supported = character(),
-  request_object_encryption_enc_values_supported = character(),
-  request_object_encryption_jwk = NULL,
-  require_signed_request_object = FALSE,
-  request_parameter_supported = NA,
-  request_uri_parameter_supported = NA,
-  require_request_uri_registration = NA,
-  token_endpoint_auth_signing_alg_values_supported = character(),
-  dpop_signing_alg_values_supported = character(),
-  authorization_response_iss_parameter_supported = FALSE,
-  response_modes_supported = character(),
-  authorization_signing_alg_values_supported = character(),
-  authorization_encryption_alg_values_supported = character(),
-  authorization_encryption_enc_values_supported = character(),
-  tolerate_duplicate_top_level_jarm_iss = FALSE,
-  mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
-  use_nonce = NULL,
+  token_auth_style = "header",
   use_pkce = TRUE,
   pkce_method = "S256",
+  use_nonce = NULL,
+  userinfo_url = NA_character_,
   userinfo_required = NULL,
-  userinfo_id_token_match = NULL,
-  userinfo_signed_jwt_required = FALSE,
   userinfo_id_selector = function(userinfo) {
      userinfo[["sub"]]
  },
+  userinfo_id_token_match = NULL,
+  userinfo_signed_jwt_required = FALSE,
   id_token_required = NULL,
   id_token_validation = NULL,
+  id_token_at_hash_required = FALSE,
+  introspection_url = NA_character_,
+  revocation_url = NA_character_,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(),
-  token_auth_style = "header",
   jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
@@ -58,7 +38,27 @@ oauth_provider(
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
-  id_token_at_hash_required = FALSE
+  par_url = NA_character_,
+  par_required = FALSE,
+  authorization_request_front_channel_mode = "compat",
+  signed_request_object_required = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  request_uri_registration_required = NA,
+  request_object_signing_alg_values_supported = character(),
+  request_object_encryption_alg_values_supported = character(),
+  request_object_encryption_enc_values_supported = character(),
+  request_object_encryption_jwk = NULL,
+  response_modes_supported = character(),
+  authorization_response_iss_parameter_supported = FALSE,
+  jarm_signing_alg_values_supported = character(),
+  jarm_encryption_alg_values_supported = character(),
+  jarm_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
+  token_endpoint_auth_signing_alg_values_supported = character(),
+  dpop_signing_alg_values_supported = character(),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE
 )
 }
 \arguments{
@@ -68,144 +68,6 @@ only; used in logging and audit events}
 \item{auth_url}{Authorization endpoint URL}
 
 \item{token_url}{Token endpoint URL}
-
-\item{userinfo_url}{User info endpoint URL (optional)}
-
-\item{introspection_url}{Token introspection endpoint URL (optional; RFC 7662)}
-
-\item{revocation_url}{Token revocation endpoint URL (optional; RFC 7009)}
-
-\item{par_url}{Optional Pushed Authorization Request (PAR) URL (RFC 9126).
-When set, shinyOAuth first sends the authorization request from server to
-provider and then redirects the browser with the returned \code{request_uri}
-handle instead of the full request payload. Most users only need this when
-their provider specifically supports or requires PAR.}
-
-\item{require_pushed_authorization_requests}{Logical. Whether the provider
-requires authorization requests to be sent via PAR. When \code{TRUE},
-\code{par_url} must also be configured.}
-
-\item{authorization_request_front_channel_mode}{Character scalar controlling
-which browser-visible outer parameters shinyOAuth keeps when the actual
-authorization request is carried by JAR or PAR. Use \code{"compat"}
-(default) to keep the current OIDC-compatible shape with outer
-\code{client_id}, \code{response_type}, and \code{scope} when an issuer is configured.
-Use \code{"minimal"} for plain OAuth browser redirects and for PAR
-deployments whose authorization endpoint accepts only \code{client_id}
-plus the provider-issued \code{request_uri} handle. OpenID Connect
-by-value \code{request} and caller-managed \code{request_uri} transports reject
-\code{"minimal"} because OIDC still requires outer \code{response_type} and an
-outer \code{scope} containing \code{openid}.}
-
-\item{request_object_signing_alg_values_supported}{Optional vector of JWS
-algorithms that the provider advertises for signed Request Objects (RFC
-9101). This is mainly used for early validation when an \link{OAuthClient}
-sends \code{request_object_mode = "request"} or
-\code{request_object_mode = "request_uri"}.}
-
-\item{request_object_encryption_alg_values_supported}{Optional vector of JWE
-key-management algorithms that the provider advertises for encrypted
-Request Objects. This metadata is used for early validation when an
-\link{OAuthClient} enables Request Object encryption.}
-
-\item{request_object_encryption_enc_values_supported}{Optional vector of JWE
-content-encryption algorithms that the provider advertises for encrypted
-Request Objects. This metadata is used for early validation when an
-\link{OAuthClient} enables Request Object encryption.}
-
-\item{request_object_encryption_jwk}{Optional explicit recipient public key
-used to encrypt Request Objects when discovery-backed JWKS selection is not
-available or when you need to pin one specific encryption key. Accepts an
-OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
-JSON string.}
-
-\item{require_signed_request_object}{Logical. Whether the provider requires
-signed Request Objects for authorization requests. When \code{TRUE}, clients
-should use \code{request_object_mode = "request"} or
-\code{request_object_mode = "request_uri"}.}
-
-\item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
-metadata explicitly advertises support for the authorization-request
-\code{request} parameter. \code{NA} means the provider did not say. Discovery-derived
-providers apply the OpenID Connect default (\code{FALSE}) when this metadata is
-omitted.}
-
-\item{request_uri_parameter_supported}{Logical or \code{NA}. Whether discovery
-metadata explicitly advertises support for the authorization-request
-\code{request_uri} parameter for caller-managed request URIs. \code{NA} means the
-provider did not say. Discovery-derived providers apply the OpenID Connect
-default (\code{TRUE}) when this metadata is omitted. PAR-issued \code{request_uri}
-handles remain valid even when this metadata is \code{FALSE}.}
-
-\item{require_request_uri_registration}{Logical or \code{NA}. Whether discovery
-metadata says caller-managed \code{request_uri} values must be pre-registered.
-\code{NA} means the provider did not say. Discovery-derived providers apply the
-OpenID Connect default (\code{FALSE}) when this metadata is omitted.
-shinyOAuth can publish caller-managed \code{request_uri} values through
-\code{oauth_module_server()}. When this is \code{TRUE}, make sure the provider has a
-matching public request URI or wildcard prefix registered for the client.
-shinyOAuth stores this metadata for caller awareness, but it cannot verify
-provider-side registration state automatically.}
-
-\item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
-JWS algorithms that the provider advertises for JWT-based client
-authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
-endpoint. This metadata is used for early validation of
-\code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
-defaults.}
-
-\item{dpop_signing_alg_values_supported}{Optional vector of JWS algorithms
-that the provider advertises for DPoP proof JWTs (RFC 9449). This
-metadata is used for early validation of \code{OAuthClient@dpop_signing_alg}
-and inferred outbound DPoP signing defaults.}
-
-\item{authorization_response_iss_parameter_supported}{Logical. Whether the
-provider advertises RFC 9207 support for returning an \code{iss} parameter on
-the authorization response. When \code{TRUE}, the \code{\link[=oauth_client]{oauth_client()}} helper can
-auto-enable callback issuer enforcement when the caller leaves
-\code{enforce_callback_issuer} unset and the provider also has a configured
-\code{issuer}.}
-
-\item{response_modes_supported}{Optional character vector of OAuth/OIDC
-\code{response_mode} values advertised by the provider. Discovery-backed
-providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
-may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.}
-
-\item{authorization_signing_alg_values_supported}{Optional vector of JWS
-algorithms that the provider advertises for signed JWT Secured
-Authorization Responses (JARM).}
-
-\item{authorization_encryption_alg_values_supported}{Optional vector of JWE
-key-management algorithms that the provider advertises for encrypted JARM
-responses.}
-
-\item{authorization_encryption_enc_values_supported}{Optional vector of JWE
-content-encryption algorithms that the provider advertises for encrypted
-JARM responses.}
-
-\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Whether shinyOAuth
-should tolerate repeated identical top-level \code{iss} members in signed JARM
-payloads for this provider. This is an interoperability escape hatch for
-providers that emit duplicate identical top-level \code{iss} claims. When
-\code{TRUE}, shinyOAuth collapses repeated identical top-level \code{iss} members
-before duplicate-member rejection. Conflicting duplicates and nested
-duplicate \code{iss} members still fail closed. Defaults to \code{FALSE}.}
-
-\item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
-aliases. Names should follow the metadata keys such as \code{token_endpoint},
-\code{userinfo_endpoint}, \code{introspection_endpoint}, \code{revocation_endpoint},
-\code{par_endpoint}, or \code{pushed_authorization_request_endpoint}, and values
-must be absolute URLs. This is an advanced setting used when a provider
-publishes separate mTLS-specific endpoints.}
-
-\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
-authorization server advertises RFC 8705 capability to issue
-certificate-bound access tokens. This describes server capability; the
-client still has to opt into mTLS separately. When \code{TRUE}, token responses
-may include a \code{cnf} claim with an \code{x5t#S256} thumbprint that downstream
-requests must match with the same certificate.}
 
 \item{issuer}{Optional OIDC issuer URL. You need this when you want ID token
 validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to
@@ -227,9 +89,24 @@ In most cases, keep the default \code{"url"}. Use \code{"host"} only for provide
 that publish tenant-independent metadata with a templated issuer, such as
 some Microsoft aliases.}
 
-\item{use_nonce}{Whether to use OIDC nonce. This adds a \code{nonce} parameter to
-the authorization request and validates the \code{nonce} claim in the ID token.
-For OIDC providers, leaving this enabled is usually the right choice.}
+\item{token_auth_style}{How the client authenticates at the token endpoint.
+One of:
+\itemize{
+\item "header": HTTP Basic (client_secret_basic)
+\item "body": Form body (client_secret_post)
+\item "public": Public-client form body (\code{none} in discovery metadata);
+sends \code{client_id} but never \code{client_secret}, even if one is configured.
+The alias \code{"none"} is also accepted.
+\item "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+client certificate chained to a trusted CA
+\item "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+authentication using a self-signed client certificate registered out of
+band with the provider
+\item "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
+(RFC 7523)
+\item "private_key_jwt": JWT client assertion signed with an asymmetric key
+(RFC 7523)
+}}
 
 \item{use_pkce}{Whether to use PKCE. This adds a \code{code_challenge} parameter to
 the authorization request and requires a \code{code_verifier} when exchanging
@@ -239,6 +116,12 @@ code interception attacks.}
 \item{pkce_method}{PKCE code challenge method ("S256" or "plain"). "S256" is
 recommended. Use "plain" only if you are working with a provider that does
 not support "S256".}
+
+\item{use_nonce}{Whether to use OIDC nonce. This adds a \code{nonce} parameter to
+the authorization request and validates the \code{nonce} claim in the ID token.
+For OIDC providers, leaving this enabled is usually the right choice.}
+
+\item{userinfo_url}{User info endpoint URL (optional)}
 
 \item{userinfo_required}{Whether to fetch userinfo after token exchange.
 User information will be stored in the \code{userinfo} field of the returned
@@ -250,6 +133,17 @@ supplied, this is inferred from the presence of a non-empty \code{userinfo_url}:
 if a \code{userinfo_url} is provided, \code{userinfo_required} defaults to \code{TRUE},
 otherwise it defaults to \code{FALSE}. This avoids unexpected validation errors
 when \code{userinfo_url} is omitted (since it is optional).}
+
+\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.
+Should take a single argument (the userinfo list) and return the user ID
+as a string.
+
+This is used for helpers that need a provider-specific user identifier, such
+as audit fields and UserInfo-to-ID-token subject matching. If you configure a
+selector other than \code{function(x) x$sub}, that selector also defines which
+UserInfo value is compared against the validated ID token \code{sub}. Helper
+constructors like \code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} provide a
+default selector that extracts the \code{sub} field.}
 
 \item{userinfo_id_token_match}{Whether to fail closed if UserInfo cannot be
 bound to a validated ID token subject. Whenever both UserInfo and a
@@ -288,17 +182,6 @@ Discovery's \code{userinfo_signing_alg_values_supported} indicates provider
 capability, not that every client actually receives signed JWTs. Pass
 \code{userinfo_signed_jwt_required = TRUE} explicitly if you need this behavior.}
 
-\item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.
-Should take a single argument (the userinfo list) and return the user ID
-as a string.
-
-This is used for helpers that need a provider-specific user identifier, such
-as audit fields and UserInfo-to-ID-token subject matching. If you configure a
-selector other than \code{function(x) x$sub}, that selector also defines which
-UserInfo value is compared against the validated ID token \code{sub}. Helper
-constructors like \code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} provide a
-default selector that extracts the \code{sub} field.}
-
 \item{id_token_required}{Whether to require an ID token to be returned
 during token exchange. If no ID token is returned, the token exchange
 will fail. This only makes sense for OpenID Connect providers and may
@@ -318,6 +201,16 @@ Note: At the S7 class level, this defaults to FALSE. Helper constructors like
 \code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} turn this on when an issuer
 is provided or when OIDC is used.}
 
+\item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
+claim in the ID token. When \code{TRUE}, login fails if the ID token does not
+contain an \code{at_hash} claim or if the claim does not match the access token.
+When \code{FALSE} (default), \code{at_hash} is validated only when present.
+Requires \code{id_token_validation = TRUE}.}
+
+\item{introspection_url}{Token introspection endpoint URL (optional; RFC 7662)}
+
+\item{revocation_url}{Token revocation endpoint URL (optional; RFC 7009)}
+
 \item{extra_auth_params}{Extra parameters for authorization URL}
 
 \item{extra_token_params}{Extra parameters for token exchange}
@@ -327,25 +220,6 @@ requests (named character vector). shinyOAuth applies these headers to
 token exchange, refresh, introspection, revocation, and PAR requests.
 Use this only for headers you intentionally want on that full set of
 authorization-server calls.}
-
-\item{token_auth_style}{How the client authenticates at the token endpoint.
-One of:
-\itemize{
-\item "header": HTTP Basic (client_secret_basic)
-\item "body": Form body (client_secret_post)
-\item "public": Public-client form body (\code{none} in discovery metadata);
-sends \code{client_id} but never \code{client_secret}, even if one is configured.
-The alias \code{"none"} is also accepted.
-\item "tls_client_auth": RFC 8705 mutual TLS client authentication using a
-client certificate chained to a trusted CA
-\item "self_signed_tls_client_auth": RFC 8705 mutual TLS client
-authentication using a self-signed client certificate registered out of
-band with the provider
-\item "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
-(RFC 7523)
-\item "private_key_jwt": JWT client assertion signed with an asymmetric key
-(RFC 7523)
-}}
 
 \item{jwks_uri}{Optional explicit URL of the provider's JWK Set document.
 Use this when a generic OAuth 2.0 or JARM deployment publishes signing
@@ -426,11 +300,137 @@ value allowlist while still requiring \code{token_type} itself.}
 and state payload \code{issued_at} future check. Default 30. Can be globally
 overridden via option \code{shinyOAuth.leeway}.}
 
-\item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
-claim in the ID token. When \code{TRUE}, login fails if the ID token does not
-contain an \code{at_hash} claim or if the claim does not match the access token.
-When \code{FALSE} (default), \code{at_hash} is validated only when present.
-Requires \code{id_token_validation = TRUE}.}
+\item{par_url}{Optional Pushed Authorization Request (PAR) URL (RFC 9126).
+When set, shinyOAuth first sends the authorization request from server to
+provider and then redirects the browser with the returned \code{request_uri}
+handle instead of the full request payload. Most users only need this when
+their provider specifically supports or requires PAR.}
+
+\item{par_required}{Logical. Whether the provider
+requires authorization requests to be sent via PAR. When \code{TRUE},
+\code{par_url} must also be configured.}
+
+\item{authorization_request_front_channel_mode}{Character scalar controlling
+which browser-visible outer parameters shinyOAuth keeps when the actual
+authorization request is carried by JAR or PAR. Use \code{"compat"}
+(default) to keep the current OIDC-compatible shape with outer
+\code{client_id}, \code{response_type}, and \code{scope} when an issuer is configured.
+Use \code{"minimal"} for plain OAuth browser redirects and for PAR
+deployments whose authorization endpoint accepts only \code{client_id}
+plus the provider-issued \code{request_uri} handle. OpenID Connect
+by-value \code{request} and caller-managed \code{request_uri} transports reject
+\code{"minimal"} because OIDC still requires outer \code{response_type} and an
+outer \code{scope} containing \code{openid}.}
+
+\item{signed_request_object_required}{Logical. Whether the provider requires
+signed Request Objects for authorization requests. When \code{TRUE}, clients
+should use \code{request_object_mode = "request"} or
+\code{request_object_mode = "request_uri"}.}
+
+\item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
+metadata explicitly advertises support for the authorization-request
+\code{request} parameter. \code{NA} means the provider did not say. Discovery-derived
+providers apply the OpenID Connect default (\code{FALSE}) when this metadata is
+omitted.}
+
+\item{request_uri_parameter_supported}{Logical or \code{NA}. Whether discovery
+metadata explicitly advertises support for the authorization-request
+\code{request_uri} parameter for caller-managed request URIs. \code{NA} means the
+provider did not say. Discovery-derived providers apply the OpenID Connect
+default (\code{TRUE}) when this metadata is omitted. PAR-issued \code{request_uri}
+handles remain valid even when this metadata is \code{FALSE}.}
+
+\item{request_uri_registration_required}{Logical or \code{NA}. Whether discovery
+metadata says caller-managed \code{request_uri} values must be pre-registered.
+\code{NA} means the provider did not say. Discovery-derived providers apply the
+OpenID Connect default (\code{FALSE}) when this metadata is omitted.
+shinyOAuth can publish caller-managed \code{request_uri} values through
+\code{oauth_module_server()}. When this is \code{TRUE}, make sure the provider has a
+matching public request URI or wildcard prefix registered for the client.
+shinyOAuth stores this metadata for caller awareness, but it cannot verify
+provider-side registration state automatically.}
+
+\item{request_object_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for signed Request Objects (RFC
+9101). This is mainly used for early validation when an \link{OAuthClient}
+sends \code{request_object_mode = "request"} or
+\code{request_object_mode = "request_uri"}.}
+
+\item{request_object_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+\link{OAuthClient} enables Request Object encryption.}
+
+\item{request_object_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+\link{OAuthClient} enables Request Object encryption.}
+
+\item{request_object_encryption_jwk}{Optional explicit recipient public key
+used to encrypt Request Objects when discovery-backed JWKS selection is not
+available or when you need to pin one specific encryption key. Accepts an
+OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+JSON string.}
+
+\item{response_modes_supported}{Optional character vector of OAuth/OIDC
+\code{response_mode} values advertised by the provider. Discovery-backed
+providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
+may leave this empty when capabilities are not known. Provider metadata may
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.}
+
+\item{authorization_response_iss_parameter_supported}{Logical. Whether the
+provider advertises RFC 9207 support for returning an \code{iss} parameter on
+the authorization response. When \code{TRUE}, the \code{\link[=oauth_client]{oauth_client()}} helper can
+auto-enable callback issuer enforcement when the caller leaves
+\code{enforce_callback_issuer} unset and the provider also has a configured
+\code{issuer}.}
+
+\item{jarm_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for signed JWT Secured
+Authorization Responses (JARM).}
+
+\item{jarm_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted JARM
+responses.}
+
+\item{jarm_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+JARM responses.}
+
+\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Whether shinyOAuth
+should tolerate repeated identical top-level \code{iss} members in signed JARM
+payloads for this provider. This is an interoperability escape hatch for
+providers that emit duplicate identical top-level \code{iss} claims. When
+\code{TRUE}, shinyOAuth collapses repeated identical top-level \code{iss} members
+before duplicate-member rejection. Conflicting duplicates and nested
+duplicate \code{iss} members still fail closed. Defaults to \code{FALSE}.}
+
+\item{token_endpoint_auth_signing_alg_values_supported}{Optional vector of
+JWS algorithms that the provider advertises for JWT-based client
+authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
+endpoint. This metadata is used for early validation of
+\code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
+defaults.}
+
+\item{dpop_signing_alg_values_supported}{Optional vector of JWS algorithms
+that the provider advertises for DPoP proof JWTs (RFC 9449). This
+metadata is used for early validation of \code{OAuthClient@dpop_signing_alg}
+and inferred outbound DPoP signing defaults.}
+
+\item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
+aliases. Names should follow the metadata keys such as \code{token_endpoint},
+\code{userinfo_endpoint}, \code{introspection_endpoint}, \code{revocation_endpoint},
+\code{par_endpoint}, or \code{pushed_authorization_request_endpoint}, and values
+must be absolute URLs. This is an advanced setting used when a provider
+publishes separate mTLS-specific endpoints.}
+
+\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
+authorization server advertises RFC 8705 capability to issue
+certificate-bound access tokens. This describes server capability; the
+client still has to opt into mTLS separately. When \code{TRUE}, token responses
+may include a \code{cnf} claim with an \code{x5t#S256} thumbprint that downstream
+requests must match with the same certificate.}
 }
 \value{
 \link{OAuthProvider} object

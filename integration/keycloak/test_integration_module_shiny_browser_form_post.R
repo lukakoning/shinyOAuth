@@ -738,7 +738,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
   )
   testthat::expect_true(
     "RS256" %in%
-      (provider@authorization_signing_alg_values_supported %||% character())
+      (provider@jarm_signing_alg_values_supported %||% character())
   )
 
   app_process <- .start_form_post_app(
@@ -855,15 +855,15 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
   )
   testthat::expect_true(
     "RS256" %in%
-      (provider@authorization_signing_alg_values_supported %||% character())
+      (provider@jarm_signing_alg_values_supported %||% character())
   )
   testthat::expect_true(
     "RSA-OAEP" %in%
-      (provider@authorization_encryption_alg_values_supported %||% character())
+      (provider@jarm_encryption_alg_values_supported %||% character())
   )
   testthat::expect_true(
     "A256CBC-HS512" %in%
-      (provider@authorization_encryption_enc_values_supported %||% character())
+      (provider@jarm_encryption_enc_values_supported %||% character())
   )
 
   decryption_key_pem <- openssl::write_pem(private_key)

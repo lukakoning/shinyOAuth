@@ -16,11 +16,11 @@ make_jarm_test_client <- function(
     response_mode,
     if (identical(response_mode, "query.jwt")) "jwt" else character(0)
   ))
-  prov@authorization_signing_alg_values_supported <-
+  prov@jarm_signing_alg_values_supported <-
     jarm_signed_response_alg %||% character(0)
-  prov@authorization_encryption_alg_values_supported <-
+  prov@jarm_encryption_alg_values_supported <-
     jarm_encrypted_response_alg %||% character(0)
-  prov@authorization_encryption_enc_values_supported <-
+  prov@jarm_encryption_enc_values_supported <-
     jarm_encrypted_response_enc %||% character(0)
   prov@tolerate_duplicate_top_level_jarm_iss <-
     isTRUE(provider_tolerate_duplicate_top_level_jarm_iss)
@@ -246,9 +246,9 @@ test_that("OIDC discovery records JARM metadata", {
     authorization_endpoint = "https://issuer.example.com/auth",
     token_endpoint = "https://issuer.example.com/token",
     response_modes_supported = c("query.jwt", "form_post.jwt"),
-    authorization_signing_alg_values_supported = c("RS256", "ES256"),
-    authorization_encryption_alg_values_supported = "RSA-OAEP",
-    authorization_encryption_enc_values_supported = c(
+    jarm_signing_alg_values_supported = c("RS256", "ES256"),
+    jarm_encryption_alg_values_supported = "RSA-OAEP",
+    jarm_encryption_enc_values_supported = c(
       "A128CBC-HS256",
       "A256CBC-HS512"
     )
@@ -257,15 +257,15 @@ test_that("OIDC discovery records JARM metadata", {
   prov <- discover_provider(metadata)
 
   expect_identical(
-    prov@authorization_signing_alg_values_supported,
+    prov@jarm_signing_alg_values_supported,
     c("RS256", "ES256")
   )
   expect_identical(
-    prov@authorization_encryption_alg_values_supported,
+    prov@jarm_encryption_alg_values_supported,
     "RSA-OAEP"
   )
   expect_identical(
-    prov@authorization_encryption_enc_values_supported,
+    prov@jarm_encryption_enc_values_supported,
     c("A128CBC-HS256", "A256CBC-HS512")
   )
 })
@@ -291,20 +291,20 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
     authorization_endpoint = "https://issuer.example.com/auth",
     token_endpoint = "https://issuer.example.com/token",
     response_modes_supported = "query.jwt",
-    authorization_signing_alg_values_supported = "rs256",
-    authorization_encryption_alg_values_supported = "rsa-oaep",
-    authorization_encryption_enc_values_supported = "a256cbc-hs512"
+    jarm_signing_alg_values_supported = "rs256",
+    jarm_encryption_alg_values_supported = "rsa-oaep",
+    jarm_encryption_enc_values_supported = "a256cbc-hs512"
   )
 
   prov <- discover_provider(metadata)
 
-  expect_identical(prov@authorization_signing_alg_values_supported, "rs256")
+  expect_identical(prov@jarm_signing_alg_values_supported, "rs256")
   expect_identical(
-    prov@authorization_encryption_alg_values_supported,
+    prov@jarm_encryption_alg_values_supported,
     "rsa-oaep"
   )
   expect_identical(
-    prov@authorization_encryption_enc_values_supported,
+    prov@jarm_encryption_enc_values_supported,
     "a256cbc-hs512"
   )
 
@@ -348,9 +348,9 @@ test_that("oauth_client allows JARM without manual provider capability metadata"
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@issuer <- "https://issuer.example.com"
   prov@response_modes_supported <- character()
-  prov@authorization_signing_alg_values_supported <- character()
-  prov@authorization_encryption_alg_values_supported <- character()
-  prov@authorization_encryption_enc_values_supported <- character()
+  prov@jarm_signing_alg_values_supported <- character()
+  prov@jarm_encryption_alg_values_supported <- character()
+  prov@jarm_encryption_enc_values_supported <- character()
 
   client <- oauth_client(
     provider = prov,
@@ -502,7 +502,7 @@ test_that("validate_jarm_response rejects non-canonical signed alg casing", {
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -541,7 +541,7 @@ test_that("validate_jarm_response accepts signed JARM with explicit JWT media ty
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -573,7 +573,7 @@ test_that("validate_jarm_response rejects signed JARM with non-JWT typ header", 
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -603,7 +603,7 @@ test_that("validate_jarm_response rejects signed JARM with another JWT profile t
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -834,7 +834,7 @@ test_that("validate_jarm_response rejects malformed exp before signature verific
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
       iss = client@provider@issuer,
@@ -876,7 +876,7 @@ test_that("validate_jarm_response enforces configured JARM max lifetime without 
     client_secret = secret,
     jarm_max_lifetime = 600
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -907,7 +907,7 @@ test_that("validate_jarm_response enforces configured JARM max lifetime from iat
     client_secret = secret,
     jarm_max_lifetime = 60
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -939,7 +939,7 @@ test_that("validate_jarm_response rejects iat values after exp", {
     client_secret = secret,
     jarm_max_lifetime = 600
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
   response <- shinyOAuth:::encode_hmac_jwt_with_header(
     claims = list(
@@ -1224,7 +1224,7 @@ test_that("validate_jarm_response rejects duplicate identical iss claims by defa
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
 
   header_json <- jsonlite::toJSON(
@@ -1279,7 +1279,7 @@ test_that("validate_jarm_response tolerates duplicate identical iss claims when 
     client_secret = secret,
     provider_tolerate_duplicate_top_level_jarm_iss = TRUE
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
 
   header_json <- jsonlite::toJSON(
@@ -1334,7 +1334,7 @@ test_that("validate_jarm_response rejects nested duplicate iss claims", {
     jarm_signed_response_alg = "HS256",
     client_secret = secret
   )
-  client@provider@authorization_signing_alg_values_supported <- "HS256"
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))
 
   header_json <- jsonlite::toJSON(
@@ -2302,8 +2302,8 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = enc_key
   )
-  client@provider@authorization_encryption_alg_values_supported <- "RSA-OAEP"
-  client@provider@authorization_encryption_enc_values_supported <- "A256CBC-HS512"
+  client@provider@jarm_encryption_alg_values_supported <- "RSA-OAEP"
+  client@provider@jarm_encryption_enc_values_supported <- "A256CBC-HS512"
   now <- floor(as.numeric(Sys.time()))
   inner_jwt <- make_signed_jarm(
     payload_list = list(
@@ -2654,9 +2654,9 @@ test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = enc_key
   )
-  parse_client@provider@authorization_encryption_alg_values_supported <-
+  parse_client@provider@jarm_encryption_alg_values_supported <-
     "RSA-OAEP"
-  parse_client@provider@authorization_encryption_enc_values_supported <-
+  parse_client@provider@jarm_encryption_enc_values_supported <-
     "A256CBC-HS512"
 
   decrypt_client <- make_jarm_test_client(
@@ -2665,9 +2665,9 @@ test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = wrong_key
   )
-  decrypt_client@provider@authorization_encryption_alg_values_supported <-
+  decrypt_client@provider@jarm_encryption_alg_values_supported <-
     "RSA-OAEP"
-  decrypt_client@provider@authorization_encryption_enc_values_supported <-
+  decrypt_client@provider@jarm_encryption_enc_values_supported <-
     "A256CBC-HS512"
 
   expect_error(
@@ -2690,9 +2690,9 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = enc_key
   )
-  client@provider@authorization_encryption_alg_values_supported <-
+  client@provider@jarm_encryption_alg_values_supported <-
     "RSA-OAEP"
-  client@provider@authorization_encryption_enc_values_supported <-
+  client@provider@jarm_encryption_enc_values_supported <-
     "A256CBC-HS512"
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
   keys_before <- sort(client@state_store$keys())
@@ -2785,9 +2785,9 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
       jarm_encrypted_response_enc = "A256CBC-HS512",
       jarm_decryption_private_key = enc_key
     )
-    client@provider@authorization_encryption_alg_values_supported <-
+    client@provider@jarm_encryption_alg_values_supported <-
       "RSA-OAEP"
-    client@provider@authorization_encryption_enc_values_supported <-
+    client@provider@jarm_encryption_enc_values_supported <-
       "A256CBC-HS512"
 
     testthat::with_mocked_bindings(
@@ -3264,9 +3264,9 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = enc_key
   )
-  client@provider@authorization_encryption_alg_values_supported <-
+  client@provider@jarm_encryption_alg_values_supported <-
     "RSA-OAEP"
-  client@provider@authorization_encryption_enc_values_supported <-
+  client@provider@jarm_encryption_enc_values_supported <-
     "A256CBC-HS512"
 
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)

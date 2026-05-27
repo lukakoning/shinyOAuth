@@ -194,7 +194,7 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
   )
   testthat::expect_true(
     "RS256" %in%
-      (prov@authorization_signing_alg_values_supported %||% character())
+      (prov@jarm_signing_alg_values_supported %||% character())
   )
 
   client <- shinyOAuth::oauth_client(
@@ -338,7 +338,7 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
   )
   testthat::expect_true(
     "RS256" %in%
-      (prov@authorization_signing_alg_values_supported %||% character())
+      (prov@jarm_signing_alg_values_supported %||% character())
   )
 
   client <- make_signed_jarm_public_client(
@@ -507,15 +507,15 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
   )
   testthat::expect_true(
     "RS256" %in%
-      (prov@authorization_signing_alg_values_supported %||% character())
+      (prov@jarm_signing_alg_values_supported %||% character())
   )
   testthat::expect_true(
     "RSA-OAEP" %in%
-      (prov@authorization_encryption_alg_values_supported %||% character())
+      (prov@jarm_encryption_alg_values_supported %||% character())
   )
   testthat::expect_true(
     "A256CBC-HS512" %in%
-      (prov@authorization_encryption_enc_values_supported %||% character())
+      (prov@jarm_encryption_enc_values_supported %||% character())
   )
 
   client <- shinyOAuth::oauth_client(

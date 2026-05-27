@@ -125,9 +125,9 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
     prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
     prov@issuer <- "https://issuer.example.com"
     prov@response_modes_supported <- c("jwt", "query.jwt", "form_post.jwt")
-    prov@authorization_signing_alg_values_supported <- c("RS256", "ES256")
-    prov@authorization_encryption_alg_values_supported <- "RSA-OAEP"
-    prov@authorization_encryption_enc_values_supported <- c(
+    prov@jarm_signing_alg_values_supported <- c("RS256", "ES256")
+    prov@jarm_encryption_alg_values_supported <- "RSA-OAEP"
+    prov@jarm_encryption_enc_values_supported <- c(
       "A128CBC-HS256",
       "A256CBC-HS512"
     )

@@ -748,7 +748,7 @@ build_auth_url <- function(
     identical(request_mode, "request_uri")
   if (
     isTRUE(request_uri_used) &&
-      isTRUE(oauth_client@provider@require_pushed_authorization_requests)
+      isTRUE(oauth_client@provider@par_required)
   ) {
     err_config(
       paste(

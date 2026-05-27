@@ -378,7 +378,7 @@
 #'   explicitly allows it, shinyOAuth still publishes it but warns once per R
 #'   session because RFC 9101 Section 5.2 expects client-provided
 #'   `request_uri` values to use HTTPS.
-#'   If the provider advertises `require_request_uri_registration = TRUE`,
+#'   If the provider advertises `request_uri_registration_required = TRUE`,
 #'   caller-managed `request_uri` publication still depends on the provider
 #'   having that URI or a matching wildcard prefix registered for the client;
 #'   shinyOAuth cannot verify that server-side registration automatically.
@@ -1505,7 +1505,7 @@ oauth_client_validate <- function(self) {
   }
 
   provider_authorization_signing_algs <- as.character(
-    self@provider@authorization_signing_alg_values_supported %||% character(0)
+    self@provider@jarm_signing_alg_values_supported %||% character(0)
   )
   if (
     isTRUE(jarm_response_mode) &&
@@ -1515,12 +1515,12 @@ oauth_client_validate <- function(self) {
     return(paste0(
       "OAuthClient: jarm_signed_response_alg '",
       signed_response_alg,
-      "' is not supported by provider authorization_signing_alg_values_supported"
+      "' is not supported by provider jarm_signing_alg_values_supported"
     ))
   }
 
   provider_authorization_encryption_algs <- as.character(
-    self@provider@authorization_encryption_alg_values_supported %||%
+    self@provider@jarm_encryption_alg_values_supported %||%
       character(0)
   )
   if (
@@ -1532,12 +1532,12 @@ oauth_client_validate <- function(self) {
     return(paste0(
       "OAuthClient: jarm_encrypted_response_alg '",
       encrypted_response_alg,
-      "' is not supported by provider authorization_encryption_alg_values_supported"
+      "' is not supported by provider jarm_encryption_alg_values_supported"
     ))
   }
 
   provider_authorization_encryption_encs <- as.character(
-    self@provider@authorization_encryption_enc_values_supported %||%
+    self@provider@jarm_encryption_enc_values_supported %||%
       character(0)
   )
   if (
@@ -1549,7 +1549,7 @@ oauth_client_validate <- function(self) {
     return(paste0(
       "OAuthClient: jarm_encrypted_response_enc '",
       encrypted_response_enc,
-      "' is not supported by provider authorization_encryption_enc_values_supported"
+      "' is not supported by provider jarm_encryption_enc_values_supported"
     ))
   }
 
@@ -1609,7 +1609,7 @@ oauth_client_validate <- function(self) {
   }
   if (
     !(arm %in% request_object_modes) &&
-      isTRUE(self@provider@require_signed_request_object)
+      isTRUE(self@provider@signed_request_object_required)
   ) {
     return(
       paste(

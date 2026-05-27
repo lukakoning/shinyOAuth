@@ -324,7 +324,7 @@ test_that("oidc discovery preserves authorization request transport metadata", {
 
   testthat::expect_identical(prov@request_parameter_supported, FALSE)
   testthat::expect_identical(prov@request_uri_parameter_supported, TRUE)
-  testthat::expect_identical(prov@require_request_uri_registration, TRUE)
+  testthat::expect_identical(prov@request_uri_registration_required, TRUE)
 })
 
 test_that("discovery applies default request transport metadata when omitted", {
@@ -351,7 +351,7 @@ test_that("discovery applies default request transport metadata when omitted", {
 
   testthat::expect_identical(prov@request_parameter_supported, FALSE)
   testthat::expect_identical(prov@request_uri_parameter_supported, TRUE)
-  testthat::expect_identical(prov@require_request_uri_registration, FALSE)
+  testthat::expect_identical(prov@request_uri_registration_required, FALSE)
 })
 
 test_that("oidc discovery allows PAR when caller-managed request_uri is disabled", {
@@ -700,12 +700,12 @@ testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
 
   expected_issuer <- sub("/$", "", issuer)
   testthat::expect_identical(prov@par_url, paste0(expected_issuer, "/par"))
-  testthat::expect_true(isTRUE(prov@require_pushed_authorization_requests))
+  testthat::expect_true(isTRUE(prov@par_required))
   testthat::expect_identical(
     prov@request_object_signing_alg_values_supported,
     c("PS256", "RS256")
   )
-  testthat::expect_true(isTRUE(prov@require_signed_request_object))
+  testthat::expect_true(isTRUE(prov@signed_request_object_required))
   testthat::expect_identical(
     prov@token_endpoint_auth_signing_alg_values_supported,
     c("PS256", "RS256")

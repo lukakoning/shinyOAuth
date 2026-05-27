@@ -41,15 +41,16 @@
 #' - PAR metadata: when the discovery document advertises
 #'   `pushed_authorization_request_endpoint` or
 #'   `require_pushed_authorization_requests`, the resulting provider stores that
-#'   PAR capability and policy metadata so authorization requests can use RFC
-#'   9126 PAR and fail fast on PAR-only provider policies.
+#'   PAR capability and policy metadata in `par_required` so authorization
+#'   requests can use RFC 9126 PAR and fail fast on PAR-only provider policies.
 #'
 #' - Request Object metadata: when the discovery document advertises
 #'   `request_object_signing_alg_values_supported` or
 #'   `require_signed_request_object`, the resulting provider stores that
-#'   metadata so `OAuthClient` can fail fast when a request-object algorithm is
-#'   unsupported or when the provider requires signed Request Objects. When the
-#'   discovery document also advertises
+#'   metadata in `signed_request_object_required` so `OAuthClient` can fail
+#'   fast when a request-object algorithm is unsupported or when the provider
+#'   requires signed Request Objects. When the discovery document also
+#'   advertises
 #'   `request_object_encryption_alg_values_supported` or
 #'   `request_object_encryption_enc_values_supported`, the resulting provider
 #'   stores that encryption metadata so Request Object JWE configuration can be
@@ -63,13 +64,13 @@
 #'   the front-channel `request` transport used by JAR or caller-managed
 #'   `request_uri` values. The registration requirement itself remains
 #'   deployment-specific: shinyOAuth stores
-#'   `require_request_uri_registration` for caller awareness, but it cannot
+#'   `request_uri_registration_required` for caller awareness, but it cannot
 #'   independently verify whether the provider has already registered a
 #'   matching public `request_uri` or wildcard prefix for the client. When PAR
 #'   is configured, shinyOAuth sends signed Request Objects to the PAR endpoint
 #'   and the browser redirect only carries the PAR-issued `request_uri`
 #'   handle, regardless of `request_uri_parameter_supported` or
-#'   `require_request_uri_registration`. When discovery omits these booleans,
+#'   `request_uri_registration_required`. When discovery omits these booleans,
 #'   this helper applies the OpenID Connect defaults instead of storing `NA`.
 #'
 #' - Response mode metadata: when the discovery document advertises
@@ -297,7 +298,7 @@ oauth_provider_oidc_discover <- function(
 
   # 11) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
-  require_pushed_authorization_requests <- .discover_parse_optional_boolean(
+  par_required <- .discover_parse_optional_boolean(
     disc,
     "require_pushed_authorization_requests"
   )
@@ -321,7 +322,7 @@ oauth_provider_oidc_discover <- function(
       use.names = FALSE
     )
   ))
-  require_signed_request_object <- .discover_parse_optional_boolean(
+  signed_request_object_required <- .discover_parse_optional_boolean(
     disc,
     "require_signed_request_object"
   )
@@ -335,7 +336,7 @@ oauth_provider_oidc_discover <- function(
     "request_uri_parameter_supported",
     default = TRUE
   )
-  require_request_uri_registration <- .discover_parse_nullable_boolean(
+  request_uri_registration_required <- .discover_parse_nullable_boolean(
     disc,
     "require_request_uri_registration",
     default = FALSE
@@ -344,23 +345,23 @@ oauth_provider_oidc_discover <- function(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
   ))))
-  authorization_signing_alg_values_supported <- as.character(
+  jarm_signing_alg_values_supported <- as.character(
     unlist(
-      disc[["authorization_signing_alg_values_supported"]] %||%
+      disc[["jarm_signing_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
   )
-  authorization_encryption_alg_values_supported <- as.character(
+  jarm_encryption_alg_values_supported <- as.character(
     unlist(
-      disc[["authorization_encryption_alg_values_supported"]] %||%
+      disc[["jarm_encryption_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
   )
-  authorization_encryption_enc_values_supported <- as.character(
+  jarm_encryption_enc_values_supported <- as.character(
     unlist(
-      disc[["authorization_encryption_enc_values_supported"]] %||%
+      disc[["jarm_encryption_enc_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
@@ -416,18 +417,18 @@ oauth_provider_oidc_discover <- function(
     revocation_url = endpoints[["revocation_url"]],
     par_url = endpoints[["par_url"]],
     jwks_uri = disc[["jwks_uri"]] %||% NA_character_,
-    require_pushed_authorization_requests = require_pushed_authorization_requests,
+    par_required = par_required,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
     request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
-    require_signed_request_object = require_signed_request_object,
+    signed_request_object_required = signed_request_object_required,
     request_parameter_supported = request_parameter_supported,
     request_uri_parameter_supported = request_uri_parameter_supported,
-    require_request_uri_registration = require_request_uri_registration,
+    request_uri_registration_required = request_uri_registration_required,
     response_modes_supported = response_modes_supported,
-    authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
-    authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
-    authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
+    jarm_signing_alg_values_supported = jarm_signing_alg_values_supported,
+    jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
+    jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
@@ -682,12 +683,12 @@ oauth_provider_oidc_discover <- function(
 
   par_url <- disc[["pushed_authorization_request_endpoint"]] %||% NA_character_
 
-  require_pushed_authorization_requests <- .discover_parse_optional_boolean(
+  par_required <- .discover_parse_optional_boolean(
     disc,
     "require_pushed_authorization_requests"
   )
 
-  if (require_pushed_authorization_requests && !is_valid_string(par_url)) {
+  if (par_required && !is_valid_string(par_url)) {
     err_parse(
       "Discovery requires PAR but is missing pushed_authorization_request_endpoint"
     )

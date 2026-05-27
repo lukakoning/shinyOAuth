@@ -25,122 +25,6 @@
 #'
 #' @param auth_url Authorization endpoint URL
 #' @param token_url Token endpoint URL
-#' @param userinfo_url User info endpoint URL (optional)
-#' @param introspection_url Token introspection endpoint URL (optional; RFC 7662)
-#' @param revocation_url Token revocation endpoint URL (optional; RFC 7009)
-#' @param par_url Optional Pushed Authorization Request (PAR) URL (RFC 9126).
-#'   When set, shinyOAuth first sends the authorization request from server to
-#'   provider and then redirects the browser with the returned `request_uri`
-#'   handle instead of the full request payload. Most users only need this when
-#'   their provider specifically supports or requires PAR.
-#' @param require_pushed_authorization_requests Logical. Whether the provider
-#'   requires authorization requests to be sent via PAR. When `TRUE`,
-#'   `par_url` must also be configured.
-#' @param authorization_request_front_channel_mode Character scalar controlling
-#'   which browser-visible outer parameters shinyOAuth keeps when the actual
-#'   authorization request is carried by JAR or PAR. Use `"compat"`
-#'   (default) to keep the current OIDC-compatible shape with outer
-#'   `client_id`, `response_type`, and `scope` when an issuer is configured.
-#'   Use `"minimal"` for plain OAuth browser redirects and for PAR
-#'   deployments whose authorization endpoint accepts only `client_id`
-#'   plus the provider-issued `request_uri` handle. OpenID Connect
-#'   by-value `request` and caller-managed `request_uri` transports reject
-#'   `"minimal"` because OIDC still requires outer `response_type` and an
-#'   outer `scope` containing `openid`.
-#' @param request_object_signing_alg_values_supported Optional vector of JWS
-#'   algorithms that the provider advertises for signed Request Objects (RFC
-#'   9101). This is mainly used for early validation when an [OAuthClient]
-#'   sends `request_object_mode = "request"` or
-#'   `request_object_mode = "request_uri"`.
-#' @param request_object_encryption_alg_values_supported Optional vector of JWE
-#'   key-management algorithms that the provider advertises for encrypted
-#'   Request Objects. This metadata is used for early validation when an
-#'   [OAuthClient] enables Request Object encryption.
-#' @param request_object_encryption_enc_values_supported Optional vector of JWE
-#'   content-encryption algorithms that the provider advertises for encrypted
-#'   Request Objects. This metadata is used for early validation when an
-#'   [OAuthClient] enables Request Object encryption.
-#' @param request_object_encryption_jwk Optional explicit recipient public key
-#'   used to encrypt Request Objects when discovery-backed JWKS selection is not
-#'   available or when you need to pin one specific encryption key. Accepts an
-#'   OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
-#'   JSON string.
-#' @param require_signed_request_object Logical. Whether the provider requires
-#'   signed Request Objects for authorization requests. When `TRUE`, clients
-#'   should use `request_object_mode = "request"` or
-#'   `request_object_mode = "request_uri"`.
-#' @param request_parameter_supported Logical or `NA`. Whether discovery
-#'   metadata explicitly advertises support for the authorization-request
-#'   `request` parameter. `NA` means the provider did not say. Discovery-derived
-#'   providers apply the OpenID Connect default (`FALSE`) when this metadata is
-#'   omitted.
-#' @param request_uri_parameter_supported Logical or `NA`. Whether discovery
-#'   metadata explicitly advertises support for the authorization-request
-#'   `request_uri` parameter for caller-managed request URIs. `NA` means the
-#'   provider did not say. Discovery-derived providers apply the OpenID Connect
-#'   default (`TRUE`) when this metadata is omitted. PAR-issued `request_uri`
-#'   handles remain valid even when this metadata is `FALSE`.
-#' @param require_request_uri_registration Logical or `NA`. Whether discovery
-#'   metadata says caller-managed `request_uri` values must be pre-registered.
-#'   `NA` means the provider did not say. Discovery-derived providers apply the
-#'   OpenID Connect default (`FALSE`) when this metadata is omitted.
-#'   shinyOAuth can publish caller-managed `request_uri` values through
-#'   `oauth_module_server()`. When this is `TRUE`, make sure the provider has a
-#'   matching public request URI or wildcard prefix registered for the client.
-#'   shinyOAuth stores this metadata for caller awareness, but it cannot verify
-#'   provider-side registration state automatically.
-#' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
-#'   JWS algorithms that the provider advertises for JWT-based client
-#'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token
-#'   endpoint. This metadata is used for early validation of
-#'   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
-#'   defaults.
-#' @param dpop_signing_alg_values_supported Optional vector of JWS algorithms
-#'   that the provider advertises for DPoP proof JWTs (RFC 9449). This
-#'   metadata is used for early validation of `OAuthClient@dpop_signing_alg`
-#'   and inferred outbound DPoP signing defaults.
-#' @param authorization_response_iss_parameter_supported Logical. Whether the
-#'   provider advertises RFC 9207 support for returning an `iss` parameter on
-#'   the authorization response. When `TRUE`, the [oauth_client()] helper can
-#'   auto-enable callback issuer enforcement when the caller leaves
-#'   `enforce_callback_issuer` unset and the provider also has a configured
-#'   `issuer`.
-#' @param response_modes_supported Optional character vector of OAuth/OIDC
-#'   `response_mode` values advertised by the provider. Discovery-backed
-#'   providers use the discovery metadata value, defaulting to `c("query",
-#'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
-#'   may leave this empty when capabilities are not known. Provider metadata may
-#'   include response modes that shinyOAuth does not implement; clients still
-#'   fail fast if they request one of those unsupported modes.
-#' @param authorization_signing_alg_values_supported Optional vector of JWS
-#'   algorithms that the provider advertises for signed JWT Secured
-#'   Authorization Responses (JARM).
-#' @param authorization_encryption_alg_values_supported Optional vector of JWE
-#'   key-management algorithms that the provider advertises for encrypted JARM
-#'   responses.
-#' @param authorization_encryption_enc_values_supported Optional vector of JWE
-#'   content-encryption algorithms that the provider advertises for encrypted
-#'   JARM responses.
-#' @param tolerate_duplicate_top_level_jarm_iss Logical. Whether shinyOAuth
-#'   should tolerate repeated identical top-level `iss` members in signed JARM
-#'   payloads for this provider. This is an interoperability escape hatch for
-#'   providers that emit duplicate identical top-level `iss` claims. When
-#'   `TRUE`, shinyOAuth collapses repeated identical top-level `iss` members
-#'   before duplicate-member rejection. Conflicting duplicates and nested
-#'   duplicate `iss` members still fail closed. Defaults to `FALSE`.
-#' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
-#'   aliases. Names should follow the metadata keys such as `token_endpoint`,
-#'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
-#'   `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
-#'   must be absolute URLs. This is an advanced setting used when a provider
-#'   publishes separate mTLS-specific endpoints.
-#' @param tls_client_certificate_bound_access_tokens Logical. Whether the
-#'   authorization server advertises RFC 8705 capability to issue
-#'   certificate-bound access tokens. This describes server capability; the
-#'   client still has to opt into mTLS separately. When `TRUE`, token responses
-#'   may include a `cnf` claim with an `x5t#S256` thumbprint that downstream
-#'   requests must match with the same certificate.
-#'
 #' @param issuer Optional OIDC issuer URL. You need this when you want ID token
 #'   validation. shinyOAuth uses it to verify the ID token `iss` claim and to
 #'   locate the provider's signing keys (JWKS), typically through the OIDC
@@ -159,9 +43,23 @@
 #' that publish tenant-independent metadata with a templated issuer, such as
 #' some Microsoft aliases.
 #'
-#' @param use_nonce Whether to use OIDC nonce. This adds a `nonce` parameter to
-#' the authorization request and validates the `nonce` claim in the ID token.
-#' For OIDC providers, leaving this enabled is usually the right choice.
+#' @param token_auth_style How the client authenticates at the token endpoint.
+#'   One of:
+#'   - "header": HTTP Basic (client_secret_basic)
+#'   - "body": Form body (client_secret_post)
+#'   - "public": Public-client form body (`none` in discovery metadata);
+#'     sends `client_id` but never `client_secret`, even if one is configured.
+#'     The alias `"none"` is also accepted.
+#'   - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+#'     client certificate chained to a trusted CA
+#'   - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+#'     authentication using a self-signed client certificate registered out of
+#'     band with the provider
+#'   - "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
+#'     (RFC 7523)
+#'   - "private_key_jwt": JWT client assertion signed with an asymmetric key
+#'     (RFC 7523)
+#'
 #' @param use_pkce Whether to use PKCE. This adds a `code_challenge` parameter to
 #' the authorization request and requires a `code_verifier` when exchanging
 #' the authorization code for tokens. This helps protect against authorization
@@ -170,6 +68,10 @@
 #' recommended. Use "plain" only if you are working with a provider that does
 #' not support "S256".
 #'
+#' @param use_nonce Whether to use OIDC nonce. This adds a `nonce` parameter to
+#' the authorization request and validates the `nonce` claim in the ID token.
+#' For OIDC providers, leaving this enabled is usually the right choice.
+#' @param userinfo_url User info endpoint URL (optional)
 #' @param userinfo_required Whether to fetch userinfo after token exchange.
 #' User information will be stored in the `userinfo` field of the returned
 #' `OAuthToken` object. This requires a valid `userinfo_url` to be set.
@@ -180,6 +82,17 @@
 #' if a `userinfo_url` is provided, `userinfo_required` defaults to `TRUE`,
 #' otherwise it defaults to `FALSE`. This avoids unexpected validation errors
 #' when `userinfo_url` is omitted (since it is optional).
+#'
+#' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.
+#' Should take a single argument (the userinfo list) and return the user ID
+#' as a string.
+#'
+#' This is used for helpers that need a provider-specific user identifier, such
+#' as audit fields and UserInfo-to-ID-token subject matching. If you configure a
+#' selector other than `function(x) x$sub`, that selector also defines which
+#' UserInfo value is compared against the validated ID token `sub`. Helper
+#' constructors like [oauth_provider()] and [oauth_provider_oidc()] provide a
+#' default selector that extracts the `sub` field.
 #'
 #' @param userinfo_id_token_match Whether to fail closed if UserInfo cannot be
 #' bound to a validated ID token subject. Whenever both UserInfo and a
@@ -218,17 +131,6 @@
 #' capability, not that every client actually receives signed JWTs. Pass
 #' `userinfo_signed_jwt_required = TRUE` explicitly if you need this behavior.
 #'
-#' @param userinfo_id_selector A function that extracts the user ID from the userinfo response.
-#' Should take a single argument (the userinfo list) and return the user ID
-#' as a string.
-#'
-#' This is used for helpers that need a provider-specific user identifier, such
-#' as audit fields and UserInfo-to-ID-token subject matching. If you configure a
-#' selector other than `function(x) x$sub`, that selector also defines which
-#' UserInfo value is compared against the validated ID token `sub`. Helper
-#' constructors like [oauth_provider()] and [oauth_provider_oidc()] provide a
-#' default selector that extracts the `sub` field.
-#'
 #' @param id_token_required Whether to require an ID token to be returned
 #' during token exchange. If no ID token is returned, the token exchange
 #' will fail. This only makes sense for OpenID Connect providers and may
@@ -254,6 +156,8 @@
 #' When `FALSE` (default), `at_hash` is validated only when present.
 #' Requires `id_token_validation = TRUE`.
 #'
+#' @param introspection_url Token introspection endpoint URL (optional; RFC 7662)
+#' @param revocation_url Token revocation endpoint URL (optional; RFC 7009)
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange
 #' @param extra_token_headers Extra headers for back-channel token-style
@@ -262,28 +166,6 @@
 #'   Use this only for headers you intentionally want on that full set of
 #'   authorization-server calls.
 #'
-#' @param token_auth_style How the client authenticates at the token endpoint.
-#'   One of:
-#'   - "header": HTTP Basic (client_secret_basic)
-#'   - "body": Form body (client_secret_post)
-#'   - "public": Public-client form body (`none` in discovery metadata);
-#'     sends `client_id` but never `client_secret`, even if one is configured.
-#'     The alias `"none"` is also accepted.
-#'   - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
-#'     client certificate chained to a trusted CA
-#'   - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
-#'     authentication using a self-signed client certificate registered out of
-#'     band with the provider
-#'   - "client_secret_jwt": JWT client assertion signed with HMAC using client_secret
-#'     (RFC 7523)
-#'   - "private_key_jwt": JWT client assertion signed with an asymmetric key
-#'     (RFC 7523)
-#'
-#' @param jwks_cache Cache used for the provider's signing keys (JWKS). If not
-#'   provided, shinyOAuth creates an in-memory cache for 1 hour with
-#'   `cachem::cache_mem(max_age = 3600)`. You can also use another
-#'   cachem-compatible backend, including a shared cache created with
-#'   [custom_cache()].
 #' @param jwks_uri Optional explicit URL of the provider's JWK Set document.
 #'   Use this when a generic OAuth 2.0 or JARM deployment publishes signing
 #'   keys outside OIDC discovery, or when you intentionally want to override
@@ -293,6 +175,11 @@
 #'   TTLs pick up new keys faster but do more network work; longer TTLs reduce
 #'   traffic but may take longer to notice key rotation. If a new `kid` appears,
 #'   shinyOAuth will also do a one-time refresh automatically.
+#' @param jwks_cache Cache used for the provider's signing keys (JWKS). If not
+#'   provided, shinyOAuth creates an in-memory cache for 1 hour with
+#'   `cachem::cache_mem(max_age = 3600)`. You can also use another
+#'   cachem-compatible backend, including a shared cache created with
+#'   [custom_cache()].
 #' @param jwks_pins Optional character vector of RFC 7638 JWK thumbprints
 #'   (base64url) to pin against. If non-empty, fetched JWKS must contain keys
 #'   whose thumbprints match these values depending on `jwks_pin_mode`.
@@ -352,6 +239,119 @@
 #'   and state payload `issued_at` future check. Default 30. Can be globally
 #'   overridden via option `shinyOAuth.leeway`.
 #'
+#' @param par_url Optional Pushed Authorization Request (PAR) URL (RFC 9126).
+#'   When set, shinyOAuth first sends the authorization request from server to
+#'   provider and then redirects the browser with the returned `request_uri`
+#'   handle instead of the full request payload. Most users only need this when
+#'   their provider specifically supports or requires PAR.
+#' @param par_required Logical. Whether the provider
+#'   requires authorization requests to be sent via PAR. When `TRUE`,
+#'   `par_url` must also be configured.
+#' @param authorization_request_front_channel_mode Character scalar controlling
+#'   which browser-visible outer parameters shinyOAuth keeps when the actual
+#'   authorization request is carried by JAR or PAR. Use `"compat"`
+#'   (default) to keep the current OIDC-compatible shape with outer
+#'   `client_id`, `response_type`, and `scope` when an issuer is configured.
+#'   Use `"minimal"` for plain OAuth browser redirects and for PAR
+#'   deployments whose authorization endpoint accepts only `client_id`
+#'   plus the provider-issued `request_uri` handle. OpenID Connect
+#'   by-value `request` and caller-managed `request_uri` transports reject
+#'   `"minimal"` because OIDC still requires outer `response_type` and an
+#'   outer `scope` containing `openid`.
+#' @param signed_request_object_required Logical. Whether the provider requires
+#'   signed Request Objects for authorization requests. When `TRUE`, clients
+#'   should use `request_object_mode = "request"` or
+#'   `request_object_mode = "request_uri"`.
+#' @param request_parameter_supported Logical or `NA`. Whether discovery
+#'   metadata explicitly advertises support for the authorization-request
+#'   `request` parameter. `NA` means the provider did not say. Discovery-derived
+#'   providers apply the OpenID Connect default (`FALSE`) when this metadata is
+#'   omitted.
+#' @param request_uri_parameter_supported Logical or `NA`. Whether discovery
+#'   metadata explicitly advertises support for the authorization-request
+#'   `request_uri` parameter for caller-managed request URIs. `NA` means the
+#'   provider did not say. Discovery-derived providers apply the OpenID Connect
+#'   default (`TRUE`) when this metadata is omitted. PAR-issued `request_uri`
+#'   handles remain valid even when this metadata is `FALSE`.
+#' @param request_uri_registration_required Logical or `NA`. Whether discovery
+#'   metadata says caller-managed `request_uri` values must be pre-registered.
+#'   `NA` means the provider did not say. Discovery-derived providers apply the
+#'   OpenID Connect default (`FALSE`) when this metadata is omitted.
+#'   shinyOAuth can publish caller-managed `request_uri` values through
+#'   `oauth_module_server()`. When this is `TRUE`, make sure the provider has a
+#'   matching public request URI or wildcard prefix registered for the client.
+#'   shinyOAuth stores this metadata for caller awareness, but it cannot verify
+#'   provider-side registration state automatically.
+#' @param request_object_signing_alg_values_supported Optional vector of JWS
+#'   algorithms that the provider advertises for signed Request Objects (RFC
+#'   9101). This is mainly used for early validation when an [OAuthClient]
+#'   sends `request_object_mode = "request"` or
+#'   `request_object_mode = "request_uri"`.
+#' @param request_object_encryption_alg_values_supported Optional vector of JWE
+#'   key-management algorithms that the provider advertises for encrypted
+#'   Request Objects. This metadata is used for early validation when an
+#'   [OAuthClient] enables Request Object encryption.
+#' @param request_object_encryption_enc_values_supported Optional vector of JWE
+#'   content-encryption algorithms that the provider advertises for encrypted
+#'   Request Objects. This metadata is used for early validation when an
+#'   [OAuthClient] enables Request Object encryption.
+#' @param request_object_encryption_jwk Optional explicit recipient public key
+#'   used to encrypt Request Objects when discovery-backed JWKS selection is not
+#'   available or when you need to pin one specific encryption key. Accepts an
+#'   OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+#'   JSON string.
+#' @param response_modes_supported Optional character vector of OAuth/OIDC
+#'   `response_mode` values advertised by the provider. Discovery-backed
+#'   providers use the discovery metadata value, defaulting to `c("query",
+#'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
+#'   may leave this empty when capabilities are not known. Provider metadata may
+#'   include response modes that shinyOAuth does not implement; clients still
+#'   fail fast if they request one of those unsupported modes.
+#' @param authorization_response_iss_parameter_supported Logical. Whether the
+#'   provider advertises RFC 9207 support for returning an `iss` parameter on
+#'   the authorization response. When `TRUE`, the [oauth_client()] helper can
+#'   auto-enable callback issuer enforcement when the caller leaves
+#'   `enforce_callback_issuer` unset and the provider also has a configured
+#'   `issuer`.
+#' @param jarm_signing_alg_values_supported Optional vector of JWS
+#'   algorithms that the provider advertises for signed JWT Secured
+#'   Authorization Responses (JARM).
+#' @param jarm_encryption_alg_values_supported Optional vector of JWE
+#'   key-management algorithms that the provider advertises for encrypted JARM
+#'   responses.
+#' @param jarm_encryption_enc_values_supported Optional vector of JWE
+#'   content-encryption algorithms that the provider advertises for encrypted
+#'   JARM responses.
+#' @param tolerate_duplicate_top_level_jarm_iss Logical. Whether shinyOAuth
+#'   should tolerate repeated identical top-level `iss` members in signed JARM
+#'   payloads for this provider. This is an interoperability escape hatch for
+#'   providers that emit duplicate identical top-level `iss` claims. When
+#'   `TRUE`, shinyOAuth collapses repeated identical top-level `iss` members
+#'   before duplicate-member rejection. Conflicting duplicates and nested
+#'   duplicate `iss` members still fail closed. Defaults to `FALSE`.
+#' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
+#'   JWS algorithms that the provider advertises for JWT-based client
+#'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token
+#'   endpoint. This metadata is used for early validation of
+#'   `OAuthClient@client_assertion_alg` and inferred JWT client-assertion
+#'   defaults.
+#' @param dpop_signing_alg_values_supported Optional vector of JWS algorithms
+#'   that the provider advertises for DPoP proof JWTs (RFC 9449). This
+#'   metadata is used for early validation of `OAuthClient@dpop_signing_alg`
+#'   and inferred outbound DPoP signing defaults.
+#' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
+#'   aliases. Names should follow the metadata keys such as `token_endpoint`,
+#'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
+#'   `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
+#'   must be absolute URLs. This is an advanced setting used when a provider
+#'   publishes separate mTLS-specific endpoints.
+#' @param tls_client_certificate_bound_access_tokens Logical. Whether the
+#'   authorization server advertises RFC 8705 capability to issue
+#'   certificate-bound access tokens. This describes server capability; the
+#'   client still has to opt into mTLS separately. When `TRUE`, token responses
+#'   may include a `cnf` claim with an `x5t#S256` thumbprint that downstream
+#'   requests must match with the same certificate.
+#'
 #' @example inst/examples/oauth_provider.R
 #'
 #' @export
@@ -362,102 +362,22 @@ OAuthProvider <- S7::new_class(
     name = S7::class_character,
     auth_url = S7::class_character,
     token_url = S7::class_character,
-    userinfo_url = S7::new_property(
-      S7::class_character,
-      default = NA_character_
-    ),
-    introspection_url = S7::new_property(
-      S7::class_character,
-      default = NA_character_
-    ),
-    revocation_url = S7::new_property(
-      S7::class_character,
-      default = NA_character_
-    ),
-    par_url = S7::new_property(
-      S7::class_character,
-      default = NA_character_
-    ),
-    require_pushed_authorization_requests = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
-    authorization_request_front_channel_mode = S7::new_property(
-      S7::class_character,
-      default = "compat"
-    ),
-    request_object_signing_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    request_object_encryption_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    request_object_encryption_enc_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    request_object_encryption_jwk = S7::new_property(
-      S7::class_any,
-      default = NULL
-    ),
-    require_signed_request_object = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
-    request_parameter_supported = S7::new_property(
-      S7::class_logical,
-      default = NA
-    ),
-    request_uri_parameter_supported = S7::new_property(
-      S7::class_logical,
-      default = NA
-    ),
-    require_request_uri_registration = S7::new_property(
-      S7::class_logical,
-      default = NA
-    ),
-    token_endpoint_auth_signing_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    dpop_signing_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    authorization_response_iss_parameter_supported = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
-    response_modes_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    authorization_signing_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    authorization_encryption_alg_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    authorization_encryption_enc_values_supported = S7::new_property(
-      S7::class_character,
-      default = character()
-    ),
-    tolerate_duplicate_top_level_jarm_iss = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
       S7::class_character,
       default = "url"
     ),
-    use_nonce = S7::new_property(S7::class_logical, default = FALSE),
+    token_auth_style = S7::new_property(
+      S7::class_character,
+      default = "header"
+    ),
     use_pkce = S7::new_property(S7::class_logical, default = TRUE),
     pkce_method = S7::new_property(S7::class_character, default = "S256"),
+    use_nonce = S7::new_property(S7::class_logical, default = FALSE),
+    userinfo_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     userinfo_required = S7::new_property(S7::class_logical, default = FALSE),
     userinfo_id_selector = S7::new_property(
       S7::class_any,
@@ -477,23 +397,19 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
+    introspection_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    revocation_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
     extra_auth_params = S7::class_list,
     extra_token_params = S7::class_list,
     extra_token_headers = S7::new_property(
       S7::class_character,
       default = character()
-    ),
-    mtls_endpoint_aliases = S7::new_property(
-      S7::class_list,
-      default = list()
-    ),
-    tls_client_certificate_bound_access_tokens = S7::new_property(
-      S7::class_logical,
-      default = FALSE
-    ),
-    token_auth_style = S7::new_property(
-      S7::class_character,
-      default = "header"
     ),
     jwks_uri = S7::new_property(
       S7::class_character,
@@ -530,6 +446,90 @@ OAuthProvider <- S7::new_class(
     allowed_token_types = S7::new_property(
       S7::class_character,
       default = c("Bearer")
+    ),
+    par_url = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    par_required = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    authorization_request_front_channel_mode = S7::new_property(
+      S7::class_character,
+      default = "compat"
+    ),
+    signed_request_object_required = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    request_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
+    request_uri_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
+    request_uri_registration_required = S7::new_property(
+      S7::class_logical,
+      default = NA
+    ),
+    request_object_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    request_object_encryption_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    request_object_encryption_enc_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    request_object_encryption_jwk = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
+    response_modes_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    authorization_response_iss_parameter_supported = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    jarm_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    jarm_encryption_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    jarm_encryption_enc_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
+    token_endpoint_auth_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    dpop_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    mtls_endpoint_aliases = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
+    tls_client_certificate_bound_access_tokens = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     leeway = S7::new_property(
       S7::class_numeric,
@@ -590,47 +590,27 @@ oauth_provider <- function(
   name,
   auth_url,
   token_url,
-  userinfo_url = NA_character_,
-  introspection_url = NA_character_,
-  revocation_url = NA_character_,
-  par_url = NA_character_,
-  require_pushed_authorization_requests = FALSE,
-  authorization_request_front_channel_mode = "compat",
-  request_object_signing_alg_values_supported = character(),
-  request_object_encryption_alg_values_supported = character(),
-  request_object_encryption_enc_values_supported = character(),
-  request_object_encryption_jwk = NULL,
-  require_signed_request_object = FALSE,
-  request_parameter_supported = NA,
-  request_uri_parameter_supported = NA,
-  require_request_uri_registration = NA,
-  token_endpoint_auth_signing_alg_values_supported = character(),
-  dpop_signing_alg_values_supported = character(),
-  authorization_response_iss_parameter_supported = FALSE,
-  response_modes_supported = character(),
-  authorization_signing_alg_values_supported = character(),
-  authorization_encryption_alg_values_supported = character(),
-  authorization_encryption_enc_values_supported = character(),
-  tolerate_duplicate_top_level_jarm_iss = FALSE,
-  mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
-  use_nonce = NULL,
+  token_auth_style = "header",
   use_pkce = TRUE,
   pkce_method = "S256",
+  use_nonce = NULL,
+  userinfo_url = NA_character_,
   userinfo_required = NULL,
-  userinfo_id_token_match = NULL,
-  userinfo_signed_jwt_required = FALSE,
   userinfo_id_selector = function(userinfo) {
     userinfo[["sub"]]
   },
+  userinfo_id_token_match = NULL,
+  userinfo_signed_jwt_required = FALSE,
   id_token_required = NULL,
   id_token_validation = NULL,
+  id_token_at_hash_required = FALSE,
+  introspection_url = NA_character_,
+  revocation_url = NA_character_,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(),
-  token_auth_style = "header",
   jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
@@ -648,7 +628,27 @@ oauth_provider <- function(
   ),
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
-  id_token_at_hash_required = FALSE
+  par_url = NA_character_,
+  par_required = FALSE,
+  authorization_request_front_channel_mode = "compat",
+  signed_request_object_required = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  request_uri_registration_required = NA,
+  request_object_signing_alg_values_supported = character(),
+  request_object_encryption_alg_values_supported = character(),
+  request_object_encryption_enc_values_supported = character(),
+  request_object_encryption_jwk = NULL,
+  response_modes_supported = character(),
+  authorization_response_iss_parameter_supported = FALSE,
+  jarm_signing_alg_values_supported = character(),
+  jarm_encryption_alg_values_supported = character(),
+  jarm_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
+  token_endpoint_auth_signing_alg_values_supported = character(),
+  dpop_signing_alg_values_supported = character(),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE
 ) {
   # Validate scalar URL inputs before normalization to prevent cryptic
   # coercion errors from normalize_url() when callers pass vectors.
@@ -711,30 +711,30 @@ oauth_provider <- function(
   response_modes_supported <- tolower(trimws(as.character(
     unlist(response_modes_supported, use.names = FALSE)
   )))
-  if (is.null(authorization_signing_alg_values_supported)) {
-    authorization_signing_alg_values_supported <- character()
+  if (is.null(jarm_signing_alg_values_supported)) {
+    jarm_signing_alg_values_supported <- character()
   }
-  authorization_signing_alg_values_supported <- as.character(
+  jarm_signing_alg_values_supported <- as.character(
     unlist(
-      authorization_signing_alg_values_supported,
+      jarm_signing_alg_values_supported,
       use.names = FALSE
     )
   )
-  if (is.null(authorization_encryption_alg_values_supported)) {
-    authorization_encryption_alg_values_supported <- character()
+  if (is.null(jarm_encryption_alg_values_supported)) {
+    jarm_encryption_alg_values_supported <- character()
   }
-  authorization_encryption_alg_values_supported <- as.character(
+  jarm_encryption_alg_values_supported <- as.character(
     unlist(
-      authorization_encryption_alg_values_supported,
+      jarm_encryption_alg_values_supported,
       use.names = FALSE
     )
   )
-  if (is.null(authorization_encryption_enc_values_supported)) {
-    authorization_encryption_enc_values_supported <- character()
+  if (is.null(jarm_encryption_enc_values_supported)) {
+    jarm_encryption_enc_values_supported <- character()
   }
-  authorization_encryption_enc_values_supported <- as.character(
+  jarm_encryption_enc_values_supported <- as.character(
     unlist(
-      authorization_encryption_enc_values_supported,
+      jarm_encryption_enc_values_supported,
       use.names = FALSE
     )
   )
@@ -746,9 +746,9 @@ oauth_provider <- function(
     request_uri_parameter_supported,
     "request_uri_parameter_supported"
   )
-  require_request_uri_registration <- normalize_optional_provider_boolean(
-    require_request_uri_registration,
-    "require_request_uri_registration"
+  request_uri_registration_required <- normalize_optional_provider_boolean(
+    request_uri_registration_required,
+    "request_uri_registration_required"
   )
   if (is.null(token_endpoint_auth_signing_alg_values_supported)) {
     token_endpoint_auth_signing_alg_values_supported <- character()
@@ -912,53 +912,25 @@ oauth_provider <- function(
     name = name,
     auth_url = auth_url,
     token_url = token_url,
-    userinfo_url = userinfo_url,
-    introspection_url = introspection_url,
-    revocation_url = revocation_url,
-    par_url = par_url,
-    require_pushed_authorization_requests = isTRUE(
-      require_pushed_authorization_requests
-    ),
-    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
-    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
-    request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
-    request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
-    request_object_encryption_jwk = request_object_encryption_jwk,
-    require_signed_request_object = isTRUE(require_signed_request_object),
-    request_parameter_supported = request_parameter_supported,
-    request_uri_parameter_supported = request_uri_parameter_supported,
-    require_request_uri_registration = require_request_uri_registration,
-    token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
-    dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
-    authorization_response_iss_parameter_supported = isTRUE(
-      authorization_response_iss_parameter_supported
-    ),
-    response_modes_supported = response_modes_supported,
-    authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
-    authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
-    authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
-    tolerate_duplicate_top_level_jarm_iss = isTRUE(
-      tolerate_duplicate_top_level_jarm_iss
-    ),
     issuer = issuer,
     issuer_match = issuer_match,
-    use_nonce = use_nonce,
+    token_auth_style = token_auth_style,
     use_pkce = use_pkce,
     pkce_method = pkce_method,
+    use_nonce = use_nonce,
+    userinfo_url = userinfo_url,
     userinfo_required = userinfo_required,
-    id_token_required = id_token_required,
-    id_token_validation = id_token_validation,
+    userinfo_id_selector = userinfo_id_selector,
     userinfo_id_token_match = userinfo_id_token_match,
     userinfo_signed_jwt_required = isTRUE(userinfo_signed_jwt_required),
-    userinfo_id_selector = userinfo_id_selector,
+    id_token_required = id_token_required,
+    id_token_validation = id_token_validation,
+    id_token_at_hash_required = id_token_at_hash_required,
+    introspection_url = introspection_url,
+    revocation_url = revocation_url,
     extra_auth_params = extra_auth_params,
     extra_token_params = extra_token_params,
     extra_token_headers = extra_token_headers,
-    mtls_endpoint_aliases = mtls_endpoint_aliases,
-    tls_client_certificate_bound_access_tokens = isTRUE(
-      tls_client_certificate_bound_access_tokens
-    ),
-    token_auth_style = token_auth_style,
     jwks_uri = jwks_uri,
     jwks_cache = jwks_cache,
     jwks_pins = jwks_pins,
@@ -968,7 +940,35 @@ oauth_provider <- function(
     allowed_algs = allowed_algs,
     allowed_token_types = allowed_token_types,
     leeway = leeway,
-    id_token_at_hash_required = id_token_at_hash_required
+    par_url = par_url,
+    par_required = isTRUE(
+      par_required
+    ),
+    authorization_request_front_channel_mode = authorization_request_front_channel_mode,
+    signed_request_object_required = isTRUE(signed_request_object_required),
+    request_parameter_supported = request_parameter_supported,
+    request_uri_parameter_supported = request_uri_parameter_supported,
+    request_uri_registration_required = request_uri_registration_required,
+    request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
+    request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
+    request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
+    request_object_encryption_jwk = request_object_encryption_jwk,
+    response_modes_supported = response_modes_supported,
+    authorization_response_iss_parameter_supported = isTRUE(
+      authorization_response_iss_parameter_supported
+    ),
+    jarm_signing_alg_values_supported = jarm_signing_alg_values_supported,
+    jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
+    jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,
+    tolerate_duplicate_top_level_jarm_iss = isTRUE(
+      tolerate_duplicate_top_level_jarm_iss
+    ),
+    token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
+    mtls_endpoint_aliases = mtls_endpoint_aliases,
+    tls_client_certificate_bound_access_tokens = isTRUE(
+      tls_client_certificate_bound_access_tokens
+    )
   )
 }
 # 3 Provider helpers -----------------------------------------------------------
@@ -1359,24 +1359,24 @@ oauth_provider_validate <- function(self) {
   }
 
   if (
-    !(is.logical(self@require_pushed_authorization_requests) &&
-      length(self@require_pushed_authorization_requests) == 1L &&
-      !is.na(self@require_pushed_authorization_requests))
+    !(is.logical(self@par_required) &&
+      length(self@par_required) == 1L &&
+      !is.na(self@par_required))
   ) {
     return(
       paste(
-        "OAuthProvider: require_pushed_authorization_requests",
+        "OAuthProvider: par_required",
         "must be a single non-NA logical"
       )
     )
   }
   if (
-    isTRUE(self@require_pushed_authorization_requests) &&
+    isTRUE(self@par_required) &&
       !is_valid_string(self@par_url %||% NA_character_)
   ) {
     return(
       paste(
-        "OAuthProvider: require_pushed_authorization_requests = TRUE",
+        "OAuthProvider: par_required = TRUE",
         "requires par_url"
       )
     )
@@ -1398,7 +1398,7 @@ oauth_provider_validate <- function(self) {
   for (field in c(
     "request_parameter_supported",
     "request_uri_parameter_supported",
-    "require_request_uri_registration"
+    "request_uri_registration_required"
   )) {
     value <- S7::prop(self, field)
     if (!(is.logical(value) && length(value) == 1L)) {
@@ -1412,12 +1412,12 @@ oauth_provider_validate <- function(self) {
 
   if (
     identical(self@request_uri_parameter_supported, FALSE) &&
-      isTRUE(self@require_request_uri_registration)
+      isTRUE(self@request_uri_registration_required)
   ) {
     return(
       paste(
         "OAuthProvider: request_uri_parameter_supported = FALSE",
-        "is inconsistent with require_request_uri_registration = TRUE"
+        "is inconsistent with request_uri_registration_required = TRUE"
       )
     )
   }
@@ -1509,16 +1509,16 @@ oauth_provider_validate <- function(self) {
   }
 
   if (
-    !(is.logical(self@require_signed_request_object) &&
-      length(self@require_signed_request_object) == 1L &&
-      !is.na(self@require_signed_request_object))
+    !(is.logical(self@signed_request_object_required) &&
+      length(self@signed_request_object_required) == 1L &&
+      !is.na(self@signed_request_object_required))
   ) {
     return(
-      "OAuthProvider: require_signed_request_object must be a single non-NA logical"
+      "OAuthProvider: signed_request_object_required must be a single non-NA logical"
     )
   }
   if (
-    isTRUE(self@require_signed_request_object) &&
+    isTRUE(self@signed_request_object_required) &&
       length(self@request_object_signing_alg_values_supported) > 0 &&
       !any(
         toupper(self@request_object_signing_alg_values_supported) != "NONE"
@@ -1526,7 +1526,7 @@ oauth_provider_validate <- function(self) {
   ) {
     return(
       paste(
-        "OAuthProvider: require_signed_request_object = TRUE is inconsistent",
+        "OAuthProvider: signed_request_object_required = TRUE is inconsistent",
         "with request_object_signing_alg_values_supported = 'none' only"
       )
     )
@@ -1584,72 +1584,72 @@ oauth_provider_validate <- function(self) {
     }
   }
 
-  authorization_signing_algs <-
-    self@authorization_signing_alg_values_supported
-  if (length(authorization_signing_algs) > 0) {
-    if (!is.character(authorization_signing_algs)) {
+  jarm_signing_algs <-
+    self@jarm_signing_alg_values_supported
+  if (length(jarm_signing_algs) > 0) {
+    if (!is.character(jarm_signing_algs)) {
       return(
         paste(
-          "OAuthProvider: authorization_signing_alg_values_supported",
+          "OAuthProvider: jarm_signing_alg_values_supported",
           "must be a character vector"
         )
       )
     }
     if (
-      anyNA(authorization_signing_algs) ||
-        !all(nzchar(authorization_signing_algs))
+      anyNA(jarm_signing_algs) ||
+        !all(nzchar(jarm_signing_algs))
     ) {
       return(
         paste(
-          "OAuthProvider: authorization_signing_alg_values_supported",
+          "OAuthProvider: jarm_signing_alg_values_supported",
           "must contain only non-empty strings"
         )
       )
     }
   }
 
-  authorization_encryption_algs <-
-    self@authorization_encryption_alg_values_supported
-  if (length(authorization_encryption_algs) > 0) {
-    if (!is.character(authorization_encryption_algs)) {
+  jarm_encryption_algs <-
+    self@jarm_encryption_alg_values_supported
+  if (length(jarm_encryption_algs) > 0) {
+    if (!is.character(jarm_encryption_algs)) {
       return(
         paste(
-          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "OAuthProvider: jarm_encryption_alg_values_supported",
           "must be a character vector"
         )
       )
     }
     if (
-      anyNA(authorization_encryption_algs) ||
-        !all(nzchar(authorization_encryption_algs))
+      anyNA(jarm_encryption_algs) ||
+        !all(nzchar(jarm_encryption_algs))
     ) {
       return(
         paste(
-          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "OAuthProvider: jarm_encryption_alg_values_supported",
           "must contain only non-empty strings"
         )
       )
     }
   }
 
-  authorization_encryption_encs <-
-    self@authorization_encryption_enc_values_supported
-  if (length(authorization_encryption_encs) > 0) {
-    if (!is.character(authorization_encryption_encs)) {
+  jarm_encryption_encs <-
+    self@jarm_encryption_enc_values_supported
+  if (length(jarm_encryption_encs) > 0) {
+    if (!is.character(jarm_encryption_encs)) {
       return(
         paste(
-          "OAuthProvider: authorization_encryption_enc_values_supported",
+          "OAuthProvider: jarm_encryption_enc_values_supported",
           "must be a character vector"
         )
       )
     }
     if (
-      anyNA(authorization_encryption_encs) ||
-        !all(nzchar(authorization_encryption_encs))
+      anyNA(jarm_encryption_encs) ||
+        !all(nzchar(jarm_encryption_encs))
     ) {
       return(
         paste(
-          "OAuthProvider: authorization_encryption_enc_values_supported",
+          "OAuthProvider: jarm_encryption_enc_values_supported",
           "must contain only non-empty strings"
         )
       )

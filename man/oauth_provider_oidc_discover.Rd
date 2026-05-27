@@ -112,14 +112,15 @@ metadata (\code{mtls_endpoint_aliases} and
 \item PAR metadata: when the discovery document advertises
 \code{pushed_authorization_request_endpoint} or
 \code{require_pushed_authorization_requests}, the resulting provider stores that
-PAR capability and policy metadata so authorization requests can use RFC
-9126 PAR and fail fast on PAR-only provider policies.
+PAR capability and policy metadata in \code{par_required} so authorization
+requests can use RFC 9126 PAR and fail fast on PAR-only provider policies.
 \item Request Object metadata: when the discovery document advertises
 \code{request_object_signing_alg_values_supported} or
 \code{require_signed_request_object}, the resulting provider stores that
-metadata so \code{OAuthClient} can fail fast when a request-object algorithm is
-unsupported or when the provider requires signed Request Objects. When the
-discovery document also advertises
+metadata in \code{signed_request_object_required} so \code{OAuthClient} can fail
+fast when a request-object algorithm is unsupported or when the provider
+requires signed Request Objects. When the discovery document also
+advertises
 \code{request_object_encryption_alg_values_supported} or
 \code{request_object_encryption_enc_values_supported}, the resulting provider
 stores that encryption metadata so Request Object JWE configuration can be
@@ -132,13 +133,13 @@ metadata so shinyOAuth can fail fast when a provider explicitly disallows
 the front-channel \code{request} transport used by JAR or caller-managed
 \code{request_uri} values. The registration requirement itself remains
 deployment-specific: shinyOAuth stores
-\code{require_request_uri_registration} for caller awareness, but it cannot
+\code{request_uri_registration_required} for caller awareness, but it cannot
 independently verify whether the provider has already registered a
 matching public \code{request_uri} or wildcard prefix for the client. When PAR
 is configured, shinyOAuth sends signed Request Objects to the PAR endpoint
 and the browser redirect only carries the PAR-issued \code{request_uri}
 handle, regardless of \code{request_uri_parameter_supported} or
-\code{require_request_uri_registration}. When discovery omits these booleans,
+\code{request_uri_registration_required}. When discovery omits these booleans,
 this helper applies the OpenID Connect defaults instead of storing \code{NA}.
 \item Response mode metadata: when the discovery document advertises
 \code{response_modes_supported}, the resulting provider stores it so explicit

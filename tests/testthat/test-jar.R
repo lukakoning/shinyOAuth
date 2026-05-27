@@ -63,7 +63,7 @@ request_body_text <- function(req) {
 make_jar_test_provider <- function(
   issuer = "https://issuer.example.com",
   par_url = NA_character_,
-  require_pushed_authorization_requests = FALSE,
+  par_required = FALSE,
   token_auth_style = "body",
   use_nonce = FALSE,
   extra_auth_params = list(),
@@ -73,8 +73,8 @@ make_jar_test_provider <- function(
   request_object_encryption_enc_values_supported = character(0),
   request_object_encryption_jwk = NULL,
   request_uri_parameter_supported = NA,
-  require_request_uri_registration = NA,
-  require_signed_request_object = FALSE,
+  request_uri_registration_required = NA,
+  signed_request_object_required = FALSE,
   authorization_request_front_channel_mode = "compat"
 ) {
   do.call(
@@ -85,14 +85,14 @@ make_jar_test_provider <- function(
       token_url = "https://example.com/token",
       issuer = issuer,
       par_url = par_url,
-      require_pushed_authorization_requests = require_pushed_authorization_requests,
+      par_required = par_required,
       request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
       request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
       request_object_encryption_enc_values_supported = request_object_encryption_enc_values_supported,
       request_object_encryption_jwk = request_object_encryption_jwk,
       request_uri_parameter_supported = request_uri_parameter_supported,
-      require_request_uri_registration = require_request_uri_registration,
-      require_signed_request_object = require_signed_request_object,
+      request_uri_registration_required = request_uri_registration_required,
+      signed_request_object_required = signed_request_object_required,
       authorization_request_front_channel_mode = authorization_request_front_channel_mode,
       use_nonce = use_nonce,
       use_pkce = TRUE,
@@ -579,12 +579,12 @@ test_that("request_uri mode rejects unsupported transport but allows registered 
 
   registered_cli <- make_jar_test_client(
     provider = make_jar_test_provider(
-      require_request_uri_registration = TRUE
+      request_uri_registration_required = TRUE
     ),
     request_object_mode = "request_uri"
   )
 
-  expect_true(isTRUE(registered_cli@provider@require_request_uri_registration))
+  expect_true(isTRUE(registered_cli@provider@request_uri_registration_required))
   expect_true(
     S7::S7_inherits(registered_cli, shinyOAuth::OAuthClient)
   )
@@ -640,7 +640,7 @@ test_that("request_uri mode rejects providers that require PAR", {
   cli <- make_jar_test_client(
     provider = make_jar_test_provider(
       par_url = "https://example.com/par",
-      require_pushed_authorization_requests = TRUE
+      par_required = TRUE
     ),
     request_object_mode = "request_uri"
   )
@@ -1465,7 +1465,7 @@ test_that("request mode rejects provider-disallowed request object algs", {
 })
 
 test_that("providers requiring signed request objects reject parameters mode", {
-  prov <- make_jar_test_provider(require_signed_request_object = TRUE)
+  prov <- make_jar_test_provider(signed_request_object_required = TRUE)
 
   expect_error(
     oauth_client(

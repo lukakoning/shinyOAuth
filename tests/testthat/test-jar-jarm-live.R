@@ -133,7 +133,7 @@ test_that(
       jwks_uri = paste0(base, "/jwks"),
       issuer = base,
       response_modes_supported = c("query.jwt", "jwt"),
-      authorization_signing_alg_values_supported = "RS256",
+      jarm_signing_alg_values_supported = "RS256",
       request_object_signing_alg_values_supported = "HS256",
       use_nonce = FALSE,
       use_pkce = TRUE,
