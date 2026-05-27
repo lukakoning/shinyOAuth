@@ -21,33 +21,13 @@ OAuthProvider(
   name = character(0),
   auth_url = character(0),
   token_url = character(0),
-  userinfo_url = NA_character_,
-  introspection_url = NA_character_,
-  revocation_url = NA_character_,
-  par_url = NA_character_,
-  require_pushed_authorization_requests = FALSE,
-  authorization_request_front_channel_mode = "compat",
-  request_object_signing_alg_values_supported = character(0),
-  request_object_encryption_alg_values_supported = character(0),
-  request_object_encryption_enc_values_supported = character(0),
-  request_object_encryption_jwk = NULL,
-  require_signed_request_object = FALSE,
-  request_parameter_supported = NA,
-  request_uri_parameter_supported = NA,
-  require_request_uri_registration = NA,
-  token_endpoint_auth_signing_alg_values_supported = character(0),
-  dpop_signing_alg_values_supported = character(0),
-  authorization_response_iss_parameter_supported = FALSE,
-  response_modes_supported = character(0),
-  authorization_signing_alg_values_supported = character(0),
-  authorization_encryption_alg_values_supported = character(0),
-  authorization_encryption_enc_values_supported = character(0),
-  tolerate_duplicate_top_level_jarm_iss = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
-  use_nonce = FALSE,
+  token_auth_style = "header",
   use_pkce = TRUE,
   pkce_method = "S256",
+  use_nonce = FALSE,
+  userinfo_url = NA_character_,
   userinfo_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo[["sub"]],
   userinfo_id_token_match = FALSE,
@@ -55,12 +35,11 @@ OAuthProvider(
   id_token_required = FALSE,
   id_token_validation = FALSE,
   id_token_at_hash_required = FALSE,
+  introspection_url = NA_character_,
+  revocation_url = NA_character_,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(0),
-  mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE,
-  token_auth_style = "header",
   jwks_uri = NA_character_,
   jwks_cache = cachem::cache_mem(max_age = 3600),
   jwks_pins = character(0),
@@ -69,6 +48,27 @@ OAuthProvider(
   jwks_host_allow_only = NA_character_,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = "Bearer",
+  par_url = NA_character_,
+  require_pushed_authorization_requests = FALSE,
+  authorization_request_front_channel_mode = "compat",
+  require_signed_request_object = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  require_request_uri_registration = NA,
+  request_object_signing_alg_values_supported = character(0),
+  request_object_encryption_alg_values_supported = character(0),
+  request_object_encryption_enc_values_supported = character(0),
+  request_object_encryption_jwk = NULL,
+  response_modes_supported = character(0),
+  authorization_response_iss_parameter_supported = FALSE,
+  jarm_signing_alg_values_supported = character(0),
+  jarm_encryption_alg_values_supported = character(0),
+  jarm_encryption_enc_values_supported = character(0),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
+  token_endpoint_auth_signing_alg_values_supported = character(0),
+  dpop_signing_alg_values_supported = character(0),
+  mtls_endpoint_aliases = list(),
+  tls_client_certificate_bound_access_tokens = FALSE,
   leeway = getOption("shinyOAuth.leeway", 30)
 )
 ```
@@ -87,174 +87,6 @@ OAuthProvider(
 - token_url:
 
   Token endpoint URL
-
-- userinfo_url:
-
-  User info endpoint URL (optional)
-
-- introspection_url:
-
-  Token introspection endpoint URL (optional; RFC 7662)
-
-- revocation_url:
-
-  Token revocation endpoint URL (optional; RFC 7009)
-
-- par_url:
-
-  Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
-  shinyOAuth first sends the authorization request from server to
-  provider and then redirects the browser with the returned
-  `request_uri` handle instead of the full request payload. Most users
-  only need this when their provider specifically supports or requires
-  PAR.
-
-- require_pushed_authorization_requests:
-
-  Logical. Whether the provider requires authorization requests to be
-  sent via PAR. When `TRUE`, `par_url` must also be configured.
-
-- authorization_request_front_channel_mode:
-
-  Character scalar controlling which browser-visible outer parameters
-  shinyOAuth keeps when the actual authorization request is carried by
-  JAR or PAR. Use `"compat"` (default) to keep the current
-  OIDC-compatible shape with outer `client_id`, `response_type`, and
-  `scope` when an issuer is configured. Use `"minimal"` for plain OAuth
-  browser redirects and for PAR deployments whose authorization endpoint
-  accepts only `client_id` plus the provider-issued `request_uri`
-  handle. OpenID Connect by-value `request` and caller-managed
-  `request_uri` transports reject `"minimal"` because OIDC still
-  requires outer `response_type` and an outer `scope` containing
-  `openid`.
-
-- request_object_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  signed Request Objects (RFC 9101). This is mainly used for early
-  validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  sends `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`.
-
-- request_object_encryption_alg_values_supported:
-
-  Optional vector of JWE key-management algorithms that the provider
-  advertises for encrypted Request Objects. This metadata is used for
-  early validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  enables Request Object encryption.
-
-- request_object_encryption_enc_values_supported:
-
-  Optional vector of JWE content-encryption algorithms that the provider
-  advertises for encrypted Request Objects. This metadata is used for
-  early validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  enables Request Object encryption.
-
-- request_object_encryption_jwk:
-
-  Optional explicit recipient public key used to encrypt Request Objects
-  when discovery-backed JWKS selection is not available or when you need
-  to pin one specific encryption key. Accepts an OpenSSL public key, a
-  PEM public-key string, a parsed JWK object, or a JWK JSON string.
-
-- require_signed_request_object:
-
-  Logical. Whether the provider requires signed Request Objects for
-  authorization requests. When `TRUE`, clients should use
-  `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`.
-
-- request_parameter_supported:
-
-  Logical or `NA`. Whether discovery metadata explicitly advertises
-  support for the authorization-request `request` parameter. `NA` means
-  the provider did not say. Discovery-derived providers apply the OpenID
-  Connect default (`FALSE`) when this metadata is omitted.
-
-- request_uri_parameter_supported:
-
-  Logical or `NA`. Whether discovery metadata explicitly advertises
-  support for the authorization-request `request_uri` parameter for
-  caller-managed request URIs. `NA` means the provider did not say.
-  Discovery-derived providers apply the OpenID Connect default (`TRUE`)
-  when this metadata is omitted. PAR-issued `request_uri` handles remain
-  valid even when this metadata is `FALSE`.
-
-- require_request_uri_registration:
-
-  Logical or `NA`. Whether discovery metadata says caller-managed
-  `request_uri` values must be pre-registered. `NA` means the provider
-  did not say. Discovery-derived providers apply the OpenID Connect
-  default (`FALSE`) when this metadata is omitted. shinyOAuth can
-  publish caller-managed `request_uri` values through
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-  When this is `TRUE`, make sure the provider has a matching public
-  request URI or wildcard prefix registered for the client. shinyOAuth
-  stores this metadata for caller awareness, but it cannot verify
-  provider-side registration state automatically.
-
-- token_endpoint_auth_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  JWT-based client authentication (`client_secret_jwt` /
-  `private_key_jwt`) at the token endpoint. This metadata is used for
-  early validation of `OAuthClient@client_assertion_alg` and inferred
-  JWT client-assertion defaults.
-
-- dpop_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  DPoP proof JWTs (RFC 9449). This metadata is used for early validation
-  of `OAuthClient@dpop_signing_alg` and inferred outbound DPoP signing
-  defaults.
-
-- authorization_response_iss_parameter_supported:
-
-  Logical. Whether the provider advertises RFC 9207 support for
-  returning an `iss` parameter on the authorization response. When
-  `TRUE`, the
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  helper can auto-enable callback issuer enforcement when the caller
-  leaves `enforce_callback_issuer` unset and the provider also has a
-  configured `issuer`.
-
-- response_modes_supported:
-
-  Optional character vector of OAuth/OIDC `response_mode` values
-  advertised by the provider. Discovery-backed providers use the
-  discovery metadata value, defaulting to `c("query", "fragment")` when
-  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
-  empty when capabilities are not known. Provider metadata may include
-  response modes that shinyOAuth does not implement; clients still fail
-  fast if they request one of those unsupported modes.
-
-- authorization_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  signed JWT Secured Authorization Responses (JARM).
-
-- authorization_encryption_alg_values_supported:
-
-  Optional vector of JWE key-management algorithms that the provider
-  advertises for encrypted JARM responses.
-
-- authorization_encryption_enc_values_supported:
-
-  Optional vector of JWE content-encryption algorithms that the provider
-  advertises for encrypted JARM responses.
-
-- tolerate_duplicate_top_level_jarm_iss:
-
-  Logical. Whether shinyOAuth should tolerate repeated identical
-  top-level `iss` members in signed JARM payloads for this provider.
-  This is an interoperability escape hatch for providers that emit
-  duplicate identical top-level `iss` claims. When `TRUE`, shinyOAuth
-  collapses repeated identical top-level `iss` members before
-  duplicate-member rejection. Conflicting duplicates and nested
-  duplicate `iss` members still fail closed. Defaults to `FALSE`.
 
 - issuer:
 
@@ -281,11 +113,30 @@ OAuthProvider(
   providers that publish tenant-independent metadata with a templated
   issuer, such as some Microsoft aliases.
 
-- use_nonce:
+- token_auth_style:
 
-  Whether to use OIDC nonce. This adds a `nonce` parameter to the
-  authorization request and validates the `nonce` claim in the ID token.
-  For OIDC providers, leaving this enabled is usually the right choice.
+  How the client authenticates at the token endpoint. One of:
+
+  - "header": HTTP Basic (client_secret_basic)
+
+  - "body": Form body (client_secret_post)
+
+  - "public": Public-client form body (`none` in discovery metadata);
+    sends `client_id` but never `client_secret`, even if one is
+    configured. The alias `"none"` is also accepted.
+
+  - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
+    client certificate chained to a trusted CA
+
+  - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
+    authentication using a self-signed client certificate registered out
+    of band with the provider
+
+  - "client_secret_jwt": JWT client assertion signed with HMAC using
+    client_secret (RFC 7523)
+
+  - "private_key_jwt": JWT client assertion signed with an asymmetric
+    key (RFC 7523)
 
 - use_pkce:
 
@@ -299,6 +150,16 @@ OAuthProvider(
   PKCE code challenge method ("S256" or "plain"). "S256" is recommended.
   Use "plain" only if you are working with a provider that does not
   support "S256".
+
+- use_nonce:
+
+  Whether to use OIDC nonce. This adds a `nonce` parameter to the
+  authorization request and validates the `nonce` claim in the ID token.
+  For OIDC providers, leaving this enabled is usually the right choice.
+
+- userinfo_url:
+
+  User info endpoint URL (optional)
 
 - userinfo_required:
 
@@ -415,6 +276,14 @@ OAuthProvider(
   `FALSE` (default), `at_hash` is validated only when present. Requires
   `id_token_validation = TRUE`.
 
+- introspection_url:
+
+  Token introspection endpoint URL (optional; RFC 7662)
+
+- revocation_url:
+
+  Token revocation endpoint URL (optional; RFC 7009)
+
 - extra_auth_params:
 
   Extra parameters for authorization URL
@@ -429,49 +298,6 @@ OAuthProvider(
   vector). shinyOAuth applies these headers to token exchange, refresh,
   introspection, revocation, and PAR requests. Use this only for headers
   you intentionally want on that full set of authorization-server calls.
-
-- mtls_endpoint_aliases:
-
-  Optional named list of RFC 8705 mTLS endpoint aliases. Names should
-  follow the metadata keys such as `token_endpoint`,
-  `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
-  `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
-  must be absolute URLs. This is an advanced setting used when a
-  provider publishes separate mTLS-specific endpoints.
-
-- tls_client_certificate_bound_access_tokens:
-
-  Logical. Whether the authorization server advertises RFC 8705
-  capability to issue certificate-bound access tokens. This describes
-  server capability; the client still has to opt into mTLS separately.
-  When `TRUE`, token responses may include a `cnf` claim with an
-  `x5t#S256` thumbprint that downstream requests must match with the
-  same certificate.
-
-- token_auth_style:
-
-  How the client authenticates at the token endpoint. One of:
-
-  - "header": HTTP Basic (client_secret_basic)
-
-  - "body": Form body (client_secret_post)
-
-  - "public": Public-client form body (`none` in discovery metadata);
-    sends `client_id` but never `client_secret`, even if one is
-    configured. The alias `"none"` is also accepted.
-
-  - "tls_client_auth": RFC 8705 mutual TLS client authentication using a
-    client certificate chained to a trusted CA
-
-  - "self_signed_tls_client_auth": RFC 8705 mutual TLS client
-    authentication using a self-signed client certificate registered out
-    of band with the provider
-
-  - "client_secret_jwt": JWT client assertion signed with HMAC using
-    client_secret (RFC 7523)
-
-  - "private_key_jwt": JWT client assertion signed with an asymmetric
-    key (RFC 7523)
 
 - jwks_uri:
 
@@ -569,6 +395,180 @@ OAuthProvider(
   still fail fast rather than being misused. Set
   `allowed_token_types = character()` explicitly only to disable the
   value allowlist while still requiring `token_type` itself.
+
+- par_url:
+
+  Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
+  shinyOAuth first sends the authorization request from server to
+  provider and then redirects the browser with the returned
+  `request_uri` handle instead of the full request payload. Most users
+  only need this when their provider specifically supports or requires
+  PAR.
+
+- require_pushed_authorization_requests:
+
+  Logical. Whether the provider requires authorization requests to be
+  sent via PAR. When `TRUE`, `par_url` must also be configured.
+
+- authorization_request_front_channel_mode:
+
+  Character scalar controlling which browser-visible outer parameters
+  shinyOAuth keeps when the actual authorization request is carried by
+  JAR or PAR. Use `"compat"` (default) to keep the current
+  OIDC-compatible shape with outer `client_id`, `response_type`, and
+  `scope` when an issuer is configured. Use `"minimal"` for plain OAuth
+  browser redirects and for PAR deployments whose authorization endpoint
+  accepts only `client_id` plus the provider-issued `request_uri`
+  handle. OpenID Connect by-value `request` and caller-managed
+  `request_uri` transports reject `"minimal"` because OIDC still
+  requires outer `response_type` and an outer `scope` containing
+  `openid`.
+
+- require_signed_request_object:
+
+  Logical. Whether the provider requires signed Request Objects for
+  authorization requests. When `TRUE`, clients should use
+  `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`.
+
+- request_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request` parameter. `NA` means
+  the provider did not say. Discovery-derived providers apply the OpenID
+  Connect default (`FALSE`) when this metadata is omitted.
+
+- request_uri_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request_uri` parameter for
+  caller-managed request URIs. `NA` means the provider did not say.
+  Discovery-derived providers apply the OpenID Connect default (`TRUE`)
+  when this metadata is omitted. PAR-issued `request_uri` handles remain
+  valid even when this metadata is `FALSE`.
+
+- require_request_uri_registration:
+
+  Logical or `NA`. Whether discovery metadata says caller-managed
+  `request_uri` values must be pre-registered. `NA` means the provider
+  did not say. Discovery-derived providers apply the OpenID Connect
+  default (`FALSE`) when this metadata is omitted. shinyOAuth can
+  publish caller-managed `request_uri` values through
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+  When this is `TRUE`, make sure the provider has a matching public
+  request URI or wildcard prefix registered for the client. shinyOAuth
+  stores this metadata for caller awareness, but it cannot verify
+  provider-side registration state automatically.
+
+- request_object_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  signed Request Objects (RFC 9101). This is mainly used for early
+  validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  sends `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`.
+
+- request_object_encryption_alg_values_supported:
+
+  Optional vector of JWE key-management algorithms that the provider
+  advertises for encrypted Request Objects. This metadata is used for
+  early validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  enables Request Object encryption.
+
+- request_object_encryption_enc_values_supported:
+
+  Optional vector of JWE content-encryption algorithms that the provider
+  advertises for encrypted Request Objects. This metadata is used for
+  early validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  enables Request Object encryption.
+
+- request_object_encryption_jwk:
+
+  Optional explicit recipient public key used to encrypt Request Objects
+  when discovery-backed JWKS selection is not available or when you need
+  to pin one specific encryption key. Accepts an OpenSSL public key, a
+  PEM public-key string, a parsed JWK object, or a JWK JSON string.
+
+- response_modes_supported:
+
+  Optional character vector of OAuth/OIDC `response_mode` values
+  advertised by the provider. Discovery-backed providers use the
+  discovery metadata value, defaulting to `c("query", "fragment")` when
+  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
+  empty when capabilities are not known. Provider metadata may include
+  response modes that shinyOAuth does not implement; clients still fail
+  fast if they request one of those unsupported modes.
+
+- authorization_response_iss_parameter_supported:
+
+  Logical. Whether the provider advertises RFC 9207 support for
+  returning an `iss` parameter on the authorization response. When
+  `TRUE`, the
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  helper can auto-enable callback issuer enforcement when the caller
+  leaves `enforce_callback_issuer` unset and the provider also has a
+  configured `issuer`.
+
+- jarm_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  signed JWT Secured Authorization Responses (JARM).
+
+- jarm_encryption_alg_values_supported:
+
+  Optional vector of JWE key-management algorithms that the provider
+  advertises for encrypted JARM responses.
+
+- jarm_encryption_enc_values_supported:
+
+  Optional vector of JWE content-encryption algorithms that the provider
+  advertises for encrypted JARM responses.
+
+- tolerate_duplicate_top_level_jarm_iss:
+
+  Logical. Whether shinyOAuth should tolerate repeated identical
+  top-level `iss` members in signed JARM payloads for this provider.
+  This is an interoperability escape hatch for providers that emit
+  duplicate identical top-level `iss` claims. When `TRUE`, shinyOAuth
+  collapses repeated identical top-level `iss` members before
+  duplicate-member rejection. Conflicting duplicates and nested
+  duplicate `iss` members still fail closed. Defaults to `FALSE`.
+
+- token_endpoint_auth_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  JWT-based client authentication (`client_secret_jwt` /
+  `private_key_jwt`) at the token endpoint. This metadata is used for
+  early validation of `OAuthClient@client_assertion_alg` and inferred
+  JWT client-assertion defaults.
+
+- dpop_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  DPoP proof JWTs (RFC 9449). This metadata is used for early validation
+  of `OAuthClient@dpop_signing_alg` and inferred outbound DPoP signing
+  defaults.
+
+- mtls_endpoint_aliases:
+
+  Optional named list of RFC 8705 mTLS endpoint aliases. Names should
+  follow the metadata keys such as `token_endpoint`,
+  `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
+  `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
+  must be absolute URLs. This is an advanced setting used when a
+  provider publishes separate mTLS-specific endpoints.
+
+- tls_client_certificate_bound_access_tokens:
+
+  Logical. Whether the authorization server advertises RFC 8705
+  capability to issue certificate-bound access tokens. This describes
+  server capability; the client still has to opt into mTLS separately.
+  When `TRUE`, token responses may include a `cnf` claim with an
+  `x5t#S256` thumbprint that downstream requests must match with the
+  same certificate.
 
 - leeway:
 
