@@ -363,141 +363,6 @@ JWT `response` value instead. In that mode,
 validates the JARM payload and the inner sealed state before issuing the
 one-time callback handle.
 
-For query-based JARM, set `response_mode = "jwt"` or `"query.jwt"`. Both
-request a JWT-wrapped authorization response on the normal query
-callback path; `"jwt"` preserves the RFC-defined shortcut value on the
-outbound authorization request, while `"query.jwt"` is the fully
-explicit form.
-
-Signed-only query JARM adds integrity to the callback, but it does not
-hide the authorization code from the browser URL. The compact JWT still
-travels in the query string, so the code can remain exposed in browser
-history or referrer logs. When that exposure matters, prefer encrypted
-JARM or `form_post.jwt`, and keep PKCE enabled because encryption
-reduces leakage but does not replace PKCE’s protocol-run protection.
-
-The JARM algorithm settings on
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-are validation expectations, not dynamic authorization-request
-parameters. In practice that means `authorization_signed_response_alg`,
-`authorization_encrypted_response_alg`, and
-`authorization_encrypted_response_enc` must match the provider-side
-client registration (or OIDC discovery metadata) that tells the
-authorization server how to produce the JARM callback for this client.
-
-Signed JARM support is also narrower than the generic JWS metadata
-fields might suggest. shinyOAuth currently accepts `HS256`, `HS384`,
-`HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and
-`EdDSA` for `authorization_signed_response_alg`. RSA-PSS (`PS256`,
-`PS384`, `PS512`) is currently unsupported even if a provider advertises
-it in metadata. Unsecured `none` is prohibited by JARM and shinyOAuth
-intentionally always rejects it.
-
-Encrypted JARM support is currently narrower than the generic JWE
-metadata fields might suggest. shinyOAuth presently accepts `RSA-OAEP`
-for `authorization_encrypted_response_alg` and the AES-CBC-HMAC family
-(`A128CBC-HS256`, `A192CBC-HS384`, `A256CBC-HS512`) for
-`authorization_encrypted_response_enc`. If your provider only offers
-values such as `RSA-OAEP-256` or `A256GCM`, encrypted JARM will not
-interoperate yet even though those values are valid JWE metadata in the
-underlying specs.
-
-shinyOAuth also caps accepted JARM callback lifetime with
-`jarm_max_lifetime`, which defaults to 600 seconds in line with the JARM
-specification’s recommended 10-minute maximum. If the provider includes
-`iat`, shinyOAuth enforces that bound against `exp - iat`; otherwise it
-falls back to the remaining `exp` window at validation time.
-
-If your issuer publishes JARM metadata through OIDC discovery,
-[`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-fills those provider fields automatically. For manual providers,
-`response_modes_supported`,
-`authorization_signing_alg_values_supported`,
-`authorization_encryption_alg_values_supported`, and
-`authorization_encryption_enc_values_supported` are optional: shinyOAuth
-uses them only for early consistency checks when they are present. That
-means a manually configured provider may leave them unset and still use
-JARM. Discovery-backed providers behave differently because discovery
-preserves the issuer metadata and defaults `response_modes_supported` to
-`c("query", "fragment")` when it is omitted. A minimal signed-JARM setup
-looks like this:
-
-``` r
-library(shinyOAuth)
-
-provider <- oauth_provider(
-  name = "Example OIDC",
-  auth_url = "https://issuer.example.com/authorize",
-  token_url = "https://issuer.example.com/token",
-  issuer = "https://issuer.example.com",
-  jwks_uri = "https://issuer.example.com/jwks",
-  token_auth_style = "public"
-)
-
-client <- oauth_client(
-  provider = provider,
-  client_id = "shiny-public",
-  client_secret = "",
-  redirect_uri = "http://127.0.0.1:8100/callback",
-  scopes = c("openid", "profile"),
-  response_mode = "jwt",
-  authorization_signed_response_alg = "RS256",
-  jarm_max_lifetime = 600
-)
-```
-
-If you know the provider’s advertised JARM metadata and want those
-fail-fast checks for a manual provider, add the capability fields to the
-provider object. For example, an encrypted JARM client might look like
-this:
-
-``` r
-provider_checked <- oauth_provider(
-  name = "Example OIDC",
-  auth_url = "https://issuer.example.com/authorize",
-  token_url = "https://issuer.example.com/token",
-  issuer = "https://issuer.example.com",
-  jwks_uri = "https://issuer.example.com/jwks",
-  token_auth_style = "public",
-  response_modes_supported = "form_post.jwt",
-  authorization_signing_alg_values_supported = "RS256",
-  authorization_encryption_alg_values_supported = "RSA-OAEP",
-  authorization_encryption_enc_values_supported = "A256CBC-HS512"
-)
-
-jarm_decryption_key <- openssl::read_key(
-  "path/to/jarm-decryption-private-key.pem"
-)
-
-encrypted_client <- oauth_client(
-  provider = provider_checked,
-  client_id = "shiny-public",
-  client_secret = "",
-  redirect_uri = "http://127.0.0.1:8100/callback",
-  scopes = c("openid", "profile"),
-  response_mode = "form_post.jwt",
-  authorization_signed_response_alg = "RS256",
-  authorization_encrypted_response_alg = "RSA-OAEP",
-  authorization_encrypted_response_enc = "A256CBC-HS512",
-  authorization_response_decryption_private_key = jarm_decryption_key,
-  authorization_response_decryption_private_key_kid = "jarm-enc-1",
-  jarm_max_lifetime = 600
-)
-```
-
-Because this example uses `form_post.jwt`, the app UI must also be
-wrapped with
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
-
-When you configure the provider manually, include `jwks_uri` (or use
-discovery) so shinyOAuth can fetch the issuer’s signing keys when it
-validates the JARM callback at runtime.
-
-If the provider uses `response_mode = "form_post.jwt"`, keep the same
-JARM metadata settings and wrap the app UI with
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-as shown in the example below.
-
 ``` r
 library(shiny)
 library(shinyOAuth)
@@ -511,14 +376,9 @@ client <- oauth_client(
   provider = provider,
   client_id = "shiny-public",
   client_secret = "",
-  # This must match the provider-side JARM client registration, for example
-  # Keycloak attribute authorization.signed.response.alg = RS256.
-  # `/callback` is only an example sub-route. The app root also works if the
-  # provider redirect URI matches the path handled by `oauth_form_post_ui()`
   redirect_uri = "http://127.0.0.1:8100/callback",
   scopes = c("openid", "profile", "email"),
-  response_mode = "form_post.jwt",
-  authorization_signed_response_alg = "RS256"
+  response_mode = "form_post"
 )
 
 base_ui <- fluidPage(

@@ -411,134 +411,7 @@ same POST bridge, but the body carries a compact JWT
 <code>response</code> value instead. In that mode,
 <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> validates the JARM payload and the
 inner sealed state before issuing the one-time callback handle.</p>
-<p>For query-based JARM, set <code>response_mode = "jwt"</code> or
-<code>"query.jwt"</code>. Both request a JWT-wrapped authorization
-response on the normal query callback path; <code>"jwt"</code> preserves
-the RFC-defined shortcut value on the outbound authorization request,
-while <code>"query.jwt"</code> is the fully explicit form.</p>
-<p>Signed-only query JARM adds integrity to the callback, but it does
-not hide the authorization code from the browser URL. The compact JWT
-still travels in the query string, so the code can remain exposed in
-browser history or referrer logs. When that exposure matters, prefer
-encrypted JARM or <code>form_post.jwt</code>, and keep PKCE enabled
-because encryption reduces leakage but does not replace PKCE’s
-protocol-run protection.</p>
-<p>The JARM algorithm settings on <code><a href="../reference/oauth_client.html">oauth_client()</a></code> are
-validation expectations, not dynamic authorization-request parameters.
-In practice that means <code>authorization_signed_response_alg</code>,
-<code>authorization_encrypted_response_alg</code>, and
-<code>authorization_encrypted_response_enc</code> must match the
-provider-side client registration (or OIDC discovery metadata) that
-tells the authorization server how to produce the JARM callback for this
-client.</p>
-<p>Signed JARM support is also narrower than the generic JWS metadata
-fields might suggest. shinyOAuth currently accepts <code>HS256</code>,
-<code>HS384</code>, <code>HS512</code>, <code>RS256</code>,
-<code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
-<code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> for
-<code>authorization_signed_response_alg</code>. RSA-PSS
-(<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) is
-currently unsupported even if a provider advertises it in metadata.
-Unsecured <code>none</code> is prohibited by JARM and shinyOAuth
-intentionally always rejects it.</p>
-<p>Encrypted JARM support is currently narrower than the generic JWE
-metadata fields might suggest. shinyOAuth presently accepts
-<code>RSA-OAEP</code> for
-<code>authorization_encrypted_response_alg</code> and the AES-CBC-HMAC
-family (<code>A128CBC-HS256</code>, <code>A192CBC-HS384</code>,
-<code>A256CBC-HS512</code>) for
-<code>authorization_encrypted_response_enc</code>. If your provider only
-offers values such as <code>RSA-OAEP-256</code> or <code>A256GCM</code>,
-encrypted JARM will not interoperate yet even though those values are
-valid JWE metadata in the underlying specs.</p>
-<p>shinyOAuth also caps accepted JARM callback lifetime with
-<code>jarm_max_lifetime</code>, which defaults to 600 seconds in line
-with the JARM specification’s recommended 10-minute maximum. If the
-provider includes <code>iat</code>, shinyOAuth enforces that bound
-against <code>exp - iat</code>; otherwise it falls back to the remaining
-<code>exp</code> window at validation time.</p>
-<p>If your issuer publishes JARM metadata through OIDC discovery,
-<code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> fills those provider fields
-automatically. For manual providers,
-<code>response_modes_supported</code>,
-<code>authorization_signing_alg_values_supported</code>,
-<code>authorization_encryption_alg_values_supported</code>, and
-<code>authorization_encryption_enc_values_supported</code> are optional:
-shinyOAuth uses them only for early consistency checks when they are
-present. That means a manually configured provider may leave them unset
-and still use JARM. Discovery-backed providers behave differently
-because discovery preserves the issuer metadata and defaults
-<code>response_modes_supported</code> to
-<code>c("query", "fragment")</code> when it is omitted. A minimal
-signed-JARM setup looks like this:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Example OIDC"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://issuer.example.com/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://issuer.example.com/token"</span>,</span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://issuer.example.com"</span>,</span>
-<span>  jwks_uri <span class="op">=</span> <span class="st">"https://issuer.example.com/jwks"</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"shiny-public"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="st">"jwt"</span>,</span>
-<span>  authorization_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>If you know the provider’s advertised JARM metadata and want those
-fail-fast checks for a manual provider, add the capability fields to the
-provider object. For example, an encrypted JARM client might look like
-this:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">provider_checked</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Example OIDC"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://issuer.example.com/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://issuer.example.com/token"</span>,</span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://issuer.example.com"</span>,</span>
-<span>  jwks_uri <span class="op">=</span> <span class="st">"https://issuer.example.com/jwks"</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span>,</span>
-<span>  response_modes_supported <span class="op">=</span> <span class="st">"form_post.jwt"</span>,</span>
-<span>  authorization_signing_alg_values_supported <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>  authorization_encryption_alg_values_supported <span class="op">=</span> <span class="st">"RSA-OAEP"</span>,</span>
-<span>  authorization_encryption_enc_values_supported <span class="op">=</span> <span class="st">"A256CBC-HS512"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">jarm_decryption_key</span> <span class="op">&lt;-</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span></span>
-<span>  <span class="st">"path/to/jarm-decryption-private-key.pem"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">encrypted_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider_checked</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"shiny-public"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="st">"form_post.jwt"</span>,</span>
-<span>  authorization_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>  authorization_encrypted_response_alg <span class="op">=</span> <span class="st">"RSA-OAEP"</span>,</span>
-<span>  authorization_encrypted_response_enc <span class="op">=</span> <span class="st">"A256CBC-HS512"</span>,</span>
-<span>  authorization_response_decryption_private_key <span class="op">=</span> <span class="va">jarm_decryption_key</span>,</span>
-<span>  authorization_response_decryption_private_key_kid <span class="op">=</span> <span class="st">"jarm-enc-1"</span>,</span>
-<span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Because this example uses <code>form_post.jwt</code>, the app UI must
-also be wrapped with <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
-<p>When you configure the provider manually, include
-<code>jwks_uri</code> (or use discovery) so shinyOAuth can fetch the
-issuer’s signing keys when it validates the JARM callback at
-runtime.</p>
-<p>If the provider uses <code>response_mode = "form_post.jwt"</code>,
-keep the same JARM metadata settings and wrap the app UI with
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> as shown in the example below.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
 <span></span>
@@ -551,14 +424,9 @@ keep the same JARM metadata settings and wrap the app UI with
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"shiny-public"</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  <span class="co"># This must match the provider-side JARM client registration, for example</span></span>
-<span>  <span class="co"># Keycloak attribute authorization.signed.response.alg = RS256.</span></span>
-<span>  <span class="co"># `/callback` is only an example sub-route. The app root also works if the</span></span>
-<span>  <span class="co"># provider redirect URI matches the path handled by `oauth_form_post_ui()`</span></span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="st">"form_post.jwt"</span>,</span>
-<span>  authorization_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
+<span>  response_mode <span class="op">=</span> <span class="st">"form_post"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
