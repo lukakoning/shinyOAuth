@@ -347,21 +347,21 @@ oauth_provider_oidc_discover <- function(
   ))))
   jarm_signing_alg_values_supported <- as.character(
     unlist(
-      disc[["jarm_signing_alg_values_supported"]] %||%
+      disc[["authorization_signing_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
   )
   jarm_encryption_alg_values_supported <- as.character(
     unlist(
-      disc[["jarm_encryption_alg_values_supported"]] %||%
+      disc[["authorization_encryption_alg_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
   )
   jarm_encryption_enc_values_supported <- as.character(
     unlist(
-      disc[["jarm_encryption_enc_values_supported"]] %||%
+      disc[["authorization_encryption_enc_values_supported"]] %||%
         character(0),
       use.names = FALSE
     )
