@@ -310,7 +310,8 @@ failure event.
   `browser_token_validation`)
 - Phases include: `payload_validation`, `browser_token_validation`,
   `pkce_verifier_validation`, `nonce_validation`,
-  `form_post_request_validation`, `form_post_callback_lookup`
+  `form_post_request_validation`, `form_post_callback_lookup`,
+  `form_post_callback_validation`
 - `handle_digest` is included when a form_post callback handle is
   missing, expired, or already consumed.
 - Note: Failures related to state store access (lookup/removal) are

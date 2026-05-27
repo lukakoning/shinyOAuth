@@ -15,8 +15,10 @@ ensure the redirect_uri is set to a URL that routes to this UI wrapper
 (e.g., the app's root URL or a specific callback path).
 This helper handles the plain form_post response mode, where the POST body
 contains authorization response parameters such as code, state, error,
-and iss. It does not decode JWT Secured Authorization Response Mode (JARM)
-responses such as response_mode = &quot;form_post.jwt&quot;."><meta property="og:description" content="oauth_form_post_ui() enables the OpenID Foundation OAuth 2.0 Form Post
+and iss. When response_mode = &quot;form_post.jwt&quot;, the helper validates the
+inbound JARM response, decrypts and validates the enclosed state, and then
+stores the accepted callback payload under the same one-time handle so the
+main callback flow can resume from a prevalidated POST boundary."><meta property="og:description" content="oauth_form_post_ui() enables the OpenID Foundation OAuth 2.0 Form Post
 Response Mode for apps that use oauth_module_server(). It wraps your
 existing Shiny UI so a provider can POST an authorization response to the
 app's redirect URI. The POST body is stored server-side under a short-lived
@@ -32,8 +34,10 @@ ensure the redirect_uri is set to a URL that routes to this UI wrapper
 (e.g., the app's root URL or a specific callback path).
 This helper handles the plain form_post response mode, where the POST body
 contains authorization response parameters such as code, state, error,
-and iss. It does not decode JWT Secured Authorization Response Mode (JARM)
-responses such as response_mode = &quot;form_post.jwt&quot;."></head><body>
+and iss. When response_mode = &quot;form_post.jwt&quot;, the helper validates the
+inbound JARM response, decrypts and validates the enclosed state, and then
+stores the accepted callback payload under the same one-time handle so the
+main callback flow can resume from a prevalidated POST boundary."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -92,8 +96,10 @@ ensure the <code>redirect_uri</code> is set to a URL that routes to this UI wrap
 (e.g., the app's root URL or a specific callback path).
 This helper handles the plain form_post response mode, where the POST body
 contains authorization response parameters such as <code>code</code>, <code>state</code>, <code>error</code>,
-and <code>iss</code>. It does not decode JWT Secured Authorization Response Mode (JARM)
-responses such as <code>response_mode = "form_post.jwt"</code>.</p>
+and <code>iss</code>. When <code>response_mode = "form_post.jwt"</code>, the helper validates the
+inbound JARM <code>response</code>, decrypts and validates the enclosed state, and then
+stores the accepted callback payload under the same one-time handle so the
+main callback flow can resume from a prevalidated POST boundary.</p>
     </div>
 
     <div class="section level2">

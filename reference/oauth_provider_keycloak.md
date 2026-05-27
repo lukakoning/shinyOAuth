@@ -11,7 +11,8 @@ oauth_provider_keycloak(
   base_url,
   realm,
   name = paste0("keycloak-", realm),
-  token_auth_style = "body"
+  token_auth_style = "body",
+  tolerate_duplicate_top_level_jarm_iss = TRUE
 )
 ```
 
@@ -39,6 +40,13 @@ oauth_provider_keycloak(
   need to suppress `client_secret` even when it is set in the
   environment. If you pass `NULL`, discovery will infer the method from
   the provider's `token_endpoint_auth_methods_supported` metadata.
+
+- tolerate_duplicate_top_level_jarm_iss:
+
+  Logical. Defaults to `TRUE` for Keycloak because current Keycloak JARM
+  responses may repeat an identical top-level `iss` claim. Set `FALSE`
+  to fail closed on duplicate top-level `iss` members instead of
+  applying this interoperability workaround.
 
 ## Value
 

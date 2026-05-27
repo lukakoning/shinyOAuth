@@ -20,9 +20,11 @@ with `response_mode = "form_post"`, and ensure the `redirect_uri` is set
 to a URL that routes to this UI wrapper (e.g., the app's root URL or a
 specific callback path). This helper handles the plain form_post
 response mode, where the POST body contains authorization response
-parameters such as `code`, `state`, `error`, and `iss`. It does not
-decode JWT Secured Authorization Response Mode (JARM) responses such as
-`response_mode = "form_post.jwt"`.
+parameters such as `code`, `state`, `error`, and `iss`. When
+`response_mode = "form_post.jwt"`, the helper validates the inbound JARM
+`response`, decrypts and validates the enclosed state, and then stores
+the accepted callback payload under the same one-time handle so the main
+callback flow can resume from a prevalidated POST boundary.
 
 ## Usage
 

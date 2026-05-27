@@ -74,6 +74,12 @@ oauth_module_server() starts login or callback handling."></head><body>
 <span>  mtls_request_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  authorization_request_mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"parameters"</span>, <span class="st">"request"</span>, <span class="st">"request_uri"</span><span class="op">)</span>,</span>
 <span>  response_mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_signed_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_encrypted_response_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_encrypted_response_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_response_decryption_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_response_decryption_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span>,</span>
 <span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -342,20 +348,83 @@ shinyOAuth cannot verify that server-side registration automatically.</p></dd>
 
 <dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
 <dd><p>Authorization response mode for authorization-code
-callbacks. Supported values are <code>"query"</code> and <code>"form_post"</code>. The
-effective default is always <code>"query"</code>: omitting this argument keeps the
-normal query-parameter callback flow and shinyOAuth does not send a
-<code>response_mode</code> parameter. Pass <code>"query"</code> only if you need to explicitly
-request the query response mode from the provider.
-Set <code>"form_post"</code> only when the provider requires or explicitly
-recommends POSTing the authorization response to the redirect URI. Shiny
-apps using <code>"form_post"</code> must wrap their UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.
-Prefer this argument over setting <code>extra_auth_params$response_mode</code> on the
-provider. When the provider advertises <code>response_modes_supported</code>, the
-resolved mode must be included in that set.
-JWT Secured Authorization Response Mode (JARM) values such as
-<code>"form_post.jwt"</code> are a separate response format and are not currently
-supported.</p></dd>
+callbacks. Supported values are <code>"query"</code>, <code>"form_post"</code>, <code>"jwt"</code>,
+<code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. The effective default is always
+<code>"query"</code>: omitting this argument keeps the normal query-parameter
+callback flow and shinyOAuth does not send a <code>response_mode</code> parameter.
+Pass <code>"query"</code> only if you need to explicitly request the query
+response mode from the provider. Set <code>"form_post"</code> only when the
+provider requires or explicitly recommends POSTing the authorization
+response to the redirect URI. Shiny apps using <code>"form_post"</code> must wrap
+their UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Prefer this argument over setting
+<code>extra_auth_params$response_mode</code> on the provider. When the provider
+advertises <code>response_modes_supported</code>, the resolved mode must be included
+in that set. <code>"jwt"</code> requests the JARM-defined default callback
+transport for the response type; for the authorization-code flow that
+still means a query callback, but shinyOAuth preserves and sends <code>"jwt"</code>
+when you configure it explicitly. <code>"fragment.jwt"</code> is not currently
+supported because shinyOAuth does not implement fragment callback
+transport.</p>
+<p>JARM callbacks are currently module-only. For <code>"jwt"</code>, <code>"query.jwt"</code>,
+and <code>"form_post.jwt"</code>, use <code><a href="oauth_module_server.html">oauth_module_server()</a></code> and, for
+<code>"form_post.jwt"</code>, wrap the app UI with <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. The
+exported <code><a href="handle_callback.html">handle_callback()</a></code> helper still accepts only the classic
+direct <code>code</code> + sealed <code>state</code> callback shape and does not expose a
+public JARM validation/resume API.</p></dd>
+
+
+<dt id="arg-authorization-signed-response-alg">authorization_signed_response_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-signed-response-alg"></a></dt>
+<dd><p>Optional expected JWS algorithm for
+signed JWT Secured Authorization Responses (JARM). When omitted and the
+effective response mode is JARM, shinyOAuth defaults to <code>RS256</code>. This
+value is not sent dynamically on the authorization request; it must match
+the client metadata and provider behavior configured out-of-band for that
+client. Current inbound support accepts <code>HS256</code>, <code>HS384</code>, <code>HS512</code>,
+<code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code>.
+RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) and unsecured <code>none</code> are not accepted
+for inbound JARM.</p></dd>
+
+
+<dt id="arg-authorization-encrypted-response-alg">authorization_encrypted_response_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-encrypted-response-alg"></a></dt>
+<dd><p>Optional expected JWE
+key-management algorithm for encrypted JARM responses. Current inbound
+support is limited to <code>RSA-OAEP</code>. Like
+<code>authorization_signed_response_alg</code>, this reflects out-of-band client
+metadata and expected provider behavior rather than an authorization
+request parameter emitted by shinyOAuth.</p></dd>
+
+
+<dt id="arg-authorization-encrypted-response-enc">authorization_encrypted_response_enc<a class="anchor" aria-label="anchor" href="#arg-authorization-encrypted-response-enc"></a></dt>
+<dd><p>Optional expected JWE
+content-encryption algorithm for encrypted JARM responses. Current inbound
+support is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
+<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When omitted while
+<code>authorization_encrypted_response_alg</code> is set, shinyOAuth defaults to
+<code>A128CBC-HS256</code>. This must also match the provider-side JARM client
+metadata when encrypted responses are enabled.</p></dd>
+
+
+<dt id="arg-authorization-response-decryption-private-key">authorization_response_decryption_private_key<a class="anchor" aria-label="anchor" href="#arg-authorization-response-decryption-private-key"></a></dt>
+<dd><p>Optional private key
+used to decrypt encrypted JARM responses. Can be an <code>openssl::key</code> or a
+PEM string containing a private key. Required when encrypted JARM is
+enabled.</p></dd>
+
+
+<dt id="arg-authorization-response-decryption-private-key-kid">authorization_response_decryption_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-authorization-response-decryption-private-key-kid"></a></dt>
+<dd><p>Optional key
+identifier (<code>kid</code>) associated with
+<code>authorization_response_decryption_private_key</code>.</p></dd>
+
+
+<dt id="arg-jarm-max-lifetime">jarm_max_lifetime<a class="anchor" aria-label="anchor" href="#arg-jarm-max-lifetime"></a></dt>
+<dd><p>Positive number of seconds. Maximum accepted
+lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+recommended 10-minute upper bound for authorization response JWTs. When a
+JARM payload includes <code>iat</code>, shinyOAuth enforces
+<code>exp - iat &lt;= jarm_max_lifetime</code>; otherwise it falls back to the
+remaining <code>exp</code> window at validation time. Applies only when
+<code>response_mode</code> uses JARM.</p></dd>
 
 
 <dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>

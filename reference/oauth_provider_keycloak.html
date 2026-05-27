@@ -51,7 +51,8 @@
 <span>  <span class="va">base_url</span>,</span>
 <span>  <span class="va">realm</span>,</span>
 <span>  name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"keycloak-"</span>, <span class="va">realm</span><span class="op">)</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="st">"body"</span></span>
+<span>  token_auth_style <span class="op">=</span> <span class="st">"body"</span>,</span>
+<span>  tolerate_duplicate_top_level_jarm_iss <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -81,6 +82,14 @@ to "body" for Keycloak, which works for many common setups. Use <code>"public"</
 if you need to suppress <code>client_secret</code> even when it is set in the
 environment. If you pass <code>NULL</code>, discovery will infer the method from the
 provider's <code>token_endpoint_auth_methods_supported</code> metadata.</p></dd>
+
+
+<dt id="arg-tolerate-duplicate-top-level-jarm-iss">tolerate_duplicate_top_level_jarm_iss<a class="anchor" aria-label="anchor" href="#arg-tolerate-duplicate-top-level-jarm-iss"></a></dt>
+<dd><p>Logical. Defaults to <code>TRUE</code>
+for Keycloak because current Keycloak JARM responses may repeat an
+identical top-level <code>iss</code> claim. Set <code>FALSE</code> to fail closed on duplicate
+top-level <code>iss</code> members instead of applying this interoperability
+workaround.</p></dd>
 
 </dl></div>
     <div class="section level2">

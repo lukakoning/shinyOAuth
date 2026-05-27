@@ -2,6 +2,18 @@
 
 Completes the callback step of the login flow. It validates the callback
 state, exchanges the returned code for tokens, and verifies the result.
+This low-level helper accepts only the classic authorization-code
+callback shape for non-JARM clients: a `code`, the sealed `state`
+payload returned as `payload`, and an optional RFC 9207 `iss` callback
+parameter. It does not accept a raw JARM `response` JWT, and it also
+does not provide a public way to resume a JARM callback after separate
+validation. For clients configured with `response_mode = "jwt"`,
+`"query.jwt"`, or `"form_post.jwt"`, use
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+(and
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+for `form_post.jwt`) so shinyOAuth validates the callback JWT and
+resumes through its internal prevalidated callback path.
 
 ## Usage
 
@@ -26,12 +38,13 @@ handle_callback(
 
 - code:
 
-  Authorization code received from the provider.
+  Authorization code received from the provider on a classic direct
+  callback.
 
 - payload:
 
-  Encrypted state payload returned by the provider. This should be the
-  same value that was originally sent in
+  Encrypted state payload returned by the provider on a classic direct
+  callback. This should be the same value that was originally sent in
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md).
 
 - browser_token:

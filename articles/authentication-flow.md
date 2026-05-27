@@ -135,8 +135,12 @@ parameter.
 If the client sets `response_mode = "form_post"`, ‘shinyOAuth’ also
 sends `response_mode=form_post` on the authorization request so the
 provider knows to return the authorization response as an HTTP POST. If
-`response_mode` is left unset, ‘shinyOAuth’ stays on the normal query
-callback flow and does not send a `response_mode` parameter.
+the client sets `response_mode = "jwt"`, ‘shinyOAuth’ sends that exact
+shortcut value and still expects the authorization-code callback on the
+normal query path because `jwt` selects the default transport for that
+response type. If `response_mode` is left unset, ‘shinyOAuth’ stays on
+the normal query callback flow and does not send a `response_mode`
+parameter.
 
 Without JAR and without PAR, the browser of the app user is redirected
 to the provider’s authorization endpoint with the usual OAuth query
@@ -205,6 +209,18 @@ In the default query flow, the browser lands back on the app with `code`
 and `state` in the query string, and optionally RFC 9207 `iss`, plus
 `error`, `error_description`, and `error_uri` on failure.
 
+If the client requested `response_mode = "jwt"` or
+`response_mode = "query.jwt"`, the query callback instead carries a
+compact JWT in the `response` parameter. For the authorization-code
+flow, `jwt` is just the JARM shortcut for the default query transport,
+so the callback still returns over the query string.
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+validates that query JARM response before using any grant-specific
+fields: it checks the compact JWT shape, enforces the expected issuer
+and audience, checks expiry and any configured encryption, validates the
+signature, and only then resumes the code or error callback path from
+the normalized JARM claims.
+
 #### What changes with `response_mode = "form_post"`?
 
 If the client requested `response_mode = "form_post"`, the first hop
@@ -218,22 +234,33 @@ must be wrapped with
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
 That wrapper validates the POST boundary, decrypts the sealed state and
 checks `iss` early enough to reject obviously invalid callbacks, stores
-the accepted callback payload under a short-lived single-use handle, and
-replies with a `303 See Other` redirect back to the app. The redirected
-URL no longer carries raw OAuth callback values; instead, the
-OAuth-specific query parameters are only `shinyOAuth_form_post=<handle>`
-and `shinyOAuth_form_post_id=<module id>` so the normal Shiny module
+the accepted callback payload inside an authenticated short-lived
+single-use handle, and replies with a `303 See Other` redirect back to
+the app. The redirected URL no longer carries raw OAuth callback values;
+instead, the OAuth-specific query parameters are only
+`shinyOAuth_form_post=<handle>` and
+`shinyOAuth_form_post_id=<module id>` so the normal Shiny module
 callback path can resume on an ordinary GET request. Plain `form_post`
 is supported; JWT Secured Authorization Response Mode (JARM) values such
-as `form_post.jwt` are not.
+as `form_post.jwt` use the same POST bridge, but the provider sends a
+compact JWT `response` instead of direct OAuth fields.
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+validates that JARM payload and the inner sealed state before
+redirecting back to the app with the short-lived callback handle.
 
-### 7. Callback processing & state verification (`handle_callback()`)
+### 7. Callback processing & state verification (`oauth_module_server()`)
 
 Once the browser lands back on the app, either directly with query
 parameters or through the `form_post` bridge redirect, the module
 processes the callback. In plain terms, it checks that the callback
 belongs to the login attempt that started earlier and only then
-continues to token exchange. The main checks are:
+continues to token exchange. For classic direct `code` + `state`
+callbacks, the exported
+[`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+helper performs the same state and token checks. JARM callback parsing
+and resume stay internal to
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+The main module checks are:
 
 - Wait for a usable browser token input if it has not reached Shiny yet;
   when the cookie bridge fails, the module surfaces
@@ -244,6 +271,12 @@ continues to token exchange. The main checks are:
   misaddressed handles before continuing. The underlying login state is
   still consumed only after the Shiny session proves the browser-token
   binding
+- If the URL carries a JARM `response` query parameter
+  (`response_mode = "jwt"` or `"query.jwt"`), validate the callback JWT
+  before reading any `code`, `error`, or `state` values from it.
+  Query-based JARM callbacks are rejected if the `response` parameter is
+  malformed, mixed with direct OAuth callback fields, or arrives on a
+  client configured for the `form_post.jwt` transport
 - Enforce callback query size caps before and after parsing, and when
   `form_post` is enabled also cap the incoming POST body, to protect
   against unusually large or abusive callback inputs on sensitive

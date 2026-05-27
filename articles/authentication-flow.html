@@ -208,7 +208,11 @@ response and the PAR request itself must not include a
 <p>If the client sets <code>response_mode = "form_post"</code>,
 ‘shinyOAuth’ also sends <code>response_mode=form_post</code> on the
 authorization request so the provider knows to return the authorization
-response as an HTTP POST. If <code>response_mode</code> is left unset,
+response as an HTTP POST. If the client sets
+<code>response_mode = "jwt"</code>, ‘shinyOAuth’ sends that exact
+shortcut value and still expects the authorization-code callback on the
+normal query path because <code>jwt</code> selects the default transport
+for that response type. If <code>response_mode</code> is left unset,
 ‘shinyOAuth’ stays on the normal query callback flow and does not send a
 <code>response_mode</code> parameter.</p>
 <p>Without JAR and without PAR, the browser of the app user is
@@ -285,6 +289,17 @@ log in and authorize the app to access the requested scopes.</p>
 optionally RFC 9207 <code>iss</code>, plus <code>error</code>,
 <code>error_description</code>, and <code>error_uri</code> on
 failure.</p>
+<p>If the client requested <code>response_mode = "jwt"</code> or
+<code>response_mode = "query.jwt"</code>, the query callback instead
+carries a compact JWT in the <code>response</code> parameter. For the
+authorization-code flow, <code>jwt</code> is just the JARM shortcut for
+the default query transport, so the callback still returns over the
+query string. <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> validates that query
+JARM response before using any grant-specific fields: it checks the
+compact JWT shape, enforces the expected issuer and audience, checks
+expiry and any configured encryption, validates the signature, and only
+then resumes the code or error callback path from the normalized JARM
+claims.</p>
 <div class="section level4">
 <h4 id="what-changes-with-response_mode-form_post">What changes with <code>response_mode = "form_post"</code>?<a class="anchor" aria-label="anchor" href="#what-changes-with-response_mode-form_post"></a>
 </h4>
@@ -298,26 +313,34 @@ callback fields (<code>code</code>, <code>state</code>, optional
 UI must be wrapped with <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. That wrapper
 validates the POST boundary, decrypts the sealed state and checks
 <code>iss</code> early enough to reject obviously invalid callbacks,
-stores the accepted callback payload under a short-lived single-use
-handle, and replies with a <code>303 See Other</code> redirect back to
-the app. The redirected URL no longer carries raw OAuth callback values;
-instead, the OAuth-specific query parameters are only
+stores the accepted callback payload inside an authenticated short-lived
+single-use handle, and replies with a <code>303 See Other</code>
+redirect back to the app. The redirected URL no longer carries raw OAuth
+callback values; instead, the OAuth-specific query parameters are only
 <code>shinyOAuth_form_post=&lt;handle&gt;</code> and
 <code>shinyOAuth_form_post_id=&lt;module id&gt;</code> so the normal
 Shiny module callback path can resume on an ordinary GET request. Plain
 <code>form_post</code> is supported; JWT Secured Authorization Response
-Mode (JARM) values such as <code>form_post.jwt</code> are not.</p>
+Mode (JARM) values such as <code>form_post.jwt</code> use the same POST
+bridge, but the provider sends a compact JWT <code>response</code>
+instead of direct OAuth fields. <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>
+validates that JARM payload and the inner sealed state before
+redirecting back to the app with the short-lived callback handle.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="callback-processing-state-verification-handle_callback">7. Callback processing &amp; state verification
-(<code>handle_callback()</code>)<a class="anchor" aria-label="anchor" href="#callback-processing-state-verification-handle_callback"></a>
+<h3 id="callback-processing-state-verification-oauth_module_server">7. Callback processing &amp; state verification
+(<code>oauth_module_server()</code>)<a class="anchor" aria-label="anchor" href="#callback-processing-state-verification-oauth_module_server"></a>
 </h3>
 <p>Once the browser lands back on the app, either directly with query
 parameters or through the <code>form_post</code> bridge redirect, the
 module processes the callback. In plain terms, it checks that the
 callback belongs to the login attempt that started earlier and only then
-continues to token exchange. The main checks are:</p>
+continues to token exchange. For classic direct <code>code</code> +
+<code>state</code> callbacks, the exported
+<code><a href="../reference/handle_callback.html">handle_callback()</a></code> helper performs the same state and token
+checks. JARM callback parsing and resume stay internal to
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The main module checks are:</p>
 <ul>
 <li>Wait for a usable browser token input if it has not reached Shiny
 yet; when the cookie bridge fails, the module surfaces
@@ -328,6 +351,13 @@ that handle to the stored callback payload and reject missing, expired,
 replayed, or misaddressed handles before continuing. The underlying
 login state is still consumed only after the Shiny session proves the
 browser-token binding</li>
+<li>If the URL carries a JARM <code>response</code> query parameter
+(<code>response_mode =   "jwt"</code> or <code>"query.jwt"</code>),
+validate the callback JWT before reading any <code>code</code>,
+<code>error</code>, or <code>state</code> values from it. Query-based
+JARM callbacks are rejected if the <code>response</code> parameter is
+malformed, mixed with direct OAuth callback fields, or arrives on a
+client configured for the <code>form_post.jwt</code> transport</li>
 <li>Enforce callback query size caps before and after parsing, and when
 <code>form_post</code> is enabled also cap the incoming POST body, to
 protect against unusually large or abusive callback inputs on sensitive

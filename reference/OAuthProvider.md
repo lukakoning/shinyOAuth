@@ -39,6 +39,10 @@ OAuthProvider(
   dpop_signing_alg_values_supported = character(0),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(0),
+  authorization_signing_alg_values_supported = character(0),
+  authorization_encryption_alg_values_supported = character(0),
+  authorization_encryption_enc_values_supported = character(0),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
   issuer = NA_character_,
   issuer_match = "url",
   use_nonce = FALSE,
@@ -57,6 +61,7 @@ OAuthProvider(
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   token_auth_style = "header",
+  jwks_uri = NA_character_,
   jwks_cache = cachem::cache_mem(max_age = 3600),
   jwks_pins = character(0),
   jwks_pin_mode = "any",
@@ -223,9 +228,33 @@ OAuthProvider(
   discovery metadata value, defaulting to `c("query", "fragment")` when
   omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
   empty when capabilities are not known. Provider metadata may include
-  response modes that shinyOAuth does not implement, such as JARM values
-  ending in `.jwt`; clients still fail fast if they request one of those
-  unsupported modes.
+  response modes that shinyOAuth does not implement; clients still fail
+  fast if they request one of those unsupported modes.
+
+- authorization_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  signed JWT Secured Authorization Responses (JARM).
+
+- authorization_encryption_alg_values_supported:
+
+  Optional vector of JWE key-management algorithms that the provider
+  advertises for encrypted JARM responses.
+
+- authorization_encryption_enc_values_supported:
+
+  Optional vector of JWE content-encryption algorithms that the provider
+  advertises for encrypted JARM responses.
+
+- tolerate_duplicate_top_level_jarm_iss:
+
+  Logical. Whether shinyOAuth should tolerate repeated identical
+  top-level `iss` members in signed JARM payloads for this provider.
+  This is an interoperability escape hatch for providers that emit
+  duplicate identical top-level `iss` claims. When `TRUE`, shinyOAuth
+  collapses repeated identical top-level `iss` members before
+  duplicate-member rejection. Conflicting duplicates and nested
+  duplicate `iss` members still fail closed. Defaults to `FALSE`.
 
 - issuer:
 
@@ -444,6 +473,19 @@ OAuthProvider(
   - "private_key_jwt": JWT client assertion signed with an asymmetric
     key (RFC 7523)
 
+- jwks_uri:
+
+  Optional explicit URL of the provider's JWK Set document. Use this
+  when a generic OAuth 2.0 or JARM deployment publishes signing keys
+  outside OIDC discovery, or when you intentionally want to override
+  runtime metadata-based JWKS resolution.
+
+  In most cases, a TTL between 15 minutes and 2 hours is reasonable.
+  Shorter TTLs pick up new keys faster but do more network work; longer
+  TTLs reduce traffic but may take longer to notice key rotation. If a
+  new `kid` appears, shinyOAuth will also do a one-time refresh
+  automatically.
+
 - jwks_cache:
 
   Cache used for the provider's signing keys (JWKS). If not provided,
@@ -451,12 +493,6 @@ OAuthProvider(
   `cachem::cache_mem(max_age = 3600)`. You can also use another
   cachem-compatible backend, including a shared cache created with
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md).
-
-  In most cases, a TTL between 15 minutes and 2 hours is reasonable.
-  Shorter TTLs pick up new keys faster but do more network work; longer
-  TTLs reduce traffic but may take longer to notice key rotation. If a
-  new `kid` appears, shinyOAuth will also do a one-time refresh
-  automatically.
 
 - jwks_pins:
 

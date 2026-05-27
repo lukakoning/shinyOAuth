@@ -33,6 +33,12 @@ oauth_client(
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
   response_mode = NULL,
+  authorization_signed_response_alg = NULL,
+  authorization_encrypted_response_alg = NULL,
+  authorization_encrypted_response_enc = NULL,
+  authorization_response_decryption_private_key = NULL,
+  authorization_response_decryption_private_key_kid = NULL,
+  jarm_max_lifetime = 600,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -340,20 +346,86 @@ oauth_client(
 - response_mode:
 
   Authorization response mode for authorization-code callbacks.
-  Supported values are `"query"` and `"form_post"`. The effective
-  default is always `"query"`: omitting this argument keeps the normal
-  query-parameter callback flow and shinyOAuth does not send a
-  `response_mode` parameter. Pass `"query"` only if you need to
-  explicitly request the query response mode from the provider. Set
-  `"form_post"` only when the provider requires or explicitly recommends
-  POSTing the authorization response to the redirect URI. Shiny apps
-  using `"form_post"` must wrap their UI with
+  Supported values are `"query"`, `"form_post"`, `"jwt"`, `"query.jwt"`,
+  and `"form_post.jwt"`. The effective default is always `"query"`:
+  omitting this argument keeps the normal query-parameter callback flow
+  and shinyOAuth does not send a `response_mode` parameter. Pass
+  `"query"` only if you need to explicitly request the query response
+  mode from the provider. Set `"form_post"` only when the provider
+  requires or explicitly recommends POSTing the authorization response
+  to the redirect URI. Shiny apps using `"form_post"` must wrap their UI
+  with
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
   Prefer this argument over setting `extra_auth_params$response_mode` on
   the provider. When the provider advertises `response_modes_supported`,
-  the resolved mode must be included in that set. JWT Secured
-  Authorization Response Mode (JARM) values such as `"form_post.jwt"`
-  are a separate response format and are not currently supported.
+  the resolved mode must be included in that set. `"jwt"` requests the
+  JARM-defined default callback transport for the response type; for the
+  authorization-code flow that still means a query callback, but
+  shinyOAuth preserves and sends `"jwt"` when you configure it
+  explicitly. `"fragment.jwt"` is not currently supported because
+  shinyOAuth does not implement fragment callback transport.
+
+  JARM callbacks are currently module-only. For `"jwt"`, `"query.jwt"`,
+  and `"form_post.jwt"`, use
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  and, for `"form_post.jwt"`, wrap the app UI with
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+  The exported
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  helper still accepts only the classic direct `code` + sealed `state`
+  callback shape and does not expose a public JARM validation/resume
+  API.
+
+- authorization_signed_response_alg:
+
+  Optional expected JWS algorithm for signed JWT Secured Authorization
+  Responses (JARM). When omitted and the effective response mode is
+  JARM, shinyOAuth defaults to `RS256`. This value is not sent
+  dynamically on the authorization request; it must match the client
+  metadata and provider behavior configured out-of-band for that client.
+  Current inbound support accepts `HS256`, `HS384`, `HS512`, `RS256`,
+  `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS
+  (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted for
+  inbound JARM.
+
+- authorization_encrypted_response_alg:
+
+  Optional expected JWE key-management algorithm for encrypted JARM
+  responses. Current inbound support is limited to `RSA-OAEP`. Like
+  `authorization_signed_response_alg`, this reflects out-of-band client
+  metadata and expected provider behavior rather than an authorization
+  request parameter emitted by shinyOAuth.
+
+- authorization_encrypted_response_enc:
+
+  Optional expected JWE content-encryption algorithm for encrypted JARM
+  responses. Current inbound support is limited to the AES-CBC-HMAC
+  family (`A128CBC-HS256`, `A192CBC-HS384`, `A256CBC-HS512`). When
+  omitted while `authorization_encrypted_response_alg` is set,
+  shinyOAuth defaults to `A128CBC-HS256`. This must also match the
+  provider-side JARM client metadata when encrypted responses are
+  enabled.
+
+- authorization_response_decryption_private_key:
+
+  Optional private key used to decrypt encrypted JARM responses. Can be
+  an `openssl::key` or a PEM string containing a private key. Required
+  when encrypted JARM is enabled.
+
+- authorization_response_decryption_private_key_kid:
+
+  Optional key identifier (`kid`) associated with
+  `authorization_response_decryption_private_key`.
+
+- jarm_max_lifetime:
+
+  Positive number of seconds. Maximum accepted lifetime for a JARM
+  response JWT. Default is 600 seconds, matching JARM's recommended
+  10-minute upper bound for authorization response JWTs. When a JARM
+  payload includes `iat`, shinyOAuth enforces
+  `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
+  remaining `exp` window at validation time. Applies only when
+  `response_mode` uses JARM.
 
 - authorization_request_signing_alg:
 

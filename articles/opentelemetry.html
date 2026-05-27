@@ -321,10 +321,11 @@ the encrypted state payload, it becomes a child of that
 </h4>
 <ul>
 <li>When: while the pre-session <code>response_mode = "form_post"</code>
-POST callback is validated and bridged into Shiny</li>
-<li>Represents: form POST envelope validation, state payload validation,
-issuer validation, single-use state consumption, and transient handle
-storage</li>
+or <code>response_mode = "form_post.jwt"</code> POST callback is
+validated and bridged into Shiny</li>
+<li>Represents: form POST envelope validation, JARM validation when
+applicable, state payload validation, issuer validation, single-use
+state consumption, and transient handle storage</li>
 <li>Main attributes:
 <ul>
 <li>
@@ -334,7 +335,12 @@ storage</li>
 <li><code>oauth.client_id_digest</code></li>
 <li><code>shiny.module_id</code></li>
 <li><code>oauth.phase = "form_post.post"</code></li>
-<li><code>oauth.response_mode = "form_post"</code></li>
+<li>
+<code>oauth.response_mode = "form_post"</code> for plain form POST
+callbacks</li>
+<li>
+<code>oauth.response_mode = "form_post.jwt"</code> for JARM POST
+callbacks</li>
 </ul>
 </li>
 <li>Notes:
