@@ -101,7 +101,6 @@ presence of an issuer and available endpoints.</p>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  par_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"compat"</span>,</span>
 <span>  signed_request_object_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
@@ -110,8 +109,9 @@ presence of an issuer and available endpoints.</p>
 <span>  request_object_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  request_object_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  request_object_encryption_jwk <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"compat"</span>,</span>
 <span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -420,20 +420,6 @@ requires authorization requests to be sent via PAR. When <code>TRUE</code>,
 <code>par_url</code> must also be configured.</p></dd>
 
 
-<dt id="arg-authorization-request-front-channel-mode">authorization_request_front_channel_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-front-channel-mode"></a></dt>
-<dd><p>Character scalar controlling
-which browser-visible outer parameters shinyOAuth keeps when the actual
-authorization request is carried by JAR or PAR. Use <code>"compat"</code>
-(default) to keep the current OIDC-compatible shape with outer
-<code>client_id</code>, <code>response_type</code>, and <code>scope</code> when an issuer is configured.
-Use <code>"minimal"</code> for plain OAuth browser redirects and for PAR
-deployments whose authorization endpoint accepts only <code>client_id</code>
-plus the provider-issued <code>request_uri</code> handle. OpenID Connect
-by-value <code>request</code> and caller-managed <code>request_uri</code> transports reject
-<code>"minimal"</code> because OIDC still requires outer <code>response_type</code> and an
-outer <code>scope</code> containing <code>openid</code>.</p></dd>
-
-
 <dt id="arg-signed-request-object-required">signed_request_object_required<a class="anchor" aria-label="anchor" href="#arg-signed-request-object-required"></a></dt>
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
@@ -500,13 +486,18 @@ OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
 JSON string.</p></dd>
 
 
-<dt id="arg-response-modes-supported">response_modes_supported<a class="anchor" aria-label="anchor" href="#arg-response-modes-supported"></a></dt>
-<dd><p>Optional character vector of OAuth/OIDC
-<code>response_mode</code> values advertised by the provider. Discovery-backed
-providers use the discovery metadata value, defaulting to <code>c("query", "fragment")</code> when omitted per OIDC Discovery/RFC 8414. Generic providers
-may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.</p></dd>
+<dt id="arg-authorization-request-front-channel-mode">authorization_request_front_channel_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-front-channel-mode"></a></dt>
+<dd><p>Character scalar controlling
+which browser-visible outer parameters shinyOAuth keeps when the actual
+authorization request is carried by JAR or PAR. Use <code>"compat"</code>
+(default) to keep the current OIDC-compatible shape with outer
+<code>client_id</code>, <code>response_type</code>, and <code>scope</code> when an issuer is configured.
+Use <code>"minimal"</code> for plain OAuth browser redirects and for PAR
+deployments whose authorization endpoint accepts only <code>client_id</code>
+plus the provider-issued <code>request_uri</code> handle. OpenID Connect
+by-value <code>request</code> and caller-managed <code>request_uri</code> transports reject
+<code>"minimal"</code> because OIDC still requires outer <code>response_type</code> and an
+outer <code>scope</code> containing <code>openid</code>.</p></dd>
 
 
 <dt id="arg-authorization-response-iss-parameter-supported">authorization_response_iss_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-authorization-response-iss-parameter-supported"></a></dt>
@@ -516,6 +507,15 @@ the authorization response. When <code>TRUE</code>, the <code><a href="oauth_cli
 auto-enable callback issuer enforcement when the caller leaves
 <code>enforce_callback_issuer</code> unset and the provider also has a configured
 <code>issuer</code>.</p></dd>
+
+
+<dt id="arg-response-modes-supported">response_modes_supported<a class="anchor" aria-label="anchor" href="#arg-response-modes-supported"></a></dt>
+<dd><p>Optional character vector of OAuth/OIDC
+<code>response_mode</code> values advertised by the provider. Discovery-backed
+providers use the discovery metadata value, defaulting to <code>c("query", "fragment")</code> when omitted per OIDC Discovery/RFC 8414. Generic providers
+may leave this empty when capabilities are not known. Provider metadata may
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.</p></dd>
 
 
 <dt id="arg-jarm-signing-alg-values-supported">jarm_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-jarm-signing-alg-values-supported"></a></dt>

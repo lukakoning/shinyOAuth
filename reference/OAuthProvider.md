@@ -50,7 +50,6 @@ OAuthProvider(
   allowed_token_types = "Bearer",
   par_url = NA_character_,
   par_required = FALSE,
-  authorization_request_front_channel_mode = "compat",
   signed_request_object_required = FALSE,
   request_parameter_supported = NA,
   request_uri_parameter_supported = NA,
@@ -59,8 +58,9 @@ OAuthProvider(
   request_object_encryption_alg_values_supported = character(0),
   request_object_encryption_enc_values_supported = character(0),
   request_object_encryption_jwk = NULL,
-  response_modes_supported = character(0),
+  authorization_request_front_channel_mode = "compat",
   authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(0),
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
   jarm_encryption_enc_values_supported = character(0),
@@ -410,20 +410,6 @@ OAuthProvider(
   Logical. Whether the provider requires authorization requests to be
   sent via PAR. When `TRUE`, `par_url` must also be configured.
 
-- authorization_request_front_channel_mode:
-
-  Character scalar controlling which browser-visible outer parameters
-  shinyOAuth keeps when the actual authorization request is carried by
-  JAR or PAR. Use `"compat"` (default) to keep the current
-  OIDC-compatible shape with outer `client_id`, `response_type`, and
-  `scope` when an issuer is configured. Use `"minimal"` for plain OAuth
-  browser redirects and for PAR deployments whose authorization endpoint
-  accepts only `client_id` plus the provider-issued `request_uri`
-  handle. OpenID Connect by-value `request` and caller-managed
-  `request_uri` transports reject `"minimal"` because OIDC still
-  requires outer `response_type` and an outer `scope` containing
-  `openid`.
-
 - signed_request_object_required:
 
   Logical. Whether the provider requires signed Request Objects for
@@ -492,15 +478,19 @@ OAuthProvider(
   to pin one specific encryption key. Accepts an OpenSSL public key, a
   PEM public-key string, a parsed JWK object, or a JWK JSON string.
 
-- response_modes_supported:
+- authorization_request_front_channel_mode:
 
-  Optional character vector of OAuth/OIDC `response_mode` values
-  advertised by the provider. Discovery-backed providers use the
-  discovery metadata value, defaulting to `c("query", "fragment")` when
-  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
-  empty when capabilities are not known. Provider metadata may include
-  response modes that shinyOAuth does not implement; clients still fail
-  fast if they request one of those unsupported modes.
+  Character scalar controlling which browser-visible outer parameters
+  shinyOAuth keeps when the actual authorization request is carried by
+  JAR or PAR. Use `"compat"` (default) to keep the current
+  OIDC-compatible shape with outer `client_id`, `response_type`, and
+  `scope` when an issuer is configured. Use `"minimal"` for plain OAuth
+  browser redirects and for PAR deployments whose authorization endpoint
+  accepts only `client_id` plus the provider-issued `request_uri`
+  handle. OpenID Connect by-value `request` and caller-managed
+  `request_uri` transports reject `"minimal"` because OIDC still
+  requires outer `response_type` and an outer `scope` containing
+  `openid`.
 
 - authorization_response_iss_parameter_supported:
 
@@ -511,6 +501,16 @@ OAuthProvider(
   helper can auto-enable callback issuer enforcement when the caller
   leaves `enforce_callback_issuer` unset and the provider also has a
   configured `issuer`.
+
+- response_modes_supported:
+
+  Optional character vector of OAuth/OIDC `response_mode` values
+  advertised by the provider. Discovery-backed providers use the
+  discovery metadata value, defaulting to `c("query", "fragment")` when
+  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
+  empty when capabilities are not known. Provider metadata may include
+  response modes that shinyOAuth does not implement; clients still fail
+  fast if they request one of those unsupported modes.
 
 - jarm_signing_alg_values_supported:
 
