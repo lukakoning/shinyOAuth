@@ -310,3 +310,31 @@ client_state_payload_max_age <- function(client, default = 300) {
 
   max_age
 }
+
+#' Internal: normalize JARM maximum accepted lifetime to seconds
+#'
+#' This caps how long a JWT Secured Authorization Response (JARM) is allowed to
+#' remain valid, independent of state payload freshness or state-store TTL.
+#'
+#' @param client OAuth client whose JARM lifetime policy is being read.
+#' @param default Fallback maximum lifetime in seconds.
+#' @return Positive maximum lifetime in seconds.
+#' @keywords internal
+#' @noRd
+client_jarm_max_lifetime <- function(client, default = 600) {
+  max_lifetime <- suppressWarnings(as.numeric(client@jarm_max_lifetime))
+
+  if (
+    length(max_lifetime) != 1L ||
+      !is.finite(max_lifetime) ||
+      max_lifetime <= 0
+  ) {
+    fallback <- suppressWarnings(as.numeric(default))
+    if (length(fallback) != 1L || !is.finite(fallback) || fallback <= 0) {
+      fallback <- 600
+    }
+    return(fallback)
+  }
+
+  max_lifetime
+}

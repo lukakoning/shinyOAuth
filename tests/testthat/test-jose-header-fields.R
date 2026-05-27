@@ -97,6 +97,20 @@ expect_userinfo_header_error <- function(
   )
 }
 
+test_that("validate_jose_header_fields reads exact JOSE member names", {
+  header <- jsonlite::fromJSON(
+    '{"alg":"RS256","kidx":"kid-1","typx":"JWT","critx":["exp"]}',
+    simplifyVector = FALSE
+  )
+
+  fields <- shinyOAuth:::validate_jose_header_fields(header, stop)
+
+  expect_identical(fields$alg, "RS256")
+  expect_null(fields$kid)
+  expect_null(fields$typ)
+  expect_null(fields$crit)
+})
+
 test_that("validate_id_token rejects malformed JOSE header field shapes", {
   cases <- list(
     list(
@@ -233,6 +247,18 @@ test_that("get_userinfo rejects malformed JOSE header field shapes", {
   for (case in cases) {
     expect_userinfo_header_error(case$header_json, case$regexp)
   }
+})
+
+test_that("ID token and UserInfo reject partially matched alg header names", {
+  expect_id_token_header_error(
+    '{"algx":"RS256"}',
+    "header missing alg"
+  )
+
+  expect_userinfo_header_error(
+    '{"algx":"RS256"}',
+    "header missing alg"
+  )
 })
 
 test_that("get_userinfo audits malformed JOSE header fields", {

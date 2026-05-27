@@ -19,6 +19,12 @@ OAuthClient(
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = "parameters",
   response_mode = NA_character_,
+  authorization_signed_response_alg = NA_character_,
+  authorization_encrypted_response_alg = NA_character_,
+  authorization_encrypted_response_enc = NA_character_,
+  authorization_response_decryption_private_key = NULL,
+  authorization_response_decryption_private_key_kid = NA_character_,
+  jarm_max_lifetime = 600,
   authorization_request_signing_alg = NA_character_,
   authorization_request_audience = NA_character_,
   authorization_request_encryption_alg = NA_character_,
@@ -160,20 +166,72 @@ having that URI or a matching wildcard prefix registered for the client;
 shinyOAuth cannot verify that server-side registration automatically.}
 
 \item{response_mode}{Authorization response mode for authorization-code
-callbacks. Supported values are \code{"query"} and \code{"form_post"}. The
-effective default is always \code{"query"}: omitting this argument keeps the
-normal query-parameter callback flow and shinyOAuth does not send a
-\code{response_mode} parameter. Pass \code{"query"} only if you need to explicitly
-request the query response mode from the provider.
-Set \code{"form_post"} only when the provider requires or explicitly
-recommends POSTing the authorization response to the redirect URI. Shiny
-apps using \code{"form_post"} must wrap their UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}.
-Prefer this argument over setting \code{extra_auth_params$response_mode} on the
-provider. When the provider advertises \code{response_modes_supported}, the
-resolved mode must be included in that set.
-JWT Secured Authorization Response Mode (JARM) values such as
-\code{"form_post.jwt"} are a separate response format and are not currently
-supported.}
+callbacks. Supported values are \code{"query"}, \code{"form_post"}, \code{"jwt"},
+\code{"query.jwt"}, and \code{"form_post.jwt"}. The effective default is always
+\code{"query"}: omitting this argument keeps the normal query-parameter
+callback flow and shinyOAuth does not send a \code{response_mode} parameter.
+Pass \code{"query"} only if you need to explicitly request the query
+response mode from the provider. Set \code{"form_post"} only when the
+provider requires or explicitly recommends POSTing the authorization
+response to the redirect URI. Shiny apps using \code{"form_post"} must wrap
+their UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. Prefer this argument over setting
+\code{extra_auth_params$response_mode} on the provider. When the provider
+advertises \code{response_modes_supported}, the resolved mode must be included
+in that set. \code{"jwt"} requests the JARM-defined default callback
+transport for the response type; for the authorization-code flow that
+still means a query callback, but shinyOAuth preserves and sends \code{"jwt"}
+when you configure it explicitly. \code{"fragment.jwt"} is not currently
+supported because shinyOAuth does not implement fragment callback
+transport.
+
+JARM callbacks are currently module-only. For \code{"jwt"}, \code{"query.jwt"},
+and \code{"form_post.jwt"}, use \code{\link[=oauth_module_server]{oauth_module_server()}} and, for
+\code{"form_post.jwt"}, wrap the app UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. The
+exported \code{\link[=handle_callback]{handle_callback()}} helper still accepts only the classic
+direct \code{code} + sealed \code{state} callback shape and does not expose a
+public JARM validation/resume API.}
+
+\item{authorization_signed_response_alg}{Optional expected JWS algorithm for
+signed JWT Secured Authorization Responses (JARM). When omitted and the
+effective response mode is JARM, shinyOAuth defaults to \code{RS256}. This
+value is not sent dynamically on the authorization request; it must match
+the client metadata and provider behavior configured out-of-band for that
+client. Current inbound support accepts \code{HS256}, \code{HS384}, \code{HS512},
+\code{RS256}, \code{RS384}, \code{RS512}, \code{ES256}, \code{ES384}, \code{ES512}, and \code{EdDSA}.
+RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512}) and unsecured \code{none} are not accepted
+for inbound JARM.}
+
+\item{authorization_encrypted_response_alg}{Optional expected JWE
+key-management algorithm for encrypted JARM responses. Current inbound
+support is limited to \code{RSA-OAEP}. Like
+\code{authorization_signed_response_alg}, this reflects out-of-band client
+metadata and expected provider behavior rather than an authorization
+request parameter emitted by shinyOAuth.}
+
+\item{authorization_encrypted_response_enc}{Optional expected JWE
+content-encryption algorithm for encrypted JARM responses. Current inbound
+support is limited to the AES-CBC-HMAC family (\code{A128CBC-HS256},
+\code{A192CBC-HS384}, \code{A256CBC-HS512}). When omitted while
+\code{authorization_encrypted_response_alg} is set, shinyOAuth defaults to
+\code{A128CBC-HS256}. This must also match the provider-side JARM client
+metadata when encrypted responses are enabled.}
+
+\item{authorization_response_decryption_private_key}{Optional private key
+used to decrypt encrypted JARM responses. Can be an \code{openssl::key} or a
+PEM string containing a private key. Required when encrypted JARM is
+enabled.}
+
+\item{authorization_response_decryption_private_key_kid}{Optional key
+identifier (\code{kid}) associated with
+\code{authorization_response_decryption_private_key}.}
+
+\item{jarm_max_lifetime}{Positive number of seconds. Maximum accepted
+lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+recommended 10-minute upper bound for authorization response JWTs. When a
+JARM payload includes \code{iat}, shinyOAuth enforces
+\code{exp - iat <= jarm_max_lifetime}; otherwise it falls back to the
+remaining \code{exp} window at validation time. Applies only when
+\code{response_mode} uses JARM.}
 
 \item{authorization_request_signing_alg}{Optional JWS algorithm override for
 signed authorization requests when \code{authorization_request_mode} uses a

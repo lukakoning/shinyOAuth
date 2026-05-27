@@ -27,8 +27,10 @@
 #' (e.g., the app's root URL or a specific callback path).
 #' This helper handles the plain form_post response mode, where the POST body
 #' contains authorization response parameters such as `code`, `state`, `error`,
-#' and `iss`. It does not decode JWT Secured Authorization Response Mode (JARM)
-#' responses such as `response_mode = "form_post.jwt"`.
+#' and `iss`. When `response_mode = "form_post.jwt"`, the helper validates the
+#' inbound JARM `response`, decrypts and validates the enclosed state, and then
+#' stores the accepted callback payload under the same one-time handle so the
+#' main callback flow can resume from a prevalidated POST boundary.
 #'
 #' @details
 #' When this wrapper is used, it also injects [use_shinyOAuth()] automatically
@@ -218,54 +220,99 @@ oauth_form_post_handle_request <- function(req, id, client) {
           req,
           limits[["form_post_body"]]
         )
-        payload <- oauth_form_post_parse_body(body, limits)
-        # Reject invalid state/issuer before persisting any pre-session
-        # form_post handle. Do not consume the logical state here: the Shiny
-        # session still needs to prove possession of the browser-bound token.
-        state_payload <- state_payload_decrypt_validate(
-          client,
-          payload[["state"]],
-          audit_success = FALSE
-        )
+        payload <- oauth_form_post_parse_body(body, limits, client = client)
         otel_set_span_attributes(
           attributes = list(
-            shinyoauth.trace_id = state_payload[["trace_id"]] %||% NULL
+            oauth.response_mode = if (
+              identical(payload[["type"]], "response")
+            ) {
+              "form_post.jwt"
+            } else {
+              "form_post"
+            }
           )
         )
-        tryCatch(
-          enforce_callback_issuer(
-            oauth_client = client,
-            iss = payload[["iss"]] %||% NULL
-          ),
-          error = function(e) {
-            error_context <- tryCatch(e[["context"]], error = function(...) {
-              NULL
-            })
-            callback_error <- error_context[["callback_error"]] %||%
-              "callback_iss_validation_error"
-            audit_name <- switch(
-              callback_error,
-              issuer_missing = "callback_iss_missing",
-              issuer_mismatch = "callback_iss_mismatch",
-              "callback_iss_validation_failed"
+        if (identical(payload[["type"]], "response")) {
+          normalized <- validate_jarm_response(
+            client,
+            payload[["response"]],
+            transport = "form_post",
+            outer_iss = payload[["iss"]] %||% NULL
+          )
+          # Persist the normalized JARM callback so the module can resume from
+          # this prevalidated result without depending on a second JWKS fetch.
+          payload[["normalized_response"]] <- normalized
+          state_payload <- state_payload_decrypt_validate(
+            client,
+            normalized[["state"]] %||% NA_character_,
+            audit_success = FALSE
+          )
+          otel_set_span_attributes(
+            attributes = list(
+              shinyoauth.trace_id = state_payload[[
+                "trace_id",
+                exact = TRUE
+              ]] %||%
+                NULL
             )
-            try(
-              audit_event(
-                audit_name,
-                context = compact_list(list(
-                  provider = client@provider@name %||% NA_character_,
-                  expected_issuer = client@provider@issuer %||% NA_character_,
-                  callback_issuer = payload[["iss"]] %||% NULL,
-                  client_id_digest = string_digest(client@client_id),
-                  error_class = paste(class(e), collapse = ", ")
-                ))
-              ),
-              silent = TRUE
+          )
+          payload[["state_payload"]] <- state_payload
+        } else {
+          # Reject invalid state/issuer before persisting any pre-session
+          # form_post handle. Do not consume the logical state here: the Shiny
+          # session still needs to prove possession of the browser-bound token.
+          state_payload <- state_payload_decrypt_validate(
+            client,
+            payload[["state"]],
+            audit_success = FALSE
+          )
+          otel_set_span_attributes(
+            attributes = list(
+              shinyoauth.trace_id = state_payload[[
+                "trace_id",
+                exact = TRUE
+              ]] %||%
+                NULL
             )
-            stop(e)
-          }
-        )
-        payload[["state_payload"]] <- state_payload
+          )
+          tryCatch(
+            enforce_callback_issuer(
+              oauth_client = client,
+              iss = payload[["iss"]] %||% NULL
+            ),
+            error = function(e) {
+              error_context <- tryCatch(e[["context"]], error = function(...) {
+                NULL
+              })
+              callback_error <- error_context[[
+                "callback_error",
+                exact = TRUE
+              ]] %||%
+                "callback_iss_validation_error"
+              audit_name <- switch(
+                callback_error,
+                issuer_missing = "callback_iss_missing",
+                issuer_mismatch = "callback_iss_mismatch",
+                "callback_iss_validation_failed"
+              )
+              try(
+                audit_event(
+                  audit_name,
+                  context = compact_list(list(
+                    provider = client@provider@name %||% NA_character_,
+                    expected_issuer = client@provider@issuer %||% NA_character_,
+                    callback_issuer = payload[["iss"]] %||% NULL,
+                    client_id_digest = string_digest(client@client_id),
+                    error_class = paste(class(e), collapse = ", ")
+                  ))
+                ),
+                silent = TRUE
+              )
+              stop(e)
+            }
+          )
+          payload[["state_payload"]] <- state_payload
+        }
         handle <- oauth_form_post_store_set(client, id, payload)
         location <- oauth_form_post_redirect_location(req, id, handle)
 
@@ -294,8 +341,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
       attributes = otel_client_attributes(
         client = client,
         module_id = id,
-        phase = "form_post.post",
-        extra = list(oauth.response_mode = "form_post")
+        phase = "form_post.post"
       ),
       parent = NA
     ),
@@ -317,6 +363,40 @@ oauth_form_post_handle_request <- function(req, id, client) {
       oauth_form_post_error_response(e)
     },
     shinyOAuth_state_error = function(e) {
+      error_phase <- oauth_form_post_error_phase(e)
+      already_audited_state_failure <-
+        identical(error_phase, "payload_validation") ||
+        grepl(
+          "State payload decryption or validation failed",
+          conditionMessage(e),
+          fixed = TRUE
+        )
+      configured_jarm_transport <- tryCatch(
+        resolve_jarm_callback_transport(client),
+        error = function(...) NULL
+      )
+      if (
+        identical(
+          configured_jarm_transport[["transport"]] %||% NULL,
+          "form_post"
+        ) &&
+          !isTRUE(already_audited_state_failure)
+      ) {
+        try(
+          audit_event(
+            "callback_validation_failed",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              issuer = client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id),
+              state_digest = NA_character_,
+              error_class = paste(class(e), collapse = ", "),
+              phase = "form_post_request_validation"
+            )
+          ),
+          silent = TRUE
+        )
+      }
       oauth_form_post_error_response(e, fallback_status = 400L)
     },
     error = function(e) {
@@ -404,7 +484,11 @@ oauth_form_post_read_body <- function(req, max_bytes) {
   )
 }
 
-oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
+oauth_form_post_parse_body <- function(
+  body,
+  limits = oauth_callback_limits(),
+  client = NULL
+) {
   if (!is.character(body) || length(body) != 1L || is.na(body)) {
     err_form_post_http("OAuth form_post callback body must be a single string.")
   }
@@ -438,6 +522,7 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
   )
 
   payload <- compact_list(list(
+    response = parsed[["response"]],
     code = parsed[["code"]],
     state = parsed[["state"]],
     error = parsed[["error"]],
@@ -446,25 +531,51 @@ oauth_form_post_parse_body <- function(body, limits = oauth_callback_limits()) {
     iss = parsed[["iss"]]
   ))
 
-  oauth_form_post_validate_payload(payload, limits)
+  oauth_form_post_validate_payload(payload, limits, client = client)
 }
 
 oauth_form_post_validate_payload <- function(
   payload,
-  limits = oauth_callback_limits()
+  limits = oauth_callback_limits(),
+  client = NULL
 ) {
   if (!is.list(payload)) {
     err_form_post_http("OAuth form_post callback payload must be a list.")
   }
+  if (!is.null(client)) {
+    S7::check_is_S7(client, class = OAuthClient)
+  }
+
+  jarm_transport <- if (is.null(client)) {
+    NULL
+  } else {
+    resolve_jarm_callback_transport(client)
+  }
+  jarm_client <- !is.null(jarm_transport)
 
   # Use exact indexing so helper-added fields like `state_payload` cannot
   # partially match OAuth parameter names during revalidation.
+  response <- payload[["response"]]
   code <- payload[["code"]]
   state <- payload[["state"]]
   error <- payload[["error"]]
   error_description <- payload[["error_description"]]
   error_uri <- payload[["error_uri"]]
   iss <- payload[["iss"]]
+  normalized_response <- payload[["normalized_response"]]
+  has_cached_normalized_response <-
+    !is.null(client) &&
+    is.list(normalized_response) &&
+    is.list(normalized_response[["claims"]] %||% NULL)
+
+  validate_untrusted_query_param(
+    "response",
+    response,
+    max_bytes = max(
+      limits[["query"]],
+      limits[["form_post_body"]]
+    )
+  )
   validate_untrusted_query_param(
     "code",
     code,
@@ -498,6 +609,64 @@ oauth_form_post_validate_payload <- function(
     limits[["iss"]]
   )
 
+  if (!is.null(response)) {
+    if (
+      !all(vapply(
+        list(code, state, error, error_description, error_uri),
+        is.null,
+        logical(1)
+      ))
+    ) {
+      err_form_post_http(
+        paste(
+          "OAuth form_post JARM callback must not contain both response and",
+          "direct OAuth callback parameters."
+        )
+      )
+    }
+    payload[["type"]] <- "response"
+    if (!is.null(client) && !is.null(normalized_response)) {
+      payload[["normalized_response"]] <- revalidate_cached_jarm_response(
+        client,
+        normalized_response
+      )
+    }
+    return(payload)
+  }
+
+  if (isTRUE(jarm_client) && isTRUE(has_cached_normalized_response)) {
+    if (
+      !all(vapply(
+        list(code, state, error, error_description, error_uri),
+        is.null,
+        logical(1)
+      ))
+    ) {
+      err_form_post_http(
+        paste(
+          "OAuth form_post JARM bridge payload must not contain cached",
+          "normalized response data and direct OAuth callback parameters."
+        )
+      )
+    }
+
+    payload[["type"]] <- "response"
+    payload[["normalized_response"]] <- revalidate_cached_jarm_response(
+      client,
+      normalized_response
+    )
+    return(payload)
+  }
+
+  if (isTRUE(jarm_client)) {
+    err_form_post_http(
+      paste(
+        "OAuth form_post JARM callback must include the response",
+        "parameter; direct OAuth callback parameters are not accepted."
+      )
+    )
+  }
+
   if (is.null(state)) {
     err_form_post_http("OAuth form_post callback missing state.")
   }
@@ -516,7 +685,8 @@ oauth_form_post_validate_payload <- function(
 
 oauth_form_post_redirect_location <- function(req, id, handle) {
   clean_query <- strip_oauth_module_callback_query(
-    req[["QUERY_STRING"]] %||% ""
+    req[["QUERY_STRING"]] %||% "",
+    query_jarm_client = TRUE
   )
   clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
@@ -536,6 +706,133 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
 
 # 3 One-time form_post callback storage ----------------------------------------
 
+## 3.1 Sealed bridge payloads -------------------------------------------------
+
+#' Internal: seal one form_post bridge payload before storing it
+#'
+#' Wraps the accepted callback payload in an authenticated AES-GCM envelope so
+#' a writable external state store cannot rewrite bridged callback values after
+#' the POST boundary succeeds.
+#'
+#' @param client [OAuthClient] object.
+#' @param id Module id.
+#' @param handle One-time bridge handle.
+#' @param payload Validated bridge payload.
+#' @return Compact encrypted envelope string.
+#' @keywords internal
+#' @noRd
+oauth_form_post_seal_payload <- function(client, id, handle, payload) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is_valid_string(id)) {
+    err_invalid_state("Invalid form_post module id")
+  }
+  if (!is_valid_string(handle)) {
+    err_invalid_state("Invalid form_post callback handle")
+  }
+
+  payload <- oauth_form_post_compact_stored_payload(
+    oauth_form_post_validate_payload(payload, client = client)
+  )
+  state_encrypt_gcm(
+    payload = list(
+      bridge_type = "form_post_handle",
+      module_id = id,
+      handle = handle,
+      stored_at = as.numeric(Sys.time()),
+      payload = payload
+    ),
+    key = client@state_key
+  )
+}
+
+#' Internal: unseal one stored form_post bridge payload
+#'
+#' Decrypts the authenticated bridge envelope and verifies that it still
+#' belongs to the expected module id and one-time handle before callback
+#' processing resumes.
+#'
+#' @param client [OAuthClient] object.
+#' @param id Module id.
+#' @param handle One-time bridge handle.
+#' @param sealed_payload Compact encrypted envelope string.
+#' @return Validated bridge payload list with `module_id` and `stored_at`
+#'   restored for downstream checks.
+#' @keywords internal
+#' @noRd
+oauth_form_post_unseal_payload <- function(client, id, handle, sealed_payload) {
+  S7::check_is_S7(client, class = OAuthClient)
+  if (!is_valid_string(id)) {
+    err_invalid_state(
+      "Invalid form_post module id",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!is_valid_string(handle)) {
+    err_invalid_state(
+      "Invalid form_post callback handle",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!is_valid_string(sealed_payload)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  envelope <- tryCatch(
+    state_decrypt_gcm(sealed_payload, key = client@state_key),
+    error = function(e) {
+      err_invalid_state(
+        paste0(
+          "form_post callback handle payload could not be validated: ",
+          conditionMessage(e)
+        ),
+        context = list(phase = "form_post_store_take")
+      )
+    }
+  )
+
+  if (!is.list(envelope)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["bridge_type"]] %||% NULL, "form_post_handle")) {
+    err_invalid_state(
+      "form_post callback handle payload type mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["module_id"]] %||% NULL, id)) {
+    err_invalid_state(
+      "form_post callback handle module mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+  if (!identical(envelope[["handle"]] %||% NULL, handle)) {
+    err_invalid_state(
+      "form_post callback handle mismatch",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  payload <- envelope[["payload"]] %||% NULL
+  if (!is.list(payload)) {
+    err_invalid_state(
+      "form_post callback handle payload is malformed",
+      context = list(phase = "form_post_store_take")
+    )
+  }
+
+  payload[["module_id"]] <- envelope[["module_id"]] %||% NULL
+  payload[["stored_at"]] <- envelope[["stored_at"]] %||% NULL
+  payload
+}
+
+## 3.2 One-time handle storage ------------------------------------------------
+
 oauth_form_post_cache_key <- function(id, handle) {
   if (!is_valid_string(id) || !is_valid_string(handle)) {
     err_invalid_state("Invalid form_post callback handle")
@@ -547,20 +844,52 @@ oauth_form_post_cache_key <- function(id, handle) {
   )
 }
 
+#' Internal: compact one stored form_post JARM payload
+#'
+#' After oauth_form_post_ui() validates a JARM callback, the bridge only needs
+#' the original claims for time-based revalidation on resume. Dropping the raw
+#' compact JWT and redundant normalized fields keeps signed and encrypted JARM
+#' callbacks within the generic state-envelope size budget.
+#'
+#' @param payload Validated bridge payload list.
+#' @return Payload list reduced to the minimal cached JARM fields when
+#'   applicable.
+#' @keywords internal
+#' @noRd
+oauth_form_post_compact_stored_payload <- function(payload) {
+  if (!is.list(payload)) {
+    return(payload)
+  }
+  if (!identical(payload[["type"]] %||% NULL, "response")) {
+    return(payload)
+  }
+
+  normalized_response <- payload[["normalized_response"]] %||% NULL
+  claims <- normalized_response[["claims"]] %||% NULL
+  if (!is.list(claims)) {
+    return(payload)
+  }
+
+  payload[["response"]] <- NULL
+  payload[["normalized_response"]] <- list(claims = claims)
+  payload
+}
+
 oauth_form_post_store_set <- function(client, id, payload) {
   S7::check_is_S7(client, class = OAuthClient)
   if (!is_valid_string(id)) {
     err_invalid_state("Invalid form_post module id")
   }
 
-  payload <- oauth_form_post_validate_payload(payload)
+  payload <- oauth_form_post_compact_stored_payload(
+    oauth_form_post_validate_payload(payload, client = client)
+  )
   handle <- random_urlsafe(32)
   key <- oauth_form_post_cache_key(id, handle)
-  payload[["module_id"]] <- id
-  payload[["stored_at"]] <- as.numeric(Sys.time())
+  sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
   tryCatch(
-    client@state_store$set(key, payload),
+    client@state_store$set(key, sealed_payload),
     error = function(e) {
       err_invalid_state(
         sprintf(
@@ -664,15 +993,11 @@ oauth_form_post_store_take <- function(client, id, handle) {
       context = list(phase = "form_post_store_take")
     )
   }
-  if (!identical(payload[["module_id"]] %||% NULL, id)) {
-    err_invalid_state(
-      "form_post callback handle module mismatch",
-      context = list(phase = "form_post_store_take")
-    )
-  }
+
+  payload <- oauth_form_post_unseal_payload(client, id, handle, payload)
 
   oauth_form_post_validate_handle_freshness(client, payload)
-  oauth_form_post_validate_payload(payload)
+  oauth_form_post_validate_payload(payload, client = client)
 }
 
 oauth_form_post_validate_handle_freshness <- function(client, payload) {
@@ -731,6 +1056,74 @@ oauth_form_post_validate_handle_freshness <- function(client, payload) {
 
 # 4 HTTP errors ----------------------------------------------------------------
 
+#' Internal: extract one form_post error phase
+#'
+#' Used by the POST wrapper to distinguish user-facing validation failures from
+#' storage/backend failures that should keep the generic error page.
+#'
+#' @param e Condition object.
+#' @return Scalar phase string when present, otherwise `NULL`.
+#' @keywords internal
+#' @noRd
+oauth_form_post_error_phase <- function(e) {
+  tryCatch(
+    e[["phase"]],
+    error = function(...) NULL
+  ) %||%
+    tryCatch(
+      e[["parent"]][["phase"]],
+      error = function(...) NULL
+    ) %||%
+    tryCatch(
+      e[["context"]][["phase"]],
+      error = function(...) NULL
+    ) %||%
+    tryCatch(
+      e[["parent"]][["context"]][["phase"]],
+      error = function(...) NULL
+    )
+}
+
+#' Internal: decide whether a form_post error message is safe to expose
+#'
+#' Validation failures caused by the callback payload itself are safe to show
+#' on the POST boundary so browser-based unhappy-path tests can assert the exact
+#' rejection reason. Storage/backend failures remain generic to avoid leaking
+#' implementation details.
+#'
+#' @param e Condition object.
+#' @return Logical scalar indicating whether the HTTP response should include
+#'   the condition message.
+#' @keywords internal
+#' @noRd
+oauth_form_post_should_expose_error_message <- function(e) {
+  if (inherits(e, "shinyOAuth_form_post_http_error")) {
+    return(TRUE)
+  }
+  if (!inherits(e, "shinyOAuth_state_error")) {
+    return(FALSE)
+  }
+
+  phase <- oauth_form_post_error_phase(e)
+  if (
+    length(phase) == 1L &&
+      !is.na(phase) &&
+      phase %in% c(
+        "form_post_store_set",
+        "form_post_store_get",
+        "form_post_store_remove",
+        "form_post_store_take"
+      )
+  ) {
+    return(FALSE)
+  }
+
+  !grepl(
+    "Failed to (persist|consume|read|remove) form_post callback",
+    conditionMessage(e)
+  )
+}
+
 err_form_post_http <- function(message, status = 400L) {
   rlang::abort(
     message,
@@ -742,7 +1135,7 @@ err_form_post_http <- function(message, status = 400L) {
 oauth_form_post_error_response <- function(
   e,
   fallback_status = 400L,
-  expose_message = inherits(e, "shinyOAuth_form_post_http_error")
+  expose_message = oauth_form_post_should_expose_error_message(e)
 ) {
   status <- tryCatch(e[["status"]], error = function(...) NULL)
   if (

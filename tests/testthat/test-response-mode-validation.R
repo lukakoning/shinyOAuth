@@ -1,4 +1,4 @@
-test_that("OAuthProvider allows query and form_post response_mode", {
+test_that("OAuthProvider allows supported authorization-code response_mode values", {
   expect_error(
     OAuthProvider(
       name = "test",
@@ -34,6 +34,21 @@ test_that("OAuthProvider allows query and form_post response_mode", {
     name = "test",
     auth_url = "https://example.com/authorize",
     token_url = "https://example.com/token",
+    extra_auth_params = list(response_mode = "query.jwt")
+  ))
+
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
+    response_modes_supported = c("jwt", "form_post.jwt"),
+    extra_auth_params = list(response_mode = " jwt ")
+  ))
+
+  expect_no_error(OAuthProvider(
+    name = "test",
+    auth_url = "https://example.com/authorize",
+    token_url = "https://example.com/token",
     response_modes_supported = c("query", "form_post"),
     extra_auth_params = list(response_mode = " form_POST ")
   ))
@@ -47,6 +62,42 @@ test_that("OAuthProvider allows query and form_post response_mode", {
       extra_auth_params = list(response_mode = "form_post")
     ),
     regexp = "response_modes_supported"
+  )
+
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      extra_auth_params = list(response_mode = "fragment.jwt")
+    ),
+    regexp = "fragment-based callbacks"
+  )
+})
+
+test_that("OAuthProvider validates exact outbound jwt aliases against metadata", {
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      response_modes_supported = "query.jwt",
+      extra_auth_params = list(response_mode = "jwt")
+    ),
+    regexp = "extra_auth_params\\$response_mode = 'jwt' is not advertised"
+  )
+
+  expect_error(
+    OAuthProvider(
+      name = "test",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      response_modes_supported = "jwt",
+      extra_auth_params = list(response_mode = "query.jwt")
+    ),
+    regexp = paste0(
+      "extra_auth_params\\$response_mode = 'query\\.jwt' is not advertised"
+    )
   )
 })
 
@@ -82,9 +133,10 @@ test_that("prepare_call omits implicit query response_mode by default", {
   expect_identical(parse_query_param(url, "prompt", decode = TRUE), "login")
 })
 
-test_that("oauth_client accepts query and form_post response_mode", {
+test_that("oauth_client accepts supported authorization-code response_mode values", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  prov@response_modes_supported <- c("query", "form_post")
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("query", "query.jwt", "form_post")
 
   expect_no_error(oauth_client(
     provider = prov,
@@ -103,6 +155,15 @@ test_that("oauth_client accepts query and form_post response_mode", {
   ))
   expect_identical(client@response_mode, "form_post")
 
+  client_jarm <- expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    response_mode = " query.JWT "
+  ))
+  expect_identical(client_jarm@response_mode, "query.jwt")
+
   expect_error(
     oauth_client(
       provider = prov,
@@ -115,9 +176,133 @@ test_that("oauth_client accepts query and form_post response_mode", {
   )
 })
 
-test_that("oauth_client rejects JARM response_mode values explicitly", {
+test_that("oauth_client treats jwt as the query.jwt alias", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  prov@response_modes_supported <- c("query", "form_post", "form_post.jwt")
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("jwt", "form_post.jwt")
+
+  client <- expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = "openid profile",
+    response_mode = "jwt"
+  ))
+  expect_identical(client@response_mode, "jwt")
+
+  response_mode_info <- shinyOAuth:::resolve_oauth_client_response_mode(client)
+  expect_identical(response_mode_info$mode, "query.jwt")
+  expect_identical(response_mode_info$explicit_mode, "jwt")
+
+  url <- shinyOAuth:::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  expect_identical(
+    parse_query_param(url, "response_mode", decode = TRUE),
+    "jwt"
+  )
+})
+
+test_that("oauth_client only validates jarm_max_lifetime for JARM response modes", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("query", "jwt", "query.jwt")
+
+  expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = "openid profile",
+    response_mode = "query",
+    jarm_max_lifetime = NA_real_
+  ))
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "jwt",
+      jarm_max_lifetime = NA_real_
+    ),
+    regexp = "jarm_max_lifetime must be a finite positive number"
+  )
+})
+
+test_that("oauth_client validates exact outbound jwt mode against metadata", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- "query.jwt"
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "jwt"
+    ),
+    regexp = "response_mode = 'jwt' is not advertised"
+  )
+})
+
+test_that("oauth_client validates exact outbound query.jwt mode against metadata", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- "jwt"
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      scopes = "openid profile",
+      response_mode = "query.jwt"
+    ),
+    regexp = "response_mode = 'query.jwt' is not advertised"
+  )
+})
+
+test_that("oauth_client preserves provider jwt response_mode when inherited", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("jwt", "form_post.jwt")
+  prov@extra_auth_params <- list(response_mode = " jwt ")
+
+  client <- expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100/callback",
+    scopes = "openid profile"
+  ))
+  expect_true(is.na(client@response_mode))
+
+  response_mode_info <- shinyOAuth:::resolve_oauth_client_response_mode(client)
+  expect_identical(response_mode_info$mode, "query.jwt")
+  expect_identical(response_mode_info$explicit_mode, "jwt")
+
+  url <- shinyOAuth:::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  expect_identical(
+    parse_query_param(url, "response_mode", decode = TRUE),
+    "jwt"
+  )
+})
+
+test_that("oauth_client rejects unsupported fragment JARM response_mode", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@issuer <- "https://issuer.example.com"
+  prov@response_modes_supported <- c("query.jwt", "form_post.jwt")
 
   expect_error(
     oauth_client(
@@ -127,7 +312,18 @@ test_that("oauth_client rejects JARM response_mode values explicitly", {
       redirect_uri = "http://localhost:8100/callback",
       response_mode = "form_post.jwt"
     ),
-    regexp = "JARM|JWT Secured Authorization Response Mode"
+    NA
+  )
+
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "abc",
+      client_secret = "",
+      redirect_uri = "http://localhost:8100/callback",
+      response_mode = "fragment.jwt"
+    ),
+    regexp = "fragment-based callbacks"
   )
 })
 

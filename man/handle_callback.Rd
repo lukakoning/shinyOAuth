@@ -16,10 +16,12 @@ handle_callback(
 \arguments{
 \item{oauth_client}{An \link{OAuthClient} object.}
 
-\item{code}{Authorization code received from the provider.}
+\item{code}{Authorization code received from the provider on a classic
+direct callback.}
 
-\item{payload}{Encrypted state payload returned by the provider. This should
-be the same value that was originally sent in \code{\link[=prepare_call]{prepare_call()}}.}
+\item{payload}{Encrypted state payload returned by the provider on a classic
+direct callback. This should be the same value that was originally sent in
+\code{\link[=prepare_call]{prepare_call()}}.}
 
 \item{browser_token}{Browser token present in the user's session. This is
 usually managed by \code{\link[=oauth_module_server]{oauth_module_server()}}.}
@@ -41,6 +43,15 @@ token verification fails, the function raises an error.
 \description{
 Completes the callback step of the login flow. It validates the callback
 state, exchanges the returned code for tokens, and verifies the result.
+This low-level helper accepts only the classic authorization-code callback
+shape for non-JARM clients: a \code{code}, the sealed \code{state} payload returned as
+\code{payload}, and an optional RFC 9207 \code{iss} callback parameter. It does not
+accept a raw JARM \code{response} JWT, and it also does not provide a public way
+to resume a JARM callback after separate validation. For clients configured
+with \code{response_mode = "jwt"}, \code{"query.jwt"}, or \code{"form_post.jwt"}, use
+\code{\link[=oauth_module_server]{oauth_module_server()}} (and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for \code{form_post.jwt}) so
+shinyOAuth validates the callback JWT and resumes through its internal
+prevalidated callback path.
 }
 \examples{
 # Please note: `prepare_call()` & `handle_callback()` are typically

@@ -36,7 +36,7 @@ test_that("compact JWE helpers round-trip a nested JWT", {
 
 # 2. compact JWE integrity failures -------------------------------------------
 
-test_that("compact JWE helpers reject tampered authentication tags", {
+test_that("compact JWE helpers collapse authenticated decryption failures", {
   rsa_key <- openssl::rsa_keygen()
   compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = "header.payload.signature",
@@ -46,13 +46,15 @@ test_that("compact JWE helpers reject tampered authentication tags", {
     cty = "JWT"
   )
 
-  parts <- strsplit(compact_jwe, ".", fixed = TRUE)[[1]]
-  tampered_tag <- shinyOAuth:::base64url_decode_raw(parts[[5]])
-  tampered_tag[1] <- as.raw(bitwXor(as.integer(tampered_tag[1]), 1L))
-  parts[[5]] <- shinyOAuth:::base64url_encode(tampered_tag)
+  for (part_index in c(2L, 4L, 5L)) {
+    parts <- strsplit(compact_jwe, ".", fixed = TRUE)[[1]]
+    tampered_part <- shinyOAuth:::base64url_decode_raw(parts[[part_index]])
+    tampered_part[1] <- as.raw(bitwXor(as.integer(tampered_part[1]), 1L))
+    parts[[part_index]] <- shinyOAuth:::base64url_encode(tampered_part)
 
-  expect_error(
-    shinyOAuth:::jwe_compact_decrypt(paste(parts, collapse = "."), rsa_key),
-    "authentication tag validation failed"
-  )
+    expect_error(
+      shinyOAuth:::jwe_compact_decrypt(paste(parts, collapse = "."), rsa_key),
+      "Compact JWE decryption failed"
+    )
+  }
 })

@@ -54,9 +54,17 @@ test_that("provider_fingerprint avoids delimiter collisions", {
         S7::class_logical,
         default = FALSE
       ),
+      tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
       token_auth_style = S7::new_property(
         S7::class_character,
         default = "body"
+      ),
+      jwks_uri = S7::new_property(
+        S7::class_character,
+        default = NA_character_
       ),
       tls_client_certificate_bound_access_tokens = S7::new_property(
         S7::class_logical,
@@ -183,9 +191,17 @@ test_that("provider_fingerprint changes when callback security policy changes", 
         S7::class_logical,
         default = FALSE
       ),
+      tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+        S7::class_logical,
+        default = FALSE
+      ),
       token_auth_style = S7::new_property(
         S7::class_character,
         default = "body"
+      ),
+      jwks_uri = S7::new_property(
+        S7::class_character,
+        default = NA_character_
       ),
       tls_client_certificate_bound_access_tokens = S7::new_property(
         S7::class_logical,
@@ -236,9 +252,31 @@ test_that("provider_fingerprint changes when callback security policy changes", 
     userinfo_url = strict@userinfo_url,
     allowed_algs = "ES256"
   )
+  jwks_override <- DummyProvider(
+    issuer = strict@issuer,
+    auth_url = strict@auth_url,
+    token_url = strict@token_url,
+    userinfo_url = strict@userinfo_url,
+    jwks_uri = "https://issuer.example.com/jwks.json"
+  )
+  tolerant_duplicate_iss <- DummyProvider(
+    issuer = strict@issuer,
+    auth_url = strict@auth_url,
+    token_url = strict@token_url,
+    userinfo_url = strict@userinfo_url,
+    tolerate_duplicate_top_level_jarm_iss = TRUE
+  )
 
   expect_false(identical(
     shinyOAuth:::provider_fingerprint(strict),
     shinyOAuth:::provider_fingerprint(loose)
+  ))
+  expect_false(identical(
+    shinyOAuth:::provider_fingerprint(strict),
+    shinyOAuth:::provider_fingerprint(jwks_override)
+  ))
+  expect_false(identical(
+    shinyOAuth:::provider_fingerprint(strict),
+    shinyOAuth:::provider_fingerprint(tolerant_duplicate_iss)
   ))
 })

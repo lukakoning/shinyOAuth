@@ -344,6 +344,27 @@ oauth_provider_oidc_discover <- function(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
   ))))
+  authorization_signing_alg_values_supported <- as.character(
+    unlist(
+      disc[["authorization_signing_alg_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  )
+  authorization_encryption_alg_values_supported <- as.character(
+    unlist(
+      disc[["authorization_encryption_alg_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  )
+  authorization_encryption_enc_values_supported <- as.character(
+    unlist(
+      disc[["authorization_encryption_enc_values_supported"]] %||%
+        character(0),
+      use.names = FALSE
+    )
+  )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
       disc[["token_endpoint_auth_signing_alg_values_supported"]] %||%
@@ -394,6 +415,7 @@ oauth_provider_oidc_discover <- function(
     introspection_url = endpoints[["introspection_url"]],
     revocation_url = endpoints[["revocation_url"]],
     par_url = endpoints[["par_url"]],
+    jwks_uri = disc[["jwks_uri"]] %||% NA_character_,
     require_pushed_authorization_requests = require_pushed_authorization_requests,
     request_object_signing_alg_values_supported = request_object_signing_alg_values_supported,
     request_object_encryption_alg_values_supported = request_object_encryption_alg_values_supported,
@@ -403,6 +425,9 @@ oauth_provider_oidc_discover <- function(
     request_uri_parameter_supported = request_uri_parameter_supported,
     require_request_uri_registration = require_request_uri_registration,
     response_modes_supported = response_modes_supported,
+    authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
+    authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
+    authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,

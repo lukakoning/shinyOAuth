@@ -250,7 +250,7 @@ and nonce. Each stage emits either a success event or a failure event.
 
 - When: a validation step fails prior to token exchange
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`, `phase`, `error_class` (+ `browser_token_digest` when phase is `browser_token_validation`)
-- Phases include: `payload_validation`, `browser_token_validation`, `pkce_verifier_validation`, `nonce_validation`, `form_post_request_validation`, `form_post_callback_lookup`
+- Phases include: `payload_validation`, `browser_token_validation`, `pkce_verifier_validation`, `nonce_validation`, `form_post_request_validation`, `form_post_callback_lookup`, `form_post_callback_validation`
 - `handle_digest` is included when a form_post callback handle is missing, expired, or already consumed.
 - Note: Failures related to state store access (lookup/removal) are reported as their own events (see below) rather than using the `callback_validation_failed` event.
 

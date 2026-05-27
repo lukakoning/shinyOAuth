@@ -18,6 +18,27 @@ the custom-server path.
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
+* Added JWT Secured Authorization Response Mode (JARM) support for
+`response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+  - `oauth_client()` now validates signed and signed-then-encrypted
+  authorization-response JWTs using
+  `authorization_signed_response_alg`,
+  `authorization_encrypted_response_alg`,
+  `authorization_encrypted_response_enc`, and `jarm_max_lifetime`.
+  - Query JARM validates the compact `response` JWT before any `code`,
+  `error`, or `state` values are trusted. `form_post.jwt` uses the same
+  validation but requires `oauth_form_post_ui()` with
+  `oauth_module_server()` so Shiny can bridge the POST callback back into the
+  normal module flow.
+  - Current inbound JARM support accepts signing algorithms `HS256`,
+  `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`,
+  and `EdDSA`. Encrypted JARM currently accepts `RSA-OAEP` with
+  `A128CBC-HS256`, `A192CBC-HS384`, or `A256CBC-HS512`.
+  - `oauth_provider_oidc_discover()` now records JARM metadata, the usage
+  docs include minimal JARM setup examples, and `oauth_provider_keycloak()`
+  exposes `tolerate_duplicate_top_level_jarm_iss` for the current Keycloak
+  duplicate-issuer interoperability quirk.
+
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
   `/.well-known/openid-configuration` URL. Full discovery URLs are normalized 

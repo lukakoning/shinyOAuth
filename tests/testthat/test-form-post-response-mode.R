@@ -194,6 +194,50 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   )
 })
 
+test_that("oauth_form_post_ui strips compact response params from bridge redirects", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(
+    shiny::fluidPage(),
+    id = "auth",
+    client = cli,
+    callback_path = "/callback"
+  )
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+
+  req <- make_form_post_req(
+    path = "/callback",
+    query = paste0(
+      "response=header.payload.signature",
+      "&return_to=dashboard"
+    ),
+    body = paste0("code=ok&state=", enc_state)
+  )
+  req$SCRIPT_NAME <- "/mounted/app"
+
+  resp <- ui(req)
+
+  expect_identical(resp[["status"]], 303L)
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "^\\?return_to=dashboard&"
+  )
+  expect_false(grepl(
+    "response=header.payload.signature",
+    resp[["headers"]][["Location"]],
+    fixed = TRUE
+  ))
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post="
+  )
+  expect_match(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post_id=auth"
+  )
+})
+
 test_that("oauth_form_post_ui rejects scheme-relative callback paths", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -322,9 +366,16 @@ test_that("oauth_form_post_store_take rejects expired handles", {
     list(code = "ok", state = "state")
   )
   key <- ls(backing)[[1]]
-  payload <- get(key, envir = backing, inherits = FALSE)
+  payload <- shinyOAuth:::state_decrypt_gcm(
+    get(key, envir = backing, inherits = FALSE),
+    key = cli@state_key
+  )
   payload[["stored_at"]] <- as.numeric(Sys.time()) - 10
-  assign(key, payload, envir = backing)
+  assign(
+    key,
+    shinyOAuth:::state_encrypt_gcm(payload, key = cli@state_key),
+    envir = backing
+  )
 
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
@@ -395,9 +446,15 @@ test_that("oauth_form_post_ui rejects invalid callback POST bodies", {
     body = "code=ok&state=definitely-not-a-valid-state"
   ))
   expect_identical(invalid_state[["status"]], 400L)
-  expect_identical(
+  expect_match(
     invalid_state[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  expect_match(
+    invalid_state[["content"]],
+    "State payload decryption or validation failed",
+    fixed = TRUE
   )
   expect_false(grepl(
     "definitely-not-a-valid-state",
@@ -429,6 +486,12 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
   ))
 
   expect_identical(resp[["status"]], 400L)
+  expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
+  expect_match(
+    resp[["content"]],
+    "Callback iss parameter does not match expected issuer",
+    fixed = TRUE
+  )
   expect_identical(sort(cli@state_store$keys()), keys_before)
 
   event_types <- vapply(
@@ -455,9 +518,10 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
   ))
 
   expect_identical(resp[["status"]], 400L)
-  expect_identical(
+  expect_match(
     resp[["content"]],
-    "OAuth form_post callback could not be processed."
+    "Callback query string exceeded maximum length",
+    fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
   expect_identical(sort(cli@state_store$keys()), keys_before)
@@ -635,7 +699,170 @@ test_that("oauth_module_server consumes form_post callback handles", {
   )
 })
 
-test_that("form_post browser-token rejection does not consume login state", {
+test_that("oauth_module_server revalidates original state freshness after form_post bridging", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@state_payload_max_age <- 10
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  browser_token <- valid_browser_token()
+  issued_at <- as.POSIXct("2026-05-24 12:00:00", tz = "UTC")
+  posted_at <- issued_at + 9
+  resumed_at <- issued_at + 11
+
+  enc_state <- testthat::with_mocked_bindings(
+    Sys.time = function() issued_at,
+    .package = "base",
+    {
+      parse_query_param(
+        prepare_call(cli, browser_token = browser_token),
+        "state"
+      )
+    }
+  )
+
+  resp <- testthat::with_mocked_bindings(
+    Sys.time = function() posted_at,
+    .package = "base",
+    {
+      ui(make_form_post_req(body = paste0("code=ok&state=", enc_state)))
+    }
+  )
+  handle <- parse_query_param(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$browser_token <- browser_token
+
+      testthat::with_mocked_bindings(
+        Sys.time = function() resumed_at,
+        .package = "base",
+        {
+          testthat::with_mocked_bindings(
+            swap_code_for_token_set = function(...) {
+              testthat::fail(
+                paste(
+                  "oauth_module_server should reject expired bridged state",
+                  "before token exchange"
+                )
+              )
+            },
+            .package = "shinyOAuth",
+            {
+              values$.process_query(form_post_query(handle, "auth"))
+              session$flushReact()
+            }
+          )
+        }
+      )
+
+      expect_identical(values$error, "invalid_state")
+      expect_match(values$error_description %||% "", "issued_at")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("oauth_module_server revalidates cached form_post error state against client policy", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+  browser_token <- valid_browser_token()
+  url <- prepare_call(cli, browser_token = browser_token)
+  enc_state <- parse_query_param(url, "state")
+
+  resp <- ui(make_form_post_req(
+    body = paste0(
+      "error=access_denied&error_description=Denied&state=",
+      enc_state
+    )
+  ))
+  handle <- parse_query_param(
+    resp[["headers"]][["Location"]],
+    "shinyOAuth_form_post",
+    decode = TRUE
+  )
+
+  cli@resource <- "https://resource.example.com"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      values$browser_token <- browser_token
+      values$.process_query(form_post_query(handle, "auth"))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_state")
+      expect_match(values$error_description %||% "", "client policy mismatch")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
+})
+
+test_that("oauth_module_server keeps ordinary response params with form_post handles", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc_state <- parse_query_param(url, "state")
+      decoded_state <- shiny::parseQueryString(paste0(
+        "?state=",
+        enc_state
+      ))[["state"]]
+      handle <- shinyOAuth:::oauth_form_post_store_set(
+        cli,
+        "auth",
+        list(code = "ok", state = decoded_state)
+      )
+
+      token <- testthat::with_mocked_bindings(
+        swap_code_for_token_set = function(client, code, code_verifier) {
+          testthat::expect_identical(code, "ok")
+          list(access_token = "t", token_type = "Bearer", expires_in = 3600)
+        },
+        .package = "shinyOAuth",
+        {
+          values$.process_query(paste0(
+            form_post_query(handle, "auth"),
+            "&response=keep-me"
+          ))
+          session$flushReact()
+          values$token
+        }
+      )
+
+      expect_false(is.null(token))
+      expect_true(isTRUE(values$authenticated))
+      expect_null(values$error)
+    }
+  )
+})
+
+test_that("form_post browser-token rejection consumes login state", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
@@ -679,7 +906,7 @@ test_that("form_post browser-token rejection does not consume login state", {
       session$flushReact()
 
       expect_identical(values$error, "invalid_state")
-      expect_true(is.list(cli@state_store$get(state_key, missing = NULL)))
+      expect_null(cli@state_store$get(state_key, missing = NULL))
     }
   )
 })
@@ -926,6 +1153,45 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
     events
   )
   expect_length(reject_events, 1L)
+})
+
+test_that("oauth_module_server rejects form_post handles mixed with JARM response params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      url <- values$build_auth_url()
+      enc_state <- parse_query_param(url, "state")
+      decoded_state <- shiny::parseQueryString(paste0(
+        "?state=",
+        enc_state
+      ))[["state"]]
+      handle <- shinyOAuth:::oauth_form_post_store_set(
+        cli,
+        "auth",
+        list(code = "ok", state = decoded_state)
+      )
+
+      values$.process_query(paste0(
+        form_post_query(handle, "auth"),
+        "&response=header.payload.signature"
+      ))
+      session$flushReact()
+
+      expect_identical(values$error, "invalid_callback_query")
+      expect_match(values$error_description, "must not be combined")
+      expect_false(isTRUE(values$authenticated))
+    }
+  )
 })
 
 test_that("oauth_module_server rejects duplicate form_post handle query params", {

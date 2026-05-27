@@ -26,6 +26,10 @@ oauth_provider(
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(),
+  authorization_signing_alg_values_supported = character(),
+  authorization_encryption_alg_values_supported = character(),
+  authorization_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -45,6 +49,7 @@ oauth_provider(
   extra_token_params = list(),
   extra_token_headers = character(),
   token_auth_style = "header",
+  jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
@@ -165,9 +170,28 @@ auto-enable callback issuer enforcement when the caller leaves
 \code{response_mode} values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement, such as JARM
-values ending in \code{.jwt}; clients still fail fast if they request one of
-those unsupported modes.}
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.}
+
+\item{authorization_signing_alg_values_supported}{Optional vector of JWS
+algorithms that the provider advertises for signed JWT Secured
+Authorization Responses (JARM).}
+
+\item{authorization_encryption_alg_values_supported}{Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted JARM
+responses.}
+
+\item{authorization_encryption_enc_values_supported}{Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+JARM responses.}
+
+\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Whether shinyOAuth
+should tolerate repeated identical top-level \code{iss} members in signed JARM
+payloads for this provider. This is an interoperability escape hatch for
+providers that emit duplicate identical top-level \code{iss} claims. When
+\code{TRUE}, shinyOAuth collapses repeated identical top-level \code{iss} members
+before duplicate-member rejection. Conflicting duplicates and nested
+duplicate \code{iss} members still fail closed. Defaults to \code{FALSE}.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},
@@ -323,16 +347,21 @@ band with the provider
 (RFC 7523)
 }}
 
-\item{jwks_cache}{Cache used for the provider's signing keys (JWKS). If not
-provided, shinyOAuth creates an in-memory cache for 1 hour with
-\code{cachem::cache_mem(max_age = 3600)}. You can also use another
-cachem-compatible backend, including a shared cache created with
-\code{\link[=custom_cache]{custom_cache()}}.
+\item{jwks_uri}{Optional explicit URL of the provider's JWK Set document.
+Use this when a generic OAuth 2.0 or JARM deployment publishes signing
+keys outside OIDC discovery, or when you intentionally want to override
+runtime metadata-based JWKS resolution.
 
 In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 TTLs pick up new keys faster but do more network work; longer TTLs reduce
 traffic but may take longer to notice key rotation. If a new \code{kid} appears,
 shinyOAuth will also do a one-time refresh automatically.}
+
+\item{jwks_cache}{Cache used for the provider's signing keys (JWKS). If not
+provided, shinyOAuth creates an in-memory cache for 1 hour with
+\code{cachem::cache_mem(max_age = 3600)}. You can also use another
+cachem-compatible backend, including a shared cache created with
+\code{\link[=custom_cache]{custom_cache()}}.}
 
 \item{jwks_pins}{Optional character vector of RFC 7638 JWK thumbprints
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys

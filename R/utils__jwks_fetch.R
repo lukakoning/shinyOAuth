@@ -36,10 +36,188 @@ provider_issuer_match <- function(provider = NULL) {
   match.arg(issuer_match, choices = c("url", "host", "none"))
 }
 
+#' Internal: resolve the effective explicit provider JWKS URI
+#'
+#' Reads `provider@jwks_uri` when a provider is available and otherwise returns
+#' `NA_character_`. Used by JWKS fetch and cache-key helpers so explicit JWKS
+#' overrides stay aligned with runtime network behavior.
+#'
+#' @param provider Optional [OAuthProvider] used to resolve the explicit JWKS
+#'   URI.
+#'
+#' @return A length-1 character string or `NA_character_`.
+#'
+#' @keywords internal
+#' @noRd
+provider_jwks_uri <- function(provider = NULL) {
+  if (is.null(provider)) {
+    return(NA_character_)
+  }
+
+  provider_value <- try(provider@jwks_uri, silent = TRUE)
+  if (
+    !inherits(provider_value, "try-error") &&
+      is_valid_string(provider_value)
+  ) {
+    return(provider_value)
+  }
+
+  NA_character_
+}
+
+#' Internal: fetch authorization server metadata for JWKS discovery
+#'
+#' Tries the RFC 8414 authorization-server metadata location first and then
+#' OpenID Connect-compatible well-known locations so generic OAuth/JARM issuers
+#' and legacy OIDC deployments can both surface `jwks_uri`.
+#'
+#' @param issuer Issuer base URL (must include scheme).
+#'
+#' @return Named list containing parsed metadata and the successful metadata URL.
+#'
+#' @keywords internal
+#' @noRd
+fetch_authorization_server_metadata <- function(issuer) {
+  build_metadata_url <- function(suffix, legacy_append = FALSE) {
+    normalized_issuer <- rtrim_slash(issuer)
+    parsed <- httr2::url_parse(normalized_issuer)
+    host <- parsed[["hostname"]] %||% err_parse("Invalid issuer host")
+    if (grepl(":", host, fixed = TRUE) && !grepl("^\\[", host)) {
+      host <- paste0("[", host, "]")
+    }
+
+    authority <- paste0(parsed[["scheme"]], "://", host)
+    port <- parsed[["port"]] %||% ""
+    if (nzchar(port)) {
+      authority <- paste0(authority, ":", port)
+    }
+
+    path <- parsed[["path"]] %||% ""
+    if (identical(path, "/")) {
+      path <- ""
+    }
+
+    if (isTRUE(legacy_append) || !nzchar(path)) {
+      return(normalize_url(paste0(
+        normalized_issuer,
+        "/.well-known/",
+        suffix
+      )))
+    }
+
+    normalize_url(paste0(authority, "/.well-known/", suffix, path))
+  }
+
+  targets <- list(
+    list(
+      source = "oauth_authorization_server",
+      url = build_metadata_url("oauth-authorization-server")
+    ),
+    list(
+      source = "openid_configuration",
+      url = build_metadata_url("openid-configuration")
+    ),
+    list(
+      source = "openid_configuration_legacy",
+      url = build_metadata_url("openid-configuration", legacy_append = TRUE)
+    )
+  )
+  target_urls <- vapply(targets, function(target) target[["url"]], character(1))
+  targets <- targets[!duplicated(target_urls)]
+
+  attempted_urls <- character(0)
+  last_response <- NULL
+  last_error_message <- NULL
+  for (target in targets) {
+    attempted_urls <- c(attempted_urls, target[["url"]])
+
+    resp <- try(
+      httr2::request(target[["url"]]) |>
+        add_req_defaults() |>
+        req_no_redirect() |>
+        req_with_retry(),
+      silent = TRUE
+    )
+    if (inherits(resp, "try-error")) {
+      cnd <- attr(resp, "condition")
+      while (!is.null(cnd) && !is.null(cnd[["parent"]])) {
+        cnd <- cnd[["parent"]]
+      }
+      msg <- try(conditionMessage(cnd), silent = TRUE)
+      if (!inherits(msg, "try-error")) {
+        last_error_message <- as.character(msg)
+      }
+      next
+    }
+
+    redirect_check <- try(
+      reject_redirect_response(resp, context = "jwks_discovery"),
+      silent = TRUE
+    )
+    if (inherits(redirect_check, "try-error")) {
+      msg <- try(conditionMessage(redirect_check), silent = TRUE)
+      if (!inherits(msg, "try-error")) {
+        last_error_message <- as.character(msg)
+      }
+      next
+    }
+
+    if (httr2::resp_is_error(resp)) {
+      last_response <- resp
+      next
+    }
+
+    # Once a metadata endpoint returns 2xx, fail closed on body/JSON
+    # validation errors instead of falling through to another representation.
+    check_resp_body_size(resp, context = "jwks_discovery")
+    disc <- .discover_parse_json(resp)
+    if (!is.list(disc)) {
+      err_parse(c(
+        "x" = "Authorization server metadata JSON did not parse to an object"
+      ))
+    }
+
+    return(list(
+      document = disc,
+      metadata_url = target[["url"]],
+      metadata_source = target[["source"]]
+    ))
+  }
+
+  if (!is.null(last_response)) {
+    err_http(
+      c("x" = "Failed to fetch authorization server metadata"),
+      last_response,
+      context = list(
+        issuer = issuer,
+        discovery_url = utils::tail(attempted_urls, 1),
+        attempted_metadata_urls = attempted_urls
+      )
+    )
+  }
+
+  err_config(
+    c(
+      "x" = "Failed to fetch authorization server metadata",
+      "i" = paste0("Issuer: ", issuer),
+      "i" = paste0("Tried: ", paste(attempted_urls, collapse = ", ")),
+      if (is_valid_string(last_error_message)) {
+        stats::setNames(paste0("Last failure: ", last_error_message), "i")
+      }
+    ),
+    context = list(
+      issuer = issuer,
+      attempted_metadata_urls = attempted_urls,
+      metadata_error = last_error_message
+    )
+  )
+}
+
 #' Internal: Fetch JWKS for issuer (cachem-only)
 #'
-#' Attempts to download the OpenID Connect discovery document to locate the
-#' JWKS URI, then fetches and caches the key set. Used by ID token and signed
+#' Attempts to resolve an explicit provider `jwks_uri` or download
+#' authorization server metadata to locate the JWKS URI, then fetches and
+#' caches the key set. Used by ID token, JARM, Request Object, and signed
 #' UserInfo verification.
 #'
 #' Caching details:
@@ -91,6 +269,7 @@ fetch_jwks <- function(
   pin_mode <- match.arg(pin_mode)
   now <- as.numeric(Sys.time())
   issuer_match <- provider_issuer_match(provider)
+  jwks_uri_override <- provider_jwks_uri(provider)
 
   # Extract host-policy from provider (if available)
   host_match <- FALSE
@@ -109,13 +288,20 @@ fetch_jwks <- function(
     pin_mode = pin_mode,
     issuer_match = issuer_match,
     jwks_host_issuer_match = host_match,
-    jwks_host_allow_only = allow_only
+    jwks_host_allow_only = allow_only,
+    jwks_uri_override = jwks_uri_override
   )
 
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
     cached_jwks_uri <- entry[["jwks_uri"]] %||% NULL
+    if (
+      is_valid_string(jwks_uri_override) &&
+        !identical(cached_jwks_uri, jwks_uri_override)
+    ) {
+      return(FALSE)
+    }
     if (
       is.character(cached_jwks_uri) &&
         length(cached_jwks_uri) == 1L &&
@@ -216,31 +402,22 @@ fetch_jwks <- function(
     }
   }
 
-  disco_url <- paste0(rtrim_slash(issuer), "/.well-known/openid-configuration")
-  resp <- httr2::request(disco_url) |>
-    add_req_defaults() |>
-    req_no_redirect() |>
-    req_with_retry()
-  # Security: reject redirect responses to prevent bypassing host validation
-  reject_redirect_response(resp, context = "jwks_discovery")
-  if (httr2::resp_is_error(resp)) {
-    err_http(
-      c("x" = "Failed to fetch OIDC discovery document"),
-      resp,
-      context = list(issuer = issuer)
+  if (is_valid_string(jwks_uri_override)) {
+    discovery_issuer <- issuer
+    jwks_uri <- jwks_uri_override
+  } else {
+    metadata <- fetch_authorization_server_metadata(issuer)
+    disc <- metadata[["document"]]
+    discovery_issuer <- validate_discovery_issuer(
+      issuer_input = issuer,
+      issuer_discovered = disc[["issuer"]] %||% NULL,
+      issuer_match = issuer_match
     )
+    jwks_uri <- disc[["jwks_uri"]] %||%
+      {
+        err_parse(c("x" = "Authorization server metadata missing jwks_uri"))
+      }
   }
-  check_resp_body_size(resp, context = "jwks_discovery")
-  disc <- .discover_parse_json(resp)
-  discovery_issuer <- validate_discovery_issuer(
-    issuer_input = issuer,
-    issuer_discovered = disc$issuer %||% NULL,
-    issuer_match = issuer_match
-  )
-  jwks_uri <- disc$jwks_uri %||%
-    {
-      err_parse(c("x" = "Discovery document missing jwks_uri"))
-    }
   if (!is_ok_host(jwks_uri)) {
     err_config(c(
       "x" = "jwks_uri is not in an allowed host",
@@ -322,6 +499,7 @@ fetch_jwks <- function(
 #' @param jwks_host_issuer_match Whether the JWKS host must match the issuer
 #'   host.
 #' @param jwks_host_allow_only Optional explicitly allowed JWKS host.
+#' @param jwks_uri_override Optional explicit provider JWKS URI.
 #' Used by `fetch_jwks()` to throttle forced JWKS refreshes triggered by new
 #' or unexpected key IDs.
 #' @return `TRUE` when a forced refresh is allowed and recorded; otherwise
@@ -337,7 +515,8 @@ jwks_force_refresh_allowed <- function(
   now = as.numeric(Sys.time()),
   issuer_match = "url",
   jwks_host_issuer_match = FALSE,
-  jwks_host_allow_only = NA_character_
+  jwks_host_allow_only = NA_character_,
+  jwks_uri_override = NA_character_
 ) {
   pin_mode <- match.arg(pin_mode)
   issuer_match <- match.arg(issuer_match, choices = c("url", "host", "none"))
@@ -355,7 +534,8 @@ jwks_force_refresh_allowed <- function(
     pin_mode = pin_mode,
     issuer_match = issuer_match,
     jwks_host_issuer_match = jwks_host_issuer_match,
-    jwks_host_allow_only = jwks_host_allow_only
+    jwks_host_allow_only = jwks_host_allow_only,
+    jwks_uri_override = jwks_uri_override
   )
   throttle_key <- paste0(base_key, "xfr")
 
@@ -425,6 +605,7 @@ normalize_jwks_cache_host_patterns <- function(patterns) {
 #' @param jwks_host_issuer_match Whether the JWKS host must match the issuer
 #'   host.
 #' @param jwks_host_allow_only Optional explicitly allowed JWKS host.
+#' @param jwks_uri_override Optional explicit provider JWKS URI.
 #' @param allowed_hosts Optional effective value of
 #'   `options(shinyOAuth.allowed_hosts)`.
 #' @param allowed_non_https_hosts Optional effective value of
@@ -439,6 +620,7 @@ jwks_cache_key <- function(
   issuer_match = "url",
   jwks_host_issuer_match = FALSE,
   jwks_host_allow_only = NA_character_,
+  jwks_uri_override = NA_character_,
   allowed_hosts = getOption("shinyOAuth.allowed_hosts", default = NULL),
   allowed_non_https_hosts = getOption(
     "shinyOAuth.allowed_non_https_hosts",
@@ -463,6 +645,15 @@ jwks_cache_key <- function(
   ) {
     allow_only <- tolower(trimws(jwks_host_allow_only))
   }
+  jwks_uri_override_norm <- ""
+  if (
+    is.character(jwks_uri_override) &&
+      length(jwks_uri_override) == 1L &&
+      !is.na(jwks_uri_override) &&
+      nzchar(jwks_uri_override)
+  ) {
+    jwks_uri_override_norm <- trimws(jwks_uri_override)
+  }
   allowed_hosts_norm <- normalize_jwks_cache_host_patterns(allowed_hosts)
   allowed_non_https_norm <- normalize_jwks_cache_host_patterns(
     allowed_non_https_hosts
@@ -481,6 +672,8 @@ jwks_cache_key <- function(
     as.character(host_match),
     "|",
     allow_only,
+    "|",
+    jwks_uri_override_norm,
     "|",
     allowed_hosts_norm,
     "|",

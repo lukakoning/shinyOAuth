@@ -201,6 +201,73 @@ capture_set_cookie_writes <- function(
   )$result[["value"]]
 }
 
+capture_clear_query_url <- function(
+  href,
+  clean_title = FALSE,
+  drop_response = FALSE
+) {
+  js_source <- paste(
+    readLines(
+      system.file("www", "shinyOAuth.js", package = "shinyOAuth"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+
+  browser <- chromote::ChromoteSession$new()
+  on.exit(try(browser$close(), silent = TRUE), add = TRUE)
+  browser$go_to("about:blank")
+
+  expression <- paste0(
+    "(function(source, href, cleanTitle, dropResponse) {",
+    "  var replaced = null;",
+    "  var parsed = new URL(href);",
+    "  var fakeDocument = { title: '', body: { textContent: '' } };",
+    "  var fakeWindow = {",
+    "    location: {",
+    "      href: href,",
+    "      host: parsed.host,",
+    "      pathname: parsed.pathname,",
+    "      hash: parsed.hash",
+    "    },",
+    "    history: { replaceState: function(_s, _t, url) { replaced = String(url); } },",
+    "    console: window.console,",
+    "    Shiny: {",
+    "      handlers: {},",
+    "      addCustomMessageHandler: function(name, fn) { this.handlers[name] = fn; },",
+    "      setInputValue: function() {}",
+    "    }",
+    "  };",
+    "  (function() {",
+    "    var window = fakeWindow;",
+    "    var document = fakeDocument;",
+    "    var Shiny = fakeWindow.Shiny;",
+    "    var console = fakeWindow.console;",
+    "    eval(source);",
+    paste(
+      "    fakeWindow.Shiny.handlers['shinyOAuth:clearQueryAndFixTitle'](",
+      "{ cleanTitle: cleanTitle, dropResponse: dropResponse }",
+      ");"
+    ),
+    "  })();",
+    "  return replaced;",
+    "})(",
+    jsonlite::toJSON(js_source, auto_unbox = TRUE),
+    ",",
+    jsonlite::toJSON(href, auto_unbox = TRUE),
+    ",",
+    jsonlite::toJSON(clean_title, auto_unbox = TRUE),
+    ",",
+    jsonlite::toJSON(drop_response, auto_unbox = TRUE),
+    ")"
+  )
+
+  browser$Runtime$evaluate(
+    expression = expression,
+    returnByValue = TRUE
+  )$result[["value"]]
+}
+
 # Basic cookie set/clear lifecycle
 
 testthat::test_that("browser token cookie is set, cleared, and re-set with new value", {
@@ -289,6 +356,69 @@ testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS 
   testthat::expect_match(writes[[1]], "; Expires=")
   testthat::expect_match(writes[[1]], "; Max-Age=60;")
   testthat::expect_match(writes[[1]], "; Path=/; SameSite=Strict; Secure$")
+})
+
+testthat::test_that("browser cleanup preserves ordinary response params", {
+  local_skip_env()
+
+  testthat::expect_identical(
+    capture_clear_query_url("https://example.com/cb?response=ok&foo=1"),
+    "/cb?response=ok&foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url("https://example.com/cb#/route?response=ok&foo=1"),
+    "/cb#/route?response=ok&foo=1"
+  )
+})
+
+testthat::test_that("browser cleanup preserves compact response params unless flagged", {
+  local_skip_env()
+
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb?response=header.payload.signature&foo=1"
+    ),
+    "/cb?response=header.payload.signature&foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?response=header.payload.signature&foo=1"
+    ),
+    "/cb#/route?response=header.payload.signature&foo=1"
+  )
+})
+
+testthat::test_that("browser cleanup drops flagged response params", {
+  local_skip_env()
+
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb?response=header.payload.signature&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb?foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?response=header.payload.signature&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb#/route?foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb?response=not-a-compact-jwt&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb?foo=1"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?response=not-a-compact-jwt&foo=1",
+      drop_response = TRUE
+    ),
+    "/cb#/route?foo=1"
+  )
 })
 
 # Error path: SameSite=None requires HTTPS

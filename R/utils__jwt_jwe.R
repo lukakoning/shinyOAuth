@@ -1,5 +1,6 @@
 # This file contains the low-level compact JWE helpers used for outbound
-# request-object encryption and test-only decryption of nested JWTs
+# request-object encryption and inbound decryption of nested JWTs such as
+# encrypted JARM responses
 # A JWE is the encrypted JWT form used when request objects need
 # confidentiality in addition to signature protection
 # Used for compact JWE encoding/decoding, recipient-key normalization, and
@@ -772,8 +773,8 @@ jwe_compact_encrypt <- function(
 
 #' Decrypt a compact JWE using RSA-OAEP and AES-CBC-HMAC
 #'
-#' Used by tests that need to inspect nested request objects after compact JWE
-#' encryption.
+#' Used by inbound encrypted JARM validation and tests that need to inspect
+#' nested JWTs after compact JWE encryption.
 #'
 #' @param jwe Compact JWE string.
 #' @param private_key Recipient private key input.
@@ -783,8 +784,12 @@ jwe_compact_encrypt <- function(
 jwe_compact_decrypt <- function(jwe, private_key) {
   parts <- jwe_compact_parts(jwe)
   header <- parts[["protected_header"]]
-  alg <- canonicalize_jwe_alg(header[["alg"]] %||% "")
-  enc <- canonicalize_jwe_enc(header[["enc"]] %||% "")
+  alg <- canonicalize_jwe_alg(
+    jwt_header_field_exact(header, "alg") %||% ""
+  )
+  enc <- canonicalize_jwe_enc(
+    jwt_header_field_exact(header, "enc") %||% ""
+  )
 
   if (!identical(alg, "RSA-OAEP")) {
     err_parse(paste0("Unsupported compact JWE alg: ", alg))
@@ -795,6 +800,7 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     private_key,
     arg_name = "request_object_encryption_private_key"
   )
+  cek_failed <- FALSE
   cek_raw <- try(
     openssl::rsa_decrypt(
       parts[["encrypted_key_raw"]],
@@ -804,16 +810,11 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     silent = TRUE
   )
   if (inherits(cek_raw, "try-error")) {
-    err_parse("Failed to decrypt compact JWE encrypted key")
-  }
-  if (!is.raw(cek_raw) || length(cek_raw) != spec[["cek_bytes"]]) {
-    err_parse(paste0(
-      "Compact JWE CEK length mismatch for ",
-      enc,
-      ": expected ",
-      spec[["cek_bytes"]],
-      " bytes"
-    ))
+    cek_failed <- TRUE
+    cek_raw <- openssl::rand_bytes(spec[["cek_bytes"]])
+  } else if (!is.raw(cek_raw) || length(cek_raw) != spec[["cek_bytes"]]) {
+    cek_failed <- TRUE
+    cek_raw <- openssl::rand_bytes(spec[["cek_bytes"]])
   }
 
   key_parts <- split_jwe_cbc_hmac_cek(cek_raw, enc)
@@ -824,8 +825,14 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     iv_raw = parts[["iv_raw"]],
     ciphertext_raw = parts[["ciphertext_raw"]]
   )
-  if (!constant_time_compare(parts[["tag_raw"]], expected_tag)) {
-    err_parse("Compact JWE authentication tag validation failed")
+  if (
+    isTRUE(cek_failed) ||
+      !constant_time_compare(parts[["tag_raw"]], expected_tag)
+  ) {
+    err_parse(
+      "Compact JWE decryption failed",
+      context = list(compact_jwe_failure = "authenticated_decryption")
+    )
   }
 
   plaintext_raw <- try(
@@ -837,7 +844,10 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     silent = TRUE
   )
   if (inherits(plaintext_raw, "try-error")) {
-    err_parse("Failed to decrypt compact JWE ciphertext")
+    err_parse(
+      "Compact JWE decryption failed",
+      context = list(compact_jwe_failure = "authenticated_decryption")
+    )
   }
 
   plaintext <- tryCatch(

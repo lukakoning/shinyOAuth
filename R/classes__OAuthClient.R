@@ -118,20 +118,67 @@
 #'   having that URI or a matching wildcard prefix registered for the client;
 #'   shinyOAuth cannot verify that server-side registration automatically.
 #' @param response_mode Authorization response mode for authorization-code
-#'   callbacks. Supported values are `"query"` and `"form_post"`. The
-#'   effective default is always `"query"`: omitting this argument keeps the
-#'   normal query-parameter callback flow and shinyOAuth does not send a
-#'   `response_mode` parameter. Pass `"query"` only if you need to explicitly
-#'   request the query response mode from the provider.
-#'   Set `"form_post"` only when the provider requires or explicitly
-#'   recommends POSTing the authorization response to the redirect URI. Shiny
-#'   apps using `"form_post"` must wrap their UI with [oauth_form_post_ui()].
-#'   Prefer this argument over setting `extra_auth_params$response_mode` on the
-#'   provider. When the provider advertises `response_modes_supported`, the
-#'   resolved mode must be included in that set.
-#'   JWT Secured Authorization Response Mode (JARM) values such as
-#'   `"form_post.jwt"` are a separate response format and are not currently
-#'   supported.
+#'   callbacks. Supported values are `"query"`, `"form_post"`, `"jwt"`,
+#'   `"query.jwt"`, and `"form_post.jwt"`. The effective default is always
+#'   `"query"`: omitting this argument keeps the normal query-parameter
+#'   callback flow and shinyOAuth does not send a `response_mode` parameter.
+#'   Pass `"query"` only if you need to explicitly request the query
+#'   response mode from the provider. Set `"form_post"` only when the
+#'   provider requires or explicitly recommends POSTing the authorization
+#'   response to the redirect URI. Shiny apps using `"form_post"` must wrap
+#'   their UI with [oauth_form_post_ui()]. Prefer this argument over setting
+#'   `extra_auth_params$response_mode` on the provider. When the provider
+#'   advertises `response_modes_supported`, the resolved mode must be included
+#'   in that set. `"jwt"` requests the JARM-defined default callback
+#'   transport for the response type; for the authorization-code flow that
+#'   still means a query callback, but shinyOAuth preserves and sends `"jwt"`
+#'   when you configure it explicitly. `"fragment.jwt"` is not currently
+#'   supported because shinyOAuth does not implement fragment callback
+#'   transport.
+#'
+#'   JARM callbacks are currently module-only. For `"jwt"`, `"query.jwt"`,
+#'   and `"form_post.jwt"`, use [oauth_module_server()] and, for
+#'   `"form_post.jwt"`, wrap the app UI with [oauth_form_post_ui()]. The
+#'   exported [handle_callback()] helper still accepts only the classic
+#'   direct `code` + sealed `state` callback shape and does not expose a
+#'   public JARM validation/resume API.
+#'
+#' @param authorization_signed_response_alg Optional expected JWS algorithm for
+#'   signed JWT Secured Authorization Responses (JARM). When omitted and the
+#'   effective response mode is JARM, shinyOAuth defaults to `RS256`. This
+#'   value is not sent dynamically on the authorization request; it must match
+#'   the client metadata and provider behavior configured out-of-band for that
+#'   client. Current inbound support accepts `HS256`, `HS384`, `HS512`,
+#'   `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`.
+#'   RSA-PSS (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted
+#'   for inbound JARM.
+#' @param authorization_encrypted_response_alg Optional expected JWE
+#'   key-management algorithm for encrypted JARM responses. Current inbound
+#'   support is limited to `RSA-OAEP`. Like
+#'   `authorization_signed_response_alg`, this reflects out-of-band client
+#'   metadata and expected provider behavior rather than an authorization
+#'   request parameter emitted by shinyOAuth.
+#' @param authorization_encrypted_response_enc Optional expected JWE
+#'   content-encryption algorithm for encrypted JARM responses. Current inbound
+#'   support is limited to the AES-CBC-HMAC family (`A128CBC-HS256`,
+#'   `A192CBC-HS384`, `A256CBC-HS512`). When omitted while
+#'   `authorization_encrypted_response_alg` is set, shinyOAuth defaults to
+#'   `A128CBC-HS256`. This must also match the provider-side JARM client
+#'   metadata when encrypted responses are enabled.
+#' @param authorization_response_decryption_private_key Optional private key
+#'   used to decrypt encrypted JARM responses. Can be an `openssl::key` or a
+#'   PEM string containing a private key. Required when encrypted JARM is
+#'   enabled.
+#' @param authorization_response_decryption_private_key_kid Optional key
+#'   identifier (`kid`) associated with
+#'   `authorization_response_decryption_private_key`.
+#' @param jarm_max_lifetime Positive number of seconds. Maximum accepted
+#'   lifetime for a JARM response JWT. Default is 600 seconds, matching JARM's
+#'   recommended 10-minute upper bound for authorization response JWTs. When a
+#'   JARM payload includes `iat`, shinyOAuth enforces
+#'   `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
+#'   remaining `exp` window at validation time. Applies only when
+#'   `response_mode` uses JARM.
 #'
 #' @param authorization_request_signing_alg Optional JWS algorithm override for
 #'   signed authorization requests when `authorization_request_mode` uses a
@@ -474,6 +521,33 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    # Optional override for the signed JARM alg.
+    authorization_signed_response_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the encrypted JARM alg.
+    authorization_encrypted_response_alg = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional override for the encrypted JARM enc.
+    authorization_encrypted_response_enc = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Optional private key used to decrypt encrypted JARM.
+    authorization_response_decryption_private_key = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
+    # Optional kid associated with the encrypted JARM decryption key.
+    authorization_response_decryption_private_key_kid = S7::new_property(
+      S7::class_character,
+      default = NA_character_
+    ),
+    # Maximum accepted JARM JWT lifetime in seconds.
+    jarm_max_lifetime = S7::new_property(S7::class_numeric, default = 600),
     # Optional override for the signed authorization request alg.
     authorization_request_signing_alg = S7::new_property(
       S7::class_character,
@@ -625,6 +699,12 @@ oauth_client <- function(
   mtls_request_certificate_bound_access_tokens = FALSE,
   authorization_request_mode = c("parameters", "request", "request_uri"),
   response_mode = NULL,
+  authorization_signed_response_alg = NULL,
+  authorization_encrypted_response_alg = NULL,
+  authorization_encrypted_response_enc = NULL,
+  authorization_response_decryption_private_key = NULL,
+  authorization_response_decryption_private_key_kid = NULL,
+  jarm_max_lifetime = 600,
   authorization_request_signing_alg = NULL,
   authorization_request_audience = NULL,
   authorization_request_encryption_alg = NULL,
@@ -710,7 +790,18 @@ oauth_client <- function(
   if (!is.null(response_mode_info[["error"]])) {
     err_input(response_mode_info[["error"]])
   }
-  response_mode <- response_mode_info[["mode"]] %||% NA_character_
+  response_mode <- response_mode_info[["mode"]] %||%
+    NA_character_
+  authorization_encrypted_response_alg <- authorization_encrypted_response_alg %||%
+    NA_character_
+  authorization_encrypted_response_enc <-
+    authorization_encrypted_response_enc %||% NA_character_
+  if (
+    is_valid_string(authorization_encrypted_response_alg %||% NA_character_) &&
+      !is_valid_string(authorization_encrypted_response_enc %||% NA_character_)
+  ) {
+    authorization_encrypted_response_enc <- "A128CBC-HS256"
+  }
 
   if (
     !isTRUE(dpop_require_access_token_missing) &&
@@ -782,6 +873,14 @@ oauth_client <- function(
     ),
     authorization_request_mode = authorization_request_mode,
     response_mode = response_mode,
+    authorization_signed_response_alg = authorization_signed_response_alg %||%
+      NA_character_,
+    authorization_encrypted_response_alg = authorization_encrypted_response_alg,
+    authorization_encrypted_response_enc = authorization_encrypted_response_enc,
+    authorization_response_decryption_private_key = authorization_response_decryption_private_key,
+    authorization_response_decryption_private_key_kid = authorization_response_decryption_private_key_kid %||%
+      NA_character_,
+    jarm_max_lifetime = jarm_max_lifetime,
     authorization_request_signing_alg = authorization_request_signing_alg %||%
       NA_character_,
     authorization_request_audience = authorization_request_audience %||%
@@ -1167,7 +1266,309 @@ oauth_client_validate <- function(self) {
   if (!is.null(response_mode_info[["error"]])) {
     return(response_mode_info[["error"]])
   }
+  effective_response_mode <- response_mode_info[["mode"]] %||%
+    "query"
+  jarm_response_mode <- effective_response_mode %in%
+    c(
+      "query.jwt",
+      "form_post.jwt"
+    )
+
+  if (isTRUE(jarm_response_mode)) {
+    jml <- suppressWarnings(as.numeric(self@jarm_max_lifetime))
+    if (length(jml) != 1L || !is.finite(jml) || jml <= 0) {
+      return(
+        "OAuthClient: jarm_max_lifetime must be a finite positive number of seconds"
+      )
+    }
+  }
+
   request_object_modes <- c("request", "request_uri")
+
+  asra <- self@authorization_signed_response_alg %||% NA_character_
+  if (!is.character(asra) || length(asra) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_signed_response_alg must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(asra) && !nzchar(asra)) {
+    return(
+      paste(
+        "OAuthClient: authorization_signed_response_alg must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  signed_response_alg <- if (!is.na(asra) && nzchar(asra)) {
+    canonicalize_jws_alg(asra)
+  } else if (isTRUE(jarm_response_mode)) {
+    "RS256"
+  } else {
+    ""
+  }
+  if (!isTRUE(jarm_response_mode) && !is.na(asra) && nzchar(asra)) {
+    return(
+      paste(
+        "OAuthClient: authorization_signed_response_alg requires",
+        "response_mode = 'jwt', 'query.jwt', or 'form_post.jwt'"
+      )
+    )
+  }
+  if (identical(toupper(signed_response_alg), "NONE")) {
+    return(
+      "OAuthClient: authorization_signed_response_alg = 'none' is not supported"
+    )
+  }
+  if (
+    isTRUE(jarm_response_mode) &&
+      !(signed_response_alg %in%
+        c(
+          "HS256",
+          "HS384",
+          "HS512",
+          "RS256",
+          "RS384",
+          "RS512",
+          "ES256",
+          "ES384",
+          "ES512",
+          "EdDSA"
+        ))
+  ) {
+    return(paste0(
+      "OAuthClient: authorization_signed_response_alg '",
+      signed_response_alg,
+      "' is not supported for inbound JARM validation"
+    ))
+  }
+
+  aera <- self@authorization_encrypted_response_alg %||% NA_character_
+  if (!is.character(aera) || length(aera) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_encrypted_response_alg must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(aera) && !nzchar(aera)) {
+    return(
+      paste(
+        "OAuthClient: authorization_encrypted_response_alg must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  aere <- self@authorization_encrypted_response_enc %||% NA_character_
+  if (!is.character(aere) || length(aere) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_encrypted_response_enc must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(aere) && !nzchar(aere)) {
+    return(
+      paste(
+        "OAuthClient: authorization_encrypted_response_enc must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  aerk <- self@authorization_response_decryption_private_key_kid %||%
+    NA_character_
+  if (!is.character(aerk) || length(aerk) != 1L) {
+    return(
+      paste(
+        "OAuthClient: authorization_response_decryption_private_key_kid must be a scalar",
+        "character string (or NULL/NA to omit)"
+      )
+    )
+  }
+  if (!is.na(aerk) && !nzchar(aerk)) {
+    return(
+      paste(
+        "OAuthClient: authorization_response_decryption_private_key_kid must be non-empty",
+        "when provided (use NULL or NA to omit)"
+      )
+    )
+  }
+
+  encrypted_response_alg <- canonicalize_jwe_alg(aera)
+  encrypted_response_enc <- canonicalize_jwe_enc(aere)
+  if (nzchar(encrypted_response_alg) && !nzchar(encrypted_response_enc)) {
+    encrypted_response_enc <- "A128CBC-HS256"
+  }
+  encrypted_jarm_enabled <-
+    nzchar(encrypted_response_alg) ||
+    nzchar(encrypted_response_enc) ||
+    !is.null(self@authorization_response_decryption_private_key)
+
+  if (
+    !isTRUE(jarm_response_mode) &&
+      (!is.na(asra) && nzchar(asra) || encrypted_jarm_enabled)
+  ) {
+    return(
+      paste(
+        "OAuthClient: JARM authorization response settings require",
+        "response_mode = 'jwt', 'query.jwt', or 'form_post.jwt'"
+      )
+    )
+  }
+  if (
+    isTRUE(jarm_response_mode) &&
+      !is_valid_string(self@provider@issuer %||% NA_character_)
+  ) {
+    return(
+      "OAuthClient: JARM response modes require the provider to have an issuer configured"
+    )
+  }
+  if (nzchar(encrypted_response_alg) != nzchar(encrypted_response_enc)) {
+    return(
+      paste(
+        "OAuthClient: authorization_encrypted_response_alg and",
+        "authorization_encrypted_response_enc must both be provided"
+      )
+    )
+  }
+  if (isTRUE(encrypted_jarm_enabled) && !nzchar(encrypted_response_alg)) {
+    return(
+      paste(
+        "OAuthClient: encrypted JARM requires",
+        "authorization_encrypted_response_alg"
+      )
+    )
+  }
+  if (isTRUE(encrypted_jarm_enabled)) {
+    if (!(encrypted_response_alg %in% c("RSA-OAEP"))) {
+      return(paste0(
+        "OAuthClient: authorization_encrypted_response_alg '",
+        encrypted_response_alg,
+        "' is not supported for inbound encrypted JARM"
+      ))
+    }
+    if (
+      !(encrypted_response_enc %in%
+        c(
+          "A128CBC-HS256",
+          "A192CBC-HS384",
+          "A256CBC-HS512"
+        ))
+    ) {
+      return(paste0(
+        "OAuthClient: authorization_encrypted_response_enc '",
+        encrypted_response_enc,
+        "' is not supported for inbound encrypted JARM"
+      ))
+    }
+    if (is.null(self@authorization_response_decryption_private_key)) {
+      return(
+        paste(
+          "OAuthClient: encrypted JARM requires",
+          "authorization_response_decryption_private_key"
+        )
+      )
+    }
+
+    response_decryption_key <- try(
+      normalize_private_key_input(
+        self@authorization_response_decryption_private_key,
+        arg_name = "authorization_response_decryption_private_key"
+      ),
+      silent = TRUE
+    )
+    if (inherits(response_decryption_key, "try-error")) {
+      return(
+        paste(
+          "OAuthClient: authorization_response_decryption_private_key must be a parseable",
+          "PEM private key or openssl::key"
+        )
+      )
+    }
+    if (!inherits(response_decryption_key, "rsa")) {
+      return(
+        paste(
+          "OAuthClient: encrypted JARM currently requires an RSA private key for",
+          "authorization_response_decryption_private_key"
+        )
+      )
+    }
+  }
+
+  provider_authorization_signing_algs <- as.character(
+    self@provider@authorization_signing_alg_values_supported %||% character(0)
+  )
+  if (
+    isTRUE(jarm_response_mode) &&
+      length(provider_authorization_signing_algs) > 0 &&
+      !(signed_response_alg %in% provider_authorization_signing_algs)
+  ) {
+    return(paste0(
+      "OAuthClient: authorization_signed_response_alg '",
+      signed_response_alg,
+      "' is not supported by provider authorization_signing_alg_values_supported"
+    ))
+  }
+
+  provider_authorization_encryption_algs <- as.character(
+    self@provider@authorization_encryption_alg_values_supported %||%
+      character(0)
+  )
+  if (
+    isTRUE(encrypted_jarm_enabled) &&
+      length(provider_authorization_encryption_algs) > 0 &&
+      !(encrypted_response_alg %in%
+        provider_authorization_encryption_algs)
+  ) {
+    return(paste0(
+      "OAuthClient: authorization_encrypted_response_alg '",
+      encrypted_response_alg,
+      "' is not supported by provider authorization_encryption_alg_values_supported"
+    ))
+  }
+
+  provider_authorization_encryption_encs <- as.character(
+    self@provider@authorization_encryption_enc_values_supported %||%
+      character(0)
+  )
+  if (
+    isTRUE(encrypted_jarm_enabled) &&
+      length(provider_authorization_encryption_encs) > 0 &&
+      !(encrypted_response_enc %in%
+        provider_authorization_encryption_encs)
+  ) {
+    return(paste0(
+      "OAuthClient: authorization_encrypted_response_enc '",
+      encrypted_response_enc,
+      "' is not supported by provider authorization_encryption_enc_values_supported"
+    ))
+  }
+
+  if (
+    isTRUE(jarm_response_mode) &&
+      signed_response_alg %in% c("HS256", "HS384", "HS512")
+  ) {
+    if (!is_valid_string(self@client_secret)) {
+      return("OAuthClient: HS* JARM validation requires client_secret")
+    }
+    min_secret_bytes <- min_hmac_key_bytes(signed_response_alg)
+    if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+      return(paste0(
+        "OAuthClient: authorization_signed_response_alg '",
+        signed_response_alg,
+        "' requires client_secret >= ",
+        min_secret_bytes,
+        " bytes"
+      ))
+    }
+  }
 
   if (!(arm %in% c("parameters", request_object_modes))) {
     return(

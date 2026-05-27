@@ -368,6 +368,36 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
   expect_identical(p@name, "keycloak-myrealm")
   expect_identical(p@issuer, issuer)
   expect_identical(p@token_auth_style, "body")
+  expect_true(p@tolerate_duplicate_top_level_jarm_iss)
+})
+
+test_that("oauth_provider_keycloak lets callers override duplicate JARM iss tolerance", {
+  issuer <- "http://localhost:8080/realms/myrealm"
+  disc_json <- make_discovery_doc(issuer)
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req[["url"]]),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(as.character(disc_json))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  withr::local_options(list(
+    shinyOAuth.allowed_non_https_hosts = c("localhost")
+  ))
+
+  p <- oauth_provider_keycloak(
+    base_url = "http://localhost:8080",
+    realm = "myrealm",
+    tolerate_duplicate_top_level_jarm_iss = FALSE
+  )
+
+  expect_false(p@tolerate_duplicate_top_level_jarm_iss)
 })
 
 test_that("oauth_provider_okta constructs correct issuer from domain + auth_server", {

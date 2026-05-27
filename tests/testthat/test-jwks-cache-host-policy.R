@@ -105,6 +105,24 @@ test_that("jwks_cache_key is case-insensitive for jwks_host_allow_only", {
   expect_identical(k_lower, k_upper)
 })
 
+test_that("jwks_cache_key varies with explicit jwks_uri override", {
+  issuer <- "https://issuer.example.com"
+
+  k_discovered <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = NULL,
+    pin_mode = "any"
+  )
+  k_override <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = NULL,
+    pin_mode = "any",
+    jwks_uri_override = "https://keys.example.com/jwks.json"
+  )
+
+  expect_false(identical(k_discovered, k_override))
+})
+
 test_that("jwks_cache_key varies with global host-policy options", {
   issuer <- "https://issuer.example.com"
   default_http_hosts <- c("localhost", "127.0.0.1", "::1", "[::1]")
@@ -232,6 +250,139 @@ test_that("fetch_jwks stores jwks_uri_host in cache entry", {
   expect_false(is.null(entry$jwks_uri_host))
   expect_true(is.character(entry$jwks_uri_host))
   expect_true(nzchar(entry$jwks_uri_host))
+})
+
+test_that("fetch_jwks supports RFC 8414 metadata URLs for issuer paths", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
+  good_jwks <- list(keys = list(rsa_jwk))
+
+  app <- webfakes::new_app()
+  app$get(
+    "/.well-known/oauth-authorization-server/issuer1",
+    function(req, res) {
+      host <- req$headers$Host %||% req$headers$host
+      issuer <- paste0("http://", host, "/issuer1")
+      res$send_json(
+        object = list(
+          issuer = issuer,
+          jwks_uri = paste0("http://", host, "/jwks")
+        ),
+        auto_unbox = TRUE
+      )
+    }
+  )
+  app$get("/jwks", function(req, res) {
+    res$send_json(object = good_jwks, auto_unbox = TRUE)
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- sub("/$", "", srv$url())
+  issuer <- paste0(base, "/issuer1")
+
+  cache <- cachem::cache_mem(max_age = 3600)
+  jwks <- shinyOAuth:::fetch_jwks(
+    issuer = issuer,
+    jwks_cache = cache,
+    pins = NULL,
+    pin_mode = "any"
+  )
+
+  expect_identical(jwks, good_jwks)
+})
+
+test_that("fetch_jwks honors explicit provider jwks_uri override", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
+  good_jwks <- list(keys = list(rsa_jwk))
+
+  app <- webfakes::new_app()
+  app$get(
+    "/.well-known/oauth-authorization-server/issuer1",
+    function(req, res) {
+      res$set_status(500)$send("metadata should not be fetched")
+    }
+  )
+  app$get("/.well-known/openid-configuration/issuer1", function(req, res) {
+    res$set_status(500)$send("metadata should not be fetched")
+  })
+  app$get("/issuer1/.well-known/openid-configuration", function(req, res) {
+    res$set_status(500)$send("metadata should not be fetched")
+  })
+  app$get("/jwks", function(req, res) {
+    res$send_json(object = good_jwks, auto_unbox = TRUE)
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- sub("/$", "", srv$url())
+  issuer <- paste0(base, "/issuer1")
+  provider <- oauth_provider(
+    name = "manual-jwks",
+    auth_url = paste0(base, "/authorize"),
+    token_url = paste0(base, "/token"),
+    issuer = issuer,
+    jwks_uri = paste0(base, "/jwks")
+  )
+
+  jwks <- shinyOAuth:::fetch_jwks(
+    issuer = issuer,
+    jwks_cache = provider@jwks_cache,
+    pins = NULL,
+    pin_mode = "any",
+    provider = provider
+  )
+
+  expect_identical(jwks, good_jwks)
+})
+
+test_that("oidc discovery preserves jwks_uri for runtime verification", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  rsa_jwk <- make_host_policy_rsa_jwk(kid = "k1")
+  good_jwks <- list(keys = list(rsa_jwk))
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/openid-configuration", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    issuer <- paste0("http://", host)
+    res$send_json(
+      object = list(
+        issuer = issuer,
+        authorization_endpoint = paste0(issuer, "/auth"),
+        token_endpoint = paste0(issuer, "/token"),
+        jwks_uri = paste0(issuer, "/oidc-jwks")
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/.well-known/oauth-authorization-server", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    issuer <- paste0("http://", host)
+    res$send_json(
+      object = list(issuer = issuer),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/oidc-jwks", function(req, res) {
+    res$send_json(object = good_jwks, auto_unbox = TRUE)
+  })
+  srv <- webfakes::local_app_process(app)
+  base <- sub("/$", "", srv$url())
+
+  provider <- oauth_provider_oidc_discover(issuer = srv$url())
+  jwks <- shinyOAuth:::fetch_jwks(
+    issuer = provider@issuer,
+    jwks_cache = provider@jwks_cache,
+    pins = NULL,
+    pin_mode = "any",
+    provider = provider
+  )
+
+  expect_identical(provider@jwks_uri, paste0(base, "/oidc-jwks"))
+  expect_identical(jwks, good_jwks)
 })
 
 test_that("fetch_jwks rejects discovery issuer mismatch by default", {

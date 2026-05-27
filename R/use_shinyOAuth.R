@@ -199,7 +199,7 @@ warn_about_missing_form_post_ui <- function(id, client) {
   response_mode <- response_mode_info[["mode"]] %||% NULL
   if (
     !is.null(response_mode_info[["error"]]) ||
-      !identical(response_mode, "form_post")
+      !response_mode %in% c("form_post", "form_post.jwt")
   ) {
     return(invisible(NULL))
   }
@@ -221,7 +221,9 @@ warn_about_missing_form_post_ui <- function(id, client) {
     c(
       "!" = paste0(
         "{.code oauth_module_server()} was called with a client that resolves to ",
-        "{.code response_mode = \"form_post\"}, but no previous call to ",
+        "{.code response_mode = \"",
+        response_mode,
+        "\"}, but no previous call to ",
         "{.code oauth_form_post_ui()} was detected for this module"
       ),
       "i" = paste0(

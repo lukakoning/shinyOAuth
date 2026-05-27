@@ -375,6 +375,11 @@ oauth_provider_slack <- function(name = "slack") {
 #'  if you need to suppress `client_secret` even when it is set in the
 #'  environment. If you pass `NULL`, discovery will infer the method from the
 #'  provider's `token_endpoint_auth_methods_supported` metadata.
+#' @param tolerate_duplicate_top_level_jarm_iss Logical. Defaults to `TRUE`
+#'  for Keycloak because current Keycloak JARM responses may repeat an
+#'  identical top-level `iss` claim. Set `FALSE` to fail closed on duplicate
+#'  top-level `iss` members instead of applying this interoperability
+#'  workaround.
 #'
 #' @return [OAuthProvider] object configured for the specified Keycloak realm
 #'
@@ -385,7 +390,8 @@ oauth_provider_keycloak <- function(
   base_url,
   realm,
   name = paste0("keycloak-", realm),
-  token_auth_style = "body"
+  token_auth_style = "body",
+  tolerate_duplicate_top_level_jarm_iss = TRUE
 ) {
   if (!is_valid_string(base_url)) {
     err_input("base_url must be a non-empty string")
@@ -399,7 +405,8 @@ oauth_provider_keycloak <- function(
   oauth_provider_oidc_discover(
     issuer = issuer,
     name = name,
-    token_auth_style = token_auth_style
+    token_auth_style = token_auth_style,
+    tolerate_duplicate_top_level_jarm_iss = tolerate_duplicate_top_level_jarm_iss
   )
 }
 

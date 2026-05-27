@@ -110,9 +110,24 @@
 #'   providers use the discovery metadata value, defaulting to `c("query",
 #'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
 #'   may leave this empty when capabilities are not known. Provider metadata may
-#'   include response modes that shinyOAuth does not implement, such as JARM
-#'   values ending in `.jwt`; clients still fail fast if they request one of
-#'   those unsupported modes.
+#'   include response modes that shinyOAuth does not implement; clients still
+#'   fail fast if they request one of those unsupported modes.
+#' @param authorization_signing_alg_values_supported Optional vector of JWS
+#'   algorithms that the provider advertises for signed JWT Secured
+#'   Authorization Responses (JARM).
+#' @param authorization_encryption_alg_values_supported Optional vector of JWE
+#'   key-management algorithms that the provider advertises for encrypted JARM
+#'   responses.
+#' @param authorization_encryption_enc_values_supported Optional vector of JWE
+#'   content-encryption algorithms that the provider advertises for encrypted
+#'   JARM responses.
+#' @param tolerate_duplicate_top_level_jarm_iss Logical. Whether shinyOAuth
+#'   should tolerate repeated identical top-level `iss` members in signed JARM
+#'   payloads for this provider. This is an interoperability escape hatch for
+#'   providers that emit duplicate identical top-level `iss` claims. When
+#'   `TRUE`, shinyOAuth collapses repeated identical top-level `iss` members
+#'   before duplicate-member rejection. Conflicting duplicates and nested
+#'   duplicate `iss` members still fail closed. Defaults to `FALSE`.
 #' @param mtls_endpoint_aliases Optional named list of RFC 8705 mTLS endpoint
 #'   aliases. Names should follow the metadata keys such as `token_endpoint`,
 #'   `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
@@ -269,6 +284,10 @@
 #'   `cachem::cache_mem(max_age = 3600)`. You can also use another
 #'   cachem-compatible backend, including a shared cache created with
 #'   [custom_cache()].
+#' @param jwks_uri Optional explicit URL of the provider's JWK Set document.
+#'   Use this when a generic OAuth 2.0 or JARM deployment publishes signing
+#'   keys outside OIDC discovery, or when you intentionally want to override
+#'   runtime metadata-based JWKS resolution.
 #'
 #'   In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 #'   TTLs pick up new keys faster but do more network work; longer TTLs reduce
@@ -415,6 +434,22 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    authorization_signing_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    authorization_encryption_alg_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    authorization_encryption_enc_values_supported = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     issuer = S7::new_property(S7::class_character, default = NA_character_),
     issuer_match = S7::new_property(
       S7::class_character,
@@ -459,6 +494,10 @@ OAuthProvider <- S7::new_class(
     token_auth_style = S7::new_property(
       S7::class_character,
       default = "header"
+    ),
+    jwks_uri = S7::new_property(
+      S7::class_character,
+      default = NA_character_
     ),
     jwks_cache = S7::new_property(
       S7::class_any,
@@ -569,6 +608,10 @@ oauth_provider <- function(
   dpop_signing_alg_values_supported = character(),
   authorization_response_iss_parameter_supported = FALSE,
   response_modes_supported = character(),
+  authorization_signing_alg_values_supported = character(),
+  authorization_encryption_alg_values_supported = character(),
+  authorization_encryption_enc_values_supported = character(),
+  tolerate_duplicate_top_level_jarm_iss = FALSE,
   mtls_endpoint_aliases = list(),
   tls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
@@ -588,6 +631,7 @@ oauth_provider <- function(
   extra_token_params = list(),
   extra_token_headers = character(),
   token_auth_style = "header",
+  jwks_uri = NA_character_,
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
@@ -614,7 +658,8 @@ oauth_provider <- function(
     list("userinfo_url", userinfo_url),
     list("introspection_url", introspection_url),
     list("revocation_url", revocation_url),
-    list("par_url", par_url)
+    list("par_url", par_url),
+    list("jwks_uri", jwks_uri)
   )) {
     u_val <- url_arg[[2]]
     if (!is.null(u_val) && (!is.character(u_val) || length(u_val) != 1L)) {
@@ -634,6 +679,7 @@ oauth_provider <- function(
   introspection_url <- normalize_url(introspection_url)
   revocation_url <- normalize_url(revocation_url)
   par_url <- normalize_url(par_url)
+  jwks_uri <- normalize_url(jwks_uri)
 
   if (is.null(request_object_signing_alg_values_supported)) {
     request_object_signing_alg_values_supported <- character()
@@ -665,6 +711,33 @@ oauth_provider <- function(
   response_modes_supported <- tolower(trimws(as.character(
     unlist(response_modes_supported, use.names = FALSE)
   )))
+  if (is.null(authorization_signing_alg_values_supported)) {
+    authorization_signing_alg_values_supported <- character()
+  }
+  authorization_signing_alg_values_supported <- as.character(
+    unlist(
+      authorization_signing_alg_values_supported,
+      use.names = FALSE
+    )
+  )
+  if (is.null(authorization_encryption_alg_values_supported)) {
+    authorization_encryption_alg_values_supported <- character()
+  }
+  authorization_encryption_alg_values_supported <- as.character(
+    unlist(
+      authorization_encryption_alg_values_supported,
+      use.names = FALSE
+    )
+  )
+  if (is.null(authorization_encryption_enc_values_supported)) {
+    authorization_encryption_enc_values_supported <- character()
+  }
+  authorization_encryption_enc_values_supported <- as.character(
+    unlist(
+      authorization_encryption_enc_values_supported,
+      use.names = FALSE
+    )
+  )
   request_parameter_supported <- normalize_optional_provider_boolean(
     request_parameter_supported,
     "request_parameter_supported"
@@ -861,6 +934,12 @@ oauth_provider <- function(
       authorization_response_iss_parameter_supported
     ),
     response_modes_supported = response_modes_supported,
+    authorization_signing_alg_values_supported = authorization_signing_alg_values_supported,
+    authorization_encryption_alg_values_supported = authorization_encryption_alg_values_supported,
+    authorization_encryption_enc_values_supported = authorization_encryption_enc_values_supported,
+    tolerate_duplicate_top_level_jarm_iss = isTRUE(
+      tolerate_duplicate_top_level_jarm_iss
+    ),
     issuer = issuer,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -880,6 +959,7 @@ oauth_provider <- function(
       tls_client_certificate_bound_access_tokens
     ),
     token_auth_style = token_auth_style,
+    jwks_uri = jwks_uri,
     jwks_cache = jwks_cache,
     jwks_pins = jwks_pins,
     jwks_pin_mode = jwks_pin_mode,
@@ -913,6 +993,7 @@ oauth_provider_validate <- function(self) {
     userinfo_url = list(val = self@userinfo_url, required = FALSE),
     introspection_url = list(val = self@introspection_url, required = FALSE),
     revocation_url = list(val = self@revocation_url, required = FALSE),
+    jwks_uri = list(val = self@jwks_uri, required = FALSE),
     par_url = list(
       val = self@par_url,
       required = FALSE
@@ -1068,7 +1149,8 @@ oauth_provider_validate <- function(self) {
   if (
     !is.null(response_mode_info[["mode"]]) &&
       length(self@response_modes_supported) > 0 &&
-      !response_mode_info[["mode"]] %in% self@response_modes_supported
+      !response_mode_info[["mode"]] %in%
+        tolower(trimws(self@response_modes_supported))
   ) {
     return(paste0(
       "OAuthProvider: extra_auth_params$response_mode = ",
@@ -1502,6 +1584,91 @@ oauth_provider_validate <- function(self) {
     }
   }
 
+  authorization_signing_algs <-
+    self@authorization_signing_alg_values_supported
+  if (length(authorization_signing_algs) > 0) {
+    if (!is.character(authorization_signing_algs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_signing_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_signing_algs) ||
+        !all(nzchar(authorization_signing_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_signing_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  authorization_encryption_algs <-
+    self@authorization_encryption_alg_values_supported
+  if (length(authorization_encryption_algs) > 0) {
+    if (!is.character(authorization_encryption_algs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_encryption_algs) ||
+        !all(nzchar(authorization_encryption_algs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_alg_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  authorization_encryption_encs <-
+    self@authorization_encryption_enc_values_supported
+  if (length(authorization_encryption_encs) > 0) {
+    if (!is.character(authorization_encryption_encs)) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_enc_values_supported",
+          "must be a character vector"
+        )
+      )
+    }
+    if (
+      anyNA(authorization_encryption_encs) ||
+        !all(nzchar(authorization_encryption_encs))
+    ) {
+      return(
+        paste(
+          "OAuthProvider: authorization_encryption_enc_values_supported",
+          "must contain only non-empty strings"
+        )
+      )
+    }
+  }
+
+  if (
+    !(is.logical(self@tolerate_duplicate_top_level_jarm_iss) &&
+      length(self@tolerate_duplicate_top_level_jarm_iss) == 1L &&
+      !is.na(self@tolerate_duplicate_top_level_jarm_iss))
+  ) {
+    return(
+      paste(
+        "OAuthProvider: tolerate_duplicate_top_level_jarm_iss",
+        "must be a single non-NA logical"
+      )
+    )
+  }
+
   if (length(self@allowed_token_types) > 0) {
     att <- self@allowed_token_types
     if (!is.character(att)) {
@@ -1702,7 +1869,11 @@ provider_fingerprint <- function(provider) {
     id_token_required = isTRUE(provider@id_token_required),
     id_token_validation = isTRUE(provider@id_token_validation),
     id_token_at_hash_required = isTRUE(provider@id_token_at_hash_required),
+    tolerate_duplicate_top_level_jarm_iss = isTRUE(
+      provider@tolerate_duplicate_top_level_jarm_iss
+    ),
     token_auth_style = provider@token_auth_style,
+    jwks_uri = provider@jwks_uri,
     tls_client_certificate_bound_access_tokens = isTRUE(
       provider@tls_client_certificate_bound_access_tokens
     ),

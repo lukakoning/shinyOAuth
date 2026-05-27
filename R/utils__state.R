@@ -84,6 +84,82 @@ state_payload_decrypt_validate <- function(
   )
 }
 
+#' Revalidate a cached decrypted OAuth state payload
+#'
+#' Internal utility used when callback handling resumes from a cached,
+#' already-decrypted state payload such as the form_post bridge or async
+#' prefetch. It rechecks the original issued-at freshness and client/policy
+#' binding so cached payloads cannot outlive the sealed state lifetime or be
+#' resumed under a different client policy.
+#'
+#' @param client [OAuthClient] instance.
+#' @param payload Previously decrypted state payload list.
+#' @param shiny_session Optional pre-captured Shiny session context.
+#' @param audit_success Whether successful payload validation should emit the
+#'   standard callback validation audit event.
+#' @return The validated payload list on success; otherwise throws an error via
+#'   `err_invalid_state()`.
+#' @keywords internal
+#' @noRd
+state_payload_revalidate <- function(
+  client,
+  payload,
+  shiny_session = NULL,
+  audit_success = FALSE
+) {
+  S7::check_is_S7(client, class = OAuthClient)
+
+  tryCatch(
+    {
+      if (!is.list(payload)) {
+        err_invalid_state("Invalid payload: cached state payload is malformed")
+      }
+
+      payload_verify_issued_at(client, payload)
+      payload_verify_client_binding(client, payload)
+
+      if (isTRUE(audit_success)) {
+        audit_callback_validation_success(client, payload, shiny_session)
+      }
+
+      payload
+    },
+    error = function(e) {
+      payload_state <- tryCatch(
+        payload[["state"]],
+        error = function(...) NULL
+      )
+      try(
+        audit_event(
+          "callback_validation_failed",
+          context = list(
+            provider = client@provider@name %||% NA_character_,
+            issuer = client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(client@client_id),
+            state_digest = if (is_valid_string(payload_state)) {
+              string_digest(payload_state)
+            } else {
+              NA_character_
+            },
+            error_class = paste(class(e), collapse = ", "),
+            phase = "payload_validation"
+          ),
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+      rethrow_with_context(
+        e,
+        class = c("shinyOAuth_state_error", "shinyOAuth_error"),
+        message = c(
+          "State payload validation failed",
+          "i" = conditionMessage(e)
+        )
+      )
+    }
+  )
+}
+
 #' Audit successful callback state validation
 #'
 #' Used after a callback has completed its state, browser-token, and single-use
@@ -343,6 +419,30 @@ state_policy_mtls_cert_thumbprint <- function(client) {
   )
 }
 
+#' Compute a JARM decryption-key thumbprint for state binding
+#'
+#' Used by `state_client_policy_fingerprint()` when encrypted JARM is enabled.
+#'
+#' @param client OAuth client carrying inbound JARM decryption configuration.
+#' @return RFC 7638 JWK thumbprint string, or `NA_character_` when no JARM
+#'   decryption key is configured.
+#' @keywords internal
+#' @noRd
+state_policy_jarm_decryption_key_thumbprint <- function(client) {
+  if (is.null(client@authorization_response_decryption_private_key)) {
+    return(NA_character_)
+  }
+
+  key <- normalize_private_key_input(
+    client@authorization_response_decryption_private_key,
+    arg_name = "authorization_response_decryption_private_key"
+  )
+  key_pubkey <- as.list(key)[["pubkey"]]
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key_pubkey), simplifyVector = TRUE)
+
+  compute_jwk_thumbprint(jwk)
+}
+
 #' Build a client-side callback policy fingerprint
 #'
 #' Computes a stable digest over client settings that affect callback handling,
@@ -356,11 +456,30 @@ state_policy_mtls_cert_thumbprint <- function(client) {
 state_client_policy_fingerprint <- function(client) {
   S7::check_is_S7(client, class = OAuthClient)
 
+  response_mode_info <- resolve_oauth_client_response_mode(client)
+  if (!is.null(response_mode_info[["error"]])) {
+    err_config(response_mode_info[["error"]])
+  }
+
+  response_mode <- response_mode_info[["mode"]] %||% "query"
+  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+  jarm_encryption_config <- if (isTRUE(jarm_response_mode)) {
+    resolve_authorization_response_encryption_config(client)
+  } else {
+    NULL
+  }
+
   components <- list(
+    response_mode = response_mode,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
     resource = state_policy_string_set(client@resource),
     claims = client@claims,
     state_payload_max_age = client_state_payload_max_age(client),
+    jarm_max_lifetime = if (isTRUE(jarm_response_mode)) {
+      client_jarm_max_lifetime(client)
+    } else {
+      NA_real_
+    },
     scope_validation = client@scope_validation,
     claims_validation = client@claims_validation,
     userinfo_jwt_required_temporal_claims = state_policy_string_set(
@@ -376,6 +495,36 @@ state_client_policy_fingerprint <- function(client) {
     ),
     dpop_signing_alg = if (client_has_dpop(client)) {
       resolve_dpop_alg(client)
+    } else {
+      NA_character_
+    },
+    authorization_signed_response_alg = if (isTRUE(jarm_response_mode)) {
+      resolve_authorization_response_signing_alg(client)
+    } else {
+      NA_character_
+    },
+    authorization_encrypted_response_alg = jarm_encryption_config[[
+      "alg",
+      exact = TRUE
+    ]] %||%
+      NA_character_,
+    authorization_encrypted_response_enc = jarm_encryption_config[[
+      "enc",
+      exact = TRUE
+    ]] %||%
+      NA_character_,
+    authorization_response_decryption_private_key_kid = if (
+      !is.null(jarm_encryption_config)
+    ) {
+      client@authorization_response_decryption_private_key_kid %||%
+        NA_character_
+    } else {
+      NA_character_
+    },
+    authorization_response_decryption_key_thumbprint = if (
+      !is.null(jarm_encryption_config)
+    ) {
+      state_policy_jarm_decryption_key_thumbprint(client)
     } else {
       NA_character_
     },

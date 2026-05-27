@@ -1016,11 +1016,22 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'
 #' Completes the callback step of the login flow. It validates the callback
 #' state, exchanges the returned code for tokens, and verifies the result.
+#' This low-level helper accepts only the classic authorization-code callback
+#' shape for non-JARM clients: a `code`, the sealed `state` payload returned as
+#' `payload`, and an optional RFC 9207 `iss` callback parameter. It does not
+#' accept a raw JARM `response` JWT, and it also does not provide a public way
+#' to resume a JARM callback after separate validation. For clients configured
+#' with `response_mode = "jwt"`, `"query.jwt"`, or `"form_post.jwt"`, use
+#' [oauth_module_server()] (and [oauth_form_post_ui()] for `form_post.jwt`) so
+#' shinyOAuth validates the callback JWT and resumes through its internal
+#' prevalidated callback path.
 #'
 #' @param oauth_client An [OAuthClient] object.
-#' @param code Authorization code received from the provider.
-#' @param payload Encrypted state payload returned by the provider. This should
-#'   be the same value that was originally sent in [prepare_call()].
+#' @param code Authorization code received from the provider on a classic
+#'   direct callback.
+#' @param payload Encrypted state payload returned by the provider on a classic
+#'   direct callback. This should be the same value that was originally sent in
+#'   [prepare_call()].
 #' @param browser_token Browser token present in the user's session. This is
 #'   usually managed by [oauth_module_server()].
 #' @param shiny_session Optional pre-captured Shiny session context (from
@@ -1046,6 +1057,34 @@ handle_callback <- function(
   shiny_session = NULL,
   iss = NULL
 ) {
+  jarm_transport <- resolve_jarm_callback_transport(oauth_client)
+  if (!is.null(jarm_transport)) {
+    err_config(c(
+      paste(
+        "handle_callback() does not accept direct code/state callbacks for",
+        "JARM clients."
+      ),
+      "i" = paste0(
+        "Configured response_mode ",
+        sQuote(jarm_transport[["mode"]]),
+        " requires the callback JWT in the response parameter to be",
+        " validated before code/state are processed."
+      ),
+      "i" = if (identical(jarm_transport[["transport"]], "form_post")) {
+        paste(
+          "Use oauth_form_post_ui() with oauth_module_server() so the",
+          "validated form_post handle resumes through the internal",
+          "prevalidated callback path."
+        )
+      } else {
+        paste(
+          "Use oauth_module_server() so the JARM response is validated",
+          "before callback processing continues."
+        )
+      }
+    ))
+  }
+
   validate_untrusted_query_param(
     "code",
     code,
@@ -1228,7 +1267,12 @@ handle_callback_internal <- function(
   # Allow callers to provide a pre-decrypted/validated payload to support
   # async flows that prefetch state on the main thread.
   if (!is.null(decrypted_payload)) {
-    payload <- decrypted_payload
+    payload <- state_payload_revalidate(
+      oauth_client,
+      decrypted_payload,
+      shiny_session = shiny_session,
+      audit_success = FALSE
+    )
   } else {
     payload <- with_otel_span(
       "shinyOAuth.callback.validate",
