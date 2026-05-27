@@ -965,7 +965,7 @@ validate_jarm_response <- function(
     parse_jarm_payload(
       jwt_str,
       tolerate_duplicate_top_level_iss = isTRUE(
-        oauth_client@provider@tolerate_duplicate_top_level_jarm_iss
+        oauth_client@provider@jarm_tolerate_duplicate_top_level_iss
       )
     ),
     error = function(e) {

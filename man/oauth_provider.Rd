@@ -54,7 +54,7 @@ oauth_provider(
   jarm_signing_alg_values_supported = character(),
   jarm_encryption_alg_values_supported = character(),
   jarm_encryption_enc_values_supported = character(),
-  tolerate_duplicate_top_level_jarm_iss = FALSE,
+  jarm_tolerate_duplicate_top_level_iss = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
@@ -398,7 +398,7 @@ responses.}
 content-encryption algorithms that the provider advertises for encrypted
 JARM responses.}
 
-\item{tolerate_duplicate_top_level_jarm_iss}{Logical. Whether shinyOAuth
+\item{jarm_tolerate_duplicate_top_level_iss}{Logical. Whether shinyOAuth
 should tolerate repeated identical top-level \code{iss} members in signed JARM
 payloads for this provider. This is an interoperability escape hatch for
 providers that emit duplicate identical top-level \code{iss} claims. When

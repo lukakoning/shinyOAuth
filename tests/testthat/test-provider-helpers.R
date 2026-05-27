@@ -368,7 +368,7 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
   expect_identical(p@name, "keycloak-myrealm")
   expect_identical(p@issuer, issuer)
   expect_identical(p@token_auth_style, "body")
-  expect_true(p@tolerate_duplicate_top_level_jarm_iss)
+  expect_true(p@jarm_tolerate_duplicate_top_level_iss)
 })
 
 test_that("oauth_provider_keycloak lets callers override duplicate JARM iss tolerance", {
@@ -394,10 +394,10 @@ test_that("oauth_provider_keycloak lets callers override duplicate JARM iss tole
   p <- oauth_provider_keycloak(
     base_url = "http://localhost:8080",
     realm = "myrealm",
-    tolerate_duplicate_top_level_jarm_iss = FALSE
+    jarm_tolerate_duplicate_top_level_iss = FALSE
   )
 
-  expect_false(p@tolerate_duplicate_top_level_jarm_iss)
+  expect_false(p@jarm_tolerate_duplicate_top_level_iss)
 })
 
 test_that("oauth_provider_okta constructs correct issuer from domain + auth_server", {

@@ -322,7 +322,7 @@
 #' @param jarm_encryption_enc_values_supported Optional vector of JWE
 #'   content-encryption algorithms that the provider advertises for encrypted
 #'   JARM responses.
-#' @param tolerate_duplicate_top_level_jarm_iss Logical. Whether shinyOAuth
+#' @param jarm_tolerate_duplicate_top_level_iss Logical. Whether shinyOAuth
 #'   should tolerate repeated identical top-level `iss` members in signed JARM
 #'   payloads for this provider. This is an interoperability escape hatch for
 #'   providers that emit duplicate identical top-level `iss` claims. When
@@ -511,7 +511,7 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
-    tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+    jarm_tolerate_duplicate_top_level_iss = S7::new_property(
       S7::class_logical,
       default = FALSE
     ),
@@ -644,7 +644,7 @@ oauth_provider <- function(
   jarm_signing_alg_values_supported = character(),
   jarm_encryption_alg_values_supported = character(),
   jarm_encryption_enc_values_supported = character(),
-  tolerate_duplicate_top_level_jarm_iss = FALSE,
+  jarm_tolerate_duplicate_top_level_iss = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
@@ -960,8 +960,8 @@ oauth_provider <- function(
     jarm_signing_alg_values_supported = jarm_signing_alg_values_supported,
     jarm_encryption_alg_values_supported = jarm_encryption_alg_values_supported,
     jarm_encryption_enc_values_supported = jarm_encryption_enc_values_supported,
-    tolerate_duplicate_top_level_jarm_iss = isTRUE(
-      tolerate_duplicate_top_level_jarm_iss
+    jarm_tolerate_duplicate_top_level_iss = isTRUE(
+      jarm_tolerate_duplicate_top_level_iss
     ),
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
@@ -1657,13 +1657,13 @@ oauth_provider_validate <- function(self) {
   }
 
   if (
-    !(is.logical(self@tolerate_duplicate_top_level_jarm_iss) &&
-      length(self@tolerate_duplicate_top_level_jarm_iss) == 1L &&
-      !is.na(self@tolerate_duplicate_top_level_jarm_iss))
+    !(is.logical(self@jarm_tolerate_duplicate_top_level_iss) &&
+      length(self@jarm_tolerate_duplicate_top_level_iss) == 1L &&
+      !is.na(self@jarm_tolerate_duplicate_top_level_iss))
   ) {
     return(
       paste(
-        "OAuthProvider: tolerate_duplicate_top_level_jarm_iss",
+        "OAuthProvider: jarm_tolerate_duplicate_top_level_iss",
         "must be a single non-NA logical"
       )
     )
@@ -1869,8 +1869,8 @@ provider_fingerprint <- function(provider) {
     id_token_required = isTRUE(provider@id_token_required),
     id_token_validation = isTRUE(provider@id_token_validation),
     id_token_at_hash_required = isTRUE(provider@id_token_at_hash_required),
-    tolerate_duplicate_top_level_jarm_iss = isTRUE(
-      provider@tolerate_duplicate_top_level_jarm_iss
+    jarm_tolerate_duplicate_top_level_iss = isTRUE(
+      provider@jarm_tolerate_duplicate_top_level_iss
     ),
     token_auth_style = provider@token_auth_style,
     jwks_uri = provider@jwks_uri,

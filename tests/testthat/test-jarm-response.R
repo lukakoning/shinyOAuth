@@ -6,7 +6,7 @@ make_jarm_test_client <- function(
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
-  provider_tolerate_duplicate_top_level_jarm_iss = FALSE,
+  provider_jarm_tolerate_duplicate_top_level_iss = FALSE,
   client_secret = "",
   issuer = "https://issuer.example.com"
 ) {
@@ -22,8 +22,8 @@ make_jarm_test_client <- function(
     jarm_encrypted_response_alg %||% character(0)
   prov@jarm_encryption_enc_values_supported <-
     jarm_encrypted_response_enc %||% character(0)
-  prov@tolerate_duplicate_top_level_jarm_iss <-
-    isTRUE(provider_tolerate_duplicate_top_level_jarm_iss)
+  prov@jarm_tolerate_duplicate_top_level_iss <-
+    isTRUE(provider_jarm_tolerate_duplicate_top_level_iss)
 
   oauth_client(
     provider = prov,
@@ -1277,7 +1277,7 @@ test_that("validate_jarm_response tolerates duplicate identical iss claims when 
     response_mode = "query.jwt",
     jarm_signed_response_alg = "HS256",
     client_secret = secret,
-    provider_tolerate_duplicate_top_level_jarm_iss = TRUE
+    provider_jarm_tolerate_duplicate_top_level_iss = TRUE
   )
   client@provider@jarm_signing_alg_values_supported <- "HS256"
   now <- floor(as.numeric(Sys.time()))

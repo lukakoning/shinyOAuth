@@ -54,7 +54,7 @@ test_that("provider_fingerprint avoids delimiter collisions", {
         S7::class_logical,
         default = FALSE
       ),
-      tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+      jarm_tolerate_duplicate_top_level_iss = S7::new_property(
         S7::class_logical,
         default = FALSE
       ),
@@ -191,7 +191,7 @@ test_that("provider_fingerprint changes when callback security policy changes", 
         S7::class_logical,
         default = FALSE
       ),
-      tolerate_duplicate_top_level_jarm_iss = S7::new_property(
+      jarm_tolerate_duplicate_top_level_iss = S7::new_property(
         S7::class_logical,
         default = FALSE
       ),
@@ -264,7 +264,7 @@ test_that("provider_fingerprint changes when callback security policy changes", 
     auth_url = strict@auth_url,
     token_url = strict@token_url,
     userinfo_url = strict@userinfo_url,
-    tolerate_duplicate_top_level_jarm_iss = TRUE
+    jarm_tolerate_duplicate_top_level_iss = TRUE
   )
 
   expect_false(identical(

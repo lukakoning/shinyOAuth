@@ -265,7 +265,7 @@ testthat::test_that("Keycloak signed query.jwt live flow exercises duplicate iss
 
   tolerant_provider <- make_provider()
   strict_provider <- make_provider(
-    tolerate_duplicate_top_level_jarm_iss = FALSE
+    jarm_tolerate_duplicate_top_level_iss = FALSE
   )
 
   client <- make_signed_jarm_public_client(
