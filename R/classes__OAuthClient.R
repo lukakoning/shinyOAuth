@@ -681,7 +681,7 @@ OAuthClient <- S7::new_class(
 oauth_client <- function(
   provider,
   client_id,
-  client_secret = NA_character_,
+  client_secret = character(0),
   redirect_uri,
   scopes = character(0),
   response_mode = NULL,

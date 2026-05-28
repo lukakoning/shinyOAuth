@@ -62,6 +62,15 @@ it more explicit that these values must be set for the client to work.
 public-client setups that do not send a secret, instead of failing while
 formatting the redacted console preview.
 
+* `oauth_client()` now treats an omitted `client_secret` as an absent value
+(`character(0)`), so `private_key_jwt` and other secretless client-auth
+setups can omit the argument and still flow through the normal auth-style
+validation instead of failing at argument matching.
+
+* `oauth_provider_oidc_discover()` now preserves JARM discovery metadata from
+the canonical `jarm_*_values_supported` fields, while still accepting the
+older `authorization_*` aliases for compatibility.
+
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
   `/.well-known/openid-configuration` URL. Full discovery URLs are normalized 
