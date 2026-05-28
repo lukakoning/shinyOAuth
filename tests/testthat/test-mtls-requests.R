@@ -24,10 +24,10 @@ make_mtls_test_client <- function(
     client_secret = client_secret,
     redirect_uri = "http://localhost:8100/callback",
     scopes = character(0),
-    tls_client_cert_file = cert_file,
-    tls_client_key_file = key_file,
-    tls_client_key_password = "password",
-    tls_client_ca_file = ca_file,
+    mtls_client_cert_file = cert_file,
+    mtls_client_key_file = key_file,
+    mtls_client_key_password = "password",
+    mtls_client_ca_file = ca_file,
     mtls_certificate_bound_access_tokens = mtls_certificate_bound_access_tokens
   )
 }
@@ -120,7 +120,7 @@ test_that("public clients keep the standard token endpoint by default", {
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     )
@@ -176,7 +176,7 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     )
@@ -246,7 +246,7 @@ test_that("public clients reject missing cnf when they explicitly request certif
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     )
@@ -313,7 +313,7 @@ test_that("requested certificate-bound login can backfill cnf from introspection
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       userinfo_endpoint = "https://example.com/mtls/userinfo",
       introspection_endpoint = "https://example.com/mtls/introspect"
@@ -400,7 +400,7 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       par_endpoint = "https://example.com/mtls/par"
     )
@@ -472,7 +472,7 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "client_secret_jwt",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       par_endpoint = "https://example.com/mtls/par"
     )
@@ -540,7 +540,7 @@ test_that("explicit certificate-bound requests honor the standard PAR alias name
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       pushed_authorization_request_endpoint = "https://example.com/mtls/par"
     )
@@ -735,7 +735,7 @@ test_that("refresh rejects mismatched certificate-bound token responses", {
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     ),
@@ -793,7 +793,7 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     )
@@ -855,7 +855,7 @@ test_that("requested certificate-bound refresh rejects token responses missing c
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token"
     )
@@ -914,7 +914,7 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token",
       introspection_endpoint = "https://example.com/mtls/introspect"
@@ -988,7 +988,7 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       token_endpoint = "https://example.com/mtls/token",
       introspection_endpoint = "https://example.com/mtls/introspect"
@@ -1381,7 +1381,7 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       userinfo_endpoint = "https://example.com/mtls/userinfo"
     )
@@ -1436,7 +1436,7 @@ test_that("userinfo ignores mTLS alias when only provider metadata is present", 
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       userinfo_endpoint = "https://example.com/mtls/userinfo"
     )
@@ -1657,7 +1657,7 @@ test_that("resource_req rejects certificate-bound tokens when thumbprint mismatc
     use_pkce = TRUE,
     id_token_required = FALSE,
     id_token_validation = FALSE,
-    tls_client_certificate_bound_access_tokens = TRUE
+    mtls_client_certificate_bound_access_tokens = TRUE
   )
   client <- make_mtls_test_client(
     provider,
@@ -1699,7 +1699,7 @@ test_that("resource_req enforces certificate binding from JWT cnf", {
     use_pkce = TRUE,
     id_token_required = FALSE,
     id_token_validation = FALSE,
-    tls_client_certificate_bound_access_tokens = TRUE
+    mtls_client_certificate_bound_access_tokens = TRUE
   )
   client <- make_mtls_test_client(
     provider,
@@ -1745,7 +1745,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       introspection_endpoint = "https://example.com/mtls/introspect",
       revocation_endpoint = "https://example.com/mtls/revoke"
@@ -1843,7 +1843,7 @@ test_that("certificate binding uses the key-matched certificate from PEM bundles
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "body",
-    tls_client_certificate_bound_access_tokens = TRUE
+    mtls_client_certificate_bound_access_tokens = TRUE
   )
   client <- oauth_client(
     provider = provider,
@@ -1851,9 +1851,9 @@ test_that("certificate binding uses the key-matched certificate from PEM bundles
     client_secret = "",
     redirect_uri = "http://localhost:8100/callback",
     scopes = character(0),
-    tls_client_cert_file = bundle_file,
-    tls_client_key_file = key_file,
-    tls_client_ca_file = ca_file
+    mtls_client_cert_file = bundle_file,
+    mtls_client_key_file = key_file,
+    mtls_client_ca_file = ca_file
   )
   token <- OAuthToken(
     access_token = "at",

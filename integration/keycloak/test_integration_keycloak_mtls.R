@@ -200,9 +200,9 @@ make_certificate_bound_public_client <- function(
     client_secret = "",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file(),
     mtls_certificate_bound_access_tokens = TRUE
   )
 }
@@ -223,9 +223,9 @@ make_certificate_bound_client_secret_jwt_client <- function(
     scopes = c("openid"),
     client_assertion_alg = "HS256",
     client_assertion_audience = client_assertion_audience,
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file(),
     mtls_certificate_bound_access_tokens = TRUE
   )
 }
@@ -303,7 +303,9 @@ testthat::test_that("Keycloak HTTPS discovery wires mTLS metadata into make_mtls
     use_par = TRUE
   )
 
-  testthat::expect_true(isTRUE(prov@tls_client_certificate_bound_access_tokens))
+  testthat::expect_true(isTRUE(
+    prov@mtls_client_certificate_bound_access_tokens
+  ))
   testthat::expect_identical(prov@issuer, disc$issuer)
   testthat::expect_identical(
     prov@mtls_endpoint_aliases$token_endpoint,
@@ -397,7 +399,9 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
   )
 
   testthat::expect_identical(prov@token_auth_style, "body")
-  testthat::expect_true(isTRUE(prov@tls_client_certificate_bound_access_tokens))
+  testthat::expect_true(isTRUE(
+    prov@mtls_client_certificate_bound_access_tokens
+  ))
   testthat::expect_identical(
     shinyOAuth:::resolve_provider_endpoint_url(
       client@provider,

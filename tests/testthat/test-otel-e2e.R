@@ -1392,7 +1392,7 @@ otel_e2e("userinfo HTTP span records mTLS endpoint alias selection", {
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = "tls_client_auth",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_endpoint_aliases = list(
       userinfo_endpoint = "https://example.com/mtls/userinfo"
     )
@@ -1408,10 +1408,10 @@ otel_e2e("userinfo HTTP span records mTLS endpoint alias selection", {
       "0123456789abcdefghijklmnopqrstuvwxyz",
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     ),
-    tls_client_cert_file = files$cert_file,
-    tls_client_key_file = files$key_file,
-    tls_client_key_password = "password",
-    tls_client_ca_file = files$ca_file
+    mtls_client_cert_file = files$cert_file,
+    mtls_client_key_file = files$key_file,
+    mtls_client_key_password = "password",
+    mtls_client_ca_file = files$ca_file
   )
 
   r <- otelsdk::with_otel_record({

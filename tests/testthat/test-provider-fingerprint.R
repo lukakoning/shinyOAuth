@@ -66,7 +66,7 @@ test_that("provider_fingerprint avoids delimiter collisions", {
         S7::class_character,
         default = NA_character_
       ),
-      tls_client_certificate_bound_access_tokens = S7::new_property(
+      mtls_client_certificate_bound_access_tokens = S7::new_property(
         S7::class_logical,
         default = FALSE
       ),
@@ -203,7 +203,7 @@ test_that("provider_fingerprint changes when callback security policy changes", 
         S7::class_character,
         default = NA_character_
       ),
-      tls_client_certificate_bound_access_tokens = S7::new_property(
+      mtls_client_certificate_bound_access_tokens = S7::new_property(
         S7::class_logical,
         default = FALSE
       ),

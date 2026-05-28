@@ -1,6 +1,6 @@
 make_mtls_registration_client <- function(
   token_auth_style,
-  tls_client_certificate_bound_access_tokens = FALSE,
+  mtls_client_certificate_bound_access_tokens = FALSE,
   mtls_certificate_bound_access_tokens = FALSE
 ) {
   provider <- oauth_provider(
@@ -12,7 +12,7 @@ make_mtls_registration_client <- function(
     id_token_required = FALSE,
     id_token_validation = FALSE,
     token_auth_style = token_auth_style,
-    tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens
+    mtls_client_certificate_bound_access_tokens = mtls_client_certificate_bound_access_tokens
   )
 
   oauth_client(
@@ -21,9 +21,9 @@ make_mtls_registration_client <- function(
     client_secret = "",
     redirect_uri = "http://localhost:8100/callback",
     scopes = character(0),
-    tls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
-    tls_client_key_file = mtls_pem_fixture("client-key.pem"),
-    tls_client_ca_file = mtls_pem_fixture("ca-cert.pem"),
+    mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+    mtls_client_key_file = mtls_pem_fixture("client-key.pem"),
+    mtls_client_ca_file = mtls_pem_fixture("ca-cert.pem"),
     mtls_certificate_bound_access_tokens = mtls_certificate_bound_access_tokens
   )
 }
@@ -79,7 +79,7 @@ test_that("oauth_client_mtls_registration supports explicit SAN identifiers", {
 test_that("oauth_client_mtls_registration emits certificate-bound token intent", {
   client <- make_mtls_registration_client(
     token_auth_style = "tls_client_auth",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_certificate_bound_access_tokens = TRUE
   )
 
@@ -96,7 +96,7 @@ test_that("oauth_client_mtls_registration emits certificate-bound token intent",
 test_that("oauth_client_mtls_registration supports public certificate-bound clients", {
   client <- make_mtls_registration_client(
     token_auth_style = "public",
-    tls_client_certificate_bound_access_tokens = TRUE,
+    mtls_client_certificate_bound_access_tokens = TRUE,
     mtls_certificate_bound_access_tokens = TRUE
   )
 

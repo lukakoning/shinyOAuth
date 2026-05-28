@@ -97,7 +97,7 @@ testthat::test_that("discovery with 'none' requires PKCE and uses public auth wh
   )
 })
 
-testthat::test_that("public discovery auth does not send env client_secret", {
+testthat::test_that("public discovery auth does not read env client_secret", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   withr::local_envvar(c(OAUTH_CLIENT_SECRET = "env-secret-value"))
@@ -127,10 +127,11 @@ testthat::test_that("public discovery auth does not send env client_secret", {
   cl <- oauth_client(
     provider = prov,
     client_id = "abc",
+    client_secret = "",
     redirect_uri = "http://localhost:8100",
     scopes = character(0)
   )
-  testthat::expect_identical(cl@client_secret, "env-secret-value")
+  testthat::expect_identical(cl@client_secret, "")
 
   prepared <- shinyOAuth:::apply_direct_client_auth(
     req = httr2::request("https://127.0.0.1/token"),
@@ -774,7 +775,9 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
     token_auth_style = "tls_client_auth"
   )
 
-  testthat::expect_true(isTRUE(prov@tls_client_certificate_bound_access_tokens))
+  testthat::expect_true(isTRUE(
+    prov@mtls_client_certificate_bound_access_tokens
+  ))
   testthat::expect_identical(
     prov@mtls_endpoint_aliases$token_endpoint,
     "https://127.0.0.1/mtls/token"

@@ -1453,9 +1453,9 @@ make_mtls_confidential_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file()
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file()
   )
 }
 
@@ -1474,9 +1474,9 @@ make_mtls_service_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file()
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file()
   )
 }
 
@@ -1776,9 +1776,9 @@ make_mtls_private_key_jar_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file(),
     client_assertion_private_key = key,
     client_assertion_private_key_kid = NA_character_,
     request_object_mode = "request",
@@ -1805,9 +1805,9 @@ make_mtls_private_key_jar_jwe_client <- function(
     client_secret = "",
     redirect_uri = redirect_uri,
     scopes = scopes,
-    tls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
-    tls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
-    tls_client_ca_file = get_keycloak_tls_ca_file(),
+    mtls_client_cert_file = get_keycloak_tls_client_cert_file(cert_variant),
+    mtls_client_key_file = get_keycloak_tls_client_key_file(cert_variant),
+    mtls_client_ca_file = get_keycloak_tls_ca_file(),
     client_assertion_private_key = key,
     client_assertion_private_key_kid = NA_character_,
     request_object_mode = "request",
