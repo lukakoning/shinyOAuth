@@ -42,7 +42,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li>
+<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>.</p></li>
+<li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now warns once when a client resolves to <code>response_mode = "form_post"</code> but no prior <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> call was detected for the same module/client setup, helping catch missing form_post UI wrappers earlier.</p></li>
+<li>
 <p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> have had their arguments reorganized and renamed for better clarity. Both helper constructors (<code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>) still accept previous argument names for backward compatibility, but the underlying S7 classes only use the new names. Renamed arguments include:</p>
 <ul><li>
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>:
@@ -138,18 +140,17 @@
 </li>
 </ul></li>
 </ul></li>
-<li><p>List-like OAuth/request/test payload access now consistently uses exact <code>[[...]]</code> indexing instead of <code>$</code>, reducing accidental partial matches across runtime code, tests, and integration fixtures.</p></li>
-<li><p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> and helpers built on it now accept discovery metadata that differs from the configured issuer only by one trailing slash in the published <code>issuer</code>, while still storing the provider’s advertised issuer verbatim for downstream <code>iss</code> checks.</p></li>
-<li><p><code><a href="../reference/oauth_provider_okta.html">oauth_provider_okta()</a></code> can now target Okta’s org authorization server with <code>auth_server = NULL</code>, instead of always forcing <code>/oauth2/{auth_server}</code> and the custom-server path.</p></li>
-<li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now warns once when a client resolves to <code>response_mode = "form_post"</code> but no prior <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> call was detected for the same module/client setup, helping catch missing form_post UI wrappers earlier.</p></li>
-<li><p>Added JWT Secured Authorization Response Mode (JARM) support for <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>.</p></li>
+<li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> no longer defaults <code>client_id</code> / <code>client_secret</code> from <code>Sys.getenv('OAUTH_CLIENT_ID')</code>/<code>Sys.getenv('OAUTH_CLIENT_SECRET')</code>, to make it more explicit that these values must be set for the client to work.</p></li>
+<li><p><code>OAuthClient</code> printing now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</p></li>
 <li>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
 <ul><li>Accepts either an issuer base URL or the standard <code>/.well-known/openid-configuration</code> URL. Full discovery URLs are normalized back to the issuer base before request construction, so strict issuer matching still applies without requiring <code>issuer_match = "host"</code>.</li>
 <li>Has transport failures surface the attempted <code>/.well-known/openid-configuration</code> URL plus the underlying network error, making discovery misconfiguration and connectivity problems easier to diagnose.</li>
+<li>Accept discovery metadata that differs from the configured issuer only by one trailing slash in the published <code>issuer</code>, while still storing the provider’s advertised issuer verbatim for downstream <code>iss</code> checks.</li>
 </ul></li>
 <li><p><code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> has been added which configures Apple’s OIDC endpoints and ID-token defaults, and added <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> which generates the ES256 JWT that Apple expects in the <code>client_secret</code> field of an <code>OAuthClient</code> configured with <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code>.</p></li>
-<li><p><code>OAuthClient</code> printing now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</p></li>
+<li><p><code><a href="../reference/oauth_provider_okta.html">oauth_provider_okta()</a></code> can now target Okta’s org authorization server with <code>auth_server = NULL</code>, instead of always forcing <code>/oauth2/{auth_server}</code> and the custom-server path.</p></li>
+<li><p>Internal list-like access now consistently uses exact <code>[[...]]</code> indexing instead of <code>$</code>, reducing potential for accidental partial matches across runtime code, tests, and integration fixtures.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2><p class="text-muted">CRAN release: 2026-05-23</p>

@@ -2,6 +2,16 @@
 
 ## shinyOAuth (development version)
 
+- Added JWT Secured Authorization Response Mode (JARM) support with
+  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+
+- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  now warns once when a client resolves to `response_mode = "form_post"`
+  but no prior
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  call was detected for the same module/client setup, helping catch
+  missing form_post UI wrappers earlier.
+
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
   and
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)/`OAuthProvider`
@@ -63,30 +73,15 @@
     - `tls_client_certificate_bound_access_tokens` -\>
       `mtls_client_certificate_bound_access_tokens`
 
-- List-like OAuth/request/test payload access now consistently uses
-  exact `[[...]]` indexing instead of `$`, reducing accidental partial
-  matches across runtime code, tests, and integration fixtures.
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  no longer defaults `client_id` / `client_secret` from
+  `Sys.getenv('OAUTH_CLIENT_ID')`/`Sys.getenv('OAUTH_CLIENT_SECRET')`,
+  to make it more explicit that these values must be set for the client
+  to work.
 
-- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  and helpers built on it now accept discovery metadata that differs
-  from the configured issuer only by one trailing slash in the published
-  `issuer`, while still storing the provider’s advertised issuer
-  verbatim for downstream `iss` checks.
-
-- [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
-  can now target Okta’s org authorization server with
-  `auth_server = NULL`, instead of always forcing
-  `/oauth2/{auth_server}` and the custom-server path.
-
-- [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  now warns once when a client resolves to `response_mode = "form_post"`
-  but no prior
-  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  call was detected for the same module/client setup, helping catch
-  missing form_post UI wrappers earlier.
-
-- Added JWT Secured Authorization Response Mode (JARM) support for
-  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+- `OAuthClient` printing now handles `client_secret = ""` cleanly for
+  public-client setups that do not send a secret, instead of failing
+  while formatting the redacted console preview.
 
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   now:
@@ -100,6 +95,10 @@
     `/.well-known/openid-configuration` URL plus the underlying network
     error, making discovery misconfiguration and connectivity problems
     easier to diagnose.
+  - Accept discovery metadata that differs from the configured issuer
+    only by one trailing slash in the published `issuer`, while still
+    storing the provider’s advertised issuer verbatim for downstream
+    `iss` checks.
 
 - [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
   has been added which configures Apple’s OIDC endpoints and ID-token
@@ -109,9 +108,14 @@
   `client_secret` field of an `OAuthClient` configured with
   [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md).
 
-- `OAuthClient` printing now handles `client_secret = ""` cleanly for
-  public-client setups that do not send a secret, instead of failing
-  while formatting the redacted console preview.
+- [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
+  can now target Okta’s org authorization server with
+  `auth_server = NULL`, instead of always forcing
+  `/oauth2/{auth_server}` and the custom-server path.
+
+- Internal list-like access now consistently uses exact `[[...]]`
+  indexing instead of `$`, reducing potential for accidental partial
+  matches across runtime code, tests, and integration fixtures.
 
 ## shinyOAuth 0.5.0
 
