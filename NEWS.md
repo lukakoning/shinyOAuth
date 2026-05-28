@@ -4,9 +4,9 @@
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 
 * `oauth_module_server()` now warns once when a client resolves to
-`response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
-detected for the same module/client setup, helping catch missing form_post UI
-wrappers earlier.
+`response_mode = "form_post"` or `"form_post.jwt"` but no prior
+`oauth_form_post_ui()` call was detected for the same module/client setup,
+helping catch missing form_post UI wrappers earlier.
 
 * `oauth_client()`/`OAuthClient` and `oauth_provider()`/`OAuthProvider` 
 have had their arguments reorganized and renamed for better clarity.
@@ -83,6 +83,11 @@ generates the ES256 JWT that Apple expects in the `client_secret` field of an
 * `oauth_provider_okta()` can now target Okta's org authorization server with
 `auth_server = NULL`, instead of always forcing `/oauth2/{auth_server}` and
 the custom-server path.
+
+* `oauth_provider_keycloak()` now defaults
+`jarm_tolerate_duplicate_top_level_iss = TRUE` for interoperability with
+current Keycloak JARM responses, while still letting callers opt out and fail
+closed on duplicate top-level `iss` members.
 
 * Internal list-like access now consistently uses exact
 `[[...]]` indexing instead of `$`, reducing potential for accidental partial 
