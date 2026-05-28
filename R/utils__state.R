@@ -409,10 +409,10 @@ state_policy_mtls_cert_thumbprint <- function(client) {
   }
 
   tls_client_cert_thumbprint_s256(
-    client@tls_client_cert_file,
-    key_file = client@tls_client_key_file,
-    key_password = if (is_valid_string(client@tls_client_key_password)) {
-      client@tls_client_key_password
+    client@mtls_client_cert_file,
+    key_file = client@mtls_client_key_file,
+    key_password = if (is_valid_string(client@mtls_client_key_password)) {
+      client@mtls_client_key_password
     } else {
       NULL
     }

@@ -32,7 +32,7 @@
 #'   - Ignored for token-endpoint authentication when the provider uses
 #'     `token_auth_style = "public"` (or the alias `"none"`). Public auth
 #'     sends `client_id` only and never sends `client_secret`, even if one is
-#'     configured or picked up from `OAUTH_CLIENT_SECRET`.
+#'     configured explicitly.
 #'
 #'   Note: If your provider issues HS256 ID tokens and `id_token_validation` is
 #'   enabled, a non-empty `client_secret` is required for signature validation.
@@ -290,18 +290,18 @@
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
-#' @param tls_client_cert_file Optional path to the PEM-encoded client
+#' @param mtls_client_cert_file Optional path to the PEM-encoded client
 #'   certificate (or certificate chain) used for RFC 8705 mutual TLS client
 #'   authentication and certificate-bound protected-resource requests. Required
 #'   when `provider@token_auth_style` is `"tls_client_auth"` or
 #'   `"self_signed_tls_client_auth"`.
-#' @param tls_client_key_file Optional path to the PEM-encoded private key used
-#'   with `tls_client_cert_file`. Must be supplied together with
-#'   `tls_client_cert_file`, and is required for RFC 8705 mTLS client
+#' @param mtls_client_key_file Optional path to the PEM-encoded private key used
+#'   with `mtls_client_cert_file`. Must be supplied together with
+#'   `mtls_client_cert_file`, and is required for RFC 8705 mTLS client
 #'   authentication.
-#' @param tls_client_key_password Optional password used to decrypt an encrypted
-#'   PEM private key referenced by `tls_client_key_file`.
-#' @param tls_client_ca_file Optional path to a PEM CA bundle used to validate
+#' @param mtls_client_key_password Optional password used to decrypt an encrypted
+#'   PEM private key referenced by `mtls_client_key_file`.
+#' @param mtls_client_ca_file Optional path to a PEM CA bundle used to validate
 #'   the remote HTTPS server certificate when making mTLS requests. This is
 #'   mainly useful for local or test environments that use self-signed server
 #'   certificates.
@@ -314,9 +314,9 @@
 #'   `token_auth_style` itself is not an mTLS auth style, and that should fail
 #'   closed if the returned access token omits `cnf.x5t#S256`.
 #'
-#'   Requires `tls_client_cert_file` and `tls_client_key_file`, and the
+#'   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
 #'   provider must be configured with
-#'   `tls_client_certificate_bound_access_tokens = TRUE`.
+#'   `mtls_client_certificate_bound_access_tokens = TRUE`.
 #'
 #' @param dpop_private_key Optional private key used to generate DPoP proofs
 #'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
@@ -553,19 +553,19 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
-    tls_client_cert_file = S7::new_property(
+    mtls_client_cert_file = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
-    tls_client_key_file = S7::new_property(
+    mtls_client_key_file = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
-    tls_client_key_password = S7::new_property(
+    mtls_client_key_password = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
-    tls_client_ca_file = S7::new_property(
+    mtls_client_ca_file = S7::new_property(
       S7::class_character,
       default = NA_character_
     ),
@@ -670,6 +670,8 @@ OAuthClient <- S7::new_class(
 #' [oauth_module_server()] starts login or callback handling.
 #'
 #' @inheritParams OAuthClient
+#' @param ... Deprecated renamed arguments accepted temporarily for backward
+#'   compatibility.
 #'
 #' @return [OAuthClient] object
 #'
@@ -678,8 +680,8 @@ OAuthClient <- S7::new_class(
 #' @export
 oauth_client <- function(
   provider,
-  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
-  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  client_id,
+  client_secret,
   redirect_uri,
   scopes = character(0),
   response_mode = NULL,
@@ -700,10 +702,10 @@ oauth_client <- function(
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
-  tls_client_cert_file = NULL,
-  tls_client_key_file = NULL,
-  tls_client_key_password = NULL,
-  tls_client_ca_file = NULL,
+  mtls_client_cert_file = NULL,
+  mtls_client_key_file = NULL,
+  mtls_client_key_password = NULL,
+  mtls_client_ca_file = NULL,
   mtls_certificate_bound_access_tokens = FALSE,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
@@ -722,8 +724,71 @@ oauth_client <- function(
   jarm_encrypted_response_enc = NULL,
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
-  jarm_max_lifetime = 600
+  jarm_max_lifetime = 600,
+  ...
 ) {
+  compat_args <- resolve_deprecated_constructor_args(
+    dots = list(...),
+    arg_map = c(
+      client_private_key = "client_assertion_private_key",
+      client_private_key_kid = "client_assertion_private_key_kid",
+      userinfo_jwt_required_temporal_claims = "userinfo_jwt_required_time_claims",
+      mtls_request_certificate_bound_access_tokens = "mtls_certificate_bound_access_tokens",
+      tls_client_cert_file = "mtls_client_cert_file",
+      tls_client_key_file = "mtls_client_key_file",
+      tls_client_key_password = "mtls_client_key_password",
+      tls_client_ca_file = "mtls_client_ca_file",
+      authorization_request_mode = "request_object_mode",
+      authorization_request_signing_alg = "request_object_signing_alg",
+      authorization_request_audience = "request_object_audience",
+      authorization_request_encryption_alg = "request_object_encryption_alg",
+      authorization_request_encryption_enc = "request_object_encryption_enc",
+      authorization_request_encryption_kid = "request_object_encryption_kid",
+      authorization_request_ttl = "request_object_ttl",
+      authorization_request_nbf_skew = "request_object_nbf_skew",
+      authorization_signed_response_alg = "jarm_signed_response_alg",
+      authorization_encrypted_response_alg = "jarm_encrypted_response_alg",
+      authorization_encrypted_response_enc = "jarm_encrypted_response_enc",
+      authorization_response_decryption_private_key = "jarm_decryption_private_key",
+      authorization_response_decryption_private_key_kid = "jarm_decryption_private_key_kid"
+    ),
+    fn_name = "oauth_client",
+    provided_new = c(
+      client_assertion_private_key = !missing(client_assertion_private_key),
+      client_assertion_private_key_kid = !missing(
+        client_assertion_private_key_kid
+      ),
+      userinfo_jwt_required_time_claims = !missing(
+        userinfo_jwt_required_time_claims
+      ),
+      mtls_certificate_bound_access_tokens = !missing(
+        mtls_certificate_bound_access_tokens
+      ),
+      mtls_client_cert_file = !missing(mtls_client_cert_file),
+      mtls_client_key_file = !missing(mtls_client_key_file),
+      mtls_client_key_password = !missing(mtls_client_key_password),
+      mtls_client_ca_file = !missing(mtls_client_ca_file),
+      request_object_mode = !missing(request_object_mode),
+      request_object_signing_alg = !missing(request_object_signing_alg),
+      request_object_audience = !missing(request_object_audience),
+      request_object_encryption_alg = !missing(request_object_encryption_alg),
+      request_object_encryption_enc = !missing(request_object_encryption_enc),
+      request_object_encryption_kid = !missing(request_object_encryption_kid),
+      request_object_ttl = !missing(request_object_ttl),
+      request_object_nbf_skew = !missing(request_object_nbf_skew),
+      jarm_signed_response_alg = !missing(jarm_signed_response_alg),
+      jarm_encrypted_response_alg = !missing(jarm_encrypted_response_alg),
+      jarm_encrypted_response_enc = !missing(jarm_encrypted_response_enc),
+      jarm_decryption_private_key = !missing(jarm_decryption_private_key),
+      jarm_decryption_private_key_kid = !missing(
+        jarm_decryption_private_key_kid
+      )
+    )
+  )
+  if (length(compat_args) > 0) {
+    list2env(compat_args, envir = environment())
+  }
+
   dpop_require_access_token_missing <-
     missing(dpop_require_access_token) || is.null(dpop_require_access_token)
   claims_validation_missing <- missing(claims_validation)
@@ -873,10 +938,10 @@ oauth_client <- function(
       NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
-    tls_client_cert_file = tls_client_cert_file %||% NA_character_,
-    tls_client_key_file = tls_client_key_file %||% NA_character_,
-    tls_client_key_password = tls_client_key_password %||% NA_character_,
-    tls_client_ca_file = tls_client_ca_file %||% NA_character_,
+    mtls_client_cert_file = mtls_client_cert_file %||% NA_character_,
+    mtls_client_key_file = mtls_client_key_file %||% NA_character_,
+    mtls_client_key_password = mtls_client_key_password %||% NA_character_,
+    mtls_client_ca_file = mtls_client_ca_file %||% NA_character_,
     mtls_certificate_bound_access_tokens = isTRUE(
       mtls_certificate_bound_access_tokens
     ),
@@ -2161,13 +2226,13 @@ oauth_client_validate <- function(self) {
     ))
   }
 
-  tls_client_cert_file <- self@tls_client_cert_file %||% NA_character_
-  tls_client_key_file <- self@tls_client_key_file %||% NA_character_
-  tls_client_ca_file <- self@tls_client_ca_file %||% NA_character_
-  tls_client_key_password <- self@tls_client_key_password %||% NA_character_
+  mtls_client_cert_file <- self@mtls_client_cert_file %||% NA_character_
+  mtls_client_key_file <- self@mtls_client_key_file %||% NA_character_
+  mtls_client_ca_file <- self@mtls_client_ca_file %||% NA_character_
+  mtls_client_key_password <- self@mtls_client_key_password %||% NA_character_
 
-  has_tls_client_cert <- is_valid_string(tls_client_cert_file)
-  has_tls_client_key <- is_valid_string(tls_client_key_file)
+  has_mtls_client_cert <- is_valid_string(mtls_client_cert_file)
+  has_mtls_client_key <- is_valid_string(mtls_client_key_file)
   requires_tls_client_cert <- tok_style %in%
     c(
       "tls_client_auth",
@@ -2179,46 +2244,46 @@ oauth_client_validate <- function(self) {
 
   if (
     isTRUE(requests_certificate_bound_tokens) &&
-      !(has_tls_client_cert && has_tls_client_key)
+      !(has_mtls_client_cert && has_mtls_client_key)
   ) {
     return(paste(
       "OAuthClient: mtls_certificate_bound_access_tokens = TRUE",
-      "requires tls_client_cert_file and tls_client_key_file"
+      "requires mtls_client_cert_file and mtls_client_key_file"
     ))
   }
   if (
     isTRUE(requests_certificate_bound_tokens) &&
-      !isTRUE(self@provider@tls_client_certificate_bound_access_tokens)
+      !isTRUE(self@provider@mtls_client_certificate_bound_access_tokens)
   ) {
     return(paste(
       "OAuthClient: mtls_certificate_bound_access_tokens = TRUE",
-      "requires provider@tls_client_certificate_bound_access_tokens = TRUE"
+      "requires provider@mtls_client_certificate_bound_access_tokens = TRUE"
     ))
   }
 
   if (
     isTRUE(requires_tls_client_cert) &&
-      !(has_tls_client_cert && has_tls_client_key)
+      !(has_mtls_client_cert && has_mtls_client_key)
   ) {
     return(paste0(
-      "OAuthClient: tls_client_cert_file and tls_client_key_file are required when token_auth_style = '",
+      "OAuthClient: mtls_client_cert_file and mtls_client_key_file are required when token_auth_style = '",
       tok_style,
       "'"
     ))
   }
-  if (xor(has_tls_client_cert, has_tls_client_key)) {
+  if (xor(has_mtls_client_cert, has_mtls_client_key)) {
     return(
       paste(
-        "OAuthClient: tls_client_cert_file and tls_client_key_file",
+        "OAuthClient: mtls_client_cert_file and mtls_client_key_file",
         "must be supplied together"
       )
     )
   }
 
   for (field in list(
-    list(name = "tls_client_cert_file", value = tls_client_cert_file),
-    list(name = "tls_client_key_file", value = tls_client_key_file),
-    list(name = "tls_client_ca_file", value = tls_client_ca_file)
+    list(name = "mtls_client_cert_file", value = mtls_client_cert_file),
+    list(name = "mtls_client_key_file", value = mtls_client_key_file),
+    list(name = "mtls_client_ca_file", value = mtls_client_ca_file)
   )) {
     if (
       is_valid_string(field[["value"]]) &&
@@ -2235,16 +2300,16 @@ oauth_client_validate <- function(self) {
   }
 
   if (
-    !is.character(tls_client_key_password) ||
-      length(tls_client_key_password) != 1L
+    !is.character(mtls_client_key_password) ||
+      length(mtls_client_key_password) != 1L
   ) {
     return(
-      "OAuthClient: tls_client_key_password must be a scalar character string (or NULL/NA to omit)"
+      "OAuthClient: mtls_client_key_password must be a scalar character string (or NULL/NA to omit)"
     )
   }
-  if (!is.na(tls_client_key_password) && !nzchar(tls_client_key_password)) {
+  if (!is.na(mtls_client_key_password) && !nzchar(mtls_client_key_password)) {
     return(
-      "OAuthClient: tls_client_key_password must be non-empty when provided (use NULL or NA to omit)"
+      "OAuthClient: mtls_client_key_password must be non-empty when provided (use NULL or NA to omit)"
     )
   }
 

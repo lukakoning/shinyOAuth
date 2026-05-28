@@ -345,7 +345,7 @@
 #'   `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
 #'   must be absolute URLs. This is an advanced setting used when a provider
 #'   publishes separate mTLS-specific endpoints.
-#' @param tls_client_certificate_bound_access_tokens Logical. Whether the
+#' @param mtls_client_certificate_bound_access_tokens Logical. Whether the
 #'   authorization server advertises RFC 8705 capability to issue
 #'   certificate-bound access tokens. This describes server capability; the
 #'   client still has to opt into mTLS separately. When `TRUE`, token responses
@@ -527,7 +527,7 @@ OAuthProvider <- S7::new_class(
       S7::class_list,
       default = list()
     ),
-    tls_client_certificate_bound_access_tokens = S7::new_property(
+    mtls_client_certificate_bound_access_tokens = S7::new_property(
       S7::class_logical,
       default = FALSE
     ),
@@ -580,6 +580,8 @@ normalize_optional_provider_boolean <- function(value, field) {
 #' used by the built-in provider helpers.
 #'
 #' @inheritParams OAuthProvider
+#' @param ... Deprecated renamed arguments accepted temporarily for backward
+#'   compatibility.
 #'
 #' @return [OAuthProvider] object
 #'
@@ -648,8 +650,49 @@ oauth_provider <- function(
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE
+  mtls_client_certificate_bound_access_tokens = FALSE,
+  ...
 ) {
+  compat_args <- resolve_deprecated_constructor_args(
+    dots = list(...),
+    arg_map = c(
+      require_pushed_authorization_requests = "par_required",
+      require_signed_request_object = "signed_request_object_required",
+      require_request_uri_registration = "request_uri_registration_required",
+      authorization_signing_alg_values_supported = "jarm_signing_alg_values_supported",
+      authorization_encryption_alg_values_supported = "jarm_encryption_alg_values_supported",
+      authorization_encryption_enc_values_supported = "jarm_encryption_enc_values_supported",
+      tolerate_duplicate_top_level_jarm_iss = "jarm_tolerate_duplicate_top_level_iss",
+      tls_client_certificate_bound_access_tokens = "mtls_client_certificate_bound_access_tokens"
+    ),
+    fn_name = "oauth_provider",
+    provided_new = c(
+      par_required = !missing(par_required),
+      signed_request_object_required = !missing(signed_request_object_required),
+      request_uri_registration_required = !missing(
+        request_uri_registration_required
+      ),
+      jarm_signing_alg_values_supported = !missing(
+        jarm_signing_alg_values_supported
+      ),
+      jarm_encryption_alg_values_supported = !missing(
+        jarm_encryption_alg_values_supported
+      ),
+      jarm_encryption_enc_values_supported = !missing(
+        jarm_encryption_enc_values_supported
+      ),
+      jarm_tolerate_duplicate_top_level_iss = !missing(
+        jarm_tolerate_duplicate_top_level_iss
+      ),
+      mtls_client_certificate_bound_access_tokens = !missing(
+        mtls_client_certificate_bound_access_tokens
+      )
+    )
+  )
+  if (length(compat_args) > 0) {
+    list2env(compat_args, envir = environment())
+  }
+
   # Validate scalar URL inputs before normalization to prevent cryptic
   # coercion errors from normalize_url() when callers pass vectors.
   for (url_arg in list(
@@ -966,8 +1009,8 @@ oauth_provider <- function(
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
-    tls_client_certificate_bound_access_tokens = isTRUE(
-      tls_client_certificate_bound_access_tokens
+    mtls_client_certificate_bound_access_tokens = isTRUE(
+      mtls_client_certificate_bound_access_tokens
     )
   )
 }
@@ -1107,13 +1150,13 @@ oauth_provider_validate <- function(self) {
   }
 
   if (
-    !(is.logical(self@tls_client_certificate_bound_access_tokens) &&
-      length(self@tls_client_certificate_bound_access_tokens) == 1L &&
-      !is.na(self@tls_client_certificate_bound_access_tokens))
+    !(is.logical(self@mtls_client_certificate_bound_access_tokens) &&
+      length(self@mtls_client_certificate_bound_access_tokens) == 1L &&
+      !is.na(self@mtls_client_certificate_bound_access_tokens))
   ) {
     return(
       paste(
-        "OAuthProvider: tls_client_certificate_bound_access_tokens",
+        "OAuthProvider: mtls_client_certificate_bound_access_tokens",
         "must be a single non-NA logical"
       )
     )
@@ -1874,8 +1917,8 @@ provider_fingerprint <- function(provider) {
     ),
     token_auth_style = provider@token_auth_style,
     jwks_uri = provider@jwks_uri,
-    tls_client_certificate_bound_access_tokens = isTRUE(
-      provider@tls_client_certificate_bound_access_tokens
+    mtls_client_certificate_bound_access_tokens = isTRUE(
+      provider@mtls_client_certificate_bound_access_tokens
     ),
     jwks_pins = state_policy_string_set(provider@jwks_pins),
     jwks_pin_mode = provider@jwks_pin_mode,

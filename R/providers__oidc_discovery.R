@@ -433,7 +433,7 @@ oauth_provider_oidc_discover <- function(
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
-    tls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,
+    mtls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,
     issuer = iss,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
@@ -1075,7 +1075,7 @@ oauth_provider_oidc_discover <- function(
           "Set `token_auth_style = 'tls_client_auth'` or",
           "`token_auth_style = 'self_signed_tls_client_auth'` explicitly"
         ),
-        "i" = "Configure tls_client_cert_file and tls_client_key_file on your OAuthClient"
+        "i" = "Configure mtls_client_cert_file and mtls_client_key_file on your OAuthClient"
       ),
       context = list(
         issuer = iss,

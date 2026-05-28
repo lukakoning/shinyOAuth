@@ -123,8 +123,8 @@ client_has_mtls_certificate <- function(oauth_client) {
     return(FALSE)
   }
 
-  is_valid_string(oauth_client@tls_client_cert_file) &&
-    is_valid_string(oauth_client@tls_client_key_file)
+  is_valid_string(oauth_client@mtls_client_cert_file) &&
+    is_valid_string(oauth_client@mtls_client_key_file)
 }
 
 #' Check whether a client uses mTLS client authentication
@@ -163,7 +163,7 @@ client_requests_certificate_bound_tokens <- function(oauth_client) {
   }
 
   isTRUE(oauth_client@mtls_certificate_bound_access_tokens) &&
-    isTRUE(oauth_client@provider@tls_client_certificate_bound_access_tokens) &&
+    isTRUE(oauth_client@provider@mtls_client_certificate_bound_access_tokens) &&
     client_has_mtls_certificate(oauth_client)
 }
 
@@ -244,10 +244,10 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
     return(req)
   }
 
-  cert_file <- oauth_client@tls_client_cert_file %||% NA_character_
-  key_file <- oauth_client@tls_client_key_file %||% NA_character_
-  key_password <- oauth_client@tls_client_key_password %||% NA_character_
-  ca_file <- oauth_client@tls_client_ca_file %||% NA_character_
+  cert_file <- oauth_client@mtls_client_cert_file %||% NA_character_
+  key_file <- oauth_client@mtls_client_key_file %||% NA_character_
+  key_password <- oauth_client@mtls_client_key_password %||% NA_character_
+  ca_file <- oauth_client@mtls_client_ca_file %||% NA_character_
 
   if (!(is_valid_string(cert_file) && is_valid_string(key_file))) {
     return(req)
@@ -292,7 +292,7 @@ req_apply_authorization_server_mtls <- function(
   if (!client_has_mtls_certificate(oauth_client)) {
     err_input(
       paste(
-        "oauth_client must include tls_client_cert_file and tls_client_key_file",
+        "oauth_client must include mtls_client_cert_file and mtls_client_key_file",
         "when an authorization-server request requires mTLS"
       )
     )
@@ -649,8 +649,8 @@ read_client_certificates <- function(cert_file) {
   }
 
   err_config(
-    "Failed to parse tls_client_cert_file as a PEM certificate",
-    context = list(tls_client_cert_file = cert_file)
+    "Failed to parse mtls_client_cert_file as a PEM certificate",
+    context = list(mtls_client_cert_file = cert_file)
   )
 }
 
@@ -674,8 +674,8 @@ read_client_private_key <- function(key_file, key_password = NULL) {
   }
 
   err_config(
-    "Failed to parse tls_client_key_file as a PEM private key",
-    context = list(tls_client_key_file = key_file)
+    "Failed to parse mtls_client_key_file as a PEM private key",
+    context = list(mtls_client_key_file = key_file)
   )
 }
 
@@ -723,12 +723,12 @@ read_keyed_client_certificate <- function(
 
   err_config(
     paste(
-      "tls_client_cert_file does not contain a certificate matching",
-      "tls_client_key_file"
+      "mtls_client_cert_file does not contain a certificate matching",
+      "mtls_client_key_file"
     ),
     context = list(
-      tls_client_cert_file = cert_file,
-      tls_client_key_file = key_file
+      mtls_client_cert_file = cert_file,
+      mtls_client_key_file = key_file
     )
   )
 }
@@ -771,8 +771,8 @@ tls_client_cert_thumbprint_s256 <- function(
   der <- try(openssl::write_der(cert), silent = TRUE)
   if (inherits(der, "try-error")) {
     err_config(
-      "Failed to serialize tls_client_cert_file for thumbprint calculation",
-      context = list(tls_client_cert_file = cert_file)
+      "Failed to serialize mtls_client_cert_file for thumbprint calculation",
+      context = list(mtls_client_cert_file = cert_file)
     )
   }
 
@@ -849,21 +849,21 @@ validate_token_certificate_binding <- function(
   }
 
   if (
-    !(is_valid_string(oauth_client@tls_client_cert_file) &&
-      is_valid_string(oauth_client@tls_client_key_file))
+    !(is_valid_string(oauth_client@mtls_client_cert_file) &&
+      is_valid_string(oauth_client@mtls_client_key_file))
   ) {
     fail(
       paste(
-        "oauth_client must include tls_client_cert_file and tls_client_key_file",
+        "oauth_client must include mtls_client_cert_file and mtls_client_key_file",
         "when using certificate-bound access tokens"
       )
     )
   }
 
   actual_thumbprint <- tls_client_cert_thumbprint_s256(
-    oauth_client@tls_client_cert_file,
-    key_file = oauth_client@tls_client_key_file,
-    key_password = oauth_client@tls_client_key_password
+    oauth_client@mtls_client_cert_file,
+    key_file = oauth_client@mtls_client_key_file,
+    key_password = oauth_client@mtls_client_key_password
   )
   if (!identical(actual_thumbprint, expected_thumbprint)) {
     fail(

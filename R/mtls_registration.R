@@ -98,8 +98,8 @@ oauth_client_mtls_registration <- function(
   if (!client_has_mtls_certificate(oauth_client)) {
     err_input(
       paste(
-        "{.arg oauth_client} must include tls_client_cert_file and",
-        "tls_client_key_file to build mTLS registration metadata."
+        "{.arg oauth_client} must include mtls_client_cert_file and",
+        "mtls_client_key_file to build mTLS registration metadata."
       )
     )
   }
@@ -255,7 +255,7 @@ resolve_mtls_registration_identifier_value <- function(
     subject <- cert_info[["subject"]] %||% NA_character_
     if (!is_valid_string(subject)) {
       err_config(
-        "tls_client_cert_file does not expose a subject DN for tls_client_auth registration"
+        "mtls_client_cert_file does not expose a subject DN for tls_client_auth registration"
       )
     }
     return(subject)
@@ -276,14 +276,14 @@ resolve_mtls_registration_identifier_value <- function(
 #' @noRd
 read_mtls_registration_certificate_info <- function(oauth_client) {
   cert <- read_keyed_client_certificate(
-    oauth_client@tls_client_cert_file,
-    key_file = oauth_client@tls_client_key_file,
-    key_password = oauth_client@tls_client_key_password
+    oauth_client@mtls_client_cert_file,
+    key_file = oauth_client@mtls_client_key_file,
+    key_password = oauth_client@mtls_client_key_password
   )
   info <- as.list(cert)
   if (!is.list(info)) {
     err_config(
-      "Failed to inspect tls_client_cert_file for mTLS registration metadata"
+      "Failed to inspect mtls_client_cert_file for mTLS registration metadata"
     )
   }
 
@@ -331,12 +331,12 @@ resolve_certificate_alt_name_value <- function(
     err_input(paste(
       "Could not derive",
       field_name,
-      "from tls_client_cert_file; pass tls_client_auth_value explicitly."
+      "from mtls_client_cert_file; pass tls_client_auth_value explicitly."
     ))
   }
 
   err_input(paste(
-    "tls_client_cert_file exposes multiple candidate values for",
+    "mtls_client_cert_file exposes multiple candidate values for",
     field_name,
     "; pass tls_client_auth_value explicitly."
   ))
@@ -763,11 +763,11 @@ validate_mtls_registration_jwks_uri <- function(jwks_uri) {
 #' @keywords internal
 #' @noRd
 build_self_signed_mtls_registration_jwks <- function(oauth_client) {
-  certs <- read_client_certificates(oauth_client@tls_client_cert_file)
+  certs <- read_client_certificates(oauth_client@mtls_client_cert_file)
   leaf_cert <- read_keyed_client_certificate(
-    oauth_client@tls_client_cert_file,
-    key_file = oauth_client@tls_client_key_file,
-    key_password = oauth_client@tls_client_key_password
+    oauth_client@mtls_client_cert_file,
+    key_file = oauth_client@mtls_client_key_file,
+    key_password = oauth_client@mtls_client_key_password
   )
   leaf_fingerprint <- tryCatch(
     {
@@ -803,7 +803,7 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
   if (inherits(pubkey, "try-error")) {
     err_config(
       paste(
-        "Failed to extract a public key from tls_client_cert_file for",
+        "Failed to extract a public key from mtls_client_cert_file for",
         "self_signed_tls_client_auth registration"
       )
     )
@@ -841,7 +841,7 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
       der <- try(openssl::write_der(cert), silent = TRUE)
       if (inherits(der, "try-error")) {
         err_config(
-          "Failed to serialize tls_client_cert_file for self-signed x5c metadata"
+          "Failed to serialize mtls_client_cert_file for self-signed x5c metadata"
         )
       }
 

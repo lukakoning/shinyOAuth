@@ -274,6 +274,89 @@ deprecate_warn_pkg <- function(
   )
 }
 
+#' Resolve deprecated constructor argument aliases
+#'
+#' Used by exported helper constructors to accept renamed arguments through
+#' `...` during a deprecation window.
+#'
+#' @param dots Named list collected from `...`.
+#' @param arg_map Named character vector mapping deprecated argument names to
+#'   current argument names.
+#' @param fn_name Constructor name used in warnings and errors.
+#' @param provided_new Named logical vector indicating which current argument
+#'   names were already supplied directly.
+#' @param when Package version where the deprecation started.
+#' @param env Environment forwarded to `deprecate_warn_pkg()`.
+#' @param user_env User environment forwarded to `deprecate_warn_pkg()`.
+#' @return Named list of remapped current argument names and values.
+#' @keywords internal
+#' @noRd
+resolve_deprecated_constructor_args <- function(
+  dots,
+  arg_map,
+  fn_name,
+  provided_new = setNames(logical(0), character(0)),
+  when = "0.5.0.9000",
+  env = rlang::caller_env(),
+  user_env = rlang::caller_env()
+) {
+  if (length(dots) == 0) {
+    return(list())
+  }
+
+  dot_names <- names(dots) %||% character(length(dots))
+  if (!all(nzchar(dot_names))) {
+    err_input(paste0(fn_name, "() does not accept unnamed arguments in ..."))
+  }
+
+  unknown <- setdiff(dot_names, names(arg_map))
+  if (length(unknown) > 0) {
+    err_input(paste0(
+      fn_name,
+      "(): unknown argument(s) in ...: ",
+      paste(sQuote(unknown), collapse = ", ")
+    ))
+  }
+
+  resolved <- list()
+  for (old_name in dot_names) {
+    new_name <- unname(arg_map[[old_name]])
+
+    if (isTRUE(provided_new[[new_name]]) || new_name %in% names(resolved)) {
+      err_input(paste0(
+        fn_name,
+        "(): cannot supply both deprecated argument `",
+        old_name,
+        "` and current argument `",
+        new_name,
+        "`."
+      ))
+    }
+
+    deprecate_warn_pkg(
+      when = when,
+      what = paste0(fn_name, "() argument `", old_name, "`"),
+      with = paste0(fn_name, "() argument `", new_name, "`"),
+      details = paste(
+        "Backward-compatible forwarding via ... is temporary and will be",
+        "removed in a future release."
+      ),
+      id = paste0(
+        gsub("[^a-z0-9]+", "-", tolower(fn_name)),
+        "-",
+        old_name,
+        "-arg"
+      ),
+      env = env,
+      user_env = user_env
+    )
+
+    resolved[[new_name]] <- dots[[old_name]]
+  }
+
+  resolved
+}
+
 #' Resolve an error header description from condition classes
 #'
 #' Used by `err_abort()` to pick the short description shown in the header.
