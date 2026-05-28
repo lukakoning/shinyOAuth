@@ -22,6 +22,9 @@ default. It takes care of:
 For a full step-by-step protocol breakdown, see the separate vignette:
 `vignette("authentication-flow", package = "shinyOAuth")`.
 
+For advanced security profiles such as mTLS, JAR, PAR, JARM, and DPoP, see:
+`vignette("advanced-security", package = "shinyOAuth")`.
+
 For a detailed explanation of audit logging key events during the flow, see:
 `vignette("audit-logging", package = "shinyOAuth")`.
 
