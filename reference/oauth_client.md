@@ -12,7 +12,7 @@ starts login or callback handling.
 oauth_client(
   provider,
   client_id,
-  client_secret,
+  client_secret = character(0),
   redirect_uri,
   scopes = character(0),
   response_mode = NULL,

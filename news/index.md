@@ -83,6 +83,17 @@
   public-client setups that do not send a secret, instead of failing
   while formatting the redacted console preview.
 
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  now treats an omitted `client_secret` as an absent value
+  (`character(0)`), so `private_key_jwt` and other secretless
+  client-auth setups can omit the argument and still flow through the
+  normal auth-style validation instead of failing at argument matching.
+
+- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+  now preserves JARM discovery metadata from the canonical
+  `jarm_*_values_supported` fields, while still accepting the older
+  `authorization_*` aliases for compatibility.
+
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   now:
 
