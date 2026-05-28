@@ -125,14 +125,14 @@ certificate-bound access tokens.</p>
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  authorization_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Use RFC 8705 client-certificate auth at the token endpoint.</span></span>
+<span>  <span class="co"># Use RFC 8705 client-certificate auth at the token endpoint</span></span>
 <span>  token_auth_style <span class="op">=</span> <span class="st">"tls_client_auth"</span>,</span>
-<span>  <span class="co"># Use mTLS-specific endpoints when the provider publishes them.</span></span>
+<span>  <span class="co"># Use mTLS-specific endpoints when the provider publishes them</span></span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    token_endpoint <span class="op">=</span> <span class="st">"https://mtls.id.example.com/token"</span>,</span>
 <span>    userinfo_endpoint <span class="op">=</span> <span class="st">"https://mtls.id.example.com/userinfo"</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  <span class="co"># Expect certificate-bound access tokens from the provider.</span></span>
+<span>  <span class="co"># Expect certificate-bound access tokens from the provider</span></span>
 <span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -141,11 +141,11 @@ certificate-bound access tokens.</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Certificate and key sent on mTLS requests.</span></span>
+<span>  <span class="co"># Certificate and key sent on mTLS requests</span></span>
 <span>  mtls_client_cert_file <span class="op">=</span> <span class="st">"certs/client.pem"</span>,</span>
 <span>  mtls_client_key_file <span class="op">=</span> <span class="st">"certs/client-key.pem"</span>,</span>
 <span>  mtls_client_ca_file <span class="op">=</span> <span class="st">"certs/ca.pem"</span>,</span>
-<span>  <span class="co"># Request certificate-bound tokens instead of plain Bearer tokens.</span></span>
+<span>  <span class="co"># Request certificate-bound tokens instead of plain Bearer tokens</span></span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>If your provider uses dynamic client registration,
@@ -168,7 +168,7 @@ confidentiality as well.</p>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  authorization_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Provider expects signed Request Objects.</span></span>
+<span>  <span class="co"># Provider expects signed Request Objects</span></span>
 <span>  signed_request_object_required <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  request_parameter_supported <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span><span class="op">)</span>,</span>
@@ -181,12 +181,12 @@ confidentiality as well.</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Signing key for the Request Object.</span></span>
+<span>  <span class="co"># Signing key for the Request Object</span></span>
 <span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Send the authorization request as a JWT in the request parameter.</span></span>
+<span>  <span class="co"># Send the authorization request as a JWT in the request parameter</span></span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"request"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>  <span class="co"># Optional: encrypt the Request Object as well.</span></span>
+<span>  <span class="co"># Optional: encrypt the Request Object as well</span></span>
 <span>  request_object_encryption_alg <span class="op">=</span> <span class="st">"RSA-OAEP"</span>,</span>
 <span>  request_object_encryption_enc <span class="op">=</span> <span class="st">"A128CBC-HS256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -209,10 +209,10 @@ out of browser history and front-channel logs.</p>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  authorization_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Enable pushed authorization requests.</span></span>
+<span>  <span class="co"># Enable pushed authorization requests</span></span>
 <span>  par_url <span class="op">=</span> <span class="st">"https://id.example.com/par"</span>,</span>
 <span>  par_required <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  <span class="co"># Keep the browser redirect down to client_id + PAR request_uri.</span></span>
+<span>  <span class="co"># Keep the browser redirect down to client_id + PAR request_uri</span></span>
 <span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"minimal"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -249,7 +249,7 @@ there</li>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Publish the Request Object by reference instead of sending it inline.</span></span>
+<span>  <span class="co"># Publish the Request Object by reference instead of sending it inline</span></span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"request_uri"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
 <span><span class="op">)</span></span>
@@ -259,7 +259,7 @@ there</li>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  <span class="va">client</span>,</span>
 <span>  auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  <span class="co"># Public HTTPS base URL of this Shiny app as seen by the provider.</span></span>
+<span>  <span class="co"># Public HTTPS base URL of this Shiny app as seen by the provider</span></span>
 <span>  request_uri_base_url <span class="op">=</span> <span class="st">"https://shiny.yourdomain.com/myapp"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -281,7 +281,7 @@ sign the response by itself.</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Ask the provider to POST the callback to redirect_uri.</span></span>
+<span>  <span class="co"># Ask the provider to POST the callback to redirect_uri</span></span>
 <span>  response_mode <span class="op">=</span> <span class="st">"form_post"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -289,10 +289,10 @@ sign the response by itself.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists.</span></span>
+<span><span class="co"># Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists</span></span>
 <span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># If the callback path is not the app root, route all paths through this UI.</span></span>
+<span><span class="co"># If the callback path is not the app root, route all paths through this UI</span></span>
 <span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> uses the path from
 <code>redirect_uri</code> by default. Set its <code>callback_path</code>
@@ -315,7 +315,7 @@ browser-visible layers.</p>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  authorization_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Advertise the JARM response modes and algorithms this provider supports.</span></span>
+<span>  <span class="co"># Advertise the JARM response modes and algorithms this provider supports</span></span>
 <span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"query"</span>, <span class="st">"query.jwt"</span>, <span class="st">"form_post.jwt"</span><span class="op">)</span>,</span>
 <span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RSA-OAEP"</span><span class="op">)</span>,</span>
@@ -327,7 +327,7 @@ browser-visible layers.</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Ask for a JWT-wrapped authorization response.</span></span>
+<span>  <span class="co"># Ask for a JWT-wrapped authorization response</span></span>
 <span>  response_mode <span class="op">=</span> <span class="st">"query.jwt"</span>,</span>
 <span>  jarm_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -340,7 +340,7 @@ browser-visible layers.</p>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  response_mode <span class="op">=</span> <span class="st">"query.jwt"</span>,</span>
 <span>  jarm_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>  <span class="co"># Optional: decrypt JARM before validating the signed payload.</span></span>
+<span>  <span class="co"># Optional: decrypt JARM before validating the signed payload</span></span>
 <span>  jarm_encrypted_response_alg <span class="op">=</span> <span class="st">"RSA-OAEP"</span>,</span>
 <span>  jarm_encrypted_response_enc <span class="op">=</span> <span class="st">"A128CBC-HS256"</span>,</span>
 <span>  jarm_decryption_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/jarm-decrypt.pem"</span><span class="op">)</span></span>
@@ -364,7 +364,7 @@ certificates.</p>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  authorization_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Optional metadata check for acceptable DPoP signing algorithms.</span></span>
+<span>  <span class="co"># Optional metadata check for acceptable DPoP signing algorithms</span></span>
 <span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ES256"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -373,7 +373,7 @@ certificates.</p>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"api.read"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Private key used to sign DPoP proofs.</span></span>
+<span>  <span class="co"># Private key used to sign DPoP proofs</span></span>
 <span>  dpop_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/dpop-key.pem"</span><span class="op">)</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="st">"ES256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -383,42 +383,9 @@ certificates.</p>
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
 <span>  <span class="st">"https://api.example.com/me"</span>,</span>
-<span>  <span class="co"># Lets shinyOAuth attach the DPoP proof and handle nonce challenges.</span></span>
+<span>  <span class="co"># Lets shinyOAuth attach the DPoP proof and handle nonce challenges</span></span>
 <span>  oauth_client <span class="op">=</span> <span class="va">client</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="common-combinations">Common combinations<a class="anchor" aria-label="anchor" href="#common-combinations"></a>
-</h2>
-<ul>
-<li>JAR + PAR: sign the authorization request, then push it over the
-back-channel</li>
-<li>PAR + JARM: protect both the outbound authorization request and the
-inbound callback response</li>
-<li>mTLS or DPoP: both are sender-constraining approaches, but mTLS is
-certificate-based while DPoP is key-and-JWT based</li>
-</ul>
-<p>Most deployments only need one of mTLS or DPoP, not both.</p>
-</div>
-<div class="section level2">
-<h2 id="smaller-hardening-options">Smaller hardening options<a class="anchor" aria-label="anchor" href="#smaller-hardening-options"></a>
-</h2>
-<p>The features above are the big protocol-level switches. A few smaller
-settings are also worth knowing:</p>
-<p>provider supports RFC 9207 stricter DPoP check when the provider
-supports introspection signed UserInfo JWTs -
-<code>request_uri_base_url</code> on <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
-is often needed when <code>request_object_mode = "request_uri"</code>
-sits behind a proxy or different public host -
-<code>request_uri_registration_required</code> matters when
-caller-managed <code>request_uri</code> values must be pre-registered
-with the provider - <code>request_object_audience</code>,
-<code>request_object_ttl</code>, and
-<code>request_object_nbf_skew</code> are the usual follow-up knobs for
-stricter JAR deployments - <code>jarm_max_lifetime</code> lets you
-tighten how long a JARM response is accepted</p>
-<p>Use these on top of the main feature-specific settings when your
-deployment has stricter validation requirements.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

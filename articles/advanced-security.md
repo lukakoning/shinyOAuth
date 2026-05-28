@@ -58,14 +58,14 @@ certificate-bound access tokens.
 provider <- oauth_provider(
   authorization_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Use RFC 8705 client-certificate auth at the token endpoint.
+  # Use RFC 8705 client-certificate auth at the token endpoint
   token_auth_style = "tls_client_auth",
-  # Use mTLS-specific endpoints when the provider publishes them.
+  # Use mTLS-specific endpoints when the provider publishes them
   mtls_endpoint_aliases = list(
     token_endpoint = "https://mtls.id.example.com/token",
     userinfo_endpoint = "https://mtls.id.example.com/userinfo"
   ),
-  # Expect certificate-bound access tokens from the provider.
+  # Expect certificate-bound access tokens from the provider
   mtls_client_certificate_bound_access_tokens = TRUE
 )
 
@@ -74,11 +74,11 @@ client <- oauth_client(
   client_id = "client-id",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
-  # Certificate and key sent on mTLS requests.
+  # Certificate and key sent on mTLS requests
   mtls_client_cert_file = "certs/client.pem",
   mtls_client_key_file = "certs/client-key.pem",
   mtls_client_ca_file = "certs/ca.pem",
-  # Request certificate-bound tokens instead of plain Bearer tokens.
+  # Request certificate-bound tokens instead of plain Bearer tokens
   mtls_certificate_bound_access_tokens = TRUE
 )
 ```
@@ -104,7 +104,7 @@ provider <- oauth_provider(
   issuer = "https://id.example.com",
   authorization_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Provider expects signed Request Objects.
+  # Provider expects signed Request Objects
   signed_request_object_required = TRUE,
   request_parameter_supported = TRUE,
   request_object_signing_alg_values_supported = c("RS256"),
@@ -117,12 +117,12 @@ client <- oauth_client(
   client_id = "client-id",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
-  # Signing key for the Request Object.
+  # Signing key for the Request Object
   client_assertion_private_key = openssl::read_key("keys/client-key.pem"),
-  # Send the authorization request as a JWT in the request parameter.
+  # Send the authorization request as a JWT in the request parameter
   request_object_mode = "request",
   request_object_signing_alg = "RS256",
-  # Optional: encrypt the Request Object as well.
+  # Optional: encrypt the Request Object as well
   request_object_encryption_alg = "RSA-OAEP",
   request_object_encryption_enc = "A128CBC-HS256"
 )
@@ -147,10 +147,10 @@ provider <- oauth_provider(
   issuer = "https://id.example.com",
   authorization_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Enable pushed authorization requests.
+  # Enable pushed authorization requests
   par_url = "https://id.example.com/par",
   par_required = TRUE,
-  # Keep the browser redirect down to client_id + PAR request_uri.
+  # Keep the browser redirect down to client_id + PAR request_uri
   authorization_request_front_channel_mode = "minimal"
 )
 
@@ -190,7 +190,7 @@ client <- oauth_client(
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
   client_assertion_private_key = openssl::read_key("keys/client-key.pem"),
-  # Publish the Request Object by reference instead of sending it inline.
+  # Publish the Request Object by reference instead of sending it inline
   request_object_mode = "request_uri",
   request_object_signing_alg = "RS256"
 )
@@ -200,7 +200,7 @@ auth <- oauth_module_server(
   "auth",
   client,
   auto_redirect = TRUE,
-  # Public HTTPS base URL of this Shiny app as seen by the provider.
+  # Public HTTPS base URL of this Shiny app as seen by the provider
   request_uri_base_url = "https://shiny.yourdomain.com/myapp"
 )
 ```
@@ -223,7 +223,7 @@ client <- oauth_client(
   client_id = "client-id",
   redirect_uri = "https://app.example.com/callback",
   scopes = c("openid", "profile"),
-  # Ask the provider to POST the callback to redirect_uri.
+  # Ask the provider to POST the callback to redirect_uri
   response_mode = "form_post"
 )
 
@@ -231,10 +231,10 @@ base_ui <- fluidPage(
   uiOutput("login")
 )
 
-# Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists.
+# Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists
 ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
 
-# If the callback path is not the app root, route all paths through this UI.
+# If the callback path is not the app root, route all paths through this UI
 app <- shinyApp(ui, server, uiPattern = ".*")
 ```
 
@@ -259,7 +259,7 @@ provider <- oauth_provider(
   issuer = "https://id.example.com",
   authorization_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Advertise the JARM response modes and algorithms this provider supports.
+  # Advertise the JARM response modes and algorithms this provider supports
   response_modes_supported = c("query", "query.jwt", "form_post.jwt"),
   jarm_signing_alg_values_supported = c("RS256"),
   jarm_encryption_alg_values_supported = c("RSA-OAEP"),
@@ -271,7 +271,7 @@ client <- oauth_client(
   client_id = "client-id",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
-  # Ask for a JWT-wrapped authorization response.
+  # Ask for a JWT-wrapped authorization response
   response_mode = "query.jwt",
   jarm_signed_response_alg = "RS256"
 )
@@ -287,7 +287,7 @@ client <- oauth_client(
   scopes = c("openid", "profile"),
   response_mode = "query.jwt",
   jarm_signed_response_alg = "RS256",
-  # Optional: decrypt JARM before validating the signed payload.
+  # Optional: decrypt JARM before validating the signed payload
   jarm_encrypted_response_alg = "RSA-OAEP",
   jarm_encrypted_response_enc = "A128CBC-HS256",
   jarm_decryption_private_key = openssl::read_key("keys/jarm-decrypt.pem")
@@ -315,7 +315,7 @@ provider <- oauth_provider(
   issuer = "https://id.example.com",
   authorization_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Optional metadata check for acceptable DPoP signing algorithms.
+  # Optional metadata check for acceptable DPoP signing algorithms
   dpop_signing_alg_values_supported = c("ES256")
 )
 
@@ -324,7 +324,7 @@ client <- oauth_client(
   client_id = "client-id",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile", "api.read"),
-  # Private key used to sign DPoP proofs.
+  # Private key used to sign DPoP proofs
   dpop_private_key = openssl::read_key("keys/dpop-key.pem"),
   dpop_signing_alg = "ES256"
 )
@@ -337,37 +337,7 @@ After login, keep using the request helpers instead of adding
 resp <- perform_resource_req(
   auth$token,
   "https://api.example.com/me",
-  # Lets shinyOAuth attach the DPoP proof and handle nonce challenges.
+  # Lets shinyOAuth attach the DPoP proof and handle nonce challenges
   oauth_client = client
 )
 ```
-
-## Common combinations
-
-- JAR + PAR: sign the authorization request, then push it over the
-  back-channel
-- PAR + JARM: protect both the outbound authorization request and the
-  inbound callback response
-- mTLS or DPoP: both are sender-constraining approaches, but mTLS is
-  certificate-based while DPoP is key-and-JWT based
-
-Most deployments only need one of mTLS or DPoP, not both.
-
-## Smaller hardening options
-
-The features above are the big protocol-level switches. A few smaller
-settings are also worth knowing:
-
-provider supports RFC 9207 stricter DPoP check when the provider
-supports introspection signed UserInfo JWTs - `request_uri_base_url` on
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-is often needed when `request_object_mode = "request_uri"` sits behind a
-proxy or different public host - `request_uri_registration_required`
-matters when caller-managed `request_uri` values must be pre-registered
-with the provider - `request_object_audience`, `request_object_ttl`, and
-`request_object_nbf_skew` are the usual follow-up knobs for stricter JAR
-deployments - `jarm_max_lifetime` lets you tighten how long a JARM
-response is accepted
-
-Use these on top of the main feature-specific settings when your
-deployment has stricter validation requirements.
