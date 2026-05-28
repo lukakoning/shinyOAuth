@@ -107,7 +107,8 @@ used by the built-in provider helpers.</p>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  tls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -564,13 +565,18 @@ must be absolute URLs. This is an advanced setting used when a provider
 publishes separate mTLS-specific endpoints.</p></dd>
 
 
-<dt id="arg-tls-client-certificate-bound-access-tokens">tls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-tls-client-certificate-bound-access-tokens"></a></dt>
+<dt id="arg-mtls-client-certificate-bound-access-tokens">mtls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-client-certificate-bound-access-tokens"></a></dt>
 <dd><p>Logical. Whether the
 authorization server advertises RFC 8705 capability to issue
 certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When <code>TRUE</code>, token responses
 may include a <code>cnf</code> claim with an <code>x5t#S256</code> thumbprint that downstream
 requests must match with the same certificate.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Deprecated renamed arguments accepted temporarily for backward
+compatibility.</p></dd>
 
 </dl></div>
     <div class="section level2">

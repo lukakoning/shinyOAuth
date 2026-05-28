@@ -62,7 +62,8 @@ userinfo[["sub"]]
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE
+  mtls_client_certificate_bound_access_tokens = FALSE,
+  ...
 )
 ```
 
@@ -553,7 +554,7 @@ userinfo[["sub"]]
   must be absolute URLs. This is an advanced setting used when a
   provider publishes separate mTLS-specific endpoints.
 
-- tls_client_certificate_bound_access_tokens:
+- mtls_client_certificate_bound_access_tokens:
 
   Logical. Whether the authorization server advertises RFC 8705
   capability to issue certificate-bound access tokens. This describes
@@ -561,6 +562,11 @@ userinfo[["sub"]]
   When `TRUE`, token responses may include a `cnf` claim with an
   `x5t#S256` thumbprint that downstream requests must match with the
   same certificate.
+
+- ...:
+
+  Deprecated renamed arguments accepted temporarily for backward
+  compatibility.
 
 ## Value
 

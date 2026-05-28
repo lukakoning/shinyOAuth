@@ -360,7 +360,7 @@ client certificate on authorization-server requests and prefers any
 discovered `mtls_endpoint_aliases`.
 
 Certificate-bound access tokens are a separate RFC 8705 policy. When the
-provider advertises `tls_client_certificate_bound_access_tokens = TRUE`
+provider advertises `mtls_client_certificate_bound_access_tokens = TRUE`
 and the client opts in with
 `mtls_certificate_bound_access_tokens = TRUE`, ‘shinyOAuth’ prefers the
 mTLS endpoints for authorization-server requests even when

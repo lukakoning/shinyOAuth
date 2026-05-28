@@ -35,10 +35,10 @@ OAuthClient(
   client_assertion_private_key_kid = NA_character_,
   client_assertion_alg = NA_character_,
   client_assertion_audience = NA_character_,
-  tls_client_cert_file = NA_character_,
-  tls_client_key_file = NA_character_,
-  tls_client_key_password = NA_character_,
-  tls_client_ca_file = NA_character_,
+  mtls_client_cert_file = NA_character_,
+  mtls_client_key_file = NA_character_,
+  mtls_client_key_password = NA_character_,
+  mtls_client_ca_file = NA_character_,
   mtls_certificate_bound_access_tokens = FALSE,
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
@@ -91,7 +91,7 @@ OAuthClient(
   - Ignored for token-endpoint authentication when the provider uses
     `token_auth_style = "public"` (or the alias `"none"`). Public auth
     sends `client_id` only and never sends `client_secret`, even if one
-    is configured or picked up from `OAUTH_CLIENT_SECRET`.
+    is configured explicitly.
 
   Note: If your provider issues HS256 ID tokens and
   `id_token_validation` is enabled, a non-empty `client_secret` is
@@ -425,7 +425,7 @@ OAuthClient(
   providers require a different audience value; set this to the exact
   value your IdP expects.
 
-- tls_client_cert_file:
+- mtls_client_cert_file:
 
   Optional path to the PEM-encoded client certificate (or certificate
   chain) used for RFC 8705 mutual TLS client authentication and
@@ -433,19 +433,19 @@ OAuthClient(
   `provider@token_auth_style` is `"tls_client_auth"` or
   `"self_signed_tls_client_auth"`.
 
-- tls_client_key_file:
+- mtls_client_key_file:
 
   Optional path to the PEM-encoded private key used with
-  `tls_client_cert_file`. Must be supplied together with
-  `tls_client_cert_file`, and is required for RFC 8705 mTLS client
+  `mtls_client_cert_file`. Must be supplied together with
+  `mtls_client_cert_file`, and is required for RFC 8705 mTLS client
   authentication.
 
-- tls_client_key_password:
+- mtls_client_key_password:
 
   Optional password used to decrypt an encrypted PEM private key
-  referenced by `tls_client_key_file`.
+  referenced by `mtls_client_key_file`.
 
-- tls_client_ca_file:
+- mtls_client_ca_file:
 
   Optional path to a PEM CA bundle used to validate the remote HTTPS
   server certificate when making mTLS requests. This is mainly useful
@@ -463,9 +463,9 @@ OAuthClient(
   `token_auth_style` itself is not an mTLS auth style, and that should
   fail closed if the returned access token omits `cnf.x5t#S256`.
 
-  Requires `tls_client_cert_file` and `tls_client_key_file`, and the
+  Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
   provider must be configured with
-  `tls_client_certificate_bound_access_tokens = TRUE`.
+  `mtls_client_certificate_bound_access_tokens = TRUE`.
 
 - dpop_private_key:
 
