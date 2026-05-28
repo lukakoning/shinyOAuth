@@ -13,6 +13,7 @@ if (
     ),
     # Default Azure CLI app ID (public client; activated in many tenants):
     client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+    client_secret = "",
     redirect_uri = "http://localhost:8100",
     scopes = c("openid", "profile", "email")
   )

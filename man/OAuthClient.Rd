@@ -28,10 +28,10 @@ OAuthClient(
   client_assertion_private_key_kid = NA_character_,
   client_assertion_alg = NA_character_,
   client_assertion_audience = NA_character_,
-  tls_client_cert_file = NA_character_,
-  tls_client_key_file = NA_character_,
-  tls_client_key_password = NA_character_,
-  tls_client_ca_file = NA_character_,
+  mtls_client_cert_file = NA_character_,
+  mtls_client_key_file = NA_character_,
+  mtls_client_key_password = NA_character_,
+  mtls_client_ca_file = NA_character_,
   mtls_certificate_bound_access_tokens = FALSE,
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
@@ -72,7 +72,7 @@ the secret is omitted only when it is empty.
 \item Ignored for token-endpoint authentication when the provider uses
 \code{token_auth_style = "public"} (or the alias \code{"none"}). Public auth
 sends \code{client_id} only and never sends \code{client_secret}, even if one is
-configured or picked up from \code{OAUTH_CLIENT_SECRET}.
+configured explicitly.
 }
 
 Note: If your provider issues HS256 ID tokens and \code{id_token_validation} is
@@ -339,21 +339,21 @@ JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By de
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.}
 
-\item{tls_client_cert_file}{Optional path to the PEM-encoded client
+\item{mtls_client_cert_file}{Optional path to the PEM-encoded client
 certificate (or certificate chain) used for RFC 8705 mutual TLS client
 authentication and certificate-bound protected-resource requests. Required
 when \code{provider@token_auth_style} is \code{"tls_client_auth"} or
 \code{"self_signed_tls_client_auth"}.}
 
-\item{tls_client_key_file}{Optional path to the PEM-encoded private key used
-with \code{tls_client_cert_file}. Must be supplied together with
-\code{tls_client_cert_file}, and is required for RFC 8705 mTLS client
+\item{mtls_client_key_file}{Optional path to the PEM-encoded private key used
+with \code{mtls_client_cert_file}. Must be supplied together with
+\code{mtls_client_cert_file}, and is required for RFC 8705 mTLS client
 authentication.}
 
-\item{tls_client_key_password}{Optional password used to decrypt an encrypted
-PEM private key referenced by \code{tls_client_key_file}.}
+\item{mtls_client_key_password}{Optional password used to decrypt an encrypted
+PEM private key referenced by \code{mtls_client_key_file}.}
 
-\item{tls_client_ca_file}{Optional path to a PEM CA bundle used to validate
+\item{mtls_client_ca_file}{Optional path to a PEM CA bundle used to validate
 the remote HTTPS server certificate when making mTLS requests. This is
 mainly useful for local or test environments that use self-signed server
 certificates.}
@@ -367,9 +367,9 @@ Set this to \code{TRUE} for clients that should prefer discovered
 \code{token_auth_style} itself is not an mTLS auth style, and that should fail
 closed if the returned access token omits \code{cnf.x5t#S256}.
 
-Requires \code{tls_client_cert_file} and \code{tls_client_key_file}, and the
+Requires \code{mtls_client_cert_file} and \code{mtls_client_key_file}, and the
 provider must be configured with
-\code{tls_client_certificate_bound_access_tokens = TRUE}.}
+\code{mtls_client_certificate_bound_access_tokens = TRUE}.}
 
 \item{dpop_private_key}{Optional private key used to generate DPoP proofs
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an

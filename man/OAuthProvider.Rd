@@ -55,7 +55,7 @@ OAuthProvider(
   token_endpoint_auth_signing_alg_values_supported = character(0),
   dpop_signing_alg_values_supported = character(0),
   mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE,
+  mtls_client_certificate_bound_access_tokens = FALSE,
   leeway = getOption("shinyOAuth.leeway", 30)
 )
 }
@@ -419,7 +419,7 @@ aliases. Names should follow the metadata keys such as \code{token_endpoint},
 must be absolute URLs. This is an advanced setting used when a provider
 publishes separate mTLS-specific endpoints.}
 
-\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
+\item{mtls_client_certificate_bound_access_tokens}{Logical. Whether the
 authorization server advertises RFC 8705 capability to issue
 certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When \code{TRUE}, token responses

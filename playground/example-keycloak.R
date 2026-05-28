@@ -16,6 +16,7 @@ provider <- oauth_provider_keycloak(
 client <- oauth_client(
   provider = provider,
   client_id = "test",
+  client_secret = "",
   redirect_uri = "http://127.0.0.1:8100",
   scopes = c("openid")
 )

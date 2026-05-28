@@ -58,7 +58,8 @@ oauth_provider(
   token_endpoint_auth_signing_alg_values_supported = character(),
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
-  tls_client_certificate_bound_access_tokens = FALSE
+  mtls_client_certificate_bound_access_tokens = FALSE,
+  ...
 )
 }
 \arguments{
@@ -425,12 +426,15 @@ aliases. Names should follow the metadata keys such as \code{token_endpoint},
 must be absolute URLs. This is an advanced setting used when a provider
 publishes separate mTLS-specific endpoints.}
 
-\item{tls_client_certificate_bound_access_tokens}{Logical. Whether the
+\item{mtls_client_certificate_bound_access_tokens}{Logical. Whether the
 authorization server advertises RFC 8705 capability to issue
 certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When \code{TRUE}, token responses
 may include a \code{cnf} claim with an \code{x5t#S256} thumbprint that downstream
 requests must match with the same certificate.}
+
+\item{...}{Deprecated renamed arguments accepted temporarily for backward
+compatibility.}
 }
 \value{
 \link{OAuthProvider} object

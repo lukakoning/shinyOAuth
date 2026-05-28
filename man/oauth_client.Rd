@@ -6,8 +6,8 @@
 \usage{
 oauth_client(
   provider,
-  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
-  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  client_id,
+  client_secret,
   redirect_uri,
   scopes = character(0),
   response_mode = NULL,
@@ -28,10 +28,10 @@ oauth_client(
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = NULL,
   client_assertion_audience = NULL,
-  tls_client_cert_file = NULL,
-  tls_client_key_file = NULL,
-  tls_client_key_password = NULL,
-  tls_client_ca_file = NULL,
+  mtls_client_cert_file = NULL,
+  mtls_client_key_file = NULL,
+  mtls_client_key_password = NULL,
+  mtls_client_ca_file = NULL,
   mtls_certificate_bound_access_tokens = FALSE,
   dpop_private_key = NULL,
   dpop_private_key_kid = NULL,
@@ -50,7 +50,8 @@ oauth_client(
   jarm_encrypted_response_enc = NULL,
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
-  jarm_max_lifetime = 600
+  jarm_max_lifetime = 600,
+  ...
 )
 }
 \arguments{
@@ -72,7 +73,7 @@ the secret is omitted only when it is empty.
 \item Ignored for token-endpoint authentication when the provider uses
 \code{token_auth_style = "public"} (or the alias \code{"none"}). Public auth
 sends \code{client_id} only and never sends \code{client_secret}, even if one is
-configured or picked up from \code{OAUTH_CLIENT_SECRET}.
+configured explicitly.
 }
 
 Note: If your provider issues HS256 ID tokens and \code{id_token_validation} is
@@ -339,21 +340,21 @@ JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By de
 uses the exact token endpoint request URL. Some identity providers require a different
 audience value; set this to the exact value your IdP expects.}
 
-\item{tls_client_cert_file}{Optional path to the PEM-encoded client
+\item{mtls_client_cert_file}{Optional path to the PEM-encoded client
 certificate (or certificate chain) used for RFC 8705 mutual TLS client
 authentication and certificate-bound protected-resource requests. Required
 when \code{provider@token_auth_style} is \code{"tls_client_auth"} or
 \code{"self_signed_tls_client_auth"}.}
 
-\item{tls_client_key_file}{Optional path to the PEM-encoded private key used
-with \code{tls_client_cert_file}. Must be supplied together with
-\code{tls_client_cert_file}, and is required for RFC 8705 mTLS client
+\item{mtls_client_key_file}{Optional path to the PEM-encoded private key used
+with \code{mtls_client_cert_file}. Must be supplied together with
+\code{mtls_client_cert_file}, and is required for RFC 8705 mTLS client
 authentication.}
 
-\item{tls_client_key_password}{Optional password used to decrypt an encrypted
-PEM private key referenced by \code{tls_client_key_file}.}
+\item{mtls_client_key_password}{Optional password used to decrypt an encrypted
+PEM private key referenced by \code{mtls_client_key_file}.}
 
-\item{tls_client_ca_file}{Optional path to a PEM CA bundle used to validate
+\item{mtls_client_ca_file}{Optional path to a PEM CA bundle used to validate
 the remote HTTPS server certificate when making mTLS requests. This is
 mainly useful for local or test environments that use self-signed server
 certificates.}
@@ -367,9 +368,9 @@ Set this to \code{TRUE} for clients that should prefer discovered
 \code{token_auth_style} itself is not an mTLS auth style, and that should fail
 closed if the returned access token omits \code{cnf.x5t#S256}.
 
-Requires \code{tls_client_cert_file} and \code{tls_client_key_file}, and the
+Requires \code{mtls_client_cert_file} and \code{mtls_client_key_file}, and the
 provider must be configured with
-\code{tls_client_certificate_bound_access_tokens = TRUE}.}
+\code{mtls_client_certificate_bound_access_tokens = TRUE}.}
 
 \item{dpop_private_key}{Optional private key used to generate DPoP proofs
 (RFC 9449). Can be an \code{openssl::key} or a PEM string containing an
@@ -525,6 +526,9 @@ JARM payload includes \code{iat}, shinyOAuth enforces
 \code{exp - iat <= jarm_max_lifetime}; otherwise it falls back to the
 remaining \code{exp} window at validation time. Applies only when
 \code{response_mode} uses JARM.}
+
+\item{...}{Deprecated renamed arguments accepted temporarily for backward
+compatibility.}
 }
 \value{
 \link{OAuthClient} object
