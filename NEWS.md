@@ -1,77 +1,66 @@
 # shinyOAuth (development version)
 
-* `oauth_client()` / `OAuthClient` and `oauth_provider()` /
-  `OAuthProvider` now use the renamed constructor arguments documented below.
-  Both helper constructors temporarily accept the previous argument names via
-  `...` and emit deprecation warnings while callers migrate.
-  - `oauth_client()`: `client_private_key` ->
-    `client_assertion_private_key`, `client_private_key_kid` ->
-    `client_assertion_private_key_kid`,
-    `userinfo_jwt_required_temporal_claims` ->
-    `userinfo_jwt_required_time_claims`,
-    `mtls_request_certificate_bound_access_tokens` ->
-    `mtls_certificate_bound_access_tokens`, `tls_client_cert_file` ->
-    `mtls_client_cert_file`, `tls_client_key_file` ->
-    `mtls_client_key_file`, `tls_client_key_password` ->
-    `mtls_client_key_password`, `tls_client_ca_file` ->
-    `mtls_client_ca_file`, `authorization_request_mode` ->
-    `request_object_mode`, `authorization_request_signing_alg` ->
-    `request_object_signing_alg`, `authorization_request_audience` ->
-    `request_object_audience`,
-    `authorization_request_encryption_alg` ->
-    `request_object_encryption_alg`,
-    `authorization_request_encryption_enc` ->
-    `request_object_encryption_enc`,
-    `authorization_request_encryption_kid` ->
-    `request_object_encryption_kid`, `authorization_request_ttl` ->
-    `request_object_ttl`, `authorization_request_nbf_skew` ->
-    `request_object_nbf_skew`, `authorization_signed_response_alg` ->
-    `jarm_signed_response_alg`,
-    `authorization_encrypted_response_alg` ->
-    `jarm_encrypted_response_alg`,
-    `authorization_encrypted_response_enc` ->
-    `jarm_encrypted_response_enc`,
-    `authorization_response_decryption_private_key` ->
-    `jarm_decryption_private_key`, and
-    `authorization_response_decryption_private_key_kid` ->
-    `jarm_decryption_private_key_kid`.
-  - `oauth_provider()`: `require_pushed_authorization_requests` ->
-    `par_required`, `require_signed_request_object` ->
-    `signed_request_object_required`, `require_request_uri_registration` ->
-    `request_uri_registration_required`,
-    `authorization_signing_alg_values_supported` ->
-    `jarm_signing_alg_values_supported`,
-    `authorization_encryption_alg_values_supported` ->
-    `jarm_encryption_alg_values_supported`,
-    `authorization_encryption_enc_values_supported` ->
-    `jarm_encryption_enc_values_supported`,
-    `tolerate_duplicate_top_level_jarm_iss` ->
-    `jarm_tolerate_duplicate_top_level_iss`, and
-    `tls_client_certificate_bound_access_tokens` ->
-    `mtls_client_certificate_bound_access_tokens`.
-  - `oauth_client()` no longer defaults `client_id` / `client_secret` from
-    `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`; pass credentials explicitly.
-
-* List-like OAuth/request/test payload access now consistently uses exact
-`[[...]]` indexing instead of `$`, reducing accidental partial matches across
-runtime code, tests, and integration fixtures.
-
-* `oauth_provider_oidc_discover()` and helpers built on it now accept
-discovery metadata that differs from the configured issuer only by one
-trailing slash in the published `issuer`, while still storing the provider's
-advertised issuer verbatim for downstream `iss` checks.
-
-* `oauth_provider_okta()` can now target Okta's org authorization server with
-`auth_server = NULL`, instead of always forcing `/oauth2/{auth_server}` and
-the custom-server path.
+* Added JWT Secured Authorization Response Mode (JARM) support with
+`response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 
 * `oauth_module_server()` now warns once when a client resolves to
 `response_mode = "form_post"` but no prior `oauth_form_post_ui()` call was
 detected for the same module/client setup, helping catch missing form_post UI
 wrappers earlier.
 
-* Added JWT Secured Authorization Response Mode (JARM) support for
-`response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+* `oauth_client()`/`OAuthClient` and `oauth_provider()`/`OAuthProvider` 
+have had their arguments reorganized and renamed for better clarity.
+Both helper constructors (`oauth_client()` and `oauth_provider()`) still
+accept previous argument names for backward compatibility, but the underlying 
+S7 classes only use the new names. Renamed arguments include:
+  - `oauth_client()`:
+    * `client_private_key` -> `client_assertion_private_key`
+    * `client_private_key_kid` -> `client_assertion_private_key_kid`
+    * `userinfo_jwt_required_temporal_claims` -> 
+    `userinfo_jwt_required_time_claims`
+    * `mtls_request_certificate_bound_access_tokens` ->
+    `mtls_certificate_bound_access_tokens`
+    * `tls_client_cert_file` -> `mtls_client_cert_file`
+    * `tls_client_key_file` -> `mtls_client_key_file`
+    * `tls_client_key_password` -> `mtls_client_key_password`
+    * `tls_client_ca_file` -> `mtls_client_ca_file`
+    * `authorization_request_mode` -> `request_object_mode`
+    * `authorization_request_signing_alg` -> `request_object_signing_alg`
+    * `authorization_request_audience` -> `request_object_audience`
+    * `authorization_request_encryption_alg` -> `request_object_encryption_alg`
+    * `authorization_request_encryption_enc` -> `request_object_encryption_enc`
+    * `authorization_request_encryption_kid` -> `request_object_encryption_kid`
+    * `authorization_request_ttl` -> `request_object_ttl`
+    * `authorization_request_nbf_skew` -> `request_object_nbf_skew`
+    * `authorization_signed_response_alg` -> `jarm_signed_response_alg`
+    * `authorization_encrypted_response_alg` -> `jarm_encrypted_response_alg`
+    * `authorization_encrypted_response_enc` -> `jarm_encrypted_response_enc`
+    * `authorization_response_decryption_private_key` -> 
+    `jarm_decryption_private_key`
+    * `authorization_response_decryption_private_key_kid` ->
+    `jarm_decryption_private_key_kid`
+  - `oauth_provider()`
+    * `require_pushed_authorization_requests` -> `par_required`
+    * `require_signed_request_object` -> `signed_request_object_required`
+    * `require_request_uri_registration` -> `request_uri_registration_required`
+    * `authorization_signing_alg_values_supported` -> 
+    `jarm_signing_alg_values_supported`
+    * `authorization_encryption_alg_values_supported` ->
+    `jarm_encryption_alg_values_supported`
+    * `authorization_encryption_enc_values_supported` ->
+    `jarm_encryption_enc_values_supported`
+    * `tolerate_duplicate_top_level_jarm_iss` ->
+    `jarm_tolerate_duplicate_top_level_iss`
+    * `tls_client_certificate_bound_access_tokens` ->
+    `mtls_client_certificate_bound_access_tokens`
+    
+* `oauth_client()` no longer defaults `client_id` / `client_secret` from 
+`Sys.getenv('OAUTH_CLIENT_ID')`/`Sys.getenv('OAUTH_CLIENT_SECRET')`, to make
+it more explicit that these values must be set for the client to work.
+
+* `OAuthClient` printing now handles `client_secret = ""` cleanly for
+public-client setups that do not send a secret, instead of failing while
+formatting the redacted console preview.
 
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
@@ -82,15 +71,22 @@ wrappers earlier.
   `/.well-known/openid-configuration` URL plus the underlying network error,
   making discovery misconfiguration and connectivity problems easier to 
   diagnose.
+  - Accept discovery metadata that differs from the configured issuer only by 
+  one trailing slash in the published `issuer`, while still storing the 
+  provider's advertised issuer verbatim for downstream `iss` checks.
 
 * `oauth_provider_apple()` has been added which configures Apple's OIDC 
 endpoints and ID-token defaults, and added `oauth_client_secret_apple()` which 
 generates the ES256 JWT that Apple expects in the `client_secret` field of an 
 `OAuthClient` configured with `oauth_provider_apple()`.
 
-* `OAuthClient` printing now handles `client_secret = ""` cleanly for
-public-client setups that do not send a secret, instead of failing while
-formatting the redacted console preview.
+* `oauth_provider_okta()` can now target Okta's org authorization server with
+`auth_server = NULL`, instead of always forcing `/oauth2/{auth_server}` and
+the custom-server path.
+
+* Internal list-like access now consistently uses exact
+`[[...]]` indexing instead of `$`, reducing potential for accidental partial 
+matches across runtime code, tests, and integration fixtures.
 
 # shinyOAuth 0.5.0
 
