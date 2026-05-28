@@ -10,85 +10,58 @@
   argument names via `...` and emit deprecation warnings while callers
   migrate.
 
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `client_private_key` -\> `client_assertion_private_key`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `client_private_key_kid` -\> `client_assertion_private_key_kid`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `userinfo_jwt_required_temporal_claims` -\>
-    `userinfo_jwt_required_time_claims`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `mtls_request_certificate_bound_access_tokens` -\>
-    `mtls_certificate_bound_access_tokens`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `tls_client_cert_file` -\> `mtls_client_cert_file`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `tls_client_key_file` -\> `mtls_client_key_file`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `tls_client_key_password` -\> `mtls_client_key_password`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `tls_client_ca_file` -\> `mtls_client_ca_file`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_mode` -\> `request_object_mode`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_signing_alg` -\>
-    `request_object_signing_alg`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_audience` -\> `request_object_audience`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_encryption_alg` -\>
-    `request_object_encryption_alg`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_encryption_enc` -\>
-    `request_object_encryption_enc`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_encryption_kid` -\>
-    `request_object_encryption_kid`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_ttl` -\> `request_object_ttl`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_request_nbf_skew` -\> `request_object_nbf_skew`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_signed_response_alg` -\> `jarm_signed_response_alg`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_encrypted_response_alg` -\>
-    `jarm_encrypted_response_alg`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_encrypted_response_enc` -\>
-    `jarm_encrypted_response_enc`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_response_decryption_private_key` -\>
-    `jarm_decryption_private_key`.
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    `authorization_response_decryption_private_key_kid` -\>
-    `jarm_decryption_private_key_kid`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `require_pushed_authorization_requests` -\> `par_required`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `require_signed_request_object` -\>
-    `signed_request_object_required`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `require_request_uri_registration` -\>
-    `request_uri_registration_required`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `authorization_signing_alg_values_supported` -\>
-    `jarm_signing_alg_values_supported`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `authorization_encryption_alg_values_supported` -\>
-    `jarm_encryption_alg_values_supported`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `authorization_encryption_enc_values_supported` -\>
-    `jarm_encryption_enc_values_supported`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `tolerate_duplicate_top_level_jarm_iss` -\>
-    `jarm_tolerate_duplicate_top_level_iss`.
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md):
-    `tls_client_certificate_bound_access_tokens` -\>
-    `mtls_client_certificate_bound_access_tokens`.
   - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-    no longer defaults `client_id` / `client_secret` from
-    `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`; pass credentials
-    explicitly.
+    - `client_private_key` -\> `client_assertion_private_key`.
+    - `client_private_key_kid` -\> `client_assertion_private_key_kid`.
+    - `userinfo_jwt_required_temporal_claims` -\>
+      `userinfo_jwt_required_time_claims`.
+    - `mtls_request_certificate_bound_access_tokens` -\>
+      `mtls_certificate_bound_access_tokens`.
+    - `tls_client_cert_file` -\> `mtls_client_cert_file`.
+    - `tls_client_key_file` -\> `mtls_client_key_file`.
+    - `tls_client_key_password` -\> `mtls_client_key_password`.
+    - `tls_client_ca_file` -\> `mtls_client_ca_file`.
+    - `authorization_request_mode` -\> `request_object_mode`.
+    - `authorization_request_signing_alg` -\>
+      `request_object_signing_alg`.
+    - `authorization_request_audience` -\> `request_object_audience`.
+    - `authorization_request_encryption_alg` -\>
+      `request_object_encryption_alg`.
+    - `authorization_request_encryption_enc` -\>
+      `request_object_encryption_enc`.
+    - `authorization_request_encryption_kid` -\>
+      `request_object_encryption_kid`.
+    - `authorization_request_ttl` -\> `request_object_ttl`.
+    - `authorization_request_nbf_skew` -\> `request_object_nbf_skew`.
+    - `authorization_signed_response_alg` -\>
+      `jarm_signed_response_alg`.
+    - `authorization_encrypted_response_alg` -\>
+      `jarm_encrypted_response_alg`.
+    - `authorization_encrypted_response_enc` -\>
+      `jarm_encrypted_response_enc`.
+    - `authorization_response_decryption_private_key` -\>
+      `jarm_decryption_private_key`.
+    - `authorization_response_decryption_private_key_kid` -\>
+      `jarm_decryption_private_key_kid`.
+    - No longer defaults `client_id` / `client_secret` from
+      `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`; pass credentials
+      explicitly.
+  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+    - `require_pushed_authorization_requests` -\> `par_required`.
+    - `require_signed_request_object` -\>
+      `signed_request_object_required`.
+    - `require_request_uri_registration` -\>
+      `request_uri_registration_required`.
+    - `authorization_signing_alg_values_supported` -\>
+      `jarm_signing_alg_values_supported`.
+    - `authorization_encryption_alg_values_supported` -\>
+      `jarm_encryption_alg_values_supported`.
+    - `authorization_encryption_enc_values_supported` -\>
+      `jarm_encryption_enc_values_supported`.
+    - `tolerate_duplicate_top_level_jarm_iss` -\>
+      `jarm_tolerate_duplicate_top_level_iss`.
+    - `tls_client_certificate_bound_access_tokens` -\>
+      `mtls_client_certificate_bound_access_tokens`.
 
 - List-like OAuth/request/test payload access now consistently uses
   exact `[[...]]` indexing instead of `$`, reducing accidental partial
