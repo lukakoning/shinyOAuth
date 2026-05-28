@@ -169,6 +169,13 @@ on the browser redirect as `request=...`, it publishes the Request
 Object at a URL and sends the provider `request_uri=<that URL>`. The
 provider then fetches that published Request Object itself.
 
+With
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+that published URL is served by the Shiny app itself. In other words,
+shinyOAuth creates a short-lived Request Object endpoint under the app,
+and the provider makes an outbound HTTP request back to that app URL to
+read the signed Request Object.
+
 That means two extra things matter:
 
 - the published URL must be reachable from the provider, not just from
@@ -193,14 +200,10 @@ auth <- oauth_module_server(
   "auth",
   client,
   auto_redirect = TRUE,
-  # Public origin the provider can fetch the Request Object from.
-  request_uri_base_url = "https://public.example.com"
+  # Public HTTPS base URL of this Shiny app as seen by the provider.
+  request_uri_base_url = "https://shiny.yourdomain.com/myapp"
 )
 ```
-
-Prefer PAR when you want a provider-issued opaque handle. Use
-caller-managed `request_uri` when the provider supports that pattern and
-can fetch a published Request Object from your app.
 
 ## Form Post response mode
 

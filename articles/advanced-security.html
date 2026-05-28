@@ -229,6 +229,11 @@ that JWT directly on the browser redirect as <code>request=...</code>,
 it publishes the Request Object at a URL and sends the provider
 <code>request_uri=&lt;that URL&gt;</code>. The provider then fetches
 that published Request Object itself.</p>
+<p>With <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, that published URL is served
+by the Shiny app itself. In other words, shinyOAuth creates a
+short-lived Request Object endpoint under the app, and the provider
+makes an outbound HTTP request back to that app URL to read the signed
+Request Object.</p>
 <p>That means two extra things matter:</p>
 <ul>
 <li>the published URL must be reachable from the provider, not just from
@@ -254,12 +259,9 @@ there</li>
 <span>  <span class="st">"auth"</span>,</span>
 <span>  <span class="va">client</span>,</span>
 <span>  auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  <span class="co"># Public origin the provider can fetch the Request Object from.</span></span>
-<span>  request_uri_base_url <span class="op">=</span> <span class="st">"https://public.example.com"</span></span>
+<span>  <span class="co"># Public HTTPS base URL of this Shiny app as seen by the provider.</span></span>
+<span>  request_uri_base_url <span class="op">=</span> <span class="st">"https://shiny.yourdomain.com/myapp"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Prefer PAR when you want a provider-issued opaque handle. Use
-caller-managed <code>request_uri</code> when the provider supports that
-pattern and can fetch a published Request Object from your app.</p>
 </div>
 <div class="section level2">
 <h2 id="form-post-response-mode">Form Post response mode<a class="anchor" aria-label="anchor" href="#form-post-response-mode"></a>
