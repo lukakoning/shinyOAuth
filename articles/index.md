@@ -2,6 +2,8 @@
 
 ### All vignettes
 
+- [Advanced security
+  configuration](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md):
 - [Audit logging and
   hooks](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md):
 - [Authentication

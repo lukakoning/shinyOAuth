@@ -1,0 +1,370 @@
+# Advanced security configuration
+
+## Overview
+
+Most apps can stay with the default flow in ‘shinyOAuth’. This vignette
+is for setups that need higher assurance. Some of these features are
+required by certain providers, while others are optional hardening
+measures. These include:
+
+- mTLS: makes the client prove itself with a certificate
+- JAR: signs the authorization request itself
+- PAR: pushes the authorization request over a back-channel first
+- form_post: sends the callback as an HTTP POST instead of query
+  parameters
+- JARM: signs, and optionally encrypts, the authorization response
+- DPoP: binds tokens to a private key
+
+For the normal package setup, see:
+[`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+
+For a step-by-step explanation of where these features fit into the
+login flow, see:
+[`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
+
+## Start with discovery when possible
+
+If your provider supports OIDC discovery, start there. Discovery can
+fill in a lot of the provider metadata used by advanced security
+features, including PAR, JARM, DPoP algorithm hints, and mTLS endpoint
+aliases.
+
+``` r
+provider <- oauth_provider_oidc_discover(
+  issuer = "https://id.example.com"
+)
+```
+
+The sections below show the extra settings you usually add on top of
+your normal
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+setup.
+
+## Mutual TLS (mTLS)
+
+mTLS means your client presents a certificate during the TLS connection.
+That can do two useful things:
+
+- let the provider verify the client during the TLS handshake, so a
+  client secret alone is not enough at the token endpoint
+- let the provider issue access tokens that are bound to that
+  certificate, so a leaked token can be rejected without the matching
+  client cert
+
+Use it when your provider requires RFC 8705, or when you want
+certificate-bound access tokens.
+
+``` r
+provider <- oauth_provider(
+  authorization_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  # Use RFC 8705 client-certificate auth at the token endpoint.
+  token_auth_style = "tls_client_auth",
+  # Use mTLS-specific endpoints when the provider publishes them.
+  mtls_endpoint_aliases = list(
+    token_endpoint = "https://mtls.id.example.com/token",
+    userinfo_endpoint = "https://mtls.id.example.com/userinfo"
+  ),
+  # Expect certificate-bound access tokens from the provider.
+  mtls_client_certificate_bound_access_tokens = TRUE
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile"),
+  # Certificate and key sent on mTLS requests.
+  mtls_client_cert_file = "certs/client.pem",
+  mtls_client_key_file = "certs/client-key.pem",
+  mtls_client_ca_file = "certs/ca.pem",
+  # Request certificate-bound tokens instead of plain Bearer tokens.
+  mtls_certificate_bound_access_tokens = TRUE
+)
+```
+
+If your provider uses dynamic client registration,
+[`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
+can build the RFC 8705 registration metadata from the configured client.
+
+## JWT-secured authorization request (JAR)
+
+JAR wraps the authorization request in a signed JWT called a Request
+Object. That lets the provider verify exactly which request parameters
+the client meant to send, instead of trusting a browser URL that could
+be changed on the way.
+
+This is useful when you want stronger protection against request
+tampering, or when the provider requires signed Request Objects. If you
+also configure Request Object encryption, the request gains
+confidentiality as well.
+
+``` r
+provider <- oauth_provider(
+  issuer = "https://id.example.com",
+  authorization_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  # Provider expects signed Request Objects.
+  signed_request_object_required = TRUE,
+  request_parameter_supported = TRUE,
+  request_object_signing_alg_values_supported = c("RS256"),
+  request_object_encryption_alg_values_supported = c("RSA-OAEP"),
+  request_object_encryption_enc_values_supported = c("A128CBC-HS256")
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile"),
+  # Signing key for the Request Object.
+  client_assertion_private_key = openssl::read_key("keys/client-key.pem"),
+  # Send the authorization request as a JWT in the request parameter.
+  request_object_mode = "request",
+  request_object_signing_alg = "RS256",
+  # Optional: encrypt the Request Object as well.
+  request_object_encryption_alg = "RSA-OAEP",
+  request_object_encryption_enc = "A128CBC-HS256"
+)
+```
+
+If your main goal is to keep request details out of the browser URL, PAR
+is usually the simpler choice. JAR and PAR also work well together.
+
+## Pushed authorization requests (PAR)
+
+PAR sends the authorization request from your server to the provider
+first. The browser then gets redirected with a short `request_uri`
+handle instead of the full request details.
+
+This is useful when the provider requires PAR, when the request is
+large, or when you want the provider to receive and validate the request
+before the browser redirect happens. It also keeps most request details
+out of browser history and front-channel logs.
+
+``` r
+provider <- oauth_provider(
+  issuer = "https://id.example.com",
+  authorization_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  # Enable pushed authorization requests.
+  par_url = "https://id.example.com/par",
+  par_required = TRUE,
+  # Keep the browser redirect down to client_id + PAR request_uri.
+  authorization_request_front_channel_mode = "minimal"
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  client_secret = "client-secret",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile")
+)
+```
+
+If you set `request_object_mode = "request_uri"`, shinyOAuth still
+builds a signed Request Object, but instead of putting that JWT directly
+on the browser redirect as `request=...`, it publishes the Request
+Object at a URL and sends the provider `request_uri=<that URL>`. The
+provider then fetches that published Request Object itself.
+
+That means two extra things matter:
+
+- the published URL must be reachable from the provider, not just from
+  the user’s browser
+- if the provider requires pre-registered `request_uri` values, the
+  public URL or wildcard prefix must already be registered there
+
+``` r
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile"),
+  client_assertion_private_key = openssl::read_key("keys/client-key.pem"),
+  # Publish the Request Object by reference instead of sending it inline.
+  request_object_mode = "request_uri",
+  request_object_signing_alg = "RS256"
+)
+
+# Inside server()
+auth <- oauth_module_server(
+  "auth",
+  client,
+  auto_redirect = TRUE,
+  # Public origin the provider can fetch the Request Object from.
+  request_uri_base_url = "https://public.example.com"
+)
+```
+
+Prefer PAR when you want a provider-issued opaque handle. Use
+caller-managed `request_uri` when the provider supports that pattern and
+can fetch a published Request Object from your app.
+
+## Form Post response mode
+
+`response_mode = "form_post"` tells the provider to send the
+authorization response back as an HTTP POST body instead of query
+parameters on the URL. The body still contains normal OAuth fields such
+as `code`, `state`, `error`, and `iss`; this is not JARM.
+
+This is useful when the provider requires form_post, or when you want
+those callback values out of the browser URL, history, and some
+front-channel logs. It changes the callback transport, but it does not
+sign the response by itself.
+
+``` r
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/callback",
+  scopes = c("openid", "profile"),
+  # Ask the provider to POST the callback to redirect_uri.
+  response_mode = "form_post"
+)
+
+base_ui <- fluidPage(
+  uiOutput("login")
+)
+
+# Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists.
+ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
+
+# If the callback path is not the app root, route all paths through this UI.
+app <- shinyApp(ui, server, uiPattern = ".*")
+```
+
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+uses the path from `redirect_uri` by default. Set its `callback_path`
+argument only when the POST callback needs to land on a different public
+path than the one derived from `redirect_uri`.
+
+## JWT-secured authorization response mode (JARM)
+
+JARM makes the authorization response itself a JWT. Instead of trusting
+plain callback parameters immediately, the app validates a signed JWT
+first, and can also decrypt it when the provider uses encrypted JARM.
+
+This is useful when you want the app to verify that the callback really
+came from the provider and was not changed in the front channel. With
+encrypted JARM, the callback contents are also hidden from
+browser-visible layers.
+
+``` r
+provider <- oauth_provider(
+  issuer = "https://id.example.com",
+  authorization_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  # Advertise the JARM response modes and algorithms this provider supports.
+  response_modes_supported = c("query", "query.jwt", "form_post.jwt"),
+  jarm_signing_alg_values_supported = c("RS256"),
+  jarm_encryption_alg_values_supported = c("RSA-OAEP"),
+  jarm_encryption_enc_values_supported = c("A128CBC-HS256")
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile"),
+  # Ask for a JWT-wrapped authorization response.
+  response_mode = "query.jwt",
+  jarm_signed_response_alg = "RS256"
+)
+```
+
+For encrypted JARM, add the decryption settings:
+
+``` r
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile"),
+  response_mode = "query.jwt",
+  jarm_signed_response_alg = "RS256",
+  # Optional: decrypt JARM before validating the signed payload.
+  jarm_encrypted_response_alg = "RSA-OAEP",
+  jarm_encrypted_response_enc = "A128CBC-HS256",
+  jarm_decryption_private_key = openssl::read_key("keys/jarm-decrypt.pem")
+)
+```
+
+JARM is currently intended for
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+If you use `response_mode = "form_post.jwt"`, wrap your UI with
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+
+## Demonstrating proof-of-possession (DPoP)
+
+DPoP adds a proof JWT to token and API requests and lets the server bind
+the access token to your key. That means a copied token is less useful,
+because the attacker would also need the private key that creates the
+proofs.
+
+Use it when your authorization server or resource server supports DPoP
+and you want sender-constrained tokens without managing client
+certificates.
+
+``` r
+provider <- oauth_provider(
+  issuer = "https://id.example.com",
+  authorization_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  # Optional metadata check for acceptable DPoP signing algorithms.
+  dpop_signing_alg_values_supported = c("ES256")
+)
+
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  scopes = c("openid", "profile", "api.read"),
+  # Private key used to sign DPoP proofs.
+  dpop_private_key = openssl::read_key("keys/dpop-key.pem"),
+  dpop_signing_alg = "ES256"
+)
+```
+
+After login, keep using the request helpers instead of adding
+`Authorization` or `DPoP` headers manually:
+
+``` r
+resp <- perform_resource_req(
+  auth$token,
+  "https://api.example.com/me",
+  # Lets shinyOAuth attach the DPoP proof and handle nonce challenges.
+  oauth_client = client
+)
+```
+
+## Common combinations
+
+- JAR + PAR: sign the authorization request, then push it over the
+  back-channel
+- PAR + JARM: protect both the outbound authorization request and the
+  inbound callback response
+- mTLS or DPoP: both are sender-constraining approaches, but mTLS is
+  certificate-based while DPoP is key-and-JWT based
+
+Most deployments only need one of mTLS or DPoP, not both.
+
+## Smaller hardening options
+
+The features above are the big protocol-level switches. A few smaller
+settings are also worth knowing:
+
+provider supports RFC 9207 stricter DPoP check when the provider
+supports introspection signed UserInfo JWTs - `request_uri_base_url` on
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+is often needed when `request_object_mode = "request_uri"` sits behind a
+proxy or different public host - `request_uri_registration_required`
+matters when caller-managed `request_uri` values must be pre-registered
+with the provider - `request_object_audience`, `request_object_ttl`, and
+`request_object_nbf_skew` are the usual follow-up knobs for stricter JAR
+deployments - `jarm_max_lifetime` lets you tighten how long a JARM
+response is accepted
+
+Use these on top of the main feature-specific settings when your
+deployment has stricter validation requirements.

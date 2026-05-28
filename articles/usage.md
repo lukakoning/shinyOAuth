@@ -15,6 +15,10 @@ secure by default. It takes care of:
 For a full step-by-step protocol breakdown, see the separate vignette:
 [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
 
+For advanced security profiles such as mTLS, JAR, PAR, JARM, and DPoP,
+see:
+[`vignette("advanced-security", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md).
+
 For a detailed explanation of audit logging key events during the flow,
 see:
 [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md).
