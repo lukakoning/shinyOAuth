@@ -2378,10 +2378,6 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      # Treat provider error_uri as untrusted navigation input and only
-      # surface a strict HTTPS absolute URL on trusted provider/allowlisted hosts.
-      error_uri <- sanitize_callback_error_uri(error_uri, client@provider)
-
       # Mirror the code-callback path: wait for the browser token before
       # consuming state or surfacing provider-controlled error text.
       if (!is_valid_string(values$browser_token)) {
@@ -2473,6 +2469,9 @@ oauth_module_server <- function(
       }
 
       # State validated and consumed: now surface provider error.
+      # Keep the raw value in deferred state so replay/resume paths preserve
+      # provider error context, but sanitize before surfacing it to callers.
+      error_uri <- sanitize_callback_error_uri(error_uri, client@provider)
       values$error <- error
       values$error_description <- error_description %||% NULL
       values$error_uri <- error_uri %||% NULL

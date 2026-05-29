@@ -81,7 +81,7 @@ testthat::test_that("audit events from async worker include shiny session token"
         audit_events,
         function(e) {
           (e[["shiny_session"]] %||% list())[[
-            "token",
+            "session_token_digest",
             exact = TRUE
           ]] %||%
             NA_character_
@@ -90,7 +90,24 @@ testthat::test_that("audit events from async worker include shiny session token"
       )
 
       testthat::expect_true(any(
-        !is.na(seen_tokens) & seen_tokens == expected_session_token
+        !is.na(seen_tokens) &
+          seen_tokens == shinyOAuth:::string_digest(expected_session_token)
+      ))
+
+      raw_tokens <- vapply(
+        audit_events,
+        function(e) {
+          (e[["shiny_session"]] %||% list())[[
+            "token",
+            exact = TRUE
+          ]] %||%
+            NA_character_
+        },
+        character(1)
+      )
+
+      testthat::expect_false(any(
+        !is.na(raw_tokens) & raw_tokens == expected_session_token
       ))
     }
   )

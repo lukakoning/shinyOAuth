@@ -77,8 +77,11 @@ testthat::test_that("audit hook options propagate to async workers with async se
     "audit_test_async_worker"
   )
   testthat::expect_identical(
-    event[["shiny_session"]][["token"]],
-    ctx[["token"]]
+    event[["shiny_session"]][["session_token_digest"]],
+    shinyOAuth:::string_digest(ctx[["token"]])
+  )
+  testthat::expect_null(
+    event[["shiny_session"]][["token"]]
   )
   testthat::expect_identical(
     as.integer(event[["shiny_session"]][[

@@ -127,7 +127,10 @@ testthat::test_that("error response with state waits for browser_token before va
 
       # Process error with state but no browser_token
       values$.process_query(paste0(
-        "?error=access_denied&error_description=Nope&state=",
+        "?error=access_denied",
+        "&error_description=Nope",
+        "&error_uri=https%3A%2F%2Fexample.com%2Fhelp%2Faccess_denied",
+        "&state=",
         enc
       ))
       session$flushReact()
@@ -137,6 +140,10 @@ testthat::test_that("error response with state waits for browser_token before va
       testthat::expect_null(values$error_description)
       testthat::expect_type(values$pending_callback, "list")
       testthat::expect_identical(values$pending_callback$type, "error")
+      testthat::expect_identical(
+        values$pending_callback$error_uri,
+        "https://example.com/help/access_denied"
+      )
       testthat::expect_false(values$authenticated)
 
       # State should remain present until the deferred callback resumes.
@@ -149,6 +156,10 @@ testthat::test_that("error response with state waits for browser_token before va
 
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_match(values$error_description %||% "", "Nope")
+      testthat::expect_identical(
+        values$error_uri,
+        "https://example.com/help/access_denied"
+      )
       testthat::expect_null(values$pending_callback)
 
       # State should be consumed after successful browser-token validation.
