@@ -118,7 +118,7 @@ more protected resources. Each value is sent as a repeated \code{resource}
 parameter on the authorization request, initial token exchange, and token
 refresh requests. Default is \code{character(0)}.}
 
-\item{claims}{OIDC claims request parameter (OIDC Core §5.5). Allows
+\item{claims}{OIDC claims request parameter (OIDC Core section 5.5). Allows
 requesting specific claims from the UserInfo Endpoint and/or in the ID
 Token. Can be:
 \itemize{
@@ -141,7 +141,7 @@ single-element \code{values} entry that is not wrapped in \code{\link[=I]{I()}},
 that common input pattern serializes incorrectly for OIDC.
 \item A character string: pre-encoded JSON string (advanced use). Must
 be valid JSON. Use this when you need full control over JSON encoding.
-Note: The \code{claims} parameter is OPTIONAL per OIDC Core §5.5. Not all
+Note: The \code{claims} parameter is OPTIONAL per OIDC Core section 5.5. Not all
 providers support it; consult your provider's documentation.
 }}
 
@@ -173,7 +173,7 @@ error.
 }}
 
 \item{claims_validation}{Controls validation of requested claims supplied via
-the \code{claims} parameter (OIDC Core §5.5). When \code{claims} includes entries
+the \code{claims} parameter (OIDC Core section 5.5). When \code{claims} includes entries
 with \code{essential = TRUE} for \code{id_token} or \code{userinfo}, or explicit \code{value}
 / \code{values} constraints for individual claims, this setting determines what
 happens if the returned ID token or userinfo response does not satisfy
@@ -201,14 +201,15 @@ Configure the provider with \code{id_token_validation = TRUE} or \code{use_nonce
 so shinyOAuth validates the ID token before checking those claims.}
 
 \item{required_acr_values}{Optional character vector of acceptable
-Authentication Context Class Reference values (OIDC Core §2, §3.1.2.1).
+Authentication Context Class Reference values (OIDC Core sections 2 and
+3.1.2.1).
 When non-empty, the ID token returned by the provider must contain an
 \code{acr} claim whose value is one of the specified entries; otherwise the
 login fails with a \code{shinyOAuth_id_token_error}.
 
 Additionally, when non-empty, the authorization request automatically
 includes an \code{acr_values} query parameter (space-separated) as a voluntary
-hint to the provider (OIDC Core §3.1.2.1).  Note that the provider is
+hint to the provider (OIDC Core section 3.1.2.1).  Note that the provider is
 not required to honour this hint; the client-side validation is the
 authoritative enforcement.
 
@@ -289,7 +290,7 @@ Default is 300 seconds.}
 \item{state_entropy}{Integer. The length (in characters) of the randomly
 generated state parameter. Higher values provide more entropy and better
 security against CSRF attacks. Must be between 22 and 128 (to align with
-\code{validate_state()}'s default minimum which targets ~128 bits for base64url‑like
+\code{validate_state()}'s default minimum which targets ~128 bits for base64url-like
 strings). Default is 64.}
 
 \item{state_key}{Optional per-client secret used as the state sealing key
