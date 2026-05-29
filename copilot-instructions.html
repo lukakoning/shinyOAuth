@@ -67,19 +67,28 @@
 </ul></div>
 <div class="section level2">
 <h2 id="r-file-style">R File Style<a class="anchor" aria-label="anchor" href="#r-file-style"></a></h2>
-<ul><li>Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.</li>
-<li>Use numbered section and subsection comments to organize R files:
-<ul><li><code># 1 Title goes here ------------------------------------------</code></li>
-<li><code>## 1.2 Subtitle goes here ------------------------------------</code></li>
-<li><code>### 1.2.1 Subsubtitle goes here ------------------------------</code></li>
-</ul></li>
-<li>Section separator dashes must extend through column 80. Keep section text in regular sentence case, not title case.</li>
-<li>Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.</li>
-<li>Add a short section introduction when it makes the purpose of the section easier to understand.</li>
-<li>Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.</li>
-<li>Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, <code>@param</code> entries, and <code>@return</code>. Use <code>@keywords internal</code> and <code>@noRd</code> for non-exported helpers.</li>
-<li>Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.</li>
-<li>For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact <code>[[...]]</code> access and <code>[[...]] &lt;-</code> writes instead of <code>$</code>; <code>[[</code> is already exact by default, so do not add <code>exact = TRUE</code>.</li>
+<ul><li>
+<strong>File layout</strong>: Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.</li>
+<li>
+<strong>File layout</strong>: Add a short section introduction when it makes the purpose of the section easier to understand.</li>
+<li>
+<strong>Section comments</strong>: Use numbered section and subsection comments to organize R files, for example <code># 1 Title goes here ------------------------------------------</code>, <code>## 1.2 Subtitle goes here ------------------------------------</code>, and <code>### 1.2.1 Subsubtitle goes here ------------------------------</code>.</li>
+<li>
+<strong>Section comments</strong>: The line of dashes following the section title must end at exactly column 80 (total line width = 80 characters including the leading <code>#</code> and title). Keep section text in regular sentence case, not title case.</li>
+<li>
+<strong>Section comments</strong>: Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.</li>
+<li>
+<strong>Helper functions</strong>: Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used. Inline one-use helpers by default.</li>
+<li>
+<strong>Helper functions</strong>: Keep a one-use helper only if it is referenced in tests by name, wraps more than 10 lines of logic, is exported or documented, or is an <code>err_*</code>/<code>warn_*</code> helper whose named condition improves testing or reuse.</li>
+<li>
+<strong>Documentation</strong>: Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, <code>@param</code> entries, and <code>@return</code>. Use <code>@keywords internal</code> and <code>@noRd</code> for non-exported helpers.</li>
+<li>
+<strong>Refactors</strong>: Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.</li>
+<li>
+<strong>List access</strong>: For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact <code>[[...]]</code> access and <code>[[...]] &lt;-</code> writes instead of <code>$</code>; <code>[[</code> is already exact by default, so do not add <code>exact = TRUE</code>.</li>
+<li>
+<strong>Incidental cleanup</strong>: When editing a file that contains pre-existing style violations unrelated to your change, leave them alone unless the user requests a cleanup; do not perform incidental refactors.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="core-code-paths">Core Code Paths<a class="anchor" aria-label="anchor" href="#core-code-paths"></a></h2>
@@ -90,7 +99,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="security--state">Security &amp; State<a class="anchor" aria-label="anchor" href="#security--state"></a></h2>
-<ul><li>OAuthClient instances seal state payloads with AES-GCM using <code>client@state_key</code> and single-use cache entries (<code><a href="reference/state_store_get_remove.html">state_store_get_remove()</a></code>); share both key and cache across workers in production deployments.</li>
+<ul><li>OAuthClient instances seal state payloads with AES-GCM using <code>client@state_key</code> and single-use cache entries (<code><a href="reference/state_store_get_remove.html">state_store_get_remove()</a></code>); in production, pass the same <code>state_key</code> (typically loaded from an env var such as <code>SHINYOAUTH_STATE_KEY</code>) and a shared cache backend (for example a Redis-backed <code>cachem</code> cache) to <code><a href="reference/oauth_client.html">oauth_client()</a></code> in every worker.</li>
 <li>Host validation is centralized in <code><a href="reference/is_ok_host.html">is_ok_host()</a></code> and enforced by OAuthProvider validators; always pipe new endpoints through these helpers and avoid bypassing the checks.</li>
 <li>Provider objects gate PKCE/nonce/id-token policies and <code>token_type</code> enforcement; align new provider helpers with existing defaults in R/providers.R (e.g., <code>allowed_algs</code>, <code>allowed_token_types</code>).</li>
 </ul></div>
@@ -117,9 +126,9 @@
 <div class="section level2">
 <h2 id="error-handling">Error Handling<a class="anchor" aria-label="anchor" href="#error-handling"></a></h2>
 <ul><li>Throw failures with the typed helpers in R/errors.R (<code>err_abort()</code> plus <code>err_token()</code>/<code>err_invalid_state()</code>/<code>err_http()</code>, etc.); they wrap <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::abort</a></code> with package-specific classes and inject trace ids, so avoid base <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code>.</li>
-<li>For recoverable notices use <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::warn()</a></code>/<code>inform()</code> with cli-style bullet vectors and frequency guards (see <code>warn_about_missing_js_dependency()</code> and <code>client_state_store_max_age()</code>) instead of <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code>/<code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>; surface structured context via <code>context = list()</code>.</li>
-<li>Prefer adding new <code>err_*</code> or <code>warn_*</code> helpers next to existing ones so tests can assert on condition classes and message formats.</li>
-<li>Default to rlang/cli idioms for developer messaging: use <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_warn()</a></code>/<code>cli_inform()</code> or <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::warn()</a></code>/<code>inform()</code> with cli bullets, and avoid <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code>/<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>/<code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> unless tests explicitly stub those paths.</li>
+<li>For recoverable notices, prefer <code><a href="https://rlang.r-lib.org/reference/abort.html" class="external-link">rlang::warn()</a></code>/<code>inform()</code> with cli-style bullet vectors and frequency guards (see <code>warn_about_missing_js_dependency()</code> and <code>client_state_store_max_age()</code>); surface structured context via <code>context = list()</code> and avoid <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code>/<code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>.</li>
+<li>Use <code><a href="https://cli.r-lib.org/reference/cli_abort.html" class="external-link">cli::cli_warn()</a></code>/<code>cli_inform()</code> only when matching surrounding file conventions or when direct CLI output is explicitly needed. Avoid <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code>/<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>/<code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> unless tests explicitly stub those paths.</li>
+<li>Prefer adding new <code>err_*</code> or <code>warn_*</code> helpers next to existing ones when a named condition helps tests assert on condition classes or keeps message formats consistent, even if the helper is currently used once.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="testing-workflow">Testing Workflow<a class="anchor" aria-label="anchor" href="#testing-workflow"></a></h2>
@@ -129,6 +138,7 @@
 <li>Async module tests reset <code>future::plan(future::sequential)</code> and use <code>poll_for_async()</code> helper to flush <code><a href="https://later.r-lib.org/reference/run_now.html" class="external-link">later::run_now()</a></code> and <code>session$flushReact()</code> until conditions are met; timeout/interval configurable via <code>SHINYOAUTH_TEST_POLL_TIMEOUT</code> and <code>SHINYOAUTH_TEST_POLL_INTERVAL</code> env vars.</li>
 <li>Set <code>NOT_CRAN=true</code> environment variable to enable security/timing/webfakes tests that are skipped on CRAN (this is set automatically in CI workflows).</li>
 <li>Ensure state-store logic exposes <code>get</code>/<code>set</code>/<code>remove</code>/<code>missing</code> signatures so duck-typing checks in OAuthClient/OAuthProvider validators pass; use <code><a href="reference/custom_cache.html">custom_cache()</a></code> wrapper for non-cachem backends.</li>
+<li>Any new exported function or new <code>err_*</code>/<code>warn_*</code> helper must add or update a testthat test that asserts on the return value or condition class. Prefer modifying existing tests and fixtures over duplicating them.</li>
 <li>Integration tests (Docker-based Keycloak, GCP) live in integration/; these are separate from unit tests and run via CI workflows (.github/workflows/integration-tests.yml).</li>
 </ul></div>
 <div class="section level2">
@@ -155,6 +165,7 @@
 <div class="section level2">
 <h2 id="global-options">Global Options<a class="anchor" aria-label="anchor" href="#global-options"></a></h2>
 <ul><li>Do not add new global options unless specifically requested. All options must be documented in the ‘usage’ vignette.</li>
+<li>If a change appears to require a new option, stop and ask the user before implementing; propose the option name, default, and which section of the ‘usage’ vignette would document it.</li>
 </ul></div>
 </div>
 

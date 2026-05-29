@@ -38,34 +38,45 @@
 
 ## R File Style
 
-- Start files with the main entry points for that topic, then place
-  increasingly specific helper functions lower in the file.
-- Use numbered section and subsection comments to organize R files:
-  - `# 1 Title goes here ------------------------------------------`
-  - `## 1.2 Subtitle goes here ------------------------------------`
-  - `### 1.2.1 Subsubtitle goes here ------------------------------`
-- Section separator dashes must extend through column 80. Keep section
-  text in regular sentence case, not title case.
-- Leave at least one empty line after every section title before the
-  first code or explanatory comment, and at least two empty lines before
-  the next section title.
-- Add a short section introduction when it makes the purpose of the
-  section easier to understand.
-- Prefer fewer helpers. Before adding or keeping a short helper, check
-  how often it is used; inline one-use helpers unless keeping the helper
-  materially improves clarity, testing, or reuse.
-- Every named function, including internal helpers, should have
-  roxygen2-style documentation with a title, plain-language description,
-  `@param` entries, and `@return`. Use `@keywords internal` and `@noRd`
-  for non-exported helpers.
-- Reassess file boundaries during refactors: keep strongly related
-  functions together, move functions that fit a different topic better,
-  and rename functions whose names do not clearly describe their
-  behavior.
-- For list-like objects, parsed JSON, request metadata, and test
-  fixtures, always use exact `[[...]]` access and `[[...]] <-` writes
-  instead of `$`; `[[` is already exact by default, so do not add
+- **File layout**: Start files with the main entry points for that
+  topic, then place increasingly specific helper functions lower in the
+  file.
+- **File layout**: Add a short section introduction when it makes the
+  purpose of the section easier to understand.
+- **Section comments**: Use numbered section and subsection comments to
+  organize R files, for example
+  `# 1 Title goes here ------------------------------------------`,
+  `## 1.2 Subtitle goes here ------------------------------------`, and
+  `### 1.2.1 Subsubtitle goes here ------------------------------`.
+- **Section comments**: The line of dashes following the section title
+  must end at exactly column 80 (total line width = 80 characters
+  including the leading `#` and title). Keep section text in regular
+  sentence case, not title case.
+- **Section comments**: Leave at least one empty line after every
+  section title before the first code or explanatory comment, and at
+  least two empty lines before the next section title.
+- **Helper functions**: Prefer fewer helpers. Before adding or keeping a
+  short helper, check how often it is used. Inline one-use helpers by
+  default.
+- **Helper functions**: Keep a one-use helper only if it is referenced
+  in tests by name, wraps more than 10 lines of logic, is exported or
+  documented, or is an `err_*`/`warn_*` helper whose named condition
+  improves testing or reuse.
+- **Documentation**: Every named function, including internal helpers,
+  should have roxygen2-style documentation with a title, plain-language
+  description, `@param` entries, and `@return`. Use `@keywords internal`
+  and `@noRd` for non-exported helpers.
+- **Refactors**: Reassess file boundaries during refactors: keep
+  strongly related functions together, move functions that fit a
+  different topic better, and rename functions whose names do not
+  clearly describe their behavior.
+- **List access**: For list-like objects, parsed JSON, request metadata,
+  and test fixtures, always use exact `[[...]]` access and `[[...]] <-`
+  writes instead of `$`; `[[` is already exact by default, so do not add
   `exact = TRUE`.
+- **Incidental cleanup**: When editing a file that contains pre-existing
+  style violations unrelated to your change, leave them alone unless the
+  user requests a cleanup; do not perform incidental refactors.
 
 ## Core Code Paths
 
@@ -89,7 +100,11 @@
 - OAuthClient instances seal state payloads with AES-GCM using
   `client@state_key` and single-use cache entries
   ([`state_store_get_remove()`](https://lukakoning.github.io/shinyOAuth/reference/state_store_get_remove.md));
-  share both key and cache across workers in production deployments.
+  in production, pass the same `state_key` (typically loaded from an env
+  var such as `SHINYOAUTH_STATE_KEY`) and a shared cache backend (for
+  example a Redis-backed `cachem` cache) to
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  in every worker.
 - Host validation is centralized in
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   and enforced by OAuthProvider validators; always pipe new endpoints
@@ -149,22 +164,23 @@
   wrap [`rlang::abort`](https://rlang.r-lib.org/reference/abort.html)
   with package-specific classes and inject trace ids, so avoid base
   [`stop()`](https://rdrr.io/r/base/stop.html).
-- For recoverable notices use
+- For recoverable notices, prefer
   [`rlang::warn()`](https://rlang.r-lib.org/reference/abort.html)/`inform()`
   with cli-style bullet vectors and frequency guards (see
   `warn_about_missing_js_dependency()` and
-  `client_state_store_max_age()`) instead of
-  [`message()`](https://rdrr.io/r/base/message.html)/[`warning()`](https://rdrr.io/r/base/warning.html);
-  surface structured context via `context = list()`.
-- Prefer adding new `err_*` or `warn_*` helpers next to existing ones so
-  tests can assert on condition classes and message formats.
-- Default to rlang/cli idioms for developer messaging: use
+  `client_state_store_max_age()`); surface structured context via
+  `context = list()` and avoid
+  [`message()`](https://rdrr.io/r/base/message.html)/[`warning()`](https://rdrr.io/r/base/warning.html).
+- Use
   [`cli::cli_warn()`](https://cli.r-lib.org/reference/cli_abort.html)/`cli_inform()`
-  or
-  [`rlang::warn()`](https://rlang.r-lib.org/reference/abort.html)/`inform()`
-  with cli bullets, and avoid
+  only when matching surrounding file conventions or when direct CLI
+  output is explicitly needed. Avoid
   [`cat()`](https://rdrr.io/r/base/cat.html)/[`print()`](https://rdrr.io/r/base/print.html)/[`message()`](https://rdrr.io/r/base/message.html)
   unless tests explicitly stub those paths.
+- Prefer adding new `err_*` or `warn_*` helpers next to existing ones
+  when a named condition helps tests assert on condition classes or
+  keeps message formats consistent, even if the helper is currently used
+  once.
 
 ## Testing Workflow
 
@@ -190,6 +206,10 @@
   validators pass; use
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
   wrapper for non-cachem backends.
+- Any new exported function or new `err_*`/`warn_*` helper must add or
+  update a testthat test that asserts on the return value or condition
+  class. Prefer modifying existing tests and fixtures over duplicating
+  them.
 - Integration tests (Docker-based Keycloak, GCP) live in integration/;
   these are separate from unit tests and run via CI workflows
   (.github/workflows/integration-tests.yml).
@@ -236,3 +256,6 @@
 
 - Do not add new global options unless specifically requested. All
   options must be documented in the ‘usage’ vignette.
+- If a change appears to require a new option, stop and ask the user
+  before implementing; propose the option name, default, and which
+  section of the ‘usage’ vignette would document it.
