@@ -1,21 +1,5 @@
 # shinyOAuth (development version)
 
-* Provider callback `error_uri` values now have to stay on a provider host
-or another host you already allowlist via
-`options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are now
-dropped instead of being surfaced through `values$error_uri`.
-
-* Native audit hooks now receive `shiny_session$session_token_digest` by
-default instead of the raw Shiny `session$token`. Set
-`options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
-explicitly need the raw token in a controlled sink.
-
-* `oauth_client()`/`OAuthClient` now support
-`dpop_require_observed_cnf = TRUE` for high-assurance DPoP deployments.
-When enabled, shinyOAuth rejects `token_type = "DPoP"` access tokens unless
-it can observe `cnf.jkt` locally in the token or via introspection, so opaque
-tokens no longer rely on `token_type` alone.
-
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 
@@ -70,18 +54,21 @@ S7 classes only use the new names. Renamed arguments include:
     * `tls_client_certificate_bound_access_tokens` ->
     `mtls_client_certificate_bound_access_tokens`
     
-* `oauth_client()` no longer defaults `client_id` / `client_secret` from 
-`Sys.getenv('OAUTH_CLIENT_ID')`/`Sys.getenv('OAUTH_CLIENT_SECRET')`, to make
-it more explicit that these values must be set for the client to work.
-
-* `OAuthClient` printing now handles `client_secret = ""` cleanly for
-public-client setups that do not send a secret, instead of failing while
-formatting the redacted console preview.
-
-* `oauth_client()` now treats an omitted `client_secret` as an absent value
-(`character(0)`), so `private_key_jwt` and other secretless client-auth
-setups can omit the argument and still flow through the normal auth-style
-validation instead of failing at argument matching.
+* `oauth_client()` (`OAuthClient`) now:
+  - Supports `dpop_require_observed_cnf = TRUE` for high-assurance DPoP 
+  deployments. When enabled, shinyOAuth rejects `token_type = "DPoP"` access 
+  tokens unless it can observe `cnf.jkt` locally in the token or via 
+  introspection, so opaque tokens no longer rely on `token_type` alone.
+  - No longer defaults `client_id` / `client_secret` from 
+  `Sys.getenv('OAUTH_CLIENT_ID')`/`Sys.getenv('OAUTH_CLIENT_SECRET')`, to make
+  it more explicit that these values must be set for the client to work.
+  - Has printing which now handles `client_secret = ""` cleanly for
+  public-client setups that do not send a secret, instead of failing while
+  formatting the redacted console preview.
+  - Treats an omitted `client_secret` as an absent value (`character(0)`), so 
+  `private_key_jwt` and other secretless client-auth setups can omit the
+  argument and still flow through the normal auth-style validation instead of 
+  failing at argument matching.
 
 * `oauth_provider_oidc_discover()` now preserves JARM discovery metadata from
 the canonical `jarm_*_values_supported` fields, while still accepting the
@@ -113,6 +100,16 @@ the custom-server path.
 `jarm_tolerate_duplicate_top_level_iss = TRUE` for interoperability with
 current Keycloak JARM responses, while still letting callers opt out and fail
 closed on duplicate top-level `iss` members.
+
+* Provider callback `error_uri` values now have to stay on a provider host
+or another host you already allowlist via
+`options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are now
+dropped instead of being surfaced through `values$error_uri`.
+
+* Native audit hooks now receive `shiny_session$session_token_digest` by
+default instead of the raw Shiny `session$token`. Set
+`options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
+explicitly need the raw token in a controlled sink.
 
 * Internal list-like access now consistently uses exact
 `[[...]]` indexing instead of `$`, reducing potential for accidental partial 
