@@ -430,7 +430,7 @@ State parsing failures occur while decoding and validating the encrypted wrapper
 
 ### Error response state consumption
 
-When the provider returns an error response (e.g., `access_denied`) but includes the `state` parameter, the module waits for the browser token, consumes the state to prevent replay and clean up the store, and then verifies the browser-token binding before surfacing the provider error. Browser-token mismatches are reported via `audit_callback_validation_failed` with `phase = "browser_token_validation"`; the events below cover the state-consumption portion of that flow.
+When the provider returns an error response (e.g., `access_denied`) but includes the `state` parameter, the module still waits for the browser token before surfacing provider-controlled error text. On the normal query callback path, it first decrypts and looks up the stored state without consuming it, verifies the browser-token binding, and only then consumes the state to prevent replay. On callback paths that already pre-consumed state during earlier normalization work (for example, some `form_post`/JARM flows), `audit_error_state_consumed` can appear before the later browser-token validation step. Browser-token mismatches are reported via `audit_callback_validation_failed` with `phase = "browser_token_validation"`; the events below cover only the state-consumption portion of that flow.
 
 #### Event: `audit_error_state_consumed`
 
