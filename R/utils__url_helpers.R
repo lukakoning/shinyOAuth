@@ -365,15 +365,16 @@ has_uri_fragment <- function(x) {
 #' Internal: sanitize provider callback error_uri values
 #'
 #' Provider-supplied `error_uri` values are untrusted navigation inputs. Only
-#' absolute HTTPS URLs are surfaced; anything else is dropped. Used when the
-#' module surfaces provider error callbacks.
+#' absolute HTTPS URLs on trusted hosts are surfaced; anything else is dropped.
+#' Used when the module surfaces provider error callbacks.
 #'
 #' @param x Provider-supplied `error_uri` value.
+#' @param provider Optional OAuth provider used to derive trusted hosts.
 #' @return Sanitized HTTPS URL string, or `NULL` when the value should be
 #'   dropped.
 #' @keywords internal
 #' @noRd
-sanitize_callback_error_uri <- function(x) {
+sanitize_callback_error_uri <- function(x, provider = NULL) {
   if (!is_valid_string(x)) {
     return(NULL)
   }
@@ -391,7 +392,66 @@ sanitize_callback_error_uri <- function(x) {
     return(NULL)
   }
 
+  allowed_hosts <- callback_error_uri_allowed_hosts(provider)
+  if (!length(allowed_hosts) || !is_ok_host(x, allowed_hosts = allowed_hosts)) {
+    return(NULL)
+  }
+
   x
+}
+
+#' Internal: collect trusted hosts for callback error_uri values
+#'
+#' Provider callback docs should stay on the provider's own hosts unless the
+#' app has already explicitly allowlisted an additional host.
+#'
+#' @param provider Optional OAuth provider used to derive trusted hosts.
+#' @return Character vector of trusted hosts/patterns.
+#' @keywords internal
+#' @noRd
+callback_error_uri_allowed_hosts <- function(provider = NULL) {
+  provider_urls <- list()
+
+  if (!is.null(provider)) {
+    provider_urls <- list(
+      provider@issuer %||% NULL,
+      provider@auth_url %||% NULL,
+      provider@token_url %||% NULL,
+      provider@userinfo_url %||% NULL,
+      provider@introspection_url %||% NULL,
+      provider@revocation_url %||% NULL,
+      provider@jwks_uri %||% NULL,
+      provider@par_url %||% NULL
+    )
+  }
+
+  provider_hosts <- vapply(
+    provider_urls,
+    function(url) {
+      if (!is_valid_string(url)) {
+        return(NA_character_)
+      }
+
+      tryCatch(
+        parse_url_host(url),
+        error = function(...) NA_character_
+      )
+    },
+    character(1)
+  )
+  provider_hosts <- unique(provider_hosts[
+    !is.na(provider_hosts) & nzchar(provider_hosts)
+  ])
+
+  configured_hosts <- getOption("shinyOAuth.allowed_hosts", default = NULL)
+  if (!is.character(configured_hosts)) {
+    configured_hosts <- character(0)
+  }
+  configured_hosts <- unique(configured_hosts[
+    !is.na(configured_hosts) & nzchar(trimws(configured_hosts))
+  ])
+
+  unique(c(provider_hosts, configured_hosts))
 }
 
 #' Internal: validate RFC 8707 resource indicators

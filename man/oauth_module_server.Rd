@@ -156,8 +156,9 @@ contain even more sensitive information.
 \item \code{error_uri}: URI identifying a human-readable web page with
 information about the error (per RFC 6749 section 4.1.2.1). Treat this
 as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
-values here and returns NULL when the provider omits or sends an unsafe
-value.
+values here when they stay on a provider host or another host already
+allowlisted via \code{options(shinyOAuth.allowed_hosts = ...)}, and returns
+NULL when the provider omits or sends an unsafe value.
 \item \code{browser_token}: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set
 \item \code{pending_callback}: internal deferred callback payload; stores either

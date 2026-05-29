@@ -184,8 +184,9 @@
 #'    \item `error_uri`: URI identifying a human-readable web page with
 #'    information about the error (per RFC 6749 section 4.1.2.1). Treat this
 #'    as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
-#'    values here and returns NULL when the provider omits or sends an unsafe
-#'    value.
+#'    values here when they stay on a provider host or another host already
+#'    allowlisted via `options(shinyOAuth.allowed_hosts = ...)`, and returns
+#'    NULL when the provider omits or sends an unsafe value.
 #'    \item `browser_token`: internal opaque browser cookie value; used for state
 #'    double-submit protection; NULL if not yet set
 #'    \item `pending_callback`: internal deferred callback payload; stores either
@@ -2378,8 +2379,8 @@ oauth_module_server <- function(
       }
 
       # Treat provider error_uri as untrusted navigation input and only
-      # surface a strict HTTPS absolute URL.
-      error_uri <- sanitize_callback_error_uri(error_uri)
+      # surface a strict HTTPS absolute URL on trusted provider/allowlisted hosts.
+      error_uri <- sanitize_callback_error_uri(error_uri, client@provider)
 
       # Mirror the code-callback path: wait for the browser token before
       # consuming state or surfacing provider-controlled error text.

@@ -926,7 +926,7 @@ testthat::test_that("provider error with valid state sets provider error and aut
   )
 })
 
-testthat::test_that("error_uri from provider error callback is surfaced", {
+testthat::test_that("error_uri from provider error callback is surfaced on a provider host", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -948,7 +948,7 @@ testthat::test_that("error_uri from provider error callback is surfaced", {
       values$.process_query(paste0(
         "?error=access_denied",
         "&error_description=Nope",
-        "&error_uri=https%3A%2F%2Fprovider.example%2Fhelp%2Faccess_denied",
+        "&error_uri=https%3A%2F%2Fexample.com%2Fhelp%2Faccess_denied",
         "&state=",
         enc
       ))
@@ -956,6 +956,78 @@ testthat::test_that("error_uri from provider error callback is surfaced", {
 
       testthat::expect_identical(values$error, "access_denied")
       testthat::expect_match(values$error_description, "Nope")
+      testthat::expect_identical(
+        values$error_uri,
+        "https://example.com/help/access_denied"
+      )
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("https error_uri from an unrelated host is dropped", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$.process_query(paste0(
+        "?error=access_denied",
+        "&error_uri=https%3A%2F%2Fprovider.example%2Fhelp%2Faccess_denied",
+        "&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
+      testthat::expect_null(values$error_uri)
+      testthat::expect_false(values$authenticated)
+    }
+  )
+})
+
+testthat::test_that("error_uri can use an explicitly allowlisted host", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  withr::local_options(list(
+    shinyOAuth.allowed_hosts = c("provider.example")
+  ))
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+
+      values$.process_query(paste0(
+        "?error=access_denied",
+        "&error_uri=https%3A%2F%2Fprovider.example%2Fhelp%2Faccess_denied",
+        "&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "access_denied")
       testthat::expect_identical(
         values$error_uri,
         "https://provider.example/help/access_denied"

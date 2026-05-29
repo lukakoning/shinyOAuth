@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Provider callback `error_uri` values now have to stay on a provider host
+or another host you already allowlist via
+`options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are now
+dropped instead of being surfaced through `values$error_uri`.
+
 * Native audit hooks now receive `shiny_session$session_token_digest` by
 default instead of the raw Shiny `session$token`. Set
 `options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
