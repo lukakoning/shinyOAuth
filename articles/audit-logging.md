@@ -65,6 +65,12 @@ designed to serialize cleanly with
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`)
   when available.
+- `shiny_session$session_token_digest`: an HMAC-SHA256 digest of the
+  Shiny per-session token (`session$token`) when available. Native audit
+  hooks receive this digest by default.
+- `shiny_session$token`: the raw Shiny per-session token only when you
+  opt in via
+  `options(shinyOAuth.audit_include_raw_session_token = TRUE)`.
 - `shiny_session$is_async`: `FALSE` for events emitted from the main R
   process and `TRUE` for events emitted from an async worker. This helps
   distinguish background work such as async token exchange or refresh
@@ -126,6 +132,12 @@ when forwarding events to log sinks:
 
 This means you can safely forward the `shiny_session$http` object to
 external logging systems without manually stripping secrets.
+
+If a legacy hook truly needs the raw Shiny session token, opt in
+explicitly with
+`options(shinyOAuth.audit_include_raw_session_token = TRUE)`. Leave this
+off unless you control the downstream sink and have a specific reason to
+expose the raw token.
 
 If you need the raw, unsanitized HTTP context in audit events for local
 debugging, you can disable redaction temporarily:
@@ -574,12 +586,16 @@ deriving a cache key from a malformed logical state string.
 ### Error response state consumption
 
 When the provider returns an error response (e.g., `access_denied`) but
-includes the `state` parameter, the module waits for the browser token,
-consumes the state to prevent replay and clean up the store, and then
-verifies the browser-token binding before surfacing the provider error.
-Browser-token mismatches are reported via
-`audit_callback_validation_failed` with
-`phase = "browser_token_validation"`; the events below cover the
+includes the `state` parameter, the module still waits for the browser
+token before surfacing provider-controlled error text. On the normal
+query callback path, it first decrypts and looks up the stored state
+without consuming it, verifies the browser-token binding, and only then
+consumes the state to prevent replay. On callback paths that already
+pre-consumed state during earlier normalization work (for example, some
+`form_post`/JARM flows), `audit_error_state_consumed` can appear before
+the later browser-token validation step. Browser-token mismatches are
+reported via `audit_callback_validation_failed` with
+`phase = "browser_token_validation"`; the events below cover only the
 state-consumption portion of that flow.
 
 #### Event: `audit_error_state_consumed`

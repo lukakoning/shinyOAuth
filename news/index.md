@@ -2,6 +2,23 @@
 
 ## shinyOAuth (development version)
 
+- Provider callback `error_uri` values now have to stay on a provider
+  host or another host you already allowlist via
+  `options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are
+  now dropped instead of being surfaced through `values$error_uri`.
+
+- Native audit hooks now receive `shiny_session$session_token_digest` by
+  default instead of the raw Shiny `session$token`. Set
+  `options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when
+  you explicitly need the raw token in a controlled sink.
+
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
+  now support `dpop_require_observed_cnf = TRUE` for high-assurance DPoP
+  deployments. When enabled, shinyOAuth rejects `token_type = "DPoP"`
+  access tokens unless it can observe `cnf.jkt` locally in the token or
+  via introspection, so opaque tokens no longer rely on `token_type`
+  alone.
+
 - Added JWT Secured Authorization Response Mode (JARM) support with
   `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 

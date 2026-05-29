@@ -514,6 +514,12 @@ behavior.</p>
 exclude HTTP request details from audit events (default:
 <code>TRUE</code>)</li>
 <li>
+<code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code>
+– include the raw <code>shiny_session$token</code> in native audit-hook
+payloads. By default, hooks receive only
+<code>shiny_session$session_token_digest</code>
+</li>
+<li>
 <code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
 automatic redaction of sensitive data in audit events (default:
 <code>TRUE</code>). Debug only: raw mode can expose cookies,

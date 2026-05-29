@@ -44,6 +44,7 @@ OAuthClient(
   dpop_private_key_kid = NA_character_,
   dpop_signing_alg = NA_character_,
   dpop_require_access_token = FALSE,
+  dpop_require_observed_cnf = FALSE,
   request_object_mode = "parameters",
   request_object_signing_alg = NA_character_,
   request_object_audience = NA_character_,
@@ -152,9 +153,9 @@ OAuthClient(
 
 - claims:
 
-  OIDC claims request parameter (OIDC Core §5.5). Allows requesting
-  specific claims from the UserInfo Endpoint and/or in the ID Token. Can
-  be:
+  OIDC claims request parameter (OIDC Core section 5.5). Allows
+  requesting specific claims from the UserInfo Endpoint and/or in the ID
+  Token. Can be:
 
   - `NULL` (default): no claims parameter is sent
 
@@ -180,8 +181,8 @@ OAuthClient(
 
   - A character string: pre-encoded JSON string (advanced use). Must be
     valid JSON. Use this when you need full control over JSON encoding.
-    Note: The `claims` parameter is OPTIONAL per OIDC Core §5.5. Not all
-    providers support it; consult your provider's documentation.
+    Note: The `claims` parameter is OPTIONAL per OIDC Core section 5.5.
+    Not all providers support it; consult your provider's documentation.
 
 - enforce_callback_issuer:
 
@@ -219,7 +220,7 @@ OAuthClient(
 - claims_validation:
 
   Controls validation of requested claims supplied via the `claims`
-  parameter (OIDC Core §5.5). When `claims` includes entries with
+  parameter (OIDC Core section 5.5). When `claims` includes entries with
   `essential = TRUE` for `id_token` or `userinfo`, or explicit `value` /
   `values` constraints for individual claims, this setting determines
   what happens if the returned ID token or userinfo response does not
@@ -253,15 +254,15 @@ OAuthClient(
 - required_acr_values:
 
   Optional character vector of acceptable Authentication Context Class
-  Reference values (OIDC Core §2, §3.1.2.1). When non-empty, the ID
-  token returned by the provider must contain an `acr` claim whose value
-  is one of the specified entries; otherwise the login fails with a
-  `shinyOAuth_id_token_error`.
+  Reference values (OIDC Core sections 2 and 3.1.2.1). When non-empty,
+  the ID token returned by the provider must contain an `acr` claim
+  whose value is one of the specified entries; otherwise the login fails
+  with a `shinyOAuth_id_token_error`.
 
   Additionally, when non-empty, the authorization request automatically
   includes an `acr_values` query parameter (space-separated) as a
-  voluntary hint to the provider (OIDC Core §3.1.2.1). Note that the
-  provider is not required to honour this hint; the client-side
+  voluntary hint to the provider (OIDC Core section 3.1.2.1). Note that
+  the provider is not required to honour this hint; the client-side
   validation is the authoritative enforcement.
 
   Requires an OIDC-capable provider with `id_token_validation = TRUE`
@@ -361,7 +362,7 @@ OAuthClient(
   parameter. Higher values provide more entropy and better security
   against CSRF attacks. Must be between 22 and 128 (to align with
   `validate_state()`'s default minimum which targets ~128 bits for
-  base64url‑like strings). Default is 64.
+  base64url-like strings). Default is 64.
 
 - state_key:
 
@@ -518,6 +519,14 @@ OAuthClient(
   configured and to `FALSE` otherwise. Set `FALSE` explicitly only when
   you intentionally want to allow Bearer access tokens, such as
   deployments where DPoP is used only to bind refresh tokens.
+
+- dpop_require_observed_cnf:
+
+  Logical. When `TRUE`, shinyOAuth rejects `token_type = "DPoP"` access
+  tokens unless it can observe `cnf$jkt` locally, either from the access
+  token itself or from a token introspection response. Use this when
+  high-assurance DPoP deployments must fail closed on opaque access
+  tokens that provide no observable binding. Default is `FALSE`.
 
 - request_object_mode:
 

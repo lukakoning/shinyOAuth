@@ -457,6 +457,9 @@ you want to tune logging, networking, or a specific advanced behavior.
   structured audit and error events
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
   request details from audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_include_raw_session_token = TRUE)` – include
+  the raw `shiny_session$token` in native audit-hook payloads. By
+  default, hooks receive only `shiny_session$session_token_digest`
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
   redaction of sensitive data in audit events (default: `TRUE`). Debug
   only: raw mode can expose cookies, authorization headers, codes, state
