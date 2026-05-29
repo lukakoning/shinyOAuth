@@ -43,10 +43,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Provider callback <code>error_uri</code> values now have to stay on a provider host or another host you already allowlist via <code>options(shinyOAuth.allowed_hosts = ...)</code>. Unrelated HTTPS hosts are now dropped instead of being surfaced through <code>values$error_uri</code>.</p></li>
-<li><p>Native audit hooks now receive <code>shiny_session$session_token_digest</code> by default instead of the raw Shiny <code>session$token</code>. Set <code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code> only when you explicitly need the raw token in a controlled sink.</p></li>
-<li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> now support <code>dpop_require_observed_cnf = TRUE</code> for high-assurance DPoP deployments. When enabled, shinyOAuth rejects <code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf.jkt</code> locally in the token or via introspection, so opaque tokens no longer rely on <code>token_type</code> alone.</p></li>
-<li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>.</p></li>
+<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>.</p></li>
 <li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now warns once when a client resolves to <code>response_mode = "form_post"</code> or <code>"form_post.jwt"</code> but no prior <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> call was detected for the same module/client setup, helping catch missing form_post UI wrappers earlier.</p></li>
 <li>
 <p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> have had their arguments reorganized and renamed for better clarity. Both helper constructors (<code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>) still accept previous argument names for backward compatibility, but the underlying S7 classes only use the new names. Renamed arguments include:</p>
@@ -144,9 +141,13 @@
 </li>
 </ul></li>
 </ul></li>
-<li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> no longer defaults <code>client_id</code> / <code>client_secret</code> from <code>Sys.getenv('OAUTH_CLIENT_ID')</code>/<code>Sys.getenv('OAUTH_CLIENT_SECRET')</code>, to make it more explicit that these values must be set for the client to work.</p></li>
-<li><p><code>OAuthClient</code> printing now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</p></li>
-<li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> now treats an omitted <code>client_secret</code> as an absent value (<code>character(0)</code>), so <code>private_key_jwt</code> and other secretless client-auth setups can omit the argument and still flow through the normal auth-style validation instead of failing at argument matching.</p></li>
+<li>
+<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> (<code>OAuthClient</code>) now:</p>
+<ul><li>Supports <code>dpop_require_observed_cnf = TRUE</code> for high-assurance DPoP deployments. When enabled, shinyOAuth rejects <code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf.jkt</code> locally in the token or via introspection, so opaque tokens no longer rely on <code>token_type</code> alone.</li>
+<li>No longer defaults <code>client_id</code> / <code>client_secret</code> from <code>Sys.getenv('OAUTH_CLIENT_ID')</code>/<code>Sys.getenv('OAUTH_CLIENT_SECRET')</code>, to make it more explicit that these values must be set for the client to work.</li>
+<li>Has printing which now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</li>
+<li>Treats an omitted <code>client_secret</code> as an absent value (<code>character(0)</code>), so <code>private_key_jwt</code> and other secretless client-auth setups can omit the argument and still flow through the normal auth-style validation instead of failing at argument matching.</li>
+</ul></li>
 <li><p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now preserves JARM discovery metadata from the canonical <code>jarm_*_values_supported</code> fields, while still accepting the older <code>authorization_*</code> aliases for compatibility.</p></li>
 <li>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
@@ -157,6 +158,8 @@
 <li><p><code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> has been added which configures Apple’s OIDC endpoints and ID-token defaults, and added <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> which generates the ES256 JWT that Apple expects in the <code>client_secret</code> field of an <code>OAuthClient</code> configured with <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code>.</p></li>
 <li><p><code><a href="../reference/oauth_provider_okta.html">oauth_provider_okta()</a></code> can now target Okta’s org authorization server with <code>auth_server = NULL</code>, instead of always forcing <code>/oauth2/{auth_server}</code> and the custom-server path.</p></li>
 <li><p><code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> now defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code> for interoperability with current Keycloak JARM responses, while still letting callers opt out and fail closed on duplicate top-level <code>iss</code> members.</p></li>
+<li><p>Provider callback <code>error_uri</code> values now have to stay on a provider host or another host you already allowlist via <code>options(shinyOAuth.allowed_hosts = ...)</code>. Unrelated HTTPS hosts are now dropped instead of being surfaced through <code>values$error_uri</code>.</p></li>
+<li><p>Native audit hooks now receive <code>shiny_session$session_token_digest</code> by default instead of the raw Shiny <code>session$token</code>. Set <code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code> only when you explicitly need the raw token in a controlled sink.</p></li>
 <li><p>Internal list-like access now consistently uses exact <code>[[...]]</code> indexing instead of <code>$</code>, reducing potential for accidental partial matches across runtime code, tests, and integration fixtures.</p></li>
 </ul></div>
     <div class="section level2">
