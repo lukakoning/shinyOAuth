@@ -15,18 +15,17 @@
 - Common R idioms: use `%||%` for null coalescing, `compact_list()` to drop NULL/NA from lists, `is_valid_string()` for non-empty string checks
 
 ## R File Style
-- Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.
-- Use numbered section and subsection comments to organize R files:
-  - `# 1 Title goes here ------------------------------------------`
-  - `## 1.2 Subtitle goes here ------------------------------------`
-  - `### 1.2.1 Subsubtitle goes here ------------------------------`
-- Section separator dashes must extend through column 80. Keep section text in regular sentence case, not title case.
-- Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.
-- Add a short section introduction when it makes the purpose of the section easier to understand.
-- Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used; inline one-use helpers unless keeping the helper materially improves clarity, testing, or reuse.
-- Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, `@param` entries, and `@return`. Use `@keywords internal` and `@noRd` for non-exported helpers.
-- Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.
-- For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact `[[...]]` access and `[[...]] <-` writes instead of `$`; `[[` is already exact by default, so do not add `exact = TRUE`.
+- **File layout**: Start files with the main entry points for that topic, then place increasingly specific helper functions lower in the file.
+- **File layout**: Add a short section introduction when it makes the purpose of the section easier to understand.
+- **Section comments**: Use numbered section and subsection comments to organize R files, for example `# 1 Title goes here ------------------------------------------`, `## 1.2 Subtitle goes here ------------------------------------`, and `### 1.2.1 Subsubtitle goes here ------------------------------`.
+- **Section comments**: The line of dashes following the section title must end at exactly column 80 (total line width = 80 characters including the leading `#` and title). Keep section text in regular sentence case, not title case.
+- **Section comments**: Leave at least one empty line after every section title before the first code or explanatory comment, and at least two empty lines before the next section title.
+- **Helper functions**: Prefer fewer helpers. Before adding or keeping a short helper, check how often it is used. Inline one-use helpers by default.
+- **Helper functions**: Keep a one-use helper only if it is referenced in tests by name, wraps more than 10 lines of logic, is exported or documented, or is an `err_*`/`warn_*` helper whose named condition improves testing or reuse.
+- **Documentation**: Every named function, including internal helpers, should have roxygen2-style documentation with a title, plain-language description, `@param` entries, and `@return`. Use `@keywords internal` and `@noRd` for non-exported helpers.
+- **Refactors**: Reassess file boundaries during refactors: keep strongly related functions together, move functions that fit a different topic better, and rename functions whose names do not clearly describe their behavior.
+- **List access**: For list-like objects, parsed JSON, request metadata, and test fixtures, always use exact `[[...]]` access and `[[...]] <-` writes instead of `$`; `[[` is already exact by default, so do not add `exact = TRUE`.
+- **Incidental cleanup**: When editing a file that contains pre-existing style violations unrelated to your change, leave them alone unless the user requests a cleanup; do not perform incidental refactors.
 
 ## Core Code Paths
 - `oauth_module_server()` orchestrates redirect→callback→token→refresh, exposing a reactiveValues API (`request_login()`, `logout()`, `build_auth_url()`) and watchdogs for missing JS/browser tokens.
@@ -34,7 +33,7 @@
 - UI resources ship via inst/www/shinyOAuth.js and must be loaded once per app via `use_shinyOAuth()`; the watchdog warning fires if `oauth_module_server()` runs before this helper sets the flag.
 
 ## Security & State
-- OAuthClient instances seal state payloads with AES-GCM using `client@state_key` and single-use cache entries (`state_store_get_remove()`); share both key and cache across workers in production deployments.
+- OAuthClient instances seal state payloads with AES-GCM using `client@state_key` and single-use cache entries (`state_store_get_remove()`); in production, pass the same `state_key` (typically loaded from an env var such as `SHINYOAUTH_STATE_KEY`) and a shared cache backend (for example a Redis-backed `cachem` cache) to `oauth_client()` in every worker.
 - Host validation is centralized in `is_ok_host()` and enforced by OAuthProvider validators; always pipe new endpoints through these helpers and avoid bypassing the checks.
 - Provider objects gate PKCE/nonce/id-token policies and `token_type` enforcement; align new provider helpers with existing defaults in R/providers.R (e.g., `allowed_algs`, `allowed_token_types`).
 
@@ -55,9 +54,9 @@
 
 ## Error Handling
 - Throw failures with the typed helpers in R/errors.R (`err_abort()` plus `err_token()`/`err_invalid_state()`/`err_http()`, etc.); they wrap `rlang::abort` with package-specific classes and inject trace ids, so avoid base `stop()`.
-- For recoverable notices use `rlang::warn()`/`inform()` with cli-style bullet vectors and frequency guards (see `warn_about_missing_js_dependency()` and `client_state_store_max_age()`) instead of `message()`/`warning()`; surface structured context via `context = list()`.
-- Prefer adding new `err_*` or `warn_*` helpers next to existing ones so tests can assert on condition classes and message formats.
-- Default to rlang/cli idioms for developer messaging: use `cli::cli_warn()`/`cli_inform()` or `rlang::warn()`/`inform()` with cli bullets, and avoid `cat()`/`print()`/`message()` unless tests explicitly stub those paths.
+- For recoverable notices, prefer `rlang::warn()`/`inform()` with cli-style bullet vectors and frequency guards (see `warn_about_missing_js_dependency()` and `client_state_store_max_age()`); surface structured context via `context = list()` and avoid `message()`/`warning()`.
+- Use `cli::cli_warn()`/`cli_inform()` only when matching surrounding file conventions or when direct CLI output is explicitly needed. Avoid `cat()`/`print()`/`message()` unless tests explicitly stub those paths.
+- Prefer adding new `err_*` or `warn_*` helpers next to existing ones when a named condition helps tests assert on condition classes or keeps message formats consistent, even if the helper is currently used once.
 
 ## Testing Workflow
 - Run tests: `Rscript -e "testthat::test_local()"` from the repo root.
@@ -66,6 +65,7 @@
 - Async module tests reset `future::plan(future::sequential)` and use `poll_for_async()` helper to flush `later::run_now()` and `session$flushReact()` until conditions are met; timeout/interval configurable via `SHINYOAUTH_TEST_POLL_TIMEOUT` and `SHINYOAUTH_TEST_POLL_INTERVAL` env vars.
 - Set `NOT_CRAN=true` environment variable to enable security/timing/webfakes tests that are skipped on CRAN (this is set automatically in CI workflows).
 - Ensure state-store logic exposes `get`/`set`/`remove`/`missing` signatures so duck-typing checks in OAuthClient/OAuthProvider validators pass; use `custom_cache()` wrapper for non-cachem backends.
+- Any new exported function or new `err_*`/`warn_*` helper must add or update a testthat test that asserts on the return value or condition class. Prefer modifying existing tests and fixtures over duplicating them.
 - Integration tests (Docker-based Keycloak, GCP) live in integration/; these are separate from unit tests and run via CI workflows (.github/workflows/integration-tests.yml).
 
 ## Documentation & Examples
@@ -86,3 +86,4 @@
 
 ## Global Options
 - Do not add new global options unless specifically requested. All options must be documented in the 'usage' vignette.
+- If a change appears to require a new option, stop and ask the user before implementing; propose the option name, default, and which section of the 'usage' vignette would document it.
