@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* `oauth_client()`/`OAuthClient` now support
+`dpop_require_observed_cnf = TRUE` for high-assurance DPoP deployments.
+When enabled, shinyOAuth rejects `token_type = "DPoP"` access tokens unless
+it can observe `cnf.jkt` locally in the token or via introspection, so opaque
+tokens no longer rely on `token_type` alone.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 

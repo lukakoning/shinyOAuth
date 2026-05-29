@@ -359,6 +359,13 @@
 #'   to allow Bearer access tokens, such as deployments where DPoP is used only
 #'   to bind refresh tokens.
 #'
+#' @param dpop_require_observed_cnf Logical. When `TRUE`, shinyOAuth rejects
+#'   `token_type = "DPoP"` access tokens unless it can observe `cnf$jkt`
+#'   locally, either from the access token itself or from a token
+#'   introspection response. Use this when high-assurance DPoP deployments must
+#'   fail closed on opaque access tokens that provide no observable binding.
+#'   Default is `FALSE`.
+#'
 #' @param request_object_mode Controls how the authorization request is
 #'   transported to the provider.
 #'
@@ -591,6 +598,11 @@ OAuthClient <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
+    # Optional high-assurance mode: require observable DPoP cnf.jkt binding.
+    dpop_require_observed_cnf = S7::new_property(
+      S7::class_logical,
+      default = FALSE
+    ),
     # Authorization request transport: direct parameters or signed JAR request.
     request_object_mode = S7::new_property(
       S7::class_character,
@@ -711,6 +723,7 @@ oauth_client <- function(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   dpop_require_access_token = NULL,
+  dpop_require_observed_cnf = FALSE,
   request_object_mode = c("parameters", "request", "request_uri"),
   request_object_signing_alg = NULL,
   request_object_audience = NULL,
@@ -880,6 +893,15 @@ oauth_client <- function(
     )
   }
   if (
+    !(is.logical(dpop_require_observed_cnf) &&
+      length(dpop_require_observed_cnf) == 1L &&
+      !is.na(dpop_require_observed_cnf))
+  ) {
+    err_input(
+      "{.arg dpop_require_observed_cnf} must be a single non-NA logical."
+    )
+  }
+  if (
     !(is.logical(mtls_certificate_bound_access_tokens) &&
       length(mtls_certificate_bound_access_tokens) == 1L &&
       !is.na(mtls_certificate_bound_access_tokens))
@@ -949,6 +971,7 @@ oauth_client <- function(
     dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
     dpop_signing_alg = dpop_signing_alg %||% NA_character_,
     dpop_require_access_token = isTRUE(dpop_require_access_token),
+    dpop_require_observed_cnf = isTRUE(dpop_require_observed_cnf),
     request_object_mode = request_object_mode,
     request_object_signing_alg = request_object_signing_alg %||%
       NA_character_,
@@ -2213,6 +2236,28 @@ oauth_client_validate <- function(self) {
   ) {
     return(
       "OAuthClient: dpop_require_access_token = TRUE requires dpop_private_key"
+    )
+  }
+  if (
+    !(is.logical(self@dpop_require_observed_cnf) &&
+      length(self@dpop_require_observed_cnf) == 1L &&
+      !is.na(self@dpop_require_observed_cnf))
+  ) {
+    return(
+      paste(
+        "OAuthClient: dpop_require_observed_cnf",
+        "must be a single non-NA logical"
+      )
+    )
+  }
+  if (
+    isTRUE(self@dpop_require_observed_cnf) && is.null(self@dpop_private_key)
+  ) {
+    return(
+      paste(
+        "OAuthClient: dpop_require_observed_cnf = TRUE",
+        "requires dpop_private_key"
+      )
     )
   }
   if (

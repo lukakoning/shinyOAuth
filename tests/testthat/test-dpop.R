@@ -1,6 +1,7 @@
 make_dpop_test_client <- function(
   provider,
   dpop_require_access_token = NULL,
+  dpop_require_observed_cnf = FALSE,
   dpop_private_key = openssl::rsa_keygen(),
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
@@ -18,6 +19,7 @@ make_dpop_test_client <- function(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     ),
     dpop_private_key = dpop_private_key,
+    dpop_require_observed_cnf = dpop_require_observed_cnf,
     dpop_private_key_kid = dpop_private_key_kid,
     dpop_signing_alg = dpop_signing_alg,
     response_mode = response_mode
@@ -825,6 +827,42 @@ test_that("strict DPoP rejects introspection results without cnf.jkt", {
     ),
     class = "shinyOAuth_token_error",
     regexp = "cnf\\.jkt"
+  )
+})
+
+test_that("DPoP can require observable cnf.jkt for opaque access tokens", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+
+  expect_error(
+    shinyOAuth:::verify_token_set(
+      make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE),
+      token_set = list(
+        access_token = "opaque-access-token",
+        token_type = "DPoP",
+        expires_in = 60
+      ),
+      nonce = NULL,
+      is_refresh = FALSE,
+      requested_scopes = character(0),
+      prior_granted_scopes = character(0)
+    ),
+    class = "shinyOAuth_token_error",
+    regexp = "observable token cnf\\.jkt"
+  )
+
+  expect_silent(
+    shinyOAuth:::verify_token_set(
+      make_dpop_test_client(prov, dpop_require_observed_cnf = FALSE),
+      token_set = list(
+        access_token = "opaque-access-token",
+        token_type = "DPoP",
+        expires_in = 60
+      ),
+      nonce = NULL,
+      is_refresh = FALSE,
+      requested_scopes = character(0),
+      prior_granted_scopes = character(0)
+    )
   )
 })
 

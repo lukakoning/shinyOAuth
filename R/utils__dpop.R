@@ -334,7 +334,9 @@ token_dpop_cnf_observable <- function(
 #' Require observable DPoP cnf.jkt in strict mode
 #'
 #' Used when `dpop_require_access_token = TRUE` so JWT access tokens and token
-#' introspection results fail closed if they expose no `cnf$jkt` binding.
+#' introspection results fail closed if they expose no `cnf$jkt` binding. When
+#' `dpop_require_observed_cnf = TRUE`, opaque `DPoP` access tokens that expose
+#' no local binding also fail closed.
 #'
 #' @param oauth_client Optional [OAuthClient] expected to own the DPoP key.
 #' @param token Optional [OAuthToken] object.
@@ -350,6 +352,7 @@ validate_observed_dpop_cnf_required <- function(
   oauth_client,
   token = NULL,
   access_token = NULL,
+  token_type = NULL,
   cnf = NULL,
   introspection_result = NULL,
   error_context = c("input", "token"),
@@ -360,21 +363,21 @@ validate_observed_dpop_cnf_required <- function(
   if (S7::S7_inherits(token, class = OAuthToken)) {
     cnf <- token@cnf
     access_token <- token@access_token
+    token_type <- token@token_type %||% token_type
   }
 
-  if (
-    !S7::S7_inherits(oauth_client, class = OAuthClient) ||
-      !isTRUE(oauth_client@dpop_require_access_token)
-  ) {
+  if (!S7::S7_inherits(oauth_client, class = OAuthClient)) {
     return(invisible(TRUE))
   }
 
+  require_observed_cnf <- isTRUE(oauth_client@dpop_require_observed_cnf)
   if (
-    !token_dpop_cnf_observable(
-      access_token = access_token,
-      cnf = cnf,
-      introspection_result = introspection_result
-    )
+    !(isTRUE(oauth_client@dpop_require_access_token) || require_observed_cnf)
+  ) {
+    return(invisible(TRUE))
+  }
+  if (
+    require_observed_cnf && !is_dpop_token_type(token_type %||% NA_character_)
   ) {
     return(invisible(TRUE))
   }
@@ -386,6 +389,25 @@ validate_observed_dpop_cnf_required <- function(
       err_token(message, context = compact_list(list(phase = phase)))
     }
   )
+
+  if (
+    !token_dpop_cnf_observable(
+      access_token = access_token,
+      cnf = cnf,
+      introspection_result = introspection_result
+    )
+  ) {
+    if (require_observed_cnf) {
+      fail(c(
+        "x" = "Expected observable token cnf.jkt for a DPoP access token",
+        "i" = paste(
+          "dpop_require_observed_cnf = TRUE rejects DPoP access tokens",
+          "unless cnf.jkt is visible in the token or introspection response."
+        )
+      ))
+    }
+    return(invisible(TRUE))
+  }
 
   validate_token_cnf_consistency(
     access_token = access_token,
@@ -407,8 +429,8 @@ validate_observed_dpop_cnf_required <- function(
   fail(c(
     "x" = "Expected observable token cnf.jkt for a strict DPoP access token",
     "i" = paste(
-      "dpop_require_access_token = TRUE rejects JWT or introspection-backed",
-      "DPoP access tokens that do not expose a local key binding."
+      "Strict DPoP mode rejects JWT or introspection-backed access tokens",
+      "that do not expose a local cnf.jkt binding."
     )
   ))
 }

@@ -2470,6 +2470,7 @@ verify_token_set <- function(
       validate_observed_dpop_cnf_required(
         oauth_client = client,
         access_token = token_set[["access_token"]],
+        token_type = token_set[["token_type"]] %||% NULL,
         cnf = token_set[["cnf"]] %||% NULL,
         error_context = "token",
         phase = phase

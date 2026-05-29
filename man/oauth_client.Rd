@@ -37,6 +37,7 @@ oauth_client(
   dpop_private_key_kid = NULL,
   dpop_signing_alg = NULL,
   dpop_require_access_token = NULL,
+  dpop_require_observed_cnf = FALSE,
   request_object_mode = c("parameters", "request", "request_uri"),
   request_object_signing_alg = NULL,
   request_object_audience = NULL,
@@ -412,6 +413,13 @@ introspection later reveals the binding. In \code{\link[=oauth_client]{oauth_cli
 \code{FALSE} otherwise. Set \code{FALSE} explicitly only when you intentionally want
 to allow Bearer access tokens, such as deployments where DPoP is used only
 to bind refresh tokens.}
+
+\item{dpop_require_observed_cnf}{Logical. When \code{TRUE}, shinyOAuth rejects
+\code{token_type = "DPoP"} access tokens unless it can observe \code{cnf$jkt}
+locally, either from the access token itself or from a token
+introspection response. Use this when high-assurance DPoP deployments must
+fail closed on opaque access tokens that provide no observable binding.
+Default is \code{FALSE}.}
 
 \item{request_object_mode}{Controls how the authorization request is
 transported to the provider.
