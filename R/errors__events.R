@@ -19,7 +19,9 @@
 #   - type: "audit_<type>"
 #   - trace_id: opaque correlation id
 #   - timestamp: POSIXct time when the event was created (Sys.time())
-#   - shiny_session: list with session token and optional HTTP context
+#   - shiny_session: list with session_token_digest and optional HTTP context
+#     (the raw `token` field is forwarded only when
+#     `shinyOAuth.audit_include_raw_session_token = TRUE`)
 #   - ...: fields from context
 
 #' Emit one audit event
@@ -59,6 +61,58 @@ audit_event <- function(
   invisible(trace_id)
 }
 
+#' Sanitize one Shiny session payload for audit hooks
+#'
+#' Hook consumers receive a stable session digest by default; the raw Shiny
+#' session token is only forwarded when explicitly enabled via a global option.
+#'
+#' @param shiny_session Optional Shiny session context list.
+#' @return Sanitized Shiny session context.
+#' @keywords internal
+#' @noRd
+sanitize_audit_hook_shiny_session <- function(shiny_session) {
+  if (is.null(shiny_session) || !is.list(shiny_session)) {
+    return(shiny_session)
+  }
+
+  sanitized <- shiny_session
+  token <- sanitized[["token"]] %||% NULL
+
+  if (
+    is.null(sanitized[["session_token_digest"]]) &&
+      is_valid_string(token)
+  ) {
+    sanitized[["session_token_digest"]] <- string_digest(token)
+  }
+
+  if (!isTRUE(getOption("shinyOAuth.audit_include_raw_session_token", FALSE))) {
+    sanitized[["token"]] <- NULL
+  }
+
+  compact_list(sanitized)
+}
+
+#' Sanitize one event before it reaches a native audit hook
+#'
+#' @param event Event list.
+#' @return Hook-safe event list.
+#' @keywords internal
+#' @noRd
+sanitize_audit_hook_event <- function(event) {
+  if (!is.list(event) || !length(event)) {
+    return(event)
+  }
+
+  shiny_session <- event[["shiny_session"]] %||% NULL
+  if (!is.null(shiny_session)) {
+    event[["shiny_session"]] <- sanitize_audit_hook_shiny_session(
+      shiny_session
+    )
+  }
+
+  event
+}
+
 #' Dispatch one trace or audit event
 #'
 #' Enriches one event with Shiny context and forwards it to OpenTelemetry and
@@ -66,7 +120,10 @@ audit_event <- function(
 #' as an undocumented backward-compatible alias when `audit_hook` is unset, so
 #' older apps keep working without reintroducing it into the main public options
 #' surface. When both options are configured, `audit_hook` always takes
-#' precedence. Used by `audit_event()` and direct internal event emitters.
+#' precedence. Native hook payloads expose `shiny_session$session_token_digest`
+#' by default; set `options(shinyOAuth.audit_include_raw_session_token = TRUE)`
+#' to opt back into the raw `shiny_session$token`. Used by `audit_event()` and
+#' direct internal event emitters.
 #'
 #' @param event Named list describing one event.
 #' @return Invisibly returns `NULL`.
@@ -102,10 +159,12 @@ emit_trace_event <- function(event) {
     }
   )
   if (is.function(audit_hook)) {
+    hook_event <- sanitize_audit_hook_event(event)
+
     # Surface hook errors as warnings so they are visible in the main process
     # (async_dispatch captures warnings and replays them on the main thread).
     tryCatch(
-      audit_hook(event),
+      audit_hook(hook_event),
       error = function(e) {
         warn_pkg(
           paste0("Configured shinyOAuth ", hook_name, " failed"),

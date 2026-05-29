@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Native audit hooks now receive `shiny_session$session_token_digest` by
+default instead of the raw Shiny `session$token`. Set
+`options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
+explicitly need the raw token in a controlled sink.
+
 * `oauth_client()`/`OAuthClient` now support
 `dpop_require_observed_cnf = TRUE` for high-assurance DPoP deployments.
 When enabled, shinyOAuth rejects `token_type = "DPoP"` access tokens unless

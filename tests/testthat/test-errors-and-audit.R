@@ -616,9 +616,10 @@ test_that("audit_event preserves is_async inside async session context", {
   )
   expect_length(async_event, 1)
   expect_equal(
-    async_event[[1]][["shiny_session"]][["token"]],
-    "mock-session-token"
+    async_event[[1]][["shiny_session"]][["session_token_digest"]],
+    shinyOAuth:::string_digest("mock-session-token")
   )
+  expect_null(async_event[[1]][["shiny_session"]][["token"]])
   expect_true(isTRUE(
     async_event[[1]][["shiny_session"]][["is_async"]]
   ))
@@ -667,9 +668,10 @@ test_that("get_userinfo preserves explicit async shiny_session in audit events",
   )
   expect_length(userinfo_events, 1L)
   expect_equal(
-    userinfo_events[[1L]][["shiny_session"]][["token"]],
-    "mock-session-token"
+    userinfo_events[[1L]][["shiny_session"]][["session_token_digest"]],
+    shinyOAuth:::string_digest("mock-session-token")
   )
+  expect_null(userinfo_events[[1L]][["shiny_session"]][["token"]])
   expect_true(isTRUE(
     userinfo_events[[1L]][["shiny_session"]][["is_async"]]
   ))
@@ -709,9 +711,10 @@ test_that("with_async_session_context makes errors include async session info", 
 
   # Error should have the async session context
   expect_equal(
-    error_events[[1]][["shiny_session"]][["token"]],
-    "mock-session-token"
+    error_events[[1]][["shiny_session"]][["session_token_digest"]],
+    shinyOAuth:::string_digest("mock-session-token")
   )
+  expect_null(error_events[[1]][["shiny_session"]][["token"]])
   expect_true(isTRUE(
     error_events[[1]][["shiny_session"]][["is_async"]]
   ))

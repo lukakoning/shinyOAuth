@@ -62,6 +62,11 @@ session and HTTP request. The structure is designed to serialize cleanly with
 `jsonlite::toJSON()`:
 
 - `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
+- `shiny_session$session_token_digest`: an HMAC-SHA256 digest of the Shiny
+  per-session token (`session$token`) when available. Native audit hooks receive
+  this digest by default.
+- `shiny_session$token`: the raw Shiny per-session token only when you opt in via
+  `options(shinyOAuth.audit_include_raw_session_token = TRUE)`.
 - `shiny_session$is_async`: `FALSE` for events emitted from the main R process
 	and `TRUE` for events emitted from an async worker. This helps distinguish
 	background work such as async token exchange or refresh from the main
@@ -99,6 +104,10 @@ This prevents accidental secret leakage when forwarding events to log sinks:
 
 This means you can safely forward the `shiny_session$http` object to external logging systems
 without manually stripping secrets.
+
+If a legacy hook truly needs the raw Shiny session token, opt in explicitly with
+`options(shinyOAuth.audit_include_raw_session_token = TRUE)`. Leave this off unless
+you control the downstream sink and have a specific reason to expose the raw token.
 
 If you need the raw, unsanitized HTTP context in audit events for local debugging, you can disable redaction temporarily:
 

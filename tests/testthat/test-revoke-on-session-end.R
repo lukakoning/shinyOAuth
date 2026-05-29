@@ -386,8 +386,13 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   testthat::expect_true(is.character(session_token) && nzchar(session_token))
   idx <- match("audit_session_ended_revoke", types)
   ev <- audit_events[[idx]]
-  seen <- (ev$shiny_session %||% list())$token %||% NA_character_
-  testthat::expect_identical(seen, session_token)
+  seen <- (ev$shiny_session %||% list())$session_token_digest %||%
+    NA_character_
+  testthat::expect_identical(
+    seen,
+    shinyOAuth:::string_digest(session_token)
+  )
+  testthat::expect_null((ev$shiny_session %||% list())$token)
   testthat::expect_false(isTRUE((ev$shiny_session %||% list())$is_async))
 })
 
