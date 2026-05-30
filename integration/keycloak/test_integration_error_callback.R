@@ -65,6 +65,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
 
   prov <- make_provider()
   client <- make_public_client(prov)
+  expected_error_uri <- paste0(get_https_issuer(), "/oauth-error")
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -76,7 +77,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
       query <- keycloak_error_query(
         error = "access_denied",
         error_description = "Consent denied by user",
-        error_uri = "https://example.com/oauth-error",
+        error_uri = expected_error_uri,
         state = state,
         iss = prov@issuer
       )
@@ -92,7 +93,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
       )
       testthat::expect_identical(
         values$error_uri,
-        "https://example.com/oauth-error"
+        expected_error_uri
       )
       expect_state_store_entry_consumed(client, state_info)
 

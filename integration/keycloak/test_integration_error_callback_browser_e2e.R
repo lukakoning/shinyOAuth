@@ -513,7 +513,7 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
     state = callback_state,
     error = "access_denied",
     error_description = "Consent denied by user",
-    error_uri = "https://example.com/oauth-error",
+    error_uri = paste0(get_https_issuer(), "/oauth-error"),
     iss = provider@issuer
   )
 
@@ -551,7 +551,7 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
   )
   testthat::expect_identical(
     valid_state$browser_state$error_uri,
-    "https://example.com/oauth-error"
+    paste0(get_https_issuer(), "/oauth-error")
   )
 
   for (key in c(
