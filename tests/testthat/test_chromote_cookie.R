@@ -101,9 +101,13 @@ cookie_value_js <- function(name) {
   )
 }
 
-browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
+browser_cookie_instance <- function(id) {
   ns_hash <- substr(as.character(openssl::sha256(paste0(id, "-"))), 1, 8)
-  paste0(prefix, "-", id, "-", ns_hash)
+  paste0(id, "-", ns_hash)
+}
+
+browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
+  paste0(prefix, "-", browser_cookie_instance(id))
 }
 
 get_browser_cookie <- function(app, name) {
@@ -323,19 +327,43 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
 testthat::test_that("browser token cookie honors custom path and SameSite metadata", {
   local_skip_env()
 
-  writes <- capture_set_cookie_writes(
-    protocol = "http:",
-    path = "/foo",
-    same_site = "Lax",
-    max_age_ms = 60000,
-    instance = "authpath"
+  app <- shinytest2::AppDriver$new(
+    app = shiny::shinyApp(
+      ui = shiny::fluidPage(
+        shinyOAuth::use_shinyOAuth(),
+        shiny::actionButton("set", "Set cookie")
+      ),
+      server = function(input, output, session) {
+        shiny::observeEvent(input$set, {
+          session$sendCustomMessage(
+            type = "shinyOAuth:setBrowserToken",
+            message = list(
+              instance = browser_cookie_instance("authpath"),
+              maxAgeMs = 60000,
+              sameSite = "Lax",
+              path = "/foo",
+              inputId = session$ns("sid"),
+              errorInputId = session$ns("err")
+            )
+          )
+        })
+      }
+    ),
+    name = "cookie-path-metadata",
+    load_timeout = 10000
   )
+  on.exit(app$stop(), add = TRUE)
 
-  testthat::expect_length(writes, 1L)
-  testthat::expect_match(writes[[1]], "^shinyOAuth_sid-authpath=")
-  testthat::expect_match(writes[[1]], "; Max-Age=60;")
-  testthat::expect_match(writes[[1]], "; Path=/foo; SameSite=Lax$")
-  testthat::expect_no_match(writes[[1]], "; Secure$")
+  cookie_name <- browser_cookie_name("authpath")
+
+  app$click("set")
+  cookie <- wait_for_browser_cookie(app, cookie_name)
+
+  testthat::expect_false(is.null(cookie))
+  testthat::expect_identical(cookie$path, "/foo")
+  testthat::expect_identical(cookie$sameSite, "Lax")
+  testthat::expect_false(cookie$secure)
+  testthat::expect_false(startsWith(cookie$name, "__Host-"))
 })
 
 testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS root paths", {
