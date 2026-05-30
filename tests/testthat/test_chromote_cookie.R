@@ -323,21 +323,19 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
 testthat::test_that("browser token cookie honors custom path and SameSite metadata", {
   local_skip_env()
 
-  app <- shinytest2::AppDriver$new(
-    app = make_test_app(samesite = "Lax", path = "/foo", id = "authpath"),
-    name = "cookie-path-metadata",
-    load_timeout = 10000
+  writes <- capture_set_cookie_writes(
+    protocol = "http:",
+    path = "/foo",
+    same_site = "Lax",
+    max_age_ms = 60000,
+    instance = "authpath"
   )
-  on.exit(app$stop(), add = TRUE)
 
-  cookie_name <- browser_cookie_name("authpath")
-  cookie <- wait_for_browser_cookie(app, cookie_name)
-
-  testthat::expect_false(is.null(cookie))
-  testthat::expect_identical(cookie$path, "/foo")
-  testthat::expect_identical(cookie$sameSite, "Lax")
-  testthat::expect_false(cookie$secure)
-  testthat::expect_false(startsWith(cookie$name, "__Host-"))
+  testthat::expect_length(writes, 1L)
+  testthat::expect_match(writes[[1]], "^shinyOAuth_sid-authpath=")
+  testthat::expect_match(writes[[1]], "; Max-Age=60;")
+  testthat::expect_match(writes[[1]], "; Path=/foo; SameSite=Lax$")
+  testthat::expect_no_match(writes[[1]], "; Secure$")
 })
 
 testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS root paths", {
