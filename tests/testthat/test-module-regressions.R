@@ -60,3 +60,37 @@ testthat::test_that("invalid shinyOAuth_sid input is rejected and regeneration a
     }
   )
 })
+
+testthat::test_that("pending login ignores partial matches in query params", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  sess <- shiny::MockShinySession$new()
+  sess$clientData$url_search <- "?code_challenge=challenge"
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    session = sess,
+    expr = {
+      session$flushReact()
+
+      values$browser_token <- NULL
+      testthat::expect_identical(values$request_login(), TRUE)
+      testthat::expect_true(isTRUE(values$pending_login))
+      testthat::expect_false(isTRUE(values$auto_redirected))
+
+      values$browser_token <- valid_browser_token()
+      session$flushReact()
+
+      testthat::expect_false(isTRUE(values$pending_login))
+      testthat::expect_true(isTRUE(values$auto_redirected))
+      testthat::expect_null(values$error)
+    }
+  )
+})

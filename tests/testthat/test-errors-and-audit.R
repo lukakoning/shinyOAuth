@@ -363,6 +363,26 @@ test_that("sanitize_http_summary handles NULL input", {
   expect_null(shinyOAuth:::sanitize_http_summary(NULL))
 })
 
+test_that("sanitize_http_summary ignores partial matches in summary keys", {
+  summary <- list(
+    query_string_alt = "code=authcode123",
+    headers_extra = list(cookie = "session=secret123"),
+    remote_address = "192.168.1.1"
+  )
+
+  result <- shinyOAuth:::sanitize_http_summary(summary)
+
+  expect_identical(result[["query_string_alt"]], "code=authcode123")
+  expect_identical(
+    result[["headers_extra"]][["cookie"]],
+    "session=secret123"
+  )
+  expect_identical(result[["remote_address"]], "192.168.1.1")
+  expect_null(result[["query_string"]])
+  expect_null(result[["headers"]])
+  expect_null(result[["remote_addr"]])
+})
+
 test_that("build_http_summary returns sanitized output", {
   # Create a mock request object
   req <- list(
@@ -469,6 +489,25 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     expect_null(result[["headers"]][["cookie"]])
     expect_equal(result[["remote_addr"]], "[REDACTED]")
   })
+})
+
+test_that("build_http_summary ignores partial matches in request environ keys", {
+  req <- list(
+    REQUEST_METHOD_OVERRIDE = "POST",
+    PATH_INFO_EXTRA = "/callback",
+    QUERY_STRING_ALT = "code=authcode123",
+    HTTP_HOSTNAME = "example.com",
+    REMOTE_ADDRESS = "192.168.1.10",
+    HTTP_X_FORWARDED_FORWARDED = "10.0.0.1"
+  )
+
+  result <- shinyOAuth:::build_http_summary(req)
+
+  expect_null(result[["method"]])
+  expect_null(result[["path"]])
+  expect_null(result[["query_string"]])
+  expect_null(result[["host"]])
+  expect_null(result[["remote_addr"]])
 })
 
 

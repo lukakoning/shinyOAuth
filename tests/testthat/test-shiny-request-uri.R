@@ -179,3 +179,16 @@ test_that("serve_shiny_request_object serves JWT bodies and expiry responses", {
   expect_identical(method_not_allowed$status, 405L)
   expect_identical(method_not_allowed$headers[["Allow"]], "GET, HEAD")
 })
+
+test_that("serve_shiny_request_object ignores partial matches in request method keys", {
+  fresh <- shinyOAuth:::serve_shiny_request_object(
+    data = list(
+      request_object = "header.payload.signature",
+      expires_at = Sys.time() + 60
+    ),
+    req = list(REQUEST_METHOD_OVERRIDE = "POST")
+  )
+
+  expect_identical(fresh$status, 200L)
+  expect_identical(fresh$body, "header.payload.signature")
+})

@@ -103,7 +103,7 @@ client_state_store_max_age <- function(client, default = 300) {
 
   max_age <- suppressWarnings(
     tryCatch(
-      as.numeric(max_age_raw$max_age),
+      as.numeric(max_age_raw[["max_age"]]),
       error = function(...) NA_real_
     )
   )

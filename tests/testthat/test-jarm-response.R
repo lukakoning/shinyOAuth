@@ -4074,6 +4074,79 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unre
   )
 })
 
+test_that("deferred JARM resume ignores partial matches in pending callback payloads", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
+
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  callback_args <- list()
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      state_browser_token <- valid_browser_token()
+      enc_state <- "state-payload"
+
+      values$pending_callback <- list(
+        type_hint = "error",
+        normalized_response = list(
+          type_hint = "error",
+          code = "ok",
+          state = enc_state
+        )
+      )
+
+      testthat::with_mocked_bindings(
+        revalidate_cached_jarm_response = function(
+          client,
+          normalized_response
+        ) {
+          normalized_response
+        },
+        handle_callback_internal = function(
+          oauth_client,
+          code,
+          payload,
+          browser_token,
+          ...
+        ) {
+          callback_args <<- list(
+            code = code,
+            payload = payload,
+            browser_token = browser_token
+          )
+          OAuthToken(
+            access_token = "t",
+            refresh_token = NA_character_,
+            expires_at = as.numeric(Sys.time()) + 3600,
+            id_token = NA_character_
+          )
+        },
+        .package = "shinyOAuth",
+        {
+          values$browser_token <- state_browser_token
+          session$flushReact()
+        }
+      )
+
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_null(values$pending_callback)
+      testthat::expect_identical(callback_args[["code"]], "ok")
+      testthat::expect_identical(callback_args[["payload"]], enc_state)
+      testthat::expect_identical(
+        callback_args[["browser_token"]],
+        state_browser_token
+      )
+    }
+  )
+})
+
 test_that("oauth_module_server rejects bridged form_post JARM callbacks for query.jwt clients before JWT processing", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

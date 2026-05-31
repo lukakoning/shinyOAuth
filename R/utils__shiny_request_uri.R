@@ -203,7 +203,10 @@ shiny_request_uri_base_url <- function(session, base_url = NULL) {
 serve_shiny_request_object <- function(data, req) {
   method <- toupper(
     as.character(
-      req$REQUEST_METHOD %||% req$request_method %||% req$method %||% "GET"
+      req[["REQUEST_METHOD"]] %||%
+        req[["request_method"]] %||%
+        req[["method"]] %||%
+        "GET"
     )[[1]]
   )
   headers <- c(

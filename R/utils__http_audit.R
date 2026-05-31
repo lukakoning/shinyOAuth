@@ -28,16 +28,22 @@ build_http_summary <- function(req) {
   }
 
   # Core request line/meta
-  method <- .scalar_chr(tryCatch(req$REQUEST_METHOD, error = function(...) {
-    NULL
-  }))
-  path <- .scalar_chr(tryCatch(req$PATH_INFO, error = function(...) NULL))
-  query_string <- .scalar_chr(tryCatch(req$QUERY_STRING, error = function(...) {
-    NULL
-  }))
-  host <- .scalar_chr(tryCatch(req$HTTP_HOST, error = function(...) NULL))
+  method <- .scalar_chr(tryCatch(
+    req[["REQUEST_METHOD"]],
+    error = function(...) {
+      NULL
+    }
+  ))
+  path <- .scalar_chr(tryCatch(req[["PATH_INFO"]], error = function(...) NULL))
+  query_string <- .scalar_chr(tryCatch(
+    req[["QUERY_STRING"]],
+    error = function(...) {
+      NULL
+    }
+  ))
+  host <- .scalar_chr(tryCatch(req[["HTTP_HOST"]], error = function(...) NULL))
   scheme <- .scalar_chr(tryCatch(
-    req$HTTP_X_FORWARDED_PROTO,
+    req[["HTTP_X_FORWARDED_PROTO"]],
     error = function(...) NULL
   ))
   if (!is_valid_string(scheme)) {
@@ -48,10 +54,13 @@ build_http_summary <- function(req) {
     ))
   }
   # Remote address preference: X-Forwarded-For (first IP) else REMOTE_ADDR
-  ra <- .scalar_chr(tryCatch(req$REMOTE_ADDR, error = function(...) NULL))
-  xff <- .scalar_chr(tryCatch(req$HTTP_X_FORWARDED_FOR, error = function(...) {
-    NULL
-  }))
+  ra <- .scalar_chr(tryCatch(req[["REMOTE_ADDR"]], error = function(...) NULL))
+  xff <- .scalar_chr(tryCatch(
+    req[["HTTP_X_FORWARDED_FOR"]],
+    error = function(...) {
+      NULL
+    }
+  ))
   if (is_valid_string(xff)) {
     # If multiple comma-separated IPs, take the first hop
     ra <- strsplit(xff, ",", fixed = TRUE)[[1]]
@@ -110,18 +119,20 @@ sanitize_http_summary <- function(summary) {
   }
 
   # Redact sensitive query params from query_string
-  if (!is.null(summary$query_string) && nzchar(summary$query_string)) {
-    summary$query_string <- redact_query_string(summary$query_string)
+  if (
+    !is.null(summary[["query_string"]]) && nzchar(summary[["query_string"]])
+  ) {
+    summary[["query_string"]] <- redact_query_string(summary[["query_string"]])
   }
 
   # Redact sensitive headers
-  if (!is.null(summary$headers) && length(summary$headers) > 0) {
-    summary$headers <- redact_headers(summary$headers)
+  if (!is.null(summary[["headers"]]) && length(summary[["headers"]]) > 0) {
+    summary[["headers"]] <- redact_headers(summary[["headers"]])
   }
 
   # Client IPs can be personal data; keep them out of sanitized audit events.
-  if (!is.null(summary$remote_addr) && nzchar(summary$remote_addr)) {
-    summary$remote_addr <- "[REDACTED]"
+  if (!is.null(summary[["remote_addr"]]) && nzchar(summary[["remote_addr"]])) {
+    summary[["remote_addr"]] <- "[REDACTED]"
   }
 
   summary

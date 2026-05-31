@@ -2261,7 +2261,7 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
-      if (identical(normalized$type, "error")) {
+      if (identical(normalized[["type"]], "error")) {
         clear_oauth_module_callback_query(
           session,
           tab_title_replacement,
@@ -2269,20 +2269,20 @@ oauth_module_server <- function(
           drop_response = drop_response
         )
         .handle_error_response(
-          error = normalized$error,
-          error_description = normalized$error_description,
-          error_uri = normalized$error_uri,
-          state = normalized$state,
-          iss = normalized$iss %||% NULL,
+          error = normalized[["error"]],
+          error_description = normalized[["error_description"]],
+          error_uri = normalized[["error_uri"]],
+          state = normalized[["state"]],
+          iss = normalized[["iss"]] %||% NULL,
           decrypted_payload = decrypted_payload
         )
         return(invisible(NULL))
       }
 
       .handle_callback(
-        code = normalized$code,
-        state = normalized$state,
-        iss = normalized$iss %||% NULL,
+        code = normalized[["code"]],
+        state = normalized[["state"]],
+        iss = normalized[["iss"]] %||% NULL,
         decrypted_payload = decrypted_payload,
         drop_response = drop_response,
         callback_validated = TRUE
@@ -2448,7 +2448,7 @@ oauth_module_server <- function(
             consumed_state <- .consume_error_state(
               state,
               strict = TRUE,
-              decrypted_payload = consumed_state$payload,
+              decrypted_payload = consumed_state[["payload"]],
               consume = TRUE
             )
           }
@@ -3244,12 +3244,12 @@ oauth_module_server <- function(
         pc <- shiny::isolate(values$pending_callback)
         if (!is.null(pc) && .has_browser_token()) {
           values$pending_callback <- NULL
-          pending_type <- pc$type %||%
-            if (!is.null(pc$normalized_response)) {
+          pending_type <- pc[["type"]] %||%
+            if (!is.null(pc[["normalized_response"]])) {
               "jarm"
-            } else if (!is.null(pc$code)) {
+            } else if (!is.null(pc[["code"]])) {
               "code"
-            } else if (!is.null(pc$error)) {
+            } else if (!is.null(pc[["error"]])) {
               "error"
             } else {
               NULL
@@ -3257,31 +3257,31 @@ oauth_module_server <- function(
 
           if (identical(pending_type, "jarm")) {
             .resume_cached_jarm_response(
-              normalized_response = pc$normalized_response %||% NULL,
-              decrypted_payload = pc$decrypted_payload %||% NULL,
+              normalized_response = pc[["normalized_response"]] %||% NULL,
+              decrypted_payload = pc[["decrypted_payload"]] %||% NULL,
               phase = "callback_response_resume",
-              drop_response = isTRUE(pc$drop_response %||% FALSE)
+              drop_response = isTRUE(pc[["drop_response"]] %||% FALSE)
             )
           } else if (identical(pending_type, "error")) {
             .handle_error_response(
-              error = pc$error,
-              error_description = pc$error_description,
-              error_uri = pc$error_uri,
-              state = pc$state,
-              iss = pc$iss %||% NULL,
-              decrypted_payload = pc$decrypted_payload %||% NULL,
-              state_store_values = pc$state_store_values %||% NULL
+              error = pc[["error"]],
+              error_description = pc[["error_description"]],
+              error_uri = pc[["error_uri"]],
+              state = pc[["state"]],
+              iss = pc[["iss"]] %||% NULL,
+              decrypted_payload = pc[["decrypted_payload"]] %||% NULL,
+              state_store_values = pc[["state_store_values"]] %||% NULL
             )
           } else {
             .handle_callback(
-              pc$code,
-              pc$state,
-              pc$iss %||% NULL,
-              decrypted_payload = pc$decrypted_payload %||% NULL,
-              state_store_values = pc$state_store_values %||% NULL,
-              drop_response = isTRUE(pc$drop_response %||% FALSE),
+              pc[["code"]],
+              pc[["state"]],
+              pc[["iss"]] %||% NULL,
+              decrypted_payload = pc[["decrypted_payload"]] %||% NULL,
+              state_store_values = pc[["state_store_values"]] %||% NULL,
+              drop_response = isTRUE(pc[["drop_response"]] %||% FALSE),
               callback_validated = isTRUE(
-                pc$callback_validated %||% FALSE
+                pc[["callback_validated"]] %||% FALSE
               )
             )
           }
@@ -3303,8 +3303,8 @@ oauth_module_server <- function(
             error = function(...) list()
           )
           if (
-            is.null(qs$code) &&
-              is.null(qs$error) &&
+            is.null(qs[["code"]]) &&
+              is.null(qs[["error"]]) &&
               is.null(shiny::isolate(values$pending_callback)) &&
               !isTRUE(shiny::isolate(values$auto_redirected))
           ) {
