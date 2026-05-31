@@ -61,7 +61,6 @@ is attached to every event so you can tie the audit record back to the app
 session and HTTP request. The structure is designed to serialize cleanly with
 `jsonlite::toJSON()`:
 
-- `shiny_session$token`: the Shiny per-session token (`session$token`) when available.
 - `shiny_session$session_token_digest`: an HMAC-SHA256 digest of the Shiny
   per-session token (`session$token`) when available. Native audit hooks receive
   this digest by default.
