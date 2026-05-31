@@ -138,9 +138,6 @@ structure is designed to serialize cleanly with
 <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>:</p>
 <ul>
 <li>
-<code>shiny_session$token</code>: the Shiny per-session token
-(<code>session$token</code>) when available.</li>
-<li>
 <code>shiny_session$session_token_digest</code>: an HMAC-SHA256
 digest of the Shiny per-session token (<code>session$token</code>) when
 available. Native audit hooks receive this digest by default.</li>

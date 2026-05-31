@@ -63,8 +63,6 @@ record back to the app session and HTTP request. The structure is
 designed to serialize cleanly with
 [`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html):
 
-- `shiny_session$token`: the Shiny per-session token (`session$token`)
-  when available.
 - `shiny_session$session_token_digest`: an HMAC-SHA256 digest of the
   Shiny per-session token (`session$token`) when available. Native audit
   hooks receive this digest by default.

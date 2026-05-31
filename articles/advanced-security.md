@@ -56,7 +56,7 @@ certificate-bound access tokens.
 
 ``` r
 provider <- oauth_provider(
-  authorization_url = "https://id.example.com/authorize",
+  auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Use RFC 8705 client-certificate auth at the token endpoint
   token_auth_style = "tls_client_auth",
@@ -102,7 +102,7 @@ confidentiality as well.
 ``` r
 provider <- oauth_provider(
   issuer = "https://id.example.com",
-  authorization_url = "https://id.example.com/authorize",
+  auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Provider expects signed Request Objects
   signed_request_object_required = TRUE,
@@ -145,7 +145,7 @@ out of browser history and front-channel logs.
 ``` r
 provider <- oauth_provider(
   issuer = "https://id.example.com",
-  authorization_url = "https://id.example.com/authorize",
+  auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Enable pushed authorization requests
   par_url = "https://id.example.com/par",
@@ -210,20 +210,45 @@ auth <- oauth_module_server(
 `response_mode = "form_post"` tells the provider to send the
 authorization response back as an HTTP POST body instead of query
 parameters on the URL. The body still contains normal OAuth fields such
-as `code`, `state`, `error`, and `iss`; this is not JARM.
+as `code`, `state`, `error`, and `iss`.
 
 This is useful when the provider requires form_post, or when you want
-those callback values out of the browser URL, history, and some
-front-channel logs. It changes the callback transport, but it does not
-sign the response by itself.
+those callback values out of the browser URL, history, and front-channel
+logs. It changes the callback transport, but it does not sign or encrypt
+the response by itself.
+
+Two common setups are shown below. The first uses the normal app URL as
+the `redirect_uri`. The second uses a dedicated callback path such as
+`/callback`.
 
 ``` r
+base_ui <- fluidPage(
+  uiOutput("login")
+)
+
+# Example 1: redirect_uri is the normal app URL
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com",
+  scopes = c("openid", "profile"),
+  # Ask the provider to POST the callback to redirect_uri
+  response_mode = "form_post"
+)
+
+# Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists
+ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
+
+app <- shinyApp(ui, server)
+```
+
+``` r
+# Example 2: redirect_uri uses a separate callback path
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
   redirect_uri = "https://app.example.com/callback",
   scopes = c("openid", "profile"),
-  # Ask the provider to POST the callback to redirect_uri
   response_mode = "form_post"
 )
 
@@ -231,7 +256,6 @@ base_ui <- fluidPage(
   uiOutput("login")
 )
 
-# Wrap the UI so shinyOAuth can accept the POST before a Shiny session exists
 ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
 
 # If the callback path is not the app root, route all paths through this UI
@@ -257,7 +281,7 @@ browser-visible layers.
 ``` r
 provider <- oauth_provider(
   issuer = "https://id.example.com",
-  authorization_url = "https://id.example.com/authorize",
+  auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Advertise the JARM response modes and algorithms this provider supports
   response_modes_supported = c("query", "query.jwt", "form_post.jwt"),
@@ -313,7 +337,7 @@ certificates.
 ``` r
 provider <- oauth_provider(
   issuer = "https://id.example.com",
-  authorization_url = "https://id.example.com/authorize",
+  auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Optional metadata check for acceptable DPoP signing algorithms
   dpop_signing_alg_values_supported = c("ES256")
