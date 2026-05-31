@@ -11,7 +11,7 @@ helping catch missing form_post UI wrappers earlier.
 * `oauth_client()`/`OAuthClient` and `oauth_provider()`/`OAuthProvider` 
 have had their arguments reorganized and renamed for better clarity.
 Both helper constructors (`oauth_client()` and `oauth_provider()`) still
-accept previous argument names for backward compatibility, but the underlying 
+resolve previous argument names through compatibility aliases, but the underlying 
 S7 classes only use the new names. Renamed arguments include:
   - `oauth_client()`:
     * `client_private_key` -> `client_assertion_private_key`
@@ -72,7 +72,7 @@ S7 classes only use the new names. Renamed arguments include:
 
 * `oauth_provider_oidc_discover()` now preserves JARM discovery metadata from
 the canonical `jarm_*_values_supported` fields, while still accepting the
-older `authorization_*` aliases for compatibility.
+older `authorization_*` compatibility aliases.
 
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
@@ -104,12 +104,18 @@ closed on duplicate top-level `iss` members.
 * Provider callback `error_uri` values now have to stay on a provider host
 or another host you already allowlist via
 `options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are now
-dropped instead of being surfaced through `values$error_uri`.
+dropped instead of being surfaced through `values$error_uri`. Trusted
+`error_uri` values are also preserved across deferred OAuth error callbacks
+that wait for the browser token before resuming.
 
 * Native audit hooks now receive `shiny_session$session_token_digest` by
 default instead of the raw Shiny `session$token`. Set
 `options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
 explicitly need the raw token in a controlled sink.
+
+* Added `vignette("advanced-security", package = "shinyOAuth")`, which
+collects higher-assurance configuration guidance for mTLS, JAR, PAR,
+`form_post`, JARM, and DPoP setups.
 
 * Internal list-like access now consistently uses exact
 `[[...]]` indexing instead of `$`, reducing potential for accidental partial 
