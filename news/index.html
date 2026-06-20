@@ -43,7 +43,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>.</p></li>
+<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. JARM callbacks currently resume through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> only; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> still accepts only the classic direct <code>code</code> + sealed <code>state</code> callback shape.</p></li>
 <li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now warns once when a client resolves to <code>response_mode = "form_post"</code> or <code>"form_post.jwt"</code> but no prior <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> call was detected for the same module/client setup, helping catch missing form_post UI wrappers earlier.</p></li>
 <li>
 <p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> have had their arguments reorganized and renamed for better clarity. Both helper constructors (<code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>) still resolve previous argument names through compatibility aliases, but the underlying S7 classes only use the new names. Renamed arguments include:</p>
@@ -154,6 +154,13 @@
 <ul><li>Accepts either an issuer base URL or the standard <code>/.well-known/openid-configuration</code> URL. Full discovery URLs are normalized back to the issuer base before request construction, so strict issuer matching still applies without requiring <code>issuer_match = "host"</code>.</li>
 <li>Has transport failures surface the attempted <code>/.well-known/openid-configuration</code> URL plus the underlying network error, making discovery misconfiguration and connectivity problems easier to diagnose.</li>
 <li>Accept discovery metadata that differs from the configured issuer only by one trailing slash in the published <code>issuer</code>, while still storing the provider’s advertised issuer verbatim for downstream <code>iss</code> checks.</li>
+</ul></li>
+<li>
+<p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> / <code>OAuthProvider</code> and runtime JWKS resolution now:</p>
+<ul><li>Accept an explicit <code>jwks_uri</code> override for providers that publish signing keys outside OIDC discovery or that need a pinned runtime JWKS location.</li>
+<li>Preserve discovered <code>jwks_uri</code> values on discovery-backed providers so ID-token, JARM, Request Object, and signed UserInfo verification all reuse the same resolved JWKS source.</li>
+<li>Fall back to RFC 8414 authorization-server metadata when runtime JWKS fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers, instead of relying only on OpenID Connect discovery.</li>
+<li>Fail earlier when discovery enables signature-validation modes but omits <code>jwks_uri</code>, or when the discovered JWKS URL is malformed or violates the configured host policy.</li>
 </ul></li>
 <li><p><code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> has been added which configures Apple’s OIDC endpoints and ID-token defaults, and added <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> which generates the ES256 JWT that Apple expects in the <code>client_secret</code> field of an <code>OAuthClient</code> configured with <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code>.</p></li>
 <li><p><code><a href="../reference/oauth_provider_okta.html">oauth_provider_okta()</a></code> can now target Okta’s org authorization server with <code>auth_server = NULL</code>, instead of always forcing <code>/oauth2/{auth_server}</code> and the custom-server path.</p></li>

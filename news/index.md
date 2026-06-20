@@ -3,7 +3,13 @@
 ## shinyOAuth (development version)
 
 - Added JWT Secured Authorization Response Mode (JARM) support with
-  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. JARM
+  callbacks currently resume through
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  only;
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  still accepts only the classic direct `code` + sealed `state` callback
+  shape.
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now warns once when a client resolves to `response_mode = "form_post"`
@@ -115,6 +121,22 @@
     only by one trailing slash in the published `issuer`, while still
     storing the provider’s advertised issuer verbatim for downstream
     `iss` checks.
+
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  / `OAuthProvider` and runtime JWKS resolution now:
+
+  - Accept an explicit `jwks_uri` override for providers that publish
+    signing keys outside OIDC discovery or that need a pinned runtime
+    JWKS location.
+  - Preserve discovered `jwks_uri` values on discovery-backed providers
+    so ID-token, JARM, Request Object, and signed UserInfo verification
+    all reuse the same resolved JWKS source.
+  - Fall back to RFC 8414 authorization-server metadata when runtime
+    JWKS fetches need to resolve signing keys for generic OAuth 2.0 /
+    JARM issuers, instead of relying only on OpenID Connect discovery.
+  - Fail earlier when discovery enables signature-validation modes but
+    omits `jwks_uri`, or when the discovered JWKS URL is malformed or
+    violates the configured host policy.
 
 - [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
   has been added which configures Apple’s OIDC endpoints and ID-token
