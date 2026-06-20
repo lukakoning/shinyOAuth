@@ -2,11 +2,16 @@
 
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
+JARM callbacks currently resume through `oauth_module_server()` only;
+`handle_callback()` still accepts only the classic direct `code` + sealed
+`state` callback shape.
+JARM clients can tune the maximum accepted authorization-response JWT
+lifetime with `jarm_max_lifetime` (default 600 seconds).
 
 * `oauth_module_server()` now warns once when a client resolves to
 `response_mode = "form_post"` or `"form_post.jwt"` but no prior
-`oauth_form_post_ui()` call was detected for the same module/client setup,
-helping catch missing form_post UI wrappers earlier.
+`oauth_form_post_ui()` call was detected for that module/client callback
+setup, helping catch missing form_post UI wrappers earlier.
 
 * `oauth_client()`/`OAuthClient` and `oauth_provider()`/`OAuthProvider` 
 have had their arguments reorganized and renamed for better clarity.
@@ -83,9 +88,22 @@ older `authorization_*` compatibility aliases.
   `/.well-known/openid-configuration` URL plus the underlying network error,
   making discovery misconfiguration and connectivity problems easier to 
   diagnose.
-  - Accept discovery metadata that differs from the configured issuer only by 
+  - Accepts discovery metadata that differs from the configured issuer only by 
   one trailing slash in the published `issuer`, while still storing the 
   provider's advertised issuer verbatim for downstream `iss` checks.
+
+* `oauth_provider()` / `OAuthProvider` and runtime JWKS resolution now:
+  - Accept an explicit `jwks_uri` override for providers that publish signing
+  keys outside OIDC discovery or that need a pinned runtime JWKS location.
+  - Preserve discovered `jwks_uri` values on discovery-backed providers so
+  ID-token, JARM, Request Object, and signed UserInfo verification all reuse
+  the same resolved JWKS source.
+  - Fall back to RFC 8414 authorization-server metadata when runtime JWKS
+  fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers,
+  instead of relying only on OpenID Connect discovery.
+  - Fail earlier when discovery enables signature-validation modes but omits
+  `jwks_uri`, or when the discovered JWKS URL is malformed or violates the
+  configured host policy.
 
 * `oauth_provider_apple()` has been added which configures Apple's OIDC 
 endpoints and ID-token defaults, and added `oauth_client_secret_apple()` which 
