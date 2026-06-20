@@ -9,13 +9,15 @@
   only;
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
   still accepts only the classic direct `code` + sealed `state` callback
-  shape.
+  shape. JARM clients can tune the maximum accepted
+  authorization-response JWT lifetime with `jarm_max_lifetime` (default
+  600 seconds).
 
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   now warns once when a client resolves to `response_mode = "form_post"`
   or `"form_post.jwt"` but no prior
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  call was detected for the same module/client setup, helping catch
+  call was detected for that module/client callback setup, helping catch
   missing form_post UI wrappers earlier.
 
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
@@ -117,7 +119,7 @@
     `/.well-known/openid-configuration` URL plus the underlying network
     error, making discovery misconfiguration and connectivity problems
     easier to diagnose.
-  - Accept discovery metadata that differs from the configured issuer
+  - Accepts discovery metadata that differs from the configured issuer
     only by one trailing slash in the published `issuer`, while still
     storing the provider’s advertised issuer verbatim for downstream
     `iss` checks.
