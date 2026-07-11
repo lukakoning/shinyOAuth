@@ -35,6 +35,7 @@ OAuthProvider(
   jwks_host_allow_only = NA_character_,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = "Bearer",
+  leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
   par_required = FALSE,
   signed_request_object_required = FALSE,
@@ -55,8 +56,7 @@ OAuthProvider(
   token_endpoint_auth_signing_alg_values_supported = character(0),
   dpop_signing_alg_values_supported = character(0),
   mtls_endpoint_aliases = list(),
-  mtls_client_certificate_bound_access_tokens = FALSE,
-  leeway = getOption("shinyOAuth.leeway", 30)
+  mtls_client_certificate_bound_access_tokens = FALSE
 )
 }
 \arguments{
@@ -294,6 +294,10 @@ token types (for example \code{MAC}) still fail fast rather than being misused.
 Set \code{allowed_token_types = character()} explicitly only to disable the
 value allowlist while still requiring \code{token_type} itself.}
 
+\item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
+and state payload \code{issued_at} future check. Default 30. Can be globally
+overridden via option \code{shinyOAuth.leeway}.}
+
 \item{par_url}{Optional Pushed Authorization Request (PAR) URL (RFC 9126).
 When set, shinyOAuth first sends the authorization request from server to
 provider and then redirects the browser with the returned \code{request_uri}
@@ -425,10 +429,6 @@ certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When \code{TRUE}, token responses
 may include a \code{cnf} claim with an \code{x5t#S256} thumbprint that downstream
 requests must match with the same certificate.}
-
-\item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
-and state payload \code{issued_at} future check. Default 30. Can be globally
-overridden via option \code{shinyOAuth.leeway}.}
 }
 \description{
 S7 class describing an OAuth 2.0 or OpenID Connect provider.

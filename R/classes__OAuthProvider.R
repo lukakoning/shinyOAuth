@@ -447,6 +447,13 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = c("Bearer")
     ),
+    leeway = S7::new_property(
+      S7::class_numeric,
+      default = quote(getOption(
+        "shinyOAuth.leeway",
+        30
+      ))
+    ),
     par_url = S7::new_property(
       S7::class_character,
       default = NA_character_
@@ -530,13 +537,6 @@ OAuthProvider <- S7::new_class(
     mtls_client_certificate_bound_access_tokens = S7::new_property(
       S7::class_logical,
       default = FALSE
-    ),
-    leeway = S7::new_property(
-      S7::class_numeric,
-      default = quote(getOption(
-        "shinyOAuth.leeway",
-        30
-      ))
     )
   ),
   validator = function(self) oauth_provider_validate(self)
