@@ -100,6 +100,7 @@ presence of an issuer and available endpoints.</p>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
+<span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span>,</span>
 <span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  par_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  signed_request_object_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -120,8 +121,7 @@ presence of an issuer and available endpoints.</p>
 <span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span></span>
+<span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -407,6 +407,12 @@ Set <code>allowed_token_types = character()</code> explicitly only to disable th
 value allowlist while still requiring <code>token_type</code> itself.</p></dd>
 
 
+<dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>
+<dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code>/<code>nbf</code> checks
+and state payload <code>issued_at</code> future check. Default 30. Can be globally
+overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
+
+
 <dt id="arg-par-url">par_url<a class="anchor" aria-label="anchor" href="#arg-par-url"></a></dt>
 <dd><p>Optional Pushed Authorization Request (PAR) URL (RFC 9126).
 When set, shinyOAuth first sends the authorization request from server to
@@ -580,12 +586,6 @@ client still has to opt into mTLS separately. When <code>TRUE</code>, token resp
 may include a <code>cnf</code> claim with an <code>x5t#S256</code> thumbprint that downstream
 requests must match with the same certificate.</p></dd>
 
-
-<dt id="arg-leeway">leeway<a class="anchor" aria-label="anchor" href="#arg-leeway"></a></dt>
-<dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code>/<code>nbf</code> checks
-and state payload <code>issued_at</code> future check. Default 30. Can be globally
-overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
-
 </dl></div>
 
     <div class="section level2">
@@ -668,7 +668,7 @@ overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

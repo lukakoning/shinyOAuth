@@ -48,6 +48,7 @@ OAuthProvider(
   jwks_host_allow_only = NA_character_,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = "Bearer",
+  leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
   par_required = FALSE,
   signed_request_object_required = FALSE,
@@ -68,8 +69,7 @@ OAuthProvider(
   token_endpoint_auth_signing_alg_values_supported = character(0),
   dpop_signing_alg_values_supported = character(0),
   mtls_endpoint_aliases = list(),
-  mtls_client_certificate_bound_access_tokens = FALSE,
-  leeway = getOption("shinyOAuth.leeway", 30)
+  mtls_client_certificate_bound_access_tokens = FALSE
 )
 ```
 
@@ -396,6 +396,12 @@ OAuthProvider(
   `allowed_token_types = character()` explicitly only to disable the
   value allowlist while still requiring `token_type` itself.
 
+- leeway:
+
+  Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
+  checks and state payload `issued_at` future check. Default 30. Can be
+  globally overridden via option `shinyOAuth.leeway`.
+
 - par_url:
 
   Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
@@ -569,12 +575,6 @@ OAuthProvider(
   When `TRUE`, token responses may include a `cnf` claim with an
   `x5t#S256` thumbprint that downstream requests must match with the
   same certificate.
-
-- leeway:
-
-  Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
-  checks and state payload `issued_at` future check. Default 30. Can be
-  globally overridden via option `shinyOAuth.leeway`.
 
 ## Examples
 
