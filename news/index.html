@@ -147,10 +147,10 @@
 <li>Has printing which now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</li>
 <li>Treats an omitted <code>client_secret</code> as an absent value (<code>character(0)</code>), so <code>private_key_jwt</code> and other secretless client-auth setups can omit the argument and still flow through the normal auth-style validation instead of failing at argument matching.</li>
 </ul></li>
-<li><p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> now has <code>issuer_thus_oidc</code>, which defaults to <code>TRUE</code> so a configured <code>issuer</code> keeps enabling OIDC behavior as in previous versions. Generic RFC 8414 providers can set it to <code>FALSE</code> to retain issuer validation without enabling nonce, ID-token, or <code>openid</code> scope behavior.</p></li>
 <li>
-<p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> / <code>OAuthProvider</code> and runtime JWKS resolution now:</p>
-<ul><li>Accept an explicit <code>jwks_uri</code> override for providers that publish signing keys outside OIDC discovery or that need a pinned runtime JWKS location.</li>
+<p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> / <code>OAuthProvider</code> now:</p>
+<ul><li>Have <code>issuer_thus_oidc</code>, which defaults to <code>TRUE</code> so a configured <code>issuer</code> keeps enabling OIDC behavior as in previous versions. Generic RFC 8414 providers can set it to <code>FALSE</code> to retain issuer validation without enabling nonce, ID-token, or <code>openid</code> scope behavior.</li>
+<li>Accept an explicit <code>jwks_uri</code> override for providers that publish signing keys outside OIDC discovery or that need a pinned runtime JWKS location.</li>
 <li>Preserve discovered <code>jwks_uri</code> values on discovery-backed providers so ID-token, JARM, Request Object, and signed UserInfo verification all reuse the same resolved JWKS source.</li>
 <li>Fall back to RFC 8414 authorization-server metadata when runtime JWKS fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers, instead of relying only on OpenID Connect discovery.</li>
 <li>Fail earlier when discovery enables signature-validation modes but omits <code>jwks_uri</code>, or when the discovered JWKS URL is malformed or violates the configured host policy.</li>

@@ -96,14 +96,13 @@
     matching.
 
 - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  now has `issuer_thus_oidc`, which defaults to `TRUE` so a configured
-  `issuer` keeps enabling OIDC behavior as in previous versions. Generic
-  RFC 8414 providers can set it to `FALSE` to retain issuer validation
-  without enabling nonce, ID-token, or `openid` scope behavior.
+  / `OAuthProvider` now:
 
-- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  / `OAuthProvider` and runtime JWKS resolution now:
-
+  - Have `issuer_thus_oidc`, which defaults to `TRUE` so a configured
+    `issuer` keeps enabling OIDC behavior as in previous versions.
+    Generic RFC 8414 providers can set it to `FALSE` to retain issuer
+    validation without enabling nonce, ID-token, or `openid` scope
+    behavior.
   - Accept an explicit `jwks_uri` override for providers that publish
     signing keys outside OIDC discovery or that need a pinned runtime
     JWKS location.
