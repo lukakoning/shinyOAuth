@@ -1,29 +1,5 @@
 # shinyOAuth (development version)
 
-* HTTP audit summaries now redact JARM `response` values and the
-`shinyOAuth_form_post` and `shinyOAuth_form_post_id` callback parameters.
-
-* Long-lived token-expiry and reauthentication timers are now scheduled in
-bounded chunks without overflowing R integers. Module timer durations must be
-finite, so invalid `Inf` settings fail during parameter validation.
-
-* Proactive token refresh now paces repeated attempts. Short-lived refreshed
-tokens wait for half their new lifetime, while failures use bounded exponential
-backoff with jitter and honor `Retry-After` when available.
-
-* `oauth_provider()` now has `issuer_thus_oidc`, which defaults to `TRUE` so a
-configured `issuer` keeps enabling OIDC behavior as in previous versions.
-Generic RFC 8414 providers can set it to `FALSE` to retain issuer validation
-without enabling nonce, ID-token, or `openid` scope behavior.
-
-* The advanced-security vignette examples now supply provider names and client
-secrets where required, and use separate compatible configurations for PAR,
-caller-managed `request_uri`, and form-post callbacks.
-
-* `client_secret_basic` now form-encodes the client ID and client secret before
-constructing the HTTP Basic credentials, including reserved, space, percent,
-plus, and non-ASCII characters as required by RFC 6749.
-
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;
@@ -31,11 +7,6 @@ JARM callbacks currently resume through `oauth_module_server()` only;
 `state` callback shape.
 JARM clients can tune the maximum accepted authorization-response JWT
 lifetime with `jarm_max_lifetime` (default 600 seconds).
-
-* `oauth_module_server()` now warns once when a client resolves to
-`response_mode = "form_post"` or `"form_post.jwt"` but no prior
-`oauth_form_post_ui()` call was detected for that module/client callback
-setup, helping catch missing form_post UI wrappers earlier.
 
 * `oauth_client()`/`OAuthClient` and `oauth_provider()`/`OAuthProvider` 
 have had their arguments reorganized and renamed for better clarity.
@@ -99,9 +70,22 @@ S7 classes only use the new names. Renamed arguments include:
   argument and still flow through the normal auth-style validation instead of 
   failing at argument matching.
 
-* `oauth_provider_oidc_discover()` now preserves JARM discovery metadata from
-the canonical `jarm_*_values_supported` fields, while still accepting the
-older `authorization_*` compatibility aliases.
+* `oauth_provider()` / `OAuthProvider` now:
+  - Have `issuer_thus_oidc`, which defaults to `TRUE` so a
+  configured `issuer` keeps enabling OIDC behavior as in previous versions.
+  Generic RFC 8414 providers can set it to `FALSE` to retain issuer validation
+  without enabling nonce, ID-token, or `openid` scope behavior.
+  - Accept an explicit `jwks_uri` override for providers that publish signing
+  keys outside OIDC discovery or that need a pinned runtime JWKS location.
+  - Preserve discovered `jwks_uri` values on discovery-backed providers so
+  ID-token, JARM, Request Object, and signed UserInfo verification all reuse
+  the same resolved JWKS source.
+  - Fall back to RFC 8414 authorization-server metadata when runtime JWKS
+  fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers,
+  instead of relying only on OpenID Connect discovery.
+  - Fail earlier when discovery enables signature-validation modes but omits
+  `jwks_uri`, or when the discovered JWKS URL is malformed or violates the
+  configured host policy.
 
 * `oauth_provider_oidc_discover()` now:
   - Accepts either an issuer base URL or the standard 
@@ -115,19 +99,9 @@ older `authorization_*` compatibility aliases.
   - Accepts discovery metadata that differs from the configured issuer only by 
   one trailing slash in the published `issuer`, while still storing the 
   provider's advertised issuer verbatim for downstream `iss` checks.
-
-* `oauth_provider()` / `OAuthProvider` and runtime JWKS resolution now:
-  - Accept an explicit `jwks_uri` override for providers that publish signing
-  keys outside OIDC discovery or that need a pinned runtime JWKS location.
-  - Preserve discovered `jwks_uri` values on discovery-backed providers so
-  ID-token, JARM, Request Object, and signed UserInfo verification all reuse
-  the same resolved JWKS source.
-  - Fall back to RFC 8414 authorization-server metadata when runtime JWKS
-  fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers,
-  instead of relying only on OpenID Connect discovery.
-  - Fail earlier when discovery enables signature-validation modes but omits
-  `jwks_uri`, or when the discovered JWKS URL is malformed or violates the
-  configured host policy.
+  - Preserves JARM discovery metadata from
+  the canonical `jarm_*_values_supported` fields, while still accepting the
+  older `authorization_*` compatibility aliases.
 
 * `oauth_provider_apple()` has been added which configures Apple's OIDC 
 endpoints and ID-token defaults, and added `oauth_client_secret_apple()` which 
@@ -143,6 +117,23 @@ the custom-server path.
 current Keycloak JARM responses, while still letting callers opt out and fail
 closed on duplicate top-level `iss` members.
 
+* `oauth_module_server()` now warns once when a client resolves to
+`response_mode = "form_post"` or `"form_post.jwt"` but no prior
+`oauth_form_post_ui()` call was detected for that module/client callback
+setup, helping catch missing form_post UI wrappers earlier.
+
+* Long-lived token-expiry and reauthentication timers are now scheduled in
+bounded chunks without overflowing R integers. Module timer durations must be
+finite, so invalid `Inf` settings fail during parameter validation.
+
+* Proactive token refresh now paces repeated attempts. Short-lived refreshed
+tokens wait for half their new lifetime, while failures use bounded exponential
+backoff with jitter and honor `Retry-After` when available.
+
+* `client_secret_basic` now form-encodes the client ID and client secret before
+constructing the HTTP Basic credentials, including reserved, space, percent,
+plus, and non-ASCII characters as required by RFC 6749.
+
 * Provider callback `error_uri` values now have to stay on a provider host
 or another host you already allowlist via
 `options(shinyOAuth.allowed_hosts = ...)`. Unrelated HTTPS hosts are now
@@ -155,13 +146,16 @@ default instead of the raw Shiny `session$token`. Set
 `options(shinyOAuth.audit_include_raw_session_token = TRUE)` only when you
 explicitly need the raw token in a controlled sink.
 
-* Added `vignette("advanced-security", package = "shinyOAuth")`, which
-collects higher-assurance configuration guidance for mTLS, JAR, PAR,
-`form_post`, JARM, and DPoP setups.
+* HTTP audit summaries now redact JARM `response` values and the
+`shinyOAuth_form_post` and `shinyOAuth_form_post_id` callback parameters.
 
 * Internal list-like access now consistently uses exact
 `[[...]]` indexing instead of `$`, reducing potential for accidental partial 
 matches across runtime code, tests, and integration fixtures.
+
+* Added `vignette("advanced-security", package = "shinyOAuth")`, which
+collects higher-assurance configuration guidance for mTLS, JAR, PAR,
+`form_post`, JARM, and DPoP setups.
 
 # shinyOAuth 0.5.0
 
