@@ -186,6 +186,11 @@ testing and diagnostics.
 \item \code{refresh_in_progress}: internal logical; TRUE while a token refresh
 is currently in flight (async or sync). Used to prevent concurrent refresh
 attempts when proactive refresh logic wakes up multiple times.
+\item \code{refresh_last_attempt_at}, \code{refresh_last_success_at}, and
+\code{refresh_next_attempt_at}: internal numeric timestamps used to pace
+proactive refresh attempts.
+\item \code{refresh_success_generation} and \code{refresh_failure_count}: internal
+counters for successful token generations and consecutive failures.
 }
 
 It also contains the following helper functions, mainly useful when
