@@ -132,7 +132,7 @@ the \code{Secure} attribute}
 A reactiveValues object with \code{token}, \code{error}, \code{error_description},
 \code{error_uri}, and \code{authenticated}, plus additional fields used by the module.
 
-The returned reactiveValues contains the following fields:
+The returned reactiveValues object contains the following fields:
 
 \itemize{
 \item \code{authenticated}: logical TRUE when there is no error and a token is
@@ -159,43 +159,16 @@ as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
 values here when they stay on a provider host or another host already
 allowlisted via \code{options(shinyOAuth.allowed_hosts = ...)}, and returns
 NULL when the provider omits or sends an unsafe value.
-\item \code{browser_token}: internal opaque browser cookie value; used for state
-double-submit protection; NULL if not yet set
-\item \code{pending_callback}: internal deferred callback payload; stores either
-list(type = "code", code, state, iss) for authorization-code callbacks or
-list(type = "error", error, error_description, error_uri, state, iss) for
-provider error callbacks. Used to defer callback handling until
-\code{browser_token} is available; NULL otherwise.
-\item \code{pending_login}: internal logical; TRUE when a login was requested but must
-wait for \code{browser_token} to be set, FALSE otherwise.
-\item \code{auto_redirected}: internal logical; TRUE once the module has initiated an
-automatic redirect in this session to avoid duplicate redirects.
-\item \code{reauth_triggered}: internal logical; TRUE once a reauthentication attempt
-has been initiated (after expiry or failed refresh), to avoid loops.
-\item \code{auth_started_at}: internal numeric timestamp (as from \code{Sys.time()}) when
-authentication started; NA if not yet authenticated. Used to enforce
-\code{reauth_after_seconds} if set.
 \item \code{token_stale}: logical; TRUE when the token was kept despite a refresh
 failure because \code{indefinite_session = TRUE}, or when the access token is past
 its expiry but \code{indefinite_session = TRUE} prevents automatic clearing. This
 lets UIs warn users or disable actions that require a fresh token. It resets
 to FALSE on successful login, refresh, or logout.
-\item \code{last_login_async_used}: internal logical; TRUE if the last login attempt
-used \code{async = TRUE}, FALSE if it was synchronous. This is only used for
-testing and diagnostics.
-\item \code{refresh_in_progress}: internal logical; TRUE while a token refresh
-is currently in flight (async or sync). Used to prevent concurrent refresh
-attempts when proactive refresh logic wakes up multiple times.
-\item \code{refresh_last_attempt_at}, \code{refresh_last_success_at}, and
-\code{refresh_next_attempt_at}: internal numeric timestamps used to pace
-proactive refresh attempts.
-\item \code{refresh_success_generation} and \code{refresh_failure_count}: internal
-counters for successful token generations and consecutive failures.
 }
 
-It also contains the following helper functions, mainly useful when
-\code{auto_redirect = FALSE} and you want to start login from your own UI
-(for example, from a button):
+It also contains the following functions, which are mainly useful when
+you use \code{auto_redirect = FALSE} and you want to start a login from your own UI
+(for example, from an observer which triggers on clicking a button):
 
 \itemize{
 \item \code{request_login()}: initiates login by redirecting to the
@@ -235,6 +208,39 @@ not call this directly.
 \item \code{has_browser_token()}: internal; returns TRUE if \code{browser_token} is
 present (non-NULL, non-empty), FALSE otherwise. Typically
 you would not call this directly
+}
+
+Finally, it contains the following reactive values intended for internal
+use and testing. These are not intended for general consumption, but they are:
+
+\itemize{
+\item \code{browser_token}: internal opaque browser cookie value; used for state
+double-submit protection; NULL if not yet set
+\item \code{pending_callback}: internal deferred callback payload; stores either
+list(type = "code", code, state, iss) for authorization-code callbacks or
+list(type = "error", error, error_description, error_uri, state, iss) for
+provider error callbacks. Used to defer callback handling until
+\code{browser_token} is available; NULL otherwise.
+\item \code{pending_login}: internal logical; TRUE when a login was requested but must
+wait for \code{browser_token} to be set, FALSE otherwise.
+\item \code{auto_redirected}: internal logical; TRUE once the module has initiated an
+automatic redirect in this session to avoid duplicate redirects.
+\item \code{reauth_triggered}: internal logical; TRUE once a reauthentication attempt
+has been initiated (after expiry or failed refresh), to avoid loops.
+\item \code{auth_started_at}: internal numeric timestamp (as from \code{Sys.time()}) when
+authentication started; NA if not yet authenticated. Used to enforce
+\code{reauth_after_seconds} if set.
+\item \code{last_login_async_used}: internal logical; TRUE if the last login attempt
+used \code{async = TRUE}, FALSE if it was synchronous. This is only used for
+testing and diagnostics.
+\item \code{refresh_in_progress}: internal logical; TRUE while a token refresh
+is currently in flight (async or sync). Used to prevent concurrent refresh
+attempts when proactive refresh logic wakes up multiple times.
+\item \code{refresh_last_attempt_at}, \code{refresh_last_success_at}, and
+\code{refresh_next_attempt_at}: internal numeric timestamps used to pace
+proactive refresh attempts.
+\item \code{refresh_success_generation} and \code{refresh_failure_count}: internal
+counters for successful token generations and consecutive failures.
 }
 }
 \description{
