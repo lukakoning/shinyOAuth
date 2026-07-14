@@ -361,7 +361,7 @@ otel_e2e("prepare_call emits PAR spans when PAR is used", {
 
     testthat::with_mocked_bindings(
       req_with_dpop_retry = function(req, client, idempotent = TRUE) {
-        testthat::expect_true(isTRUE(idempotent))
+        testthat::expect_false(isTRUE(idempotent))
         httr2::response(
           url = req[["url"]],
           status = 201,
