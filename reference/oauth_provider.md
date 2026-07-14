@@ -13,6 +13,7 @@ oauth_provider(
   auth_url,
   token_url,
   issuer = NA_character_,
+  issuer_thus_oidc = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -84,10 +85,18 @@ userinfo[["sub"]]
 
 - issuer:
 
-  Optional OIDC issuer URL. You need this when you want ID token
-  validation. shinyOAuth uses it to verify the ID token `iss` claim and
-  to locate the provider's signing keys (JWKS), typically through the
-  OIDC discovery document at `/.well-known/openid-configuration`.
+  Optional authorization-server issuer URL. You need this for issuer
+  validation and features such as ID-token validation. shinyOAuth uses
+  it to verify issuer claims and locate signing keys (JWKS), typically
+  through an OIDC discovery document.
+
+- issuer_thus_oidc:
+
+  Whether a configured `issuer` means this provider uses the OpenID
+  Connect profile. Defaults to `TRUE` to preserve the historical
+  behavior where issuer enables nonce, ID-token, and `openid` scope
+  behavior. Set to `FALSE` for generic RFC 8414 authorization-server
+  metadata whose issuer does not imply OIDC.
 
 - issuer_match:
 

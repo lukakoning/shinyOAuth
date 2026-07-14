@@ -114,11 +114,12 @@ before being attached to events. This prevents accidental secret leakage
 when forwarding events to log sinks:
 
 - OAuth query parameters are redacted: callback credentials such as
-  `code`, `state`, `access_token`, `refresh_token`, `id_token`, `token`,
-  `session_state`, `code_verifier`, and `nonce`, plus credential-bearing
-  token-endpoint parameters such as `client_secret`, `client_assertion`,
-  `assertion`, `username`, and `password`, are replaced with
-  `[REDACTED]`.
+  `code`, `state`, JARM `response`, form-post callback handles
+  (`shinyOAuth_form_post` and `shinyOAuth_form_post_id`),
+  `access_token`, `refresh_token`, `id_token`, `token`, `session_state`,
+  `code_verifier`, and `nonce`, plus credential-bearing token-endpoint
+  parameters such as `client_secret`, `client_assertion`, `assertion`,
+  `username`, and `password`, are replaced with `[REDACTED]`.
 - Sensitive headers are removed: `Cookie`, `Set-Cookie`,
   `Authorization`, `Proxy_Authorization`, `Proxy_Authenticate`, and
   `WWW-Authenticate` headers are stripped entirely.

@@ -2,6 +2,36 @@
 
 ## shinyOAuth (development version)
 
+- HTTP audit summaries now redact JARM `response` values and the
+  `shinyOAuth_form_post` and `shinyOAuth_form_post_id` callback
+  parameters.
+
+- Long-lived token-expiry and reauthentication timers are now scheduled
+  in bounded chunks without overflowing R integers. Module timer
+  durations must be finite, so invalid `Inf` settings fail during
+  parameter validation.
+
+- Proactive token refresh now paces repeated attempts. Short-lived
+  refreshed tokens wait for half their new lifetime, while failures use
+  bounded exponential backoff with jitter and honor `Retry-After` when
+  available.
+
+- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  now has `issuer_thus_oidc`, which defaults to `TRUE` so a configured
+  `issuer` keeps enabling OIDC behavior as in previous versions. Generic
+  RFC 8414 providers can set it to `FALSE` to retain issuer validation
+  without enabling nonce, ID-token, or `openid` scope behavior.
+
+- The advanced-security vignette examples now supply provider names and
+  client secrets where required, and use separate compatible
+  configurations for PAR, caller-managed `request_uri`, and form-post
+  callbacks.
+
+- `client_secret_basic` now form-encodes the client ID and client secret
+  before constructing the HTTP Basic credentials, including reserved,
+  space, percent, plus, and non-ASCII characters as required by RFC
+  6749.
+
 - Added JWT Secured Authorization Response Mode (JARM) support with
   `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. JARM
   callbacks currently resume through

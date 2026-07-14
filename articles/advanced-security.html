@@ -123,6 +123,7 @@ client cert</li>
 certificate-bound access tokens.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-mtls"</span>,</span>
 <span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
 <span>  <span class="co"># Use RFC 8705 client-certificate auth at the token endpoint</span></span>
@@ -165,6 +166,7 @@ also configure Request Object encryption, the request gains
 confidentiality as well.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-jar"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
@@ -179,6 +181,7 @@ confidentiality as well.</p>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Signing key for the Request Object</span></span>
@@ -206,6 +209,7 @@ before the browser redirect happens. It also keeps most request details
 out of browser history and front-channel logs.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-par"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
@@ -243,9 +247,19 @@ values, the public URL or wildcard prefix must already be registered
 there</li>
 </ul>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<code class="sourceCode R"><span><span class="va">request_uri_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-request-uri"</span>,</span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
+<span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="st">"RS256"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">request_uri_provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
@@ -279,14 +293,23 @@ the response by itself.</p>
 as the <code>redirect_uri</code>. The second uses a dedicated callback
 path such as <code>/callback</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">form_post_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-form-post"</span>,</span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
+<span>  response_modes_supported <span class="op">=</span> <span class="st">"form_post"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Example 1: redirect_uri is the normal app URL</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  provider <span class="op">=</span> <span class="va">form_post_provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Ask the provider to POST the callback to redirect_uri</span></span>
@@ -300,8 +323,9 @@ path such as <code>/callback</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example 2: redirect_uri uses a separate callback path</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  provider <span class="op">=</span> <span class="va">form_post_provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  response_mode <span class="op">=</span> <span class="st">"form_post"</span></span>
@@ -333,6 +357,7 @@ With encrypted JARM, the callback contents are also hidden from
 browser-visible layers.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-jarm"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
@@ -346,6 +371,7 @@ browser-visible layers.</p>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Ask for a JWT-wrapped authorization response</span></span>
@@ -357,6 +383,7 @@ browser-visible layers.</p>
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
 <span>  response_mode <span class="op">=</span> <span class="st">"query.jwt"</span>,</span>
@@ -382,6 +409,7 @@ DPoP and you want sender-constrained tokens without managing client
 certificates.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-dpop"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
 <span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
 <span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
@@ -392,6 +420,7 @@ certificates.</p>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"api.read"</span><span class="op">)</span>,</span>
 <span>  <span class="co"># Private key used to sign DPoP proofs</span></span>

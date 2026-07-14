@@ -285,6 +285,11 @@ testing and diagnostics.</p></li>
 <li><p><code>refresh_in_progress</code>: internal logical; TRUE while a token refresh
 is currently in flight (async or sync). Used to prevent concurrent refresh
 attempts when proactive refresh logic wakes up multiple times.</p></li>
+<li><p><code>refresh_last_attempt_at</code>, <code>refresh_last_success_at</code>, and
+<code>refresh_next_attempt_at</code>: internal numeric timestamps used to pace
+proactive refresh attempts.</p></li>
+<li><p><code>refresh_success_generation</code> and <code>refresh_failure_count</code>: internal
+counters for successful token generations and consecutive failures.</p></li>
 </ul><p>It also contains the following helper functions, mainly useful when
 <code>auto_redirect = FALSE</code> and you want to start login from your own UI
 (for example, from a button):</p>

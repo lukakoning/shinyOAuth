@@ -145,8 +145,8 @@ enabled, a non-empty <code>client_secret</code> is required for signature valida
 
 
 <dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
-<dd><p>Vector of scopes to request. For OIDC providers (those with an
-<code>issuer</code>), shinyOAuth automatically prepends <code>openid</code> when it is missing;
+<dd><p>Vector of scopes to request. When a provider has an <code>issuer</code>
+and <code>issuer_thus_oidc = TRUE</code>, shinyOAuth automatically prepends <code>openid</code>;
 that effective scope set is what gets sent in the authorization request
 and used for later state and token-scope validation.</p></dd>
 

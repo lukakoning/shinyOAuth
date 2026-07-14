@@ -11,8 +11,9 @@ for generic OAuth 2.0 providers or
 [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
 /
 [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-for OpenID Connect providers. Those helpers enable secure defaults based
-on the presence of an issuer and available endpoints.
+for OpenID Connect providers. By default, an issuer enables OIDC
+behavior for compatibility; generic RFC 8414 providers can opt out
+explicitly.
 
 ## Usage
 
@@ -22,6 +23,7 @@ OAuthProvider(
   auth_url = character(0),
   token_url = character(0),
   issuer = NA_character_,
+  issuer_thus_oidc = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -90,10 +92,18 @@ OAuthProvider(
 
 - issuer:
 
-  Optional OIDC issuer URL. You need this when you want ID token
-  validation. shinyOAuth uses it to verify the ID token `iss` claim and
-  to locate the provider's signing keys (JWKS), typically through the
-  OIDC discovery document at `/.well-known/openid-configuration`.
+  Optional authorization-server issuer URL. You need this for issuer
+  validation and features such as ID-token validation. shinyOAuth uses
+  it to verify issuer claims and locate signing keys (JWKS), typically
+  through an OIDC discovery document.
+
+- issuer_thus_oidc:
+
+  Whether a configured `issuer` means this provider uses the OpenID
+  Connect profile. Defaults to `TRUE` to preserve the historical
+  behavior where issuer enables nonce, ID-token, and `openid` scope
+  behavior. Set to `FALSE` for generic RFC 8414 authorization-server
+  metadata whose issuer does not imply OIDC.
 
 - issuer_match:
 

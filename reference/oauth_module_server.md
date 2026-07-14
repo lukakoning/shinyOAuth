@@ -261,6 +261,13 @@ The returned reactiveValues contains the following fields:
   currently in flight (async or sync). Used to prevent concurrent
   refresh attempts when proactive refresh logic wakes up multiple times.
 
+- `refresh_last_attempt_at`, `refresh_last_success_at`, and
+  `refresh_next_attempt_at`: internal numeric timestamps used to pace
+  proactive refresh attempts.
+
+- `refresh_success_generation` and `refresh_failure_count`: internal
+  counters for successful token generations and consecutive failures.
+
 It also contains the following helper functions, mainly useful when
 `auto_redirect = FALSE` and you want to start login from your own UI
 (for example, from a button):

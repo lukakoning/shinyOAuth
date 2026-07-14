@@ -56,6 +56,7 @@ certificate-bound access tokens.
 
 ``` r
 provider <- oauth_provider(
+  name = "example-mtls",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Use RFC 8705 client-certificate auth at the token endpoint
@@ -101,6 +102,7 @@ confidentiality as well.
 
 ``` r
 provider <- oauth_provider(
+  name = "example-jar",
   issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
@@ -115,6 +117,7 @@ provider <- oauth_provider(
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
   # Signing key for the Request Object
@@ -144,6 +147,7 @@ out of browser history and front-channel logs.
 
 ``` r
 provider <- oauth_provider(
+  name = "example-par",
   issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
@@ -184,9 +188,19 @@ That means two extra things matter:
   public URL or wildcard prefix must already be registered there
 
 ``` r
+request_uri_provider <- oauth_provider(
+  name = "example-request-uri",
+  issuer = "https://id.example.com",
+  auth_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  request_uri_parameter_supported = TRUE,
+  request_object_signing_alg_values_supported = "RS256"
+)
+
 client <- oauth_client(
-  provider = provider,
+  provider = request_uri_provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
   client_assertion_private_key = openssl::read_key("keys/client-key.pem"),
@@ -222,14 +236,23 @@ the `redirect_uri`. The second uses a dedicated callback path such as
 `/callback`.
 
 ``` r
+form_post_provider <- oauth_provider(
+  name = "example-form-post",
+  issuer = "https://id.example.com",
+  auth_url = "https://id.example.com/authorize",
+  token_url = "https://id.example.com/token",
+  response_modes_supported = "form_post"
+)
+
 base_ui <- fluidPage(
   uiOutput("login")
 )
 
 # Example 1: redirect_uri is the normal app URL
 client <- oauth_client(
-  provider = provider,
+  provider = form_post_provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com",
   scopes = c("openid", "profile"),
   # Ask the provider to POST the callback to redirect_uri
@@ -245,8 +268,9 @@ app <- shinyApp(ui, server)
 ``` r
 # Example 2: redirect_uri uses a separate callback path
 client <- oauth_client(
-  provider = provider,
+  provider = form_post_provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/callback",
   scopes = c("openid", "profile"),
   response_mode = "form_post"
@@ -280,6 +304,7 @@ browser-visible layers.
 
 ``` r
 provider <- oauth_provider(
+  name = "example-jarm",
   issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
@@ -293,6 +318,7 @@ provider <- oauth_provider(
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
   # Ask for a JWT-wrapped authorization response
@@ -307,6 +333,7 @@ For encrypted JARM, add the decryption settings:
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile"),
   response_mode = "query.jwt",
@@ -336,6 +363,7 @@ certificates.
 
 ``` r
 provider <- oauth_provider(
+  name = "example-dpop",
   issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
@@ -346,6 +374,7 @@ provider <- oauth_provider(
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
+  client_secret = "client-secret",
   redirect_uri = "https://app.example.com/auth/callback",
   scopes = c("openid", "profile", "api.read"),
   # Private key used to sign DPoP proofs

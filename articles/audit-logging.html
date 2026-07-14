@@ -217,7 +217,9 @@ automatically sanitized before being attached to events. This prevents
 accidental secret leakage when forwarding events to log sinks:</p>
 <ul>
 <li>OAuth query parameters are redacted: callback credentials such as
-<code>code</code>, <code>state</code>, <code>access_token</code>,
+<code>code</code>, <code>state</code>, JARM <code>response</code>,
+form-post callback handles (<code>shinyOAuth_form_post</code> and
+<code>shinyOAuth_form_post_id</code>), <code>access_token</code>,
 <code>refresh_token</code>, <code>id_token</code>, <code>token</code>,
 <code>session_state</code>, <code>code_verifier</code>, and
 <code>nonce</code>, plus credential-bearing token-endpoint parameters
