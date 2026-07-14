@@ -221,3 +221,98 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
     }
   )
 })
+
+
+testthat::test_that("short-lived refreshed tokens do not cause a refresh storm", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      refresh_proactively = TRUE,
+      refresh_lead_seconds = 60,
+      refresh_check_interval = 100,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      calls <- 0L
+      testthat::with_mocked_bindings(
+        refresh_token = function(...) {
+          calls <<- calls + 1L
+          OAuthToken(
+            access_token = paste0("new-", calls),
+            refresh_token = "refresh",
+            expires_at = as.numeric(Sys.time()) + 4
+          )
+        },
+        .package = "shinyOAuth",
+        {
+          values$token <- OAuthToken(
+            access_token = "old",
+            refresh_token = "refresh",
+            expires_at = as.numeric(Sys.time()) + 1
+          )
+          deadline <- Sys.time() + 1
+          while (Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+          }
+        }
+      )
+
+      testthat::expect_equal(calls, 1L)
+      testthat::expect_equal(values$refresh_success_generation, 1L)
+      testthat::expect_gt(values$refresh_next_attempt_at, as.numeric(Sys.time()))
+    }
+  )
+})
+
+
+testthat::test_that("persistent refresh failures use bounded retries", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      refresh_proactively = TRUE,
+      refresh_lead_seconds = 60,
+      refresh_check_interval = 100,
+      indefinite_session = TRUE
+    ),
+    expr = {
+      calls <- 0L
+      testthat::with_mocked_bindings(
+        refresh_token = function(...) {
+          calls <<- calls + 1L
+          stop("persistent provider failure")
+        },
+        .package = "shinyOAuth",
+        {
+          values$token <- OAuthToken(
+            access_token = "old",
+            refresh_token = "refresh",
+            expires_at = as.numeric(Sys.time()) + 30
+          )
+          deadline <- Sys.time() + 1.5
+          while (Sys.time() < deadline) {
+            later::run_now(0.05)
+            session$flushReact()
+          }
+        }
+      )
+
+      testthat::expect_gte(calls, 1L)
+      testthat::expect_lte(calls, 2L)
+      testthat::expect_equal(values$refresh_failure_count, calls)
+      testthat::expect_true(values$token_stale)
+    }
+  )
+})

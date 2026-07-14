@@ -214,6 +214,11 @@
 #'    \item `refresh_in_progress`: internal logical; TRUE while a token refresh
 #'    is currently in flight (async or sync). Used to prevent concurrent refresh
 #'    attempts when proactive refresh logic wakes up multiple times.
+#'    \item `refresh_last_attempt_at`, `refresh_last_success_at`, and
+#'    `refresh_next_attempt_at`: internal numeric timestamps used to pace
+#'    proactive refresh attempts.
+#'    \item `refresh_success_generation` and `refresh_failure_count`: internal
+#'    counters for successful token generations and consecutive failures.
 #'   }
 #'
 #'   It also contains the following helper functions, mainly useful when
@@ -583,7 +588,12 @@ oauth_module_server <- function(
       reauth_triggered = FALSE,
       auth_started_at = NA_real_,
       last_login_async_used = FALSE,
-      refresh_in_progress = FALSE
+      refresh_in_progress = FALSE,
+      refresh_last_attempt_at = NA_real_,
+      refresh_last_success_at = NA_real_,
+      refresh_next_attempt_at = 0,
+      refresh_success_generation = 0L,
+      refresh_failure_count = 0L
     )
 
     form_post_module_registry <- tryCatch(
@@ -639,7 +649,12 @@ oauth_module_server <- function(
       auth_started_at = values$auth_started_at,
       token_stale = values$token_stale,
       last_login_async_used = values$last_login_async_used,
-      refresh_in_progress = values$refresh_in_progress
+      refresh_in_progress = values$refresh_in_progress,
+      refresh_last_attempt_at = values$refresh_last_attempt_at,
+      refresh_last_success_at = values$refresh_last_success_at,
+      refresh_next_attempt_at = values$refresh_next_attempt_at,
+      refresh_success_generation = values$refresh_success_generation,
+      refresh_failure_count = values$refresh_failure_count
     )
 
     with_otel_span(
@@ -3329,6 +3344,39 @@ oauth_module_server <- function(
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
+      #' Record proactive refresh pacing state
+      #'
+      #' @param token Refreshed token on success, or NULL on failure.
+      #' @param condition Error condition on failure, or NULL on success.
+      #' @return NULL, invisibly.
+      #' @keywords internal
+      #' @noRd
+      .record_refresh_result <- function(token = NULL, condition = NULL) {
+        now <- as.numeric(Sys.time())
+        values$refresh_in_progress <- FALSE
+
+        if (!is.null(token)) {
+          values$refresh_failure_count <- 0L
+          values$refresh_last_success_at <- now
+          values$refresh_success_generation <-
+            values$refresh_success_generation + 1L
+          delay <- proactive_refresh_success_delay(
+            token,
+            now,
+            refresh_lead_seconds
+          )
+        } else {
+          values$refresh_failure_count <- values$refresh_failure_count + 1L
+          delay <- proactive_refresh_failure_delay(
+            values$refresh_failure_count,
+            refresh_condition_retry_after(condition)
+          )
+        }
+
+        values$refresh_next_attempt_at <- now + delay
+        invisible(NULL)
+      }
+
       shiny::observe({
         tok <- values$token
 
@@ -3351,11 +3399,20 @@ oauth_module_server <- function(
                 buffer_seconds = jitter
               )
             } else {
-              # We are within the lead window or past it: attempt refresh now
-              wake_ms <- 250L
+              # We are within the lead window or past it. Respect pacing from a
+              # recent short-lived success or failed attempt before retrying.
+              next_attempt_at <- values$refresh_next_attempt_at
+              if (is.finite(next_attempt_at) && next_attempt_at > now) {
+                wake_ms <- shiny_timer_delay_ms(next_attempt_at - now)
+              } else {
+                wake_ms <- 250L
+              }
               # Avoid concurrent refresh attempts: if one is already running,
               # skip starting another and try again shortly.
-              if (isTRUE(values$refresh_in_progress)) {
+              if (
+                isTRUE(values$refresh_in_progress) ||
+                  (is.finite(next_attempt_at) && next_attempt_at > now)
+              ) {
                 # Keep wake_ms short and bail out of starting a new refresh
                 # The enclosing observe will schedule the next wake.
               } else {
@@ -3372,6 +3429,7 @@ oauth_module_server <- function(
                   {
                     # Mark refresh as in-progress until we resolve success/error
                     values$refresh_in_progress <- TRUE
+                    values$refresh_last_attempt_at <- as.numeric(Sys.time())
                     res <- refresh_token(
                       client,
                       tok,
@@ -3385,7 +3443,7 @@ oauth_module_server <- function(
                       res |>
                         promises::then(function(raw) {
                           res_resolved <- replay_async_conditions(raw)
-                          values$refresh_in_progress <- FALSE
+                          .record_refresh_result(token = res_resolved)
                           values$token <- res_resolved
                           values$error <- NULL
                           values$error_description <- NULL
@@ -3397,7 +3455,7 @@ oauth_module_server <- function(
                           values$reauth_triggered <- FALSE
                         }) |>
                         promises::catch(function(e) {
-                          values$refresh_in_progress <- FALSE
+                          .record_refresh_result(condition = e)
                           mirai_err_type <- classify_mirai_error(e)
                           try(log_condition(
                             e,
@@ -3487,7 +3545,7 @@ oauth_module_server <- function(
                     } else {
                       # Sync path; directly set values
                       new_tok <- res
-                      values$refresh_in_progress <- FALSE
+                      .record_refresh_result(token = new_tok)
                       values$token <- new_tok
                       values$error <- NULL
                       values$error_description <- NULL
@@ -3501,7 +3559,7 @@ oauth_module_server <- function(
                   },
                   error = function(e) {
                     # Always clear the in-progress flag on error
-                    values$refresh_in_progress <- FALSE
+                    .record_refresh_result(condition = e)
                     # Set error; clear token unless indefinite_session
                     if (!isTRUE(indefinite_session)) {
                       values$token <- NULL

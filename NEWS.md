@@ -7,6 +7,10 @@
 bounded chunks without overflowing R integers. Module timer durations must be
 finite, so invalid `Inf` settings fail during parameter validation.
 
+* Proactive token refresh now paces repeated attempts. Short-lived refreshed
+tokens wait for half their new lifetime, while failures use bounded exponential
+backoff with jitter and honor `Retry-After` when available.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;
