@@ -200,7 +200,7 @@ test_that("PAR minimal front-channel mode omits duplicated OIDC params", {
   expect_match(body_text, "redirect_uri=http%3A%2F%2Flocalhost%3A8100")
 })
 
-test_that("PAR requests keep nonce-challenge retries enabled", {
+test_that("PAR requests disable generic retries", {
   cli <- make_par_test_client()
   retry_idempotent <- NULL
 
@@ -226,7 +226,7 @@ test_that("PAR requests keep nonce-challenge retries enabled", {
     auth_url,
     "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Atest"
   )
-  expect_identical(retry_idempotent, TRUE)
+  expect_identical(retry_idempotent, FALSE)
 })
 
 test_that("PAR attaches DPoP proof and retries once on nonce challenge", {
@@ -795,18 +795,13 @@ test_that("client_secret_jwt PAR request sends client assertion and omits secret
   expect_false("client_secret" %in% names(captured))
 })
 
-test_that("client_secret_jwt PAR retries rebuild client assertions", {
+test_that("client_secret_jwt PAR nonce replay rebuilds client assertions", {
   cli <- make_par_test_client(
     token_auth_style = "client_secret_jwt",
-    client_secret = paste(rep("s", 32), collapse = "")
+    client_secret = paste(rep("s", 32), collapse = ""),
+    dpop_private_key = openssl::rsa_keygen()
   )
   seen_jtis <- character(0)
-
-  withr::local_options(list(
-    shinyOAuth.retry_max_tries = 2L,
-    shinyOAuth.retry_backoff_base = 0.01,
-    shinyOAuth.retry_backoff_cap = 0.01
-  ))
 
   testthat::local_mocked_bindings(
     req_perform = function(req) {
@@ -822,9 +817,12 @@ test_that("client_secret_jwt PAR retries rebuild client assertions", {
       if (length(seen_jtis) == 1L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
-          status = 500,
-          headers = list("content-type" = "application/json"),
-          body = charToRaw("{}")
+          status = 400,
+          headers = list(
+            "content-type" = "application/json",
+            "dpop-nonce" = "par-nonce-1"
+          ),
+          body = charToRaw('{"error":"use_dpop_nonce"}')
         ))
       }
 
@@ -838,10 +836,6 @@ test_that("client_secret_jwt PAR retries rebuild client assertions", {
       )
     },
     .package = "httr2"
-  )
-  testthat::local_mocked_bindings(
-    Sys.sleep = function(time) invisible(NULL),
-    .package = "base"
   )
 
   auth_url <- shinyOAuth:::prepare_call(cli, valid_browser_token())

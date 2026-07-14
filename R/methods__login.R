@@ -505,10 +505,11 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       resp <- with_otel_span(
         "shinyOAuth.login.par.http",
         {
-          # PAR may allocate a fresh request_uri, but it does not consume the
-          # single-use credentials that make token exchange or refresh unsafe
-          # to replay after a nonce challenge.
-          resp <- req_with_dpop_retry(req, client, idempotent = TRUE)
+          # A successful PAR allocates a fresh, normally single-use
+          # request_uri, so do not replay it after transport or transient HTTP
+          # failures. req_with_dpop_retry() still performs the one bounded
+          # replay required to answer a DPoP nonce challenge.
+          resp <- req_with_dpop_retry(req, client, idempotent = FALSE)
           otel_record_http_result(resp)
           resp
         },
