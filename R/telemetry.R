@@ -411,7 +411,7 @@ otel_scope_tokens <- function(
   if (
     isTRUE(ensure_openid) &&
       !is.null(provider) &&
-      is_valid_string(provider@issuer) &&
+      provider_uses_oidc(provider) &&
       !("openid" %in% tokens)
   ) {
     tokens <- c("openid", tokens)

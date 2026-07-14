@@ -428,6 +428,21 @@ testthat::test_that("otel_scope_count includes implied openid for OIDC login", {
   )
 })
 
+testthat::test_that("otel scopes respect issuer-driven OIDC opt-out", {
+  cli <- make_test_client(use_nonce = FALSE, scopes = c("profile", "email"))
+  cli@provider@issuer <- "https://example.com"
+  cli@provider@issuer_thus_oidc <- FALSE
+
+  testthat::expect_identical(
+    shinyOAuth:::otel_scope_count(
+      cli@scopes,
+      provider = cli@provider,
+      ensure_openid = TRUE
+    ),
+    2L
+  )
+})
+
 testthat::test_that("otel_scope_string normalizes requested and granted scopes", {
   cli <- make_test_client(use_nonce = TRUE, scopes = c("profile", "email"))
 

@@ -12,8 +12,6 @@ make_oidc_provider <- function(issuer = "https://issuer.example.com") {
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
     issuer = issuer,
-    oidc = !is.na(issuer),
-    use_nonce = !is.na(issuer),
     use_pkce = TRUE,
     pkce_method = "S256",
     # Explicitly disable flags that auto-enable with issuer, so make_test_client
@@ -83,12 +81,13 @@ test_that("ensure_openid_scope is no-op for non-OIDC provider (no issuer)", {
   expect_equal(result, c("profile", "email"))
 })
 
-test_that("issuer alone does not enable OIDC or inject openid", {
+test_that("issuer-driven OIDC can be disabled for generic OAuth metadata", {
   prov <- oauth_provider(
     name = "oauth-metadata",
     auth_url = "https://as.example/authorize",
     token_url = "https://as.example/token",
     issuer = "https://as.example",
+    issuer_thus_oidc = FALSE,
     token_auth_style = "body"
   )
   client <- oauth_client(
@@ -99,20 +98,47 @@ test_that("issuer alone does not enable OIDC or inject openid", {
     scopes = "read"
   )
 
-  expect_false(prov@oidc)
+  expect_false(prov@issuer_thus_oidc)
   expect_false(prov@use_nonce)
   expect_false(prov@id_token_required)
   expect_false(prov@id_token_validation)
   expect_equal(shinyOAuth:::effective_client_scopes(client), "read")
 })
 
-test_that("OIDC constructors explicitly enable the OIDC profile", {
+test_that("issuer enables OIDC by default", {
+  prov <- oauth_provider(
+    name = "default-oidc",
+    auth_url = "https://oidc.example/authorize",
+    token_url = "https://oidc.example/token",
+    issuer = "https://oidc.example"
+  )
+
+  expect_true(prov@issuer_thus_oidc)
+  expect_true(prov@use_nonce)
+  expect_true(prov@id_token_required)
+  expect_true(prov@id_token_validation)
+})
+
+test_that("issuer_thus_oidc must be a scalar non-NA logical", {
+  expect_error(
+    oauth_provider(
+      name = "invalid-oidc-flag",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      issuer = "https://example.com",
+      issuer_thus_oidc = NA
+    ),
+    class = "shinyOAuth_input_error"
+  )
+})
+
+test_that("OIDC constructors preserve issuer-driven OIDC", {
   prov <- oauth_provider_oidc(
     name = "oidc",
     base_url = "https://oidc.example"
   )
 
-  expect_true(prov@oidc)
+  expect_true(prov@issuer_thus_oidc)
   expect_true(prov@use_nonce)
   expect_true(prov@id_token_required)
   expect_true(prov@id_token_validation)

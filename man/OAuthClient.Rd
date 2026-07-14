@@ -81,8 +81,8 @@ enabled, a non-empty \code{client_secret} is required for signature validation.}
 
 \item{redirect_uri}{Redirect URI registered with provider}
 
-\item{scopes}{Vector of scopes to request. For providers configured with
-\code{oidc = TRUE}, shinyOAuth automatically prepends \code{openid} when it is missing;
+\item{scopes}{Vector of scopes to request. When a provider has an \code{issuer}
+and \code{issuer_thus_oidc = TRUE}, shinyOAuth automatically prepends \code{openid};
 that effective scope set is what gets sent in the authorization request
 and used for later state and token-scope validation.}
 

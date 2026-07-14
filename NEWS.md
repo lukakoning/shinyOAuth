@@ -11,10 +11,10 @@ finite, so invalid `Inf` settings fail during parameter validation.
 tokens wait for half their new lifetime, while failures use bounded exponential
 backoff with jitter and honor `Retry-After` when available.
 
-* `oauth_provider()` now uses an explicit `oidc` flag instead of treating every
-provider with an `issuer` as OpenID Connect. OIDC constructors and presets set
-the flag automatically; generic RFC 8414 providers no longer gain nonce,
-ID-token, or `openid` scope behavior merely by declaring an issuer.
+* `oauth_provider()` now has `issuer_thus_oidc`, which defaults to `TRUE` so a
+configured `issuer` keeps enabling OIDC behavior as in previous versions.
+Generic RFC 8414 providers can set it to `FALSE` to retain issuer validation
+without enabling nonce, ID-token, or `openid` scope behavior.
 
 * The advanced-security vignette examples now supply provider names and client
 secrets where required, and use separate compatible configurations for PAR,

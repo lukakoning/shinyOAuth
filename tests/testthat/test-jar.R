@@ -736,16 +736,27 @@ test_that("request mode pushes signed request objects through PAR when available
   expect_true(is.character(pl[["state"]]) && nzchar(pl[["state"]]))
 })
 
-test_that("OAuth request_uri mode keeps the front channel minimal without an issuer", {
-  cli <- make_jar_test_client(
-    provider = make_jar_test_provider(issuer = NA_character_),
+test_that("generic issuer keeps request-object front channels minimal", {
+  provider <- make_jar_test_provider(
+    authorization_request_front_channel_mode = "minimal"
+  )
+  provider@issuer_thus_oidc <- FALSE
+  request_cli <- make_jar_test_client(
+    provider = provider,
+    scopes = "profile"
+  )
+  request_uri_cli <- make_jar_test_client(
+    provider = provider,
     request_object_mode = "request_uri",
-    request_object_audience = "https://issuer.example.com",
     scopes = "profile"
   )
 
-  auth_url <- shinyOAuth:::prepare_call(
-    cli,
+  request_url <- shinyOAuth:::prepare_call(
+    request_cli,
+    valid_browser_token()
+  )
+  request_uri_url <- shinyOAuth:::prepare_call(
+    request_uri_cli,
     valid_browser_token(),
     request_uri_publisher = function(...) {
       "https://client.example.com/request-object"
@@ -753,7 +764,11 @@ test_that("OAuth request_uri mode keeps the front channel minimal without an iss
   )
 
   expect_setequal(
-    query_param_names(auth_url),
+    query_param_names(request_url),
+    oauth_request_url_param_names("request")
+  )
+  expect_setequal(
+    query_param_names(request_uri_url),
     oauth_request_url_param_names("request_uri")
   )
 })
@@ -872,7 +887,6 @@ test_that("OIDC request_uri minimal front-channel mode is rejected", {
     )
   )
 })
-
 
 # 2. request object encryption validation -------------------------------------
 

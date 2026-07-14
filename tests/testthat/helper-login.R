@@ -144,10 +144,14 @@ make_test_client <- function(
     use_nonce = use_nonce,
     userinfo_signed_jwt_required = userinfo_signed_jwt_required
   )
-  # When provider has an issuer (OIDC), default to "openid" scope to silence
-  # the auto-prepend warning in ensure_openid_scope().
+  # For an effective OIDC provider, default to "openid" scope to silence the
+  # auto-prepend warning in ensure_openid_scope().
   if (is.null(scopes)) {
-    scopes <- if (!is.na(prov@issuer)) "openid" else character(0)
+    scopes <- if (shinyOAuth:::provider_uses_oidc(prov)) {
+      "openid"
+    } else {
+      character(0)
+    }
   }
   oauth_client(
     provider = prov,

@@ -9,7 +9,7 @@ OAuthProvider(
   auth_url = character(0),
   token_url = character(0),
   issuer = NA_character_,
-  oidc = FALSE,
+  issuer_thus_oidc = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -68,14 +68,16 @@ only; used in logging and audit events}
 
 \item{token_url}{Token endpoint URL}
 
-\item{issuer}{Optional OIDC issuer URL. You need this when you want ID token
-validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to
-locate the provider's signing keys (JWKS), typically through the OIDC
-discovery document at \verb{/.well-known/openid-configuration}.}
+\item{issuer}{Optional authorization-server issuer URL. You need this for
+issuer validation and features such as ID-token validation. shinyOAuth uses
+it to verify issuer claims and locate signing keys (JWKS), typically
+through an OIDC discovery document.}
 
-\item{oidc}{Whether this provider uses the OpenID Connect profile. Generic
-OAuth authorization-server metadata may include \code{issuer}, so issuer alone
-does not enable nonce, ID-token, or \code{openid} scope behavior.}
+\item{issuer_thus_oidc}{Whether a configured \code{issuer} means this provider
+uses the OpenID Connect profile. Defaults to \code{TRUE} to preserve the
+historical behavior where issuer enables nonce, ID-token, and \code{openid}
+scope behavior. Set to \code{FALSE} for generic RFC 8414 authorization-server
+metadata whose issuer does not imply OIDC.}
 
 \item{issuer_match}{Character scalar controlling how strictly the discovery
 document's \code{issuer} is validated against \code{issuer} when it later
@@ -443,8 +445,8 @@ during login, callback handling, token exchange, and optional OIDC checks.
 This is a low-level constructor intended for advanced use. Most users should
 prefer the helper constructors \code{\link[=oauth_provider]{oauth_provider()}} for generic OAuth 2.0
 providers or \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} / \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}} for
-OpenID Connect providers. Those helpers explicitly enable the OIDC profile
-and its secure defaults.
+OpenID Connect providers. By default, an issuer enables OIDC behavior for
+compatibility; generic RFC 8414 providers can opt out explicitly.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

@@ -171,11 +171,34 @@ resolve_granted_scope_state <- function(
   )
 }
 
+#' Determine whether a provider uses OpenID Connect
+#'
+#' A configured issuer implies OIDC by default for compatibility. Providers
+#' using generic RFC 8414 metadata can disable that inference explicitly.
+#'
+#' @param provider An [OAuthProvider] object or compatible test double.
+#' @return `TRUE` when issuer-driven OIDC behavior is enabled.
+#' @keywords internal
+#' @noRd
+provider_uses_oidc <- function(provider) {
+  if (is.null(provider)) {
+    return(FALSE)
+  }
+
+  issuer <- tryCatch(provider@issuer, error = function(...) NA_character_)
+  issuer_thus_oidc <- tryCatch(
+    isTRUE(provider@issuer_thus_oidc),
+    error = function(...) TRUE
+  )
+  is_valid_string(issuer) && issuer_thus_oidc
+}
+
 #' Ensure openid scope for OIDC providers
 #'
 #' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the
-#' `openid` scope value. When the provider has its OIDC profile enabled, this
-#' helper checks for the `openid` scope and auto-prepends it with
+#' `openid` scope value. When the provider has an issuer and has not disabled
+#' issuer-driven OIDC behavior, this helper checks for the `openid` scope and
+#' auto-prepends it with
 #' a one-time warning if missing.
 #'
 #' @param scopes Character vector of scope tokens.
@@ -186,7 +209,7 @@ resolve_granted_scope_state <- function(
 #' @keywords internal
 #' @noRd
 ensure_openid_scope <- function(scopes, provider) {
-  if (!isTRUE(provider@oidc)) {
+  if (!provider_uses_oidc(provider)) {
     return(scopes)
   }
 

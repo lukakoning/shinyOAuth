@@ -825,7 +825,6 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
     userinfo_url = NA_character_,
     introspection_url = "https://example.com/introspect",
     issuer = "https://issuer.example.com",
-    oidc = TRUE,
     use_nonce = FALSE,
     use_pkce = TRUE,
     pkce_method = "S256",

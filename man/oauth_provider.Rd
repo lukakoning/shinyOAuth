@@ -9,7 +9,7 @@ oauth_provider(
   auth_url,
   token_url,
   issuer = NA_character_,
-  oidc = FALSE,
+  issuer_thus_oidc = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -71,14 +71,16 @@ only; used in logging and audit events}
 
 \item{token_url}{Token endpoint URL}
 
-\item{issuer}{Optional OIDC issuer URL. You need this when you want ID token
-validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to
-locate the provider's signing keys (JWKS), typically through the OIDC
-discovery document at \verb{/.well-known/openid-configuration}.}
+\item{issuer}{Optional authorization-server issuer URL. You need this for
+issuer validation and features such as ID-token validation. shinyOAuth uses
+it to verify issuer claims and locate signing keys (JWKS), typically
+through an OIDC discovery document.}
 
-\item{oidc}{Whether this provider uses the OpenID Connect profile. Generic
-OAuth authorization-server metadata may include \code{issuer}, so issuer alone
-does not enable nonce, ID-token, or \code{openid} scope behavior.}
+\item{issuer_thus_oidc}{Whether a configured \code{issuer} means this provider
+uses the OpenID Connect profile. Defaults to \code{TRUE} to preserve the
+historical behavior where issuer enables nonce, ID-token, and \code{openid}
+scope behavior. Set to \code{FALSE} for generic RFC 8414 authorization-server
+metadata whose issuer does not imply OIDC.}
 
 \item{issuer_match}{Character scalar controlling how strictly the discovery
 document's \code{issuer} is validated against \code{issuer} when it later

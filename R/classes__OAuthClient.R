@@ -38,8 +38,8 @@
 #'   enabled, a non-empty `client_secret` is required for signature validation.
 #'
 #' @param redirect_uri Redirect URI registered with provider
-#' @param scopes Vector of scopes to request. For providers configured with
-#'   `oidc = TRUE`, shinyOAuth automatically prepends `openid` when it is missing;
+#' @param scopes Vector of scopes to request. When a provider has an `issuer`
+#'   and `issuer_thus_oidc = TRUE`, shinyOAuth automatically prepends `openid`;
 #'   that effective scope set is what gets sent in the authorization request
 #'   and used for later state and token-scope validation.
 #'
@@ -1708,14 +1708,12 @@ oauth_client_validate <- function(self) {
     )
   }
 
-  provider_has_issuer <- is_valid_string(
-    self@provider@issuer %||% NA_character_
-  )
+  provider_is_oidc <- provider_uses_oidc(self@provider)
   par_configured <- is_valid_string(self@provider@par_url %||% NA_character_)
   front_channel_mode <-
     self@provider@authorization_request_front_channel_mode %||% "compat"
   if (
-    isTRUE(provider_has_issuer) &&
+    isTRUE(provider_is_oidc) &&
       identical(front_channel_mode, "minimal") &&
       (identical(arm, "request_uri") ||
         (identical(arm, "request") && !isTRUE(par_configured)))

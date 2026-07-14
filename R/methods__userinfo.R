@@ -288,12 +288,9 @@ get_userinfo <- function(
         )
 
         # OIDC Core §5.3: "The sub Claim MUST always be returned in the UserInfo
-        # Response." Enforce for OIDC providers (issuer configured); leave generic
-        # non-OIDC profile endpoints alone.
-        if (
-          is_valid_string(oauth_client@provider@issuer) &&
-            !is.na(oauth_client@provider@issuer)
-        ) {
+        # Response." Enforce for OIDC providers; leave generic OAuth profile
+        # endpoints alone even when their RFC 8414 metadata has an issuer.
+        if (provider_uses_oidc(oauth_client@provider)) {
           if (!is_valid_string(ui[["sub"]])) {
             audit_userinfo_event(
               oauth_client,

@@ -17,21 +17,23 @@
 #' This is a low-level constructor intended for advanced use. Most users should
 #' prefer the helper constructors [oauth_provider()] for generic OAuth 2.0
 #' providers or [oauth_provider_oidc()] / [oauth_provider_oidc_discover()] for
-#' OpenID Connect providers. Those helpers explicitly enable the OIDC profile
-#' and its secure defaults.
+#' OpenID Connect providers. By default, an issuer enables OIDC behavior for
+#' compatibility; generic RFC 8414 providers can opt out explicitly.
 #'
 #' @param name Provider name (e.g., "github", "google"). Cosmetic
 #' only; used in logging and audit events
 #'
 #' @param auth_url Authorization endpoint URL
 #' @param token_url Token endpoint URL
-#' @param issuer Optional OIDC issuer URL. You need this when you want ID token
-#'   validation. shinyOAuth uses it to verify the ID token `iss` claim and to
-#'   locate the provider's signing keys (JWKS), typically through the OIDC
-#'   discovery document at `/.well-known/openid-configuration`.
-#' @param oidc Whether this provider uses the OpenID Connect profile. Generic
-#'   OAuth authorization-server metadata may include `issuer`, so issuer alone
-#'   does not enable nonce, ID-token, or `openid` scope behavior.
+#' @param issuer Optional authorization-server issuer URL. You need this for
+#'   issuer validation and features such as ID-token validation. shinyOAuth uses
+#'   it to verify issuer claims and locate signing keys (JWKS), typically
+#'   through an OIDC discovery document.
+#' @param issuer_thus_oidc Whether a configured `issuer` means this provider
+#'   uses the OpenID Connect profile. Defaults to `TRUE` to preserve the
+#'   historical behavior where issuer enables nonce, ID-token, and `openid`
+#'   scope behavior. Set to `FALSE` for generic RFC 8414 authorization-server
+#'   metadata whose issuer does not imply OIDC.
 #' @param issuer_match Character scalar controlling how strictly the discovery
 #' document's `issuer` is validated against `issuer` when it later
 #' performs runtime discovery to locate the JWKS URI.
@@ -366,7 +368,7 @@ OAuthProvider <- S7::new_class(
     auth_url = S7::class_character,
     token_url = S7::class_character,
     issuer = S7::new_property(S7::class_character, default = NA_character_),
-    oidc = S7::new_property(S7::class_logical, default = FALSE),
+    issuer_thus_oidc = S7::new_property(S7::class_logical, default = TRUE),
     issuer_match = S7::new_property(
       S7::class_character,
       default = "url"
@@ -597,7 +599,7 @@ oauth_provider <- function(
   auth_url,
   token_url,
   issuer = NA_character_,
-  oidc = FALSE,
+  issuer_thus_oidc = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -891,20 +893,24 @@ oauth_provider <- function(
     jwks_host_allow_only <- NA_character_
   }
 
-  if (!(is.logical(oidc) && length(oidc) == 1L && !is.na(oidc))) {
-    err_input("{.arg oidc} must be a single non-NA logical.")
+  if (
+    !(is.logical(issuer_thus_oidc) &&
+      length(issuer_thus_oidc) == 1L &&
+      !is.na(issuer_thus_oidc))
+  ) {
+    err_input("{.arg issuer_thus_oidc} must be a single non-NA logical.")
   }
 
-  # OIDC profile selection, rather than issuer presence, controls OIDC defaults.
   has_issuer <- is_valid_string(issuer)
+  uses_oidc <- has_issuer && isTRUE(issuer_thus_oidc)
   if (is.null(use_nonce)) {
-    use_nonce <- isTRUE(oidc)
+    use_nonce <- uses_oidc
   }
   if (is.null(id_token_required)) {
-    id_token_required <- isTRUE(oidc)
+    id_token_required <- uses_oidc
   }
   if (is.null(id_token_validation)) {
-    id_token_validation <- isTRUE(oidc)
+    id_token_validation <- uses_oidc
   }
 
   # Auto-enable JWKS issuer-host match for OIDC-like configurations unless explicitly set
@@ -965,7 +971,7 @@ oauth_provider <- function(
     auth_url = auth_url,
     token_url = token_url,
     issuer = issuer,
-    oidc = oidc,
+    issuer_thus_oidc = issuer_thus_oidc,
     issuer_match = issuer_match,
     token_auth_style = token_auth_style,
     use_pkce = use_pkce,
@@ -1081,6 +1087,14 @@ oauth_provider_validate <- function(self) {
 
   if (!isTRUE(self@issuer_match %in% c("url", "host", "none"))) {
     return("OAuthProvider: issuer_match must be 'url', 'host', or 'none'")
+  }
+  if (
+    length(self@issuer_thus_oidc) != 1L ||
+      is.na(self@issuer_thus_oidc)
+  ) {
+    return(
+      "OAuthProvider: issuer_thus_oidc must be a single non-NA logical"
+    )
   }
 
   # Validate extra_token_headers: must be named character vector of length n
@@ -1903,10 +1917,13 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
 #' @keywords internal
 #' @noRd
 provider_fingerprint <- function(provider) {
-  oidc <- tryCatch(isTRUE(provider@oidc), error = function(...) FALSE)
+  issuer_thus_oidc <- tryCatch(
+    isTRUE(provider@issuer_thus_oidc),
+    error = function(...) TRUE
+  )
   components <- list(
     issuer = provider@issuer,
-    oidc = oidc,
+    issuer_thus_oidc = issuer_thus_oidc,
     auth_url = provider@auth_url,
     token_url = provider@token_url,
     userinfo_url = provider@userinfo_url,

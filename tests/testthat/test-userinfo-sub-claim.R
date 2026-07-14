@@ -173,10 +173,11 @@ test_that("get_userinfo fails closed for direct raw-token calls when required", 
   )
 })
 
-test_that("get_userinfo allows missing sub for non-OIDC provider (no issuer)", {
+test_that("get_userinfo allows missing sub when issuer-driven OIDC is off", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
-  # issuer is already NA_character_ from make_test_client defaults
+  cli@provider@issuer <- "https://example.com"
+  cli@provider@issuer_thus_oidc <- FALSE
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {

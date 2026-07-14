@@ -772,7 +772,7 @@ build_auth_url <- function(
   front_channel_mode <-
     oauth_client@provider@authorization_request_front_channel_mode %||% "compat"
   oidc_outer_params_required <-
-    is_valid_string(oauth_client@provider@issuer %||% NA_character_) &&
+    provider_uses_oidc(oauth_client@provider) &&
     (isTRUE(request_uri_used) ||
       (isTRUE(request_object_used) && !isTRUE(par_used)))
   if (
@@ -789,7 +789,7 @@ build_auth_url <- function(
   }
   front_channel_params <- if (
     identical(front_channel_mode, "compat") &&
-      is_valid_string(oauth_client@provider@issuer %||% NA_character_)
+      provider_uses_oidc(oauth_client@provider)
   ) {
     compact_list(list(
       client_id = oauth_client@client_id,

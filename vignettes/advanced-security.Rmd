@@ -102,7 +102,6 @@ Object encryption, the request gains confidentiality as well.
 provider <- oauth_provider(
   name = "example-jar",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Provider expects signed Request Objects
@@ -148,7 +147,6 @@ history and front-channel logs.
 provider <- oauth_provider(
   name = "example-par",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Enable pushed authorization requests
@@ -189,7 +187,6 @@ That means two extra things matter:
 request_uri_provider <- oauth_provider(
   name = "example-request-uri",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   request_uri_parameter_supported = TRUE,
@@ -238,7 +235,6 @@ Two common setups are shown below. The first uses the normal app URL as the
 form_post_provider <- oauth_provider(
   name = "example-form-post",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   response_modes_supported = "form_post"
@@ -304,7 +300,6 @@ JARM, the callback contents are also hidden from browser-visible layers.
 provider <- oauth_provider(
   name = "example-jarm",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Advertise the JARM response modes and algorithms this provider supports
@@ -360,7 +355,6 @@ want sender-constrained tokens without managing client certificates.
 provider <- oauth_provider(
   name = "example-dpop",
   issuer = "https://id.example.com",
-  oidc = TRUE,
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
   # Optional metadata check for acceptable DPoP signing algorithms
