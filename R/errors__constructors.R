@@ -295,7 +295,7 @@ resolve_deprecated_constructor_args <- function(
   dots,
   arg_map,
   fn_name,
-  provided_new = setNames(logical(0), character(0)),
+  provided_new = stats::setNames(logical(0), character(0)),
   when = "0.5.0.9000",
   env = rlang::caller_env(),
   user_env = rlang::caller_env()
