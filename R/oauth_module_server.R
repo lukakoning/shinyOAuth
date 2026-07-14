@@ -3344,13 +3344,7 @@ oauth_module_server <- function(
 
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
-      #' Record proactive refresh pacing state
-      #'
-      #' @param token Refreshed token on success, or NULL on failure.
-      #' @param condition Error condition on failure, or NULL on success.
-      #' @return NULL, invisibly.
-      #' @keywords internal
-      #' @noRd
+      # Record proactive refresh pacing state for success and failure paths.
       .record_refresh_result <- function(token = NULL, condition = NULL) {
         now <- as.numeric(Sys.time())
         values$refresh_in_progress <- FALSE
