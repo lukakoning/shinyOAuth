@@ -185,8 +185,14 @@ apply_direct_client_auth <- function(req, params, client, context) {
   )
 
   if (identical(tas, "header")) {
+    encoded_client_id <- encode_client_secret_basic_credential(
+      client@client_id
+    )
+    encoded_client_secret <- encode_client_secret_basic_credential(
+      client@client_secret
+    )
     req <- req |>
-      httr2::req_auth_basic(client@client_id, client@client_secret)
+      httr2::req_auth_basic(encoded_client_id, encoded_client_secret)
   } else if (identical(tas, "body")) {
     params[["client_id"]] <- params[["client_id"]] %||%
       client@client_id
@@ -227,6 +233,21 @@ apply_direct_client_auth <- function(req, params, client, context) {
   }
 
   list(req = req, params = params)
+}
+
+#' Encode one client_secret_basic credential
+#'
+#' RFC 6749 section 2.3.1 requires the client identifier and client secret to
+#' each be application/x-www-form-urlencoded before HTTP Basic joins them with
+#' a colon and Base64-encodes the result.
+#'
+#' @param value Client identifier or client secret.
+#' @return Form-encoded scalar string.
+#' @keywords internal
+#' @noRd
+encode_client_secret_basic_credential <- function(value) {
+  encoded <- utils::URLencode(enc2utf8(value), reserved = TRUE)
+  gsub("%20", "+", encoded, fixed = TRUE)
 }
 
 #' Attach per-attempt JWT client-assertion rebuilding to a request

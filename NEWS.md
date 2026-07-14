@@ -16,6 +16,14 @@ provider with an `issuer` as OpenID Connect. OIDC constructors and presets set
 the flag automatically; generic RFC 8414 providers no longer gain nonce,
 ID-token, or `openid` scope behavior merely by declaring an issuer.
 
+* The advanced-security vignette examples now supply provider names and client
+secrets where required, and use separate compatible configurations for PAR,
+caller-managed `request_uri`, and form-post callbacks.
+
+* `client_secret_basic` now form-encodes the client ID and client secret before
+constructing the HTTP Basic credentials, including reserved, space, percent,
+plus, and non-ASCII characters as required by RFC 6749.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;
