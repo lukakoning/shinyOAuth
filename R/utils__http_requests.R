@@ -530,8 +530,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
       if (is.na(wait)) {
         wait <- retry_backoff_delay(i, base = base, cap = cap)
       }
-      # Avoid excessive sleep in tests; cap at 10s for sanity
-      wait <- max(0, min(wait, 10))
+      wait <- max(0, wait)
       if (i < max_tries && wait > 0) Sys.sleep(wait)
     } else {
       # Unexpected return; break

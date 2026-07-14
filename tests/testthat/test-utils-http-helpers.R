@@ -114,6 +114,38 @@ test_that("req_with_retry honours Retry-After header and returns last response",
   expect_true(any(abs(sleeps - 2) < 1e-6))
 })
 
+test_that("req_with_retry does not cap Retry-After delays", {
+  req <- httr2::request("https://example.org")
+  withr::local_options(list(shinyOAuth.retry_max_tries = 2L))
+  sleeps <- numeric()
+
+  testthat::local_mocked_bindings(
+    req_perform = function(request) {
+      httr2::response(
+        url = request$url,
+        status = 503,
+        headers = list(
+          "content-type" = "text/plain",
+          "retry-after" = "120"
+        ),
+        body = charToRaw("oops")
+      )
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    Sys.sleep = function(time) {
+      sleeps <<- c(sleeps, time)
+      invisible(NULL)
+    },
+    .package = "base"
+  )
+
+  shinyOAuth:::req_with_retry(req)
+
+  expect_identical(sleeps, 120)
+})
+
 test_that("parse_token_response parses json and form encoded bodies", {
   json_resp <- httr2::response(
     url = "https://example.com/token",
