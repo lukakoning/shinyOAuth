@@ -2,6 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- Generic HTTP retries now honor the full server-provided `Retry-After`
+  delay instead of silently capping it at ten seconds.
+
+- PAR POSTs no longer use generic transport or transient HTTP retries,
+  avoiding duplicate `request_uri` allocations and Request Object
+  replays after a lost successful response. The bounded DPoP
+  nonce-challenge replay remains enabled.
+
 - Added JWT Secured Authorization Response Mode (JARM) support with
   `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. JARM
   callbacks currently resume through
