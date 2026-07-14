@@ -301,7 +301,7 @@ oauth_module_server <- function(
   if (
     !(is.numeric(refresh_lead_seconds) &&
       length(refresh_lead_seconds) == 1 &&
-      !is.na(refresh_lead_seconds) &&
+      is.finite(refresh_lead_seconds) &&
       refresh_lead_seconds >= 0)
   ) {
     err_input(
@@ -311,7 +311,7 @@ oauth_module_server <- function(
   if (
     !(is.numeric(refresh_check_interval) &&
       length(refresh_check_interval) == 1 &&
-      !is.na(refresh_check_interval) &&
+      is.finite(refresh_check_interval) &&
       refresh_check_interval >= 100)
   ) {
     err_input(
@@ -355,7 +355,7 @@ oauth_module_server <- function(
     !(is.null(reauth_after_seconds) ||
       (is.numeric(reauth_after_seconds) &&
         length(reauth_after_seconds) == 1 &&
-        !is.na(reauth_after_seconds) &&
+        is.finite(reauth_after_seconds) &&
         reauth_after_seconds > 0))
   ) {
     err_input(
@@ -1065,7 +1065,10 @@ oauth_module_server <- function(
 
         # Schedule wakeup at boundary + small buffer to ensure we're past it
         if (is.finite(next_boundary) && next_boundary > 0) {
-          wake_ms <- max(100L, as.integer((next_boundary + 0.05) * 1000))
+          wake_ms <- shiny_timer_delay_ms(
+            next_boundary,
+            buffer_seconds = 0.05
+          )
           shiny::invalidateLater(wake_ms, session)
         }
       }
@@ -3343,7 +3346,10 @@ oauth_module_server <- function(
             # add small jitter 0..1s to avoid herd
             jitter <- stats::runif(1, min = 0, max = 1)
             if (!is.na(to_refresh) && to_refresh > 0) {
-              wake_ms <- max(100, as.integer((to_refresh + jitter) * 1000))
+              wake_ms <- shiny_timer_delay_ms(
+                to_refresh,
+                buffer_seconds = jitter
+              )
             } else {
               # We are within the lead window or past it: attempt refresh now
               wake_ms <- 250L
@@ -3587,7 +3593,10 @@ oauth_module_server <- function(
                 !is.na(until_reauth) &&
                 until_reauth > 0
             ) {
-              wake_ms <- min(wake_ms, max(100, as.integer(until_reauth * 1000)))
+              wake_ms <- min(
+                wake_ms,
+                shiny_timer_delay_ms(until_reauth)
+              )
             } else if ((now - started) >= reauth_after_seconds) {
               # Default behavior clears token and triggers reauth; skip when indefinite_session
               if (!isTRUE(indefinite_session)) {
@@ -3675,7 +3684,7 @@ oauth_module_server <- function(
               return()
             }
             # schedule to wake right at expiry as a safeguard
-            wake_ms <- min(wake_ms, max(100, as.integer(remaining * 1000)))
+            wake_ms <- min(wake_ms, shiny_timer_delay_ms(remaining))
           }
         } else {
           # When indefinite_session = TRUE, flag a past-expiry token as stale

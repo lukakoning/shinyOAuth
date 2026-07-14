@@ -3,6 +3,10 @@
 * HTTP audit summaries now redact JARM `response` values and the
 `shinyOAuth_form_post` and `shinyOAuth_form_post_id` callback parameters.
 
+* Long-lived token-expiry and reauthentication timers are now scheduled in
+bounded chunks without overflowing R integers. Module timer durations must be
+finite, so invalid `Inf` settings fail during parameter validation.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;
