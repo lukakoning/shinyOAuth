@@ -73,7 +73,7 @@ spotify_get <- function(token, path, query = list()) {
     stop(msg, call. = FALSE)
   }
 
-  httr2::resp_body_json(resp, simplifyVector = TRUE)
+  httr2::resp_body_json(resp, simplifyVector = FALSE)
 }
 
 # Specialized helper for endpoints that may return 204 (e.g., currently-playing)
@@ -92,7 +92,7 @@ spotify_get_maybe_empty <- function(token, path, query = list()) {
     stop(msg, call. = FALSE)
   }
   
-  httr2::resp_body_json(resp, simplifyVector = TRUE)
+  httr2::resp_body_json(resp, simplifyVector = FALSE)
 }
 
 # Fetch top tracks and artists (short_term: last 4 weeks)
@@ -103,18 +103,23 @@ get_top_tracks <- function(token, limit = 10, time_range = "short_term") {
     query = list(limit = limit, time_range = time_range)
   )
 
-  items <- out$items %||% list()
+  items <- out[["items"]] %||% list()
   if (length(items) == 0) {
     return(data.frame())
   }
 
-  df <- purrr::map(seq_along(items), function(i) {
-    item <- items[i, ]
+  df <- purrr::map(items, function(item) {
+    artists <- vapply(
+      item[["artists"]] %||% list(),
+      function(artist) artist[["name"]] %||% NA_character_,
+      character(1)
+    )
+
     data.frame(
-      name = item$name %||% NA_character_,
-      artist = paste(item$artists[[1]]$name, collapse = ", "),
-      album = item$album$name %||% NA_character_,
-      popularity = as.numeric(item$popularity) %||% NA_real_,
+      name = item[["name"]] %||% NA_character_,
+      artist = paste(artists, collapse = ", "),
+      album = item[["album"]][["name"]] %||% NA_character_,
+      popularity = as.numeric(item[["popularity"]] %||% NA_real_),
       stringsAsFactors = FALSE
     )
   }) |> 
@@ -131,21 +136,20 @@ get_top_artists <- function(token, limit = 10, time_range = "short_term") {
     query = list(limit = limit, time_range = time_range)
   )
 
-  items <- out$items %||% list()
+  items <- out[["items"]] %||% list()
   if (length(items) == 0) {
     return(data.frame())
   }
 
-  df <- purrr::map(seq_along(items), function(i) {
-    item <- items[i, ]
+  df <- purrr::map(items, function(item) {
     data.frame(
-      name = item$name %||% NA_character_,
+      name = item[["name"]] %||% NA_character_,
       genres = paste(
-        as.character(item$genres |> purrr::flatten() %||% character()),
+        as.character(item[["genres"]] |> purrr::flatten() %||% character()),
         collapse = ", "
       ),
-      popularity = as.numeric(item$popularity) %||% NA_real_,
-      followers = as.numeric(item$followers$total %||% NA_real_),
+      popularity = as.numeric(item[["popularity"]] %||% NA_real_),
+      followers = as.numeric(item[["followers"]][["total"]] %||% NA_real_),
       stringsAsFactors = FALSE
     )
   }) |>
@@ -162,18 +166,24 @@ get_recently_played <- function(token, limit = 20) {
     query = list(limit = limit)
   )
 
-  items <- out$items %||% list()
+  items <- out[["items"]] %||% list()
   if (length(items) == 0) {
     return(data.frame())
   }
 
-  df <- purrr::map(seq_along(items), function(i) {
-    item <- items[i, ]
+  df <- purrr::map(items, function(item) {
+    track <- item[["track"]]
+    artists <- vapply(
+      track[["artists"]] %||% list(),
+      function(artist) artist[["name"]] %||% NA_character_,
+      character(1)
+    )
+
     data.frame(
-      played_at = as.POSIXct(item$played_at %||% NA_character_, tz = "UTC"),
-      track = item$track$name %||% NA_character_,
-      artist = paste(item$track$artists[[1]]$name, collapse = ", "),
-      album = item$track$album$name %||% NA_character_,
+      played_at = as.POSIXct(item[["played_at"]] %||% NA_character_, tz = "UTC"),
+      track = track[["name"]] %||% NA_character_,
+      artist = paste(artists, collapse = ", "),
+      album = track[["album"]][["name"]] %||% NA_character_,
       stringsAsFactors = FALSE
     )
   }) |>
@@ -191,7 +201,7 @@ get_currently_playing <- function(token) {
   }
   
   # Normalize essential fields with guards
-  item <- out$item
+  item <- out[["item"]]
 
   if (is.null(item)) {
     return(NULL)
@@ -199,8 +209,13 @@ get_currently_playing <- function(token) {
   
   artists <- tryCatch(
     {
-      if (!is.null(item$artists) && length(item$artists) > 0) {
-        paste(item$artists$name, collapse = ", ")
+      if (!is.null(item[["artists"]]) && length(item[["artists"]]) > 0) {
+        artist_names <- vapply(
+          item[["artists"]],
+          function(artist) artist[["name"]] %||% NA_character_,
+          character(1)
+        )
+        paste(artist_names, collapse = ", ")
       } else {
         "—"
       }
@@ -210,18 +225,18 @@ get_currently_playing <- function(token) {
   
   art_url <- tryCatch(
     {
-      item$album$images$url[[1]]
+      item[["album"]][["images"]][[1]][["url"]]
     },
     error = function(e) NULL
   )
   
   list(
-    is_playing = isTRUE(out$is_playing),
-    progress_ms = as.numeric(out$progress_ms %||% NA_real_),
-    duration_ms = as.numeric(item$duration_ms %||% NA_real_),
-    track = item$name %||% "—",
+    is_playing = isTRUE(out[["is_playing"]]),
+    progress_ms = as.numeric(out[["progress_ms"]] %||% NA_real_),
+    duration_ms = as.numeric(item[["duration_ms"]] %||% NA_real_),
+    track = item[["name"]] %||% "—",
     artist = artists,
-    album = item$album$name %||% "—",
+    album = item[["album"]][["name"]] %||% "—",
     art = art_url
   )
 }
