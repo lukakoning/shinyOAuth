@@ -185,7 +185,7 @@ A reactiveValues object with `token`, `error`, `error_description`,
 `error_uri`, and `authenticated`, plus additional fields used by the
 module.
 
-The returned reactiveValues contains the following fields:
+The returned reactiveValues object contains the following fields:
 
 - `authenticated`: logical TRUE when there is no error and a token is
   present and valid (matching the verifications enabled in the client
@@ -228,49 +228,10 @@ The returned reactiveValues contains the following fields:
   fresh token. It resets to FALSE on successful login, refresh, or
   logout.
 
-- `browser_token`: internal opaque browser cookie value; used for state
-  double-submit protection; NULL if not yet set
-
-- `pending_callback`: internal deferred callback payload; stores either
-  list(type = "code", code, state, iss) for authorization-code callbacks
-  or list(type = "error", error, error_description, error_uri, state,
-  iss) for provider error callbacks. Used to defer callback handling
-  until `browser_token` is available; NULL otherwise.
-
-- `pending_login`: internal logical; TRUE when a login was requested but
-  must wait for `browser_token` to be set, FALSE otherwise.
-
-- `auto_redirected`: internal logical; TRUE once the module has
-  initiated an automatic redirect in this session to avoid duplicate
-  redirects.
-
-- `reauth_triggered`: internal logical; TRUE once a reauthentication
-  attempt has been initiated (after expiry or failed refresh), to avoid
-  loops.
-
-- `auth_started_at`: internal numeric timestamp (as from
-  [`Sys.time()`](https://rdrr.io/r/base/Sys.time.html)) when
-  authentication started; NA if not yet authenticated. Used to enforce
-  `reauth_after_seconds` if set.
-
-- `last_login_async_used`: internal logical; TRUE if the last login
-  attempt used `async = TRUE`, FALSE if it was synchronous. This is only
-  used for testing and diagnostics.
-
-- `refresh_in_progress`: internal logical; TRUE while a token refresh is
-  currently in flight (async or sync). Used to prevent concurrent
-  refresh attempts when proactive refresh logic wakes up multiple times.
-
-- `refresh_last_attempt_at`, `refresh_last_success_at`, and
-  `refresh_next_attempt_at`: internal numeric timestamps used to pace
-  proactive refresh attempts.
-
-- `refresh_success_generation` and `refresh_failure_count`: internal
-  counters for successful token generations and consecutive failures.
-
-It also contains the following helper functions, mainly useful when
-`auto_redirect = FALSE` and you want to start login from your own UI
-(for example, from a button):
+It also contains the following functions, which are mainly useful when
+you use `auto_redirect = FALSE` and you want to start a login from your
+own UI (for example, from an observer which triggers on clicking a
+button):
 
 - `request_login()`: initiates login by redirecting to the authorization
   endpoint, with cookie-ensure semantics: if `browser_token` is missing,
@@ -317,6 +278,50 @@ It also contains the following helper functions, mainly useful when
 - `has_browser_token()`: internal; returns TRUE if `browser_token` is
   present (non-NULL, non-empty), FALSE otherwise. Typically you would
   not call this directly
+
+Finally, it contains the following reactive values intended for internal
+use and testing. These are not intended for general consumption, but
+they are:
+
+- `browser_token`: internal opaque browser cookie value; used for state
+  double-submit protection; NULL if not yet set
+
+- `pending_callback`: internal deferred callback payload; stores either
+  list(type = "code", code, state, iss) for authorization-code callbacks
+  or list(type = "error", error, error_description, error_uri, state,
+  iss) for provider error callbacks. Used to defer callback handling
+  until `browser_token` is available; NULL otherwise.
+
+- `pending_login`: internal logical; TRUE when a login was requested but
+  must wait for `browser_token` to be set, FALSE otherwise.
+
+- `auto_redirected`: internal logical; TRUE once the module has
+  initiated an automatic redirect in this session to avoid duplicate
+  redirects.
+
+- `reauth_triggered`: internal logical; TRUE once a reauthentication
+  attempt has been initiated (after expiry or failed refresh), to avoid
+  loops.
+
+- `auth_started_at`: internal numeric timestamp (as from
+  [`Sys.time()`](https://rdrr.io/r/base/Sys.time.html)) when
+  authentication started; NA if not yet authenticated. Used to enforce
+  `reauth_after_seconds` if set.
+
+- `last_login_async_used`: internal logical; TRUE if the last login
+  attempt used `async = TRUE`, FALSE if it was synchronous. This is only
+  used for testing and diagnostics.
+
+- `refresh_in_progress`: internal logical; TRUE while a token refresh is
+  currently in flight (async or sync). Used to prevent concurrent
+  refresh attempts when proactive refresh logic wakes up multiple times.
+
+- `refresh_last_attempt_at`, `refresh_last_success_at`, and
+  `refresh_next_attempt_at`: internal numeric timestamps used to pace
+  proactive refresh attempts.
+
+- `refresh_success_generation` and `refresh_failure_count`: internal
+  counters for successful token generations and consecutive failures.
 
 ## Details
 
