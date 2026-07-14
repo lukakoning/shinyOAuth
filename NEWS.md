@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* HTTP audit summaries now redact JARM `response` values and the
+`shinyOAuth_form_post` and `shinyOAuth_form_post_id` callback parameters.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;

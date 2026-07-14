@@ -232,6 +232,9 @@ test_that("redact_query_string handles all sensitive param types", {
     "client_secret=sec1",
     "client_assertion=jwt1",
     "assertion=jwt2",
+    "response=jarm1",
+    "shinyOAuth_form_post=handle1",
+    "shinyOAuth_form_post_id=module1",
     "username=user1",
     "password=pass1",
     "safe_param=keep_me",
@@ -250,6 +253,9 @@ test_that("redact_query_string handles all sensitive param types", {
   expect_no_match(result, "sec1")
   expect_no_match(result, "jwt1")
   expect_no_match(result, "jwt2")
+  expect_no_match(result, "jarm1")
+  expect_no_match(result, "handle1")
+  expect_no_match(result, "module1")
   expect_no_match(result, "user1")
   expect_no_match(result, "pass1")
   # Safe param should remain
