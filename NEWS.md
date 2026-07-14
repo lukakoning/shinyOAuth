@@ -11,6 +11,11 @@ finite, so invalid `Inf` settings fail during parameter validation.
 tokens wait for half their new lifetime, while failures use bounded exponential
 backoff with jitter and honor `Retry-After` when available.
 
+* `oauth_provider()` now uses an explicit `oidc` flag instead of treating every
+provider with an `issuer` as OpenID Connect. OIDC constructors and presets set
+the flag automatically; generic RFC 8414 providers no longer gain nonce,
+ID-token, or `openid` scope behavior merely by declaring an issuer.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 JARM callbacks currently resume through `oauth_module_server()` only;

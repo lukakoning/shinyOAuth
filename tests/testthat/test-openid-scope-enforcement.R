@@ -12,6 +12,7 @@ make_oidc_provider <- function(issuer = "https://issuer.example.com") {
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
     issuer = issuer,
+    oidc = !is.na(issuer),
     use_nonce = !is.na(issuer),
     use_pkce = TRUE,
     pkce_method = "S256",
@@ -80,6 +81,41 @@ test_that("ensure_openid_scope is no-op for non-OIDC provider (no issuer)", {
   prov <- make_oidc_provider(issuer = NA_character_)
   result <- shinyOAuth:::ensure_openid_scope(c("profile", "email"), prov)
   expect_equal(result, c("profile", "email"))
+})
+
+test_that("issuer alone does not enable OIDC or inject openid", {
+  prov <- oauth_provider(
+    name = "oauth-metadata",
+    auth_url = "https://as.example/authorize",
+    token_url = "https://as.example/token",
+    issuer = "https://as.example",
+    token_auth_style = "body"
+  )
+  client <- oauth_client(
+    provider = prov,
+    client_id = "client",
+    client_secret = "secret",
+    redirect_uri = "https://client.example/callback",
+    scopes = "read"
+  )
+
+  expect_false(prov@oidc)
+  expect_false(prov@use_nonce)
+  expect_false(prov@id_token_required)
+  expect_false(prov@id_token_validation)
+  expect_equal(shinyOAuth:::effective_client_scopes(client), "read")
+})
+
+test_that("OIDC constructors explicitly enable the OIDC profile", {
+  prov <- oauth_provider_oidc(
+    name = "oidc",
+    base_url = "https://oidc.example"
+  )
+
+  expect_true(prov@oidc)
+  expect_true(prov@use_nonce)
+  expect_true(prov@id_token_required)
+  expect_true(prov@id_token_validation)
 })
 
 test_that("ensure_openid_scope injects openid when scopes are empty", {

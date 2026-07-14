@@ -174,8 +174,8 @@ resolve_granted_scope_state <- function(
 #' Ensure openid scope for OIDC providers
 #'
 #' Per OIDC Core section 1.2.1, OpenID Connect requests MUST contain the
-#' `openid` scope value. When the provider has an `issuer` set (indicating
-#' OIDC), this helper checks for the `openid` scope and auto-prepends it with
+#' `openid` scope value. When the provider has its OIDC profile enabled, this
+#' helper checks for the `openid` scope and auto-prepends it with
 #' a one-time warning if missing.
 #'
 #' @param scopes Character vector of scope tokens.
@@ -186,8 +186,7 @@ resolve_granted_scope_state <- function(
 #' @keywords internal
 #' @noRd
 ensure_openid_scope <- function(scopes, provider) {
-  # Only applies to OIDC providers (those with an issuer)
-  if (!is_valid_string(provider@issuer)) {
+  if (!isTRUE(provider@oidc)) {
     return(scopes)
   }
 
@@ -208,7 +207,7 @@ ensure_openid_scope <- function(scopes, provider) {
       "!" = paste0(
         "Provider ",
         provider_name,
-        " has an issuer set, indicating OIDC, but {.val openid} was not in the requested scopes."
+        " uses OIDC, but {.val openid} was not in the requested scopes."
       ),
       "i" = "Auto-prepending {.val openid} to scopes per OIDC Core \u00a73.1.2.1.",
       "i" = "Add {.val openid} to your {.code oauth_client(scopes = ...)} to silence this warning."

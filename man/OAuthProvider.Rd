@@ -9,6 +9,7 @@ OAuthProvider(
   auth_url = character(0),
   token_url = character(0),
   issuer = NA_character_,
+  oidc = FALSE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -71,6 +72,10 @@ only; used in logging and audit events}
 validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to
 locate the provider's signing keys (JWKS), typically through the OIDC
 discovery document at \verb{/.well-known/openid-configuration}.}
+
+\item{oidc}{Whether this provider uses the OpenID Connect profile. Generic
+OAuth authorization-server metadata may include \code{issuer}, so issuer alone
+does not enable nonce, ID-token, or \code{openid} scope behavior.}
 
 \item{issuer_match}{Character scalar controlling how strictly the discovery
 document's \code{issuer} is validated against \code{issuer} when it later
@@ -438,8 +443,8 @@ during login, callback handling, token exchange, and optional OIDC checks.
 This is a low-level constructor intended for advanced use. Most users should
 prefer the helper constructors \code{\link[=oauth_provider]{oauth_provider()}} for generic OAuth 2.0
 providers or \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} / \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}} for
-OpenID Connect providers. Those helpers enable secure defaults based on the
-presence of an issuer and available endpoints.
+OpenID Connect providers. Those helpers explicitly enable the OIDC profile
+and its secure defaults.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

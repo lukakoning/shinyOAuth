@@ -65,6 +65,7 @@ oauth_provider_oidc <- function(
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
     issuer = base_url,
+    oidc = TRUE,
     use_nonce = use_nonce,
     id_token_validation = id_token_validation,
     token_auth_style = "header",
@@ -146,6 +147,7 @@ oauth_provider_google <- function(name = "google") {
     revocation_url = "https://oauth2.googleapis.com/revoke",
     userinfo_url = "https://openidconnect.googleapis.com/v1/userinfo",
     issuer = "https://accounts.google.com",
+    oidc = TRUE,
 
     use_nonce = TRUE,
 
@@ -270,6 +272,7 @@ oauth_provider_microsoft <- function(
     introspection_url = NA_character_,
 
     issuer = issuer,
+    oidc = TRUE,
     issuer_match = issuer_match,
 
     use_nonce = isTRUE(id_token_validation),

@@ -9,6 +9,7 @@ oauth_provider(
   auth_url,
   token_url,
   issuer = NA_character_,
+  oidc = FALSE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -74,6 +75,10 @@ only; used in logging and audit events}
 validation. shinyOAuth uses it to verify the ID token \code{iss} claim and to
 locate the provider's signing keys (JWKS), typically through the OIDC
 discovery document at \verb{/.well-known/openid-configuration}.}
+
+\item{oidc}{Whether this provider uses the OpenID Connect profile. Generic
+OAuth authorization-server metadata may include \code{issuer}, so issuer alone
+does not enable nonce, ID-token, or \code{openid} scope behavior.}
 
 \item{issuer_match}{Character scalar controlling how strictly the discovery
 document's \code{issuer} is validated against \code{issuer} when it later
