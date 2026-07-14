@@ -221,6 +221,13 @@ The returned reactiveValues contains the following fields:
   allowlisted via `options(shinyOAuth.allowed_hosts = ...)`, and returns
   NULL when the provider omits or sends an unsafe value.
 
+- `token_stale`: logical; TRUE when the token was kept despite a refresh
+  failure because `indefinite_session = TRUE`, or when the access token
+  is past its expiry but `indefinite_session = TRUE` prevents automatic
+  clearing. This lets UIs warn users or disable actions that require a
+  fresh token. It resets to FALSE on successful login, refresh, or
+  logout.
+
 - `browser_token`: internal opaque browser cookie value; used for state
   double-submit protection; NULL if not yet set
 
@@ -245,13 +252,6 @@ The returned reactiveValues contains the following fields:
   [`Sys.time()`](https://rdrr.io/r/base/Sys.time.html)) when
   authentication started; NA if not yet authenticated. Used to enforce
   `reauth_after_seconds` if set.
-
-- `token_stale`: logical; TRUE when the token was kept despite a refresh
-  failure because `indefinite_session = TRUE`, or when the access token
-  is past its expiry but `indefinite_session = TRUE` prevents automatic
-  clearing. This lets UIs warn users or disable actions that require a
-  fresh token. It resets to FALSE on successful login, refresh, or
-  logout.
 
 - `last_login_async_used`: internal logical; TRUE if the last login
   attempt used `async = TRUE`, FALSE if it was synchronous. This is only

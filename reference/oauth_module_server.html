@@ -258,6 +258,11 @@ as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
 values here when they stay on a provider host or another host already
 allowlisted via <code>options(shinyOAuth.allowed_hosts = ...)</code>, and returns
 NULL when the provider omits or sends an unsafe value.</p></li>
+<li><p><code>token_stale</code>: logical; TRUE when the token was kept despite a refresh
+failure because <code>indefinite_session = TRUE</code>, or when the access token is past
+its expiry but <code>indefinite_session = TRUE</code> prevents automatic clearing. This
+lets UIs warn users or disable actions that require a fresh token. It resets
+to FALSE on successful login, refresh, or logout.</p></li>
 <li><p><code>browser_token</code>: internal opaque browser cookie value; used for state
 double-submit protection; NULL if not yet set</p></li>
 <li><p><code>pending_callback</code>: internal deferred callback payload; stores either
@@ -274,11 +279,6 @@ has been initiated (after expiry or failed refresh), to avoid loops.</p></li>
 <li><p><code>auth_started_at</code>: internal numeric timestamp (as from <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>) when
 authentication started; NA if not yet authenticated. Used to enforce
 <code>reauth_after_seconds</code> if set.</p></li>
-<li><p><code>token_stale</code>: logical; TRUE when the token was kept despite a refresh
-failure because <code>indefinite_session = TRUE</code>, or when the access token is past
-its expiry but <code>indefinite_session = TRUE</code> prevents automatic clearing. This
-lets UIs warn users or disable actions that require a fresh token. It resets
-to FALSE on successful login, refresh, or logout.</p></li>
 <li><p><code>last_login_async_used</code>: internal logical; TRUE if the last login attempt
 used <code>async = TRUE</code>, FALSE if it was synchronous. This is only used for
 testing and diagnostics.</p></li>
