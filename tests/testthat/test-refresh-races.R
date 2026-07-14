@@ -266,7 +266,10 @@ testthat::test_that("short-lived refreshed tokens do not cause a refresh storm",
 
       testthat::expect_equal(calls, 1L)
       testthat::expect_equal(values$refresh_success_generation, 1L)
-      testthat::expect_gt(values$refresh_next_attempt_at, as.numeric(Sys.time()))
+      testthat::expect_gt(
+        values$refresh_next_attempt_at,
+        as.numeric(Sys.time())
+      )
     }
   )
 })
