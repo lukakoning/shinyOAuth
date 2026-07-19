@@ -5,7 +5,7 @@ if (
   library(shiny)
   library(shinyOAuth)
 
-  # Configure provider and client (Microsoft Entra ID with your tenant
+  # Configure provider and client (Microsoft Entra ID with your tenant)
   client <- oauth_client(
     provider = oauth_provider_microsoft(
       # Provide your own tenant ID here (set as environment variable MS_TENANT)
@@ -54,7 +54,7 @@ if (
         !is.null(tok),
         "\n",
         "Has refresh token: ",
-        !is.null(tok) && isTRUE(nzchar(tok@refresh_token %||% "")),
+        !is.null(tok) && isTRUE(nzchar(tok@refresh_token)),
         "\n",
         "Has ID token: ",
         !is.null(tok) && !is.na(tok@id_token),
