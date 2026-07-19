@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* ID token and signed UserInfo validation now accept `application/jwt` as an
+equivalent, case-insensitive form of the `JWT` JOSE `typ` value.
+
 * Form-encoded token responses now decode `+` as a space while preserving
 percent-encoded literal plus signs.
 

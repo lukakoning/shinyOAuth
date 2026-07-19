@@ -111,6 +111,15 @@ test_that("validate_jose_header_fields reads exact JOSE member names", {
   expect_null(fields$crit)
 })
 
+test_that("shared JWT typ policy accepts the JWT media type", {
+  for (typ in c("JWT", "jwt", "application/jwt", "Application/JWT")) {
+    fields <- list(alg = "RS256", kid = NULL, typ = typ, crit = NULL)
+    expect_invisible(
+      shinyOAuth:::enforce_inbound_jwt_header_policy(fields, stop)
+    )
+  }
+})
+
 test_that("validate_id_token rejects malformed JOSE header field shapes", {
   cases <- list(
     list(

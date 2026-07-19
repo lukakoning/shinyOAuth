@@ -682,16 +682,17 @@ enforce_inbound_jwt_header_policy <- function(
 ) {
   typ <- header_fields[["typ"]]
   if (!is.null(typ)) {
+    bare_typ <- sub("^application/", "", tolower(typ))
     if (
       !(is.character(typ) &&
         length(typ) == 1L &&
-        identical(toupper(typ), "JWT"))
+        identical(bare_typ, "jwt"))
     ) {
       if (is.function(on_typ_invalid)) {
         on_typ_invalid()
       }
       signal_error(paste0(
-        "JWT typ header invalid: expected 'JWT' when present, got ",
+        "JWT typ header invalid: expected 'JWT' or 'application/jwt' when present, got ",
         paste(as.character(typ), collapse = ", ")
       ))
     }
