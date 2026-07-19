@@ -157,7 +157,9 @@ normalize_token_response_json <- function(value) {
 #' @noRd
 parse_token_response_form <- function(body) {
   reject_duplicate_form_encoded_members(body, "Token response body")
-  httr2::url_query_parse(body)
+  # httr2's query parser preserves "+", while HTML form encoding uses it for
+  # spaces. Convert only literal plus signs; percent-encoded %2B remains "+".
+  httr2::url_query_parse(gsub("+", "%20", body, fixed = TRUE))
 }
 
 #' Parse a legacy token response with weak or missing Content-Type
@@ -235,7 +237,7 @@ decode_form_member <- function(value, label, member) {
     ))
   }
   tryCatch(
-    utils::URLdecode(value),
+    utils::URLdecode(gsub("+", " ", value, fixed = TRUE)),
     warning = function(e) {
       err_parse(paste0(
         label,

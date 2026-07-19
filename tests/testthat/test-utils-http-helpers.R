@@ -163,6 +163,19 @@ test_that("parse_token_response parses json and form encoded bodies", {
   expect_equal(shinyOAuth:::parse_token_response(form_resp)$scope, "read")
 })
 
+test_that("parse_token_response applies form plus decoding", {
+  form_resp <- httr2::response(
+    url = "https://example.com/token",
+    status = 200,
+    headers = list("content-type" = "application/x-www-form-urlencoded"),
+    body = charToRaw("scope=openid+profile&access_token=abc%2Bdef")
+  )
+
+  parsed <- shinyOAuth:::parse_token_response(form_resp)
+  expect_identical(parsed$scope, "openid profile")
+  expect_identical(parsed$access_token, "abc+def")
+})
+
 test_that("parse_token_response falls back to form parsing for text/plain", {
   plain_resp <- httr2::response(
     url = "https://example.com/token",

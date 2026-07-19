@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Form-encoded token responses now decode `+` as a space while preserving
+percent-encoded literal plus signs.
+
 * Generic HTTP retries now honor the full server-provided `Retry-After` delay
 instead of silently capping it at ten seconds.
 
