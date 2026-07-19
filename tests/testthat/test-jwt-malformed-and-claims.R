@@ -181,6 +181,42 @@ test_that("JWT parsing rejects non-object payload JSON", {
   })
 })
 
+test_that("JWT parsing preserves heterogeneous audience element types", {
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = client@provider@issuer,
+      aud = list(123, client@client_id),
+      sub = "u",
+      iat = now - 1,
+      exp = now + 60
+    )
+  )
+
+  parsed <- shinyOAuth:::parse_jwt_payload(jwt)
+  expect_type(parsed[["aud"]], "list")
+  expect_true(is.numeric(parsed[["aud"]][[1]]))
+  expect_identical(parsed[["aud"]][[2]], client@client_id)
+
+  withr::local_options(list(shinyOAuth.skip_id_sig = TRUE))
+  expect_error(
+    shinyOAuth:::validate_id_token(client, jwt),
+    class = "shinyOAuth_id_token_error",
+    regexp = "Audience invalid"
+  )
+  expect_error(
+    shinyOAuth:::validate_signed_userinfo_claims(
+      claims = parsed,
+      expected_issuer = client@provider@issuer,
+      expected_client_id = client@client_id
+    ),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "aud.*does not include client_id"
+  )
+})
+
 test_that("exp/iat/nbf boundary conditions respect leeway", {
   client <- mk_client()
   client@provider@leeway <- 5

@@ -26,7 +26,9 @@ parse_jwt_payload <- function(jwt) {
   assert_json_text_is_object(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
+    jwt_simplify_json_arrays(
+      jsonlite::fromJSON(payload_text, simplifyVector = FALSE)
+    ),
     error = function(e) {
       err_parse(c(
         "Failed to parse JWT payload JSON",
@@ -34,6 +36,43 @@ parse_jwt_payload <- function(jwt) {
       ))
     }
   )
+}
+
+#' Simplify homogeneous JWT JSON arrays without coercing element types
+#'
+#' `jsonlite`'s general vector simplification can coerce heterogeneous arrays,
+#' such as `[123, "client"]`, to character vectors. JWT claim validation must
+#' retain that type distinction. This helper converts only arrays whose scalar
+#' elements already share a compatible JSON type.
+#'
+#' @param value Parsed JSON value produced with `simplifyVector = FALSE`.
+#' @return Recursively simplified value with heterogeneous arrays preserved.
+#' @keywords internal
+#' @noRd
+jwt_simplify_json_arrays <- function(value) {
+  if (!is.list(value)) {
+    return(value)
+  }
+
+  out <- lapply(value, jwt_simplify_json_arrays)
+  if (!is.null(names(value)) || length(out) == 0L) {
+    return(out)
+  }
+
+  is_scalar_type <- function(x, predicate) {
+    length(x) == 1L && predicate(x)
+  }
+  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.character))) {
+    return(vapply(out, identity, character(1)))
+  }
+  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.logical))) {
+    return(vapply(out, identity, logical(1)))
+  }
+  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.numeric))) {
+    return(vapply(out, as.numeric, numeric(1)))
+  }
+
+  out
 }
 
 #' Internal: Parse JWT header (no validation)

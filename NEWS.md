@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular,
+an `aud` array containing non-string elements is now rejected instead of being
+coerced to strings during parsing.
+
 * ID tokens and signed UserInfo JWTs are now considered expired at the exact
 `exp` second, as required by RFC 7519.
 
