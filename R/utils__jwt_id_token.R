@@ -336,7 +336,7 @@ validate_id_token <- function(
   if (!is.finite(lwe) || is.na(lwe) || length(lwe) != 1) {
     lwe <- 0
   }
-  if (exp_val < (now - lwe)) {
+  if (exp_val <= (now - lwe)) {
     err_id_token("ID token expired")
   }
   # OIDC Core requires iat to be present on ID Tokens

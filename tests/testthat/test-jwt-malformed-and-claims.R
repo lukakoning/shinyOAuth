@@ -248,6 +248,34 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   })
 })
 
+test_that("ID tokens expire at the exact exp boundary", {
+  client <- mk_client()
+  client@provider@leeway <- 0
+  fixed_now <- as.POSIXct("2026-01-01 00:00:00", tz = "UTC")
+  now <- floor(as.numeric(fixed_now))
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "u",
+      iat = now - 1,
+      exp = now
+    )
+  )
+
+  withr::local_options(list(shinyOAuth.skip_id_sig = TRUE))
+  expect_error(
+    testthat::with_mocked_bindings(
+      Sys.time = function() fixed_now,
+      .package = "base",
+      shinyOAuth:::validate_id_token(client, jwt)
+    ),
+    class = "shinyOAuth_id_token_error",
+    regexp = "expired"
+  )
+})
+
 test_that("signed RS256 temporal boundaries respect package leeway", {
   testthat::skip_if_not_installed("jose")
 

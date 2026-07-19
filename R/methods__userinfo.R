@@ -870,7 +870,7 @@ validate_signed_userinfo_claims <- function(
     }
 
     exp_val <- as.numeric(claims[["exp"]])
-    if (exp_val < (now - lwe)) {
+    if (exp_val <= (now - lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_expired",
         bullets = c(

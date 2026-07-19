@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* ID tokens and signed UserInfo JWTs are now considered expired at the exact
+`exp` second, as required by RFC 7519.
+
 * DPoP proof `iat` claims no longer overflow after the 32-bit Unix-time limit
 in January 2038.
 

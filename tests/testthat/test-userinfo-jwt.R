@@ -344,7 +344,7 @@ test_that("get_userinfo honors provider leeway above 60 seconds", {
   expect_equal(result[["name"]], "Leeway User")
 })
 
-test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
+test_that("get_userinfo accepts signed JWT iat and nbf at leeway boundaries", {
   key <- openssl::rsa_keygen(2048)
 
   jwk_json <- jose::write_jwk(key$pubkey)
@@ -361,7 +361,7 @@ test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
     name = "Boundary User",
     iss = "https://issuer.example.com",
     aud = "abc",
-    exp = now - 30,
+    exp = now + 300,
     iat = now + 30,
     nbf = now + 30
   )
@@ -393,6 +393,30 @@ test_that("get_userinfo accepts signed JWT exactly at leeway boundaries", {
 
   expect_equal(result[["sub"]], "user-leeway-boundary")
   expect_equal(result[["name"]], "Boundary User")
+})
+
+test_that("signed UserInfo JWT expires at the exact exp boundary", {
+  fixed_now <- as.POSIXct("2026-01-01 00:00:00", tz = "UTC")
+  now <- floor(as.numeric(fixed_now))
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      Sys.time = function() fixed_now,
+      .package = "base",
+      shinyOAuth:::validate_signed_userinfo_claims(
+        claims = list(
+          sub = "user-exp-boundary",
+          iss = "https://issuer.example.com",
+          aud = "abc",
+          exp = now
+        ),
+        expected_issuer = "https://issuer.example.com",
+        expected_client_id = "abc"
+      )
+    ),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "expired"
+  )
 })
 
 test_that("get_userinfo can require exp on signed JWT userinfo", {
