@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* DPoP proof `iat` claims no longer overflow after the 32-bit Unix-time limit
+in January 2038.
+
 * ID token and signed UserInfo validation now accept `application/jwt` as an
 equivalent, case-insensitive form of the `JWT` JOSE `typ` value.
 

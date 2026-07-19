@@ -120,6 +120,23 @@ test_that("resource_req builds DPoP authorization and proof headers", {
   expect_true(nzchar(payload[["ath"]]))
 })
 
+test_that("DPoP iat remains valid after the 32-bit integer boundary", {
+  fixed_now <- as.POSIXct("2040-01-01 00:00:00", tz = "UTC")
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  cli <- make_dpop_test_client(prov)
+
+  proof <- testthat::with_mocked_bindings(
+    Sys.time = function() fixed_now,
+    .package = "base",
+    shinyOAuth:::build_dpop_proof(cli, "GET", "https://example.com/resource")
+  )
+
+  expect_identical(
+    decode_dpop_payload(proof)[["iat"]],
+    floor(as.numeric(fixed_now))
+  )
+})
+
 test_that("resource_req rejects non-ASCII DPoP access tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)

@@ -702,7 +702,7 @@ build_dpop_proof <- function(
     jti = random_urlsafe(32),
     htm = toupper(as.character(method %||% "GET")[[1]]),
     htu = dpop_target_uri(as.character(url)[[1]]),
-    iat = as.integer(floor(as.numeric(Sys.time())))
+    iat = floor(as.numeric(Sys.time()))
   )
   if (is_valid_string(access_token)) {
     claims[["ath"]] <- dpop_access_token_hash(access_token)
