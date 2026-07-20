@@ -13,6 +13,8 @@ make_apple_discovery_doc <- function() {
       token_endpoint = "https://appleid.apple.com/auth/token",
       revocation_endpoint = "https://appleid.apple.com/auth/revoke",
       jwks_uri = "https://appleid.apple.com/auth/keys",
+      response_types_supported = list("code"),
+      subject_types_supported = list("public"),
       response_modes_supported = list("query", "fragment", "form_post"),
       token_endpoint_auth_methods_supported = list("client_secret_post"),
       id_token_signing_alg_values_supported = list("RS256")
@@ -328,6 +330,8 @@ make_discovery_doc <- function(
       userinfo_endpoint = userinfo_endpoint,
       introspection_endpoint = introspection_endpoint,
       jwks_uri = jwks_uri,
+      response_types_supported = list("code"),
+      subject_types_supported = list("public"),
       token_endpoint_auth_methods_supported = list(
         "client_secret_basic",
         "client_secret_post"

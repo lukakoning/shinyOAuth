@@ -94,9 +94,15 @@ Most users can accept the defaults here. The points below are mainly
 reference for advanced provider setups or for understanding why discovery
 might fail early.
 \itemize{
+\item Required metadata: discovery documents must contain the required OIDC
+Provider Metadata fields used by this client. In particular,
+\code{response_types_supported} must include \code{code},
+\code{subject_types_supported} must be a non-empty string array,
+\code{id_token_signing_alg_values_supported} must include \code{RS256}, and
+\code{jwks_uri} is required even when automatic ID-token validation is disabled.
 \item ID token algorithms: by default this helper accepts common asymmetric
 algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
-provider advertises its supported ID token signing algorithms via
+provider advertises its required ID token signing algorithms via
 \code{id_token_signing_alg_values_supported}, the helper uses the intersection
 with the caller-provided \code{allowed_algs}. If there is no overlap, discovery
 fails with a configuration error. There is no automatic fallback to the

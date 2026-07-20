@@ -433,7 +433,11 @@ test_that("OIDC discovery records supported response modes", {
   base_metadata <- list(
     issuer = "https://issuer.example.com",
     authorization_endpoint = "https://issuer.example.com/auth",
-    token_endpoint = "https://issuer.example.com/token"
+    token_endpoint = "https://issuer.example.com/token",
+    jwks_uri = "https://issuer.example.com/jwks",
+    response_types_supported = list("code"),
+    subject_types_supported = list("public"),
+    id_token_signing_alg_values_supported = list("RS256")
   )
 
   prov <- discover_provider(c(

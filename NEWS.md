@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* OIDC discovery now rejects incomplete or malformed required Provider
+Metadata. Discovered providers must advertise Authorization Code response
+support, subject identifier types, RS256 ID-token signing support, and a
+`jwks_uri`, including when automatic ID-token validation is disabled.
+
 * The dedicated Keycloak integration runner now requires both HTTP and HTTPS
 discovery endpoints, treats infrastructure and fixture setup problems as test
 failures, and enforces a zero-skip budget.

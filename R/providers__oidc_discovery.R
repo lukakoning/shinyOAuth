@@ -21,9 +21,16 @@
 #' reference for advanced provider setups or for understanding why discovery
 #' might fail early.
 #'
+#' - Required metadata: discovery documents must contain the required OIDC
+#'   Provider Metadata fields used by this client. In particular,
+#'   `response_types_supported` must include `code`,
+#'   `subject_types_supported` must be a non-empty string array,
+#'   `id_token_signing_alg_values_supported` must include `RS256`, and
+#'   `jwks_uri` is required even when automatic ID-token validation is disabled.
+#'
 #' - ID token algorithms: by default this helper accepts common asymmetric
 #'   algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
-#'   provider advertises its supported ID token signing algorithms via
+#'   provider advertises its required ID token signing algorithms via
 #'   `id_token_signing_alg_values_supported`, the helper uses the intersection
 #'   with the caller-provided `allowed_algs`. If there is no overlap, discovery
 #'   fails with a configuration error. There is no automatic fallback to the
@@ -225,6 +232,9 @@ oauth_provider_oidc_discover <- function(
   # 3) Parse JSON and normalize to list
   disc <- .discover_parse_json(resp)
 
+  # 3a) Reject incomplete or malformed required OIDC Provider Metadata.
+  .discover_validate_required_metadata(disc)
+
   # 4) Extract key endpoints
   endpoints <- .discover_extract_endpoints(disc)
 
@@ -243,22 +253,10 @@ oauth_provider_oidc_discover <- function(
   allowed_hosts_vec <- .discover_allowed_hosts(iss_host)
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
-  # 6a) Read caller overrides before any JWKS-dependent policy checks so
-  # both presence requirements and host pinning see the same values.
+  # 6a) Read caller overrides before JWKS host-policy checks.
   dots <- list(...)
   jwks_host_allow_only <- dots[["jwks_host_allow_only"]] %||%
     NULL
-
-  # 6b) Any mode that verifies ID-token or UserInfo JWT signatures needs JWKS.
-  .discover_require_jwks_uri(
-    disc = disc,
-    iss = iss,
-    id_token_validation = id_token_validation,
-    use_nonce = use_nonce,
-    userinfo_signed_jwt_required = isTRUE(
-      dots[["userinfo_signed_jwt_required"]]
-    )
-  )
 
   .discover_validate_jwks_uri(
     disc = disc,
@@ -665,6 +663,96 @@ oauth_provider_oidc_discover <- function(
   disc
 }
 
+#' Internal: validate required OpenID Provider Metadata
+#'
+#' Enforces the mandatory metadata and capabilities needed by shinyOAuth's
+#' Authorization Code Flow before any discovered values are used.
+#'
+#' @param disc Parsed discovery document.
+#' @return Invisibly returns `TRUE` on success. Otherwise this function raises
+#'   a parse error.
+#'
+#' @keywords internal
+#' @noRd
+.discover_validate_required_metadata <- function(disc) {
+  response_types <- .discover_require_string_array(
+    disc,
+    "response_types_supported"
+  )
+  if (!("code" %in% response_types)) {
+    err_parse(
+      c(
+        "x" = "Discovery response_types_supported must include code",
+        "i" = "shinyOAuth implements the OpenID Connect Authorization Code Flow"
+      ),
+      context = list(response_types_supported = response_types)
+    )
+  }
+
+  .discover_require_string_array(disc, "subject_types_supported")
+
+  signing_algs <- .discover_require_string_array(
+    disc,
+    "id_token_signing_alg_values_supported"
+  )
+  if (!("RS256" %in% signing_algs)) {
+    err_parse(
+      c(
+        "x" = paste(
+          "Discovery id_token_signing_alg_values_supported must include",
+          "RS256"
+        )
+      ),
+      context = list(
+        id_token_signing_alg_values_supported = signing_algs
+      )
+    )
+  }
+
+  jwks_uri <- disc[["jwks_uri"]] %||% ""
+  if (!is_valid_string(jwks_uri) || !nzchar(trimws(jwks_uri))) {
+    err_parse(
+      "Discovery missing required jwks_uri metadata",
+      context = list(jwks_uri = jwks_uri)
+    )
+  }
+
+  invisible(TRUE)
+}
+
+#' Internal: require a non-empty JSON string array in discovery metadata
+#'
+#' @param disc Parsed discovery document.
+#' @param field Metadata member name.
+#' @return Character vector containing the validated array values.
+#'
+#' @keywords internal
+#' @noRd
+.discover_require_string_array <- function(disc, field) {
+  value <- disc[[field]]
+  valid <- is.list(value) &&
+    length(value) > 0L &&
+    is.null(names(value)) &&
+    all(vapply(
+      value,
+      function(item) is_valid_string(item) && nzchar(trimws(item)),
+      logical(1)
+    ))
+
+  if (!valid) {
+    err_parse(
+      paste0(
+        "Discovery ",
+        field,
+        " must be a non-empty JSON array of non-empty strings"
+      ),
+      context = setNames(list(value), field)
+    )
+  }
+
+  unlist(value, use.names = FALSE)
+}
+
 #' Internal: extract endpoints from discovery doc
 #'
 #' Used by [oauth_provider_oidc_discover()] to pull the provider URLs it needs later.
@@ -805,69 +893,6 @@ oauth_provider_oidc_discover <- function(
 
 
 ## 2.4 Capability negotiation --------------------------------------------------
-
-#' Internal: require jwks_uri when runtime verification depends on JWKS
-#'
-#' Used by [oauth_provider_oidc_discover()] when the resulting provider will
-#' verify ID tokens or signed UserInfo JWTs via the provider's JWKS.
-#'
-#' @param disc Discovery document.
-#' @param iss Issuer string.
-#' @param id_token_validation Whether ID token validation is enabled.
-#' @param use_nonce Whether nonce-based ID token validation is enabled.
-#' @param userinfo_signed_jwt_required Whether signed UserInfo JWT verification
-#'   is required.
-#' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
-#'   configuration error.
-#'
-#' @keywords internal
-#' @noRd
-.discover_require_jwks_uri <- function(
-  disc,
-  iss,
-  id_token_validation,
-  use_nonce,
-  userinfo_signed_jwt_required
-) {
-  needs_jwks <- isTRUE(id_token_validation) ||
-    isTRUE(use_nonce) ||
-    isTRUE(userinfo_signed_jwt_required)
-
-  if (!needs_jwks) {
-    return(invisible(TRUE))
-  }
-
-  jwks_uri <- disc[["jwks_uri"]] %||% ""
-  if (
-    is_valid_string(jwks_uri) &&
-      nzchar(trimws(jwks_uri))
-  ) {
-    return(invisible(TRUE))
-  }
-
-  err_config(
-    c(
-      "x" = "Discovery document missing jwks_uri",
-      "i" = paste0(
-        "Issuer: ",
-        iss
-      ),
-      "i" = paste0(
-        paste(
-          "jwks_uri is required when discovery enables id_token_validation,",
-          "use_nonce, or userinfo_signed_jwt_required because those modes",
-          "verify signatures against the provider's JWKS"
-        )
-      )
-    ),
-    context = list(
-      issuer = iss,
-      id_token_validation = id_token_validation,
-      use_nonce = use_nonce,
-      userinfo_signed_jwt_required = userinfo_signed_jwt_required
-    )
-  )
-}
 
 #' Internal: validate jwks_uri against the discovery URL policy
 #'
@@ -1414,11 +1439,7 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_negotiate_algs <- function(allowed_algs, disc, iss) {
-  disc_algs <- disc[["id_token_signing_alg_values_supported"]] %||% character(0)
-
-  if (length(disc_algs) == 0) {
-    return(allowed_algs)
-  }
+  disc_algs <- disc[["id_token_signing_alg_values_supported"]]
 
   aa <- toupper(as.character(allowed_algs %||% character(0)))
   da <- toupper(as.character(disc_algs))

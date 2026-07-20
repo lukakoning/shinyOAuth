@@ -12,7 +12,10 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "http://127.0.0.1/token",
-          jwks_uri = "https://127.0.0.1/jwks"
+          jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -38,7 +41,11 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
         list(
           issuer = issuer_url,
           authorization_endpoint = "token", # relative -> invalid
-          token_endpoint = "token"
+          token_endpoint = "token",
+          jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -60,7 +67,11 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
         list(
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
-          token_endpoint = "https://evil.example.com/token"
+          token_endpoint = "https://evil.example.com/token",
+          jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -86,7 +97,10 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
-          jwks_uri = "https://evil.example.com/jwks.json"
+          jwks_uri = "https://evil.example.com/jwks.json",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -114,7 +128,10 @@ testthat::test_that("discovery rejects JWKS issuer subdomains by default", {
         issuer = "https://issuer.example.com",
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
-        jwks_uri = "https://sub.issuer.example.com/jwks.json"
+        jwks_uri = "https://sub.issuer.example.com/jwks.json",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
       )
     },
     .package = "shinyOAuth"
@@ -139,7 +156,10 @@ testthat::test_that("discovery rejects non-compliant jwks_uri before JWKS fetch"
         issuer = "https://issuer.example.com",
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
-        jwks_uri = "http://issuer.example.com/jwks.json"
+        jwks_uri = "http://issuer.example.com/jwks.json",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
       )
     },
     .package = "shinyOAuth"
@@ -164,7 +184,10 @@ testthat::test_that("discovery honors jwks_host_allow_only during early JWKS che
         issuer = "https://issuer.example.com",
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
-        jwks_uri = "https://keys.example.com/jwks.json"
+        jwks_uri = "https://keys.example.com/jwks.json",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
       )
     },
     .package = "shinyOAuth"
@@ -180,7 +203,7 @@ testthat::test_that("discovery honors jwks_host_allow_only during early JWKS che
   testthat::expect_identical(prov@jwks_host_issuer_match, TRUE)
 })
 
-testthat::test_that("discovery requires jwks_uri when ID token validation is enabled", {
+testthat::test_that("discovery always requires jwks_uri", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
@@ -191,83 +214,35 @@ testthat::test_that("discovery requires jwks_uri when ID token validation is ena
         list(
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
-          token_endpoint = "https://127.0.0.1/token"
+          token_endpoint = "https://127.0.0.1/token",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
     )
   })
 
-  testthat::test_that("discovery requires jwks_uri when nonce or signed UserInfo JWT verification is enabled", {
-    testthat::skip_if_not_installed("webfakes")
-    testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
-    app <- webfakes::new_app()
-    app$get("/.well-known/openid-configuration", function(req, res) {
-      issuer_url <- paste0("http://", req$get_header("host"))
-      res$set_status(200)$set_type("application/json")$send(
-        jsonlite::toJSON(
-          list(
-            issuer = issuer_url,
-            authorization_endpoint = "https://127.0.0.1/auth",
-            token_endpoint = "https://127.0.0.1/token",
-            userinfo_endpoint = "https://127.0.0.1/userinfo"
-          ),
-          auto_unbox = TRUE
-        )
-      )
-    })
-    srv <- webfakes::local_app_process(app)
-    issuer <- srv$url()
-
-    testthat::expect_error(
-      oauth_provider_oidc_discover(
-        issuer = issuer,
-        id_token_validation = FALSE,
-        use_nonce = TRUE
-      ),
-      class = "shinyOAuth_config_error",
-      regexp = "jwks_uri"
-    )
-
-    testthat::expect_error(
-      oauth_provider_oidc_discover(
-        issuer = issuer,
-        id_token_validation = FALSE,
-        use_nonce = FALSE,
-        userinfo_signed_jwt_required = TRUE
-      ),
-      class = "shinyOAuth_config_error",
-      regexp = "jwks_uri"
-    )
-
-    prov <- NULL
-    testthat::expect_no_error({
-      prov <- oauth_provider_oidc_discover(
-        issuer = issuer,
-        id_token_validation = FALSE,
-        use_nonce = FALSE,
-        userinfo_signed_jwt_required = FALSE
-      )
-    })
-    testthat::expect_s3_class(prov, "S7_object")
-  })
   srv <- webfakes::local_app_process(app)
   issuer <- srv$url()
 
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer),
-    class = "shinyOAuth_config_error",
+    class = "shinyOAuth_parse_error",
     regexp = "jwks_uri"
   )
 
-  prov <- NULL
-  testthat::expect_no_error({
-    prov <- oauth_provider_oidc_discover(
+  testthat::expect_error(
+    oauth_provider_oidc_discover(
       issuer = issuer,
-      id_token_validation = FALSE
-    )
-  })
-  testthat::expect_s3_class(prov, "S7_object")
+      id_token_validation = FALSE,
+      use_nonce = FALSE,
+      userinfo_signed_jwt_required = FALSE
+    ),
+    class = "shinyOAuth_parse_error",
+    regexp = "jwks_uri"
+  )
 })
 
 testthat::test_that("allowed_hosts option allows cross-host endpoints", {
@@ -282,7 +257,10 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
           issuer = issuer_url,
           authorization_endpoint = "https://api.example.com/auth",
           token_endpoint = "https://api.example.com/token",
-          jwks_uri = "https://api.example.com/jwks"
+          jwks_uri = "https://api.example.com/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -310,6 +288,9 @@ testthat::test_that("discovery allows separate-host mTLS aliases by default", {
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
         jwks_uri = "https://issuer.example.com/jwks",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256"),
         token_endpoint_auth_methods_supported = list("tls_client_auth"),
         mtls_endpoint_aliases = list(
           token_endpoint = "https://mtls.example.com/token",
@@ -351,6 +332,9 @@ testthat::test_that("discovery allows separate-host mTLS aliases when allowed_ho
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
         jwks_uri = "https://issuer.example.com/jwks",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256"),
         token_endpoint_auth_methods_supported = list("tls_client_auth"),
         mtls_endpoint_aliases = list(
           token_endpoint = "https://mtls.example.com/token",
@@ -395,6 +379,9 @@ testthat::test_that("explicit allowed_hosts still constrains discovered mTLS ali
         authorization_endpoint = "https://issuer.example.com/auth",
         token_endpoint = "https://issuer.example.com/token",
         jwks_uri = "https://issuer.example.com/jwks",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256"),
         token_endpoint_auth_methods_supported = list("tls_client_auth"),
         mtls_endpoint_aliases = list(
           token_endpoint = "https://mtls.example.com/token"
@@ -498,6 +485,9 @@ testthat::test_that("discovery errors when S256 is not advertised and plain is n
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           code_challenge_methods_supported = list("plain")
         ),
         auto_unbox = TRUE
@@ -527,6 +517,9 @@ testthat::test_that("discovery rejects invalid explicit pkce_method values", {
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           code_challenge_methods_supported = list("S256", "plain")
         ),
         auto_unbox = TRUE
@@ -560,6 +553,9 @@ testthat::test_that("discovery allows explicit plain PKCE downgrade when adverti
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           code_challenge_methods_supported = list("plain")
         ),
         auto_unbox = TRUE
@@ -592,6 +588,9 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           userinfo_signing_alg_values_supported = list("RS256", "ES256")
         ),
         auto_unbox = TRUE
@@ -621,6 +620,9 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           userinfo_signing_alg_values_supported = list("none")
         ),
         auto_unbox = TRUE
@@ -647,7 +649,10 @@ testthat::test_that("discovery does NOT auto-enable when field absent", {
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
-          jwks_uri = "https://127.0.0.1/jwks"
+          jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -674,6 +679,9 @@ testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = 
           token_endpoint = "https://127.0.0.1/token",
           userinfo_endpoint = "https://127.0.0.1/userinfo",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           userinfo_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE

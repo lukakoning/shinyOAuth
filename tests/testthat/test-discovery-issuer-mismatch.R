@@ -150,7 +150,10 @@ test_that("oauth_provider_oidc_discover accepts a full discovery URL", {
             issuer = issuer_url,
             authorization_endpoint = paste0(issuer_url, "/auth"),
             token_endpoint = paste0(issuer_url, "/token"),
-            jwks_uri = paste0(issuer_url, "/jwks")
+            jwks_uri = paste0(issuer_url, "/jwks"),
+            response_types_supported = list("code"),
+            subject_types_supported = list("public"),
+            id_token_signing_alg_values_supported = list("RS256")
           ),
           auto_unbox = TRUE
         )

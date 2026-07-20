@@ -11,6 +11,9 @@ testthat::test_that("discovery selects conservative client auth methods (basic/p
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list(
             # Server advertises JWT and basic; we should prefer basic (header)
             "private_key_jwt",
@@ -42,6 +45,9 @@ testthat::test_that("discovery returns body when only client_secret_post is adve
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("client_secret_post")
         ),
         auto_unbox = TRUE
@@ -69,6 +75,9 @@ testthat::test_that("discovery with 'none' requires PKCE and uses public auth wh
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("none")
         ),
         auto_unbox = TRUE
@@ -112,6 +121,9 @@ testthat::test_that("public discovery auth does not read env client_secret", {
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("none")
         ),
         auto_unbox = TRUE
@@ -203,6 +215,9 @@ test_that("oidc discovery accepts advertised signing algorithm supersets", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_signing_alg_values_supported = list(
             "RS256",
             "ES256K"
@@ -243,6 +258,9 @@ test_that("oidc discovery preserves request-object encryption metadata", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           request_object_encryption_alg_values_supported = list(
             "RSA-OAEP",
             "ECDH-ES"
@@ -283,6 +301,9 @@ test_that("oidc discovery preserves RFC 9207 callback issuer metadata", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           authorization_response_iss_parameter_supported = TRUE
         ),
         auto_unbox = TRUE
@@ -311,6 +332,9 @@ test_that("oidc discovery preserves authorization request transport metadata", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           request_parameter_supported = FALSE,
           request_uri_parameter_supported = TRUE,
           require_request_uri_registration = TRUE
@@ -340,7 +364,10 @@ test_that("discovery applies default request transport metadata when omitted", {
           issuer = issuer_url,
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
-          jwks_uri = paste0(issuer_url, "/jwks")
+          jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
         ),
         auto_unbox = TRUE
       )
@@ -368,6 +395,9 @@ test_that("oidc discovery allows PAR when caller-managed request_uri is disabled
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           pushed_authorization_request_endpoint = paste0(issuer_url, "/par"),
           request_uri_parameter_supported = FALSE
         ),
@@ -433,6 +463,9 @@ test_that("discovery blocks request mode when request transport is unsupported a
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           request_parameter_supported = FALSE
         ),
         auto_unbox = TRUE
@@ -478,6 +511,9 @@ test_that("oidc discovery lets caller override request object signing algs", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           request_object_signing_alg_values_supported = list(
             "RS256",
             "HS256"
@@ -513,6 +549,9 @@ testthat::test_that("JWT-only advertisement requires explicit token_auth_style",
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("private_key_jwt")
         ),
         auto_unbox = TRUE
@@ -550,6 +589,9 @@ testthat::test_that("mTLS-only advertisement requires explicit token_auth_style"
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("tls_client_auth")
         ),
         auto_unbox = TRUE
@@ -585,6 +627,9 @@ testthat::test_that("mixed none + client_secret_basic prefers confidential auth"
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list(
             "none",
             "client_secret_basic"
@@ -621,6 +666,9 @@ testthat::test_that("mixed none + client_secret_post prefers confidential auth",
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
           jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list(
             "none",
             "client_secret_post"
@@ -651,7 +699,10 @@ testthat::test_that("when methods are not advertised, fall back to header (histo
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
           token_endpoint = "https://127.0.0.1/token",
-          jwks_uri = "https://127.0.0.1/jwks"
+          jwks_uri = "https://127.0.0.1/jwks",
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256")
           # no token_endpoint_auth_methods_supported field
         ),
         auto_unbox = TRUE
@@ -679,6 +730,9 @@ testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
           token_endpoint = paste0(issuer_url, "/token"),
           pushed_authorization_request_endpoint = paste0(issuer_url, "/par"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           require_pushed_authorization_requests = TRUE,
           token_endpoint_auth_signing_alg_values_supported = list(
             "PS256",
@@ -726,6 +780,9 @@ testthat::test_that("discovery stores RFC 9449 DPoP metadata", {
           authorization_endpoint = paste0(issuer_url, "/auth"),
           token_endpoint = paste0(issuer_url, "/token"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           dpop_signing_alg_values_supported = list("ES256", "RS256")
         ),
         auto_unbox = TRUE
@@ -756,6 +813,9 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
           token_endpoint = paste0(issuer_url, "/token"),
           userinfo_endpoint = paste0(issuer_url, "/userinfo"),
           jwks_uri = paste0(issuer_url, "/jwks"),
+          response_types_supported = list("code"),
+          subject_types_supported = list("public"),
+          id_token_signing_alg_values_supported = list("RS256"),
           token_endpoint_auth_methods_supported = list("tls_client_auth"),
           tls_client_certificate_bound_access_tokens = TRUE,
           mtls_endpoint_aliases = list(
@@ -808,6 +868,9 @@ testthat::test_that("discovery rejects malformed tls_client_certificate_bound_ac
             authorization_endpoint = paste0(issuer_url, "/auth"),
             token_endpoint = paste0(issuer_url, "/token"),
             jwks_uri = paste0(issuer_url, "/jwks"),
+            response_types_supported = list("code"),
+            subject_types_supported = list("public"),
+            id_token_signing_alg_values_supported = list("RS256"),
             token_endpoint_auth_methods_supported = list("tls_client_auth"),
             tls_client_certificate_bound_access_tokens = bad_value
           ),

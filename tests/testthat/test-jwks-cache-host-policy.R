@@ -353,7 +353,10 @@ test_that("oidc discovery preserves jwks_uri for runtime verification", {
         issuer = issuer,
         authorization_endpoint = paste0(issuer, "/auth"),
         token_endpoint = paste0(issuer, "/token"),
-        jwks_uri = paste0(issuer, "/oidc-jwks")
+        jwks_uri = paste0(issuer, "/oidc-jwks"),
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
       ),
       auto_unbox = TRUE
     )
