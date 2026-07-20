@@ -39,6 +39,18 @@ keycloak_nonempty_string <- function(x) {
     nzchar(x)
 }
 
+keycloak_strict_integration <- function() {
+  identical(Sys.getenv("SHINYOAUTH_INT_STRICT", unset = ""), "1")
+}
+
+keycloak_skip_or_fail <- function(message) {
+  if (keycloak_strict_integration()) {
+    return(testthat::fail(message))
+  }
+
+  testthat::skip(message)
+}
+
 keycloak_admin_token <- function() {
   resp <- httr2::request(
     paste0(keycloak_base_url(), "/realms/master/protocol/openid-connect/token")
@@ -53,13 +65,15 @@ keycloak_admin_token <- function() {
     httr2::req_perform()
 
   if (httr2::resp_is_error(resp)) {
-    testthat::skip("Keycloak admin token request failed")
+    keycloak_skip_or_fail("Keycloak admin token request failed")
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
   token <- body[["access_token"]] %||% NA_character_
   if (!keycloak_nonempty_string(token)) {
-    testthat::skip("Keycloak admin token response did not include access_token")
+    keycloak_skip_or_fail(
+      "Keycloak admin token response did not include access_token"
+    )
   }
 
   token
@@ -91,7 +105,7 @@ keycloak_find_client <- function(token, client_id) {
   )
 
   if (httr2::resp_is_error(resp)) {
-    testthat::skip("Keycloak admin clients endpoint failed")
+    keycloak_skip_or_fail("Keycloak admin clients endpoint failed")
   }
 
   body <- httr2::resp_body_json(resp, simplifyVector = FALSE)
@@ -160,7 +174,7 @@ keycloak_create_client <- function(token, body, delete_existing = TRUE) {
   )
 
   if (httr2::resp_status(resp) >= 400L) {
-    testthat::skip(
+    keycloak_skip_or_fail(
       paste(
         "Keycloak did not accept the client fixture:",
         httr2::resp_body_string(resp)
@@ -233,7 +247,7 @@ keycloak_create_realm <- function(token, body, delete_existing = TRUE) {
   )
 
   if (httr2::resp_status(resp) >= 400L) {
-    testthat::skip(
+    keycloak_skip_or_fail(
       paste(
         "Keycloak did not accept the realm fixture:",
         httr2::resp_body_string(resp)
@@ -582,17 +596,15 @@ keycloak_https_reachable <- function() {
 }
 
 maybe_skip_keycloak <- function() {
-  testthat::skip_if_not(
-    keycloak_reachable(),
-    "Keycloak not reachable at localhost:8080"
-  )
+  if (!keycloak_reachable()) {
+    keycloak_skip_or_fail("Keycloak not reachable at localhost:8080")
+  }
 }
 
 maybe_skip_keycloak_https <- function() {
-  testthat::skip_if_not(
-    keycloak_https_reachable(),
-    "Keycloak HTTPS not reachable at localhost:8443"
-  )
+  if (!keycloak_https_reachable()) {
+    keycloak_skip_or_fail("Keycloak HTTPS not reachable at localhost:8443")
+  }
 }
 
 ## Standard local_options for headless protocol testServer tests

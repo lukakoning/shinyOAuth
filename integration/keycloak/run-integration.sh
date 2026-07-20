@@ -21,7 +21,9 @@ to_host_path() {
 
 # Config
 ISSUER_URL="https://localhost:8443/realms/shinyoauth"
-DISCOVERY_URL="${ISSUER_URL}/.well-known/openid-configuration"
+HTTP_ISSUER_URL="http://localhost:8080/realms/shinyoauth"
+HTTPS_DISCOVERY_URL="${ISSUER_URL}/.well-known/openid-configuration"
+HTTP_DISCOVERY_URL="${HTTP_ISSUER_URL}/.well-known/openid-configuration"
 WAIT_TIMEOUT_SEC="120"   # total wait time
 WAIT_INTERVAL_SEC="2"    # poll interval
 
@@ -70,36 +72,47 @@ echo "[run-integration] Preparing TLS materials..." >&2
 echo "[run-integration] Starting Keycloak via docker compose..." >&2
 (cd "$COMPOSE_DIR" && docker compose up -d)
 
-# Wait for readiness by polling discovery
-echo "[run-integration] Waiting for discovery at ${DISCOVERY_URL} ..." >&2
-start_ts=$(date +%s)
-while true; do
-  # The outer polling loop already retries discovery until readiness, so keep
-  # the inner curl invocation portable across older builds by avoiding
-  # --retry-all-errors (which is unavailable on some versions and does nothing
-  # here unless paired with --retry).
-  if curl \
-    "${CURL_TLS_FLAGS[@]}" \
-    -fsS "$DISCOVERY_URL" >/dev/null 2>&1; then
-    echo "[run-integration] Discovery is reachable." >&2
-    break
-  fi
-  now=$(date +%s)
-  elapsed=$(( now - start_ts ))
-  if [ "$elapsed" -ge "$WAIT_TIMEOUT_SEC" ]; then
-    echo "[run-integration] Timeout waiting for Keycloak readiness after ${WAIT_TIMEOUT_SEC}s" >&2
-    echo "[run-integration] Recent logs:" >&2
-    (cd "$COMPOSE_DIR" && docker compose logs --no-color --tail=200 keycloak || true) >&2
-    exit 1
-  fi
-  sleep "$WAIT_INTERVAL_SEC"
-done
+wait_for_discovery() {
+  local discovery_url="$1"
+  shift
+  local start_ts
+  local now
+  local elapsed
+
+  echo "[run-integration] Waiting for discovery at ${discovery_url} ..." >&2
+  start_ts=$(date +%s)
+  while true; do
+    # The outer polling loop already retries discovery until readiness, so keep
+    # the inner curl invocation portable across older builds by avoiding
+    # --retry-all-errors (which is unavailable on some versions and does nothing
+    # here unless paired with --retry).
+    if curl "$@" -fsS "$discovery_url" >/dev/null 2>&1; then
+      echo "[run-integration] Discovery is reachable at ${discovery_url}." >&2
+      return 0
+    fi
+    now=$(date +%s)
+    elapsed=$(( now - start_ts ))
+    if [ "$elapsed" -ge "$WAIT_TIMEOUT_SEC" ]; then
+      echo "[run-integration] Timeout waiting for ${discovery_url} after ${WAIT_TIMEOUT_SEC}s" >&2
+      echo "[run-integration] Recent logs:" >&2
+      (cd "$COMPOSE_DIR" && docker compose logs --no-color --tail=200 keycloak || true) >&2
+      return 1
+    fi
+    sleep "$WAIT_INTERVAL_SEC"
+  done
+}
+
+# The suite uses both issuers, so both must be ready before tests start.
+wait_for_discovery "$HTTP_DISCOVERY_URL"
+wait_for_discovery "$HTTPS_DISCOVERY_URL" "${CURL_TLS_FLAGS[@]}"
 
 # Run all integration tests from this folder using testthat::test_dir
 echo "[run-integration] Running integration tests (SHINYOAUTH_INT=1) ..." >&2
 (
   cd "$REPO_DIR"
   export SHINYOAUTH_INT=1
+  export SHINYOAUTH_INT_STRICT=1
+  export SHINYOAUTH_INT_MAX_SKIPS="${SHINYOAUTH_INT_MAX_SKIPS:-0}"
   # Ensure tests don't behave as if running on CRAN; needed for {shinytest2} which skips on CRAN
   export NOT_CRAN=true
   export SHINYOAUTH_KEYCLOAK_CA_FILE="$(to_host_path "$CA_CERT")"
@@ -111,7 +124,7 @@ echo "[run-integration] Running integration tests (SHINYOAUTH_INT=1) ..." >&2
   export SHINYOAUTH_KEYCLOAK_ROGUE_CLIENT_KEY_FILE="$(to_host_path "$ROGUE_CLIENT_KEY")"
   export CURL_CA_BUNDLE="$SHINYOAUTH_KEYCLOAK_CA_FILE"
   export CURL_SSL_BACKEND="${CURL_SSL_BACKEND:-openssl}"
-  Rscript -e "pkgload::load_all('.') ; testthat::test_dir('integration/keycloak')"
+  Rscript integration/keycloak/run-tests.R
 )
 TEST_RC=$?
 

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The dedicated Keycloak integration runner now requires both HTTP and HTTPS
+discovery endpoints, treats infrastructure and fixture setup problems as test
+failures, and enforces a zero-skip budget.
+
 * JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular,
 an `aud` array containing non-string elements is now rejected instead of being
 coerced to strings during parsing.
