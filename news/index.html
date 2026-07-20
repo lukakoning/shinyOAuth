@@ -43,7 +43,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular, an <code>aud</code> array containing non-string elements is now rejected instead of being coerced to strings during parsing.</p></li>
+<ul><li><p>The dedicated Keycloak integration runner now requires both HTTP and HTTPS discovery endpoints, treats infrastructure and fixture setup problems as test failures, and enforces a zero-skip budget.</p></li>
+<li><p>Async integration coverage now requires mirai audit work to run in a distinct worker process and exercises successful and failed OAuth callbacks through a real <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> worker.</p></li>
+<li><p>JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular, an <code>aud</code> array containing non-string elements is now rejected instead of being coerced to strings during parsing.</p></li>
 <li><p>ID tokens and signed UserInfo JWTs are now considered expired at the exact <code>exp</code> second, as required by RFC 7519.</p></li>
 <li><p>DPoP proof <code>iat</code> claims no longer overflow after the 32-bit Unix-time limit in January 2038.</p></li>
 <li><p>ID token and signed UserInfo validation now accept <code>application/jwt</code> as an equivalent, case-insensitive form of the <code>JWT</code> JOSE <code>typ</code> value.</p></li>
