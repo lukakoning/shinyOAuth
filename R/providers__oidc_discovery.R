@@ -117,18 +117,15 @@
 #'   [OAuthClient] (a private key for `private_key_jwt`, or a sufficiently
 #'   strong `client_secret` for `client_secret_jwt`).
 #'
-#' - Host policy: by default, discovered standard endpoints must be absolute
-#'   URLs whose host matches the issuer host exactly. Subdomains are NOT
-#'   implicitly allowed. If you want to allow subdomains, add a leading-dot or
-#'   glob in `options(shinyOAuth.allowed_hosts)`, e.g., `.example.com` or
-#'   `*.example.com`. If a global whitelist is supplied via
-#'   `options(shinyOAuth.allowed_hosts)`, discovery will restrict endpoints to
-#'   that whitelist. RFC 8705 `mtls_endpoint_aliases` are validated separately:
-#'   they may use a different host or port by default, but an explicit
-#'   `shinyOAuth.allowed_hosts` whitelist still constrains them. Scheme policy
-#'   (https/http for loopback) is delegated to `is_ok_host()`, so you may allow
-#'   non-HTTPS hosts with `options(shinyOAuth.allowed_non_https_hosts)` (see
-#'   `?is_ok_host`).
+#' - Host policy: discovered standard endpoints must be absolute secure URLs,
+#'   but may use hosts other than the issuer host as permitted by OIDC Discovery
+#'   and RFC 8414. If a global whitelist is supplied via
+#'   `options(shinyOAuth.allowed_hosts)`, discovery restricts endpoints to that
+#'   whitelist. RFC 8705 `mtls_endpoint_aliases` follow the same default and
+#'   explicit-allowlist policy. Scheme policy (HTTPS, with HTTP only for
+#'   explicitly allowed hosts such as loopback development servers) is
+#'   delegated to `is_ok_host()`; see `?is_ok_host`. JWKS host pinning remains a
+#'   separate policy and defaults to requiring the issuer host exactly.
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
 #'   "https://login.example.com". The standard discovery-document URL ending
@@ -250,7 +247,7 @@ oauth_provider_oidc_discover <- function(
   )
 
   # 6) Determine allowed hosts and validate endpoints
-  allowed_hosts_vec <- .discover_allowed_hosts(iss_host)
+  allowed_hosts_vec <- .discover_allowed_hosts()
   .discover_validate_endpoints(endpoints, allowed_hosts_vec)
 
   # 6a) Read caller overrides before JWKS host-policy checks.
@@ -819,23 +816,21 @@ oauth_provider_oidc_discover <- function(
 #'
 #' Used by [oauth_provider_oidc_discover()] before validating discovered endpoints.
 #'
-#' Takes the normalized issuer host and returns the host vector that discovery
-#' should trust for both normal endpoints and RFC 8705 mTLS endpoint aliases.
-#' If the package-level `shinyOAuth.allowed_hosts` option is set, that wins;
-#' otherwise discovery falls back to trusting the issuer host only.
+#' Returns the package-level `shinyOAuth.allowed_hosts` restriction when it is
+#' configured. Otherwise returns `NULL`, leaving endpoints subject to the
+#' general secure-host policy without imposing a same-host restriction.
 #'
-#' @param iss_host Normalized issuer host.
 #' @return Host vector that discovery is allowed to trust.
 #' @keywords internal
 #' @noRd
-.discover_allowed_hosts <- function(iss_host) {
+.discover_allowed_hosts <- function() {
   opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
 
   if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
     return(opt_allowed)
   }
 
-  c(iss_host)
+  NULL
 }
 
 #' Internal: compute the host allowlist used for discovered mTLS aliases

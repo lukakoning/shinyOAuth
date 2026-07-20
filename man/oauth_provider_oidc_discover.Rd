@@ -179,18 +179,15 @@ If a provider advertises only JWT methods, you must explicitly set
 \code{token_auth_style} and configure the corresponding credentials on your
 \link{OAuthClient} (a private key for \code{private_key_jwt}, or a sufficiently
 strong \code{client_secret} for \code{client_secret_jwt}).
-\item Host policy: by default, discovered standard endpoints must be absolute
-URLs whose host matches the issuer host exactly. Subdomains are NOT
-implicitly allowed. If you want to allow subdomains, add a leading-dot or
-glob in \code{options(shinyOAuth.allowed_hosts)}, e.g., \code{.example.com} or
-\verb{*.example.com}. If a global whitelist is supplied via
-\code{options(shinyOAuth.allowed_hosts)}, discovery will restrict endpoints to
-that whitelist. RFC 8705 \code{mtls_endpoint_aliases} are validated separately:
-they may use a different host or port by default, but an explicit
-\code{shinyOAuth.allowed_hosts} whitelist still constrains them. Scheme policy
-(https/http for loopback) is delegated to \code{is_ok_host()}, so you may allow
-non-HTTPS hosts with \code{options(shinyOAuth.allowed_non_https_hosts)} (see
-\code{?is_ok_host}).
+\item Host policy: discovered standard endpoints must be absolute secure URLs,
+but may use hosts other than the issuer host as permitted by OIDC Discovery
+and RFC 8414. If a global whitelist is supplied via
+\code{options(shinyOAuth.allowed_hosts)}, discovery restricts endpoints to that
+whitelist. RFC 8705 \code{mtls_endpoint_aliases} follow the same default and
+explicit-allowlist policy. Scheme policy (HTTPS, with HTTP only for
+explicitly allowed hosts such as loopback development servers) is
+delegated to \code{is_ok_host()}; see \code{?is_ok_host}. JWKS host pinning remains a
+separate policy and defaults to requiring the issuer host exactly.
 }
 }
 \examples{

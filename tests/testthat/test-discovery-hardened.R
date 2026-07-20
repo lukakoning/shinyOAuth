@@ -1,4 +1,4 @@
-testthat::test_that("discovery enforces absolute endpoints and host pinning; allows loopback HTTP via is_ok_host", {
+testthat::test_that("discovery enforces absolute endpoints and allows loopback HTTP via is_ok_host", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
@@ -58,7 +58,7 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
     class = "shinyOAuth_config_error"
   )
 
-  # Host mismatch should be rejected
+  # Secure endpoints on another host are valid distributed-provider metadata.
   app3 <- webfakes::new_app()
   app3$get("/.well-known/openid-configuration", function(req, res) {
     issuer_url <- paste0("http://", req$get_header("host"))
@@ -67,7 +67,7 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
         list(
           issuer = issuer_url,
           authorization_endpoint = "https://127.0.0.1/auth",
-          token_endpoint = "https://evil.example.com/token",
+          token_endpoint = "https://tokens.example.com/token",
           jwks_uri = "https://127.0.0.1/jwks",
           response_types_supported = list("code"),
           subject_types_supported = list("public"),
@@ -79,9 +79,89 @@ testthat::test_that("discovery enforces absolute endpoints and host pinning; all
   })
   srv3 <- webfakes::local_app_process(app3)
   issuer3 <- srv3$url()
+  distributed_provider <- oauth_provider_oidc_discover(issuer = issuer3)
+  testthat::expect_identical(
+    distributed_provider@token_url,
+    "https://tokens.example.com/token"
+  )
+})
+
+testthat::test_that("discovery accepts standard endpoints on distinct secure hosts", {
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://login.example.net/authorize",
+        token_endpoint = "https://tokens.example.org/token",
+        userinfo_endpoint = "https://profile.example.net/userinfo",
+        introspection_endpoint = "https://tokens.example.org/introspect",
+        revocation_endpoint = "https://tokens.example.org/revoke",
+        pushed_authorization_request_endpoint = "https://par.example.net/par",
+        jwks_uri = "https://issuer.example.com/jwks",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  provider <- oauth_provider_oidc_discover(
+    issuer = "https://issuer.example.com"
+  )
+
+  testthat::expect_identical(
+    unname(c(
+      provider@auth_url,
+      provider@token_url,
+      provider@userinfo_url,
+      provider@introspection_url,
+      provider@revocation_url,
+      provider@par_url
+    )),
+    c(
+      "https://login.example.net/authorize",
+      "https://tokens.example.org/token",
+      "https://profile.example.net/userinfo",
+      "https://tokens.example.org/introspect",
+      "https://tokens.example.org/revoke",
+      "https://par.example.net/par"
+    )
+  )
+})
+
+testthat::test_that("explicit allowed_hosts still restricts discovered endpoints", {
+  testthat::local_mocked_bindings(
+    .discover_fetch_response = function(req, issuer) {
+      structure(list(), class = "mock_discovery_response")
+    },
+    .discover_parse_json = function(resp) {
+      list(
+        issuer = "https://issuer.example.com",
+        authorization_endpoint = "https://login.example.net/authorize",
+        token_endpoint = "https://tokens.example.org/token",
+        jwks_uri = "https://issuer.example.com/jwks",
+        response_types_supported = list("code"),
+        subject_types_supported = list("public"),
+        id_token_signing_alg_values_supported = list("RS256")
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  withr::local_options(list(
+    shinyOAuth.allowed_hosts = c(
+      "issuer.example.com",
+      "login.example.net"
+    )
+  ))
+
   testthat::expect_error(
-    oauth_provider_oidc_discover(issuer = issuer3),
-    class = "shinyOAuth_config_error"
+    oauth_provider_oidc_discover(issuer = "https://issuer.example.com"),
+    class = "shinyOAuth_config_error",
+    regexp = "Endpoint host or scheme not allowed"
   )
 })
 
