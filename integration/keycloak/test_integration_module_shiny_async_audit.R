@@ -1,6 +1,6 @@
 # Integration test: async module with file-based audit logging
 # This test verifies that audit events are correctly emitted from both
-# the main R process and async workers when using future::multisession
+# the main R process and a real mirai worker process.
 
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
@@ -222,58 +222,44 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     )
   }
 
-  # Token exchange should be from async worker when using async=TRUE
-  # (may fall back to sync if multisession not available)
+  # Token exchange should be from an async worker when using async=TRUE.
   token_exchange_events <- Filter(
     function(e) identical(e$type, "audit_token_exchange"),
     events
   )
   testthat::expect_true(length(token_exchange_events) > 0)
 
-  # Check if at least one async event exists (indicates worker was used)
-  # Note: On systems where multisession isn't fully supported, this may be 0
-  if (length(async_events) > 0) {
-    cat("\n=== Async worker verification ===\n")
+  testthat::expect_gt(
+    length(async_events),
+    0L,
+    info = "Expected an audit event from a real mirai worker"
+  )
 
-    # Verify async events include process tracking info
-    for (evt in async_events) {
-      sess <- evt$shiny_session
-      testthat::expect_true(
-        !is.null(sess$main_process_id),
-        info = paste0(
-          "Async event should include main_process_id. Type: ",
-          evt$type
-        )
-      )
-      testthat::expect_true(
-        !is.null(sess$process_id),
-        info = paste0(
-          "Async event should include process_id. Type: ",
-          evt$type
-        )
-      )
-      # Print process info when available
-      if (!is.null(sess$main_process_id)) {
-        cat(
-          "Event:",
-          evt$type,
-          "| main_pid:",
-          sess$main_process_id,
-          "| worker_pid:",
-          sess$process_id,
-          "\n"
-        )
-      }
-    }
-
-    testthat::expect_true(
-      length(async_events) > 0,
-      info = "Expected at least one audit event with is_async=TRUE from async worker"
+  cat("\n=== Async worker verification ===\n")
+  for (evt in async_events) {
+    sess <- evt$shiny_session
+    testthat::expect_identical(
+      as.integer(sess$main_process_id),
+      as.integer(main_pid),
+      info = paste0("Incorrect main process ID. Type: ", evt$type)
     )
-  } else {
-    # Multisession may not be available; warn but don't fail
+    testthat::expect_false(
+      identical(as.integer(sess$process_id), as.integer(main_pid)),
+      info = paste0("Async event ran in the main process. Type: ", evt$type)
+    )
+    testthat::expect_identical(
+      as.integer(evt$.hook_pid),
+      as.integer(sess$process_id),
+      info = paste0("Audit hook and worker process IDs differ. Type: ", evt$type)
+    )
     cat(
-      "\n[NOTE] No async events detected - multisession may have fallen back to sequential\n"
+      "Event:",
+      evt$type,
+      "| main_pid:",
+      sess$main_process_id,
+      "| worker_pid:",
+      sess$process_id,
+      "\n"
     )
   }
 

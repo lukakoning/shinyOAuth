@@ -4,6 +4,10 @@
 discovery endpoints, treats infrastructure and fixture setup problems as test
 failures, and enforces a zero-skip budget.
 
+* Async integration coverage now requires mirai audit work to run in a distinct
+worker process and exercises successful and failed OAuth callbacks through a
+real `future::multisession` worker.
+
 * JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular,
 an `aud` array containing non-string elements is now rejected instead of being
 coerced to strings during parsing.
