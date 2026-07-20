@@ -2,6 +2,22 @@
 
 ## shinyOAuth (development version)
 
+- JWT claim parsing no longer coerces heterogeneous JSON arrays. In
+  particular, an `aud` array containing non-string elements is now
+  rejected instead of being coerced to strings during parsing.
+
+- ID tokens and signed UserInfo JWTs are now considered expired at the
+  exact `exp` second, as required by RFC 7519.
+
+- DPoP proof `iat` claims no longer overflow after the 32-bit Unix-time
+  limit in January 2038.
+
+- ID token and signed UserInfo validation now accept `application/jwt`
+  as an equivalent, case-insensitive form of the `JWT` JOSE `typ` value.
+
+- Form-encoded token responses now decode `+` as a space while
+  preserving percent-encoded literal plus signs.
+
 - Generic HTTP retries now honor the full server-provided `Retry-After`
   delay instead of silently capping it at ten seconds.
 
