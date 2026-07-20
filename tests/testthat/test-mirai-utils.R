@@ -287,8 +287,9 @@ testthat::test_that("async_backend_available falls back to 'future' when mirai n
     tryCatch(mirai::daemons(0), error = function(...) NULL)
   }
 
+  old_plan <- future::plan()
   future::plan(future::multisession, workers = 1)
-  withr::defer(future::plan(future::sequential))
+  withr::defer(future::plan(old_plan))
 
   testthat::expect_equal(shinyOAuth:::async_backend_available(), "future")
 })

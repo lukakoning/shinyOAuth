@@ -329,8 +329,9 @@ testthat::test_that("async_dispatch returns promise when future is fallback", {
   }
 
   # Use future sequential plan
+  old_plan <- future::plan()
   future::plan(future::sequential)
-  withr::defer(future::plan(future::sequential))
+  withr::defer(future::plan(old_plan))
 
   # Test that async_dispatch returns a promise when falling back to future
   p <- shinyOAuth:::async_dispatch(
