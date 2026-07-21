@@ -255,6 +255,61 @@ test_that("resource_req infers DPoP from explicit OAuthToken cnf.jkt", {
   expect_true(nzchar(dry[["headers"]][["dpop"]]))
 })
 
+test_that("resource_req rejects Bearer overrides for DPoP OAuthTokens", {
+  dpop_token <- OAuthToken(
+    access_token = "access-token",
+    token_type = "DPoP",
+    userinfo = list()
+  )
+  bound_token <- OAuthToken(
+    access_token = "access-token",
+    token_type = NA_character_,
+    userinfo = list(),
+    cnf = list(jkt = "bound-thumbprint")
+  )
+
+  for (token in list(dpop_token, bound_token)) {
+    expect_error(
+      resource_req(
+        token = token,
+        url = "https://resource.example.com/api",
+        token_type = "Bearer"
+      ),
+      class = "shinyOAuth_input_error",
+      regexp = "cannot downgrade a DPoP-bound OAuthToken"
+    )
+  }
+})
+
+test_that("OAuthToken overrides only repair a missing unbound token type", {
+  missing_type <- OAuthToken(
+    access_token = "access-token",
+    token_type = NA_character_,
+    userinfo = list()
+  )
+  bearer_token <- OAuthToken(
+    access_token = "access-token",
+    token_type = "Bearer",
+    userinfo = list()
+  )
+
+  expect_identical(
+    shinyOAuth:::resolve_client_bearer_token(
+      missing_type,
+      token_type = "DPoP"
+    )[["token_type"]],
+    "DPoP"
+  )
+  expect_error(
+    shinyOAuth:::resolve_client_bearer_token(
+      bearer_token,
+      token_type = "DPoP"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "cannot override OAuthToken@token_type"
+  )
+})
+
 test_that("resource_req requires a DPoP-capable client for DPoP tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   tok <- OAuthToken(

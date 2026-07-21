@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Resource and UserInfo helpers no longer allow `token_type` overrides to
+downgrade a DPoP `OAuthToken` or one carrying a `cnf.jkt` binding to Bearer.
+For `OAuthToken` objects, overrides may only fill a genuinely missing,
+unbound token type.
+
 * OIDC authorization transactions now seal the normalized, transmitted
 `max_age` value into encrypted state, include it in provider and callback-policy
 fingerprints, and use that exact value for callback `auth_time` validation.

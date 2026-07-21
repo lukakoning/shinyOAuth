@@ -47,9 +47,6 @@ get_userinfo <- function(
   if (S7::S7_inherits(token, class = OAuthToken)) {
     baseline_token <- token
     access_token <- token@access_token
-    if (is_valid_string(token@token_type)) {
-      token_type <- token@token_type
-    }
   } else {
     access_token <- token
   }

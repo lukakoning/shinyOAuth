@@ -445,35 +445,61 @@ resolve_client_bearer_token <- function(
   token_type = NULL
 ) {
   access_token <- token
-  effective_token_type <- NULL
+  stored_token_type <- NULL
   explicit_cnf_jkt <- NA_character_
+  oauth_token_input <- S7::S7_inherits(token, class = OAuthToken)
   explicit_token_type <- !(is.null(token_type) ||
     (is.character(token_type) && length(token_type) == 1L && is.na(token_type)))
 
-  if (S7::S7_inherits(token, class = OAuthToken)) {
+  if (isTRUE(oauth_token_input)) {
     access_token <- token@access_token
-    effective_token_type <- token@token_type
+    stored_token_type <- token@token_type
     explicit_cnf_jkt <- normalize_token_cnf(token@cnf %||% NULL)[["jkt"]] %||%
       NA_character_
-  }
-
-  if (isTRUE(explicit_token_type)) {
-    effective_token_type <- token_type
   }
 
   if (!is_valid_string(access_token)) {
     err_input("access_token must be a non-empty string")
   }
 
-  effective_token_type <- if (isTRUE(explicit_token_type)) {
-    if (!is_valid_string(effective_token_type)) {
+  if (isTRUE(explicit_token_type)) {
+    if (!is_valid_string(token_type)) {
       err_input("token_type must be a single non-empty string")
     }
-    as.character(effective_token_type)
-  } else if (is_valid_string(effective_token_type)) {
-    as.character(effective_token_type)
-  } else if (is_valid_string(explicit_cnf_jkt)) {
+    token_type <- as.character(token_type)
+  }
+
+  dpop_bound_token <- is_dpop_token_type(
+    stored_token_type %||% NA_character_
+  ) ||
+    is_valid_string(explicit_cnf_jkt)
+
+  if (
+    isTRUE(oauth_token_input) &&
+      isTRUE(explicit_token_type) &&
+      isTRUE(dpop_bound_token) &&
+      !is_dpop_token_type(token_type)
+  ) {
+    err_input(
+      "token_type cannot downgrade a DPoP-bound OAuthToken to Bearer"
+    )
+  }
+
+  if (
+    isTRUE(oauth_token_input) &&
+      isTRUE(explicit_token_type) &&
+      is_valid_string(stored_token_type) &&
+      !identical(tolower(stored_token_type), tolower(token_type))
+  ) {
+    err_input("token_type cannot override OAuthToken@token_type")
+  }
+
+  effective_token_type <- if (isTRUE(dpop_bound_token)) {
     "DPoP"
+  } else if (is_valid_string(stored_token_type)) {
+    as.character(stored_token_type)
+  } else if (isTRUE(explicit_token_type)) {
+    token_type
   } else {
     "Bearer"
   }
