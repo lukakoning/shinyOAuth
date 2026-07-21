@@ -326,10 +326,10 @@ testthat::test_that("browser callback app sets the default HTTP cookie metadata"
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_ERR_COOKIE", "8100"))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser cookie metadata E2E"
+      " is already in use; cannot run browser cookie metadata E2E"
     ))
   }
 
@@ -357,7 +357,7 @@ testthat::test_that("browser callback app sets the default HTTP cookie metadata"
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -389,10 +389,10 @@ testthat::test_that("browser callback app honors configured SameSite and path me
     "3000"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser cookie metadata E2E"
+      " is already in use; cannot run browser cookie metadata E2E"
     ))
   }
 
@@ -422,7 +422,7 @@ testthat::test_that("browser callback app honors configured SameSite and path me
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -450,10 +450,10 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_ERR_FLOW", "8100"))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser error-callback E2E"
+      " is already in use; cannot run browser error-callback E2E"
     ))
   }
 
@@ -481,7 +481,7 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -594,10 +594,10 @@ testthat::test_that("browser authorization error callback rejects unbound state"
     "3000"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser error-callback E2E"
+      " is already in use; cannot run browser error-callback E2E"
     ))
   }
 
@@ -625,7 +625,7 @@ testthat::test_that("browser authorization error callback rejects unbound state"
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -673,10 +673,10 @@ testthat::test_that("browser authorization error callback fails closed when the 
     "8100"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser error-callback E2E"
+      " is already in use; cannot run browser error-callback E2E"
     ))
   }
 
@@ -704,7 +704,7 @@ testthat::test_that("browser authorization error callback fails closed when the 
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "

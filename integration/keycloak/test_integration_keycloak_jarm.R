@@ -466,10 +466,10 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
 
   jwks_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_JARM_JWKS_PORT", "8121"))
   if (keycloak_browser_port_in_use(jwks_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       jwks_port,
-      " is already in use; skipping encrypted JARM JWKS server"
+      " is already in use; cannot run encrypted JARM JWKS server"
     ))
   }
   public_base_url <- .jarm_jwks_public_base_url(jwks_port)

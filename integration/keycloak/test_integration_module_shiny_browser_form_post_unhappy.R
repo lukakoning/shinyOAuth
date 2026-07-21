@@ -650,10 +650,10 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     "8118"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post HTTP envelope E2E"
+      " is already in use; cannot run form_post HTTP envelope E2E"
     ))
   }
 
@@ -669,7 +669,7 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$run_js("document.querySelector('#prepare_login_btn').click();")
@@ -762,10 +762,10 @@ testthat::test_that("browser form_post provider error callbacks are surfaced and
     "8110"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post error callback E2E"
+      " is already in use; cannot run form_post error callback E2E"
     ))
   }
 
@@ -781,7 +781,7 @@ testthat::test_that("browser form_post provider error callbacks are surfaced and
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$run_js("document.querySelector('#prepare_login_btn').click();")
@@ -836,10 +836,10 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
     "8111"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post issuer mismatch E2E"
+      " is already in use; cannot run form_post issuer mismatch E2E"
     ))
   }
 
@@ -855,7 +855,7 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$click("prepare_login_btn")
@@ -930,10 +930,10 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
     "8112"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post cookie tamper E2E"
+      " is already in use; cannot run form_post cookie tamper E2E"
     ))
   }
 
@@ -949,7 +949,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$click("prepare_login_btn")
@@ -1016,10 +1016,10 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
     "8100"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post code cookie tamper E2E"
+      " is already in use; cannot run form_post code cookie tamper E2E"
     ))
   }
 
@@ -1035,7 +1035,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$click("prepare_login_btn")
@@ -1104,10 +1104,9 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
     "3000"
   ))
 
-  testthat::skip_if(
-    identical(port_a, port_b),
-    "Form-post code swap E2E requires two distinct app ports"
-  )
+  if (identical(port_a, port_b)) {
+    testthat::fail("Form-post code swap E2E requires two distinct app ports")
+  }
 
   busy_ports <- c()
   if (keycloak_browser_port_in_use(port_a)) {
@@ -1116,14 +1115,13 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
   if (keycloak_browser_port_in_use(port_b)) {
     busy_ports <- c(busy_ports, as.character(port_b))
   }
-  testthat::skip_if(
-    length(busy_ports) > 0L,
-    paste0(
+  if (length(busy_ports) > 0L) {
+    testthat::fail(paste0(
       "Port(s) ",
       paste(busy_ports, collapse = ", "),
-      " already in use; skipping form_post code swap E2E"
-    )
-  )
+      " already in use; cannot run form_post code swap E2E"
+    ))
+  }
 
   client_a <- .make_form_post_browser_client(port_a)
   client_b <- .make_form_post_browser_client(port_b)
@@ -1139,7 +1137,7 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
     shiny_args = list(port = port_a, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
   drv_b <- shinytest2::AppDriver$new(
     .make_form_post_browser_app(
@@ -1152,7 +1150,7 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
     shiny_args = list(port = port_b, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
@@ -1247,10 +1245,9 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
     "8114"
   ))
 
-  testthat::skip_if(
-    identical(port_a, port_b),
-    "Form-post swap E2E requires two distinct app ports"
-  )
+  if (identical(port_a, port_b)) {
+    testthat::fail("Form-post swap E2E requires two distinct app ports")
+  }
 
   busy_ports <- c()
   if (keycloak_browser_port_in_use(port_a)) {
@@ -1259,14 +1256,13 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
   if (keycloak_browser_port_in_use(port_b)) {
     busy_ports <- c(busy_ports, as.character(port_b))
   }
-  testthat::skip_if(
-    length(busy_ports) > 0L,
-    paste0(
+  if (length(busy_ports) > 0L) {
+    testthat::fail(paste0(
       "Port(s) ",
       paste(busy_ports, collapse = ", "),
-      " already in use; skipping form_post swap E2E"
-    )
-  )
+      " already in use; cannot run form_post swap E2E"
+    ))
+  }
 
   client_a <- .make_form_post_browser_client(port_a)
   client_b <- .make_form_post_browser_client(port_b)
@@ -1282,7 +1278,7 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
     shiny_args = list(port = port_a, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
   drv_b <- shinytest2::AppDriver$new(
     .make_form_post_browser_app(
@@ -1295,7 +1291,7 @@ testthat::test_that("swapped form_post callbacks against the wrong app are rejec
     shiny_args = list(port = port_b, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
@@ -1407,10 +1403,10 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
     "8125"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post.jwt cookie tamper E2E"
+      " is already in use; cannot run form_post.jwt cookie tamper E2E"
     ))
   }
 
@@ -1441,7 +1437,7 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$run_js("document.querySelector('#prepare_login_btn').click();")
@@ -1497,10 +1493,10 @@ testthat::test_that("browser form_post.jwt direct callbacks are rejected before 
     "8128"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping direct form_post.jwt E2E"
+      " is already in use; cannot run direct form_post.jwt E2E"
     ))
   }
 
@@ -1531,7 +1527,7 @@ testthat::test_that("browser form_post.jwt direct callbacks are rejected before 
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .wait_for_form_post_ready(drv)
   drv$run_js("document.querySelector('#prepare_login_btn').click();")
@@ -1585,10 +1581,9 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     "8127"
   ))
 
-  testthat::skip_if(
-    identical(port_a, port_b),
-    "Form-post JWT swap E2E requires two distinct app ports"
-  )
+  if (identical(port_a, port_b)) {
+    testthat::fail("Form-post JWT swap E2E requires two distinct app ports")
+  }
 
   busy_ports <- c()
   if (keycloak_browser_port_in_use(port_a)) {
@@ -1597,14 +1592,13 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
   if (keycloak_browser_port_in_use(port_b)) {
     busy_ports <- c(busy_ports, as.character(port_b))
   }
-  testthat::skip_if(
-    length(busy_ports) > 0L,
-    paste0(
+  if (length(busy_ports) > 0L) {
+    testthat::fail(paste0(
       "Port(s) ",
       paste(busy_ports, collapse = ", "),
-      " already in use; skipping form_post.jwt swap E2E"
-    )
-  )
+      " already in use; cannot run form_post.jwt swap E2E"
+    ))
+  }
 
   repo_root <- .browser_form_post_repo_root()
   app_url_a <- sprintf("http://127.0.0.1:%d", port_a)
@@ -1652,7 +1646,7 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
   drv_b <- shinytest2::AppDriver$new(
     app_url_b,
@@ -1660,7 +1654,7 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)

@@ -720,10 +720,10 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -755,7 +755,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -844,10 +844,10 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping request_uri replay E2E"
+      " is already in use; cannot run request_uri replay E2E"
     ))
   }
 
@@ -875,7 +875,7 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -970,10 +970,10 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping request_uri expiry E2E"
+      " is already in use; cannot run request_uri expiry E2E"
     ))
   }
 
@@ -1002,7 +1002,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -1082,10 +1082,10 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -1125,7 +1125,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -1234,10 +1234,10 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
   ))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping request_uri browser-token CSRF E2E"
+      " is already in use; cannot run request_uri browser-token CSRF E2E"
     ))
   }
 
@@ -1265,7 +1265,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "
@@ -1343,10 +1343,11 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   module_id_a <- "auth_a"
   module_id_b <- "auth_b"
 
-  testthat::skip_if(
-    identical(port_a, port_b),
-    "request_uri callback-swap E2E requires two distinct app ports"
-  )
+  if (identical(port_a, port_b)) {
+    testthat::fail(
+      "request_uri callback-swap E2E requires two distinct app ports"
+    )
+  }
 
   busy_ports <- c()
   if (keycloak_browser_port_in_use(port_a)) {
@@ -1355,14 +1356,13 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   if (keycloak_browser_port_in_use(port_b)) {
     busy_ports <- c(busy_ports, as.character(port_b))
   }
-  testthat::skip_if(
-    length(busy_ports) > 0L,
-    paste0(
+  if (length(busy_ports) > 0L) {
+    testthat::fail(paste0(
       "Port(s) ",
       paste(busy_ports, collapse = ", "),
-      " already in use; skipping request_uri callback-swap E2E"
-    )
-  )
+      " already in use; cannot run request_uri callback-swap E2E"
+    ))
+  }
 
   public_base_url_a <- .request_uri_public_base_url(port_a)
   public_base_url_b <- .request_uri_public_base_url(port_b)
@@ -1418,7 +1418,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
   drv_b <- shinytest2::AppDriver$new(
     app_url_b,
@@ -1426,7 +1426,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
   drv_a$wait_for_js(
     "

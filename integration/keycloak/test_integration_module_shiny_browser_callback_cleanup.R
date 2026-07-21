@@ -11,10 +11,10 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_CLEANUP", "8100"))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping callback cleanup E2E"
+      " is already in use; cannot run callback cleanup E2E"
     ))
   }
 
@@ -64,7 +64,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   keycloak_submit_browser_login(drv)
 

@@ -229,9 +229,8 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   )
   testthat::expect_true(length(token_exchange_events) > 0)
 
-  testthat::expect_gt(
-    length(async_events),
-    0L,
+  testthat::expect_true(
+    length(async_events) > 0L,
     info = "Expected an audit event from a real mirai worker"
   )
 

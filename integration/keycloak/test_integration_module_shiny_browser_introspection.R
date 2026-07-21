@@ -142,7 +142,7 @@
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # auto_redirect sends us to Keycloak automatically; wait for login page
   drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
@@ -203,10 +203,10 @@ testthat::test_that("Shiny module E2E with login-time introspection succeeds", {
   # Keep this aligned or Keycloak will show an error page (no #kc-login).
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_INTROSPECT", "8100"))
   if (.is_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -254,10 +254,10 @@ testthat::test_that("Shiny module E2E with introspection endpoint failing does n
     "8100"
   ))
   if (.is_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 

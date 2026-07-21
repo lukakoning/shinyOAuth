@@ -89,10 +89,10 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_CSRF", "8100"))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping browser-token CSRF E2E"
+      " is already in use; cannot run browser-token CSRF E2E"
     ))
   }
 
@@ -178,7 +178,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     ),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   drv$wait_for_js(
     "

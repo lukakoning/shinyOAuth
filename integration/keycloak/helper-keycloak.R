@@ -664,6 +664,37 @@ keycloak_browser_port_in_use <- function(port) {
   FALSE
 }
 
+# shinytest2 <= 0.5.1 can leave `shiny_worker_id` as a zero-length value when
+# more than one live AppDriver is active. Its logging code assumes that value
+# has length one, so both ordinary driver methods and `$stop()` can fail before
+# the child Shiny process is terminated. Normalize the field before stopping
+# and retain a direct process kill as a last-resort cleanup so one failed E2E
+# test cannot occupy a shared port and cause later tests to skip.
+keycloak_stop_app_driver <- function(drv) {
+  private <- try(drv$.__enclos_env__$private, silent = TRUE)
+
+  if (!inherits(private, "try-error") && is.environment(private)) {
+    worker_id <- private$shiny_worker_id
+    if (length(worker_id) != 1L) {
+      private$shiny_worker_id <- NA_character_
+    }
+  }
+
+  try(drv$stop(), silent = TRUE)
+
+  if (!inherits(private, "try-error") && is.environment(private)) {
+    process <- private$shiny_process
+    if (!is.null(process) && isTRUE(tryCatch(
+      process$is_alive(),
+      error = function(...) FALSE
+    ))) {
+      try(process$kill(), silent = TRUE)
+    }
+  }
+
+  invisible(NULL)
+}
+
 keycloak_wait_for_login_or_auth_result <- function(
   drv,
   auth_selector = "#auth_state",

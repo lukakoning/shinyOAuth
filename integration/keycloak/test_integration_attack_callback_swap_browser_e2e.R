@@ -185,10 +185,9 @@ testthat::test_that("swapped browser callbacks are rejected without consuming th
   module_id_a <- "auth_a"
   module_id_b <- "auth_b"
 
-  testthat::skip_if(
-    identical(port_a, port_b),
-    "Callback-swap E2E requires two distinct app ports"
-  )
+  if (identical(port_a, port_b)) {
+    testthat::fail("Callback-swap E2E requires two distinct app ports")
+  }
 
   busy_ports <- c()
   if (keycloak_browser_port_in_use(port_a)) {
@@ -197,14 +196,13 @@ testthat::test_that("swapped browser callbacks are rejected without consuming th
   if (keycloak_browser_port_in_use(port_b)) {
     busy_ports <- c(busy_ports, as.character(port_b))
   }
-  testthat::skip_if(
-    length(busy_ports) > 0L,
-    paste0(
+  if (length(busy_ports) > 0L) {
+    testthat::fail(paste0(
       "Port(s) ",
       paste(busy_ports, collapse = ", "),
-      " already in use; skipping callback-swap browser E2E"
-    )
-  )
+      " already in use; cannot run callback-swap browser E2E"
+    ))
+  }
 
   provider <- shinyOAuth::oauth_provider_keycloak(
     base_url = "http://localhost:8080",
@@ -232,7 +230,7 @@ testthat::test_that("swapped browser callbacks are rejected without consuming th
     shiny_args = list(port = port_a, host = host_a, test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_a$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
   drv_b <- shinytest2::AppDriver$new(
     make_callback_swap_browser_app(client_b, "Callback swap B", module_id_b),
@@ -241,7 +239,7 @@ testthat::test_that("swapped browser callbacks are rejected without consuming th
     shiny_args = list(port = port_b, host = host_b, test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv_b$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
   drv_a$wait_for_js(
     "
@@ -262,8 +260,10 @@ testthat::test_that("swapped browser callbacks are rejected without consuming th
     timeout = 15000
   )
 
-  drv_a$click("prepare_login_btn")
-  drv_b$click("prepare_login_btn")
+  # Use DOM clicks here because shinytest2's input helper logs through the
+  # optional Shiny worker ID, which can be absent for the second live driver.
+  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
 
   state_a <- wait_for_published_auth_url(drv_a)
   state_b <- wait_for_published_auth_url(drv_b)

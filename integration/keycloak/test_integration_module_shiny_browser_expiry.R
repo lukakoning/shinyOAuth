@@ -107,10 +107,10 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     FALSE
   }
   if (is_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -181,7 +181,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
@@ -278,10 +278,10 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
     FALSE
   }
   if (is_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -357,7 +357,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)

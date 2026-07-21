@@ -109,7 +109,12 @@ testthat::test_that("future multisession resolves OAuth success and failure from
       url <- values$build_auth_url()
       state <- parse_query_param(url, "state")
 
-      values$.process_query(paste0("?code=not-a-valid-code&state=", state))
+      values$.process_query(paste0(
+        "?code=not-a-valid-code&state=",
+        state,
+        "&iss=",
+        utils::URLencode(get_issuer(), reserved = TRUE)
+      ))
       deadline <- Sys.time() + 20
       while (is.null(values$error) && Sys.time() < deadline) {
         later::run_now(0.05)

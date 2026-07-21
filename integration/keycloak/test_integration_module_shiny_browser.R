@@ -80,7 +80,7 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT", "8100"))
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
-  # Skip if chosen port is already in use to avoid flaky CI failures
+  # Port contention is an infrastructure failure, not an optional test skip.
   is_port_in_use <- function(port) {
     # socketConnection can emit warnings when the port is not open; suppress them to avoid noisy tests
     con <- suppressWarnings(try(
@@ -101,10 +101,10 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
     FALSE
   }
   if (is_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -179,7 +179,7 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   login_state <- wait_for_login_or_auth_result(drv, timeout = 5000)
 
@@ -330,7 +330,7 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
     FALSE
   }
   if (is_port_in_use(app_port)) {
-    testthat::skip(paste0("Port ", app_port, " already in use"))
+    testthat::fail(paste0("Port ", app_port, " already in use"))
   }
 
   provider <- shinyOAuth::oauth_provider_keycloak(
@@ -377,7 +377,7 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   login_state <- wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {

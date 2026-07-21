@@ -282,7 +282,7 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
     name = "cookie-basic",
     load_timeout = 10000
   )
-  on.exit(app$stop(), add = TRUE)
+  on.exit(stop_test_app_driver(app), add = TRUE)
 
   cookie_name <- browser_cookie_name("auth")
 
@@ -352,7 +352,7 @@ testthat::test_that("browser token cookie honors custom path and SameSite metada
     name = "cookie-path-metadata",
     load_timeout = 10000
   )
-  on.exit(app$stop(), add = TRUE)
+  on.exit(stop_test_app_driver(app), add = TRUE)
 
   cookie_name <- browser_cookie_name("authpath")
 
@@ -457,7 +457,7 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
     name = "cookie-samesite-none",
     load_timeout = 10000
   )
-  on.exit(app$stop(), add = TRUE)
+  on.exit(stop_test_app_driver(app), add = TRUE)
 
   # The cookie should not be created under HTTP when SameSite=None
   cookie_name <- browser_cookie_name("authnone")
@@ -490,7 +490,7 @@ testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
     name = "cookie-zero-ttl",
     load_timeout = 10000
   )
-  on.exit(app$stop(), add = TRUE)
+  on.exit(stop_test_app_driver(app), add = TRUE)
 
   cookie_name <- browser_cookie_name("authzero")
 

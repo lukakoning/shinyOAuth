@@ -35,10 +35,10 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   withr::local_envvar(c(SHINYOAUTH_APP_PORT = as.character(app_port)))
 
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping shinytest2 E2E"
+      " is already in use; cannot run shinytest2 E2E"
     ))
   }
 
@@ -191,7 +191,7 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
     shiny_args = list(port = app_port, host = "127.0.0.1", test.mode = TRUE),
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
   drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)

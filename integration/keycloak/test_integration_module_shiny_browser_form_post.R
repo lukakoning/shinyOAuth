@@ -649,10 +649,10 @@ testthat::test_that("browser form_post login authenticates through oauth_form_po
 
   app_port <- as.integer(Sys.getenv("SHINYOAUTH_E2E_PORT_FORM_POST", "8100"))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post E2E"
+      " is already in use; cannot run form_post E2E"
     ))
   }
 
@@ -676,7 +676,7 @@ testthat::test_that("browser form_post login authenticates through oauth_form_po
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .expect_successful_form_post_browser_flow(
     drv,
@@ -704,10 +704,10 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     "8120"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post.jwt E2E"
+      " is already in use; cannot run form_post.jwt E2E"
     ))
   }
 
@@ -759,7 +759,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .expect_successful_form_post_browser_flow(
     drv,
@@ -798,10 +798,10 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     "8126"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping encrypted form_post.jwt E2E"
+      " is already in use; cannot run encrypted form_post.jwt E2E"
     ))
   }
 
@@ -810,10 +810,10 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     "8127"
   ))
   if (keycloak_browser_port_in_use(jwks_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       jwks_port,
-      " is already in use; skipping encrypted form_post.jwt JWKS server"
+      " is already in use; cannot run encrypted form_post.jwt JWKS server"
     ))
   }
 
@@ -888,7 +888,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .expect_successful_form_post_browser_flow(
     drv,
@@ -920,10 +920,10 @@ testthat::test_that("browser form_post login authenticates on a callback subrout
     "8100"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post callback subroute E2E"
+      " is already in use; cannot run form_post callback subroute E2E"
     ))
   }
 
@@ -952,7 +952,7 @@ testthat::test_that("browser form_post login authenticates on a callback subrout
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .expect_successful_form_post_browser_flow(
     drv,
@@ -981,10 +981,10 @@ testthat::test_that("browser form_post login still succeeds when the auth reques
     "3000"
   ))
   if (keycloak_browser_port_in_use(app_port)) {
-    testthat::skip(paste0(
+    testthat::fail(paste0(
       "Port ",
       app_port,
-      " is already in use; skipping form_post + PAR E2E"
+      " is already in use; cannot run form_post + PAR E2E"
     ))
   }
 
@@ -1016,7 +1016,7 @@ testthat::test_that("browser form_post login still succeeds when the auth reques
     load_timeout = 15000,
     wait = FALSE
   )
-  on.exit(try(drv$stop(), silent = TRUE), add = TRUE)
+  on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   .expect_successful_form_post_browser_flow(
     drv,
