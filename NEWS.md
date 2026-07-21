@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The Spotify example now HTML-escapes remote track, album, artist, and genre
+metadata in its DT tables, preventing provider-controlled markup from running
+in the authenticated Shiny origin.
+
 * Authenticated resource helpers now reject `TRACE` and the nonstandard
 `TRACK` method before attaching Bearer or DPoP credentials, preventing servers
 from reflecting those credentials in diagnostic responses.

@@ -31,6 +31,7 @@ Imports:
     otel (>= 0.2.0)
 Suggests:
     testthat (>= 3.0.0),
+    DT,
     knitr,
     rmarkdown,
     webfakes,
