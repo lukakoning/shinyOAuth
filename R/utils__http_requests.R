@@ -405,6 +405,7 @@ check_resp_body_size <- function(
 #'  - shinyOAuth.retry_max_tries (default 3)
 #'  - shinyOAuth.retry_backoff_base (seconds, default 0.5)
 #'  - shinyOAuth.retry_backoff_cap (seconds, default 5)
+#'  - shinyOAuth.retry_after_cap (server-requested seconds, default 60)
 #'  - shinyOAuth.retry_status (integer vector; default c(408, 429, 500:599))
 #'
 #' @return httr2 response object. Transport failures raise a typed transport
@@ -488,6 +489,18 @@ req_with_retry <- function(req, idempotent = TRUE) {
   if (!is.finite(cap) || is.na(cap) || cap <= 0) {
     cap <- 5
   }
+  retry_after_cap <- suppressWarnings(as.numeric(getOption(
+    "shinyOAuth.retry_after_cap",
+    60
+  )))
+  if (
+    length(retry_after_cap) != 1L ||
+      !is.finite(retry_after_cap) ||
+      is.na(retry_after_cap) ||
+      retry_after_cap <= 0
+  ) {
+    retry_after_cap <- 60
+  }
   retry_status <- getOption("shinyOAuth.retry_status", c(408L, 429L, 500:599))
   retry_status <- unique(as.integer(retry_status))
   # Drop malformed entries to avoid NA propagation in %in% checks
@@ -529,6 +542,8 @@ req_with_retry <- function(req, idempotent = TRUE) {
       wait <- parse_retry_after_header(resp)
       if (is.na(wait)) {
         wait <- retry_backoff_delay(i, base = base, cap = cap)
+      } else {
+        wait <- min(wait, retry_after_cap)
       }
       wait <- max(0, wait)
       if (i < max_tries && wait > 0) Sys.sleep(wait)
@@ -591,8 +606,8 @@ parse_retry_after_header <- function(resp) {
       ra,
       tz = "GMT",
       tryFormats = c(
-        "%a, %d %b %Y %H:%M:%S %Z",
-        "%A, %d-%b-%y %H:%M:%S %Z",
+        "%a, %d %b %Y %H:%M:%S GMT",
+        "%A, %d-%b-%y %H:%M:%S GMT",
         "%a %b %d %H:%M:%S %Y"
       )
     ),
@@ -600,7 +615,9 @@ parse_retry_after_header <- function(resp) {
   )
   if (!inherits(dt, "try-error") && !is.na(dt)) {
     delta <- as.numeric(dt - Sys.time())
-    return(ifelse(delta > 0, delta, NA_real_))
+    if (is.finite(delta) && !is.na(delta) && delta > 0) {
+      return(delta)
+    }
   }
   NA_real_
 }

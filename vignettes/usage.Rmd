@@ -511,6 +511,7 @@ you can unblock them using the following options:
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for transient failures (network errors, 408, 429, 5xx)
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in seconds used for exponential backoff with jitter
 - `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on backoff seconds (before jitter)
+- `options(shinyOAuth.retry_after_cap = 60)` – maximum synchronous sleep in seconds for a server-provided `Retry-After` value; this is separate from the client-side backoff cap
 - `options(shinyOAuth.retry_status = c(408L, 429L, 500:599))` – HTTP statuses considered transient and retried
 - `options(shinyOAuth.user_agent = "shinyOAuth/<version> R/<version> httr2/<version>")` – override the default
   User‑Agent header applied to all outbound requests. By default this string is built dynamically from the

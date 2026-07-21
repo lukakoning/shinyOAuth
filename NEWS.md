@@ -43,8 +43,9 @@ equivalent, case-insensitive form of the `JWT` JOSE `typ` value.
 * Form-encoded token responses now decode `+` as a space while preserving
 percent-encoded literal plus signs.
 
-* Generic HTTP retries now honor the full server-provided `Retry-After` delay
-instead of silently capping it at ten seconds.
+* Generic HTTP retries now honor server-provided `Retry-After` delays up to the
+separate `shinyOAuth.retry_after_cap` option (60 seconds by default), preventing
+untrusted endpoints from blocking synchronous Shiny workers indefinitely.
 
 * PAR POSTs no longer use generic transport or transient HTTP retries, avoiding
 duplicate `request_uri` allocations and Request Object replays after a lost

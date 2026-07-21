@@ -114,9 +114,12 @@ test_that("req_with_retry honours Retry-After header and returns last response",
   expect_true(any(abs(sleeps - 2) < 1e-6))
 })
 
-test_that("req_with_retry does not cap Retry-After delays", {
+test_that("req_with_retry caps Retry-After delays by default", {
   req <- httr2::request("https://example.org")
-  withr::local_options(list(shinyOAuth.retry_max_tries = 2L))
+  withr::local_options(list(
+    shinyOAuth.retry_max_tries = 2L,
+    shinyOAuth.retry_backoff_cap = 1
+  ))
   sleeps <- numeric()
 
   testthat::local_mocked_bindings(
@@ -143,7 +146,52 @@ test_that("req_with_retry does not cap Retry-After delays", {
 
   shinyOAuth:::req_with_retry(req)
 
-  expect_identical(sleeps, 120)
+  expect_identical(sleeps, 60)
+})
+
+test_that("req_with_retry caps future-date Retry-After values", {
+  req <- httr2::request("https://example.org")
+  withr::local_options(list(
+    shinyOAuth.retry_max_tries = 2L,
+    shinyOAuth.retry_after_cap = 7
+  ))
+  sleeps <- numeric()
+
+  testthat::local_mocked_bindings(
+    req_perform = function(request) {
+      httr2::response(
+        url = request$url,
+        status = 503,
+        headers = list(
+          "content-type" = "text/plain",
+          "retry-after" = "Thu, 31 Dec 2099 23:59:59 GMT"
+        ),
+        body = charToRaw("oops")
+      )
+    },
+    .package = "httr2"
+  )
+  testthat::local_mocked_bindings(
+    Sys.sleep = function(time) {
+      sleeps <<- c(sleeps, time)
+      invisible(NULL)
+    },
+    .package = "base"
+  )
+
+  shinyOAuth:::req_with_retry(req)
+
+  expect_identical(sleeps, 7)
+})
+
+test_that("parse_retry_after_header rejects numeric overflow", {
+  response <- httr2::response(
+    url = "https://example.org",
+    status = 503,
+    headers = list("retry-after" = paste(rep("9", 400), collapse = ""))
+  )
+
+  expect_true(is.na(shinyOAuth:::parse_retry_after_header(response)))
 })
 
 test_that("parse_token_response parses json and form encoded bodies", {
