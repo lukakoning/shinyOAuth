@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Authenticated resource helpers now reject `TRACE` and the nonstandard
+`TRACK` method before attaching Bearer or DPoP credentials, preventing servers
+from reflecting those credentials in diagnostic responses.
+
 * OIDC discovery now accepts authorization, token, UserInfo, introspection,
 revocation, and PAR endpoints on secure hosts other than the issuer host, as
 allowed by OIDC Discovery and RFC 8414. Setting `shinyOAuth.allowed_hosts`

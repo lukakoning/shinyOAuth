@@ -24,7 +24,9 @@ client_bearer_req(
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method
-because the proof is signed against it.}
+because the proof is signed against it. \code{TRACE} and the nonstandard
+\code{TRACK} method are rejected because authenticated requests could be
+reflected by the server and disclose credentials.}
 
 \item{headers}{Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.

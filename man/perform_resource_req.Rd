@@ -29,7 +29,9 @@ defaults, and then layers any explicit \code{method}, \code{headers}, \code{quer
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method
-because the proof is signed against it.}
+because the proof is signed against it. \code{TRACE} and the nonstandard
+\code{TRACK} method are rejected because authenticated requests could be
+reflected by the server and disclose credentials.}
 
 \item{headers}{Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.
@@ -71,9 +73,8 @@ request. This is primarily useful after a resource server challenges with
 \item{idempotent}{Optional logical controlling generic transport and
 transient-HTTP retries in \code{req_with_retry()}. When \code{NULL} (the default),
 shinyOAuth infers this from the final request method using standard HTTP
-idempotency semantics (\code{GET}, \code{HEAD}, \code{OPTIONS}, \code{TRACE}, \code{PUT},
-\code{DELETE}). DPoP nonce challenges are replayed once regardless, as required
-by RFC 9449.}
+idempotency semantics (\code{GET}, \code{HEAD}, \code{OPTIONS}, \code{PUT}, \code{DELETE}). DPoP
+nonce challenges are replayed once regardless, as required by RFC 9449.}
 }
 \value{
 An \link[httr2:httr2]{httr2} response object.

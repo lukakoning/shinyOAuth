@@ -38,6 +38,77 @@ test_that("resource_req builds request metadata without network", {
   )
 })
 
+test_that("resource_req rejects TRACE for raw Bearer tokens before auth", {
+  testthat::local_mocked_bindings(
+    build_client_bearer_authorized_request = function(...) {
+      testthat::fail("authentication must not be attached to TRACE")
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    resource_req(
+      token = "raw-access-token",
+      url = "https://example.com/resource",
+      method = "trace"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "Authenticated TRACE requests are not allowed",
+    fixed = TRUE
+  )
+})
+
+test_that("resource_req rejects TRACE for OAuthToken Bearer credentials", {
+  token <- OAuthToken(
+    access_token = "bearer-access-token",
+    token_type = "Bearer",
+    userinfo = list()
+  )
+
+  expect_error(
+    resource_req(
+      token = token,
+      url = "https://example.com/resource",
+      method = "TRACE"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "Authenticated TRACE requests are not allowed",
+    fixed = TRUE
+  )
+})
+
+test_that("resource_req rejects TRACE for DPoP credentials", {
+  token <- OAuthToken(
+    access_token = "dpop-access-token",
+    token_type = "DPoP",
+    userinfo = list()
+  )
+
+  expect_error(
+    resource_req(
+      token = token,
+      url = "https://example.com/resource",
+      method = "TRACE",
+      oauth_client = make_resource_req_dpop_client()
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "Authenticated TRACE requests are not allowed",
+    fixed = TRUE
+  )
+})
+
+test_that("perform_resource_req rejects prebuilt TRACK requests", {
+  req <- httr2::request("https://example.com/resource") |>
+    httr2::req_method("TRACK")
+
+  expect_error(
+    perform_resource_req(token = "raw-access-token", url = req),
+    class = "shinyOAuth_input_error",
+    regexp = "Authenticated TRACK requests are not allowed",
+    fixed = TRUE
+  )
+})
+
 test_that("resource_req builds authorized request from string", {
   testthat::skip_if_not_installed("webfakes")
 

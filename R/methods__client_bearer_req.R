@@ -20,7 +20,9 @@
 #' @param url The absolute URL to call.
 #' @param method Optional HTTP method (character). Defaults to "GET". When
 #'   the effective token type is `DPoP`, this must be the final request method
-#'   because the proof is signed against it.
+#'   because the proof is signed against it. `TRACE` and the nonstandard
+#'   `TRACK` method are rejected because authenticated requests could be
+#'   reflected by the server and disclose credentials.
 #' @param headers Optional named list or named character vector of extra
 #'   headers to set on the request. Header names are case-insensitive.
 #'   Any user-supplied `Authorization` or `DPoP` header is ignored to ensure
@@ -166,9 +168,8 @@ client_bearer_req <- function(
 #' @param idempotent Optional logical controlling generic transport and
 #'   transient-HTTP retries in `req_with_retry()`. When `NULL` (the default),
 #'   shinyOAuth infers this from the final request method using standard HTTP
-#'   idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`,
-#'   `DELETE`). DPoP nonce challenges are replayed once regardless, as required
-#'   by RFC 9449.
+#'   idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`). DPoP
+#'   nonce challenges are replayed once regardless, as required by RFC 9449.
 #'
 #' @return An [httr2] response object.
 #'
@@ -218,7 +219,6 @@ perform_resource_req <- function(
         "GET",
         "HEAD",
         "OPTIONS",
-        "TRACE",
         "PUT",
         "DELETE"
       )
@@ -326,6 +326,8 @@ prepare_client_bearer_request <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
+  validate_client_bearer_method(method = method, req = req)
+
   token_info <- resolve_client_bearer_token(
     token = token,
     token_type = token_type
@@ -365,6 +367,40 @@ prepare_client_bearer_request <- function(
   )
 
   list(req = req, token_info = token_info)
+}
+
+#' Reject credential-reflecting HTTP methods
+#'
+#' Used by `prepare_client_bearer_request()` before access-token validation or
+#' request construction so authentication is never attached to TRACE or TRACK.
+#'
+#' @param method Optional HTTP method override.
+#' @param req Optional httr2 request used as the method source.
+#' @return Invisibly returns `TRUE` for permitted methods. Otherwise raises an
+#'   input error.
+#' @keywords internal
+#' @noRd
+validate_client_bearer_method <- function(method = NULL, req = NULL) {
+  request_method <- method
+  if (!is_valid_string(request_method) && inherits(req, "httr2_request")) {
+    request_method <- tryCatch(req[["method"]], error = function(...) NULL)
+  }
+  if (!is_valid_string(request_method)) {
+    request_method <- "GET"
+  }
+
+  request_method <- toupper(as.character(request_method))
+  if (request_method %in% c("TRACE", "TRACK")) {
+    err_input(c(
+      paste0("Authenticated ", request_method, " requests are not allowed"),
+      "i" = paste(
+        "TRACE responses can reflect sensitive request fields such as",
+        "Authorization and DPoP."
+      )
+    ))
+  }
+
+  invisible(TRUE)
 }
 
 # 2.1 Token handling -----------------------------------------------------------
