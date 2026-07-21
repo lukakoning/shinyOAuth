@@ -13,6 +13,7 @@ oauth_provider_oidc(
   introspection_path = "/introspect",
   use_nonce = TRUE,
   id_token_validation = TRUE,
+  token_auth_style = "header",
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
   ...
@@ -35,6 +36,9 @@ oauth_provider_oidc(
 
 \item{id_token_validation}{Logical, whether to validate ID tokens automatically
 for this provider. Defaults to TRUE}
+
+\item{token_auth_style}{Token endpoint client authentication style passed to
+\code{\link[=oauth_provider]{oauth_provider()}}. Defaults to \code{"header"}.}
 
 \item{jwks_host_issuer_match}{When TRUE (default), enforce that the JWKS host
 discovered from the provider matches the issuer host exactly. For

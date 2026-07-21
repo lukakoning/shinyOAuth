@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* `oauth_provider_oidc()` now accepts its documented `token_auth_style`
+override instead of always forcing HTTP Basic authentication.
+
 * Resource and UserInfo helpers no longer allow `token_type` overrides to
 downgrade a DPoP `OAuthToken` or one carrying a `cnf.jkt` binding to Bearer.
 For `OAuthToken` objects, overrides may only fill a genuinely missing,

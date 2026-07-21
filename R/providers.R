@@ -23,6 +23,8 @@
 #' @param use_nonce Logical, whether to use OIDC nonce. Defaults to TRUE
 #' @param id_token_validation Logical, whether to validate ID tokens automatically
 #'   for this provider. Defaults to TRUE
+#' @param token_auth_style Token endpoint client authentication style passed to
+#'   [oauth_provider()]. Defaults to `"header"`.
 #' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
 #'   discovered from the provider matches the issuer host exactly. For
 #'   providers that serve JWKS from a different host (e.g., Google), set
@@ -47,8 +49,9 @@ oauth_provider_oidc <- function(
   introspection_path = "/introspect",
   use_nonce = TRUE,
   id_token_validation = TRUE,
+  token_auth_style = "header",
   jwks_host_issuer_match = TRUE,
-  allowed_token_types = c('Bearer'),
+  allowed_token_types = c("Bearer"),
   ...
 ) {
   base_url <- sub("/+$", "", base_url)
@@ -68,7 +71,7 @@ oauth_provider_oidc <- function(
     issuer_thus_oidc = TRUE,
     use_nonce = use_nonce,
     id_token_validation = id_token_validation,
-    token_auth_style = "header",
+    token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
     jwks_host_issuer_match = jwks_host_issuer_match,
     ...

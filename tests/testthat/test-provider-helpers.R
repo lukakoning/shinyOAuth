@@ -311,6 +311,16 @@ test_that("oauth_provider_oidc passes through extra args", {
   expect_identical(p@extra_auth_params, list(prompt = "consent"))
 })
 
+test_that("oauth_provider_oidc allows token authentication overrides", {
+  p <- oauth_provider_oidc(
+    name = "body-auth",
+    base_url = "https://auth.example.com",
+    token_auth_style = "body"
+  )
+
+  expect_identical(p@token_auth_style, "body")
+})
+
 # ── Discovery-based providers (mocked) ──────────────────────────────────────
 
 # Minimal OIDC discovery document for mocking
