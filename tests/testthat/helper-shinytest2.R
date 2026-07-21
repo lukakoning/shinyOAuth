@@ -12,10 +12,13 @@ stop_test_app_driver <- function(drv) {
 
   if (!inherits(private, "try-error") && is.environment(private)) {
     process <- private$shiny_process
-    if (!is.null(process) && isTRUE(tryCatch(
-      process$is_alive(),
-      error = function(...) FALSE
-    ))) {
+    if (
+      !is.null(process) &&
+        isTRUE(tryCatch(
+          process$is_alive(),
+          error = function(...) FALSE
+        ))
+    ) {
       try(process$kill(), silent = TRUE)
     }
   }

@@ -237,10 +237,10 @@
 #'    present (non-NULL, non-empty), FALSE otherwise. Typically
 #'    you would not call this directly
 #'   }
-#'   
-#'   Finally, it contains the following reactive values intended for internal 
+#'
+#'   Finally, it contains the following reactive values intended for internal
 #'   use and testing. These are not intended for general consumption, but they are:
-#'   
+#'
 #'   \itemize{
 #'    \item `browser_token`: internal opaque browser cookie value; used for state
 #'    double-submit protection; NULL if not yet set

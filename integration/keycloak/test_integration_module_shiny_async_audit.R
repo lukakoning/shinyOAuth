@@ -249,7 +249,10 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     testthat::expect_identical(
       as.integer(evt$.hook_pid),
       as.integer(sess$process_id),
-      info = paste0("Audit hook and worker process IDs differ. Type: ", evt$type)
+      info = paste0(
+        "Audit hook and worker process IDs differ. Type: ",
+        evt$type
+      )
     )
     cat(
       "Event:",
