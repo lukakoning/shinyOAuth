@@ -327,6 +327,20 @@ test_that("redact_headers redacts x_ prefixed headers", {
   expect_equal(result[["user_agent"]], "TestClient/1.0")
 })
 
+test_that("redact_headers redacts Referer without filtering other headers", {
+  hdrs <- list(
+    referer = "https://app.example/cb?code=SECRET_CODE&state=SECRET_STATE",
+    custom_diagnostic = "keep-me",
+    user_agent = "TestClient/1.0"
+  )
+
+  result <- shinyOAuth:::redact_headers(hdrs)
+
+  expect_identical(result[["referer"]], "[REDACTED]")
+  expect_identical(result[["custom_diagnostic"]], "keep-me")
+  expect_identical(result[["user_agent"]], "TestClient/1.0")
+})
+
 test_that("redact_headers handles empty/null input gracefully", {
   expect_null(shinyOAuth:::redact_headers(NULL))
   expect_equal(shinyOAuth:::redact_headers(list()), list())
@@ -407,6 +421,9 @@ test_that("build_http_summary returns sanitized output", {
     HTTP_AUTHORIZATION = "Bearer token123",
     HTTP_PROXY_AUTHORIZATION = "Basic proxysecret123",
     HTTP_WWW_AUTHENTICATE = "Bearer realm=example",
+    HTTP_REFERER = paste0(
+      "https://app.example/cb?code=SECRET_CODE&state=SECRET_STATE"
+    ),
     HTTP_USER_AGENT = "TestClient/1.0",
     HTTP_X_FORWARDED_FOR = "192.168.1.1"
   )
@@ -426,6 +443,8 @@ test_that("build_http_summary returns sanitized output", {
   expect_null(
     result[["headers"]][["www_authenticate"]]
   )
+  expect_identical(result[["headers"]][["referer"]], "[REDACTED]")
+  expect_false(any(grepl("SECRET_", unlist(result), fixed = TRUE)))
   expect_equal(
     result[["headers"]][["x_forwarded_for"]],
     "[REDACTED]"
@@ -449,6 +468,7 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     HTTP_AUTHORIZATION = "Bearer token123",
     HTTP_PROXY_AUTHORIZATION = "Basic proxysecret123",
     HTTP_WWW_AUTHENTICATE = "Bearer realm=example",
+    HTTP_REFERER = "https://app.example/cb?code=SECRET_CODE",
     HTTP_USER_AGENT = "TestClient/1.0",
     HTTP_X_FORWARDED_FOR = "192.168.1.1"
   )
@@ -475,6 +495,10 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     expect_equal(
       result[["headers"]][["www_authenticate"]],
       "Bearer realm=example"
+    )
+    expect_identical(
+      result[["headers"]][["referer"]],
+      "https://app.example/cb?code=SECRET_CODE"
     )
     expect_equal(
       result[["headers"]][["x_forwarded_for"]],

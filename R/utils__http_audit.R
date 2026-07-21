@@ -303,8 +303,13 @@ redact_headers <- function(hdrs) {
     "www_authenticate"
   )
 
-  # Headers to redact (contain potentially sensitive routing/client info)
-  # x_* headers often contain internal infrastructure details
+  # Headers to redact (contain potentially sensitive URLs or routing/client
+  # information). Referer can contain OAuth callback credentials in its query.
+  redact_headers_exact <- c(
+    "referer"
+  )
+
+  # x_* headers often contain internal infrastructure details.
   redact_prefixes <- c(
     "x_"
   )
@@ -323,12 +328,14 @@ redact_headers <- function(hdrs) {
       next
     }
 
-    # Check if header should be redacted by prefix
-    should_redact <- FALSE
-    for (prefix in redact_prefixes) {
-      if (startsWith(nm_lower, prefix)) {
-        should_redact <- TRUE
-        break
+    # Check if header should be redacted by exact name or prefix
+    should_redact <- nm_lower %in% redact_headers_exact
+    if (!should_redact) {
+      for (prefix in redact_prefixes) {
+        if (startsWith(nm_lower, prefix)) {
+          should_redact <- TRUE
+          break
+        }
       }
     }
 

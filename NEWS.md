@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Sanitized HTTP audit summaries now replace `Referer` with `[REDACTED]` so
+OAuth callback credentials in Referer URLs cannot leak to audit sinks. Other
+non-sensitive headers continue to be retained.
+
 * The Spotify example now HTML-escapes remote track, album, artist, and genre
 metadata in its DT tables, preventing provider-controlled markup from running
 in the authenticated Shiny origin.

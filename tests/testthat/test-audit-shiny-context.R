@@ -124,6 +124,7 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
     HTTP_HOST = "example.com",
     HTTP_COOKIE = "session=secret123",
     HTTP_AUTHORIZATION = "Bearer token123",
+    HTTP_REFERER = "https://app.example/cb?code=SECRET_CODE&state=SECRET_STATE",
     HTTP_USER_AGENT = "TestClient/1.0",
     HTTP_X_FORWARDED_FOR = "192.168.1.1"
   )
@@ -203,6 +204,7 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   )
   testthat::expect_null(headers[["cookie"]])
   testthat::expect_null(headers[["authorization"]])
+  testthat::expect_identical(headers[["referer"]], "[REDACTED]")
   testthat::expect_equal(
     headers[["user_agent"]],
     "TestClient/1.0"
