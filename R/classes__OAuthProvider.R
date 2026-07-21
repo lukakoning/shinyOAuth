@@ -1924,6 +1924,7 @@ provider_fingerprint <- function(provider) {
   components <- list(
     issuer = provider@issuer,
     issuer_thus_oidc = issuer_thus_oidc,
+    oidc_max_age = provider_auth_max_age(provider) %||% NA_real_,
     auth_url = provider@auth_url,
     token_url = provider@token_url,
     userinfo_url = provider@userinfo_url,

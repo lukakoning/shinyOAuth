@@ -379,6 +379,25 @@ inspect_auth_max_age <- function(extra_auth_params) {
   out
 }
 
+#' Resolve a provider's normalized OIDC max_age value
+#'
+#' @param provider Provider configuration. Test doubles without an
+#'   `extra_auth_params` property are treated as having no `max_age`.
+#' @return A non-negative numeric scalar, or `NULL` when not configured.
+#' @keywords internal
+#' @noRd
+provider_auth_max_age <- function(provider) {
+  extra_auth_params <- tryCatch(
+    provider@extra_auth_params,
+    error = function(...) list()
+  )
+  max_age_info <- inspect_auth_max_age(extra_auth_params)
+  if (!is.null(max_age_info[["error"]])) {
+    err_config(max_age_info[["error"]])
+  }
+  max_age_info[["value"]]
+}
+
 ## 1.2 Claims request parsing and enforcement ----------------------------------
 
 #' Normalize a claims specification

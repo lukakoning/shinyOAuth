@@ -67,6 +67,39 @@ test_that("oauth_provider validates extra_auth_params$max_age early", {
 })
 
 
+test_that("prepare_call binds the normalized transmitted max_age to state", {
+  client <- mk_client(extra_auth_params = list(max_age = "0"))
+
+  auth_url <- shinyOAuth:::prepare_call(
+    client,
+    browser_token = valid_browser_token()
+  )
+  encrypted_state <- parse_query_param(auth_url, "state")
+  state <- shinyOAuth:::state_decrypt_gcm(
+    encrypted_state,
+    key = client@state_key
+  )
+
+  expect_identical(parse_query_param(auth_url, "max_age", decode = TRUE), "0")
+  expect_equal(state[["max_age"]], 0)
+})
+
+
+test_that("max_age changes provider and callback-policy fingerprints", {
+  without_max_age <- mk_client()
+  with_max_age <- mk_client(extra_auth_params = list(max_age = 0))
+
+  expect_false(identical(
+    shinyOAuth:::provider_fingerprint(without_max_age@provider),
+    shinyOAuth:::provider_fingerprint(with_max_age@provider)
+  ))
+  expect_false(identical(
+    shinyOAuth:::state_client_policy_fingerprint(without_max_age),
+    shinyOAuth:::state_client_policy_fingerprint(with_max_age)
+  ))
+})
+
+
 # --- validate_id_token: auth_time required when max_age is passed ---
 
 test_that("validate_id_token requires auth_time when max_age is passed", {
@@ -295,12 +328,14 @@ test_that("validate_id_token ignores auth_time when max_age is not requested", {
 })
 
 
-# --- verify_token_set: max_age propagation from extra_auth_params ---
+# --- verify_token_set: transaction-bound max_age propagation ---
 
-test_that("verify_token_set passes max_age from extra_auth_params to validate_id_token", {
+test_that("verify_token_set uses the max_age bound to the transaction", {
   now <- floor(as.numeric(Sys.time()))
 
-  client <- mk_client(extra_auth_params = list(max_age = 300))
+  # The callback worker no longer has max_age configured. The transaction's
+  # sealed value must still be enforced.
+  client <- mk_client()
 
   # Token set with an ID token where auth_time is too old (400s ago)
   jwt <- build_jwt(
@@ -328,7 +363,8 @@ test_that("verify_token_set passes max_age from extra_auth_params to validate_id
         client,
         token_set = token_set,
         nonce = NULL,
-        is_refresh = FALSE
+        is_refresh = FALSE,
+        requested_max_age = 300
       ),
       regexp = "auth_time exceeded max_age"
     )
@@ -419,7 +455,8 @@ test_that("verify_token_set accepts token when auth_time is within max_age", {
         client,
         token_set = token_set,
         nonce = NULL,
-        is_refresh = FALSE
+        is_refresh = FALSE,
+        requested_max_age = 300
       )
     )
   })
@@ -535,7 +572,8 @@ test_that("verify_token_set rejects ID token missing auth_time when max_age requ
         client,
         token_set = token_set,
         nonce = NULL,
-        is_refresh = FALSE
+        is_refresh = FALSE,
+        requested_max_age = 300
       ),
       regexp = "auth_time"
     )

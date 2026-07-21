@@ -52,6 +52,7 @@ prepare_call <- function(
 
   flow_trace_id <- gen_trace_id()
   effective_scopes <- effective_client_scopes(oauth_client)
+  requested_max_age <- provider_auth_max_age(oauth_client@provider)
   request_mode <- oauth_client@request_object_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
@@ -131,6 +132,7 @@ prepare_call <- function(
           client_id = oauth_client@client_id,
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
+          max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
           issued_at = as.numeric(Sys.time()),
@@ -385,6 +387,16 @@ build_authorization_params <- function(
 
   explicit_response_mode <- response_mode_info[["explicit_mode"]]
   extra <- response_mode_info[["extra_auth_params"]]
+
+  # Send the same normalized max_age value that is sealed into state. This
+  # avoids differences between accepted R input types and wire serialization.
+  max_age_info <- inspect_auth_max_age(extra)
+  if (!is.null(max_age_info[["error"]])) {
+    err_config(max_age_info[["error"]])
+  }
+  if (length(max_age_info[["index"]]) == 1L) {
+    extra[[max_age_info[["index"]]]] <- max_age_info[["value"]]
+  }
 
   if (length(extra) > 0) {
     # Block overrides for security-critical parameters unless explicitly
@@ -1619,6 +1631,7 @@ handle_callback_internal <- function(
         token_set = token_set,
         nonce = nonce,
         is_refresh = FALSE,
+        requested_max_age = payload_requested_max_age(payload),
         requested_scopes = payload[["scopes"]] %||% NULL,
         shiny_session = shiny_session,
         defer_certificate_binding = defer_certificate_binding
@@ -2365,6 +2378,8 @@ swap_code_for_token_set <- function(
 #' @param is_refresh Whether `token_set` came from a refresh flow.
 #' @param original_id_token Previous ID token used for refresh continuity
 #'   checks.
+#' @param requested_max_age Normalized OIDC `max_age` sent in the authorization
+#'   request and recovered from the sealed state payload.
 #' @param requested_scopes Scopes originally requested, defaulting to the
 #'   effective client scopes.
 #' @param prior_granted_scopes Previously stored granted scopes to carry
@@ -2382,6 +2397,7 @@ verify_token_set <- function(
   nonce,
   is_refresh = FALSE,
   original_id_token = NULL,
+  requested_max_age = NULL,
   requested_scopes = NULL,
   prior_granted_scopes = NULL,
   shiny_session = NULL,
@@ -2643,13 +2659,12 @@ verify_token_set <- function(
       if (isTRUE(should_validate_id_token)) {
         # Verifies signature & claims of ID token
         # Will error if invalid
-        # OIDC Core Section 3.1.2.1: when max_age was requested in extra_auth_params,
-        # pass it to validate_id_token() so auth_time is enforced.
-        requested_max_age <- NULL
-        if (!isTRUE(is_refresh)) {
-          requested_max_age <- inspect_auth_max_age(
-            client@provider@extra_auth_params
-          )[["value"]]
+        # OIDC Core Section 3.1.2.1: enforce the max_age value bound to the
+        # original authorization transaction, never the worker's live config.
+        validation_max_age <- if (isTRUE(is_refresh)) {
+          NULL
+        } else {
+          requested_max_age
         }
         id_token_validation_result <- validate_id_token(
           client,
@@ -2657,7 +2672,7 @@ verify_token_set <- function(
           expected_nonce = nonce,
           expected_sub = expected_sub,
           expected_access_token = token_set[["access_token"]],
-          max_age = requested_max_age
+          max_age = validation_max_age
         )
 
         # If validate_id_token() returned explicit metadata that signature

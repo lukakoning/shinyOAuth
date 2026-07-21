@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OIDC authorization transactions now seal the normalized, transmitted
+`max_age` value into encrypted state, include it in provider and callback-policy
+fingerprints, and use that exact value for callback `auth_time` validation.
+
 * Sanitized HTTP audit summaries now replace `Referer` with `[REDACTED]` so
 OAuth callback credentials in Referer URLs cannot leak to audit sinks. Other
 non-sensitive headers continue to be retained.

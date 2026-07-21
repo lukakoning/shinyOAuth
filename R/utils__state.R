@@ -49,6 +49,7 @@ state_payload_decrypt_validate <- function(
       # Verify freshness and client/provider binding
       payload_verify_issued_at(client, pld)
       payload_verify_client_binding(client, pld)
+      payload_requested_max_age(pld)
 
       if (isTRUE(audit_success)) {
         audit_callback_validation_success(client, pld, shiny_session)
@@ -117,6 +118,7 @@ state_payload_revalidate <- function(
 
       payload_verify_issued_at(client, payload)
       payload_verify_client_binding(client, payload)
+      payload_requested_max_age(payload)
 
       if (isTRUE(audit_success)) {
         audit_callback_validation_success(client, payload, shiny_session)
@@ -471,6 +473,7 @@ state_client_policy_fingerprint <- function(client) {
 
   components <- list(
     response_mode = response_mode,
+    oidc_max_age = provider_auth_max_age(client@provider) %||% NA_real_,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
     resource = state_policy_string_set(client@resource),
     claims = client@claims,
@@ -533,6 +536,32 @@ state_client_policy_fingerprint <- function(client) {
   )
 
   state_policy_digest(components)
+}
+
+#' Read the OIDC max_age bound to an encrypted state payload
+#'
+#' @param payload Decrypted state payload.
+#' @return A normalized non-negative numeric scalar, or `NULL` when the
+#'   authorization request did not include `max_age`.
+#' @keywords internal
+#' @noRd
+payload_requested_max_age <- function(payload) {
+  if (!is.list(payload) || !"max_age" %in% names(payload)) {
+    return(NULL)
+  }
+
+  max_age <- payload[["max_age"]]
+  if (
+    length(max_age) != 1L ||
+      !is.numeric(max_age) ||
+      is.na(max_age) ||
+      !is.finite(max_age) ||
+      max_age < 0
+  ) {
+    err_invalid_state("Invalid payload: max_age must be a non-negative number")
+  }
+
+  as.numeric(max_age)
 }
 
 ## 1.3 Payload binding and freshness -------------------------------------------
