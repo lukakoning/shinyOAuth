@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Direct query callbacks now use the same response-shape validation as plain
+`form_post`: exactly one of `code` or `error`, plus `state`, is required before
+single-use state can be consumed.
+
 * Deprecated `perform_client_bearer_req()` now preserves the method of a
 prebuilt `httr2` request when `method` is omitted, matching
 `perform_resource_req()`.

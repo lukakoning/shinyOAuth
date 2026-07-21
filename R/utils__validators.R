@@ -195,6 +195,42 @@ validate_untrusted_query_string <- function(query_string, max_bytes) {
   invisible(NULL)
 }
 
+#' Validate the direct OAuth callback response shape
+#'
+#' Shared by query and plain form_post callback transports before either path
+#' validates or consumes encrypted state.
+#'
+#' @param code Authorization code, or `NULL`.
+#' @param state Encrypted callback state.
+#' @param error OAuth error code, or `NULL`.
+#' @param context Human-readable callback transport label.
+#' @param abort Function called with an error message for invalid shapes.
+#' @return `"code"` or `"error"` for a valid callback.
+#' @keywords internal
+#' @noRd
+validate_oauth_callback_shape <- function(
+  code,
+  state,
+  error,
+  context = "OAuth callback",
+  abort = err_invalid_state
+) {
+  if (!is_valid_string(state)) {
+    abort(paste0(context, " missing state."))
+  }
+
+  has_code <- !is.null(code)
+  has_error <- !is.null(error)
+  if (isTRUE(has_code) && isTRUE(has_error)) {
+    abort(paste0(context, " must not contain both code and error."))
+  }
+  if (!isTRUE(has_code) && !isTRUE(has_error)) {
+    abort(paste0(context, " missing code or error."))
+  }
+
+  if (isTRUE(has_error)) "error" else "code"
+}
+
 #' Internal: callback size limits
 #'
 #' Centralizes callback limits used by URL query callbacks and form_post

@@ -667,19 +667,13 @@ oauth_form_post_validate_payload <- function(
     )
   }
 
-  if (is.null(state)) {
-    err_form_post_http("OAuth form_post callback missing state.")
-  }
-  if (!is.null(code) && !is.null(error)) {
-    err_form_post_http(
-      "OAuth form_post callback must not contain both code and error."
-    )
-  }
-  if (is.null(code) && is.null(error)) {
-    err_form_post_http("OAuth form_post callback missing code or error.")
-  }
-
-  payload[["type"]] <- if (!is.null(error)) "error" else "code"
+  payload[["type"]] <- validate_oauth_callback_shape(
+    code = code,
+    state = state,
+    error = error,
+    context = "OAuth form_post callback",
+    abort = err_form_post_http
+  )
   payload
 }
 

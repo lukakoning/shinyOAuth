@@ -2127,6 +2127,30 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      # Validate the complete direct response shape before error handling or
+      # code exchange can validate and consume the single-use state entry.
+      if (isTRUE(direct_callback_params_present)) {
+        shape_error <- tryCatch(
+          {
+            validate_oauth_callback_shape(
+              code = query_code,
+              state = query_state,
+              error = query_error,
+              context = "OAuth query callback"
+            )
+            NULL
+          },
+          error = identity
+        )
+        if (!is.null(shape_error)) {
+          .reject_callback_query(
+            description = conditionMessage(shape_error),
+            reason = "invalid_direct_callback_shape"
+          )
+          return(invisible(NULL))
+        }
+      }
+
       # If provider returned an OAuth error response, surface it and abort.
       # Per RFC 6749 section 4.1.2.1 the authorization server may include
       # error and error_description parameters instead of a code.

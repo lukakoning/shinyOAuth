@@ -926,6 +926,47 @@ testthat::test_that("provider error with valid state sets provider error and aut
   )
 })
 
+testthat::test_that("query callback rejects code and error before consuming state", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      url <- values$build_auth_url()
+      enc <- parse_query_param(url, "state")
+      payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
+      cache_key <- shinyOAuth:::state_cache_key(payload[["state"]])
+      testthat::expect_false(is.null(
+        cli@state_store$get(cache_key, missing = NULL)
+      ))
+
+      values$.process_query(paste0(
+        "?code=ok&error=access_denied&state=",
+        enc
+      ))
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_match(
+        values$error_description,
+        "must not contain both code and error",
+        fixed = TRUE
+      )
+      testthat::expect_false(is.null(
+        cli@state_store$get(cache_key, missing = NULL)
+      ))
+    }
+  )
+})
+
 testthat::test_that("error_uri from provider error callback is surfaced on a provider host", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
