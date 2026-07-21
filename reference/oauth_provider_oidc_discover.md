@@ -127,9 +127,17 @@ Most users can accept the defaults here. The points below are mainly
 reference for advanced provider setups or for understanding why
 discovery might fail early.
 
+- Required metadata: discovery documents must contain the required OIDC
+  Provider Metadata fields used by this client. In particular,
+  `response_types_supported` must include `code`,
+  `subject_types_supported` must be a non-empty string array,
+  `id_token_signing_alg_values_supported` must include `RS256`, and
+  `jwks_uri` is required even when automatic ID-token validation is
+  disabled.
+
 - ID token algorithms: by default this helper accepts common asymmetric
   algorithms RSA (RS\*), ECDSA (ES\*), and EdDSA. When the provider
-  advertises its supported ID token signing algorithms via
+  advertises its required ID token signing algorithms via
   `id_token_signing_alg_values_supported`, the helper uses the
   intersection with the caller-provided `allowed_algs`. If there is no
   overlap, discovery fails with a configuration error. There is no
@@ -221,21 +229,19 @@ discovery might fail early.
   (a private key for `private_key_jwt`, or a sufficiently strong
   `client_secret` for `client_secret_jwt`).
 
-- Host policy: by default, discovered standard endpoints must be
-  absolute URLs whose host matches the issuer host exactly. Subdomains
-  are NOT implicitly allowed. If you want to allow subdomains, add a
-  leading-dot or glob in `options(shinyOAuth.allowed_hosts)`, e.g.,
-  `.example.com` or `*.example.com`. If a global whitelist is supplied
-  via `options(shinyOAuth.allowed_hosts)`, discovery will restrict
-  endpoints to that whitelist. RFC 8705 `mtls_endpoint_aliases` are
-  validated separately: they may use a different host or port by
-  default, but an explicit `shinyOAuth.allowed_hosts` whitelist still
-  constrains them. Scheme policy (https/http for loopback) is delegated
-  to
-  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md),
-  so you may allow non-HTTPS hosts with
-  `options(shinyOAuth.allowed_non_https_hosts)` (see
-  [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)).
+- Host policy: discovered standard endpoints must be absolute secure
+  URLs, but may use hosts other than the issuer host as permitted by
+  OIDC Discovery and RFC 8414. If a global whitelist is supplied via
+  `options(shinyOAuth.allowed_hosts)`, discovery restricts endpoints to
+  that whitelist. RFC 8705 `mtls_endpoint_aliases` follow the same
+  default and explicit-allowlist policy. Scheme policy (HTTPS, with HTTP
+  only for explicitly allowed hosts such as loopback development
+  servers) is delegated to
+  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md);
+  see
+  [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md).
+  JWKS host pinning remains a separate policy and defaults to requiring
+  the issuer host exactly.
 
 ## Examples
 

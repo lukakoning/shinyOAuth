@@ -161,9 +161,15 @@ PKCE support and you intentionally want to allow that downgrade).</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Most users can accept the defaults here. The points below are mainly
 reference for advanced provider setups or for understanding why discovery
-might fail early.</p><ul><li><p>ID token algorithms: by default this helper accepts common asymmetric
+might fail early.</p><ul><li><p>Required metadata: discovery documents must contain the required OIDC
+Provider Metadata fields used by this client. In particular,
+<code>response_types_supported</code> must include <code>code</code>,
+<code>subject_types_supported</code> must be a non-empty string array,
+<code>id_token_signing_alg_values_supported</code> must include <code>RS256</code>, and
+<code>jwks_uri</code> is required even when automatic ID-token validation is disabled.</p></li>
+<li><p>ID token algorithms: by default this helper accepts common asymmetric
 algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
-provider advertises its supported ID token signing algorithms via
+provider advertises its required ID token signing algorithms via
 <code>id_token_signing_alg_values_supported</code>, the helper uses the intersection
 with the caller-provided <code>allowed_algs</code>. If there is no overlap, discovery
 fails with a configuration error. There is no automatic fallback to the
@@ -239,18 +245,15 @@ If a provider advertises only JWT methods, you must explicitly set
 <code>token_auth_style</code> and configure the corresponding credentials on your
 <a href="OAuthClient.html">OAuthClient</a> (a private key for <code>private_key_jwt</code>, or a sufficiently
 strong <code>client_secret</code> for <code>client_secret_jwt</code>).</p></li>
-<li><p>Host policy: by default, discovered standard endpoints must be absolute
-URLs whose host matches the issuer host exactly. Subdomains are NOT
-implicitly allowed. If you want to allow subdomains, add a leading-dot or
-glob in <code>options(shinyOAuth.allowed_hosts)</code>, e.g., <code>.example.com</code> or
-<code>*.example.com</code>. If a global whitelist is supplied via
-<code>options(shinyOAuth.allowed_hosts)</code>, discovery will restrict endpoints to
-that whitelist. RFC 8705 <code>mtls_endpoint_aliases</code> are validated separately:
-they may use a different host or port by default, but an explicit
-<code>shinyOAuth.allowed_hosts</code> whitelist still constrains them. Scheme policy
-(https/http for loopback) is delegated to <code><a href="is_ok_host.html">is_ok_host()</a></code>, so you may allow
-non-HTTPS hosts with <code>options(shinyOAuth.allowed_non_https_hosts)</code> (see
-<code><a href="is_ok_host.html">?is_ok_host</a></code>).</p></li>
+<li><p>Host policy: discovered standard endpoints must be absolute secure URLs,
+but may use hosts other than the issuer host as permitted by OIDC Discovery
+and RFC 8414. If a global whitelist is supplied via
+<code>options(shinyOAuth.allowed_hosts)</code>, discovery restricts endpoints to that
+whitelist. RFC 8705 <code>mtls_endpoint_aliases</code> follow the same default and
+explicit-allowlist policy. Scheme policy (HTTPS, with HTTP only for
+explicitly allowed hosts such as loopback development servers) is
+delegated to <code><a href="is_ok_host.html">is_ok_host()</a></code>; see <code><a href="is_ok_host.html">?is_ok_host</a></code>. JWKS host pinning remains a
+separate policy and defaults to requiring the issuer host exactly.</p></li>
 </ul></div>
 
     <div class="section level2">

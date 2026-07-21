@@ -43,7 +43,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The dedicated Keycloak integration runner now requires both HTTP and HTTPS discovery endpoints, treats infrastructure and fixture setup problems as test failures, and enforces a zero-skip budget.</p></li>
+<ul><li><p>OIDC discovery now accepts authorization, token, UserInfo, introspection, revocation, and PAR endpoints on secure hosts other than the issuer host, as allowed by OIDC Discovery and RFC 8414. Setting <code>shinyOAuth.allowed_hosts</code> still applies an explicit endpoint allowlist, and JWKS keeps its separate issuer-host pinning policy by default.</p></li>
+<li><p>OIDC discovery now rejects incomplete or malformed required Provider Metadata. Discovered providers must advertise Authorization Code response support, subject identifier types, RS256 ID-token signing support, and a <code>jwks_uri</code>, including when automatic ID-token validation is disabled.</p></li>
+<li><p>The dedicated Keycloak integration runner now requires both HTTP and HTTPS discovery endpoints, treats infrastructure and fixture setup problems as test failures, and enforces a zero-skip budget.</p></li>
 <li><p>Async integration coverage now requires mirai audit work to run in a distinct worker process and exercises successful and failed OAuth callbacks through a real <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> worker.</p></li>
 <li><p>JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular, an <code>aud</code> array containing non-string elements is now rejected instead of being coerced to strings during parsing.</p></li>
 <li><p>ID tokens and signed UserInfo JWTs are now considered expired at the exact <code>exp</code> second, as required by RFC 7519.</p></li>
