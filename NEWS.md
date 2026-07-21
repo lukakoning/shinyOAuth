@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Deprecated `perform_client_bearer_req()` now preserves the method of a
+prebuilt `httr2` request when `method` is omitted, matching
+`perform_resource_req()`.
+
 * Refreshed OIDC ID tokens may now omit the original token's `auth_time`, and
 base OIDC refresh no longer imposes extension-specific `azp` presence or value
 symmetry.

@@ -275,10 +275,9 @@ perform_client_bearer_req <- function(
     )
   )
 
-  perform_resource_req(
+  args <- list(
     token = token,
     url = url,
-    method = method,
     headers = headers,
     query = query,
     follow_redirect = follow_redirect,
@@ -288,6 +287,11 @@ perform_client_bearer_req <- function(
     dpop_nonce = dpop_nonce,
     idempotent = idempotent
   )
+  if (!missing(method)) {
+    args[["method"]] <- method
+  }
+
+  do.call(perform_resource_req, args)
 }
 
 

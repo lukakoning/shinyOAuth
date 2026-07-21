@@ -534,6 +534,34 @@ test_that("perform_client_bearer_req is a deprecated alias for perform_resource_
   expect_s3_class(resp, "httr2_response")
 })
 
+test_that("deprecated performer preserves a prebuilt request method", {
+  withr::local_options(lifecycle_verbosity = "quiet")
+  seen <- new.env(parent = emptyenv())
+  seen$method <- NULL
+  seen$idempotent <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, idempotent = TRUE) {
+      seen$method <- req[["method"]]
+      seen$idempotent <- idempotent
+      httr2::response(
+        url = as.character(req[["url"]]),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw("{}")
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  req <- httr2::request("https://example.com/base") |>
+    httr2::req_method("POST")
+  perform_client_bearer_req(token = "tok", url = req)
+
+  expect_identical(seen$method, "POST")
+  expect_identical(seen$idempotent, FALSE)
+})
+
 test_that("perform_resource_req uses DPoP retry helper for DPoP tokens", {
   cli <- make_resource_req_dpop_client()
   seen <- new.env(parent = emptyenv())
