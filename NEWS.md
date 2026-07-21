@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Refreshed OIDC ID tokens may now omit the original token's `auth_time`, and
+base OIDC refresh no longer imposes extension-specific `azp` presence or value
+symmetry.
+When a refreshed token includes `auth_time`, it must still match the original.
+
 * `oauth_provider_oidc()` now accepts its documented `token_auth_style`
 override instead of always forcing HTTP Basic authentication.
 

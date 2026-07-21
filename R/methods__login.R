@@ -3028,8 +3028,8 @@ resolve_effective_access_token_type <- function(
 #' Internal: compare original and refreshed ID token continuity claims
 #'
 #' Used by `swap_code_for_token_set()` during refresh handling to enforce OIDC
-#' Core section 12.2 continuity checks for `iss`, `aud`, `auth_time`, `nonce`,
-#' and `azp` when a provider returns a refreshed ID token.
+#' Core section 12.2 continuity checks for `iss`, `aud`, conditional
+#' `auth_time`, and `nonce` when a provider returns a refreshed ID token.
 #'
 #' @param new_payload Parsed refreshed ID token payload.
 #' @param original_payload Parsed original ID token payload.
@@ -3044,7 +3044,6 @@ compare_refresh_id_token_continuity <- function(
   original_aud <- original_payload[["aud"]]
   original_auth_time <- original_payload[["auth_time"]]
   original_nonce <- original_payload[["nonce"]] %||% NULL
-  original_azp <- original_payload[["azp"]] %||% NULL
 
   if (
     is_valid_string(original_iss) &&
@@ -3065,7 +3064,12 @@ compare_refresh_id_token_continuity <- function(
       "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"
     )
   }
-  if (!is.null(original_auth_time)) {
+  # OIDC Core 12.2 does not require a refreshed ID token to repeat auth_time.
+  # When it does repeat the claim, it must identify the original login time.
+  if (
+    !is.null(new_payload[["auth_time"]]) &&
+      !is.null(original_auth_time)
+  ) {
     original_auth_time_val <- suppressWarnings(as.numeric(
       original_auth_time
     ))
@@ -3078,12 +3082,6 @@ compare_refresh_id_token_continuity <- function(
         "Original ID token auth_time claim must be a single finite number to verify refresh continuity (OIDC 12.2)"
       )
     }
-    if (is.null(new_payload[["auth_time"]])) {
-      err_id_token(
-        "Refresh returned an ID token missing auth_time from the original authentication (OIDC 12.2)"
-      )
-    }
-
     new_auth_time_val <- suppressWarnings(as.numeric(
       new_payload[["auth_time"]]
     ))
@@ -3108,18 +3106,6 @@ compare_refresh_id_token_continuity <- function(
   ) {
     err_id_token(
       "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
-    )
-  }
-  if (
-    (!is.null(original_azp) ||
-      !is.null(new_payload[["azp"]])) &&
-      !identical(
-        new_payload[["azp"]] %||% NULL,
-        original_azp
-      )
-  ) {
-    err_id_token(
-      "Refresh returned an ID token with azp that does not match the original (OIDC 12.2)"
     )
   }
 }
