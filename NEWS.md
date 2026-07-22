@@ -262,8 +262,9 @@ S7 classes only use the new names. Renamed arguments include:
   `/.well-known/openid-configuration` URL plus the underlying network error,
   making discovery misconfiguration and connectivity problems easier to 
   diagnose.
-  - Preserves the issuer identifier verbatim for exact Discovery and downstream
-  `iss` checks while normalizing only the well-known document URL.
+  - Accepts discovery metadata that differs from the configured issuer only by 
+  one trailing slash in the published `issuer`, while still storing the 
+  provider's advertised issuer verbatim for downstream `iss` checks.
   - Preserves JARM discovery metadata from
   the canonical `jarm_*_values_supported` fields, while still accepting the
   older `authorization_*` compatibility aliases.
