@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Inbound JOSE and JWK identifiers are now compared case-sensitively. ID-token
+and signed UserInfo `alg` values, plus JWK `alg`, `use`, `key_ops`, `kty`, and
+`crv`, must use their registered spelling.
+
 * OIDC Discovery now compares the returned `issuer` with the issuer used for
 discovery using exact code-point equality, including a trailing slash. Issuer
 normalization is limited to constructing the well-known document URL.

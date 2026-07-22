@@ -57,7 +57,7 @@ validate_id_token <- function(
 
   prov <- client@provider
   issuer <- prov@issuer
-  allowed_algs <- toupper(
+  allowed_algs <- vapply(
     prov@allowed_algs %||%
       c(
         "RS256",
@@ -67,7 +67,9 @@ validate_id_token <- function(
         "ES384",
         "ES512",
         "EdDSA"
-      )
+      ),
+    canonicalize_jws_alg,
+    character(1)
   )
   leeway <- prov@leeway %||% getOption("shinyOAuth.leeway", 30)
   jwks_cache <- prov@jwks_cache
@@ -93,8 +95,16 @@ validate_id_token <- function(
   # RFC 7515 s4.1.11: also reject critical header parameters we do not support.
   enforce_inbound_jwt_header_policy(header_fields, err_id_token)
 
-  alg <- toupper(header_fields[["alg"]])
+  alg <- header_fields[["alg"]]
   kid <- header_fields[["kid"]]
+  supported_algs <- c(
+    "RS256", "RS384", "RS512",
+    "ES256", "ES384", "ES512",
+    "EdDSA", "HS256", "HS384", "HS512", "none"
+  )
+  if (!(alg %in% supported_algs)) {
+    err_id_token(paste0("Unsupported JWT alg: ", alg))
+  }
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
     err_id_token(paste0(
       "JWT alg not allowed by provider: ",
@@ -127,7 +137,7 @@ validate_id_token <- function(
           "ES256",
           "ES384",
           "ES512",
-          "EDDSA"
+          "EdDSA"
         )
     ) {
       jwks <- fetch_jwks(
@@ -228,7 +238,7 @@ validate_id_token <- function(
         }
         if (isTRUE(verify_jws_signature_no_time(id_token, pub, alg))) {
           verified <- TRUE
-          if (identical(alg, "EDDSA")) {
+          if (identical(alg, "EdDSA")) {
             verified_eddsa_curve <- resolve_verified_eddsa_curve(
               jwk = jk,
               key = pub
@@ -488,7 +498,7 @@ validate_id_token <- function(
         "ID token contains at_hash claim but no access token was provided for validation"
       )
     }
-    if (identical(alg, "EDDSA") && isTRUE(skip_signature)) {
+    if (identical(alg, "EdDSA") && isTRUE(skip_signature)) {
       err_id_token(c(
         "x" = paste(
           "Cannot validate EdDSA at_hash when signature verification is skipped"
@@ -497,7 +507,7 @@ validate_id_token <- function(
       ))
     }
     if (
-      identical(alg, "EDDSA") &&
+      identical(alg, "EdDSA") &&
         identical(canonicalize_eddsa_curve(verified_eddsa_curve), "Ed448")
     ) {
       err_id_token(c(
@@ -561,11 +571,10 @@ canonicalize_eddsa_curve <- function(eddsa_curve) {
     return(NULL)
   }
 
-  curve <- toupper(eddsa_curve)
-  if (identical(curve, "ED25519")) {
+  if (identical(eddsa_curve, "Ed25519")) {
     return("Ed25519")
   }
-  if (identical(curve, "ED448")) {
+  if (identical(eddsa_curve, "Ed448")) {
     return("Ed448")
   }
 

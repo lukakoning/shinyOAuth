@@ -121,7 +121,7 @@ make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {
     shinyOAuth:::base64url_encode(charToRaw(claims_json))
   )
   hash_fn <- switch(
-    alg,
+    toupper(alg),
     RS256 = openssl::sha256,
     RS384 = openssl::sha384,
     RS512 = openssl::sha512,
@@ -135,6 +135,50 @@ make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {
 
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }
+
+test_that("validate_id_token rejects a signed lowercase alg", {
+  rsa <- openssl::rsa_keygen(bits = 2048)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(rsa), simplifyVector = TRUE)
+  jwk$kid <- "lowercase-alg"
+  jwk$use <- "sig"
+  jwk$alg <- "RS256"
+  issuer <- "http://localhost"
+  client <- oauth_client(
+    oauth_provider(
+      name = "lowercase-alg",
+      auth_url = paste0(issuer, "/auth"),
+      token_url = paste0(issuer, "/token"),
+      issuer = issuer,
+      allowed_algs = "RS256"
+    ),
+    client_id = "client-lowercase",
+    client_secret = "unused",
+    redirect_uri = paste0(issuer, "/callback")
+  )
+  now <- as.numeric(Sys.time())
+  token <- make_rsa_jwt_with_alg(
+    rsa,
+    "rs256",
+    list(
+      iss = issuer,
+      aud = "client-lowercase",
+      sub = "user-lowercase",
+      exp = now + 120,
+      iat = now - 1
+    ),
+    jwk$kid
+  )
+
+  expect_error(
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) list(keys = list(jwk)),
+      .package = "shinyOAuth",
+      shinyOAuth:::validate_id_token(client, token)
+    ),
+    class = "shinyOAuth_id_token_error",
+    regexp = "Unsupported JWT alg: rs256"
+  )
+})
 
 test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
   testthat::skip_if_not_installed("jose")

@@ -500,13 +500,13 @@ decode_userinfo_jwt <- function(
     }
   )
 
-  alg <- toupper(header_fields[["alg"]])
+  alg <- header_fields[["alg"]]
   kid <- header_fields[["kid"]]
 
   # Always reject alg=none — unsigned JWTs cannot be trusted for userinfo.
 
   # Testing-only escape hatch, gated via allow_unsigned_userinfo_jwt() softener
-  if (alg == "NONE") {
+  if (identical(alg, "none")) {
     if (allow_unsigned_userinfo_jwt()) {
       payload <- parse_jwt_payload(jwt_str)
       return(as.list(payload))
@@ -526,7 +526,7 @@ decode_userinfo_jwt <- function(
   # Use provider's allowed_algs for algorithm enforcement (filtering to
   # asymmetric only, since HMAC is not supported for userinfo JWTs)
   asymmetric_algs <- intersect(
-    toupper(prov@allowed_algs),
+    vapply(prov@allowed_algs, canonicalize_jws_alg, character(1)),
     c(
       "RS256",
       "RS384",
@@ -534,7 +534,7 @@ decode_userinfo_jwt <- function(
       "ES256",
       "ES384",
       "ES512",
-      "EDDSA"
+      "EdDSA"
     )
   )
 

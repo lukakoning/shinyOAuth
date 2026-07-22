@@ -67,7 +67,7 @@ select_candidate_jwks <- function(
       if (inherits(u, "try-error") || is.null(u)) {
         return(TRUE)
       }
-      is.character(u) && length(u) == 1L && identical(tolower(u), "sig")
+      is.character(u) && length(u) == 1L && identical(u, "sig")
     },
     logical(1)
   )
@@ -83,10 +83,10 @@ select_candidate_jwks <- function(
         "verify",
         "encrypt",
         "decrypt",
-        "wrapkey",
-        "unwrapkey",
-        "derivekey",
-        "derivebits"
+        "wrapKey",
+        "unwrapKey",
+        "deriveKey",
+        "deriveBits"
       )
       ops <- try(k[["key_ops"]], silent = TRUE)
       if (inherits(ops, "try-error") || is.null(ops)) {
@@ -95,16 +95,15 @@ select_candidate_jwks <- function(
       if (!is.character(ops) || length(ops) == 0L || anyNA(ops)) {
         return(FALSE)
       }
-      ops_norm <- tolower(ops)
       if (
         !all(nzchar(ops)) ||
-          anyDuplicated(ops_norm) > 0L ||
-          !all(ops_norm %in% valid_key_ops)
+          anyDuplicated(ops) > 0L ||
+          !all(ops %in% valid_key_ops)
       ) {
         return(FALSE)
       }
       # For signature verification, the key must support "verify"
-      "verify" %in% ops_norm
+      "verify" %in% ops
     },
     logical(1)
   )
@@ -128,7 +127,7 @@ select_candidate_jwks <- function(
       length(header_alg) == 1L &&
       nzchar(header_alg)
   ) {
-    ha <- toupper(header_alg)
+    ha <- header_alg
     ord_score <- vapply(
       keys,
       function(k) {
@@ -139,7 +138,7 @@ select_candidate_jwks <- function(
         if (!is.character(ka) || length(ka) != 1L || !nzchar(ka)) {
           return(1L)
         }
-        if (identical(toupper(ka), ha)) 0L else 1L
+        if (identical(ka, ha)) 0L else 1L
       },
       integer(1)
     )
@@ -186,14 +185,12 @@ filter_jwks_for_alg <- function(keys, alg) {
   if (!is_valid_string(alg)) {
     return(list())
   }
-  alg <- toupper(alg)
-
   keys <- Filter(function(k) jwk_is_compatible_with_alg(k, alg), keys)
 
   Filter(
     function(k) {
       ka <- k[["alg"]] %||% NULL
-      is.null(ka) || (is_valid_string(ka) && identical(toupper(ka), alg))
+      is.null(ka) || (is_valid_string(ka) && identical(ka, alg))
     },
     keys
   )
@@ -214,9 +211,9 @@ jwk_is_compatible_with_alg <- function(jwk, alg) {
   if (!is.list(jwk) || !is_valid_string(jwk[["kty"]] %||% NULL)) {
     return(FALSE)
   }
-  kty <- toupper(jwk[["kty"]])
+  kty <- jwk[["kty"]]
   crv_value <- jwk[["crv"]] %||% NULL
-  crv <- if (is_valid_string(crv_value)) toupper(crv_value) else ""
+  crv <- if (is_valid_string(crv_value)) crv_value else ""
   switch(
     alg,
     RS256 = kty == "RSA",
@@ -225,7 +222,7 @@ jwk_is_compatible_with_alg <- function(jwk, alg) {
     ES256 = (kty == "EC" && crv == "P-256"),
     ES384 = (kty == "EC" && crv == "P-384"),
     ES512 = (kty == "EC" && crv == "P-521"),
-    EDDSA = (kty == "OKP" && crv %in% c("ED25519", "ED448")),
+    EdDSA = (kty == "OKP" && crv %in% c("Ed25519", "Ed448")),
     FALSE
   )
 }

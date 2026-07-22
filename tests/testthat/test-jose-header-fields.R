@@ -111,6 +111,17 @@ test_that("validate_jose_header_fields reads exact JOSE member names", {
   expect_null(fields$crit)
 })
 
+test_that("ID token and UserInfo alg values are case-sensitive", {
+  expect_id_token_header_error(
+    '{"alg":"rs256"}',
+    "Unsupported JWT alg"
+  )
+  expect_userinfo_header_error(
+    '{"alg":"rs256"}',
+    "not in provider's allowed asymmetric algorithms"
+  )
+})
+
 test_that("shared JWT typ policy accepts the JWT media type", {
   for (typ in c("JWT", "jwt", "application/jwt", "Application/JWT")) {
     fields <- list(alg = "RS256", kid = NULL, typ = typ, crit = NULL)

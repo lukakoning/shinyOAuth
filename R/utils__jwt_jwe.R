@@ -264,7 +264,7 @@ normalize_request_object_encryption_jwks <- function(jwks_or_keys) {
 #' @keywords internal
 #' @noRd
 jwk_is_compatible_with_jwe_alg <- function(jwk, alg) {
-  kty <- toupper(jwk[["kty"]] %||% "")
+  kty <- jwk[["kty"]] %||% ""
 
   switch(
     canonicalize_jwe_alg(alg),
@@ -298,7 +298,7 @@ select_candidate_jwks_for_encryption <- function(
       if (inherits(use, "try-error") || is.null(use)) {
         return(TRUE)
       }
-      is.character(use) && length(use) == 1L && identical(tolower(use), "enc")
+      is.character(use) && length(use) == 1L && identical(use, "enc")
     },
     logical(1)
   )
@@ -312,10 +312,10 @@ select_candidate_jwks_for_encryption <- function(
         "verify",
         "encrypt",
         "decrypt",
-        "wrapkey",
-        "unwrapkey",
-        "derivekey",
-        "derivebits"
+        "wrapKey",
+        "unwrapKey",
+        "deriveKey",
+        "deriveBits"
       )
       key_ops <- try(key[["key_ops"]], silent = TRUE)
       if (inherits(key_ops, "try-error") || is.null(key_ops)) {
@@ -324,15 +324,14 @@ select_candidate_jwks_for_encryption <- function(
       if (!is.character(key_ops) || length(key_ops) == 0L || anyNA(key_ops)) {
         return(FALSE)
       }
-      key_ops_norm <- tolower(key_ops)
       if (
         !all(nzchar(key_ops)) ||
-          anyDuplicated(key_ops_norm) > 0L ||
-          !all(key_ops_norm %in% valid_key_ops)
+          anyDuplicated(key_ops) > 0L ||
+          !all(key_ops %in% valid_key_ops)
       ) {
         return(FALSE)
       }
-      any(key_ops_norm %in% c("encrypt", "wrapkey"))
+      any(key_ops %in% c("encrypt", "wrapKey"))
     },
     logical(1)
   )
@@ -360,7 +359,7 @@ select_candidate_jwks_for_encryption <- function(
 
   Filter(
     function(key) {
-      key_alg <- canonicalize_jwe_alg(key[["alg"]] %||% "")
+      key_alg <- key[["alg"]] %||% ""
       !nzchar(key_alg) || identical(key_alg, canonicalize_jwe_alg(alg))
     },
     keys
@@ -380,17 +379,17 @@ select_candidate_jwks_for_encryption <- function(
 rank_request_object_encryption_jwk <- function(jwk, alg) {
   score <- 0L
 
-  use <- tolower(jwk[["use"]] %||% "")
+  use <- jwk[["use"]] %||% ""
   if (identical(use, "enc")) {
     score <- score + 4L
   }
 
-  key_ops <- tolower(jwk[["key_ops"]] %||% character(0))
-  if (length(key_ops) > 0 && any(key_ops %in% c("encrypt", "wrapkey"))) {
+  key_ops <- jwk[["key_ops"]] %||% character(0)
+  if (length(key_ops) > 0 && any(key_ops %in% c("encrypt", "wrapKey"))) {
     score <- score + 2L
   }
 
-  key_alg <- canonicalize_jwe_alg(jwk[["alg"]] %||% "")
+  key_alg <- jwk[["alg"]] %||% ""
   if (nzchar(key_alg) && identical(key_alg, canonicalize_jwe_alg(alg))) {
     score <- score + 4L
   }
