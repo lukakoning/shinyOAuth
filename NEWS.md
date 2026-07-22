@@ -115,6 +115,7 @@ prebuilt `httr2` request when `method` is omitted, matching
 base OIDC refresh no longer imposes extension-specific `azp` presence or value
 symmetry.
 When a refreshed token includes `auth_time`, it must still match the original.
+The authentication-flow documentation now states this `azp` scope correctly.
 
 * `oauth_provider_oidc()` now accepts its documented `token_auth_style`
 override instead of always forcing HTTP Basic authentication.
