@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Pre-encoded character `claims` values must now be JSON objects, as required
+for the OIDC Claims request parameter; valid JSON scalars and arrays are
+rejected.
+
 * Browser callback cleanup now removes fragment parameters even when their raw
 values contain additional `=` characters, while preserving unrelated fragment
 parameters unchanged.

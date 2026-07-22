@@ -2496,6 +2496,11 @@ oauth_client_validate <- function(self) {
           "OAuthClient: claims provided as character must be valid JSON"
         )
       }
+      if (!grepl("^\\s*\\{", self@claims, perl = TRUE)) {
+        return(
+          "OAuthClient: claims provided as character must be a JSON object"
+        )
+      }
     } else {
       return(
         "OAuthClient: claims must be NULL, a list, or a character string"

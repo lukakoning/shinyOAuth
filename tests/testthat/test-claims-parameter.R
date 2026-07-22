@@ -119,6 +119,32 @@ test_that("OAuthClient rejects invalid JSON string claims", {
   )
 })
 
+test_that("OAuthClient requires character claims to encode a JSON object", {
+  prov <- make_test_provider()
+
+  for (claims_json in c("null", "true", "123", '"claim"', "[]", "[{}]")) {
+    expect_error(
+      oauth_client(
+        provider = prov,
+        client_id = "test-id",
+        client_secret = "test-secret",
+        redirect_uri = "http://localhost:8100",
+        claims = claims_json
+      ),
+      regexp = "claims provided as character must be a JSON object"
+    )
+  }
+
+  expect_no_error(oauth_client(
+    provider = prov,
+    client_id = "test-id",
+    client_secret = "test-secret",
+    redirect_uri = "http://localhost:8100",
+    claims_validation = "none",
+    claims = "  {}"
+  ))
+})
+
 # ---- OAuthProvider extra_auth_params blocking ------------------------------
 
 test_that("OAuthProvider rejects claims in extra_auth_params", {
