@@ -103,10 +103,11 @@ Best-effort semantics:
   "unknown" and will not break flows unless your code explicitly
   requires a definitive result (i.e., `isTRUE(result$active)`).
 
-- Providers vary in how they encode the RFC 7662 `active` field
-  (logical, numeric, or character variants like "true"/"false", 1/0).
-  These are normalized to logical `TRUE`/`FALSE` when possible;
-  otherwise `active` is set to `NA`.
+- RFC 7662 requires `active` to be a JSON Boolean. Other JSON types fail
+  closed with `active = NA` and `status = "invalid_active"`. For
+  temporary compatibility with a nonconforming endpoint, legacy numeric
+  and string coercion can be enabled explicitly with
+  `options(shinyOAuth.allow_legacy_introspection_active = TRUE)`.
 
 ## Examples
 

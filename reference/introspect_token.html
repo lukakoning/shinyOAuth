@@ -153,10 +153,11 @@ descriptive <code>status</code> (for example, <code>"http_404"</code>, <code>"in
 <code>"missing_active"</code>). In this context, <code>NA</code>
 means "unknown" and will not break flows unless your code explicitly
 requires a definitive result (i.e., <code>isTRUE(result$active)</code>).</p></li>
-<li><p>Providers vary in how they encode the RFC 7662 <code>active</code> field (logical,
-numeric, or character variants like "true"/"false", 1/0). These are
-normalized to logical <code>TRUE</code>/<code>FALSE</code> when possible; otherwise <code>active</code> is
-set to <code>NA</code>.</p></li>
+<li><p>RFC 7662 requires <code>active</code> to be a JSON Boolean. Other JSON types fail
+closed with <code>active = NA</code> and <code>status = "invalid_active"</code>. For temporary
+compatibility with a nonconforming endpoint, legacy numeric and string
+coercion can be enabled explicitly with
+<code>options(shinyOAuth.allow_legacy_introspection_active = TRUE)</code>.</p></li>
 </ul></div>
 
     <div class="section level2">
