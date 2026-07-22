@@ -34,7 +34,7 @@ testthat::test_that("introspect_token handles unsupported and missing tokens", {
   testthat::expect_identical(res3$status, "missing_token")
 })
 
-testthat::test_that("introspect_token parses active variants and http errors", {
+testthat::test_that("introspect_token requires Boolean active values", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@introspection_url <- "https://example.com/introspect"
   t <- OAuthToken(
@@ -92,18 +92,19 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   # false
   r2 <- introspect_token(cli, t, which = "access", async = FALSE)
   testthat::expect_false(isTRUE(r2$active))
-  # "true"
+  # Non-Boolean values fail closed.
   r3 <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_true(isTRUE(r3$active))
-  # "false"
+  testthat::expect_true(is.na(r3$active))
+  testthat::expect_identical(r3$status, "invalid_active")
   r4 <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_false(isTRUE(r4$active))
-  # 1
+  testthat::expect_true(is.na(r4$active))
+  testthat::expect_identical(r4$status, "invalid_active")
   r5 <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_true(isTRUE(r5$active))
-  # 0
+  testthat::expect_true(is.na(r5$active))
+  testthat::expect_identical(r5$status, "invalid_active")
   r6 <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_false(isTRUE(r6$active))
+  testthat::expect_true(is.na(r6$active))
+  testthat::expect_identical(r6$status, "invalid_active")
   # missing field -> NA
   r7 <- introspect_token(cli, t, which = "access", async = FALSE)
   testthat::expect_true(is.na(r7$active))
@@ -113,6 +114,42 @@ testthat::test_that("introspect_token parses active variants and http errors", {
   r8 <- introspect_token(cli, t, which = "access", async = FALSE)
   testthat::expect_true(is.na(r8$active))
   testthat::expect_identical(r8$status, "invalid_json")
+})
+
+testthat::test_that("introspect_token gates legacy active coercion", {
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  t <- OAuthToken(
+    access_token = "at",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 60,
+    id_token = NA_character_
+  )
+  bodies <- c(
+    '{"active":"yes"}',
+    '{"active":"false"}',
+    '{"active":2}',
+    '{"active":0}'
+  )
+  i <- 0L
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      i <<- i + 1L
+      httr2::response(
+        url = as.character(req[["url"]]),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(bodies[[i]])
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  withr::local_options(shinyOAuth.allow_legacy_introspection_active = TRUE)
+  testthat::expect_true(introspect_token(cli, t, async = FALSE)$active)
+  testthat::expect_false(introspect_token(cli, t, async = FALSE)$active)
+  testthat::expect_true(introspect_token(cli, t, async = FALSE)$active)
+  testthat::expect_false(introspect_token(cli, t, async = FALSE)$active)
 })
 
 testthat::test_that("introspect_token treats duplicate active members as invalid_json", {

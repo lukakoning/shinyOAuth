@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Token introspection now requires RFC 7662's JSON Boolean `active` value and
+fails closed on strings or numbers. Nonconforming providers can temporarily
+restore the old coercion with
+`options(shinyOAuth.allow_legacy_introspection_active = TRUE)`.
+
 * Added explicit RFC 9700 multi-authorization-server configuration through
 `authorization_server_mode`. Multi-issuer mode now fails closed unless direct
 callbacks have advertised RFC 9207 support or use JARM; distinct-redirect mode

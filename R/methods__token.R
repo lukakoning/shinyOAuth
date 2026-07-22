@@ -311,10 +311,11 @@ revoke_token <- function(
 #'   `"missing_active"`). In this context, `NA`
 #'   means "unknown" and will not break flows unless your code explicitly
 #'   requires a definitive result (i.e., `isTRUE(result$active)`).
-#' - Providers vary in how they encode the RFC 7662 `active` field (logical,
-#'   numeric, or character variants like "true"/"false", 1/0). These are
-#'   normalized to logical `TRUE`/`FALSE` when possible; otherwise `active` is
-#'   set to `NA`.
+#' - RFC 7662 requires `active` to be a JSON Boolean. Other JSON types fail
+#'   closed with `active = NA` and `status = "invalid_active"`. For temporary
+#'   compatibility with a nonconforming endpoint, legacy numeric and string
+#'   coercion can be enabled explicitly with
+#'   `options(shinyOAuth.allow_legacy_introspection_active = TRUE)`.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object to introspect
@@ -1348,9 +1349,9 @@ annotate_token_introspection_span_result <- function(which, result) {
 
 #' Internal: normalize an RFC 7662 active field
 #'
-#' Used by [introspect_token()] because providers encode the introspection
-#' `active` field as logical, numeric, or string values depending on their
-#' implementation.
+#' Used by [introspect_token()] to require the RFC 7662 JSON Boolean by default.
+#' Legacy numeric and string coercion is available only through an explicit
+#' compatibility option.
 #'
 #' @param x Provider-supplied `active` field value.
 #' @return `TRUE`, `FALSE`, or `NA` when the value cannot be normalized safely.
@@ -1363,6 +1364,9 @@ coerce_introspection_active <- function(x) {
 
   if (is.logical(x)) {
     return(ifelse(!is.na(x[[1]]), x[[1]], NA))
+  }
+  if (!isTRUE(getOption("shinyOAuth.allow_legacy_introspection_active", FALSE))) {
+    return(NA)
   }
   if (is.numeric(x)) {
     xv <- suppressWarnings(as.numeric(x[[1]]))

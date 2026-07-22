@@ -75,10 +75,11 @@ descriptive \code{status} (for example, \code{"http_404"}, \code{"invalid_json"}
 \code{"missing_active"}). In this context, \code{NA}
 means "unknown" and will not break flows unless your code explicitly
 requires a definitive result (i.e., \code{isTRUE(result$active)}).
-\item Providers vary in how they encode the RFC 7662 \code{active} field (logical,
-numeric, or character variants like "true"/"false", 1/0). These are
-normalized to logical \code{TRUE}/\code{FALSE} when possible; otherwise \code{active} is
-set to \code{NA}.
+\item RFC 7662 requires \code{active} to be a JSON Boolean. Other JSON types fail
+closed with \code{active = NA} and \code{status = "invalid_active"}. For temporary
+compatibility with a nonconforming endpoint, legacy numeric and string
+coercion can be enabled explicitly with
+\code{options(shinyOAuth.allow_legacy_introspection_active = TRUE)}.
 }
 }
 \examples{
