@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Direct callbacks carrying exactly one of `code` or `error` but no `state`
+are again reported as `invalid_state`. The early response-shape check still
+prevents state consumption, while ambiguous callback shapes remain
+`invalid_callback_query`.
+
 * ID-token validation now fails closed whenever a present Ed448 `at_hash`
 cannot be validated by the available crypto bindings, even when the claim was
 not configured as required.

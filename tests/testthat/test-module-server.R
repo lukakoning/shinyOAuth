@@ -967,6 +967,31 @@ testthat::test_that("query callback rejects code and error before consuming stat
   )
 })
 
+testthat::test_that("code callback without state is rejected as invalid state", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE
+    ),
+    expr = {
+      session$flushReact()
+
+      values$.process_query("?code=ok")
+      session$flushReact()
+
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_match(values$error_description, "state")
+      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_null(values$token)
+    }
+  )
+})
+
 testthat::test_that("error_uri from provider error callback is surfaced on a provider host", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

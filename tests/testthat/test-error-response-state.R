@@ -55,7 +55,7 @@ testthat::test_that("error response with state consumes state from store", {
   )
 })
 
-testthat::test_that("unsolicited error without state has invalid callback shape", {
+testthat::test_that("unsolicited error response without state is rejected as invalid_state", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -74,7 +74,7 @@ testthat::test_that("unsolicited error without state has invalid callback shape"
       )
       session$flushReact()
 
-      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_identical(values$error, "invalid_state")
       testthat::expect_match(values$error_description %||% "", "state")
       testthat::expect_false(values$authenticated)
     }
@@ -268,12 +268,12 @@ testthat::test_that("error response without state is rejected after login initia
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
       key <- shinyOAuth:::state_cache_key(payload[["state"]])
 
-      # Error callback missing state should fail callback-shape validation,
+      # Error callback missing state should be rejected as invalid_state,
       # even though a valid login state exists in the store.
       values$.process_query("?error=access_denied")
       session$flushReact()
 
-      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_identical(values$error, "invalid_state")
       testthat::expect_match(values$error_description %||% "", "state")
       testthat::expect_false(values$authenticated)
 

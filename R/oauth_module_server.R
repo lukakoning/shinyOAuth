@@ -1499,7 +1499,8 @@ oauth_module_server <- function(
     .reject_callback_query <- function(
       description,
       reason = NULL,
-      drop_response = FALSE
+      drop_response = FALSE,
+      error_code = "invalid_callback_query"
     ) {
       clear_oauth_module_callback_query(
         session,
@@ -1508,7 +1509,7 @@ oauth_module_server <- function(
         drop_response = drop_response
       )
       .set_error(
-        "invalid_callback_query",
+        error_code,
         NULL,
         phase = "callback_query_validation",
         description = description
@@ -1520,7 +1521,7 @@ oauth_module_server <- function(
             provider = client@provider@name %||% NA_character_,
             issuer = client@provider@issuer %||% NA_character_,
             client_id_digest = string_digest(client@client_id),
-            error_class = "invalid_callback_query",
+            error_class = error_code,
             phase = "callback_query_validation",
             reason = reason %||% NULL
           ))
@@ -2143,9 +2144,25 @@ oauth_module_server <- function(
           error = identity
         )
         if (!is.null(shape_error)) {
+          has_exactly_one_response <- xor(
+            !is.null(query_code),
+            !is.null(query_error)
+          )
+          missing_state <- !is_valid_string(query_state)
+          missing_response_state <- isTRUE(has_exactly_one_response) &&
+            isTRUE(missing_state)
           .reject_callback_query(
             description = conditionMessage(shape_error),
-            reason = "invalid_direct_callback_shape"
+            reason = if (missing_response_state) {
+              "missing_direct_callback_state"
+            } else {
+              "invalid_direct_callback_shape"
+            },
+            error_code = if (missing_response_state) {
+              "invalid_state"
+            } else {
+              "invalid_callback_query"
+            }
           )
           return(invisible(NULL))
         }

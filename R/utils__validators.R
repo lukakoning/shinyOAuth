@@ -215,10 +215,6 @@ validate_oauth_callback_shape <- function(
   context = "OAuth callback",
   abort = err_invalid_state
 ) {
-  if (!is_valid_string(state)) {
-    abort(paste0(context, " missing state."))
-  }
-
   has_code <- !is.null(code)
   has_error <- !is.null(error)
   if (isTRUE(has_code) && isTRUE(has_error)) {
@@ -226,6 +222,9 @@ validate_oauth_callback_shape <- function(
   }
   if (!isTRUE(has_code) && !isTRUE(has_error)) {
     abort(paste0(context, " missing code or error."))
+  }
+  if (!is_valid_string(state)) {
+    abort(paste0(context, " missing state."))
   }
 
   if (isTRUE(has_error)) "error" else "code"
