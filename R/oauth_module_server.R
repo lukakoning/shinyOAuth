@@ -677,27 +677,35 @@ oauth_module_server <- function(
       }
 
       use_async_revocation <- isTRUE(async)
-      try(revoke_token(
-        client,
-        tok,
-        which = "refresh",
-        async = use_async_revocation,
-        shiny_session = shiny_session
-      ), silent = TRUE)
-      try(revoke_token(
-        client,
-        tok,
-        which = "access",
-        async = use_async_revocation,
-        shiny_session = shiny_session
-      ), silent = TRUE)
+      try(
+        revoke_token(
+          client,
+          tok,
+          which = "refresh",
+          async = use_async_revocation,
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+      try(
+        revoke_token(
+          client,
+          tok,
+          which = "access",
+          async = use_async_revocation,
+          shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
       invisible(NULL)
     }
 
     .interactive_auth_started_at <- function(tok) {
       now <- as.numeric(Sys.time())
-      if (!S7::S7_inherits(tok, OAuthToken) ||
-        !isTRUE(tok@id_token_validated)) {
+      if (
+        !S7::S7_inherits(tok, OAuthToken) ||
+          !isTRUE(tok@id_token_validated)
+      ) {
         return(now)
       }
 
@@ -1526,7 +1534,13 @@ oauth_module_server <- function(
     shiny::observeEvent(
       session$clientData$url_search,
       {
-        .process_query(shiny::isolate(session$clientData$url_search) %||% "")
+        .process_query(
+          shiny::isolate(session$clientData$url_search) %||% "",
+          current_uri = shiny::isolate(
+            oauth_shiny_session_callback_uri(session)
+          ) %||%
+            NA_character_
+        )
       },
       priority = 100
     )
@@ -1536,7 +1550,8 @@ oauth_module_server <- function(
     .query_response_is_reserved_callback <- function(
       query_string,
       query_jarm_client = FALSE,
-      current_path = NULL
+      current_path = NULL,
+      current_uri = NULL
     ) {
       if (!isTRUE(query_jarm_client)) {
         return(FALSE)
@@ -1546,25 +1561,48 @@ oauth_module_server <- function(
         return(FALSE)
       }
 
+      .callback_route_matches(
+        current_uri = current_uri,
+        current_path = current_path
+      )
+    }
+
+    # Internal helper: compare the browser-visible scheme, authority, and path
+    # to this client's configured redirect URI. The current path-only argument
+    # remains available for internal tests; live observers always pass the
+    # complete browser URI.
+    .callback_route_matches <- function(
+      current_uri = NULL,
+      current_path = NULL
+    ) {
+      if (!is.null(current_uri)) {
+        if (!is_valid_string(current_uri)) {
+          return(FALSE)
+        }
+        return(isTRUE(oauth_callback_route_matches(
+          current_uri,
+          client@redirect_uri
+        )))
+      }
+
       callback_path <- tryCatch(
         normalize_oauth_form_post_callback_path(
           httr2::url_parse(client@redirect_uri)[["path"]] %||% "/"
         ),
         error = function(...) "/"
       )
-      current_path <- tryCatch(
-        normalize_oauth_form_post_callback_path(
-          as.character(
-            current_path %||% session$clientData$url_pathname %||% callback_path
-          )
-        ),
-        error = function(...) callback_path
-      )
-      if (isTRUE(.is_test()) && identical(current_path, "/mockpath")) {
-        current_path <- callback_path
+      if (!is.null(current_path)) {
+        normalized_path <- tryCatch(
+          normalize_oauth_form_post_callback_path(as.character(current_path)),
+          error = function(...) NA_character_
+        )
+        return(identical(normalized_path, callback_path))
       }
 
-      identical(current_path, callback_path)
+      # Direct calls to the internal test hook historically supplied only the
+      # query string. Treat those as the configured route. The live observer
+      # above never takes this fallback because it supplies `current_uri`.
+      TRUE
     }
 
     # Internal helper: decide whether an already-authenticated module should
@@ -1573,7 +1611,11 @@ oauth_module_server <- function(
     # or reject them.
     # @param query_string Current browser query string.
     # @return `TRUE` when this module should clear the callback query now.
-    .should_clear_authenticated_callback_query <- function(query_string) {
+    .should_clear_authenticated_callback_query <- function(
+      query_string,
+      current_path = NULL,
+      current_uri = NULL
+    ) {
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
       query_jarm_client <- identical(
         configured_jarm_transport$transport %||% NULL,
@@ -1581,7 +1623,9 @@ oauth_module_server <- function(
       )
       response_is_callback <- .query_response_is_reserved_callback(
         query_string,
-        query_jarm_client = query_jarm_client
+        query_jarm_client = query_jarm_client,
+        current_path = current_path,
+        current_uri = current_uri
       )
 
       if (
@@ -1658,7 +1702,11 @@ oauth_module_server <- function(
     # @param query_string Current browser query string.
     # @return No return value; updates module state, clears query params, or
     #   triggers login or callback handling.
-    .process_query <- function(query_string, current_path = NULL) {
+    .process_query <- function(
+      query_string,
+      current_path = NULL,
+      current_uri = NULL
+    ) {
       # Defensive: cap untrusted callback query sizes to reduce DoS surface.
       # Apply a pre-parse guard on the raw query string so that
       # shiny::parseQueryString() doesn't have to process arbitrarily long
@@ -1671,11 +1719,33 @@ oauth_module_server <- function(
         configured_jarm_transport[["transport"]] %||% NULL,
         "query"
       )
+
+      # Route callback-looking queries before parsing any parameter values or
+      # touching sealed/single-use state. Every module observes the same Shiny
+      # URL, so this boundary prevents a module for one authorization server
+      # from consuming a response delivered to another server's redirect URI.
+      callback_keys_present <- oauth_module_query_has_callback_keys(
+        query_string,
+        query_jarm_client = query_jarm_client,
+        response_is_callback = isTRUE(query_jarm_client) &&
+          length(oauth_module_query_raw_values(query_string, "response")) > 0L
+      )
+      if (
+        isTRUE(callback_keys_present) &&
+          !isTRUE(.callback_route_matches(
+            current_uri = current_uri,
+            current_path = current_path
+          ))
+      ) {
+        return(invisible(NULL))
+      }
+
       response_is_reserved_for_query_jarm <-
         .query_response_is_reserved_callback(
           query_string,
           query_jarm_client = query_jarm_client,
-          current_path = current_path
+          current_path = current_path,
+          current_uri = current_uri
         )
 
       # Validate raw query size before any parsing (including the
@@ -1721,7 +1791,13 @@ oauth_module_server <- function(
       }
 
       if (!is.null(values$token)) {
-        if (isTRUE(.should_clear_authenticated_callback_query(query_string))) {
+        if (
+          isTRUE(.should_clear_authenticated_callback_query(
+            query_string,
+            current_path = current_path,
+            current_uri = current_uri
+          ))
+        ) {
           clear_oauth_module_callback_query(
             session,
             tab_title_replacement,
@@ -3321,10 +3397,12 @@ oauth_module_server <- function(
                       otel_end_async_parent(callback_parent, status = "ok")
                     }
                     tok <- replay_async_conditions(raw)
-                    if (!isTRUE(.auth_operation_can_apply(
-                      login_operation,
-                      "login"
-                    ))) {
+                    if (
+                      !isTRUE(.auth_operation_can_apply(
+                        login_operation,
+                        "login"
+                      ))
+                    ) {
                       .finish_auth_operation(login_operation, "login")
                       .revoke_stale_credentials(
                         tok,
@@ -3360,10 +3438,12 @@ oauth_module_server <- function(
                         error = e
                       )
                     }
-                    if (!isTRUE(.auth_operation_can_apply(
-                      login_operation,
-                      "login"
-                    ))) {
+                    if (
+                      !isTRUE(.auth_operation_can_apply(
+                        login_operation,
+                        "login"
+                      ))
+                    ) {
                       .finish_auth_operation(login_operation, "login")
                       return(invisible(NULL))
                     }
@@ -3394,10 +3474,12 @@ oauth_module_server <- function(
                     }
                   })
               } else {
-                if (!isTRUE(.auth_operation_can_apply(
-                  login_operation,
-                  "login"
-                ))) {
+                if (
+                  !isTRUE(.auth_operation_can_apply(
+                    login_operation,
+                    "login"
+                  ))
+                ) {
                   .finish_auth_operation(login_operation, "login")
                   .revoke_stale_credentials(res)
                   return(invisible(NULL))
@@ -3660,10 +3742,12 @@ oauth_module_server <- function(
                       res |>
                         promises::then(function(raw) {
                           res_resolved <- replay_async_conditions(raw)
-                          if (!isTRUE(.record_refresh_result(
-                            refresh_operation,
-                            token = res_resolved
-                          ))) {
+                          if (
+                            !isTRUE(.record_refresh_result(
+                              refresh_operation,
+                              token = res_resolved
+                            ))
+                          ) {
                             .revoke_stale_credentials(
                               res_resolved,
                               shiny_session = captured_shiny_session_refresh
@@ -3679,10 +3763,12 @@ oauth_module_server <- function(
                           values$reauth_triggered <- FALSE
                         }) |>
                         promises::catch(function(e) {
-                          if (!isTRUE(.record_refresh_result(
-                            refresh_operation,
-                            condition = e
-                          ))) {
+                          if (
+                            !isTRUE(.record_refresh_result(
+                              refresh_operation,
+                              condition = e
+                            ))
+                          ) {
                             return(invisible(NULL))
                           }
                           mirai_err_type <- classify_mirai_error(e)
@@ -3774,10 +3860,12 @@ oauth_module_server <- function(
                     } else {
                       # Sync path; directly set values
                       new_tok <- res
-                      if (!isTRUE(.record_refresh_result(
-                        refresh_operation,
-                        token = new_tok
-                      ))) {
+                      if (
+                        !isTRUE(.record_refresh_result(
+                          refresh_operation,
+                          token = new_tok
+                        ))
+                      ) {
                         .revoke_stale_credentials(new_tok)
                         return(invisible(NULL))
                       }
@@ -3791,11 +3879,13 @@ oauth_module_server <- function(
                     }
                   },
                   error = function(e) {
-                    if (is.null(refresh_operation) ||
-                      !isTRUE(.record_refresh_result(
-                        refresh_operation,
-                        condition = e
-                      ))) {
+                    if (
+                      is.null(refresh_operation) ||
+                        !isTRUE(.record_refresh_result(
+                          refresh_operation,
+                          condition = e
+                        ))
+                    ) {
                       return(invisible(NULL))
                     }
                     # Set error; clear token unless indefinite_session
@@ -4171,6 +4261,107 @@ clear_oauth_module_callback_query <- function(
 
 ## 3.1 Callback query detection and cleanup ------------------------------------
 
+#' Canonicalize an OAuth callback route
+#'
+#' Reduces an absolute URI to the browser-routing components that identify an
+#' OAuth callback endpoint: scheme, authority, and path. Query and fragment
+#' components are deliberately excluded. Scheme and host are case-normalized,
+#' and explicit default ports are normalized away.
+#'
+#' @param uri Absolute callback URI.
+#' @return A named list containing `scheme`, `hostname`, `port`, and `path`, or
+#'   `NULL` when `uri` is not a usable absolute callback URI.
+#' @keywords internal
+#' @noRd
+oauth_callback_route <- function(uri) {
+  if (!is_valid_string(uri)) {
+    return(NULL)
+  }
+
+  parsed <- tryCatch(httr2::url_parse(uri), error = function(...) NULL)
+  if (is.null(parsed)) {
+    return(NULL)
+  }
+
+  scalar_component <- function(value) {
+    value <- as.character(value %||% "")
+    if (length(value) != 1L || is.na(value)) "" else value
+  }
+  scheme <- tolower(scalar_component(parsed[["scheme"]]))
+  hostname <- tolower(scalar_component(parsed[["hostname"]]))
+  port <- scalar_component(parsed[["port"]])
+  path <- scalar_component(parsed[["path"]])
+  if (!nzchar(scheme) || !nzchar(hostname)) {
+    return(NULL)
+  }
+  if (!nzchar(path)) {
+    path <- "/"
+  }
+  if (
+    (identical(scheme, "http") && identical(port, "80")) ||
+      (identical(scheme, "https") && identical(port, "443"))
+  ) {
+    port <- ""
+  }
+
+  list(
+    scheme = scheme,
+    hostname = hostname,
+    port = port,
+    path = path
+  )
+}
+
+#' Compare OAuth callback routes
+#'
+#' @param current_uri Browser-visible absolute URI receiving the callback.
+#' @param redirect_uri Configured OAuth redirect URI.
+#' @return `TRUE` only when canonical scheme, authority, and path match.
+#' @keywords internal
+#' @noRd
+oauth_callback_route_matches <- function(current_uri, redirect_uri) {
+  current <- oauth_callback_route(current_uri)
+  expected <- oauth_callback_route(redirect_uri)
+  !is.null(current) && !is.null(expected) && identical(current, expected)
+}
+
+#' Read the browser-visible callback URI from a Shiny session
+#'
+#' @param session Active Shiny session.
+#' @return Absolute browser URI without query or fragment, or `NULL` when the
+#'   necessary client data is unavailable.
+#' @keywords internal
+#' @noRd
+oauth_shiny_session_callback_uri <- function(session) {
+  component <- function(name) {
+    tryCatch(
+      as.character(session$clientData[[name]] %||% NA_character_),
+      error = function(...) NA_character_
+    )
+  }
+
+  protocol <- component("url_protocol")
+  hostname <- component("url_hostname")
+  port <- component("url_port")
+  pathname <- component("url_pathname")
+  if (
+    !is_valid_string(protocol) ||
+      !grepl("^[A-Za-z][A-Za-z0-9+.-]*:$", protocol) ||
+      !is_valid_string(hostname) ||
+      !is_valid_string(pathname) ||
+      !startsWith(pathname, "/")
+  ) {
+    return(NULL)
+  }
+
+  # Bracket raw IPv6 hostnames before constructing an absolute URI.
+  if (grepl(":", hostname, fixed = TRUE) && !startsWith(hostname, "[")) {
+    hostname <- paste0("[", hostname, "]")
+  }
+  port_suffix <- if (is_valid_string(port)) paste0(":", port) else ""
+  paste0(protocol, "//", hostname, port_suffix, pathname)
+}
+
 # OAuth/OIDC callback parameters that should be recognized and removed from the
 # browser URL after callback handling. This keeps provider data out of browser
 # history while preserving unrelated application query parameters. The JARM
@@ -4319,15 +4510,26 @@ oauth_module_query_has_callback_keys <- function(
     return(FALSE)
   }
 
-  parsed <- tryCatch(
-    shiny::parseQueryString(paste0("?", raw)),
-    error = function(...) list()
-  )
-  if (!length(parsed)) {
+  parts <- strsplit(raw, "&", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  if (!length(parts)) {
     return(FALSE)
   }
 
-  any(names(parsed) %in% oauth_module_callback_query_keys) ||
+  raw_names <- vapply(parts, function(part) sub("=.*$", "", part), "")
+  decoded_names <- vapply(
+    raw_names,
+    function(name) {
+      tryCatch(
+        utils::URLdecode(gsub("\\+", " ", name)),
+        error = function(...) name,
+        warning = function(...) name
+      )
+    },
+    ""
+  )
+
+  any(decoded_names %in% oauth_module_callback_query_keys) ||
     isTRUE(response_is_callback) ||
     (isTRUE(query_jarm_client) &&
       isTRUE(oauth_module_query_has_raw_jarm_response(query_string)))

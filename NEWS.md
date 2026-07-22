@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* OAuth callback dispatch now compares the browser-visible canonical scheme,
+authority, and path with the client's configured redirect URI before parsing
+callback parameters or consuming state. This makes distinct redirect URIs an
+effective RFC 9700 provider mix-up defense for query, query-JARM, and
+form-post bridge callbacks.
+
 * `reauth_after_seconds` is now a non-rolling authentication lifetime: token
 refresh no longer resets it. OIDC reauthentication sends transaction-bound
 `max_age=0`, validates the required `auth_time`, and uses validated `auth_time`
