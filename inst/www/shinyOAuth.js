@@ -168,7 +168,7 @@
           var kept=[];
           for(var j=0;j<parts.length;j++){
             var kv=parts[j].split('=');
-            if(kv.length===2){
+            if(kv.length>=2){
               var k=decodeFormPart(kv[0]);
               var v=decodeFormPart(kv.slice(1).join('='));
               if(!shouldDropCallbackParam(k, v, drop, dropResponse)){kept.push(parts[j]);}
@@ -183,7 +183,7 @@
           var kept=[];
           for(var j=0;j<parts.length;j++){
             var kv=parts[j].split('=');
-            if(kv.length===2){
+            if(kv.length>=2){
               var k=decodeFormPart(kv[0]);
               var v=decodeFormPart(kv.slice(1).join('='));
               if(!shouldDropCallbackParam(k, v, drop, dropResponse)){kept.push(parts[j]);}

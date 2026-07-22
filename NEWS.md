@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Browser callback cleanup now removes fragment parameters even when their raw
+values contain additional `=` characters, while preserving unrelated fragment
+parameters unchanged.
+
 * The `future_promise()` async fallback now opts into parallel-safe random
 number generation, avoiding live-integration RNG misuse warnings from
 `future`.

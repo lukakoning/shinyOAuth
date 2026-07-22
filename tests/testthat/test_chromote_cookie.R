@@ -447,6 +447,23 @@ testthat::test_that("browser cleanup drops flagged response params", {
   )
 })
 
+testthat::test_that("browser fragment cleanup handles values containing equals", {
+  local_skip_env()
+
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#/route?code=part=tail&keep=a=b"
+    ),
+    "/cb#/route?keep=a=b"
+  )
+  testthat::expect_identical(
+    capture_clear_query_url(
+      "https://example.com/cb#code=part=tail&keep=a=b"
+    ),
+    "/cb#keep=a=b"
+  )
+})
+
 # Error path: SameSite=None requires HTTPS
 
 testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
