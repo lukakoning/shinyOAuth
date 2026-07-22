@@ -1,4 +1,4 @@
-test_that("validate_id_token accepts multi-audience with azp", {
+test_that("validate_id_token rejects untrusted audiences despite azp", {
   prov <- shinyOAuth::oauth_provider(
     name = "test",
     auth_url = "https://example.com/auth",
@@ -37,9 +37,11 @@ test_that("validate_id_token accepts multi-audience with azp", {
   jwt <- paste(enc(header), enc(claims), "", sep = ".")
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    dec <- shinyOAuth:::validate_id_token(client, jwt)
-    expect_true(is.list(dec))
-    expect_identical(dec[["azp"]], "client-123")
+    expect_error(
+      shinyOAuth:::validate_id_token(client, jwt),
+      regexp = "untrusted additional audiences",
+      class = "shinyOAuth_id_token_error"
+    )
   })
 })
 
