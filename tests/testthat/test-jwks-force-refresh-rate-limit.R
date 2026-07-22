@@ -105,12 +105,14 @@ test_that("shared JWKS refresh throttling uses an atomic claim", {
     }
   )
 
-  allowed <- function() shinyOAuth:::jwks_force_refresh_allowed(
-    issuer = "https://issuer.example.com",
-    jwks_cache = cache,
-    min_interval = 30,
-    now = 100
-  )
+  allowed <- function() {
+    shinyOAuth:::jwks_force_refresh_allowed(
+      issuer = "https://issuer.example.com",
+      jwks_cache = cache,
+      min_interval = 30,
+      now = 100
+    )
+  }
 
   expect_true(allowed())
   expect_false(allowed())

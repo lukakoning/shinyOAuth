@@ -889,7 +889,9 @@ parse_http_auth_challenges <- function(value) {
     for (part in challenge$param_parts) {
       param_match <- regexec(
         paste0(
-          "^(", token_pattern, ")\\s*=\\s*(?:\"((?:\\\\.|[^\"\\\\])*)\"|(",
+          "^(",
+          token_pattern,
+          ")\\s*=\\s*(?:\"((?:\\\\.|[^\"\\\\])*)\"|(",
           token_pattern,
           "))\\s*$"
         ),

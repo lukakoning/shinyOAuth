@@ -129,13 +129,16 @@ test_that("generic JWKS discovery continues when OAuth metadata omits jwks_uri",
   testthat::skip_on_cran()
 
   app <- webfakes::new_app()
-  app$get("/.well-known/oauth-authorization-server/issuer1", function(req, res) {
-    host <- req$headers$Host %||% req$headers$host
-    res$send_json(
-      object = list(issuer = paste0("http://", host, "/issuer1")),
-      auto_unbox = TRUE
-    )
-  })
+  app$get(
+    "/.well-known/oauth-authorization-server/issuer1",
+    function(req, res) {
+      host <- req$headers$Host %||% req$headers$host
+      res$send_json(
+        object = list(issuer = paste0("http://", host, "/issuer1")),
+        auto_unbox = TRUE
+      )
+    }
+  )
   app$get("/.well-known/openid-configuration/issuer1", function(req, res) {
     host <- req$headers$Host %||% req$headers$host
     issuer <- paste0("http://", host, "/issuer1")

@@ -467,7 +467,11 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
     for (field in c("use", "alg")) {
       value <- k[[field]] %||% NULL
       if (!is.null(value) && !is_valid_string(value)) {
-        err_parse(paste0("JWK ", field, " must be a non-empty character scalar"))
+        err_parse(paste0(
+          "JWK ",
+          field,
+          " must be a non-empty character scalar"
+        ))
       }
     }
     # No private key parameters in a JWKS

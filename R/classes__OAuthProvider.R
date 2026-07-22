@@ -1387,10 +1387,7 @@ oauth_provider_validate <- function(self) {
       character()
     }
     if (
-      !(
-        "..." %in% jsia_args ||
-          all(c("key", "value", "ttl") %in% jsia_args)
-      )
+      !("..." %in% jsia_args || all(c("key", "value", "ttl") %in% jsia_args))
     ) {
       return(
         "OAuthProvider: jwks_cache$set_if_absent must accept (key, value, ttl = NULL) when provided"
