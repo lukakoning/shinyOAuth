@@ -84,12 +84,15 @@ oauth_module_server(
 
 - reauth_after_seconds:
 
-  Optional maximum session age in seconds. If set, the module will
-  remove the token (and thus set `authenticated` to FALSE) after this
-  many seconds have elapsed since authentication started. By default
-  this is `NULL` (no forced re-authentication). If a value is provided,
-  the timer is reset after each successful refresh so the knob is opt-in
-  and counts rolling session age.
+  Optional maximum interactive-authentication age in seconds. If set,
+  the module removes the token (and thus sets `authenticated` to FALSE)
+  after this many seconds. Token refresh does not reset the timer. For
+  OIDC providers, reauthentication requests send `max_age=0`; the
+  returned ID token must contain a valid `auth_time`, which is used as
+  the next authentication start. OAuth-only providers have no standard
+  way to require active user authentication, so for them this is a hard
+  local session lifetime followed by an ordinary authorization request.
+  By default this is `NULL` (no forced reauthentication).
 
 - refresh_proactively:
 
@@ -303,10 +306,10 @@ they are:
   attempt has been initiated (after expiry or failed refresh), to avoid
   loops.
 
-- `auth_started_at`: internal numeric timestamp (as from
-  [`Sys.time()`](https://rdrr.io/r/base/Sys.time.html)) when
-  authentication started; NA if not yet authenticated. Used to enforce
-  `reauth_after_seconds` if set.
+- `auth_started_at`: internal numeric timestamp for the last interactive
+  authentication; NA if not yet authenticated. This is derived from a
+  validated OIDC `auth_time` when available and is not reset by token
+  refresh. Used to enforce `reauth_after_seconds` if set.
 
 - `last_login_async_used`: internal logical; TRUE if the last login
   attempt used `async = TRUE`, FALSE if it was synchronous. This is only

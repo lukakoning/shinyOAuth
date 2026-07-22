@@ -8,7 +8,12 @@ URL.
 ## Usage
 
 ``` r
-prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
+prepare_call(
+  oauth_client,
+  browser_token,
+  request_uri_publisher = NULL,
+  .requested_max_age = NULL
+)
 ```
 
 ## Arguments
@@ -29,6 +34,11 @@ prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
   Optional function used when `request_object_mode = "request_uri"`. It
   must accept `request_object`, `request_handle_id`, `expires_at`, and
   `oauth_client` arguments and return an absolute request-object URL.
+
+- .requested_max_age:
+
+  Internal normalized OIDC `max_age` override used by the Shiny module
+  for forced reauthentication.
 
 ## Value
 

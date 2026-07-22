@@ -612,8 +612,12 @@ active session. Depending on your settings, that may include:
 - Expiration: expired tokens are cleared automatically, setting the
   `$authenticated` flag to FALSE
 - Re-authentication: optionally,
-  `oauth_module_server(reauth_after_seconds = ...)` can force periodic
-  re-authentication
+  `oauth_module_server(reauth_after_seconds = ...)` sets a non-rolling
+  maximum age for the interactive authentication. Refreshing a token
+  does not extend this lifetime. For OIDC providers, the module sends
+  `max_age=0` and validates the returned `auth_time`; for OAuth-only
+  providers, it can end the local session but cannot require the
+  authorization server to actively authenticate the user.
 
 #### Refresh behavior (`refresh_token()`)
 
@@ -649,7 +653,9 @@ If you are running a security-sensitive app, set
 `options(shinyOAuth.default_expires_in = ...)` to the provider’s
 documented lifetime instead of relying on the package default, and
 consider `oauth_module_server(reauth_after_seconds = ...)` when you need
-a hard upper bound on session age.
+a hard upper bound on the local session age. With OIDC this also
+requests and validates active provider reauthentication; OAuth alone
+does not define that guarantee.
 
 Refresh can behave a little differently for OIDC ID tokens:
 

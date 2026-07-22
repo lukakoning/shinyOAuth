@@ -134,12 +134,15 @@ only affects the module's automatic clearing and redirect behavior.</p></dd>
 
 
 <dt id="arg-reauth-after-seconds">reauth_after_seconds<a class="anchor" aria-label="anchor" href="#arg-reauth-after-seconds"></a></dt>
-<dd><p>Optional maximum session age in seconds. If set,
-the module will remove the token (and thus set <code>authenticated</code> to FALSE)
-after this many seconds have elapsed since authentication started. By
-default this is <code>NULL</code> (no forced re-authentication). If a value is
-provided, the timer is reset after each successful refresh so the knob is
-opt-in and counts rolling session age.</p></dd>
+<dd><p>Optional maximum interactive-authentication age
+in seconds. If set, the module removes the token (and thus sets
+<code>authenticated</code> to FALSE) after this many seconds. Token refresh does not
+reset the timer. For OIDC providers, reauthentication requests send
+<code>max_age=0</code>; the returned ID token must contain a valid <code>auth_time</code>, which
+is used as the next authentication start. OAuth-only providers have no
+standard way to require active user authentication, so for them this is a
+hard local session lifetime followed by an ordinary authorization request.
+By default this is <code>NULL</code> (no forced reauthentication).</p></dd>
 
 
 <dt id="arg-refresh-proactively">refresh_proactively<a class="anchor" aria-label="anchor" href="#arg-refresh-proactively"></a></dt>
@@ -318,9 +321,10 @@ wait for <code>browser_token</code> to be set, FALSE otherwise.</p></li>
 automatic redirect in this session to avoid duplicate redirects.</p></li>
 <li><p><code>reauth_triggered</code>: internal logical; TRUE once a reauthentication attempt
 has been initiated (after expiry or failed refresh), to avoid loops.</p></li>
-<li><p><code>auth_started_at</code>: internal numeric timestamp (as from <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>) when
-authentication started; NA if not yet authenticated. Used to enforce
-<code>reauth_after_seconds</code> if set.</p></li>
+<li><p><code>auth_started_at</code>: internal numeric timestamp for the last interactive
+authentication; NA if not yet authenticated. This is derived from a
+validated OIDC <code>auth_time</code> when available and is not reset by token
+refresh. Used to enforce <code>reauth_after_seconds</code> if set.</p></li>
 <li><p><code>last_login_async_used</code>: internal logical; TRUE if the last login attempt
 used <code>async = TRUE</code>, FALSE if it was synchronous. This is only used for
 testing and diagnostics.</p></li>

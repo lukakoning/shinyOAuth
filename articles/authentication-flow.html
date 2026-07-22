@@ -755,8 +755,13 @@ refresh token exists, the access token is refreshed before expiry</li>
 <li>Expiration: expired tokens are cleared automatically, setting the
 <code>$authenticated</code> flag to FALSE</li>
 <li>Re-authentication: optionally,
-<code>oauth_module_server(reauth_after_seconds = ...)</code> can force
-periodic re-authentication</li>
+<code>oauth_module_server(reauth_after_seconds = ...)</code> sets a
+non-rolling maximum age for the interactive authentication. Refreshing a
+token does not extend this lifetime. For OIDC providers, the module
+sends <code>max_age=0</code> and validates the returned
+<code>auth_time</code>; for OAuth-only providers, it can end the local
+session but cannot require the authorization server to actively
+authenticate the user.</li>
 </ul>
 <div class="section level4">
 <h4 id="refresh-behavior-refresh_token">Refresh behavior (<code>refresh_token()</code>)<a class="anchor" aria-label="anchor" href="#refresh-behavior-refresh_token"></a>
@@ -796,7 +801,9 @@ introspection response, supplies fresh <code>cnf</code> data.</p>
 provider’s documented lifetime instead of relying on the package
 default, and consider
 <code>oauth_module_server(reauth_after_seconds = ...)</code> when you
-need a hard upper bound on session age.</p>
+need a hard upper bound on the local session age. With OIDC this also
+requests and validates active provider reauthentication; OAuth alone
+does not define that guarantee.</p>
 <p>Refresh can behave a little differently for OIDC ID tokens:</p>
 <ul>
 <li>Per OIDC Core Section 12.2, refresh responses may omit
