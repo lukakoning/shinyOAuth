@@ -144,10 +144,14 @@ make_jarm_form_post_req <- function(
   path = "/",
   query = "",
   body = "",
-  content_type = "application/x-www-form-urlencoded"
+  content_type = "application/x-www-form-urlencoded",
+  scheme = "http",
+  authority = "localhost:8100"
 ) {
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "POST"
+  req$rook.url_scheme <- scheme
+  req$HTTP_HOST <- authority
   req$PATH_INFO <- path
   req$QUERY_STRING <- query
   req$CONTENT_TYPE <- content_type

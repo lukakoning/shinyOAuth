@@ -23,7 +23,8 @@ to module callback handling, where the received route can be verified.
 authority, and path with the client's configured redirect URI before parsing
 callback parameters or consuming state. This makes distinct redirect URIs an
 effective RFC 9700 provider mix-up defense for query, query-JARM, and
-form-post bridge callbacks.
+form-post callbacks. The pre-session form-post wrapper also verifies the
+server-observed scheme, authority, and path before reading the POST body.
 
 * `reauth_after_seconds` is now a non-rolling authentication lifetime: token
 refresh no longer resets it. OIDC reauthentication sends transaction-bound

@@ -2,10 +2,14 @@ make_form_post_req <- function(
   path = "/",
   query = "",
   body = "",
-  content_type = "application/x-www-form-urlencoded"
+  content_type = "application/x-www-form-urlencoded",
+  scheme = "http",
+  authority = "localhost:8100"
 ) {
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "POST"
+  req$rook.url_scheme <- scheme
+  req$HTTP_HOST <- authority
   req$PATH_INFO <- path
   req$QUERY_STRING <- query
   req$CONTENT_TYPE <- content_type
@@ -148,6 +152,24 @@ test_that("oauth_form_post_ui stores POST callback and redirects with handle", {
   expect_identical(payload[["code"]], "ok")
   expect_identical(payload[["state"]], decoded_state)
   expect_identical(payload[["iss"]], "https://issuer")
+})
+
+test_that("oauth_form_post_ui rejects callbacks on the wrong origin", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+
+  expect_null(ui(make_form_post_req(
+    body = "code=must-not-be-parsed&state=must-not-be-parsed",
+    scheme = "https"
+  )))
+  expect_null(ui(make_form_post_req(
+    body = "code=must-not-be-parsed&state=must-not-be-parsed",
+    authority = "attacker.example"
+  )))
+  expect_null(ui(make_form_post_req(
+    body = "code=must-not-be-parsed&state=must-not-be-parsed",
+    authority = ""
+  )))
 })
 
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {

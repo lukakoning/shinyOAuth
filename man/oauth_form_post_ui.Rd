@@ -55,7 +55,10 @@ The server-side callback handle is single-use and is rejected if it is older
 than the smaller of \code{client@state_payload_max_age} and the configured
 \code{state_store} TTL. The raw POST body and transient handle query parameters
 are also bounded by the \verb{shinyOAuth.callback_max_form_post_*} options
-described in the usage vignette.
+described in the usage vignette. Before reading the POST body, this wrapper
+compares the server-observed request scheme, authority, and path with the
+configured redirect origin and \code{callback_path}. Reverse proxies must preserve
+the public Host and set the trusted Rook request scheme correctly.
 }
 \examples{
 if (

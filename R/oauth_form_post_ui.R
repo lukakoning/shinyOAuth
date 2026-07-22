@@ -41,7 +41,10 @@
 #' than the smaller of `client@state_payload_max_age` and the configured
 #' `state_store` TTL. The raw POST body and transient handle query parameters
 #' are also bounded by the `shinyOAuth.callback_max_form_post_*` options
-#' described in the usage vignette.
+#' described in the usage vignette. Before reading the POST body, this wrapper
+#' compares the server-observed request scheme, authority, and path with the
+#' configured redirect origin and `callback_path`. Reverse proxies must preserve
+#' the public Host and set the trusted Rook request scheme correctly.
 #'
 #' @param base_ui
 #' Existing Shiny UI object, or a UI function accepting `req`.
@@ -90,7 +93,13 @@ oauth_form_post_ui <- function(
   ensure_dependency <- oauth_form_post_ensure_ui_dependency
 
   ui <- function(req) {
-    if (request_matches(req, callback_path)) {
+    if (
+      request_matches(
+        req,
+        callback_path,
+        redirect_uri = client@redirect_uri
+      )
+    ) {
       return(handle_request(req, id = id, client = client))
     }
 
@@ -200,9 +209,61 @@ oauth_form_post_request_path <- function(req) {
   normalize_oauth_form_post_callback_path(path)
 }
 
-oauth_form_post_request_matches <- function(req, callback_path) {
-  identical(req[["REQUEST_METHOD"]], "POST") &&
-    identical(oauth_form_post_request_path(req), callback_path)
+#' Reconstruct the absolute route of a form-post request
+#'
+#' Uses the server-observed Rook scheme and HTTP Host authority. Forwarded
+#' headers are deliberately not trusted here; deployments behind a reverse
+#' proxy should preserve the public Host and configure the Rook request scheme
+#' correctly at that trust boundary.
+#'
+#' @param req Rook request environment.
+#' @return Absolute request URI without query or fragment, or `NULL` when the
+#'   route cannot be determined safely.
+#' @keywords internal
+#' @noRd
+oauth_form_post_request_uri <- function(req) {
+  component <- function(name) {
+    value <- tryCatch(req[[name]], error = function(...) NULL)
+    value <- as.character(value %||% "")
+    if (length(value) != 1L || is.na(value)) "" else value
+  }
+
+  scheme <- component("rook.url_scheme")
+  authority <- component("HTTP_HOST")
+  path <- tryCatch(
+    oauth_form_post_request_path(req),
+    error = function(...) NA_character_
+  )
+  scheme <- sub(":$", "", scheme)
+  if (
+    !grepl("^[A-Za-z][A-Za-z0-9+.-]*$", scheme) ||
+      !nzchar(authority) ||
+      grepl("[/?#@[:space:][:cntrl:]]", authority) ||
+      !is_valid_string(path)
+  ) {
+    return(NULL)
+  }
+
+  paste0(scheme, "://", authority, path)
+}
+
+oauth_form_post_request_matches <- function(
+  req,
+  callback_path,
+  redirect_uri
+) {
+  if (!identical(req[["REQUEST_METHOD"]], "POST")) {
+    return(FALSE)
+  }
+
+  actual <- oauth_callback_route(oauth_form_post_request_uri(req))
+  expected <- oauth_callback_route(redirect_uri)
+  if (is.null(actual) || is.null(expected)) {
+    return(FALSE)
+  }
+  expected[["path"]] <- callback_path
+
+  identical(actual, expected)
 }
 
 oauth_form_post_handle_request <- function(req, id, client) {

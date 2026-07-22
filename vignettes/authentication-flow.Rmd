@@ -250,7 +250,10 @@ to `oauth_module_server()`. The main module checks are:
 - If the URL carries a `form_post` bridge handle, resolve that handle to the
   stored callback payload and reject missing, expired, replayed, or
   misaddressed handles before continuing. The underlying login state is still
-  consumed only after the Shiny session proves the browser-token binding
+  consumed only after the Shiny session proves the browser-token binding. The
+  pre-session POST wrapper first compares the server-observed scheme,
+  authority, and path with the configured form-post callback route before it
+  reads the request body
 - If the URL carries a JARM `response` query parameter (`response_mode =
   "jwt"` or `"query.jwt"`), validate the callback JWT before reading any
   `code`, `error`, or `state` values from it. Query-based JARM callbacks are
