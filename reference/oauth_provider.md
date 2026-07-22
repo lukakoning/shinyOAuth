@@ -105,8 +105,7 @@ userinfo[["sub"]]
   discovery to locate the JWKS URI.
 
   - `"url"` (default): require the issuer used for discovery to match
-    exactly after removing one trailing slash, if present, from both the
-    configured issuer and the discovery metadata value.
+    the discovery metadata exactly, including any trailing slash.
 
   - `"host"`: compare only scheme + host.
 

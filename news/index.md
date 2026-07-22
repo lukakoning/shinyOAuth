@@ -2,6 +2,15 @@
 
 ## shinyOAuth (development version)
 
+- Inbound JOSE and JWK identifiers are now compared case-sensitively.
+  ID-token and signed UserInfo `alg` values, plus JWK `alg`, `use`,
+  `key_ops`, `kty`, and `crv`, must use their registered spelling.
+
+- OIDC Discovery now compares the returned `issuer` with the issuer used
+  for discovery using exact code-point equality, including a trailing
+  slash. Issuer normalization is limited to constructing the well-known
+  document URL.
+
 - ID-token validation now rejects additional `aud` values that the
   client does not trust. An `azp` value matching `client_id` no longer
   implicitly authorizes other audiences.
@@ -22,7 +31,9 @@
   scheme, authority, and path with the client’s configured redirect URI
   before parsing callback parameters or consuming state. This makes
   distinct redirect URIs an effective RFC 9700 provider mix-up defense
-  for query, query-JARM, and form-post bridge callbacks.
+  for query, query-JARM, and form-post callbacks. The pre-session
+  form-post wrapper also verifies the server-observed scheme, authority,
+  and path before reading the POST body.
 
 - `reauth_after_seconds` is now a non-rolling authentication lifetime:
   token refresh no longer resets it. OIDC reauthentication sends

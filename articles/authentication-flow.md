@@ -274,7 +274,9 @@ The main module checks are:
   the stored callback payload and reject missing, expired, replayed, or
   misaddressed handles before continuing. The underlying login state is
   still consumed only after the Shiny session proves the browser-token
-  binding
+  binding. The pre-session POST wrapper first compares the
+  server-observed scheme, authority, and path with the configured
+  form-post callback route before it reads the request body
 - If the URL carries a JARM `response` query parameter
   (`response_mode = "jwt"` or `"query.jwt"`), validate the callback JWT
   before reading any `code`, `error`, or `state` values from it.

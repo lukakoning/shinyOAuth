@@ -354,7 +354,9 @@ without that binding</li>
 that handle to the stored callback payload and reject missing, expired,
 replayed, or misaddressed handles before continuing. The underlying
 login state is still consumed only after the Shiny session proves the
-browser-token binding</li>
+browser-token binding. The pre-session POST wrapper first compares the
+server-observed scheme, authority, and path with the configured
+form-post callback route before it reads the request body</li>
 <li>If the URL carries a JARM <code>response</code> query parameter
 (<code>response_mode =   "jwt"</code> or <code>"query.jwt"</code>),
 validate the callback JWT before reading any <code>code</code>,

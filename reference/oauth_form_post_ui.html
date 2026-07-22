@@ -145,7 +145,10 @@ for the wrapped GET UI, so you do not need a separate top-level
 than the smaller of <code>client@state_payload_max_age</code> and the configured
 <code>state_store</code> TTL. The raw POST body and transient handle query parameters
 are also bounded by the <code>shinyOAuth.callback_max_form_post_*</code> options
-described in the usage vignette.</p>
+described in the usage vignette. Before reading the POST body, this wrapper
+compares the server-observed request scheme, authority, and path with the
+configured redirect origin and <code>callback_path</code>. Reverse proxies must preserve
+the public Host and set the trusted Rook request scheme correctly.</p>
     </div>
 
     <div class="section level2">
