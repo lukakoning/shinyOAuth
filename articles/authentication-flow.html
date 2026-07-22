@@ -844,9 +844,10 @@ token’s values (not just the provider configuration) per OIDC Core
 Section 12.2, to cover edge cases with multi-tenant providers or
 rotating issuer URIs</li>
 <li>‘shinyOAuth’ also enforces continuity for <code>auth_time</code>
-when the original ID token had it, rejects a refreshed
-<code>nonce</code> when it changes, and requires <code>azp</code> to
-match when either token carries it</li>
+when the original ID token had it and rejects a refreshed
+<code>nonce</code> when it changes. Base OIDC does not require
+<code>azp</code> continuity; extensions that use <code>azp</code> can
+define their own refresh-time continuity requirement</li>
 </ul>
 </li>
 </ul>

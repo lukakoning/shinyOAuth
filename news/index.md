@@ -2,6 +2,35 @@
 
 ## shinyOAuth (development version)
 
+- The Cloud Run deployment example now pins its Rocker base image by
+  digest and installs R dependencies from a dated Posit Package Manager
+  snapshot.
+
+- Documentation now correctly describes the 24-hour `exp - iat` limit as
+  package hardening, rather than attributing it to OIDC Core validation
+  rule 9.
+
+- Client-hosted JAR `request_uri` values now fail closed unless they use
+  HTTPS, as required by RFC 9101 Section 5.2. The general non-HTTPS host
+  policy no longer downgrades this requirement to a warning.
+
+- OIDC issuer, endpoint, JWKS, and mTLS alias URLs now require HTTPS
+  even when the general URL policy permits loopback HTTP. Local
+  development can explicitly opt in with
+  `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.
+
+- ID-token and OIDC UserInfo `sub` claims must now contain between 1 and
+  255 ASCII characters, as required for OpenID Connect Subject
+  Identifiers.
+
+- JWKS validation now requires the RFC 7517 `keys` member to be a JSON
+  array; a single JWK object is no longer silently wrapped as a
+  one-element set.
+
+- OIDC Discovery now rejects scalar and object values for optional
+  metadata fields defined as JSON arrays, instead of silently coercing
+  them to vectors.
+
 - Inbound JOSE and JWK identifiers are now compared case-sensitively.
   ID-token and signed UserInfo `alg` values, plus JWK `alg`, `use`,
   `key_ops`, `kty`, and `crv`, must use their registered spelling.
@@ -109,7 +138,9 @@
 - Refreshed OIDC ID tokens may now omit the original token’s
   `auth_time`, and base OIDC refresh no longer imposes
   extension-specific `azp` presence or value symmetry. When a refreshed
-  token includes `auth_time`, it must still match the original.
+  token includes `auth_time`, it must still match the original. The
+  authentication-flow documentation now states this `azp` scope
+  correctly.
 
 - [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   now accepts its documented `token_auth_style` override instead of
@@ -831,9 +862,9 @@ CRAN release: 2026-02-14
     alg/typ/parse failure propagate.
   - Now validates the `auth_time` claim when `max_age` is present in
     `extra_auth_params` (OIDC Core section 3.1.2.1).
-  - Now enforces a maximum ID token lifetime (`exp - iat`) per OIDC Core
-    section 3.1.3.7; tokens with unreasonably long lifetimes are
-    rejected with a `shinyOAuth_id_token_error`. Configure via
+  - Now enforces a package-defined maximum ID token lifetime
+    (`exp - iat`); tokens with unreasonably long lifetimes are rejected
+    with a `shinyOAuth_id_token_error`. Configure via
     `options(shinyOAuth.max_id_token_lifetime = <seconds>)` (default of
     `86400` which is 24 hours). Set to `Inf` to disable the check.
 

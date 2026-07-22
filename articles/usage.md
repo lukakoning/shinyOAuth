@@ -485,12 +485,16 @@ for more details about logs and traces via OpenTelemetry.
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway
   (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload
   `issued_at` future check
-- `options(shinyOAuth.max_id_token_lifetime = 86400)` – maximum allowed
-  ID token lifetime in seconds (`exp - iat`). Tokens whose lifetime
-  exceeds this cap are rejected (OIDC Core §3.1.3.7 rule 9). Default
-  `86400` (24 hours). Set to `Inf` to disable the check
+- `options(shinyOAuth.max_id_token_lifetime = 86400)` – package
+  hardening that caps the allowed ID token lifetime in seconds
+  (`exp - iat`). OIDC Core §3.1.3.7 rule 9 requires an unexpired token
+  but does not define this lifetime cap. Default `86400` (24 hours). Set
+  to `Inf` to disable the check
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` -
   allows hosts to use `http://` scheme instead of `https://`
+- `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)` –
+  development-only opt-in for OIDC issuer and endpoint URLs on HTTP
+  loopback origins; production OIDC metadata URLs must use HTTPS
 - `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts
   accepted hosts to this whitelist
 - `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID

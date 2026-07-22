@@ -690,8 +690,10 @@ Refresh can behave a little differently for OIDC ID tokens:
     the provider configuration) per OIDC Core Section 12.2, to cover
     edge cases with multi-tenant providers or rotating issuer URIs
   - ‘shinyOAuth’ also enforces continuity for `auth_time` when the
-    original ID token had it, rejects a refreshed `nonce` when it
-    changes, and requires `azp` to match when either token carries it
+    original ID token had it and rejects a refreshed `nonce` when it
+    changes. Base OIDC does not require `azp` continuity; extensions
+    that use `azp` can define their own refresh-time continuity
+    requirement
 
 If refresh fails inside
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
