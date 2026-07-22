@@ -1365,7 +1365,9 @@ coerce_introspection_active <- function(x) {
   if (is.logical(x)) {
     return(ifelse(!is.na(x[[1]]), x[[1]], NA))
   }
-  if (!isTRUE(getOption("shinyOAuth.allow_legacy_introspection_active", FALSE))) {
+  if (
+    !isTRUE(getOption("shinyOAuth.allow_legacy_introspection_active", FALSE))
+  ) {
     return(NA)
   }
   if (is.numeric(x)) {

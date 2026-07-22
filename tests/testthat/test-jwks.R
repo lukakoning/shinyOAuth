@@ -220,42 +220,73 @@ test_that("select_candidate_jwks honors key_ops field", {
 })
 
 test_that("JWK identifiers are matched case-sensitively", {
-  expect_length(shinyOAuth:::select_candidate_jwks(list(keys = list(
-    list(kty = "RSA", use = "SIG")
-  ))), 0L)
-  expect_length(shinyOAuth:::select_candidate_jwks(list(keys = list(
-    list(kty = "RSA", key_ops = "Verify")
-  ))), 0L)
+  expect_length(
+    shinyOAuth:::select_candidate_jwks(list(
+      keys = list(
+        list(kty = "RSA", use = "SIG")
+      )
+    )),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::select_candidate_jwks(list(
+      keys = list(
+        list(kty = "RSA", key_ops = "Verify")
+      )
+    )),
+    0L
+  )
 
-  expect_length(shinyOAuth:::filter_jwks_for_alg(
-    list(list(kty = "rsa")),
-    "RS256"
-  ), 0L)
-  expect_length(shinyOAuth:::filter_jwks_for_alg(
-    list(list(kty = "RSA", alg = "rs256")),
-    "RS256"
-  ), 0L)
-  expect_length(shinyOAuth:::filter_jwks_for_alg(
-    list(list(kty = "EC", crv = "p-256")),
-    "ES256"
-  ), 0L)
+  expect_length(
+    shinyOAuth:::filter_jwks_for_alg(
+      list(list(kty = "rsa")),
+      "RS256"
+    ),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::filter_jwks_for_alg(
+      list(list(kty = "RSA", alg = "rs256")),
+      "RS256"
+    ),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::filter_jwks_for_alg(
+      list(list(kty = "EC", crv = "p-256")),
+      "ES256"
+    ),
+    0L
+  )
 
-  expect_length(shinyOAuth:::select_candidate_jwks_for_encryption(
-    list(keys = list(list(kty = "rsa", use = "enc"))),
-    "RSA-OAEP"
-  ), 0L)
-  expect_length(shinyOAuth:::select_candidate_jwks_for_encryption(
-    list(keys = list(list(kty = "RSA", use = "ENC"))),
-    "RSA-OAEP"
-  ), 0L)
-  expect_length(shinyOAuth:::select_candidate_jwks_for_encryption(
-    list(keys = list(list(kty = "RSA", key_ops = "wrapkey"))),
-    "RSA-OAEP"
-  ), 0L)
-  expect_length(shinyOAuth:::select_candidate_jwks_for_encryption(
-    list(keys = list(list(kty = "RSA", alg = "rsa-oaep"))),
-    "RSA-OAEP"
-  ), 0L)
+  expect_length(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      list(keys = list(list(kty = "rsa", use = "enc"))),
+      "RSA-OAEP"
+    ),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      list(keys = list(list(kty = "RSA", use = "ENC"))),
+      "RSA-OAEP"
+    ),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      list(keys = list(list(kty = "RSA", key_ops = "wrapkey"))),
+      "RSA-OAEP"
+    ),
+    0L
+  )
+  expect_length(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      list(keys = list(list(kty = "RSA", alg = "rsa-oaep"))),
+      "RSA-OAEP"
+    ),
+    0L
+  )
 })
 
 test_that("select_candidate_jwks filters by pins when provided", {

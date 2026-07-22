@@ -98,9 +98,17 @@ validate_id_token <- function(
   alg <- header_fields[["alg"]]
   kid <- header_fields[["kid"]]
   supported_algs <- c(
-    "RS256", "RS384", "RS512",
-    "ES256", "ES384", "ES512",
-    "EdDSA", "HS256", "HS384", "HS512", "none"
+    "RS256",
+    "RS384",
+    "RS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+    "HS256",
+    "HS384",
+    "HS512",
+    "none"
   )
   if (!(alg %in% supported_algs)) {
     err_id_token(paste0("Unsupported JWT alg: ", alg))
