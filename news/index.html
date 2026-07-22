@@ -43,7 +43,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>ID-token validation now fails closed whenever a present Ed448 <code>at_hash</code> cannot be validated by the available crypto bindings, even when the claim was not configured as required.</p></li>
+<ul><li><p>Direct callbacks carrying exactly one of <code>code</code> or <code>error</code> but no <code>state</code> are again reported as <code>invalid_state</code>. The early response-shape check still prevents state consumption, while ambiguous callback shapes remain <code>invalid_callback_query</code>.</p></li>
+<li><p>ID-token validation now fails closed whenever a present Ed448 <code>at_hash</code> cannot be validated by the available crypto bindings, even when the claim was not configured as required.</p></li>
 <li><p>Forced JWKS-refresh throttling now uses an atomic, expiring <code>$set_if_absent(key, value, ttl)</code> claim for shared cache backends. Shared or custom caches without that primitive fail closed instead of racing separate <code>$get()</code>/<code>$set()</code> operations; <code><a href="../reference/custom_cache.html">custom_cache()</a></code> now exposes the optional hook.</p></li>
 <li><p>Generic JWKS discovery now continues to OIDC-compatible well-known locations when a valid RFC 8414 metadata document omits the optional <code>jwks_uri</code>, instead of stopping before a usable metadata document is found.</p></li>
 <li><p>JWKS validation now rejects vector-valued metadata where JWK requires a scalar (<code>kty</code>, <code>kid</code>, <code>use</code>, <code>alg</code>, and <code>crv</code>), and algorithm filtering defensively excludes malformed keys.</p></li>
