@@ -167,8 +167,7 @@
 #'
 #'  - `"url"` (default): require the issuer used for discovery to match
 #'    exactly after normalizing a full discovery-document input back to its
-#'    issuer base URL and removing one trailing slash, if present, from both
-#'    values (recommended).
+#'    issuer base URL (recommended). A trailing slash is significant.
 #'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
 #'  - `"none"`: do not validate issuer consistency.
 #'
@@ -477,14 +476,18 @@ oauth_provider_oidc_discover <- function(
     return(issuer)
   }
 
-  issuer <- rtrim_slash(issuer)
   suffix <- "/.well-known/openid-configuration"
+  discovery_url <- if (endsWith(issuer, "/")) {
+    substr(issuer, 1L, nchar(issuer) - 1L)
+  } else {
+    issuer
+  }
 
-  if (!endsWith(issuer, suffix)) {
+  if (!endsWith(discovery_url, suffix)) {
     return(issuer)
   }
 
-  substr(issuer, 1L, nchar(issuer) - nchar(suffix))
+  substr(discovery_url, 1L, nchar(discovery_url) - nchar(suffix))
 }
 
 #' Internal: validate issuer input

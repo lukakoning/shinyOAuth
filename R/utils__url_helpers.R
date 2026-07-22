@@ -132,8 +132,7 @@ url_append_query_params <- function(url, params) {
 #' Requires the discovery issuer to be present and well-formed.
 #'
 #' Matching is controlled by `issuer_match`:
-#' - "url": require an exact match against the issuer URL prefix used for
-#'   discovery after removing one trailing slash, if present, from both values
+#' - "url": require code-point equality with the issuer URL used for discovery
 #' - "host": require scheme+host match only (explicit opt-out)
 #' - "none": do not validate issuer consistency
 #' Used after OIDC discovery fetches issuer metadata.
@@ -200,16 +199,13 @@ validate_discovery_issuer <- function(
     return(iss)
   }
 
-  expected_issuer <- rtrim_slash(issuer_input)
-  discovered_issuer <- rtrim_slash(issuer_discovered)
-
-  if (!identical(expected_issuer, discovered_issuer)) {
+  if (!identical(issuer_input, issuer_discovered)) {
     err_config(
       c(
         "x" = "OIDC discovery issuer mismatch",
         "!" = sprintf(
           "Input '%s' vs discovery '%s'",
-          expected_issuer,
+          issuer_input,
           issuer_discovered
         ),
         "i" = "Set issuer_match = 'host' to compare only scheme+host (not recommended)"

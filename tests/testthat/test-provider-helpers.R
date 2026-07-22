@@ -467,29 +467,6 @@ test_that("oauth_provider_okta can target the org authorization server", {
 })
 
 test_that("oauth_provider_auth0 constructs correct issuer from domain", {
-  issuer <- "https://my-domain.auth0.com"
-  disc_json <- make_discovery_doc(issuer)
-
-  testthat::local_mocked_bindings(
-    req_with_retry = function(req, ...) {
-      httr2::response(
-        url = as.character(req[["url"]]),
-        status = 200,
-        headers = list("content-type" = "application/json"),
-        body = charToRaw(as.character(disc_json))
-      )
-    },
-    .package = "shinyOAuth"
-  )
-
-  p <- oauth_provider_auth0(domain = "my-domain.auth0.com")
-
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
-  expect_identical(p@name, "auth0")
-  expect_identical(p@issuer, issuer)
-})
-
-test_that("oauth_provider_auth0 accepts discovery issuers with a trailing slash", {
   issuer <- "https://my-domain.auth0.com/"
   disc_json <- make_discovery_doc(issuer)
 
@@ -512,8 +489,30 @@ test_that("oauth_provider_auth0 accepts discovery issuers with a trailing slash"
   expect_identical(p@issuer, issuer)
 })
 
+test_that("oauth_provider_auth0 rejects an issuer without its trailing slash", {
+  disc_json <- make_discovery_doc("https://my-domain.auth0.com")
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req[["url"]]),
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(as.character(disc_json))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_error(
+    oauth_provider_auth0(domain = "my-domain.auth0.com"),
+    class = "shinyOAuth_config_error",
+    regexp = "issuer mismatch"
+  )
+})
+
 test_that("oauth_provider_auth0 includes audience in extra_auth_params", {
-  issuer <- "https://my-domain.auth0.com"
+  issuer <- "https://my-domain.auth0.com/"
   disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(

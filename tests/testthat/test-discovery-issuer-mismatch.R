@@ -72,25 +72,25 @@ test_that("validate_discovery_issuer errors on issuer path mismatch by default",
   )
 })
 
-test_that("validate_discovery_issuer matches the discovery request prefix", {
+test_that("validate_discovery_issuer rejects a missing trailing slash", {
   f <- shinyOAuth:::validate_discovery_issuer
-  expect_identical(
+  expect_error(
     f(
       "https://login.example.com/tenant-a/",
       "https://login.example.com/tenant-a"
     ),
-    "https://login.example.com/tenant-a"
+    class = "shinyOAuth_config_error"
   )
 })
 
-test_that("validate_discovery_issuer tolerates a trailing slash in discovery metadata", {
+test_that("validate_discovery_issuer rejects an added trailing slash", {
   f <- shinyOAuth:::validate_discovery_issuer
-  expect_identical(
+  expect_error(
     f(
       "https://login.example.com/tenant-a",
       "https://login.example.com/tenant-a/"
     ),
-    "https://login.example.com/tenant-a/"
+    class = "shinyOAuth_config_error"
   )
 })
 
@@ -131,6 +131,10 @@ test_that("discovery input normalization strips a full discovery URL", {
   expect_identical(
     f("https://login.example.com/tenant-a"),
     "https://login.example.com/tenant-a"
+  )
+  expect_identical(
+    f("https://login.example.com/tenant-a/"),
+    "https://login.example.com/tenant-a/"
   )
 })
 

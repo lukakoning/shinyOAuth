@@ -68,8 +68,7 @@ discovery document's \code{issuer} against the input \code{issuer}.
 \itemize{
 \item \code{"url"} (default): require the issuer used for discovery to match
 exactly after normalizing a full discovery-document input back to its
-issuer base URL and removing one trailing slash, if present, from both
-values (recommended).
+issuer base URL (recommended). A trailing slash is significant.
 \item \code{"host"}: compare only scheme + host (explicit opt-out; not recommended).
 \item \code{"none"}: do not validate issuer consistency.
 }

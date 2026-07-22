@@ -482,7 +482,9 @@ oauth_provider_auth0 <- function(domain, name = "auth0", audience = NULL) {
     paste0("https://", domain)
   }
 
-  issuer <- rtrim_slash(base)
+  # Auth0's issuer identifier includes a trailing slash. Preserve it for the
+  # exact Discovery and ID-token issuer comparisons required by OIDC.
+  issuer <- paste0(rtrim_slash(base), "/")
 
   extra_auth <- if (!is.null(audience)) list(audience = audience) else list()
 
