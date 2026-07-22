@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* ID-token validation now fails closed whenever a present Ed448 `at_hash`
+cannot be validated by the available crypto bindings, even when the claim was
+not configured as required.
+
 * Forced JWKS-refresh throttling now uses an atomic, expiring
 `$set_if_absent(key, value, ttl)` claim for shared cache backends. Shared or
 custom caches without that primitive fail closed instead of racing separate

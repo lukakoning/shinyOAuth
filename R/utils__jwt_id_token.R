@@ -498,13 +498,11 @@ validate_id_token <- function(
       identical(alg, "EDDSA") &&
         identical(canonicalize_eddsa_curve(verified_eddsa_curve), "Ed448")
     ) {
-      if (at_hash_required) {
-        err_id_token(c(
-          "x" = "Cannot validate required Ed448 at_hash with the current crypto bindings",
-          "i" = "OIDC code flow only makes at_hash validation optional unless id_token_at_hash_required = TRUE",
-          "i" = "Current crypto bindings do not expose the exact SHAKE256 mapping needed for Ed448"
-        ))
-      }
+      err_id_token(c(
+        "x" = "Cannot validate Ed448 at_hash with the current crypto bindings",
+        "i" = "A present at_hash claim must be validated even when its presence was not required",
+        "i" = "Current crypto bindings do not expose the exact SHAKE256 mapping needed for Ed448"
+      ))
     } else {
       computed <- compute_at_hash(
         expected_access_token,
