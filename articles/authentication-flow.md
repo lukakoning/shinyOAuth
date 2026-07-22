@@ -71,15 +71,7 @@ encrypted and authenticated payload. That payload contains:
 - observability metadata like an internal trace id
 
 Sealing the state helps prevent tampering, stale callbacks, and resuming
-a transaction under different client or provider configuration. It does
-**not** identify which authorization server issued the authorization
-response and is not, by itself, a provider mix-up defense. A malicious
-authorization server that initiated a transaction can cause the client
-to retrieve that transaction’s stored PKCE verifier. Multi-provider
-applications must therefore use authorization-response issuer
-identification or verified distinct redirect URIs as required by [RFC
-9700 section
-4.4](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4).
+a transaction under different client or provider configuration.
 
 On the server side, the package also stores a few one-time callback
 values in the state store (for example a `cachem` backend), under a
