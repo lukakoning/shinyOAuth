@@ -4,7 +4,7 @@
 \alias{custom_cache}
 \title{Create a custom cache backend (cachem-like)}
 \usage{
-custom_cache(get, set, remove, take = NULL, info = NULL)
+custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
 }
 \arguments{
 \item{get}{A function(key, missing = NULL) -> value. Required.
@@ -48,9 +48,22 @@ guarantee single-use under concurrent access in shared stores.}
 
 TTL information from \verb{$info()} is used to align browser cookie max age in
 \code{\link[=oauth_module_server]{oauth_module_server()}}.}
+
+\item{set_if_absent}{A function(key, value, ttl = NULL) -> logical. Optional.
+
+An atomic set-if-missing operation for shared JWKS caches. It must store
+\code{value} and return \code{TRUE} only when \code{key} did not already exist; otherwise
+it must leave the existing value unchanged and return \code{FALSE}. When \code{ttl}
+is supplied, the claimed key must expire after that many seconds. Map this
+to a native backend primitive such as Redis \verb{SET ... NX EX} or a database
+uniqueness constraint with expiry. shinyOAuth uses this operation to make
+forced JWKS-refresh throttling safe across workers. Without it, forced
+refresh is disabled for shared/custom caches; \code{\link[cachem:cache_mem]{cachem::cache_mem()}} keeps
+its process-local serialized fallback.}
 }
 \value{
 An R6 object exposing cachem-like \verb{$get/$set/$remove/$info} methods
+and the optional \verb{$take} and \verb{$set_if_absent} atomic methods.
 }
 \description{
 Builds a small cachem-like backend object with methods compatible with what
@@ -66,7 +79,8 @@ Redis, Memcached).
 The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
 \itemize{
 \item OAuthClient@state_store (requires \verb{$get}, \verb{$set}, \verb{$remove}; optional \verb{$info})
-\item OAuthProvider@jwks_cache (requires \verb{$get}, \verb{$set}; optional \verb{$remove}, \verb{$info})
+\item OAuthProvider@jwks_cache (requires \verb{$get}, \verb{$set}; optional \verb{$remove},
+\verb{$set_if_absent}, \verb{$info})
 }
 
 For \code{OAuthClient@state_store}, stored values are small lists. \code{browser_token}

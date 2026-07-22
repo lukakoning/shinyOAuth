@@ -22,6 +22,32 @@ test_that("custom_cache validates optional info hook", {
   )
 })
 
+test_that("custom_cache validates and exposes atomic set_if_absent", {
+  expect_error(
+    custom_cache(
+      get = function(key, missing = NULL) missing,
+      set = function(key, value) invisible(NULL),
+      remove = function(key) invisible(NULL),
+      set_if_absent = "not a function"
+    ),
+    class = "shinyOAuth_input_error"
+  )
+
+  seen_ttl <- NULL
+  cache <- custom_cache(
+    get = function(key, missing = NULL) missing,
+    set = function(key, value) invisible(NULL),
+    remove = function(key) invisible(NULL),
+    set_if_absent = function(key, value, ttl = NULL) {
+      seen_ttl <<- ttl
+      TRUE
+    }
+  )
+
+  expect_true(cache$set_if_absent("claim", 1, ttl = 30))
+  expect_identical(seen_ttl, 30)
+})
+
 test_that("custom_cache stores and retrieves values", {
   store <- new.env(parent = emptyenv())
   cache <- custom_cache(

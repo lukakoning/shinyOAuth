@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Forced JWKS-refresh throttling now uses an atomic, expiring
+`$set_if_absent(key, value, ttl)` claim for shared cache backends. Shared or
+custom caches without that primitive fail closed instead of racing separate
+`$get()`/`$set()` operations; `custom_cache()` now exposes the optional hook.
+
 * Generic JWKS discovery now continues to OIDC-compatible well-known locations
 when a valid RFC 8414 metadata document omits the optional `jwks_uri`, instead
 of stopping before a usable metadata document is found.

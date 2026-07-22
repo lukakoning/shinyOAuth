@@ -25,7 +25,8 @@
 #'
 #' The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
 #' - OAuthClient@state_store (requires `$get`, `$set`, `$remove`; optional `$info`)
-#' - OAuthProvider@jwks_cache (requires `$get`, `$set`; optional `$remove`, `$info`)
+#' - OAuthProvider@jwks_cache (requires `$get`, `$set`; optional `$remove`,
+#'   `$set_if_absent`, `$info`)
 #'
 #' For `OAuthClient@state_store`, stored values are small lists. `browser_token`
 #' must always round-trip as a non-empty string. `pkce_code_verifier` and
@@ -74,17 +75,37 @@
 #'   consumption time because non-atomic `$get()` + `$remove()` cannot
 #'   guarantee single-use under concurrent access in shared stores.
 #'
+#' @param set_if_absent A function(key, value, ttl = NULL) -> logical. Optional.
+#'
+#'   An atomic set-if-missing operation for shared JWKS caches. It must store
+#'   `value` and return `TRUE` only when `key` did not already exist; otherwise
+#'   it must leave the existing value unchanged and return `FALSE`. When `ttl`
+#'   is supplied, the claimed key must expire after that many seconds. Map this
+#'   to a native backend primitive such as Redis `SET ... NX EX` or a database
+#'   uniqueness constraint with expiry. shinyOAuth uses this operation to make
+#'   forced JWKS-refresh throttling safe across workers. Without it, forced
+#'   refresh is disabled for shared/custom caches; [cachem::cache_mem()] keeps
+#'   its process-local serialized fallback.
+#'
 #' @param info Function() -> list(max_age = seconds, ...). Optional
 #'
 #'   TTL information from `$info()` is used to align browser cookie max age in
 #'   [oauth_module_server()].
 #'
 #' @return An R6 object exposing cachem-like `$get/$set/$remove/$info` methods
+#'   and the optional `$take` and `$set_if_absent` atomic methods.
 #'
 #' @example inst/examples/custom_cache.R
 #'
 #' @export
-custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
+custom_cache <- function(
+  get,
+  set,
+  remove,
+  take = NULL,
+  info = NULL,
+  set_if_absent = NULL
+) {
   # Validate required functions
   if (!is.function(get)) {
     err_input(
@@ -109,6 +130,11 @@ custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
       )
     }
   }
+  if (!is.null(set_if_absent) && !is.function(set_if_absent)) {
+    err_input(
+      "cache_backend: `set_if_absent` must be a function(key, value, ttl = NULL) for atomic JWKS refresh throttling (see `?custom_cache`)"
+    )
+  }
   # Validate optional info hook if provided. A missing hook is handled by the
   # R6 method itself so no one-off helper function is needed.
   if (!is.null(info) && !is.function(info)) {
@@ -124,13 +150,26 @@ custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
       # provided; remains NULL otherwise.  Duck-typing check
       # is.function(store$take) naturally returns TRUE/FALSE.
       take = NULL,
-      initialize = function(.get, .set, .remove, .take, .info) {
+      set_if_absent = NULL,
+      initialize = function(
+        .get,
+        .set,
+        .remove,
+        .take,
+        .info,
+        .set_if_absent
+      ) {
         private$.get <- .get
         private$.set <- .set
         private$.remove <- .remove
         private$.info <- .info
         if (!is.null(.take)) {
           self$take <- function(key, missing = NULL) .take(key, missing)
+        }
+        if (!is.null(.set_if_absent)) {
+          self$set_if_absent <- function(key, value, ttl = NULL) {
+            .set_if_absent(key, value, ttl)
+          }
         }
       },
       get = function(key, missing = NULL) {
@@ -165,5 +204,5 @@ custom_cache <- function(get, set, remove, take = NULL, info = NULL) {
     )
   )
 
-  CacheCls$new(get, set, remove, take, info)
+  CacheCls$new(get, set, remove, take, info, set_if_absent)
 }

@@ -80,3 +80,55 @@ test_that("Unknown kid triggers at most one forced JWKS refresh per interval", {
   expect_identical(force_refresh_true, 1L)
   expect_gte(total_fetches, 3L)
 })
+
+test_that("shared JWKS refresh throttling uses an atomic claim", {
+  claimed <- FALSE
+  get_calls <- 0L
+  set_calls <- 0L
+  seen_ttl <- NULL
+  cache <- list(
+    get = function(key, missing = NULL) {
+      get_calls <<- get_calls + 1L
+      missing
+    },
+    set = function(key, value) {
+      set_calls <<- set_calls + 1L
+      invisible(NULL)
+    },
+    set_if_absent = function(key, value, ttl = NULL) {
+      seen_ttl <<- ttl
+      if (claimed) {
+        return(FALSE)
+      }
+      claimed <<- TRUE
+      TRUE
+    }
+  )
+
+  allowed <- function() shinyOAuth:::jwks_force_refresh_allowed(
+    issuer = "https://issuer.example.com",
+    jwks_cache = cache,
+    min_interval = 30,
+    now = 100
+  )
+
+  expect_true(allowed())
+  expect_false(allowed())
+  expect_identical(seen_ttl, 30)
+  expect_identical(get_calls, 0L)
+  expect_identical(set_calls, 0L)
+})
+
+test_that("shared JWKS refresh throttling fails closed without atomic claim", {
+  cache <- list(
+    get = function(...) stop("non-atomic get must not be used"),
+    set = function(...) stop("non-atomic set must not be used")
+  )
+
+  expect_false(shinyOAuth:::jwks_force_refresh_allowed(
+    issuer = "https://issuer.example.com",
+    jwks_cache = cache,
+    min_interval = 30,
+    now = 100
+  ))
+})

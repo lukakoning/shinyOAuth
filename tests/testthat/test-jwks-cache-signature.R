@@ -52,6 +52,23 @@ test_that("OAuthProvider rejects jwks_cache with incompatible signatures", {
     ),
     regexp = "jwks_cache\\$remove must accept \\(?key\\)?"
   )
+
+  bad_set_if_absent <- list(
+    get = function(key, missing = NULL) missing,
+    set = function(key, value) invisible(NULL),
+    set_if_absent = function(key, value) TRUE
+  )
+  expect_error(
+    oauth_provider(
+      name = "sig-check",
+      auth_url = paste0(base, "/auth"),
+      token_url = paste0(base, "/token"),
+      use_nonce = FALSE,
+      id_token_validation = FALSE,
+      jwks_cache = bad_set_if_absent
+    ),
+    regexp = "jwks_cache\\$set_if_absent must accept"
+  )
 })
 
 test_that("OAuthProvider validator does not probe-call jwks_cache$get", {

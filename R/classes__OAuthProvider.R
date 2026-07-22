@@ -1376,6 +1376,27 @@ oauth_provider_validate <- function(self) {
       )
     }
   }
+  if (
+    !is.null(self@jwks_cache$set_if_absent) &&
+      is.function(self@jwks_cache$set_if_absent)
+  ) {
+    jsia_formals <- try(formals(self@jwks_cache$set_if_absent), silent = TRUE)
+    jsia_args <- if (!inherits(jsia_formals, "try-error")) {
+      names(jsia_formals)
+    } else {
+      character()
+    }
+    if (
+      !(
+        "..." %in% jsia_args ||
+          all(c("key", "value", "ttl") %in% jsia_args)
+      )
+    ) {
+      return(
+        "OAuthProvider: jwks_cache$set_if_absent must accept (key, value, ttl = NULL) when provided"
+      )
+    }
+  }
 
   if (!isTRUE(self@jwks_pin_mode %in% c("any", "all"))) {
     return("OAuthProvider: jwks_pin_mode must be 'any' or 'all'")

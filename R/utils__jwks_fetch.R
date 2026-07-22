@@ -548,6 +548,26 @@ jwks_force_refresh_allowed <- function(
   )
   throttle_key <- paste0(base_key, "xfr")
 
+  if (identical(min_interval, 0) || identical(min_interval, 0L)) {
+    return(TRUE)
+  }
+
+  # Shared caches must claim the throttle window atomically. A backend-provided
+  # set-if-absent primitive both elects one worker and expires the claim after
+  # the interval. Fail closed when a potentially shared backend lacks it.
+  set_if_absent <- jwks_cache$set_if_absent %||% NULL
+  if (is.function(set_if_absent)) {
+    claimed <- try(
+      set_if_absent(throttle_key, now, ttl = min_interval),
+      silent = TRUE
+    )
+    return(!inherits(claimed, "try-error") && isTRUE(claimed))
+  }
+  if (!inherits(jwks_cache, "cache_mem")) {
+    return(FALSE)
+  }
+
+  # cache_mem is process-local and R evaluates these operations serially.
   last <- jwks_cache$get(throttle_key, missing = NULL)
   if (is.numeric(last) && length(last) == 1L && !is.na(last)) {
     if ((now - last) < min_interval) {
