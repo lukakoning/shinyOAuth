@@ -12,6 +12,10 @@ This folder contains a minimal Shiny app and Dockerfile to run 'shinyOAuth' on G
 ## 2) Build/run
 
 The container runs a plain `shiny::runApp()` listening on `$PORT` and `0.0.0.0`.
+Its Rocker base image is pinned by digest and its Posit Package Manager
+repository defaults to the dated `2026-07-21` snapshot. When updating either
+pin, review the resulting dependency changes and update both values
+intentionally.
 
 Environment variables used by the app:
 - `GITHUB_OAUTH_CLIENT_ID`
@@ -38,6 +42,9 @@ Build the image:
 # From repo root
 docker build -t shinyoauth-demo:latest -f integration/gcp/Dockerfile .
 ```
+
+To test against another reviewed PPM snapshot without editing the Dockerfile,
+pass `--build-arg PPM_SNAPSHOT=YYYY-MM-DD`.
 
 Run the image (create integration/gcp/.env based on integration/gcp/.env.example):
 

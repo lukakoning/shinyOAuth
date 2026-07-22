@@ -2,7 +2,9 @@
 # - Single process, listens on $PORT, binds 0.0.0.0
 # - Installs this repo (shinyOAuth) from the local source copied into the image
 
-FROM rocker/r-ver:4.5.1
+FROM rocker/r-ver:4.5.1@sha256:03b023fbf7b1b24ac1bb8b2ac5fd7e15a767e67b40ff50c155e328110981c2aa
+
+ARG PPM_SNAPSHOT=2026-07-21
 
 # System dependencies for common R packages used by shinyOAuth
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -30,7 +32,7 @@ RUN set -eux; \
   fi; \
   RPROFILE_SITE=$(R RHOME)/etc/Rprofile.site; \
   echo 'options(HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(), paste(getRversion(), R.version["platform"], R.version["arch"], R.version["os"])))' >> "$RPROFILE_SITE"; \
-  echo "options(repos = c(CRAN = 'https://packagemanager.posit.co/cran/__linux__/${PPM_PATH}/latest'))" >> "$RPROFILE_SITE"
+  echo "options(repos = c(CRAN = 'https://packagemanager.posit.co/cran/__linux__/${PPM_PATH}/${PPM_SNAPSHOT}'))" >> "$RPROFILE_SITE"
 
 # Install base R packages needed to run the app and install this package
 # Uses the configured PPM binary repo

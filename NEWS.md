@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* The Cloud Run deployment example now pins its Rocker base image by digest
+and installs R dependencies from a dated Posit Package Manager snapshot.
+
 * Documentation now correctly describes the 24-hour `exp - iat` limit as
 package hardening, rather than attributing it to OIDC Core validation rule 9.
 
