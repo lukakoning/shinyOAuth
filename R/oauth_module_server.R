@@ -602,6 +602,93 @@ oauth_module_server <- function(
       refresh_failure_count = 0L
     )
 
+    # Authentication work can outlive the state that launched it. Keep a
+    # non-reactive lifecycle epoch and per-operation owner IDs so late promise
+    # callbacks cannot install credentials or overwrite newer state.
+    auth_operations <- new.env(parent = emptyenv())
+    auth_operations$epoch <- 0
+    auth_operations$next_id <- 0
+    auth_operations$active_login_id <- NULL
+    auth_operations$active_refresh_id <- NULL
+    auth_operations$session_active <- TRUE
+
+    .advance_auth_epoch <- function() {
+      auth_operations$epoch <- auth_operations$epoch + 1
+      auth_operations$active_login_id <- NULL
+      auth_operations$active_refresh_id <- NULL
+      values$refresh_in_progress <- FALSE
+      values$refresh_next_attempt_at <- 0
+      values$refresh_failure_count <- 0L
+      invisible(auth_operations$epoch)
+    }
+
+    .begin_auth_operation <- function(kind, source_token, new_epoch = FALSE) {
+      if (isTRUE(new_epoch)) {
+        .advance_auth_epoch()
+      }
+
+      auth_operations$next_id <- auth_operations$next_id + 1
+      operation <- list(
+        epoch = auth_operations$epoch,
+        id = auth_operations$next_id,
+        source_token = source_token
+      )
+      auth_operations[[paste0("active_", kind, "_id")]] <- operation$id
+      if (identical(kind, "refresh")) {
+        values$refresh_in_progress <- TRUE
+      }
+      operation
+    }
+
+    .auth_operation_is_owner <- function(operation, kind) {
+      isTRUE(auth_operations$session_active) &&
+        identical(auth_operations$epoch, operation$epoch) &&
+        identical(
+          auth_operations[[paste0("active_", kind, "_id")]],
+          operation$id
+        )
+    }
+
+    .auth_operation_can_apply <- function(operation, kind) {
+      .auth_operation_is_owner(operation, kind) &&
+        identical(values$token, operation$source_token)
+    }
+
+    .finish_auth_operation <- function(operation, kind) {
+      if (!isTRUE(.auth_operation_is_owner(operation, kind))) {
+        return(invisible(FALSE))
+      }
+
+      auth_operations[[paste0("active_", kind, "_id")]] <- NULL
+      if (identical(kind, "refresh")) {
+        values$refresh_in_progress <- FALSE
+      }
+      invisible(TRUE)
+    }
+
+    .revoke_stale_credentials <- function(tok, shiny_session = NULL) {
+      if (!S7::S7_inherits(tok, OAuthToken)) {
+        return(invisible(NULL))
+      }
+
+      use_async_revocation <- isTRUE(async)
+      try(revoke_token(
+        client,
+        tok,
+        which = "refresh",
+        async = use_async_revocation,
+        shiny_session = shiny_session
+      ), silent = TRUE)
+      try(revoke_token(
+        client,
+        tok,
+        which = "access",
+        async = use_async_revocation,
+        shiny_session = shiny_session
+      ), silent = TRUE)
+      invisible(NULL)
+    }
+
     form_post_module_registry <- tryCatch(
       session$userData$shinyOAuth_form_post_module_registry,
       error = function(...) NULL
@@ -716,6 +803,9 @@ oauth_module_server <- function(
 
     # Always log session end, regardless of revoke_on_session_end setting
     session$onSessionEnded(function() {
+      auth_operations$session_active <- FALSE
+      .advance_auth_epoch()
+
       # Capture authentication state at session end
       was_authenticated <- tryCatch(
         isTRUE(shiny::isolate(values$authenticated)),
@@ -1339,6 +1429,7 @@ oauth_module_server <- function(
             # Best-effort: revoke provider tokens asynchronously if supported.
             # Fire-and-forget so logout returns immediately.
             tok <- values$token
+            .advance_auth_epoch()
             if (!is.null(tok)) {
               # Async revocation follows module async setting
               use_async_revocation <- isTRUE(async)
@@ -2793,6 +2884,12 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      login_operation <- .begin_auth_operation(
+        "login",
+        source_token = values$token,
+        new_epoch = TRUE
+      )
+
       tryCatch(
         {
           with_trace_id(
@@ -3195,6 +3292,18 @@ oauth_module_server <- function(
                       otel_end_async_parent(callback_parent, status = "ok")
                     }
                     tok <- replay_async_conditions(raw)
+                    if (!isTRUE(.auth_operation_can_apply(
+                      login_operation,
+                      "login"
+                    ))) {
+                      .finish_auth_operation(login_operation, "login")
+                      .revoke_stale_credentials(
+                        tok,
+                        shiny_session = captured_shiny_session
+                      )
+                      return(invisible(NULL))
+                    }
+                    .finish_auth_operation(login_operation, "login")
                     values$token <- tok
                     values$error <- NULL
                     values$error_description <- NULL
@@ -3221,6 +3330,13 @@ oauth_module_server <- function(
                         error = e
                       )
                     }
+                    if (!isTRUE(.auth_operation_can_apply(
+                      login_operation,
+                      "login"
+                    ))) {
+                      .finish_auth_operation(login_operation, "login")
+                      return(invisible(NULL))
+                    }
                     .set_error(
                       oauth_module_callback_failure_error_code(e),
                       e,
@@ -3242,11 +3358,21 @@ oauth_module_server <- function(
                       ),
                       silent = TRUE
                     )
+                    .finish_auth_operation(login_operation, "login")
                     if (isTRUE(getOption("shinyOAuth.debug", FALSE))) {
                       rlang::abort(message = conditionMessage(e), parent = e)
                     }
                   })
               } else {
+                if (!isTRUE(.auth_operation_can_apply(
+                  login_operation,
+                  "login"
+                ))) {
+                  .finish_auth_operation(login_operation, "login")
+                  .revoke_stale_credentials(res)
+                  return(invisible(NULL))
+                }
+                .finish_auth_operation(login_operation, "login")
                 values$token <- res
                 values$error <- NULL
                 values$error_description <- NULL
@@ -3275,6 +3401,10 @@ oauth_module_server <- function(
           if (!is.null(callback_parent)) {
             otel_end_async_parent(callback_parent, status = "error", error = e)
           }
+          if (!isTRUE(.auth_operation_can_apply(login_operation, "login"))) {
+            .finish_auth_operation(login_operation, "login")
+            return(invisible(NULL))
+          }
           .set_error(
             oauth_module_callback_failure_error_code(e),
             e,
@@ -3293,6 +3423,7 @@ oauth_module_server <- function(
             ),
             silent = TRUE
           )
+          .finish_auth_operation(login_operation, "login")
           if (isTRUE(getOption("shinyOAuth.debug", FALSE))) {
             rlang::abort(message = conditionMessage(e), parent = e)
           }
@@ -3392,9 +3523,18 @@ oauth_module_server <- function(
     # Expiry management and optional proactive refresh logic
     if (isTRUE(refresh_proactively)) {
       # Record proactive refresh pacing state for success and failure paths.
-      .record_refresh_result <- function(token = NULL, condition = NULL) {
+      .record_refresh_result <- function(
+        operation,
+        token = NULL,
+        condition = NULL
+      ) {
+        if (!isTRUE(.auth_operation_can_apply(operation, "refresh"))) {
+          .finish_auth_operation(operation, "refresh")
+          return(FALSE)
+        }
+
         now <- as.numeric(Sys.time())
-        values$refresh_in_progress <- FALSE
+        .finish_auth_operation(operation, "refresh")
 
         if (!is.null(token)) {
           values$refresh_failure_count <- 0L
@@ -3415,7 +3555,7 @@ oauth_module_server <- function(
         }
 
         values$refresh_next_attempt_at <- now + delay
-        invisible(NULL)
+        TRUE
       }
 
       shiny::observe({
@@ -3452,6 +3592,7 @@ oauth_module_server <- function(
               # skip starting another and try again shortly.
               if (
                 isTRUE(values$refresh_in_progress) ||
+                  !is.null(auth_operations$active_login_id) ||
                   (is.finite(next_attempt_at) && next_attempt_at > now)
               ) {
                 # Keep wake_ms short and bail out of starting a new refresh
@@ -3466,10 +3607,14 @@ oauth_module_server <- function(
                 }
 
                 # Delegate to refresh_token with async and handle promise if returned
+                refresh_operation <- NULL
                 tryCatch(
                   {
-                    # Mark refresh as in-progress until we resolve success/error
-                    values$refresh_in_progress <- TRUE
+                    # Claim ownership until this exact refresh resolves.
+                    refresh_operation <- .begin_auth_operation(
+                      "refresh",
+                      source_token = tok
+                    )
                     values$refresh_last_attempt_at <- as.numeric(Sys.time())
                     res <- refresh_token(
                       client,
@@ -3484,7 +3629,16 @@ oauth_module_server <- function(
                       res |>
                         promises::then(function(raw) {
                           res_resolved <- replay_async_conditions(raw)
-                          .record_refresh_result(token = res_resolved)
+                          if (!isTRUE(.record_refresh_result(
+                            refresh_operation,
+                            token = res_resolved
+                          ))) {
+                            .revoke_stale_credentials(
+                              res_resolved,
+                              shiny_session = captured_shiny_session_refresh
+                            )
+                            return(invisible(NULL))
+                          }
                           values$token <- res_resolved
                           values$error <- NULL
                           values$error_description <- NULL
@@ -3496,7 +3650,12 @@ oauth_module_server <- function(
                           values$reauth_triggered <- FALSE
                         }) |>
                         promises::catch(function(e) {
-                          .record_refresh_result(condition = e)
+                          if (!isTRUE(.record_refresh_result(
+                            refresh_operation,
+                            condition = e
+                          ))) {
+                            return(invisible(NULL))
+                          }
                           mirai_err_type <- classify_mirai_error(e)
                           try(log_condition(
                             e,
@@ -3586,7 +3745,13 @@ oauth_module_server <- function(
                     } else {
                       # Sync path; directly set values
                       new_tok <- res
-                      .record_refresh_result(token = new_tok)
+                      if (!isTRUE(.record_refresh_result(
+                        refresh_operation,
+                        token = new_tok
+                      ))) {
+                        .revoke_stale_credentials(new_tok)
+                        return(invisible(NULL))
+                      }
                       values$token <- new_tok
                       values$error <- NULL
                       values$error_description <- NULL
@@ -3599,8 +3764,13 @@ oauth_module_server <- function(
                     }
                   },
                   error = function(e) {
-                    # Always clear the in-progress flag on error
-                    .record_refresh_result(condition = e)
+                    if (is.null(refresh_operation) ||
+                      !isTRUE(.record_refresh_result(
+                        refresh_operation,
+                        condition = e
+                      ))) {
+                      return(invisible(NULL))
+                    }
                     # Set error; clear token unless indefinite_session
                     if (!isTRUE(indefinite_session)) {
                       values$token <- NULL
@@ -3699,6 +3869,7 @@ oauth_module_server <- function(
             } else if ((now - started) >= reauth_after_seconds) {
               # Default behavior clears token and triggers reauth; skip when indefinite_session
               if (!isTRUE(indefinite_session)) {
+                .advance_auth_epoch()
                 values$token <- NULL
                 values$error <- "reauth_required"
                 values$error_description <- sprintf(
@@ -3757,6 +3928,7 @@ oauth_module_server <- function(
                 shiny::invalidateLater(500L, session)
                 return()
               }
+              .advance_auth_epoch()
               values$token <- NULL
               values$error <- "token_expired"
               values$error_description <- "Access token expired"

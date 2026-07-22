@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Authentication lifecycle changes now invalidate pending login and refresh
+operations on logout, replacement login, expiry, reauthentication, and session
+end. Late async completions cannot restore or clear newer credentials, stale
+credentials are revoked best-effort, and an abandoned refresh no longer leaves
+proactive refresh disabled for a later login.
+
 * Direct callbacks carrying exactly one of `code` or `error` but no `state`
 are again reported as `invalid_state`. The early response-shape check still
 prevents state consumption, while ambiguous callback shapes remain
