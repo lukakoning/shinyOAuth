@@ -41,7 +41,9 @@ client_bearer_req(
 
   Optional HTTP method (character). Defaults to "GET". When the
   effective token type is `DPoP`, this must be the final request method
-  because the proof is signed against it.
+  because the proof is signed against it. `TRACE` and the nonstandard
+  `TRACK` method are rejected because authenticated requests could be
+  reflected by the server and disclose credentials.
 
 - headers:
 

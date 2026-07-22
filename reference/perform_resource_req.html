@@ -115,7 +115,9 @@ defaults, and then layers any explicit <code>method</code>, <code>headers</code>
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Optional HTTP method (character). Defaults to "GET". When
 the effective token type is <code>DPoP</code>, this must be the final request method
-because the proof is signed against it.</p></dd>
+because the proof is signed against it. <code>TRACE</code> and the nonstandard
+<code>TRACK</code> method are rejected because authenticated requests could be
+reflected by the server and disclose credentials.</p></dd>
 
 
 <dt id="arg-headers">headers<a class="anchor" aria-label="anchor" href="#arg-headers"></a></dt>
@@ -173,9 +175,8 @@ request. This is primarily useful after a resource server challenges with
 <dd><p>Optional logical controlling generic transport and
 transient-HTTP retries in <code>req_with_retry()</code>. When <code>NULL</code> (the default),
 shinyOAuth infers this from the final request method using standard HTTP
-idempotency semantics (<code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>, <code>TRACE</code>, <code>PUT</code>,
-<code>DELETE</code>). DPoP nonce challenges are replayed once regardless, as required
-by RFC 9449.</p></dd>
+idempotency semantics (<code>GET</code>, <code>HEAD</code>, <code>OPTIONS</code>, <code>PUT</code>, <code>DELETE</code>). DPoP
+nonce challenges are replayed once regardless, as required by RFC 9449.</p></dd>
 
 </dl></div>
     <div class="section level2">

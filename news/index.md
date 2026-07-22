@@ -2,6 +2,47 @@
 
 ## shinyOAuth (development version)
 
+- Direct query callbacks now use the same response-shape validation as
+  plain `form_post`: exactly one of `code` or `error`, plus `state`, is
+  required before single-use state can be consumed.
+
+- Deprecated
+  [`perform_client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.md)
+  now preserves the method of a prebuilt `httr2` request when `method`
+  is omitted, matching
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
+
+- Refreshed OIDC ID tokens may now omit the original token’s
+  `auth_time`, and base OIDC refresh no longer imposes
+  extension-specific `azp` presence or value symmetry. When a refreshed
+  token includes `auth_time`, it must still match the original.
+
+- [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
+  now accepts its documented `token_auth_style` override instead of
+  always forcing HTTP Basic authentication.
+
+- Resource and UserInfo helpers no longer allow `token_type` overrides
+  to downgrade a DPoP `OAuthToken` or one carrying a `cnf.jkt` binding
+  to Bearer. For `OAuthToken` objects, overrides may only fill a
+  genuinely missing, unbound token type.
+
+- OIDC authorization transactions now seal the normalized, transmitted
+  `max_age` value into encrypted state, include it in provider and
+  callback-policy fingerprints, and use that exact value for callback
+  `auth_time` validation.
+
+- Sanitized HTTP audit summaries now replace `Referer` with `[REDACTED]`
+  so OAuth callback credentials in Referer URLs cannot leak to audit
+  sinks. Other non-sensitive headers continue to be retained.
+
+- The Spotify example now HTML-escapes remote track, album, artist, and
+  genre metadata in its DT tables, preventing provider-controlled markup
+  from running in the authenticated Shiny origin.
+
+- Authenticated resource helpers now reject `TRACE` and the nonstandard
+  `TRACK` method before attaching Bearer or DPoP credentials, preventing
+  servers from reflecting those credentials in diagnostic responses.
+
 - OIDC discovery now accepts authorization, token, UserInfo,
   introspection, revocation, and PAR endpoints on secure hosts other
   than the issuer host, as allowed by OIDC Discovery and RFC 8414.
@@ -41,8 +82,10 @@
 - Form-encoded token responses now decode `+` as a space while
   preserving percent-encoded literal plus signs.
 
-- Generic HTTP retries now honor the full server-provided `Retry-After`
-  delay instead of silently capping it at ten seconds.
+- Generic HTTP retries now honor server-provided `Retry-After` delays up
+  to the separate `shinyOAuth.retry_after_cap` option (60 seconds by
+  default), preventing untrusted endpoints from blocking synchronous
+  Shiny workers indefinitely.
 
 - PAR POSTs no longer use generic transport or transient HTTP retries,
   avoiding duplicate `request_uri` allocations and Request Object

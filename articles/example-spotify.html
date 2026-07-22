@@ -540,7 +540,7 @@ features, see:
 <span>              <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html" class="external-link">icon</a></span><span class="op">(</span><span class="st">"music"</span><span class="op">)</span>,</span>
 <span>              <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">span</a></span><span class="op">(</span><span class="st">"Top tracks"</span><span class="op">)</span></span>
 <span>            <span class="op">)</span><span class="op">)</span>,</span>
-<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu">DTOutput</span><span class="op">(</span><span class="st">"top_tracks"</span><span class="op">)</span><span class="op">)</span></span>
+<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">DTOutput</a></span><span class="op">(</span><span class="st">"top_tracks"</span><span class="op">)</span><span class="op">)</span></span>
 <span>          <span class="op">)</span>,</span>
 <span>          <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card.html" class="external-link">card</a></span><span class="op">(</span></span>
 <span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_header</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">div</a></span><span class="op">(</span></span>
@@ -548,7 +548,7 @@ features, see:
 <span>              <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html" class="external-link">icon</a></span><span class="op">(</span><span class="st">"users"</span><span class="op">)</span>,</span>
 <span>              <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">span</a></span><span class="op">(</span><span class="st">"Top artists"</span><span class="op">)</span></span>
 <span>            <span class="op">)</span><span class="op">)</span>,</span>
-<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu">DTOutput</span><span class="op">(</span><span class="st">"top_artists"</span><span class="op">)</span><span class="op">)</span></span>
+<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">DTOutput</a></span><span class="op">(</span><span class="st">"top_artists"</span><span class="op">)</span><span class="op">)</span></span>
 <span>          <span class="op">)</span></span>
 <span>        <span class="op">)</span>,</span>
 <span>        <span class="fu"><a href="https://rstudio.github.io/bslib/reference/layout_column_wrap.html" class="external-link">layout_column_wrap</a></span><span class="op">(</span></span>
@@ -561,7 +561,7 @@ features, see:
 <span>              <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html" class="external-link">icon</a></span><span class="op">(</span><span class="st">"history"</span><span class="op">)</span>,</span>
 <span>              <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">span</a></span><span class="op">(</span><span class="st">"Recent plays"</span><span class="op">)</span></span>
 <span>            <span class="op">)</span><span class="op">)</span>,</span>
-<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu">DTOutput</span><span class="op">(</span><span class="st">"recent"</span><span class="op">)</span><span class="op">)</span></span>
+<span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_body</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">DTOutput</a></span><span class="op">(</span><span class="st">"recent"</span><span class="op">)</span><span class="op">)</span></span>
 <span>          <span class="op">)</span>,</span>
 <span>          <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card.html" class="external-link">card</a></span><span class="op">(</span></span>
 <span>            <span class="fu"><a href="https://rstudio.github.io/bslib/reference/card_body.html" class="external-link">card_header</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">div</a></span><span class="op">(</span></span>
@@ -908,7 +908,7 @@ features, see:
 <span></span>
 <span>  <span class="co"># Shows the user's top tracks in a data table</span></span>
 <span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">top_tracks</span> <span class="op">&lt;-</span> <span class="fu">renderDT</span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">top_tracks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">renderDT</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">top_tracks</span><span class="op">(</span><span class="op">)</span></span>
 <span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">df</span>, <span class="st">"try-error"</span><span class="op">)</span>, <span class="st">"Failed to load top tracks"</span><span class="op">)</span>,</span>
@@ -953,10 +953,10 @@ features, see:
 <span>      <span class="va">df</span>,</span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#"</span>, <span class="st">"Track"</span>, <span class="st">"Artist"</span>, <span class="st">"Album"</span>, <span class="st">"Recent Plays"</span>, <span class="st">"Popularity"</span><span class="op">)</span></span>
 <span>    <span class="op">)</span></span>
-<span>    <span class="fu">datatable</span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">datatable</a></span><span class="op">(</span></span>
 <span>      <span class="va">df</span>,</span>
 <span>      rownames <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>      escape <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      escape <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>        pageLength <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>        lengthChange <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -972,7 +972,7 @@ features, see:
 <span></span>
 <span>  <span class="co"># Shows the user's top artists in a data table</span></span>
 <span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">top_artists</span> <span class="op">&lt;-</span> <span class="fu">renderDT</span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">top_artists</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">renderDT</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">top_artists</span><span class="op">(</span><span class="op">)</span></span>
 <span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">df</span>, <span class="st">"try-error"</span><span class="op">)</span>, <span class="st">"Failed to load top artists"</span><span class="op">)</span>,</span>
@@ -1005,10 +1005,10 @@ features, see:
 <span>      <span class="va">df</span>,</span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#"</span>, <span class="st">"Artist"</span>, <span class="st">"Genres"</span>, <span class="st">"Popularity"</span>, <span class="st">"Followers"</span><span class="op">)</span></span>
 <span>    <span class="op">)</span></span>
-<span>    <span class="fu">datatable</span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">datatable</a></span><span class="op">(</span></span>
 <span>      <span class="va">df</span>,</span>
 <span>      rownames <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>      escape <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>      escape <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>        pageLength <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>        lengthChange <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -1024,7 +1024,7 @@ features, see:
 <span></span>
 <span>  <span class="co"># Shows the user's recent plays in a data table</span></span>
 <span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="fu">renderDT</span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/DT/man/dataTableOutput.html" class="external-link">renderDT</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">recent</span><span class="op">(</span><span class="op">)</span></span>
 <span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">inherits</a></span><span class="op">(</span><span class="va">df</span>, <span class="st">"try-error"</span><span class="op">)</span>, <span class="st">"Failed to load recent plays"</span><span class="op">)</span>,</span>
@@ -1036,7 +1036,7 @@ features, see:
 <span>    <span class="co"># Add rank numbers</span></span>
 <span>    <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>`#` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span><span class="op">)</span>, <span class="va">df</span><span class="op">)</span></span>
 <span>    <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">df</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#"</span>, <span class="st">"Played"</span>, <span class="st">"Track"</span>, <span class="st">"Artist"</span>, <span class="st">"Album"</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="fu">datatable</span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/DT/man/datatable.html" class="external-link">datatable</a></span><span class="op">(</span></span>
 <span>      <span class="va">df</span>,</span>
 <span>      rownames <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>      options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>

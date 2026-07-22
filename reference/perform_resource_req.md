@@ -62,7 +62,9 @@ perform_resource_req(
 
   Optional HTTP method (character). Defaults to "GET". When the
   effective token type is `DPoP`, this must be the final request method
-  because the proof is signed against it.
+  because the proof is signed against it. `TRACE` and the nonstandard
+  `TRACK` method are rejected because authenticated requests could be
+  reflected by the server and disclose credentials.
 
 - headers:
 
@@ -124,9 +126,9 @@ perform_resource_req(
   Optional logical controlling generic transport and transient-HTTP
   retries in `req_with_retry()`. When `NULL` (the default), shinyOAuth
   infers this from the final request method using standard HTTP
-  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`,
-  `DELETE`). DPoP nonce challenges are replayed once regardless, as
-  required by RFC 9449.
+  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`).
+  DPoP nonce challenges are replayed once regardless, as required by RFC
+  9449.
 
 ## Value
 

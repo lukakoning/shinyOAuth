@@ -230,6 +230,10 @@ such as <code>client_secret</code>, <code>client_assertion</code>,
 <code>Set-Cookie</code>, <code>Authorization</code>,
 <code>Proxy_Authorization</code>, <code>Proxy_Authenticate</code>, and
 <code>WWW-Authenticate</code> headers are stripped entirely.</li>
+<li>Referer URLs are redacted: the complete <code>Referer</code> value
+is replaced with <code>[REDACTED]</code> so callback <code>code</code>,
+<code>state</code>, and other URL credentials cannot reach audit
+sinks.</li>
 <li>Proxy headers are redacted: headers starting with <code>x_</code>
 (e.g., <code>x_forwarded_for</code>, <code>x_real_ip</code>) are
 replaced with <code>[REDACTED]</code> to avoid leaking internal

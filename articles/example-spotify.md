@@ -886,7 +886,7 @@ server <- function(input, output, session) {
     datatable(
       df,
       rownames = FALSE,
-      escape = FALSE,
+      escape = TRUE,
       options = list(
         pageLength = 10,
         lengthChange = FALSE,
@@ -938,7 +938,7 @@ server <- function(input, output, session) {
     datatable(
       df,
       rownames = FALSE,
-      escape = FALSE,
+      escape = TRUE,
       options = list(
         pageLength = 10,
         lengthChange = FALSE,

@@ -696,6 +696,11 @@ backoff in seconds used for exponential backoff with jitter</li>
 <code>options(shinyOAuth.retry_backoff_cap = 5)</code> – per‑attempt
 cap on backoff seconds (before jitter)</li>
 <li>
+<code>options(shinyOAuth.retry_after_cap = 60)</code> – maximum
+synchronous sleep in seconds for a server-provided
+<code>Retry-After</code> value; this is separate from the client-side
+backoff cap</li>
+<li>
 <code>options(shinyOAuth.retry_status = c(408L, 429L, 500:599))</code>
 – HTTP statuses considered transient and retried</li>
 <li>

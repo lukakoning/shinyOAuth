@@ -123,6 +123,9 @@ when forwarding events to log sinks:
 - Sensitive headers are removed: `Cookie`, `Set-Cookie`,
   `Authorization`, `Proxy_Authorization`, `Proxy_Authenticate`, and
   `WWW-Authenticate` headers are stripped entirely.
+- Referer URLs are redacted: the complete `Referer` value is replaced
+  with `[REDACTED]` so callback `code`, `state`, and other URL
+  credentials cannot reach audit sinks.
 - Proxy headers are redacted: headers starting with `x_` (e.g.,
   `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to
   avoid leaking internal infrastructure details.

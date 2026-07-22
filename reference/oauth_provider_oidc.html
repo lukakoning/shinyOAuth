@@ -63,6 +63,7 @@ It builds the usual OIDC endpoints from one base URL and then calls
 <span>  introspection_path <span class="op">=</span> <span class="st">"/introspect"</span>,</span>
 <span>  use_nonce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -104,6 +105,11 @@ It builds the usual OIDC endpoints from one base URL and then calls
 <dt id="arg-id-token-validation">id_token_validation<a class="anchor" aria-label="anchor" href="#arg-id-token-validation"></a></dt>
 <dd><p>Logical, whether to validate ID tokens automatically
 for this provider. Defaults to TRUE</p></dd>
+
+
+<dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
+<dd><p>Token endpoint client authentication style passed to
+<code><a href="oauth_provider.html">oauth_provider()</a></code>. Defaults to <code>"header"</code>.</p></dd>
 
 
 <dt id="arg-jwks-host-issuer-match">jwks_host_issuer_match<a class="anchor" aria-label="anchor" href="#arg-jwks-host-issuer-match"></a></dt>
