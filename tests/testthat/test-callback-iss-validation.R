@@ -7,7 +7,10 @@
 make_iss_test_client <- function(
   issuer = "https://issuer.example.com",
   enforce_callback_issuer = NULL,
-  authorization_response_iss_parameter_supported = FALSE
+  authorization_response_iss_parameter_supported = FALSE,
+  authorization_server_mode = "single",
+  authorization_server_redirect_uris = character(0),
+  response_mode = NULL
 ) {
   prov <- oauth_provider(
     name = "oidc-iss-test",
@@ -27,6 +30,9 @@ make_iss_test_client <- function(
     client_secret = "",
     redirect_uri = "http://localhost:8100",
     enforce_callback_issuer = enforce_callback_issuer,
+    authorization_server_mode = authorization_server_mode,
+    authorization_server_redirect_uris = authorization_server_redirect_uris,
+    response_mode = response_mode,
     scopes = c("openid"),
     scope_validation = "none",
     state_store = cachem::cache_mem(max_age = 600),
@@ -61,6 +67,120 @@ test_that("oauth_client auto-enables callback issuer enforcement from provider m
     authorization_response_iss_parameter_supported = TRUE
   )
   expect_false(isTRUE(cli_opt_out@enforce_callback_issuer))
+})
+
+test_that("multi-issuer mode requires advertised RFC 9207 for direct callbacks", {
+  expect_error(
+    make_iss_test_client(
+      enforce_callback_issuer = TRUE,
+      authorization_response_iss_parameter_supported = FALSE,
+      authorization_server_mode = "multi_issuer"
+    ),
+    regexp = "advertised RFC 9207|authorization_response_iss_parameter_supported"
+  )
+
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = TRUE,
+    authorization_server_mode = "multi_issuer"
+  )
+  expect_true(isTRUE(cli@enforce_callback_issuer))
+
+  expect_error(
+    make_iss_test_client(
+      enforce_callback_issuer = FALSE,
+      authorization_response_iss_parameter_supported = TRUE,
+      authorization_server_mode = "multi_issuer"
+    ),
+    regexp = "cannot be disabled"
+  )
+})
+
+test_that("JARM satisfies multi-issuer mode without RFC 9207 metadata", {
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = FALSE,
+    authorization_server_mode = "multi_issuer",
+    response_mode = "query.jwt"
+  )
+
+  expect_identical(cli@authorization_server_mode, "multi_issuer")
+  expect_identical(cli@response_mode, "query.jwt")
+  expect_false(isTRUE(cli@enforce_callback_issuer))
+})
+
+test_that("multi-redirect mode requires a complete distinct callback set", {
+  expect_error(
+    make_iss_test_client(
+      authorization_server_mode = "multi_redirect_uri"
+    ),
+    regexp = "at least two"
+  )
+  expect_error(
+    make_iss_test_client(
+      authorization_server_mode = "multi_redirect_uri",
+      authorization_server_redirect_uris = c(
+        "http://localhost:8100/callback?provider=one",
+        "http://localhost:8100/callback?provider=two"
+      )
+    ),
+    regexp = "distinct canonical|query string"
+  )
+  expect_error(
+    make_iss_test_client(
+      authorization_server_mode = "multi_redirect_uri",
+      authorization_server_redirect_uris = c(
+        "http://localhost:8100/other",
+        "http://localhost:8100/another"
+      )
+    ),
+    regexp = "must be included"
+  )
+
+  cli <- make_iss_test_client(
+    authorization_response_iss_parameter_supported = FALSE,
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = c(
+      "http://localhost:8100",
+      "http://localhost:8100/other-provider"
+    )
+  )
+  expect_identical(cli@authorization_server_mode, "multi_redirect_uri")
+  expect_false(isTRUE(cli@enforce_callback_issuer))
+})
+
+test_that("multi-server mode is bound into sealed callback policy", {
+  single <- make_iss_test_client()
+  multi <- make_iss_test_client(
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = c(
+      "http://localhost:8100",
+      "http://localhost:8100/other-provider"
+    )
+  )
+
+  expect_false(identical(
+    shinyOAuth:::state_client_policy_fingerprint(single),
+    shinyOAuth:::state_client_policy_fingerprint(multi)
+  ))
+})
+
+test_that("low-level callbacks reject multi-redirect mode", {
+  cli <- make_iss_test_client(
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = c(
+      "http://localhost:8100",
+      "http://localhost:8100/other-provider"
+    )
+  )
+
+  expect_error(
+    handle_callback(
+      oauth_client = cli,
+      code = "unused",
+      payload = "unused",
+      browser_token = valid_browser_token()
+    ),
+    regexp = "cannot verify the received redirect URI"
+  )
 })
 
 test_that("callback iss matching expected issuer is accepted", {

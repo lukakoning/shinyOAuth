@@ -1089,6 +1089,10 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'   is `TRUE`, this parameter is required and must match the configured
 #'   provider issuer before any token exchange occurs.
 #'
+#'   This low-level API cannot verify which redirect URI received the response.
+#'   Clients configured with `authorization_server_mode = "multi_redirect_uri"`
+#'   must use [oauth_module_server()] instead.
+#'
 #' @return An [OAuthToken] object. If callback validation, token exchange, or
 #'   token verification fails, the function raises an error.
 #'
@@ -1128,6 +1132,18 @@ handle_callback <- function(
           "before callback processing continues."
         )
       }
+    ))
+  }
+
+  if (
+    identical(
+      oauth_client@authorization_server_mode,
+      "multi_redirect_uri"
+    )
+  ) {
+    err_config(c(
+      "{.code handle_callback()} cannot verify the received redirect URI required by {.val multi_redirect_uri} mode.",
+      "i" = "Use oauth_module_server(), which routes callbacks by the browser-visible canonical scheme, authority, and path."
     ))
   }
 

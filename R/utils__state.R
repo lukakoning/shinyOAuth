@@ -475,6 +475,23 @@ state_client_policy_fingerprint <- function(client) {
     response_mode = response_mode,
     oidc_max_age = provider_auth_max_age(client@provider) %||% NA_real_,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
+    authorization_server_mode = client@authorization_server_mode,
+    authorization_server_redirect_uris = vapply(
+      lapply(client@authorization_server_redirect_uris, oauth_callback_route),
+      function(route) {
+        if (is.null(route)) {
+          return(NA_character_)
+        }
+        paste(
+          route[["scheme"]],
+          route[["hostname"]],
+          route[["port"]],
+          route[["path"]],
+          sep = "\n"
+        )
+      },
+      ""
+    ),
     resource = state_policy_string_set(client@resource),
     claims = client@claims,
     state_payload_max_age = client_state_payload_max_age(client),

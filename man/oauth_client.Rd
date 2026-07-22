@@ -14,6 +14,8 @@ oauth_client(
   resource = character(0),
   claims = NULL,
   enforce_callback_issuer = NULL,
+  authorization_server_mode = c("single", "multi_issuer", "multi_redirect_uri"),
+  authorization_server_redirect_uris = character(0),
   scope_validation = c("warn", "strict", "none"),
   claims_validation = c("none", "warn", "strict"),
   required_acr_values = character(0),
@@ -158,6 +160,32 @@ auto-enables this check for providers that advertise
 \code{authorization_response_iss_parameter_supported = TRUE} and have a
 configured \code{issuer}, such as OIDC discovery providers that expose RFC 9207
 support. Set \code{FALSE} to opt out explicitly.}
+
+\item{authorization_server_mode}{Declares whether this client is part of an
+application that can interact with more than one authorization server,
+and which RFC 9700 mix-up defense it uses. One of:
+\itemize{
+\item \code{"single"} (default): the application uses only one authorization
+server, so RFC 9700 does not require a mix-up defense.
+\item \code{"multi_issuer"}: authorization responses identify their issuer. JARM
+response modes satisfy this requirement through their validated \code{iss}
+claim. Direct response modes require the provider to advertise
+\code{authorization_response_iss_parameter_supported = TRUE}; shinyOAuth then
+requires and validates the RFC 9207 \code{iss} response parameter. Missing
+support metadata is treated as absence of this defense.
+\item \code{"multi_redirect_uri"}: each authorization server uses a distinct
+redirect URI. Supply the complete set through
+\code{authorization_server_redirect_uris}. This mode is supported by
+\code{\link[=oauth_module_server]{oauth_module_server()}}, which compares the browser-visible canonical
+scheme, authority, and path before parsing callback values.
+}}
+
+\item{authorization_server_redirect_uris}{Complete character vector of
+redirect URIs used by the application for its authorization servers when
+\code{authorization_server_mode = "multi_redirect_uri"}. It must contain at
+least two canonically distinct scheme/authority/path routes and include
+this client's \code{redirect_uri}. Query and fragment components do not make
+routes distinct.}
 
 \item{scope_validation}{Controls how scope discrepancies are handled when
 the authorization server grants fewer scopes than requested. RFC 6749

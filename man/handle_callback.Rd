@@ -34,7 +34,11 @@ calling from async workers that lack access to the reactive domain.}
 response. Pass this when one callback URL can receive responses from more
 than one authorization server. If \code{oauth_client@enforce_callback_issuer}
 is \code{TRUE}, this parameter is required and must match the configured
-provider issuer before any token exchange occurs.}
+provider issuer before any token exchange occurs.
+
+This low-level API cannot verify which redirect URI received the response.
+Clients configured with \code{authorization_server_mode = "multi_redirect_uri"}
+must use \code{\link[=oauth_module_server]{oauth_module_server()}} instead.}
 }
 \value{
 An \link{OAuthToken} object. If callback validation, token exchange, or

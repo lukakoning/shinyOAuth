@@ -358,6 +358,8 @@ method(format, OAuthClient) <- function(x, ...) {
       mtls_certificate_bound_access_tokens = x@mtls_certificate_bound_access_tokens,
       redirect_uri = x@redirect_uri,
       enforce_callback_issuer = x@enforce_callback_issuer,
+      authorization_server_mode = x@authorization_server_mode,
+      authorization_server_redirect_uris = x@authorization_server_redirect_uris,
       scopes = x@scopes,
       claims = x@claims,
       state_store = x@state_store,

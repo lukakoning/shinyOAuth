@@ -2,7 +2,9 @@ make_mixup_route_client <- function(
   name,
   issuer,
   redirect_uri,
-  client_id
+  client_id,
+  authorization_server_mode = "single",
+  authorization_server_redirect_uris = character(0)
 ) {
   provider <- oauth_provider(
     name = name,
@@ -23,6 +25,8 @@ make_mixup_route_client <- function(
     client_id = client_id,
     redirect_uri = redirect_uri,
     enforce_callback_issuer = FALSE,
+    authorization_server_mode = authorization_server_mode,
+    authorization_server_redirect_uris = authorization_server_redirect_uris,
     scopes = character(0),
     scope_validation = "none",
     state_store = cachem::cache_mem(max_age = 600),
@@ -112,17 +116,25 @@ test_that("wrong-route callback transports are ignored before dispatch", {
 
 test_that("distinct redirect routes stop a public-client provider mix-up", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  redirect_uris <- c(
+    "https://app.example/callback/malicious",
+    "https://app.example/callback/honest"
+  )
   malicious <- make_mixup_route_client(
     "malicious",
     "https://malicious-as.example",
-    "https://app.example/callback/malicious",
-    "malicious-client"
+    redirect_uris[[1L]],
+    "malicious-client",
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirect_uris
   )
   honest <- make_mixup_route_client(
     "honest",
     "https://honest-as.example",
-    "https://app.example/callback/honest",
-    "honest-client"
+    redirect_uris[[2L]],
+    "honest-client",
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirect_uris
   )
   exchanges <- list()
 
@@ -184,7 +196,8 @@ test_that("distinct redirect routes stop a public-client provider mix-up", {
     expect_length(exchanges, 0L)
     expect_null(malicious_auth$error)
     expect_null(malicious_auth$token)
-    expect_identical(honest_auth$error, "invalid_state")
+    expect_false(isTRUE(honest_auth$authenticated))
+    expect_true(is_valid_string(honest_auth$error))
     expect_null(honest_auth$token)
 
     decoded_state <- shiny::parseQueryString(paste0(

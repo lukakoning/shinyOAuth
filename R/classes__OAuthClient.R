@@ -113,6 +113,31 @@
 #'   configured `issuer`, such as OIDC discovery providers that expose RFC 9207
 #'   support. Set `FALSE` to opt out explicitly.
 #'
+#' @param authorization_server_mode Declares whether this client is part of an
+#'   application that can interact with more than one authorization server,
+#'   and which RFC 9700 mix-up defense it uses. One of:
+#'
+#'   - `"single"` (default): the application uses only one authorization
+#'     server, so RFC 9700 does not require a mix-up defense.
+#'   - `"multi_issuer"`: authorization responses identify their issuer. JARM
+#'     response modes satisfy this requirement through their validated `iss`
+#'     claim. Direct response modes require the provider to advertise
+#'     `authorization_response_iss_parameter_supported = TRUE`; shinyOAuth then
+#'     requires and validates the RFC 9207 `iss` response parameter. Missing
+#'     support metadata is treated as absence of this defense.
+#'   - `"multi_redirect_uri"`: each authorization server uses a distinct
+#'     redirect URI. Supply the complete set through
+#'     `authorization_server_redirect_uris`. This mode is supported by
+#'     [oauth_module_server()], which compares the browser-visible canonical
+#'     scheme, authority, and path before parsing callback values.
+#'
+#' @param authorization_server_redirect_uris Complete character vector of
+#'   redirect URIs used by the application for its authorization servers when
+#'   `authorization_server_mode = "multi_redirect_uri"`. It must contain at
+#'   least two canonically distinct scheme/authority/path routes and include
+#'   this client's `redirect_uri`. Query and fragment components do not make
+#'   routes distinct.
+#'
 #' @param scope_validation Controls how scope discrepancies are handled when
 #'   the authorization server grants fewer scopes than requested. RFC 6749
 #'   Section 3.3 permits servers to issue tokens with reduced scope, and
@@ -505,6 +530,14 @@ OAuthClient <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
+    authorization_server_mode = S7::new_property(
+      S7::class_character,
+      default = "single"
+    ),
+    authorization_server_redirect_uris = S7::new_property(
+      S7::class_character,
+      default = character(0)
+    ),
     scope_validation = S7::new_property(
       S7::class_character,
       default = "warn"
@@ -701,6 +734,12 @@ oauth_client <- function(
   resource = character(0),
   claims = NULL,
   enforce_callback_issuer = NULL,
+  authorization_server_mode = c(
+    "single",
+    "multi_issuer",
+    "multi_redirect_uri"
+  ),
+  authorization_server_redirect_uris = character(0),
   scope_validation = c("warn", "strict", "none"),
   claims_validation = c("none", "warn", "strict"),
   required_acr_values = character(0),
@@ -811,6 +850,19 @@ oauth_client <- function(
     state_key_missing = missing(state_key)
   )
 
+  authorization_server_mode <- match.arg(authorization_server_mode)
+  response_mode_info <- resolve_auth_response_mode(
+    response_mode,
+    arg = "response_mode",
+    context = "OAuthClient"
+  )
+  if (!is.null(response_mode_info[["error"]])) {
+    err_input(response_mode_info[["error"]])
+  }
+  response_mode <- response_mode_info[["mode"]] %||%
+    NA_character_
+  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+
   auto_enforce_callback_issuer <-
     missing(enforce_callback_issuer) || is.null(enforce_callback_issuer)
   if (
@@ -832,6 +884,54 @@ oauth_client <- function(
       is_valid_string(provider@issuer %||% NA_character_)
   } else {
     isTRUE(enforce_callback_issuer)
+  }
+
+  if (identical(authorization_server_mode, "multi_issuer")) {
+    if (isTRUE(jarm_response_mode)) {
+      if (!is_valid_string(provider@issuer %||% NA_character_)) {
+        err_config(c(
+          "{.arg authorization_server_mode} = {.val multi_issuer} requires a configured provider issuer.",
+          "i" = "JARM issuer identification validates the response's iss claim against that configured issuer."
+        ))
+      }
+    } else {
+      if (!isTRUE(provider@authorization_response_iss_parameter_supported)) {
+        err_config(c(
+          "{.arg authorization_server_mode} = {.val multi_issuer} requires advertised RFC 9207 support for direct callbacks.",
+          "x" = paste0(
+            "Provider ",
+            provider@name %||% "(unnamed)",
+            " does not advertise authorization_response_iss_parameter_supported = TRUE."
+          ),
+          "i" = paste(
+            "Use a JARM response mode, configure distinct redirect URIs with",
+            "authorization_server_mode = 'multi_redirect_uri', or correct",
+            "the provider metadata."
+          )
+        ))
+      }
+      if (!auto_enforce_callback_issuer && !isTRUE(enforce_callback_issuer)) {
+        err_config(c(
+          "{.arg enforce_callback_issuer} cannot be disabled in {.val multi_issuer} mode.",
+          "i" = "RFC 9700 requires the authorization-response issuer to be validated in this mode."
+        ))
+      }
+      resolved_enforce_callback_issuer <- TRUE
+    }
+  }
+
+  authorization_server_redirect_uris <-
+    authorization_server_redirect_uris %||% character(0)
+  if (identical(authorization_server_mode, "multi_redirect_uri")) {
+    validate_distinct_authorization_server_redirect_uris(
+      redirect_uri = redirect_uri,
+      authorization_server_redirect_uris = authorization_server_redirect_uris
+    )
+  } else if (length(authorization_server_redirect_uris) > 0L) {
+    err_config(c(
+      "{.arg authorization_server_redirect_uris} is only used in {.val multi_redirect_uri} mode.",
+      "i" = "Set authorization_server_mode = 'multi_redirect_uri' or remove the redirect URI set."
+    ))
   }
   if (
     isTRUE(resolved_enforce_callback_issuer) &&
@@ -862,16 +962,6 @@ oauth_client <- function(
   claims_validation <- match.arg(claims_validation)
   warn_about_scalar_claim_values(claims)
   request_object_mode <- match.arg(request_object_mode)
-  response_mode_info <- resolve_auth_response_mode(
-    response_mode,
-    arg = "response_mode",
-    context = "OAuthClient"
-  )
-  if (!is.null(response_mode_info[["error"]])) {
-    err_input(response_mode_info[["error"]])
-  }
-  response_mode <- response_mode_info[["mode"]] %||%
-    NA_character_
   jarm_encrypted_response_alg <- jarm_encrypted_response_alg %||%
     NA_character_
   jarm_encrypted_response_enc <-
@@ -946,6 +1036,8 @@ oauth_client <- function(
     resource = resource,
     claims = claims,
     enforce_callback_issuer = isTRUE(resolved_enforce_callback_issuer),
+    authorization_server_mode = authorization_server_mode,
+    authorization_server_redirect_uris = authorization_server_redirect_uris,
     scope_validation = scope_validation,
     claims_validation = claims_validation,
     required_acr_values = required_acr_values,
@@ -1003,6 +1095,79 @@ oauth_client <- function(
 # 3 Validation and constructor support helpers ---------------------------------
 
 ## 3.1 Client validation -------------------------------------------------------
+
+#' Validate distinct authorization-server redirect routes
+#'
+#' @param redirect_uri Redirect URI for the current client.
+#' @param authorization_server_redirect_uris Complete redirect URI set for the
+#'   application's authorization servers.
+#' @return Invisibly returns `TRUE`; otherwise raises a configuration error.
+#' @keywords internal
+#' @noRd
+validate_distinct_authorization_server_redirect_uris <- function(
+  redirect_uri,
+  authorization_server_redirect_uris
+) {
+  uris <- authorization_server_redirect_uris
+  if (
+    !is.character(uris) ||
+      length(uris) < 2L ||
+      anyNA(uris) ||
+      any(!nzchar(trimws(uris)))
+  ) {
+    err_config(c(
+      "{.arg authorization_server_redirect_uris} must contain at least two non-empty absolute redirect URIs.",
+      "i" = "Provide the complete redirect URI set for every authorization server used by the application."
+    ))
+  }
+
+  routes <- lapply(uris, oauth_callback_route)
+  if (any(vapply(routes, is.null, logical(1)))) {
+    err_config(
+      "Every {.arg authorization_server_redirect_uris} value must be an absolute URI with a scheme and authority."
+    )
+  }
+  route_keys <- vapply(
+    routes,
+    function(route) {
+      paste(
+        route[["scheme"]],
+        route[["hostname"]],
+        route[["port"]],
+        route[["path"]],
+        sep = "\n"
+      )
+    },
+    ""
+  )
+  if (anyDuplicated(route_keys)) {
+    err_config(c(
+      "{.arg authorization_server_redirect_uris} must use a distinct canonical scheme, authority, and path for every authorization server.",
+      "x" = "Changing only the query string does not create a distinct callback route."
+    ))
+  }
+
+  current_route <- oauth_callback_route(redirect_uri)
+  current_key <- if (is.null(current_route)) {
+    NA_character_
+  } else {
+    paste(
+      current_route[["scheme"]],
+      current_route[["hostname"]],
+      current_route[["port"]],
+      current_route[["path"]],
+      sep = "\n"
+    )
+  }
+  if (is.na(current_key) || !(current_key %in% route_keys)) {
+    err_config(c(
+      "The client's {.arg redirect_uri} must be included in {.arg authorization_server_redirect_uris}.",
+      "i" = "Routes are compared by canonical scheme, authority, and path."
+    ))
+  }
+
+  invisible(TRUE)
+}
 
 #' Internal: validate one OAuthClient configuration
 #'
@@ -1064,6 +1229,69 @@ oauth_client_validate <- function(self) {
   ) {
     return(
       "OAuthClient: enforce_callback_issuer = TRUE requires the provider to have an issuer configured"
+    )
+  }
+
+  authorization_server_modes <- c(
+    "single",
+    "multi_issuer",
+    "multi_redirect_uri"
+  )
+  if (
+    !is_valid_string(self@authorization_server_mode) ||
+      !(self@authorization_server_mode %in% authorization_server_modes)
+  ) {
+    return(paste0(
+      "OAuthClient: authorization_server_mode must be one of ",
+      paste(sQuote(authorization_server_modes), collapse = ", ")
+    ))
+  }
+  response_mode_info <- resolve_auth_response_mode(
+    self@response_mode,
+    arg = "response_mode",
+    context = "OAuthClient"
+  )
+  response_mode <- response_mode_info[["mode"]] %||% "query"
+  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+  if (identical(self@authorization_server_mode, "multi_issuer")) {
+    if (!is_valid_string(self@provider@issuer %||% NA_character_)) {
+      return(
+        "OAuthClient: multi_issuer mode requires the provider to have an issuer configured"
+      )
+    }
+    if (
+      !isTRUE(jarm_response_mode) &&
+        !isTRUE(
+          self@provider@authorization_response_iss_parameter_supported
+        )
+    ) {
+      return(
+        "OAuthClient: multi_issuer direct callbacks require advertised RFC 9207 support"
+      )
+    }
+    if (!isTRUE(jarm_response_mode) && !isTRUE(self@enforce_callback_issuer)) {
+      return(
+        "OAuthClient: multi_issuer direct callbacks require enforce_callback_issuer = TRUE"
+      )
+    }
+  }
+  if (identical(self@authorization_server_mode, "multi_redirect_uri")) {
+    redirect_error <- tryCatch(
+      {
+        validate_distinct_authorization_server_redirect_uris(
+          redirect_uri = self@redirect_uri,
+          authorization_server_redirect_uris = self@authorization_server_redirect_uris
+        )
+        NULL
+      },
+      error = conditionMessage
+    )
+    if (!is.null(redirect_error)) {
+      return(paste0("OAuthClient: ", redirect_error))
+    }
+  } else if (length(self@authorization_server_redirect_uris) > 0L) {
+    return(
+      "OAuthClient: authorization_server_redirect_uris is only valid in multi_redirect_uri mode"
     )
   }
 
