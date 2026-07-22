@@ -799,6 +799,118 @@ resp_get_dpop_nonce <- function(resp) {
   normalize_dpop_nonce(as.character(nonce)[1])
 }
 
+#' Parse HTTP authentication challenges
+#'
+#' Splits a `WWW-Authenticate` field without treating commas inside quoted
+#' strings as challenge separators, then associates authentication parameters
+#' with their scheme. This is intentionally small, but follows the challenge
+#' and auth-param shape from RFC 9110 Section 11.2 closely enough to avoid
+#' substring matching across schemes or parameter values.
+#'
+#' @param value A `WWW-Authenticate` field value.
+#' @return A list of challenges, each containing `scheme` and named `params`.
+#' @keywords internal
+#' @noRd
+parse_http_auth_challenges <- function(value) {
+  if (!is_valid_string(value)) {
+    return(list())
+  }
+
+  chars <- strsplit(value, "", fixed = TRUE)[[1]]
+  parts <- character()
+  current <- character()
+  quoted <- FALSE
+  escaped <- FALSE
+  for (ch in chars) {
+    if (escaped) {
+      current <- c(current, ch)
+      escaped <- FALSE
+      next
+    }
+    if (quoted && identical(ch, "\\")) {
+      current <- c(current, ch)
+      escaped <- TRUE
+      next
+    }
+    if (identical(ch, '"')) {
+      quoted <- !quoted
+      current <- c(current, ch)
+      next
+    }
+    if (!quoted && identical(ch, ",")) {
+      parts <- c(parts, paste0(current, collapse = ""))
+      current <- character()
+      next
+    }
+    current <- c(current, ch)
+  }
+  parts <- trimws(c(parts, paste0(current, collapse = "")))
+  parts <- parts[nzchar(parts)]
+
+  token_pattern <- "[!#$%&'*+.^_`|~0-9A-Za-z-]+"
+  challenges <- list()
+  current_challenge <- NULL
+  for (part in parts) {
+    scheme_match <- regexec(
+      paste0("^(?i:((?:", token_pattern, ")))(?:[ \\t]+(.*))?$"),
+      part,
+      perl = TRUE
+    )
+    scheme_fields <- regmatches(part, scheme_match)[[1]]
+    is_new_challenge <- length(scheme_fields) > 0L
+    if (is_new_challenge && length(scheme_fields) >= 3L) {
+      remainder <- trimws(scheme_fields[[3]])
+      if (startsWith(remainder, "=")) {
+        is_new_challenge <- FALSE
+      }
+    }
+
+    if (is_new_challenge) {
+      if (!is.null(current_challenge)) {
+        challenges[[length(challenges) + 1L]] <- current_challenge
+      }
+      current_challenge <- list(
+        scheme = scheme_fields[[2]],
+        param_parts = character()
+      )
+      if (length(scheme_fields) >= 3L && nzchar(trimws(scheme_fields[[3]]))) {
+        current_challenge$param_parts <- trimws(scheme_fields[[3]])
+      }
+    } else if (!is.null(current_challenge)) {
+      current_challenge$param_parts <- c(current_challenge$param_parts, part)
+    }
+  }
+  if (!is.null(current_challenge)) {
+    challenges[[length(challenges) + 1L]] <- current_challenge
+  }
+
+  lapply(challenges, function(challenge) {
+    params <- list()
+    for (part in challenge$param_parts) {
+      param_match <- regexec(
+        paste0(
+          "^(", token_pattern, ")\\s*=\\s*(?:\"((?:\\\\.|[^\"\\\\])*)\"|(",
+          token_pattern,
+          "))\\s*$"
+        ),
+        part,
+        perl = TRUE
+      )
+      fields <- regmatches(part, param_match)[[1]]
+      if (length(fields) == 0L) {
+        next
+      }
+      param_value <- if (nzchar(fields[[3]])) {
+        gsub("\\\\(.)", "\\1", fields[[3]], perl = TRUE)
+      } else {
+        fields[[4]]
+      }
+      params[[tolower(fields[[2]])]] <- param_value
+    }
+    list(scheme = challenge$scheme, params = params)
+  })
+}
+
 #' Detect a DPoP nonce challenge
 #'
 #' Used after DPoP-protected requests return 4xx challenges.
@@ -814,33 +926,45 @@ resp_is_dpop_nonce_challenge <- function(resp) {
     return(FALSE)
   }
 
-  body <- try(
-    httr2::resp_body_json(resp, simplifyVector = TRUE),
-    silent = TRUE
-  )
-  if (is.list(body)) {
-    err <- body[["error"]] %||% NA_character_
-    if (
-      is.character(err) &&
-        length(err) == 1L &&
-        identical(err, "use_dpop_nonce")
-    ) {
-      return(TRUE)
+  status <- try(httr2::resp_status(resp), silent = TRUE)
+  if (inherits(status, "try-error") || !status %in% c(400L, 401L)) {
+    return(FALSE)
+  }
+
+  if (identical(status, 400L)) {
+    body <- try(
+      httr2::resp_body_json(resp, simplifyVector = TRUE),
+      silent = TRUE
+    )
+    if (is.list(body)) {
+      err <- body[["error"]] %||% NA_character_
+      if (
+        is.character(err) &&
+          length(err) == 1L &&
+          identical(err, "use_dpop_nonce")
+      ) {
+        return(TRUE)
+      }
     }
+    return(FALSE)
   }
 
   www_authenticate <- try(
     httr2::resp_header(resp, "www-authenticate"),
     silent = TRUE
   )
-  !inherits(www_authenticate, "try-error") &&
-    is_valid_string(www_authenticate) &&
-    grepl(
-      "use_dpop_nonce",
-      www_authenticate,
-      fixed = TRUE,
-      ignore.case = TRUE
-    )
+  if (inherits(www_authenticate, "try-error")) {
+    return(FALSE)
+  }
+  challenges <- parse_http_auth_challenges(www_authenticate)
+  any(vapply(
+    challenges,
+    function(challenge) {
+      identical(tolower(challenge[["scheme"]]), "dpop") &&
+        identical(challenge[["params"]][["error"]] %||% NULL, "use_dpop_nonce")
+    },
+    logical(1)
+  ))
 }
 
 #' Retry a DPoP-protected request once with a fresh nonce

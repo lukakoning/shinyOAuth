@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* DPoP nonce retries now require the RFC 9449 response status and challenge
+shape: authorization-server challenges are `400` JSON errors, while resource
+server challenges are structurally parsed `401` `WWW-Authenticate: DPoP`
+errors. Successful or unrelated error responses carrying nonce-like text are
+no longer replayed.
+
 * Direct query callbacks now use the same response-shape validation as plain
 `form_post`: exactly one of `code` or `error`, plus `state`, is required before
 single-use state can be consumed.

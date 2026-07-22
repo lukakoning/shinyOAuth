@@ -613,6 +613,57 @@ test_that("resp_get_dpop_nonce enforces RFC 9449 syntax and size bounds", {
   expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(oversized_resp)))
 })
 
+test_that("DPoP nonce challenges require the RFC status and error shape", {
+  response <- function(status, body = "{}", authenticate = NULL) {
+    headers <- list(
+      "content-type" = "application/json",
+      "dpop-nonce" = "nonce-1"
+    )
+    if (!is.null(authenticate)) {
+      headers[["www-authenticate"]] <- authenticate
+    }
+    httr2::response(
+      url = "https://example.com/token",
+      status = status,
+      headers = headers,
+      body = charToRaw(body)
+    )
+  }
+
+  expect_true(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+    400,
+    body = '{"error":"use_dpop_nonce"}'
+  )))
+  expect_true(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+    401,
+    authenticate = paste0(
+      'Bearer realm="example", ',
+      'DPoP realm="a,b", error="use_dpop_nonce"'
+    )
+  )))
+
+  for (status in c(200, 500)) {
+    expect_false(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+      status,
+      body = '{"error":"use_dpop_nonce"}',
+      authenticate = 'DPoP error="use_dpop_nonce"'
+    )))
+  }
+  expect_false(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+    401,
+    authenticate = 'Bearer error="use_dpop_nonce", DPoP algs="ES256"'
+  )))
+  expect_false(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+    401,
+    authenticate = 'DPoP error_description="use_dpop_nonce"'
+  )))
+  expect_false(shinyOAuth:::resp_is_dpop_nonce_challenge(response(
+    400,
+    body = '{"error":"server_error"}',
+    authenticate = 'DPoP error="use_dpop_nonce"'
+  )))
+})
+
 test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
 
