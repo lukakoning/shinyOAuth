@@ -1113,7 +1113,7 @@ validate_distinct_authorization_server_redirect_uris <- function(
     !is.character(uris) ||
       length(uris) < 2L ||
       anyNA(uris) ||
-      any(!nzchar(trimws(uris)))
+      !all(nzchar(trimws(uris)))
   ) {
     err_config(c(
       "{.arg authorization_server_redirect_uris} must contain at least two non-empty absolute redirect URIs.",
