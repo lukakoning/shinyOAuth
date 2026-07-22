@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* `reauth_after_seconds` is now a non-rolling authentication lifetime: token
+refresh no longer resets it. OIDC reauthentication sends transaction-bound
+`max_age=0`, validates the required `auth_time`, and uses validated `auth_time`
+as the new lifetime origin. Documentation now distinguishes this from the
+local-session bound available to OAuth-only providers.
+
 * Authentication lifecycle changes now invalidate pending login and refresh
 operations on logout, replacement login, expiry, reauthentication, and session
 end. Late async completions cannot restore or clear newer credentials, stale

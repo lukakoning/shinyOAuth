@@ -19,6 +19,8 @@
 #'   `request_object_mode = "request_uri"`. It must accept
 #'   `request_object`, `request_handle_id`, `expires_at`, and `oauth_client`
 #'   arguments and return an absolute request-object URL.
+#' @param .requested_max_age Internal normalized OIDC `max_age` override used by
+#'   the Shiny module for forced reauthentication.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -32,7 +34,8 @@
 prepare_call <- function(
   oauth_client,
   browser_token,
-  request_uri_publisher = NULL
+  request_uri_publisher = NULL,
+  .requested_max_age = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -53,6 +56,13 @@ prepare_call <- function(
   flow_trace_id <- gen_trace_id()
   effective_scopes <- effective_client_scopes(oauth_client)
   requested_max_age <- provider_auth_max_age(oauth_client@provider)
+  if (!is.null(.requested_max_age)) {
+    max_age_info <- inspect_auth_max_age(list(max_age = .requested_max_age))
+    if (!is.null(max_age_info[["error"]])) {
+      err_input(max_age_info[["error"]])
+    }
+    requested_max_age <- max_age_info[["value"]]
+  }
   request_mode <- oauth_client@request_object_mode %||% "parameters"
   request_object_used <-
     is.character(request_mode) &&
@@ -187,6 +197,7 @@ prepare_call <- function(
               pkce_code_challenge = pkce_code_challenge,
               pkce_method = pkce_method,
               nonce = nonce,
+              requested_max_age = requested_max_age,
               request_uri_publisher = request_uri_publisher,
               request_handle_id = state_cache_key(state)
             )
@@ -243,7 +254,8 @@ prepare_call <- function(
             oauth_client@required_acr_values %||% character(0)
           ),
           oauth.max_age.requested = otel_requested_max_age(
-            oauth_client@provider
+            oauth_client@provider,
+            requested_max_age = requested_max_age
           ),
           oauth.request_object_used = isTRUE(request_object_used),
           oauth.request_uri_used = isTRUE(request_uri_used),
@@ -272,6 +284,8 @@ prepare_call <- function(
 #' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
 #' @param pkce_method PKCE method when PKCE is enabled.
 #' @param nonce OIDC nonce when the provider requires one.
+#' @param requested_max_age Normalized OIDC maximum authentication age to send
+#'   and bind into the authorization transaction.
 #' @return A named list of authorization parameters with `NULL` entries
 #'   removed.
 #' @keywords internal
@@ -282,7 +296,8 @@ build_authorization_params <- function(
   scopes,
   pkce_code_challenge,
   pkce_method,
-  nonce
+  nonce,
+  requested_max_age = provider_auth_max_age(oauth_client@provider)
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -396,6 +411,20 @@ build_authorization_params <- function(
   }
   if (length(max_age_info[["index"]]) == 1L) {
     extra[[max_age_info[["index"]]]] <- max_age_info[["value"]]
+  }
+  if (!is.null(requested_max_age)) {
+    requested_max_age_info <- inspect_auth_max_age(list(
+      max_age = requested_max_age
+    ))
+    if (!is.null(requested_max_age_info[["error"]])) {
+      err_config(requested_max_age_info[["error"]])
+    }
+    if (length(max_age_info[["index"]]) == 1L) {
+      extra[[max_age_info[["index"]]]] <-
+        requested_max_age_info[["value"]]
+    } else {
+      extra[["max_age"]] <- requested_max_age_info[["value"]]
+    }
   }
 
   if (length(extra) > 0) {
@@ -701,6 +730,8 @@ attach_par_auth_url_metadata <- function(
 #' @param pkce_code_challenge PKCE challenge when PKCE is enabled.
 #' @param pkce_method PKCE method when PKCE is enabled.
 #' @param nonce OIDC nonce when required.
+#' @param requested_max_age Normalized OIDC maximum authentication age to send
+#'   in the authorization request.
 #' @param request_uri_publisher Optional function used to publish Request
 #'   Objects when `request_object_mode = "request_uri"`.
 #' @param request_handle_id Optional stable handle identifier for
@@ -718,6 +749,7 @@ build_auth_url <- function(
   pkce_code_challenge,
   pkce_method,
   nonce,
+  requested_max_age = provider_auth_max_age(oauth_client@provider),
   request_uri_publisher = NULL,
   request_handle_id = NULL
 ) {
@@ -780,7 +812,8 @@ build_auth_url <- function(
     scopes = scopes,
     pkce_code_challenge = pkce_code_challenge,
     pkce_method = pkce_method,
-    nonce = nonce
+    nonce = nonce,
+    requested_max_age = requested_max_age
   )
   front_channel_mode <-
     oauth_client@provider@authorization_request_front_channel_mode %||% "compat"
@@ -2448,7 +2481,8 @@ verify_token_set <- function(
       isTRUE(client@provider@id_token_validation) |
       isTRUE(client@provider@userinfo_id_token_match) |
       isTRUE(client@provider@use_nonce) |
-      isTRUE(is_valid_string(nonce)))
+      isTRUE(is_valid_string(nonce)) |
+      !is.null(requested_max_age))
   racr <- client@required_acr_values %||% character(0)
   should_enforce_id_token_claims <-
     !identical(client@claims_validation %||% "none", "none") &&
@@ -2608,7 +2642,8 @@ verify_token_set <- function(
       should_validate_id_token <- isTRUE(id_token_present) &&
         (isTRUE(client@provider@id_token_validation) ||
           isTRUE(client@provider@use_nonce) ||
-          isTRUE(is_valid_string(nonce)))
+          isTRUE(is_valid_string(nonce)) ||
+          !is.null(requested_max_age))
 
       id_token <- token_set[["id_token"]]
       if (isTRUE(is_refresh) && isTRUE(id_token_present)) {

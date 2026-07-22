@@ -51,12 +51,15 @@ module's perspective once a user has logged in. Note that your API calls
 may still fail once the provider considers the token expired; this option
 only affects the module's automatic clearing and redirect behavior.}
 
-\item{reauth_after_seconds}{Optional maximum session age in seconds. If set,
-the module will remove the token (and thus set \code{authenticated} to FALSE)
-after this many seconds have elapsed since authentication started. By
-default this is \code{NULL} (no forced re-authentication). If a value is
-provided, the timer is reset after each successful refresh so the knob is
-opt-in and counts rolling session age.}
+\item{reauth_after_seconds}{Optional maximum interactive-authentication age
+in seconds. If set, the module removes the token (and thus sets
+\code{authenticated} to FALSE) after this many seconds. Token refresh does not
+reset the timer. For OIDC providers, reauthentication requests send
+\code{max_age=0}; the returned ID token must contain a valid \code{auth_time}, which
+is used as the next authentication start. OAuth-only providers have no
+standard way to require active user authentication, so for them this is a
+hard local session lifetime followed by an ordinary authorization request.
+By default this is \code{NULL} (no forced reauthentication).}
 
 \item{refresh_proactively}{If TRUE, will automatically refresh tokens
 before they expire (if refresh token is available). The refresh is
@@ -227,9 +230,10 @@ wait for \code{browser_token} to be set, FALSE otherwise.
 automatic redirect in this session to avoid duplicate redirects.
 \item \code{reauth_triggered}: internal logical; TRUE once a reauthentication attempt
 has been initiated (after expiry or failed refresh), to avoid loops.
-\item \code{auth_started_at}: internal numeric timestamp (as from \code{Sys.time()}) when
-authentication started; NA if not yet authenticated. Used to enforce
-\code{reauth_after_seconds} if set.
+\item \code{auth_started_at}: internal numeric timestamp for the last interactive
+authentication; NA if not yet authenticated. This is derived from a
+validated OIDC \code{auth_time} when available and is not reset by token
+refresh. Used to enforce \code{reauth_after_seconds} if set.
 \item \code{last_login_async_used}: internal logical; TRUE if the last login attempt
 used \code{async = TRUE}, FALSE if it was synchronous. This is only used for
 testing and diagnostics.

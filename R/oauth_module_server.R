@@ -85,12 +85,15 @@
 #'   may still fail once the provider considers the token expired; this option
 #'   only affects the module's automatic clearing and redirect behavior.
 #'
-#' @param reauth_after_seconds Optional maximum session age in seconds. If set,
-#'  the module will remove the token (and thus set `authenticated` to FALSE)
-#'  after this many seconds have elapsed since authentication started. By
-#'  default this is `NULL` (no forced re-authentication). If a value is
-#'  provided, the timer is reset after each successful refresh so the knob is
-#'  opt-in and counts rolling session age.
+#' @param reauth_after_seconds Optional maximum interactive-authentication age
+#'  in seconds. If set, the module removes the token (and thus sets
+#'  `authenticated` to FALSE) after this many seconds. Token refresh does not
+#'  reset the timer. For OIDC providers, reauthentication requests send
+#'  `max_age=0`; the returned ID token must contain a valid `auth_time`, which
+#'  is used as the next authentication start. OAuth-only providers have no
+#'  standard way to require active user authentication, so for them this is a
+#'  hard local session lifetime followed by an ordinary authorization request.
+#'  By default this is `NULL` (no forced reauthentication).
 #'
 #' @param refresh_proactively If TRUE, will automatically refresh tokens
 #'  before they expire (if refresh token is available). The refresh is
@@ -255,9 +258,10 @@
 #'    automatic redirect in this session to avoid duplicate redirects.
 #'    \item `reauth_triggered`: internal logical; TRUE once a reauthentication attempt
 #'    has been initiated (after expiry or failed refresh), to avoid loops.
-#'    \item `auth_started_at`: internal numeric timestamp (as from `Sys.time()`) when
-#'    authentication started; NA if not yet authenticated. Used to enforce
-#'    `reauth_after_seconds` if set.
+#'    \item `auth_started_at`: internal numeric timestamp for the last interactive
+#'    authentication; NA if not yet authenticated. This is derived from a
+#'    validated OIDC `auth_time` when available and is not reset by token
+#'    refresh. Used to enforce `reauth_after_seconds` if set.
 #'    \item `last_login_async_used`: internal logical; TRUE if the last login attempt
 #'    used `async = TRUE`, FALSE if it was synchronous. This is only used for
 #'    testing and diagnostics.
@@ -611,6 +615,7 @@ oauth_module_server <- function(
     auth_operations$active_login_id <- NULL
     auth_operations$active_refresh_id <- NULL
     auth_operations$session_active <- TRUE
+    auth_operations$force_oidc_reauth <- FALSE
 
     .advance_auth_epoch <- function() {
       auth_operations$epoch <- auth_operations$epoch + 1
@@ -687,6 +692,22 @@ oauth_module_server <- function(
         shiny_session = shiny_session
       ), silent = TRUE)
       invisible(NULL)
+    }
+
+    .interactive_auth_started_at <- function(tok) {
+      now <- as.numeric(Sys.time())
+      if (!S7::S7_inherits(tok, OAuthToken) ||
+        !isTRUE(tok@id_token_validated)) {
+        return(now)
+      }
+
+      auth_time <- suppressWarnings(as.numeric(
+        tok@id_token_claims[["auth_time"]] %||% NA_real_
+      ))
+      if (length(auth_time) != 1L || !is.finite(auth_time)) {
+        return(now)
+      }
+      min(auth_time, now)
     }
 
     form_post_module_registry <- tryCatch(
@@ -1095,8 +1116,7 @@ oauth_module_server <- function(
 
       now <- as.numeric(Sys.time())
 
-      # Optional max session age (reauth window). Successful refresh resets this
-      # (rolling session age).
+      # Optional maximum interactive-authentication age (reauth window).
       # Ignored when indefinite_session = TRUE
       if (!isTRUE(indefinite_session) && !is.null(reauth_after_seconds)) {
         started <- tryCatch(values$auth_started_at, error = function(...) {
@@ -1300,6 +1320,14 @@ oauth_module_server <- function(
         prepare_call(
           client,
           browser_token = values$browser_token,
+          .requested_max_age = if (
+            isTRUE(auth_operations$force_oidc_reauth) &&
+              provider_uses_oidc(client@provider)
+          ) {
+            0
+          } else {
+            NULL
+          },
           request_uri_publisher = function(
             request_object,
             request_handle_id,
@@ -1430,6 +1458,7 @@ oauth_module_server <- function(
             # Fire-and-forget so logout returns immediately.
             tok <- values$token
             .advance_auth_epoch()
+            auth_operations$force_oidc_reauth <- FALSE
             if (!is.null(tok)) {
               # Async revocation follows module async setting
               use_async_revocation <- isTRUE(async)
@@ -3308,7 +3337,7 @@ oauth_module_server <- function(
                     values$error <- NULL
                     values$error_description <- NULL
                     values$error_uri <- NULL
-                    values$auth_started_at <- as.numeric(Sys.time())
+                    values$auth_started_at <- .interactive_auth_started_at(tok)
                     values$token_stale <- FALSE
                     .clear_browser_token()
                     # Immediately re-issue a fresh browser token so that
@@ -3316,6 +3345,7 @@ oauth_module_server <- function(
                     .set_browser_token()
                     # A successful login completes any prior reauth cycle
                     values$reauth_triggered <- FALSE
+                    auth_operations$force_oidc_reauth <- FALSE
                   }) |>
                   promises::catch(function(e) {
                     failure_phase <- tryCatch(
@@ -3377,7 +3407,7 @@ oauth_module_server <- function(
                 values$error <- NULL
                 values$error_description <- NULL
                 values$error_uri <- NULL
-                values$auth_started_at <- as.numeric(Sys.time())
+                values$auth_started_at <- .interactive_auth_started_at(res)
                 values$token_stale <- FALSE
                 .clear_browser_token()
                 # Immediately re-issue a fresh browser token so that
@@ -3385,6 +3415,7 @@ oauth_module_server <- function(
                 .set_browser_token()
                 # Reset reauth guard on successful sync login
                 values$reauth_triggered <- FALSE
+                auth_operations$force_oidc_reauth <- FALSE
                 if (!is.null(callback_parent)) {
                   otel_end_async_parent(callback_parent, status = "ok")
                 }
@@ -3643,8 +3674,6 @@ oauth_module_server <- function(
                           values$error <- NULL
                           values$error_description <- NULL
                           values$error_uri <- NULL
-                          # Reset rolling session start on successful refresh
-                          values$auth_started_at <- as.numeric(Sys.time())
                           values$token_stale <- FALSE
                           # Successful refresh should allow future reauth cycles
                           values$reauth_triggered <- FALSE
@@ -3756,8 +3785,6 @@ oauth_module_server <- function(
                       values$error <- NULL
                       values$error_description <- NULL
                       values$error_uri <- NULL
-                      # Reset rolling session start on successful refresh
-                      values$auth_started_at <- as.numeric(Sys.time())
                       values$token_stale <- FALSE
                       # Successful sync refresh resets reauth guard as well
                       values$reauth_triggered <- FALSE
@@ -3870,6 +3897,8 @@ oauth_module_server <- function(
               # Default behavior clears token and triggers reauth; skip when indefinite_session
               if (!isTRUE(indefinite_session)) {
                 .advance_auth_epoch()
+                auth_operations$force_oidc_reauth <-
+                  provider_uses_oidc(client@provider)
                 values$token <- NULL
                 values$error <- "reauth_required"
                 values$error_description <- sprintf(
@@ -3929,6 +3958,7 @@ oauth_module_server <- function(
                 return()
               }
               .advance_auth_epoch()
+              auth_operations$force_oidc_reauth <- FALSE
               values$token <- NULL
               values$error <- "token_expired"
               values$error_description <- "Access token expired"

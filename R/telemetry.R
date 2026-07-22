@@ -536,10 +536,17 @@ otel_claim_targets <- function(claims) {
 #' Used by login telemetry helpers.
 #'
 #' @param provider Provider object whose `extra_auth_params` are inspected.
+#' @param requested_max_age Effective transaction override, or `NULL` to read
+#'   the provider configuration.
 #' @return Non-negative numeric `max_age`, or `NULL` when absent or invalid.
 #' @keywords internal
 #' @noRd
-otel_requested_max_age <- function(provider) {
+otel_requested_max_age <- function(provider, requested_max_age = NULL) {
+  if (!is.null(requested_max_age)) {
+    return(inspect_auth_max_age(list(
+      max_age = requested_max_age
+    ))[["value"]])
+  }
   if (is.null(provider)) {
     return(NULL)
   }

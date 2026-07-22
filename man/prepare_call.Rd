@@ -4,7 +4,12 @@
 \alias{prepare_call}
 \title{Prepare a OAuth 2.0 authorization call and build an authorization URL}
 \usage{
-prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
+prepare_call(
+  oauth_client,
+  browser_token,
+  request_uri_publisher = NULL,
+  .requested_max_age = NULL
+)
 }
 \arguments{
 \item{oauth_client}{An \link{OAuthClient} object.}
@@ -16,6 +21,9 @@ current browser session.}
 \code{request_object_mode = "request_uri"}. It must accept
 \code{request_object}, \code{request_handle_id}, \code{expires_at}, and \code{oauth_client}
 arguments and return an absolute request-object URL.}
+
+\item{.requested_max_age}{Internal normalized OIDC \code{max_age} override used by
+the Shiny module for forced reauthentication.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user
