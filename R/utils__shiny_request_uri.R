@@ -6,57 +6,47 @@
 
 ## 1.1 Session URL helpers ----------------------------------------------------
 
-#' Warn when a caller-managed request_uri is not HTTPS
+#' Require HTTPS for a caller-managed request_uri
 #'
 #' Used for caller-managed Request Object publication flows. RFC 9101 Section
-#' 5.2 requires client-provided `request_uri` values to use HTTPS, but
-#' shinyOAuth still allows HTTP when the configured host policy explicitly
-#' permits it.
+#' 5.2 requires client-provided `request_uri` values to use HTTPS.
 #'
 #' @param request_uri Absolute request URI string.
 #' @param subject Human-readable label used in the warning body.
-#' @return Invisibly returns `TRUE` when a warning was emitted, otherwise
-#'   `FALSE`.
+#' @return Invisibly returns `TRUE` for an HTTPS URI; otherwise raises a
+#'   configuration error.
 #' @keywords internal
 #' @noRd
-warn_if_request_uri_is_non_https <- function(
+require_https_request_uri <- function(
   request_uri,
   subject = "The published {.code request_uri}"
 ) {
   if (!is_valid_string(request_uri)) {
-    return(invisible(FALSE))
+    return(invisible(TRUE))
   }
 
   parsed <- try(httr2::url_parse(request_uri), silent = TRUE)
   if (inherits(parsed, "try-error")) {
-    return(invisible(FALSE))
+    return(invisible(TRUE))
   }
 
   scheme <- tolower(as.character(parsed[["scheme"]] %||% ""))
   host <- as.character(parsed[["hostname"]] %||% "")
 
   if (!nzchar(host) || identical(scheme, "https")) {
-    return(invisible(FALSE))
+    return(invisible(TRUE))
   }
 
-  warn_pkg(
-    "Non-HTTPS request_uri is not RFC 9101 compliant",
+  err_config(
     c(
-      "!" = paste(subject, "uses", toupper(scheme), "instead of HTTPS."),
+      "x" = paste(subject, "must use HTTPS."),
+      "i" = paste0("Got scheme: ", toupper(scheme)),
       "i" = paste(
         "RFC 9101 Section 5.2 requires client-provided request_uri values",
         "to use HTTPS."
-      ),
-      "i" = paste(
-        "shinyOAuth is allowing this because your configured host policy",
-        "explicitly permits the non-HTTPS origin."
       )
-    ),
-    .frequency = "once",
-    .frequency_id = "shinyOAuth_request_uri_non_https"
+    )
   )
-
-  invisible(TRUE)
 }
 
 #' Normalize a public request_uri base URL override
@@ -295,6 +285,9 @@ publish_shiny_request_object <- function(
     err_config("request_object must be a single non-empty string")
   }
 
+  public_base_url <- shiny_request_uri_base_url(session, base_url = base_url)
+  require_https_request_uri(public_base_url)
+
   object_name <- if (is_valid_string(request_handle_id)) {
     paste0("oauth-request-", request_handle_id)
   } else {
@@ -328,7 +321,7 @@ publish_shiny_request_object <- function(
   }
 
   absolute_url <- paste0(
-    shiny_request_uri_base_url(session, base_url = base_url),
+    public_base_url,
     if (startsWith(relative_url, "/")) "" else "/",
     relative_url
   )
@@ -336,7 +329,7 @@ publish_shiny_request_object <- function(
     absolute_url,
     getOption("shinyOAuth.allowed_hosts", default = NULL)
   )
-  warn_if_request_uri_is_non_https(absolute_url)
+  require_https_request_uri(absolute_url)
 
   absolute_url
 }

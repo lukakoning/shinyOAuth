@@ -528,38 +528,21 @@ test_that("request_uri mode requires a publisher", {
   )
 })
 
-test_that("request_uri mode warns once for non-HTTPS publisher results", {
-  rlang::reset_warning_verbosity("shinyOAuth_request_uri_non_https")
-
+test_that("request_uri mode rejects non-HTTPS publisher results", {
   cli <- make_jar_test_client(
     request_object_mode = "request_uri"
   )
-  auth_url <- NULL
 
-  expect_warning(
-    auth_url <- shinyOAuth:::prepare_call(
+  expect_error(
+    shinyOAuth:::prepare_call(
       cli,
       valid_browser_token(),
       request_uri_publisher = function(...) {
         "http://localhost:8100/request-object"
       }
     ),
-    regexp = "RFC 9101|Non-HTTPS request_uri"
-  )
-
-  expect_identical(
-    parse_query_param(auth_url, "request_uri", decode = TRUE),
-    "http://localhost:8100/request-object"
-  )
-
-  expect_no_warning(
-    shinyOAuth:::prepare_call(
-      cli,
-      valid_browser_token(),
-      request_uri_publisher = function(...) {
-        "http://localhost:8100/request-object-second"
-      }
-    )
+    class = "shinyOAuth_config_error",
+    regexp = "must use HTTPS"
   )
 })
 

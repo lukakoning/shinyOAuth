@@ -902,7 +902,7 @@ build_auth_url <- function(
         request_uri,
         getOption("shinyOAuth.allowed_hosts", default = NULL)
       )
-      warn_if_request_uri_is_non_https(
+      require_https_request_uri(
         request_uri,
         subject = "request_uri_publisher() result"
       )

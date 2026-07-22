@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Client-hosted JAR `request_uri` values now fail closed unless they use HTTPS,
+as required by RFC 9101 Section 5.2. The general non-HTTPS host policy no
+longer downgrades this requirement to a warning.
+
 * OIDC issuer, endpoint, JWKS, and mTLS alias URLs now require HTTPS even when
 the general URL policy permits loopback HTTP. Local development can explicitly
 opt in with `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.
