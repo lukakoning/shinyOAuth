@@ -43,7 +43,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The Cloud Run deployment example now pins its Rocker base image by digest and installs R dependencies from a dated Posit Package Manager snapshot.</p></li>
+<ul><li><p>Pull-request pkgdown builds now run with read-only repository permissions and without persisted checkout credentials. GitHub Pages deployment runs in a separate non-PR workflow that alone receives <code>contents: write</code> permission.</p></li>
+<li><p>The Cloud Run deployment example now pins its Rocker base image by digest and installs R dependencies from a dated Posit Package Manager snapshot.</p></li>
 <li><p>Documentation now correctly describes the 24-hour <code>exp - iat</code> limit as package hardening, rather than attributing it to OIDC Core validation rule 9.</p></li>
 <li><p>Client-hosted JAR <code>request_uri</code> values now fail closed unless they use HTTPS, as required by RFC 9101 Section 5.2. The general non-HTTPS host policy no longer downgrades this requirement to a warning.</p></li>
 <li><p>OIDC issuer, endpoint, JWKS, and mTLS alias URLs now require HTTPS even when the general URL policy permits loopback HTTP. Local development can explicitly opt in with <code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>.</p></li>

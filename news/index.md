@@ -2,6 +2,11 @@
 
 ## shinyOAuth (development version)
 
+- Pull-request pkgdown builds now run with read-only repository
+  permissions and without persisted checkout credentials. GitHub Pages
+  deployment runs in a separate non-PR workflow that alone receives
+  `contents: write` permission.
+
 - The Cloud Run deployment example now pins its Rocker base image by
   digest and installs R dependencies from a dated Posit Package Manager
   snapshot.
