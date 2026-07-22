@@ -69,6 +69,12 @@ handle_callback(
   required and must match the configured provider issuer before any
   token exchange occurs.
 
+  This low-level API cannot verify which redirect URI received the
+  response. Clients configured with
+  `authorization_server_mode = "multi_redirect_uri"` must use
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+  instead.
+
 ## Value
 
 An

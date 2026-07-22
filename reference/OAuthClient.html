@@ -70,6 +70,8 @@ prefer the helper constructor <code><a href="oauth_client.html">oauth_client()</
 <span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  authorization_server_mode <span class="op">=</span> <span class="st">"single"</span>,</span>
+<span>  authorization_server_redirect_uris <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  scope_validation <span class="op">=</span> <span class="st">"warn"</span>,</span>
 <span>  claims_validation <span class="op">=</span> <span class="st">"none"</span>,</span>
 <span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -224,6 +226,34 @@ auto-enables this check for providers that advertise
 <code>authorization_response_iss_parameter_supported = TRUE</code> and have a
 configured <code>issuer</code>, such as OIDC discovery providers that expose RFC 9207
 support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
+
+
+<dt id="arg-authorization-server-mode">authorization_server_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-server-mode"></a></dt>
+<dd><p>Declares whether this client is part of an
+application that can interact with more than one authorization server,
+and which RFC 9700 mix-up defense it uses. One of:</p><ul><li><p><code>"single"</code> (default): the application uses only one authorization
+server, so RFC 9700 does not require a mix-up defense.</p></li>
+<li><p><code>"multi_issuer"</code>: authorization responses identify their issuer. JARM
+response modes satisfy this requirement through their validated <code>iss</code>
+claim. Direct response modes require the provider to advertise
+<code>authorization_response_iss_parameter_supported = TRUE</code>; shinyOAuth then
+requires and validates the RFC 9207 <code>iss</code> response parameter. Missing
+support metadata is treated as absence of this defense.</p></li>
+<li><p><code>"multi_redirect_uri"</code>: each authorization server uses a distinct
+redirect URI. Supply the complete set through
+<code>authorization_server_redirect_uris</code>. This mode is supported by
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>, which compares the browser-visible canonical
+scheme, authority, and path before parsing callback values.</p></li>
+</ul></dd>
+
+
+<dt id="arg-authorization-server-redirect-uris">authorization_server_redirect_uris<a class="anchor" aria-label="anchor" href="#arg-authorization-server-redirect-uris"></a></dt>
+<dd><p>Complete character vector of
+redirect URIs used by the application for its authorization servers when
+<code>authorization_server_mode = "multi_redirect_uri"</code>. It must contain at
+least two canonically distinct scheme/authority/path routes and include
+this client's <code>redirect_uri</code>. Query and fragment components do not make
+routes distinct.</p></dd>
 
 
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>

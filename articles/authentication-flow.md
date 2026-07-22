@@ -70,8 +70,16 @@ encrypted and authenticated payload. That payload contains:
 - issued_at timestamp
 - observability metadata like an internal trace id
 
-Sealing the state helps prevent tampering, stale callbacks, and mix-ups
-with other providers or clients.
+Sealing the state helps prevent tampering, stale callbacks, and resuming
+a transaction under different client or provider configuration. It does
+**not** identify which authorization server issued the authorization
+response and is not, by itself, a provider mix-up defense. A malicious
+authorization server that initiated a transaction can cause the client
+to retrieve that transaction’s stored PKCE verifier. Multi-provider
+applications must therefore use authorization-response issuer
+identification or verified distinct redirect URIs as required by [RFC
+9700 section
+4.4](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4).
 
 On the server side, the package also stores a few one-time callback
 values in the state store (for example a `cachem` backend), under a
@@ -262,6 +270,10 @@ and resume stay internal to
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
 The main module checks are:
 
+- Before parsing callback fields or consuming state, compare the
+  browser-visible canonical scheme, authority, and path with the
+  client’s configured `redirect_uri`. Callback-looking queries on
+  another provider’s route are left untouched for the owning module
 - Wait for a usable browser token input if it has not reached Shiny yet;
   when the cookie bridge fails, the module surfaces
   `browser_cookie_error` instead of attempting authentication without
@@ -282,13 +294,18 @@ The main module checks are:
   against unusually large or abusive callback inputs on sensitive
   parameters such as `code`, `state`, `error`, `error_description`,
   `error_uri`, and `iss`
-- Validate the callback `iss` value against the provider’s
-  configured/discovered issuer so the callback must come from the
-  expected provider (per RFC 9207). When
-  `oauth_client(enforce_callback_issuer = TRUE)` is enabled, callbacks
-  that omit `iss` are also rejected before token exchange. A mismatch
-  produces an `issuer_mismatch` error; a missing required `iss` produces
-  an `issuer_missing` error and corresponding audit event
+- Apply the configured [RFC
+  9700](https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1) mix-up
+  defense. Applications that can use multiple authorization servers must
+  declare `authorization_server_mode = "multi_issuer"` or
+  `"multi_redirect_uri"`. Multi-issuer mode accepts JARM issuer
+  identification, or direct callbacks only when the provider advertises
+  RFC 9207 support; for direct callbacks it requires `iss` and compares
+  it exactly with the configured/discovered issuer. Missing metadata is
+  treated as absence of that defense. Multi-redirect mode requires the
+  complete set of distinct callback routes in
+  `authorization_server_redirect_uris`. An issuer mismatch produces
+  `issuer_mismatch`; a missing required issuer produces `issuer_missing`
 - If the callback is an error response (`error=...`), still require a
   valid `state` parameter and browser-token binding before showing the
   provider error. That way, attacker-controlled error values are not

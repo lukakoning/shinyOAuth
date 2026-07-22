@@ -2,6 +2,19 @@
 
 ## shinyOAuth (development version)
 
+- Added explicit RFC 9700 multi-authorization-server configuration
+  through `authorization_server_mode`. Multi-issuer mode now fails
+  closed unless direct callbacks have advertised RFC 9207 support or use
+  JARM; distinct-redirect mode requires a complete set of canonically
+  distinct redirect routes and is limited to module callback handling,
+  where the received route can be verified.
+
+- OAuth callback dispatch now compares the browser-visible canonical
+  scheme, authority, and path with the client’s configured redirect URI
+  before parsing callback parameters or consuming state. This makes
+  distinct redirect URIs an effective RFC 9700 provider mix-up defense
+  for query, query-JARM, and form-post bridge callbacks.
+
 - `reauth_after_seconds` is now a non-rolling authentication lifetime:
   token refresh no longer resets it. OIDC reauthentication sends
   transaction-bound `max_age=0`, validates the required `auth_time`, and

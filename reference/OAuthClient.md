@@ -21,6 +21,8 @@ OAuthClient(
   resource = character(0),
   claims = NULL,
   enforce_callback_issuer = FALSE,
+  authorization_server_mode = "single",
+  authorization_server_redirect_uris = character(0),
   scope_validation = "warn",
   claims_validation = "none",
   required_acr_values = character(0),
@@ -198,6 +200,38 @@ OAuthClient(
   advertise `authorization_response_iss_parameter_supported = TRUE` and
   have a configured `issuer`, such as OIDC discovery providers that
   expose RFC 9207 support. Set `FALSE` to opt out explicitly.
+
+- authorization_server_mode:
+
+  Declares whether this client is part of an application that can
+  interact with more than one authorization server, and which RFC 9700
+  mix-up defense it uses. One of:
+
+  - `"single"` (default): the application uses only one authorization
+    server, so RFC 9700 does not require a mix-up defense.
+
+  - `"multi_issuer"`: authorization responses identify their issuer.
+    JARM response modes satisfy this requirement through their validated
+    `iss` claim. Direct response modes require the provider to advertise
+    `authorization_response_iss_parameter_supported = TRUE`; shinyOAuth
+    then requires and validates the RFC 9207 `iss` response parameter.
+    Missing support metadata is treated as absence of this defense.
+
+  - `"multi_redirect_uri"`: each authorization server uses a distinct
+    redirect URI. Supply the complete set through
+    `authorization_server_redirect_uris`. This mode is supported by
+    [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+    which compares the browser-visible canonical scheme, authority, and
+    path before parsing callback values.
+
+- authorization_server_redirect_uris:
+
+  Complete character vector of redirect URIs used by the application for
+  its authorization servers when
+  `authorization_server_mode = "multi_redirect_uri"`. It must contain at
+  least two canonically distinct scheme/authority/path routes and
+  include this client's `redirect_uri`. Query and fragment components do
+  not make routes distinct.
 
 - scope_validation:
 

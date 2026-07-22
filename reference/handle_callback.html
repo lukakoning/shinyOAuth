@@ -123,7 +123,10 @@ calling from async workers that lack access to the reactive domain.</p></dd>
 response. Pass this when one callback URL can receive responses from more
 than one authorization server. If <code>oauth_client@enforce_callback_issuer</code>
 is <code>TRUE</code>, this parameter is required and must match the configured
-provider issuer before any token exchange occurs.</p></dd>
+provider issuer before any token exchange occurs.</p>
+<p>This low-level API cannot verify which redirect URI received the response.
+Clients configured with <code>authorization_server_mode = "multi_redirect_uri"</code>
+must use <code><a href="oauth_module_server.html">oauth_module_server()</a></code> instead.</p></dd>
 
 </dl></div>
     <div class="section level2">

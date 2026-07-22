@@ -144,7 +144,15 @@ encrypted and authenticated payload. That payload contains:</p>
 <li>observability metadata like an internal trace id</li>
 </ul>
 <p>Sealing the state helps prevent tampering, stale callbacks, and
-mix-ups with other providers or clients.</p>
+resuming a transaction under different client or provider configuration.
+It does <strong>not</strong> identify which authorization server issued
+the authorization response and is not, by itself, a provider mix-up
+defense. A malicious authorization server that initiated a transaction
+can cause the client to retrieve that transaction’s stored PKCE
+verifier. Multi-provider applications must therefore use
+authorization-response issuer identification or verified distinct
+redirect URIs as required by <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4" class="external-link">RFC 9700
+section 4.4</a>.</p>
 <p>On the server side, the package also stores a few one-time callback
 values in the state store (for example a <code>cachem</code> backend),
 under a derived key based on the plain state value:</p>
@@ -341,6 +349,10 @@ continues to token exchange. For classic direct <code>code</code> +
 checks. JARM callback parsing and resume stay internal to
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The main module checks are:</p>
 <ul>
+<li>Before parsing callback fields or consuming state, compare the
+browser-visible canonical scheme, authority, and path with the client’s
+configured <code>redirect_uri</code>. Callback-looking queries on
+another provider’s route are left untouched for the owning module</li>
 <li>Wait for a usable browser token input if it has not reached Shiny
 yet; when the cookie bridge fails, the module surfaces
 <code>browser_cookie_error</code> instead of attempting authentication
@@ -364,14 +376,20 @@ parameters such as <code>code</code>, <code>state</code>,
 <code>error</code>, <code>error_description</code>,
 <code>error_uri</code>, and <code>iss</code>
 </li>
-<li>Validate the callback <code>iss</code> value against the provider’s
-configured/discovered issuer so the callback must come from the expected
-provider (per RFC 9207). When
-<code>oauth_client(enforce_callback_issuer = TRUE)</code> is enabled,
-callbacks that omit <code>iss</code> are also rejected before token
-exchange. A mismatch produces an <code>issuer_mismatch</code> error; a
-missing required <code>iss</code> produces an
-<code>issuer_missing</code> error and corresponding audit event</li>
+<li>Apply the configured <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-2.1" class="external-link">RFC
+9700</a> mix-up defense. Applications that can use multiple
+authorization servers must declare
+<code>authorization_server_mode = "multi_issuer"</code> or
+<code>"multi_redirect_uri"</code>. Multi-issuer mode accepts JARM issuer
+identification, or direct callbacks only when the provider advertises
+RFC 9207 support; for direct callbacks it requires <code>iss</code> and
+compares it exactly with the configured/discovered issuer. Missing
+metadata is treated as absence of that defense. Multi-redirect mode
+requires the complete set of distinct callback routes in
+<code>authorization_server_redirect_uris</code>. An issuer mismatch
+produces <code>issuer_mismatch</code>; a missing required issuer
+produces <code>issuer_missing</code>
+</li>
 <li>If the callback is an error response (<code>error=...</code>), still
 require a valid <code>state</code> parameter and browser-token binding
 before showing the provider error. That way, attacker-controlled error
