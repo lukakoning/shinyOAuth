@@ -197,7 +197,8 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     return(promises::future_promise(
       expr = wrapped_expr,
       envir = env,
-      substitute = FALSE
+      substitute = FALSE,
+      seed = TRUE
     ))
   }
 

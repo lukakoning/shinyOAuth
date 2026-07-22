@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The `future_promise()` async fallback now opts into parallel-safe random
+number generation, avoiding live-integration RNG misuse warnings from
+`future`.
+
 * DPoP nonce retries now require the RFC 9449 response status and challenge
 shape: authorization-server challenges are `400` JSON errors, while resource
 server challenges are structurally parsed `401` `WWW-Authenticate: DPoP`

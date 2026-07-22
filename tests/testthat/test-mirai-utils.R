@@ -240,6 +240,33 @@ testthat::test_that("async_dispatch works without timeout (NULL default)", {
   testthat::expect_true(inherits(m, "mirai"))
 })
 
+testthat::test_that("async_dispatch declares parallel-safe RNG for futures", {
+  testthat::skip_if_not_installed("promises")
+  testthat::skip_if_not_installed("future")
+
+  captured_seed <- NULL
+  testthat::local_mocked_bindings(
+    mirai_daemons_active = function() FALSE,
+    .package = "shinyOAuth"
+  )
+  testthat::local_mocked_bindings(
+    nbrOfWorkers = function(...) 1L,
+    .package = "future"
+  )
+  testthat::local_mocked_bindings(
+    future_promise = function(..., seed = FALSE) {
+      captured_seed <<- seed
+      structure(list(), class = "mock_future_promise")
+    },
+    .package = "promises"
+  )
+
+  result <- shinyOAuth:::async_dispatch(quote(stats::runif(1)), list())
+
+  testthat::expect_s3_class(result, "mock_future_promise")
+  testthat::expect_true(isTRUE(captured_seed))
+})
+
 # --- async_backend_available uses daemons_set() ----------------------------
 
 testthat::test_that("async_backend_available returns 'mirai' when daemons are set", {
