@@ -2,6 +2,37 @@
 
 ## shinyOAuth (development version)
 
+- Generic JWKS discovery now continues to OIDC-compatible well-known
+  locations when a valid RFC 8414 metadata document omits the optional
+  `jwks_uri`, instead of stopping before a usable metadata document is
+  found.
+
+- JWKS validation now rejects vector-valued metadata where JWK requires
+  a scalar (`kty`, `kid`, `use`, `alg`, and `crv`), and algorithm
+  filtering defensively excludes malformed keys.
+
+- `jwks_pin_mode = "all"` now fails closed if a supported JWKS key’s RFC
+  7638 thumbprint cannot be computed, preserving the invariant that
+  every supported key is pinned.
+
+- Pre-encoded character `claims` values must now be JSON objects, as
+  required for the OIDC Claims request parameter; valid JSON scalars and
+  arrays are rejected.
+
+- Browser callback cleanup now removes fragment parameters even when
+  their raw values contain additional `=` characters, while preserving
+  unrelated fragment parameters unchanged.
+
+- The `future_promise()` async fallback now opts into parallel-safe
+  random number generation, avoiding live-integration RNG misuse
+  warnings from `future`.
+
+- DPoP nonce retries now require the RFC 9449 response status and
+  challenge shape: authorization-server challenges are `400` JSON
+  errors, while resource server challenges are structurally parsed `401`
+  `WWW-Authenticate: DPoP` errors. Successful or unrelated error
+  responses carrying nonce-like text are no longer replayed.
+
 - Direct query callbacks now use the same response-shape validation as
   plain `form_post`: exactly one of `code` or `error`, plus `state`, is
   required before single-use state can be consumed.
