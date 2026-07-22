@@ -2,6 +2,17 @@
 
 ## shinyOAuth (development version)
 
+- ID-token validation now fails closed whenever a present Ed448
+  `at_hash` cannot be validated by the available crypto bindings, even
+  when the claim was not configured as required.
+
+- Forced JWKS-refresh throttling now uses an atomic, expiring
+  `$set_if_absent(key, value, ttl)` claim for shared cache backends.
+  Shared or custom caches without that primitive fail closed instead of
+  racing separate `$get()`/`$set()` operations;
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  now exposes the optional hook.
+
 - Generic JWKS discovery now continues to OIDC-compatible well-known
   locations when a valid RFC 8414 metadata document omits the optional
   `jwks_uri`, instead of stopping before a usable metadata document is
