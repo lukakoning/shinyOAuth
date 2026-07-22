@@ -124,6 +124,39 @@ test_that("fetch_jwks does not fall through after malformed metadata", {
   )
 })
 
+test_that("generic JWKS discovery continues when OAuth metadata omits jwks_uri", {
+  testthat::skip_if_not_installed("webfakes")
+  testthat::skip_on_cran()
+
+  app <- webfakes::new_app()
+  app$get("/.well-known/oauth-authorization-server/issuer1", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    res$send_json(
+      object = list(issuer = paste0("http://", host, "/issuer1")),
+      auto_unbox = TRUE
+    )
+  })
+  app$get("/.well-known/openid-configuration/issuer1", function(req, res) {
+    host <- req$headers$Host %||% req$headers$host
+    issuer <- paste0("http://", host, "/issuer1")
+    res$send_json(
+      object = list(issuer = issuer, jwks_uri = paste0(issuer, "/jwks")),
+      auto_unbox = TRUE
+    )
+  })
+  srv <- webfakes::local_app_process(app)
+
+  metadata <- shinyOAuth:::fetch_authorization_server_metadata(
+    paste0(srv$url(), "/issuer1")
+  )
+
+  expect_identical(metadata[["metadata_source"]], "openid_configuration")
+  expect_identical(
+    metadata[["document"]][["jwks_uri"]],
+    paste0(shinyOAuth:::rtrim_slash(srv$url()), "/issuer1/jwks")
+  )
+})
+
 test_that("fetch_jwks rejects duplicate JWKS top-level members", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()

@@ -168,13 +168,22 @@ fetch_authorization_server_metadata <- function(issuer) {
     }
 
     # Once a metadata endpoint returns 2xx, fail closed on body/JSON
-    # validation errors instead of falling through to another representation.
+    # validation errors. A valid generic OAuth metadata document may omit the
+    # optional jwks_uri, however, so continue to OIDC-compatible locations in
+    # that one case.
     check_resp_body_size(resp, context = "jwks_discovery")
     disc <- .discover_parse_json(resp)
     if (!is.list(disc)) {
       err_parse(c(
         "x" = "Authorization server metadata JSON did not parse to an object"
       ))
+    }
+    if (is.null(disc[["jwks_uri"]])) {
+      last_error_message <- paste0(
+        "Authorization server metadata missing jwks_uri at ",
+        target[["url"]]
+      )
+      next
     }
 
     return(list(

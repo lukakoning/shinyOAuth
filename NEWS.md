@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Generic JWKS discovery now continues to OIDC-compatible well-known locations
+when a valid RFC 8414 metadata document omits the optional `jwks_uri`, instead
+of stopping before a usable metadata document is found.
+
 * JWKS validation now rejects vector-valued metadata where JWK requires a
 scalar (`kty`, `kid`, `use`, `alg`, and `crv`), and algorithm filtering
 defensively excludes malformed keys.
