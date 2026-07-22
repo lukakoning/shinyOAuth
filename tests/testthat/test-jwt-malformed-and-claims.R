@@ -66,6 +66,32 @@ test_that("Malformed JWTs are rejected with parse errors", {
   })
 })
 
+test_that("OIDC sub is limited to 255 ASCII characters", {
+  expect_true(shinyOAuth:::is_valid_oidc_sub("user-123"))
+  expect_true(shinyOAuth:::is_valid_oidc_sub(strrep("a", 255)))
+  expect_false(shinyOAuth:::is_valid_oidc_sub(strrep("a", 256)))
+  expect_false(shinyOAuth:::is_valid_oidc_sub("usér"))
+
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = strrep("a", 256),
+    iat = now - 1,
+    exp = now + 60
+  )
+  jwt <- build_jwt(list(alg = "RS256"), claims, sig = "c2ln")
+
+  withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
+    expect_error(
+      shinyOAuth:::validate_id_token(client, jwt),
+      class = "shinyOAuth_id_token_error",
+      regexp = "255 ASCII"
+    )
+  })
+})
+
 test_that("JWT parsing rejects padded, invalid, and empty compact segments", {
   header <- enc_b64url('{"alg":"none"}')
   payload <- enc_b64url('{"sub":"u"}')

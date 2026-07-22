@@ -332,8 +332,8 @@ validate_id_token <- function(
   if (any(aud != client_id)) {
     err_id_token("ID token contains untrusted additional audiences")
   }
-  if (!is_valid_string(payload[["sub"]])) {
-    err_id_token("ID token missing sub claim")
+  if (!is_valid_oidc_sub(payload[["sub"]])) {
+    err_id_token("ID token sub claim must be 1 to 255 ASCII characters")
   }
   # OIDC Core 12.2: During refresh, sub MUST match the original ID token's sub
   if (
@@ -543,6 +543,21 @@ validate_id_token <- function(
 }
 
 ## 1.2 Numeric claim helpers ---------------------------------------------------
+
+#' Internal: validate an OpenID Connect Subject Identifier
+#'
+#' @param x Candidate `sub` claim value.
+#' @return `TRUE` for a non-empty ASCII string of at most 255 characters.
+#' @keywords internal
+#' @noRd
+is_valid_oidc_sub <- function(x) {
+  if (!is_valid_string(x) || nchar(x, type = "chars") > 255L) {
+    return(FALSE)
+  }
+
+  bytes <- as.integer(charToRaw(enc2utf8(x)))
+  length(bytes) > 0L && all(bytes <= 127L)
+}
 
 #' Internal: check for one finite numeric scalar
 #'

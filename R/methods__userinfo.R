@@ -288,15 +288,15 @@ get_userinfo <- function(
         # Response." Enforce for OIDC providers; leave generic OAuth profile
         # endpoints alone even when their RFC 8414 metadata has an issuer.
         if (provider_uses_oidc(oauth_client@provider)) {
-          if (!is_valid_string(ui[["sub"]])) {
+          if (!is_valid_oidc_sub(ui[["sub"]])) {
             audit_userinfo_event(
               oauth_client,
               status = "userinfo_missing_sub",
               shiny_session = shiny_session
             )
             err_userinfo(c(
-              "x" = "UserInfo response missing required 'sub' claim (OIDC Core 5.3)",
-              "i" = "OIDC providers MUST always return a 'sub' claim in the UserInfo response"
+              "x" = "UserInfo response has a missing or invalid 'sub' claim",
+              "i" = "OIDC sub values must contain 1 to 255 ASCII characters"
             ))
           }
         }
@@ -751,7 +751,7 @@ validate_signed_userinfo_claims <- function(
 
   # sub MUST always be returned in the UserInfo Response (OIDC Core §5.3)
   sub <- claims[["sub"]]
-  if (!is_valid_string(sub)) {
+  if (!is_valid_oidc_sub(sub)) {
     if (!is.null(oauth_client)) {
       audit_userinfo_event(
         oauth_client,
@@ -760,7 +760,7 @@ validate_signed_userinfo_claims <- function(
       )
     }
     err_userinfo(c(
-      "x" = "Signed UserInfo JWT missing required 'sub' claim (OIDC Core 5.3)"
+      "x" = "Signed UserInfo JWT has a missing or invalid 'sub' claim"
     ))
   }
 

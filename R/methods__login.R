@@ -2674,8 +2674,8 @@ verify_token_set <- function(
             "Cannot parse original ID token to verify sub claim (OIDC 12.2)"
           )
         }
-        if (!is_valid_string(original_payload[["sub"]])) {
-          err_id_token("Original ID token missing sub claim (OIDC 12.2)")
+        if (!is_valid_oidc_sub(original_payload[["sub"]])) {
+          err_id_token("Original ID token has an invalid sub claim (OIDC 12.2)")
         }
         expected_sub <- original_payload[["sub"]]
 
@@ -2693,8 +2693,8 @@ verify_token_set <- function(
               "Cannot parse refreshed ID token to verify sub claim (OIDC 12.2)"
             )
           }
-          if (!is_valid_string(new_payload[["sub"]])) {
-            err_id_token("Refreshed ID token missing sub claim (OIDC 12.2)")
+          if (!is_valid_oidc_sub(new_payload[["sub"]])) {
+            err_id_token("Refreshed ID token has an invalid sub claim (OIDC 12.2)")
           }
           if (!identical(new_payload[["sub"]], expected_sub)) {
             err_id_token(

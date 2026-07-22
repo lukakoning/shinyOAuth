@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* ID-token and OIDC UserInfo `sub` claims must now contain between 1 and 255
+ASCII characters, as required for OpenID Connect Subject Identifiers.
+
 * JWKS validation now requires the RFC 7517 `keys` member to be a JSON array;
 a single JWK object is no longer silently wrapped as a one-element set.
 
