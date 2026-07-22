@@ -92,6 +92,37 @@ test_that("validate_jwks enforces structure and pins", {
   )
 })
 
+test_that("all-key pinning fails when a supported thumbprint is unavailable", {
+  testthat::skip_if_not_installed("jose")
+
+  rsa_jwk <- make_public_rsa_jwk(kid = "computable")
+  ec_jwk <- make_public_ec_jwk(kid = "unavailable")
+  jwks <- list(keys = list(rsa_jwk, ec_jwk))
+  rsa_pin <- shinyOAuth:::compute_jwk_thumbprint(rsa_jwk)
+  original_thumbprint <- shinyOAuth:::compute_jwk_thumbprint
+
+  testthat::local_mocked_bindings(
+    compute_jwk_thumbprint = function(jwk) {
+      if (identical(jwk[["kid"]], "unavailable")) {
+        stop("thumbprint unavailable")
+      }
+      original_thumbprint(jwk)
+    },
+    .package = "shinyOAuth"
+  )
+
+  expect_silent(shinyOAuth:::validate_jwks(
+    jwks,
+    pins = rsa_pin,
+    pin_mode = "any"
+  ))
+  expect_error(
+    shinyOAuth:::validate_jwks(jwks, pins = rsa_pin, pin_mode = "all"),
+    class = "shinyOAuth_parse_error",
+    regexp = "could not compute every supported key thumbprint"
+  )
+})
+
 test_that("select_candidate_jwks honors key_ops field", {
   # Minimal RSA JWK for signing/verification
   rsa_verify <- list(

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `jwks_pin_mode = "all"` now fails closed if a supported JWKS key's RFC 7638
+thumbprint cannot be computed, preserving the invariant that every supported
+key is pinned.
+
 * Pre-encoded character `claims` values must now be JSON objects, as required
 for the OIDC Claims request parameter; valid JSON scalars and arrays are
 rejected.

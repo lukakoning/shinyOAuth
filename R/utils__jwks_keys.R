@@ -524,6 +524,11 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
       }
     } else if (pin_mode == "all") {
       # All supported keys must be pinned
+      if (length(thumbprints) != supported_seen) {
+        err_parse(
+          "JWKS pinning failed: could not compute every supported key thumbprint"
+        )
+      }
       missed <- setdiff(thumbprints, pins)
       if (length(missed) > 0) {
         err_parse("JWKS pinning failed: unpinned key(s) present")
