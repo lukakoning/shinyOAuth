@@ -1,4 +1,9 @@
-testthat::test_that("discovery enforces absolute endpoints and allows loopback HTTP via is_ok_host", {
+withr::local_options(
+  shinyOAuth.allow_insecure_oidc_loopback = TRUE,
+  .local_envir = environment()
+)
+
+testthat::test_that("discovery allows loopback HTTP with development opt-in", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()

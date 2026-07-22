@@ -1,3 +1,8 @@
+withr::local_options(
+  shinyOAuth.allow_insecure_oidc_loopback = TRUE,
+  .local_envir = environment()
+)
+
 testthat::test_that("discovery selects conservative client auth methods (basic/post) and avoids JWT by default", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines

@@ -169,6 +169,40 @@ testthat::test_that("OIDC discovery issuer must be absolute", {
   )
 })
 
+testthat::test_that("OIDC HTTP loopback URLs require explicit development opt-in", {
+  testthat::expect_error(
+    shinyOAuth:::.discover_assert_valid_issuer("http://127.0.0.1:8080"),
+    class = "shinyOAuth_input_error",
+    regexp = "must use HTTPS"
+  )
+
+  withr::local_options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+  testthat::expect_no_error(
+    shinyOAuth:::.discover_assert_valid_issuer("http://127.0.0.1:8080")
+  )
+  testthat::expect_no_error(
+    shinyOAuth:::.discover_validate_endpoints(
+      list(
+        auth_url = "http://localhost:8080/auth",
+        token_url = "http://localhost:8080/token",
+        userinfo_url = NA_character_,
+        introspection_url = NA_character_,
+        revocation_url = NA_character_,
+        par_url = NA_character_
+      ),
+      NULL
+    )
+  )
+  testthat::expect_error(
+    shinyOAuth:::.discover_require_https(
+      "http://provider.example.com/token",
+      "OIDC token endpoint"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "must use HTTPS"
+  )
+})
+
 testthat::test_that("OIDC discovery rejects issuer query component", {
   f <- shinyOAuth:::.discover_assert_valid_issuer
 

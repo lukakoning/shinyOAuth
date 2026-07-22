@@ -1,3 +1,8 @@
+withr::local_options(
+  shinyOAuth.allow_insecure_oidc_loopback = TRUE,
+  .local_envir = environment()
+)
+
 test_that("validate_discovery_issuer errors on host mismatch by default", {
   f <- shinyOAuth:::validate_discovery_issuer
   expect_error(

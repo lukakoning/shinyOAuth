@@ -519,6 +519,12 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
+  .discover_require_https(
+    issuer,
+    label = "OIDC issuer",
+    input_error = TRUE
+  )
+
   if (!is_ok_host(issuer)) {
     err_input(
       c(
@@ -757,6 +763,60 @@ oauth_provider_oidc_discover <- function(
   invisible(TRUE)
 }
 
+#' Internal: require HTTPS for OIDC metadata URLs
+#'
+#' OIDC normally requires HTTPS. A loopback-only exception is available for
+#' local development, but must be enabled independently from the package's
+#' general HTTP host policy.
+#'
+#' @param url URL to validate.
+#' @param label Human-readable URL label.
+#' @param input_error Whether to raise an input rather than configuration error.
+#' @return Invisibly returns `TRUE`.
+#' @keywords internal
+#' @noRd
+.discover_require_https <- function(url, label, input_error = FALSE) {
+  if (length(url) == 1L && (is.na(url) || !nzchar(url))) {
+    return(invisible(TRUE))
+  }
+
+  parsed <- try(httr2::url_parse(url), silent = TRUE)
+  scheme <- if (!inherits(parsed, "try-error")) {
+    tolower(parsed[["scheme"]] %||% "")
+  } else {
+    ""
+  }
+  if (identical(scheme, "https")) {
+    return(invisible(TRUE))
+  }
+
+  host <- if (!inherits(parsed, "try-error")) {
+    .discover_normalize_host(parsed[["hostname"]] %||% "")
+  } else {
+    ""
+  }
+  development_exception <- isTRUE(getOption(
+    "shinyOAuth.allow_insecure_oidc_loopback",
+    FALSE
+  )) && host %in% c("localhost", "127.0.0.1", "::1", "[::1]")
+  if (development_exception && identical(scheme, "http")) {
+    return(invisible(TRUE))
+  }
+
+  message <- c(
+    "x" = paste(label, "must use HTTPS"),
+    "i" = paste0("Got: ", url),
+    "i" = paste(
+      "For loopback development only, set",
+      "options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)."
+    )
+  )
+  if (isTRUE(input_error)) {
+    err_input(message)
+  }
+  err_config(message)
+}
+
 #' Internal: validate an optional JSON string array in discovery metadata
 #'
 #' @param disc Parsed discovery document.
@@ -939,6 +999,18 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_validate_endpoints <- function(endpoints, allowed_hosts_vec) {
+  labels <- c(
+    auth_url = "OIDC authorization endpoint",
+    token_url = "OIDC token endpoint",
+    userinfo_url = "OIDC UserInfo endpoint",
+    introspection_url = "OIDC introspection endpoint",
+    revocation_url = "OIDC revocation endpoint",
+    par_url = "OIDC pushed authorization request endpoint"
+  )
+  for (name in names(labels)) {
+    .discover_require_https(endpoints[[name]], labels[[name]])
+  }
+
   validate_endpoint(endpoints[["auth_url"]], allowed_hosts_vec)
   validate_endpoint(endpoints[["token_url"]], allowed_hosts_vec)
   validate_endpoint(
@@ -983,6 +1055,8 @@ oauth_provider_oidc_discover <- function(
   if (!nzchar(jwks_uri)) {
     return(invisible(TRUE))
   }
+
+  .discover_require_https(jwks_uri, "OIDC JWKS URI")
 
   jwks_allowed_hosts <- allowed_hosts_vec
   if (is_valid_string(jwks_host_allow_only)) {
@@ -1398,6 +1472,7 @@ oauth_provider_oidc_discover <- function(
   }
 
   for (alias_url in unname(mtls_endpoint_aliases)) {
+    .discover_require_https(alias_url, "OIDC mTLS endpoint alias")
     validate_endpoint(alias_url, allowed_hosts_vec)
   }
 

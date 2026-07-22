@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OIDC issuer, endpoint, JWKS, and mTLS alias URLs now require HTTPS even when
+the general URL policy permits loopback HTTP. Local development can explicitly
+opt in with `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.
+
 * ID-token and OIDC UserInfo `sub` claims must now contain between 1 and 255
 ASCII characters, as required for OpenID Connect Subject Identifiers.
 
