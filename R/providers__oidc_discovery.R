@@ -717,7 +717,76 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
+  optional_string_arrays <- c(
+    "scopes_supported",
+    "response_modes_supported",
+    "grant_types_supported",
+    "acr_values_supported",
+    "id_token_encryption_alg_values_supported",
+    "id_token_encryption_enc_values_supported",
+    "userinfo_signing_alg_values_supported",
+    "userinfo_encryption_alg_values_supported",
+    "userinfo_encryption_enc_values_supported",
+    "request_object_signing_alg_values_supported",
+    "request_object_encryption_alg_values_supported",
+    "request_object_encryption_enc_values_supported",
+    "token_endpoint_auth_methods_supported",
+    "token_endpoint_auth_signing_alg_values_supported",
+    "display_values_supported",
+    "claim_types_supported",
+    "claims_supported",
+    "claims_locales_supported",
+    "ui_locales_supported",
+    "code_challenge_methods_supported",
+    "dpop_signing_alg_values_supported",
+    "jarm_signing_alg_values_supported",
+    "jarm_encryption_alg_values_supported",
+    "jarm_encryption_enc_values_supported",
+    "authorization_signing_alg_values_supported",
+    "authorization_encryption_alg_values_supported",
+    "authorization_encryption_enc_values_supported",
+    "introspection_endpoint_auth_methods_supported",
+    "introspection_endpoint_auth_signing_alg_values_supported",
+    "revocation_endpoint_auth_methods_supported",
+    "revocation_endpoint_auth_signing_alg_values_supported"
+  )
+  for (field in optional_string_arrays) {
+    .discover_validate_optional_string_array(disc, field)
+  }
+
   invisible(TRUE)
+}
+
+#' Internal: validate an optional JSON string array in discovery metadata
+#'
+#' @param disc Parsed discovery document.
+#' @param field Metadata member name.
+#' @return Character vector containing the validated values, or an empty
+#'   vector when the member is absent.
+#' @keywords internal
+#' @noRd
+.discover_validate_optional_string_array <- function(disc, field) {
+  if (is.null(disc[[field]])) {
+    return(character())
+  }
+
+  value <- disc[[field]]
+  valid <- is.list(value) &&
+    is.null(names(value)) &&
+    all(vapply(value, is_valid_string, logical(1)))
+
+  if (!valid) {
+    err_parse(
+      paste0(
+        "Discovery ",
+        field,
+        " must be a JSON array of non-empty strings"
+      ),
+      context = setNames(list(value), field)
+    )
+  }
+
+  unlist(value, use.names = FALSE)
 }
 
 #' Internal: require a non-empty JSON string array in discovery metadata

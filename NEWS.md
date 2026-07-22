@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* OIDC Discovery now rejects scalar and object values for optional metadata
+fields defined as JSON arrays, instead of silently coercing them to vectors.
+
 * Inbound JOSE and JWK identifiers are now compared case-sensitively. ID-token
 and signed UserInfo `alg` values, plus JWK `alg`, `use`, `key_ops`, `kty`, and
 `crv`, must use their registered spelling.
