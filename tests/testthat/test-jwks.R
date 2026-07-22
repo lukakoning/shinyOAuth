@@ -19,6 +19,11 @@ test_that("validate_jwks enforces structure and pins", {
 
   # Should not error without pins
   expect_silent(shinyOAuth:::validate_jwks(jwks))
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = rsa_jwk)),
+    class = "shinyOAuth_parse_error",
+    regexp = "JSON array"
+  )
 
   # Compute pins from our helper and enforce any/all
   tp_rsa <- shinyOAuth:::compute_jwk_thumbprint(rsa_jwk)

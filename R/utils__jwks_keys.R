@@ -420,18 +420,11 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
     ks <- unname(lapply(seq_len(nrow(ks)), function(i) {
       as.list(ks[i, , drop = FALSE])
     }))
-  } else if (is.list(ks)) {
-    nm <- names(ks)
-    if (
-      !is.null(nm) && any(nm %in% c("kty", "n", "e", "crv", "x", "y", "kid"))
-    ) {
-      ks <- list(ks)
-    }
-  } else {
+  } else if (!is.list(ks)) {
     err_parse("JWKS keys malformed")
   }
-  if (!is.list(ks)) {
-    err_parse("JWKS keys must be a list")
+  if (!is.list(ks) || !is.null(names(ks))) {
+    err_parse("JWKS keys must be a JSON array")
   }
   if (length(ks) > 100) {
     err_parse("JWKS contains excessive keys")

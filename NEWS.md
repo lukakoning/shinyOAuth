@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* JWKS validation now requires the RFC 7517 `keys` member to be a JSON array;
+a single JWK object is no longer silently wrapped as a one-element set.
+
 * OIDC Discovery now rejects scalar and object values for optional metadata
 fields defined as JSON arrays, instead of silently coercing them to vectors.
 
