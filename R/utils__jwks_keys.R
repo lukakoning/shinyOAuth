@@ -183,14 +183,17 @@ filter_jwks_for_alg <- function(keys, alg) {
     return(list())
   }
 
-  alg <- toupper(alg %||% "")
+  if (!is_valid_string(alg)) {
+    return(list())
+  }
+  alg <- toupper(alg)
 
   keys <- Filter(function(k) jwk_is_compatible_with_alg(k, alg), keys)
 
   Filter(
     function(k) {
       ka <- k[["alg"]] %||% NULL
-      is.null(ka) || toupper(ka) == alg
+      is.null(ka) || (is_valid_string(ka) && identical(toupper(ka), alg))
     },
     keys
   )
@@ -208,8 +211,12 @@ filter_jwks_for_alg <- function(keys, alg) {
 #' @keywords internal
 #' @noRd
 jwk_is_compatible_with_alg <- function(jwk, alg) {
-  kty <- toupper(jwk[["kty"]] %||% "")
-  crv <- toupper(jwk[["crv"]] %||% "")
+  if (!is.list(jwk) || !is_valid_string(jwk[["kty"]] %||% NULL)) {
+    return(FALSE)
+  }
+  kty <- toupper(jwk[["kty"]])
+  crv_value <- jwk[["crv"]] %||% NULL
+  crv <- if (is_valid_string(crv_value)) toupper(crv_value) else ""
   switch(
     alg,
     RS256 = kty == "RSA",
@@ -443,10 +450,24 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
       err_parse("JWK entry must be an object")
     }
     kty <- k[["kty"]] %||% err_parse("JWK missing kty")
-    kid <- k[["kid"]] %||% NA_character_
-    if (!is.na(kid)) {
-      if (!is.character(kid) || length(kid) != 1 || nchar(kid) > 128) {
+    if (!is_valid_string(kty)) {
+      err_parse("JWK kty must be a non-empty character scalar")
+    }
+    kid <- k[["kid"]] %||% NULL
+    if (!is.null(kid)) {
+      if (
+        !is.character(kid) ||
+          length(kid) != 1L ||
+          is.na(kid) ||
+          nchar(kid) > 128L
+      ) {
         err_parse("JWK kid invalid")
+      }
+    }
+    for (field in c("use", "alg")) {
+      value <- k[[field]] %||% NULL
+      if (!is.null(value) && !is_valid_string(value)) {
+        err_parse(paste0("JWK ", field, " must be a non-empty character scalar"))
       }
     }
     # No private key parameters in a JWKS
@@ -476,7 +497,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
         }
       } else if (kty == "EC") {
         if (
-          !is.character(k[["crv"]]) ||
+          !is_valid_string(k[["crv"]]) ||
             !is.character(k[["x"]]) ||
             !is.character(k[["y"]])
         ) {
@@ -494,7 +515,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
         )
       } else if (kty == "OKP") {
         if (
-          !is.character(k[["crv"]]) ||
+          !is_valid_string(k[["crv"]]) ||
             !is.character(k[["x"]])
         ) {
           err_parse("OKP JWK missing crv/x")

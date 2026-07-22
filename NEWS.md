@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* JWKS validation now rejects vector-valued metadata where JWK requires a
+scalar (`kty`, `kid`, `use`, `alg`, and `crv`), and algorithm filtering
+defensively excludes malformed keys.
+
 * `jwks_pin_mode = "all"` now fails closed if a supported JWKS key's RFC 7638
 thumbprint cannot be computed, preserving the invariant that every supported
 key is pinned.

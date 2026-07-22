@@ -123,6 +123,47 @@ test_that("all-key pinning fails when a supported thumbprint is unavailable", {
   )
 })
 
+test_that("JWKS validation rejects vector-valued scalar metadata", {
+  testthat::skip_if_not_installed("jose")
+
+  rsa_jwk <- make_public_rsa_jwk()
+  for (field in c("kty", "kid", "use", "alg")) {
+    malformed <- rsa_jwk
+    malformed[[field]] <- c("RS256", "ES256")
+    expect_error(
+      shinyOAuth:::validate_jwks(list(keys = list(malformed))),
+      class = "shinyOAuth_parse_error",
+      regexp = paste0("JWK ", field)
+    )
+  }
+
+  malformed_ec <- make_public_ec_jwk()
+  malformed_ec[["crv"]] <- c("P-256", "P-384")
+  expect_error(
+    shinyOAuth:::validate_jwks(list(keys = list(malformed_ec))),
+    class = "shinyOAuth_parse_error",
+    regexp = "EC JWK missing crv/x/y"
+  )
+})
+
+test_that("algorithm filtering excludes malformed scalar JWK metadata", {
+  valid <- list(kty = "RSA", alg = "RS256")
+  malformed <- list(
+    list(kty = c("RSA", "EC"), alg = "RS256"),
+    list(kty = "RSA", alg = c("RS256", "ES256")),
+    list(kty = "EC", crv = c("P-256", "P-384"), alg = "ES256")
+  )
+
+  expect_identical(
+    shinyOAuth:::filter_jwks_for_alg(c(list(valid), malformed), "RS256"),
+    list(valid)
+  )
+  expect_identical(
+    shinyOAuth:::filter_jwks_for_alg(list(valid), c("RS256", "ES256")),
+    list()
+  )
+})
+
 test_that("select_candidate_jwks honors key_ops field", {
   # Minimal RSA JWK for signing/verification
   rsa_verify <- list(
