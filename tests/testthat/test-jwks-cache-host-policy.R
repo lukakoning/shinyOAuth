@@ -374,6 +374,7 @@ test_that("oidc discovery preserves jwks_uri for runtime verification", {
   })
   srv <- webfakes::local_app_process(app)
   base <- sub("/$", "", srv$url())
+  withr::local_options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
   provider <- oauth_provider_oidc_discover(issuer = srv$url())
   jwks <- shinyOAuth:::fetch_jwks(

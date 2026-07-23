@@ -8,6 +8,8 @@ CA_CERT="${TLS_DIR}/ca-cert.pem"
 CA_KEY="${TLS_DIR}/ca-key.pem"
 SERVER_CERT="${TLS_DIR}/server-cert.pem"
 SERVER_KEY="${TLS_DIR}/server-key.pem"
+REQUEST_URI_CERT="${TLS_DIR}/request-uri-cert.pem"
+REQUEST_URI_KEY="${TLS_DIR}/request-uri-key.pem"
 CLIENT_CERT="${TLS_DIR}/client-cert.pem"
 CLIENT_KEY="${TLS_DIR}/client-key.pem"
 ATTACKER_CERT="${TLS_DIR}/attacker-cert.pem"
@@ -36,15 +38,19 @@ required_files=(
   "$ROGUE_SERIAL_FILE"
 )
 
-all_tls_files_exist=true
+base_tls_files_exist=true
 for tls_file in "${required_files[@]}"; do
   if [[ ! -f "$tls_file" ]]; then
-    all_tls_files_exist=false
+    base_tls_files_exist=false
     break
   fi
 done
 
-if [[ "$all_tls_files_exist" == true ]]; then
+if \
+  [[ "$base_tls_files_exist" == true ]] && \
+  [[ -f "$REQUEST_URI_CERT" ]] && \
+  [[ -f "$REQUEST_URI_KEY" ]]
+then
   echo "[prepare-tls] Using existing TLS materials in ${TLS_DIR}" >&2
   exit 0
 fi
@@ -60,6 +66,8 @@ CA_CERT="ca-cert.pem"
 CA_KEY="ca-key.pem"
 SERVER_CERT="server-cert.pem"
 SERVER_KEY="server-key.pem"
+REQUEST_URI_CERT="request-uri-cert.pem"
+REQUEST_URI_KEY="request-uri-key.pem"
 CLIENT_CERT="client-cert.pem"
 CLIENT_KEY="client-key.pem"
 ATTACKER_CERT="attacker-cert.pem"
@@ -70,12 +78,20 @@ ROGUE_CLIENT_CERT="rogue-client-cert.pem"
 ROGUE_CLIENT_KEY="rogue-client-key.pem"
 
 SERVER_EXT="server-ext.cnf"
+REQUEST_URI_EXT="request-uri-ext.cnf"
 CLIENT_EXT="client-ext.cnf"
 SERIAL_FILE="ca-cert.srl"
 ROGUE_SERIAL_FILE="rogue-ca-cert.srl"
 
 cat > "$SERVER_EXT" <<'EOF'
 subjectAltName=DNS:localhost,IP:127.0.0.1
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+EOF
+
+cat > "$REQUEST_URI_EXT" <<'EOF'
+subjectAltName=DNS:host.docker.internal
 basicConstraints=CA:FALSE
 keyUsage=digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
@@ -147,6 +163,20 @@ generate_leaf() {
   rm -f "$csr_path"
 }
 
+if [[ "$base_tls_files_exist" == true ]]; then
+  generate_leaf \
+    "$REQUEST_URI_CERT" \
+    "$REQUEST_URI_KEY" \
+    "request-uri.csr" \
+    "/C=US/ST=NA/L=Local/O=shinyOAuth/OU=Tests/CN=host.docker.internal" \
+    "$CA_CERT" \
+    "$CA_KEY" \
+    "$SERIAL_FILE" \
+    "$REQUEST_URI_EXT"
+  echo "[prepare-tls] Added request_uri TLS materials to ${TLS_DIR}" >&2
+  exit 0
+fi
+
 generate_ca \
   "$CA_CERT" \
   "$CA_KEY" \
@@ -161,6 +191,16 @@ generate_leaf \
   "$CA_KEY" \
   "$SERIAL_FILE" \
   "$SERVER_EXT"
+
+generate_leaf \
+  "$REQUEST_URI_CERT" \
+  "$REQUEST_URI_KEY" \
+  "request-uri.csr" \
+  "/C=US/ST=NA/L=Local/O=shinyOAuth/OU=Tests/CN=host.docker.internal" \
+  "$CA_CERT" \
+  "$CA_KEY" \
+  "$SERIAL_FILE" \
+  "$REQUEST_URI_EXT"
 
 generate_leaf \
   "$CLIENT_CERT" \

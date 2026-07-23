@@ -336,7 +336,7 @@ test_that("refresh accepts new id_token with matching iss and aud (validated pat
   expect_identical(t2@id_token, new_jwt)
 })
 
-test_that("refresh accepts matching iss/aud with multi-audience (validated path)", {
+test_that("refresh rejects untrusted extra audiences on validated path", {
   withr::local_options(shinyOAuth.skip_id_sig = TRUE)
   cli <- make_refresh_client(id_token_validation = TRUE)
 
@@ -382,9 +382,11 @@ test_that("refresh accepts matching iss/aud with multi-audience (validated path)
     id_token = original
   )
 
-  t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE)
-  expect_true(S7::S7_inherits(t2, OAuthToken))
-  expect_identical(t2@access_token, "new_at")
+  expect_error(
+    refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    regexp = "untrusted additional audiences",
+    class = "shinyOAuth_id_token_error"
+  )
 })
 
 test_that("refresh accepts matching iss/aud (non-validated path)", {
@@ -634,8 +636,7 @@ test_that("refresh accepts matching auth_time when nonce is omitted", {
   original <- make_fake_jwt(list(
     iss = "https://issuer.example.com",
     sub = "user-1",
-    aud = c("abc", "resource-api"),
-    azp = "abc",
+    aud = "abc",
     auth_time = 1700000000,
     nonce = "original-nonce",
     exp = as.numeric(Sys.time()) + 3600,
@@ -645,8 +646,7 @@ test_that("refresh accepts matching auth_time when nonce is omitted", {
   new_jwt <- make_fake_jwt(list(
     iss = "https://issuer.example.com",
     sub = "user-1",
-    aud = c("resource-api", "abc"),
-    azp = "abc",
+    aud = "abc",
     auth_time = 1700000000,
     exp = as.numeric(Sys.time()) + 3600,
     iat = as.numeric(Sys.time())

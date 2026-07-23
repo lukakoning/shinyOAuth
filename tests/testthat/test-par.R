@@ -667,7 +667,7 @@ test_that("OIDC discovery rejects inconsistent required PAR metadata", {
   )
 })
 
-test_that("OIDC discovery applies the regular non-https host policy to PAR", {
+test_that("OIDC discovery requires HTTPS for PAR despite the host allowlist", {
   disc_body <- jsonlite::toJSON(
     list(
       issuer = "https://issuer.example.com",
@@ -703,16 +703,13 @@ test_that("OIDC discovery applies the regular non-https host policy to PAR", {
     shinyOAuth.allowed_non_https_hosts = "issuer.example.com"
   ))
 
-  prov <- oauth_provider_oidc_discover(
-    "https://issuer.example.com"
-  )
-  expect_identical(
-    prov@par_url,
-    "http://issuer.example.com/par"
+  expect_error(
+    oauth_provider_oidc_discover("https://issuer.example.com"),
+    regexp = "must use HTTPS"
   )
 })
 
-test_that("OIDC discovery rejects PAR when the regular non-https host policy forbids it", {
+test_that("OIDC discovery rejects non-HTTPS PAR before regular host policy", {
   disc_body <- jsonlite::toJSON(
     list(
       issuer = "https://issuer.example.com",
@@ -750,7 +747,7 @@ test_that("OIDC discovery rejects PAR when the regular non-https host policy for
 
   expect_error(
     oauth_provider_oidc_discover("https://issuer.example.com"),
-    regexp = "Endpoint host or scheme not allowed"
+    regexp = "must use HTTPS"
   )
 })
 

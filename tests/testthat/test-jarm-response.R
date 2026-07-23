@@ -253,10 +253,10 @@ test_that("OIDC discovery records JARM metadata", {
     response_types_supported = list("code"),
     subject_types_supported = list("public"),
     id_token_signing_alg_values_supported = list("RS256"),
-    response_modes_supported = c("query.jwt", "form_post.jwt"),
-    jarm_signing_alg_values_supported = c("RS256", "ES256"),
-    jarm_encryption_alg_values_supported = "RSA-OAEP",
-    jarm_encryption_enc_values_supported = c(
+    response_modes_supported = list("query.jwt", "form_post.jwt"),
+    jarm_signing_alg_values_supported = list("RS256", "ES256"),
+    jarm_encryption_alg_values_supported = list("RSA-OAEP"),
+    jarm_encryption_enc_values_supported = list(
       "A128CBC-HS256",
       "A256CBC-HS512"
     )
@@ -302,10 +302,10 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
     response_types_supported = list("code"),
     subject_types_supported = list("public"),
     id_token_signing_alg_values_supported = list("RS256"),
-    response_modes_supported = "query.jwt",
-    jarm_signing_alg_values_supported = "rs256",
-    jarm_encryption_alg_values_supported = "rsa-oaep",
-    jarm_encryption_enc_values_supported = "a256cbc-hs512"
+    response_modes_supported = list("query.jwt"),
+    jarm_signing_alg_values_supported = list("rs256"),
+    jarm_encryption_alg_values_supported = list("rsa-oaep"),
+    jarm_encryption_enc_values_supported = list("a256cbc-hs512")
   )
 
   prov <- discover_provider(metadata)

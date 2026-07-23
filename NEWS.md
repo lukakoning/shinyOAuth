@@ -31,9 +31,9 @@ fields defined as JSON arrays, instead of silently coercing them to vectors.
 and signed UserInfo `alg` values, plus JWK `alg`, `use`, `key_ops`, `kty`, and
 `crv`, must use their registered spelling.
 
-* OIDC Discovery now compares the returned `issuer` with the issuer used for
-discovery using exact code-point equality, including a trailing slash. Issuer
-normalization is limited to constructing the well-known document URL.
+* OIDC Discovery compares the returned `issuer` with the issuer used for
+discovery after removing one trailing slash from both values, while preserving
+the discovered issuer verbatim for downstream token validation.
 
 * ID-token validation now rejects additional `aud` values that the client does
 not trust. An `azp` value matching `client_id` no longer implicitly authorizes

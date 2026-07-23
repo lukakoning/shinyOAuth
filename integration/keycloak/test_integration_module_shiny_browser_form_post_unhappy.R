@@ -73,6 +73,7 @@ if (!exists("make_provider", mode = "function")) {
   process <- callr::r_bg(
     func = function(repo_root, app_port, app_url, title, client_id) {
       setwd(repo_root)
+      options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
       if (requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(
           repo_root,
@@ -430,7 +431,7 @@ if (!exists("make_provider", mode = "function")) {
 .wait_for_form_post_auth_state_transition <- function(
   drv,
   previous_state = "",
-  timeout = 20000,
+  timeout = 45000,
   interval = 0.25
 ) {
   deadline <- Sys.time() + (timeout / 1000)

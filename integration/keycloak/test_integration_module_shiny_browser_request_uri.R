@@ -10,7 +10,7 @@ if (!exists("make_provider", mode = "function")) {
     return(override)
   }
 
-  sprintf("http://host.docker.internal:%d", app_port)
+  sprintf("https://host.docker.internal:%d", app_port + 10000L)
 }
 
 .allow_request_uri_public_host <- function(
@@ -138,6 +138,7 @@ if (!exists("make_provider", mode = "function")) {
       request_object_ttl
     ) {
       setwd(repo_root)
+      options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
       if (requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(
           repo_root,
@@ -163,6 +164,56 @@ if (!exists("make_provider", mode = "function")) {
         )
       }
       source("integration/keycloak/helper-keycloak.R")
+
+      parsed_public_base <- httr2::url_parse(public_base_url)
+      public_scheme <- tolower(as.character(parsed_public_base$scheme %||% ""))
+      public_host <- tolower(as.character(parsed_public_base$hostname %||% ""))
+      public_port <- suppressWarnings(as.integer(parsed_public_base$port))
+      if (
+        identical(public_scheme, "https") &&
+          identical(public_host, "host.docker.internal")
+      ) {
+        python <- Sys.which("python3")
+        if (!nzchar(python)) {
+          python <- Sys.which("python")
+        }
+        if (!nzchar(python)) {
+          stop("Python is required for the request_uri TLS fixture", call. = FALSE)
+        }
+        if (is.na(public_port)) {
+          stop("The request_uri TLS fixture requires an explicit port", call. = FALSE)
+        }
+
+        tls_proxy <- processx::process$new(
+          python,
+          c(
+            "integration/keycloak/tls_proxy.py",
+            "--listen-port",
+            as.character(public_port),
+            "--target-port",
+            as.character(app_port),
+            "--cert",
+            "integration/keycloak/tls/request-uri-cert.pem",
+            "--key",
+            "integration/keycloak/tls/request-uri-key.pem"
+          ),
+          stdout = "|",
+          stderr = "|",
+          cleanup = TRUE,
+          cleanup_tree = TRUE
+        )
+        on.exit(try(tls_proxy$kill_tree(), silent = TRUE), add = TRUE)
+        Sys.sleep(0.25)
+        if (!tls_proxy$is_alive()) {
+          stop(
+            paste(
+              "request_uri TLS proxy exited during startup:",
+              paste(tls_proxy$read_all_error_lines(), collapse = "\n")
+            ),
+            call. = FALSE
+          )
+        }
+      }
 
       published_auth_urls <- shiny::reactiveValues()
       published_request_uris <- shiny::reactiveValues()
@@ -213,9 +264,6 @@ if (!exists("make_provider", mode = "function")) {
       )
       lockBinding("publish_shiny_request_object", shinyoauth_ns)
 
-      parsed_public_base <- httr2::url_parse(public_base_url)
-      public_scheme <- tolower(as.character(parsed_public_base$scheme %||% ""))
-      public_host <- tolower(as.character(parsed_public_base$hostname %||% ""))
       if (identical(public_scheme, "http") && nzchar(public_host)) {
         default_non_https_hosts <- getOption(
           "shinyOAuth.allowed_non_https_hosts",

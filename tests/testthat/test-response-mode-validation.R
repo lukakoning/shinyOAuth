@@ -442,7 +442,7 @@ test_that("OIDC discovery records supported response modes", {
 
   prov <- discover_provider(c(
     base_metadata,
-    list(response_modes_supported = c("query", "form_post"))
+    list(response_modes_supported = list("query", "form_post"))
   ))
   expect_identical(prov@response_modes_supported, c("query", "form_post"))
 

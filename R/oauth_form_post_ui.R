@@ -89,6 +89,7 @@ oauth_form_post_ui <- function(
   force(callback_path)
 
   request_matches <- oauth_form_post_request_matches
+  callback_route <- oauth_callback_route
   handle_request <- oauth_form_post_handle_request
   ensure_dependency <- oauth_form_post_ensure_ui_dependency
 
@@ -97,7 +98,8 @@ oauth_form_post_ui <- function(
       request_matches(
         req,
         callback_path,
-        redirect_uri = client@redirect_uri
+        redirect_uri = client@redirect_uri,
+        callback_route = callback_route
       )
     ) {
       return(handle_request(req, id = id, client = client))
@@ -247,17 +249,27 @@ oauth_form_post_request_uri <- function(req) {
   paste0(scheme, "://", authority, path)
 }
 
+#' Match a form-post request to its configured callback route
+#'
+#' @param req Rook request environment.
+#' @param callback_path Normalized callback path.
+#' @param redirect_uri Configured OAuth redirect URI.
+#' @param callback_route Function that canonicalizes an absolute callback URI.
+#' @return `TRUE` when the request method and route match the callback.
+#' @keywords internal
+#' @noRd
 oauth_form_post_request_matches <- function(
   req,
   callback_path,
-  redirect_uri
+  redirect_uri,
+  callback_route
 ) {
   if (!identical(req[["REQUEST_METHOD"]], "POST")) {
     return(FALSE)
   }
 
-  actual <- oauth_callback_route(oauth_form_post_request_uri(req))
-  expected <- oauth_callback_route(redirect_uri)
+  actual <- callback_route(oauth_form_post_request_uri(req))
+  expected <- callback_route(redirect_uri)
   if (is.null(actual) || is.null(expected)) {
     return(FALSE)
   }

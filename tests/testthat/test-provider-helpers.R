@@ -370,7 +370,8 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
 
   # Allow non-HTTPS for localhost (Keycloak dev)
   withr::local_options(list(
-    shinyOAuth.allowed_non_https_hosts = c("localhost")
+    shinyOAuth.allowed_non_https_hosts = c("localhost"),
+    shinyOAuth.allow_insecure_oidc_loopback = TRUE
   ))
 
   p <- oauth_provider_keycloak(
@@ -402,7 +403,8 @@ test_that("oauth_provider_keycloak lets callers override duplicate JARM iss tole
   )
 
   withr::local_options(list(
-    shinyOAuth.allowed_non_https_hosts = c("localhost")
+    shinyOAuth.allowed_non_https_hosts = c("localhost"),
+    shinyOAuth.allow_insecure_oidc_loopback = TRUE
   ))
 
   p <- oauth_provider_keycloak(
@@ -489,8 +491,9 @@ test_that("oauth_provider_auth0 constructs correct issuer from domain", {
   expect_identical(p@issuer, issuer)
 })
 
-test_that("oauth_provider_auth0 rejects an issuer without its trailing slash", {
-  disc_json <- make_discovery_doc("https://my-domain.auth0.com")
+test_that("oauth_provider_auth0 accepts an issuer without its trailing slash", {
+  issuer <- "https://my-domain.auth0.com"
+  disc_json <- make_discovery_doc(issuer)
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
@@ -504,11 +507,10 @@ test_that("oauth_provider_auth0 rejects an issuer without its trailing slash", {
     .package = "shinyOAuth"
   )
 
-  expect_error(
-    oauth_provider_auth0(domain = "my-domain.auth0.com"),
-    class = "shinyOAuth_config_error",
-    regexp = "issuer mismatch"
-  )
+  p <- oauth_provider_auth0(domain = "my-domain.auth0.com")
+
+  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_identical(p@issuer, issuer)
 })
 
 test_that("oauth_provider_auth0 includes audience in extra_auth_params", {

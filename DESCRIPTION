@@ -41,6 +41,7 @@ Suggests:
     withr,
     later,
     callr,
+    processx,
     chromote,
     sodium,
     shinytest2,

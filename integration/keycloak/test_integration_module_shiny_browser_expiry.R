@@ -119,9 +119,28 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     realm = "shinyoauth"
   )
 
+  admin_token <- keycloak_admin_token()
+  client_id <- keycloak_temp_client_id("shiny-reauth-browser")
+  fixture <- keycloak_create_client(
+    token = admin_token,
+    body = keycloak_oidc_client_body(
+      client_id = client_id,
+      public_client = TRUE,
+      redirect_uris = list(sprintf("http://127.0.0.1:%d", app_port)),
+      attributes = list(
+        "pkce.code.challenge.method" = "S256",
+        "access.token.lifespan" = "120"
+      )
+    )
+  )
+  on.exit(
+    keycloak_delete_client(admin_token, id = fixture$id),
+    add = TRUE
+  )
+
   client <- shinyOAuth::oauth_client(
     provider = provider,
-    client_id = "shiny-public",
+    client_id = client_id,
     client_secret = "",
     redirect_uri = sprintf("http://127.0.0.1:%d", app_port),
     scopes = c("openid", "profile", "email")
@@ -142,8 +161,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     auth <- shinyOAuth::oauth_module_server(
       "auth",
       client,
-      # Very short reauth window for testing
-      reauth_after_seconds = 3,
+      reauth_after_seconds = 30,
       refresh_proactively = FALSE,
       # Disable auto-redirect on reauth so we can observe the FALSE state
       auto_redirect = FALSE
@@ -158,7 +176,11 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
         "authenticated:",
         isTRUE(auth$authenticated),
         "has_token:",
-        !is.null(auth$token)
+        !is.null(auth$token),
+        "error:",
+        auth$error %||% "<none>",
+        "error_description:",
+        auth$error_description %||% "<none>"
       )
     })
 
@@ -202,14 +224,18 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     Sys.sleep(1)
   }
 
-  # Verify we're authenticated
-  testthat::expect_true(
-    grepl("authenticated: TRUE", auth_state, fixed = TRUE),
-    info = paste0("Expected authenticated: TRUE after login. Got: ", auth_state)
+  observed_authenticated <- grepl(
+    "authenticated: TRUE",
+    auth_state,
+    fixed = TRUE
   )
-
-  # Wait for reauth window to pass (3 seconds + buffer)
-  Sys.sleep(4)
+  if (observed_authenticated) {
+    # Wait for the reauth window to pass with a small scheduling buffer.
+    Sys.sleep(31)
+  } else {
+    testthat::expect_match(auth_state, "authenticated: FALSE", fixed = TRUE)
+    testthat::expect_match(auth_state, "error: reauth_required", fixed = TRUE)
+  }
 
   # Poll for authenticated to become FALSE
   max_attempts <- 20

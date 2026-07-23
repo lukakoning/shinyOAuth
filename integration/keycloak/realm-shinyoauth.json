@@ -295,7 +295,7 @@
         "use.jwks.url": "false",
         "jwt.credential.public.key": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAv/6pIkDF621iVHCHgs45\nRcXl5UPKiFUyedTSqILy6hzuR3A0xs/k0LmJC8C37L82EPt/hvL3Roh54XFtihSN\nJAvDimg+T2tiiDLh8x8OGPUHTKBkh4ob905UIUOqHgnIe13y8tvw3opk+fqrW+Qr\n72F+rN7MUfy0bT0Wvbm021Ksl27FPKz6QkyKRsq+vzWY7DcR4LagARkXAONeD9uG\noHzi88x8o8iMQshWzZvAshvzOGgPdYtxtxKVwcD0l26fiYScR2OSSsNpyr1FuaYs\nVRpgXIR1c5E9KOQ4GEIlE4OE+GPV9aJLkV/ggcVITmo2ep0YUDbRYDGRyOJ8QQdy\nYwIDAQAB\n-----END PUBLIC KEY-----",
         "request.object.signature.alg": "RS256",
-        "request.uris": "http://host.docker.internal:8100/session/*"
+        "request.uris": "https://host.docker.internal:18100/session/*"
       }
     },
     {
@@ -320,7 +320,7 @@
         "request.object.signature.alg": "RS256",
         "request.object.encryption.alg": "RSA-OAEP",
         "request.object.encryption.enc": "A256CBC-HS512",
-        "request.uris": "http://host.docker.internal:8100/session/*"
+        "request.uris": "https://host.docker.internal:18100/session/*"
       }
     },
     {

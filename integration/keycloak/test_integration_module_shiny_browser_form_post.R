@@ -197,6 +197,7 @@ if (!exists("make_provider", mode = "function")) {
       jarm_decryption_private_key
     ) {
       setwd(repo_root)
+      options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
       if (requireNamespace("pkgload", quietly = TRUE)) {
         pkgload::load_all(
           repo_root,

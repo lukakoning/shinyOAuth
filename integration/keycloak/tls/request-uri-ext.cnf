@@ -1,0 +1,4 @@
+subjectAltName=DNS:host.docker.internal
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth

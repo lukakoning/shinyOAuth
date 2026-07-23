@@ -1,4 +1,6 @@
+devtools::install(quick = TRUE, upgrade = "never", quiet = TRUE)
 pkgload::load_all(".")
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
 results <- testthat::test_dir(
   "integration/keycloak",
