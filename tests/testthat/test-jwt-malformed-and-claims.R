@@ -247,7 +247,15 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   client <- mk_client()
   client@provider@leeway <- 5
 
-  now <- floor(as.numeric(Sys.time()))
+  fixed_now <- Sys.time()
+  now <- floor(as.numeric(fixed_now))
+  validate_at_fixed_time <- function(jwt) {
+    testthat::with_mocked_bindings(
+      Sys.time = function() fixed_now,
+      .package = "base",
+      shinyOAuth:::validate_id_token(client, jwt)
+    )
+  }
   base_claims <- list(
     iss = client@provider@issuer,
     aud = client@client_id,
@@ -259,7 +267,7 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   c1 <- modifyList(base_claims, list(exp = now - 5 + 1))
   jwt1 <- build_jwt(list(alg = "none"), c1)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    expect_silent(shinyOAuth:::validate_id_token(client, jwt1))
+    expect_silent(validate_at_fixed_time(jwt1))
   })
 
   # exp just below window -> expired
@@ -267,7 +275,7 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   jwt2 <- build_jwt(list(alg = "none"), c2)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     expect_error(
-      shinyOAuth:::validate_id_token(client, jwt2),
+      validate_at_fixed_time(jwt2),
       class = "shinyOAuth_id_token_error",
       regexp = "expired"
     )
@@ -278,7 +286,7 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   jwt3 <- build_jwt(list(alg = "none"), c3)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     expect_error(
-      shinyOAuth:::validate_id_token(client, jwt3),
+      validate_at_fixed_time(jwt3),
       class = "shinyOAuth_id_token_error",
       regexp = "issued in the future"
     )
@@ -289,7 +297,7 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   jwt4 <- build_jwt(list(alg = "none"), c4)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     expect_error(
-      shinyOAuth:::validate_id_token(client, jwt4),
+      validate_at_fixed_time(jwt4),
       class = "shinyOAuth_id_token_error",
       regexp = "not yet valid"
     )
@@ -299,14 +307,14 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   c5 <- modifyList(base_claims, list(exp = now + 60, iat = now + 5))
   jwt5 <- build_jwt(list(alg = "none"), c5)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    expect_silent(shinyOAuth:::validate_id_token(client, jwt5))
+    expect_silent(validate_at_fixed_time(jwt5))
   })
 
   # nbf exactly at leeway boundary (now + leeway) -> should be accepted
   c6 <- modifyList(base_claims, list(exp = now + 60, nbf = now + 5))
   jwt6 <- build_jwt(list(alg = "none"), c6)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    expect_silent(shinyOAuth:::validate_id_token(client, jwt6))
+    expect_silent(validate_at_fixed_time(jwt6))
   })
 })
 
