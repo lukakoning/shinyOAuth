@@ -798,7 +798,8 @@ oauth_provider_oidc_discover <- function(
   development_exception <- isTRUE(getOption(
     "shinyOAuth.allow_insecure_oidc_loopback",
     FALSE
-  )) && host %in% c("localhost", "127.0.0.1", "::1", "[::1]")
+  )) &&
+    host %in% c("localhost", "127.0.0.1", "::1", "[::1]")
   if (development_exception && identical(scheme, "http")) {
     return(invisible(TRUE))
   }

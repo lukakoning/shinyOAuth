@@ -178,10 +178,16 @@ if (!exists("make_provider", mode = "function")) {
           python <- Sys.which("python")
         }
         if (!nzchar(python)) {
-          stop("Python is required for the request_uri TLS fixture", call. = FALSE)
+          stop(
+            "Python is required for the request_uri TLS fixture",
+            call. = FALSE
+          )
         }
         if (is.na(public_port)) {
-          stop("The request_uri TLS fixture requires an explicit port", call. = FALSE)
+          stop(
+            "The request_uri TLS fixture requires an explicit port",
+            call. = FALSE
+          )
         }
 
         tls_proxy <- processx::process$new(

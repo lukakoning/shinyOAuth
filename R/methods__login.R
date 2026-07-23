@@ -2694,7 +2694,9 @@ verify_token_set <- function(
             )
           }
           if (!is_valid_oidc_sub(new_payload[["sub"]])) {
-            err_id_token("Refreshed ID token has an invalid sub claim (OIDC 12.2)")
+            err_id_token(
+              "Refreshed ID token has an invalid sub claim (OIDC 12.2)"
+            )
           }
           if (!identical(new_payload[["sub"]], expected_sub)) {
             err_id_token(
