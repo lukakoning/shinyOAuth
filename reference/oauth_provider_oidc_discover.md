@@ -96,8 +96,9 @@ oauth_provider_oidc_discover(
   document's `issuer` against the input `issuer`.
 
   - `"url"` (default): require the issuer used for discovery to match
-    exactly after normalizing a full discovery-document input back to
-    its issuer base URL (recommended). A trailing slash is significant.
+    after normalizing a full discovery-document input back to its issuer
+    base URL and removing one trailing slash from both values
+    (recommended).
 
   - `"host"`: compare only scheme + host (explicit opt-out; not
     recommended).
