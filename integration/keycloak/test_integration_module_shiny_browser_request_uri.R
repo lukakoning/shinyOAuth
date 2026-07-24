@@ -111,6 +111,18 @@ if (!exists("make_provider", mode = "function")) {
   paste(readLines(path, warn = FALSE), collapse = "\n")
 }
 
+.stop_request_uri_app <- function(app_process) {
+  process <- app_process$process
+
+  # The background Shiny process owns the TLS proxy used by the default
+  # request_uri fixture. Killing only the parent leaves that proxy listening
+  # on the public port and prevents the next test from starting.
+  try(process$kill_tree(), silent = TRUE)
+  try(process$wait(timeout = 5000), silent = TRUE)
+
+  invisible(NULL)
+}
+
 .start_request_uri_app <- function(
   repo_root,
   app_port,
@@ -800,7 +812,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
     app_url = app_url,
     prepare_only = TRUE
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
   drv <- shinytest2::AppDriver$new(
@@ -920,7 +932,7 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
     app_url = app_url,
     prepare_only = TRUE
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
   drv <- shinytest2::AppDriver$new(
@@ -1047,7 +1059,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
     prepare_only = TRUE,
     request_object_ttl = 1
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
   drv <- shinytest2::AppDriver$new(
@@ -1170,7 +1182,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     encrypted_request_object = TRUE,
     prepare_only = TRUE
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
   drv <- shinytest2::AppDriver$new(
@@ -1310,7 +1322,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
     app_url = app_url,
     prepare_only = TRUE
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
   drv <- shinytest2::AppDriver$new(
@@ -1451,7 +1463,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     prepare_only = TRUE,
     module_id = module_id_a
   )
-  on.exit(try(app_process_a$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process_a), add = TRUE)
   .wait_for_request_uri_app(app_process_a, port_a)
 
   app_process_b <- .start_request_uri_app(
@@ -1463,7 +1475,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     client_id = fixture_b$fixture$client_id,
     module_id = module_id_b
   )
-  on.exit(try(app_process_b$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(.stop_request_uri_app(app_process_b), add = TRUE)
   .wait_for_request_uri_app(app_process_b, port_b)
 
   drv_a <- shinytest2::AppDriver$new(
