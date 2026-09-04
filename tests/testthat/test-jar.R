@@ -163,6 +163,51 @@ make_jar_test_client <- function(
   )
 }
 
+as_pkcs1_public_pem <- function(public_key) {
+  encode_length <- function(length_value) {
+    if (length_value < 128L) {
+      return(as.raw(length_value))
+    }
+
+    length_bytes <- raw()
+    while (length_value > 0L) {
+      length_bytes <- c(as.raw(length_value %% 256L), length_bytes)
+      length_value <- length_value %/% 256L
+    }
+    c(as.raw(0x80L + length(length_bytes)), length_bytes)
+  }
+
+  encode_integer <- function(value) {
+    value <- as.raw(value)
+    while (
+      length(value) > 1L &&
+        identical(value[[1]], as.raw(0)) &&
+        as.integer(value[[2]]) < 0x80L
+    ) {
+      value <- value[-1]
+    }
+    if (as.integer(value[[1]]) >= 0x80L) {
+      value <- c(as.raw(0), value)
+    }
+    c(as.raw(0x02), encode_length(length(value)), value)
+  }
+
+  key_data <- as.list(public_key)[["data"]]
+  body <- c(
+    encode_integer(key_data[["n"]]),
+    encode_integer(key_data[["e"]])
+  )
+  der <- c(as.raw(0x30), encode_length(length(body)), body)
+  encoded <- openssl::base64_encode(der, linebreak = TRUE)
+
+  paste0(
+    "-----BEGIN RSA PUBLIC KEY-----\n",
+    encoded,
+    if (endsWith(encoded, "\n")) "" else "\n",
+    "-----END RSA PUBLIC KEY-----\n"
+  )
+}
+
 test_that("prepare_call emits a signed request object instead of raw auth params", {
   cli <- make_jar_test_client()
 
@@ -840,6 +885,38 @@ test_that("request mode through PAR pushes encrypted request objects", {
   expect_identical(outer[["header"]][["cty"]], "JWT")
   expect_identical(inner_pl[["client_id"]], "abc")
   expect_identical(inner_pl[["redirect_uri"]], "http://localhost:8100")
+})
+
+test_that("encrypted request objects accept SPKI and PKCS#1 public PEM", {
+  encryption_key <- openssl::rsa_keygen(bits = 2048)
+  public_pems <- list(
+    spki = openssl::write_pem(encryption_key$pubkey),
+    pkcs1 = as_pkcs1_public_pem(encryption_key$pubkey)
+  )
+
+  for (public_pem in public_pems) {
+    provider <- expect_no_error(make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A128CBC-HS256",
+      request_object_encryption_jwk = public_pem
+    ))
+    client <- make_jar_test_client(
+      provider = provider,
+      request_object_encryption_alg = "RSA-OAEP",
+      request_object_encryption_enc = "A128CBC-HS256"
+    )
+
+    auth_url <- shinyOAuth:::prepare_call(client, valid_browser_token())
+    request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
+    decrypted <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
+
+    expect_identical(decrypted$header$alg, "RSA-OAEP")
+    expect_identical(decrypted$header$enc, "A128CBC-HS256")
+    expect_identical(
+      shinyOAuth:::parse_jwt_payload(decrypted$plaintext)$client_id,
+      "abc"
+    )
+  }
 })
 
 test_that("OIDC request minimal front-channel mode is rejected without PAR", {

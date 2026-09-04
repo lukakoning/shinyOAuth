@@ -209,6 +209,14 @@ normalize_jwe_recipient_public_key <- function(
       }
     }
 
+    parsed_key <- try(openssl::read_pubkey(text), silent = TRUE)
+    if (!inherits(parsed_key, "try-error")) {
+      return(parsed_key)
+    }
+
+    # Retain support for callers that supply a private key object as PEM. The
+    # public-key reader is tried first because this helper's documented input
+    # is recipient public-key material.
     parsed_key <- try(openssl::read_key(text), silent = TRUE)
     if (!inherits(parsed_key, "try-error")) {
       return(parsed_key)
