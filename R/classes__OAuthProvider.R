@@ -701,8 +701,8 @@ oauth_provider <- function(
     list2env(compat_args, envir = environment())
   }
 
-  # Validate scalar URL inputs before normalization to prevent cryptic
-  # coercion errors from normalize_url() when callers pass vectors.
+  # Validate scalar URL inputs before constructing the S7 object so callers
+  # receive a clear error for vector inputs.
   for (url_arg in list(
     list("auth_url", auth_url),
     list("token_url", token_url),
@@ -722,15 +722,6 @@ oauth_provider <- function(
       ))
     }
   }
-
-  # Use shared internal helper to normalize only the path component
-  auth_url <- normalize_url(auth_url)
-  token_url <- normalize_url(token_url)
-  userinfo_url <- normalize_url(userinfo_url)
-  introspection_url <- normalize_url(introspection_url)
-  revocation_url <- normalize_url(revocation_url)
-  par_url <- normalize_url(par_url)
-  jwks_uri <- normalize_url(jwks_uri)
 
   if (is.null(request_object_signing_alg_values_supported)) {
     request_object_signing_alg_values_supported <- character()
@@ -825,20 +816,6 @@ oauth_provider <- function(
   if (!is.list(mtls_endpoint_aliases)) {
     mtls_endpoint_aliases <- as.list(mtls_endpoint_aliases)
   }
-  if (length(mtls_endpoint_aliases) > 0) {
-    mtls_endpoint_aliases <- lapply(mtls_endpoint_aliases, function(value) {
-      if (
-        is.character(value) &&
-          length(value) == 1L &&
-          !is.na(value) &&
-          nzchar(value)
-      ) {
-        return(normalize_url(value))
-      }
-      value
-    })
-  }
-
   if (is.null(jwks_cache)) {
     jwks_cache <- cachem::cache_mem(max_age = 3600)
   }

@@ -37,6 +37,40 @@ testthat::test_that("OAuthProvider requires endpoint URLs to be absolute", {
   )
 })
 
+testthat::test_that("OAuthProvider preserves endpoint path semantics", {
+  endpoints <- list(
+    auth_url = "https://example.com/tenant//authorize",
+    token_url = "https://example.com/tenant//token",
+    userinfo_url = "https://example.com/tenant//userinfo",
+    introspection_url = "https://example.com/tenant//introspect",
+    revocation_url = "https://example.com/tenant//revoke",
+    par_url = "https://example.com/tenant//par",
+    jwks_uri = "https://example.com/tenant//jwks"
+  )
+  alias <- "https://mtls.example.com/tenant//token"
+
+  provider <- do.call(
+    oauth_provider,
+    c(
+      list(name = "preserve-path"),
+      endpoints,
+      list(mtls_endpoint_aliases = list(token_endpoint = alias))
+    )
+  )
+
+  for (name in names(endpoints)) {
+    testthat::expect_identical(
+      S7::prop(provider, name),
+      endpoints[[name]],
+      info = name
+    )
+  }
+  testthat::expect_identical(
+    provider@mtls_endpoint_aliases$token_endpoint,
+    alias
+  )
+})
+
 testthat::test_that("OAuthProvider rejects endpoint URLs with fragments", {
   base_args <- list(
     name = "t",
