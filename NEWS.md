@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* The Spotify example now validates provider-generated links and image URLs
+before rendering them.
+
 * The Spotify vignette is now self-contained on all supported R versions.
 
 * Package overviews now distinguish OIDC authentication from OAuth

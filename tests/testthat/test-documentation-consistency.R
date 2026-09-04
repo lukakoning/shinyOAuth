@@ -194,3 +194,59 @@ testthat::test_that("Spotify vignette defines its fallback operator", {
   testthat::expect_gt(definition, 0L)
   testthat::expect_identical(first_use, definition + 1L)
 })
+
+testthat::test_that("Spotify vignette validates rendered provider URLs", {
+  spotify_docs <- project_text("vignettes", "example-spotify.Rmd")
+  spotify_lines <- strsplit(spotify_docs, "\n", fixed = TRUE)[[1L]]
+
+  testthat::expect_match(
+    spotify_docs,
+    "spotify_safe_url <- function",
+    fixed = TRUE
+  )
+  testthat::expect_match(spotify_docs, '"scdn.co"', fixed = TRUE)
+  testthat::expect_match(spotify_docs, '"spotifycdn.com"', fixed = TRUE)
+  testthat::expect_match(spotify_docs, '"open.spotify.com"', fixed = TRUE)
+  testthat::expect_match(
+    spotify_docs,
+    'rel = "noopener noreferrer"',
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "href = user_info$external_urls$spotify",
+    spotify_docs,
+    fixed = TRUE
+  ))
+
+  helper_start <- grep("^`%\\|\\|%` <- function", spotify_lines)
+  helper_end <- grep("^# Configure provider and client", spotify_lines) - 1L
+  helper_env <- new.env(parent = baseenv())
+  eval(parse(text = spotify_lines[helper_start:helper_end]), envir = helper_env)
+  safe_url <- get("spotify_safe_url", envir = helper_env)
+  safe_image_url <- get("spotify_safe_image_url", envir = helper_env)
+
+  testthat::expect_identical(
+    safe_url("https://open.spotify.com/artist/123", "open.spotify.com"),
+    "https://open.spotify.com/artist/123"
+  )
+  testthat::expect_null(safe_url(
+    "http://open.spotify.com/artist/123",
+    "open.spotify.com"
+  ))
+  testthat::expect_null(safe_url(
+    "https://open.spotify.com.evil.test/artist/123",
+    "open.spotify.com"
+  ))
+  testthat::expect_null(safe_url(
+    "https://user@open.spotify.com/artist/123",
+    "open.spotify.com"
+  ))
+  testthat::expect_null(safe_url(
+    "https://open.spotify.com:444/artist/123",
+    "open.spotify.com"
+  ))
+  testthat::expect_identical(
+    safe_image_url("https://i.scdn.co/image/abc"),
+    "https://i.scdn.co/image/abc"
+  )
+})
