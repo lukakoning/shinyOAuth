@@ -10,6 +10,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_DIR="${SCRIPT_DIR}"
 TLS_PREPARE_SCRIPT="${SCRIPT_DIR}/prepare-tls.sh"
 TLS_DIR="${SCRIPT_DIR}/tls"
+GENERATED_DIR="${SCRIPT_DIR}/.generated"
 
 to_host_path() {
   if command -v cygpath >/dev/null 2>&1; then
@@ -58,6 +59,15 @@ fi
 
 cleanup() {
   local rc=$?
+  if [ "$rc" -ne 0 ]; then
+    mkdir -p "$GENERATED_DIR"
+    echo "[run-integration] Saving Docker logs after failure..." >&2
+    (
+      cd "$COMPOSE_DIR"
+      docker compose logs --no-color > \
+        "${GENERATED_DIR}/keycloak-compose.log" 2>&1 || true
+    )
+  fi
   echo "\n[run-integration] Bringing down Keycloak (docker compose down -v)" >&2
   (cd "$COMPOSE_DIR" && docker compose down -v >/dev/null 2>&1 || true)
   exit $rc
