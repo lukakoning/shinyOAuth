@@ -89,3 +89,18 @@ testthat::test_that("Ed448 at_hash docs describe fail-closed validation", {
     fixed = TRUE
   ))
 })
+
+testthat::test_that("claims validation docs describe conditional defaults", {
+  auth_docs <- project_text("vignettes", "authentication-flow.Rmd")
+
+  testthat::expect_match(
+    auth_docs,
+    "it defaults\n  to `\"warn\"` if `claims` contains enforceable requirements",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    auth_docs,
+    "and to `\"none\"`\n  otherwise",
+    fixed = TRUE
+  )
+})

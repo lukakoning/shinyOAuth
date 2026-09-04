@@ -417,7 +417,9 @@ bit more detailed than a typical app needs day to day; the main point is that
   a warning or error depending on the mode. For `claims$id_token`, this enforcement only runs after
   'shinyOAuth' has validated the ID token; configure the provider with `id_token_validation = TRUE`
   or `use_nonce = TRUE` so those checks run on trusted token content. This is skipped when
-  `claims_validation = "none"` (the default)
+  `claims_validation = "none"`. When `claims_validation` is omitted, it defaults
+  to `"warn"` if `claims` contains enforceable requirements and to `"none"`
+  otherwise
 - ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created with
   `required_acr_values`, the ID token's `acr` claim must be present and match
   one of the specified values. This ensures the provider performed the expected
