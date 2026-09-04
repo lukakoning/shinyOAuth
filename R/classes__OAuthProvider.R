@@ -67,7 +67,8 @@
 #' @param use_pkce Whether to use PKCE. This adds a `code_challenge` parameter to
 #' the authorization request and requires a `code_verifier` when exchanging
 #' the authorization code for tokens. This helps protect against authorization
-#' code interception attacks.
+#' code interception attacks. Public clients (`token_auth_style = "public"`)
+#' must enable PKCE.
 #' @param pkce_method PKCE code challenge method ("S256" or "plain"). "S256" is
 #' recommended. Use "plain" only if you are working with a provider that does
 #' not support "S256".
@@ -1320,6 +1321,10 @@ oauth_provider_validate <- function(self) {
       "OAuthProvider: token_auth_style must be one of 'header', 'body', 'public', ",
       "'tls_client_auth', 'self_signed_tls_client_auth', 'client_secret_jwt', or 'private_key_jwt' ('none' is accepted as an alias for 'public')"
     ))
+  }
+
+  if (identical(tok_style, "public") && !isTRUE(self@use_pkce)) {
+    return("OAuthProvider: public clients must enable PKCE")
   }
 
   if (!is.null(self@pkce_method)) {

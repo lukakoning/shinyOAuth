@@ -77,6 +77,32 @@ test_that("OAuthProvider default issuer_match is url", {
   expect_identical(p@issuer_match, "url")
 })
 
+test_that("OAuthProvider requires PKCE for public clients", {
+  for (style in c("public", "none")) {
+    expect_error(
+      oauth_provider(
+        name = "public-client",
+        auth_url = "https://example.com/authorize",
+        token_url = "https://example.com/token",
+        token_auth_style = style,
+        use_pkce = FALSE
+      ),
+      regexp = "public clients must enable PKCE"
+    )
+  }
+
+  expect_error(
+    OAuthProvider(
+      name = "public-client",
+      auth_url = "https://example.com/authorize",
+      token_url = "https://example.com/token",
+      token_auth_style = "public",
+      use_pkce = FALSE
+    ),
+    regexp = "public clients must enable PKCE"
+  )
+})
+
 test_that("OAuthProvider HS* algs require allow_hs opt-in", {
   base_args <- list(
     name = "t",

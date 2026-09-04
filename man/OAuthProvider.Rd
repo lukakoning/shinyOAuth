@@ -115,7 +115,8 @@ band with the provider
 \item{use_pkce}{Whether to use PKCE. This adds a \code{code_challenge} parameter to
 the authorization request and requires a \code{code_verifier} when exchanging
 the authorization code for tokens. This helps protect against authorization
-code interception attacks.}
+code interception attacks. Public clients (\code{token_auth_style = "public"})
+must enable PKCE.}
 
 \item{pkce_method}{PKCE code challenge method ("S256" or "plain"). "S256" is
 recommended. Use "plain" only if you are working with a provider that does
