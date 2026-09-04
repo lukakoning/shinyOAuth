@@ -28,7 +28,10 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   audit_log_file <- tempfile(fileext = ".jsonl")
   withr::defer(unlink(audit_log_file), envir = parent.frame())
   audit_lock_dir <- paste0(audit_log_file, ".lock")
-  withr::defer(unlink(audit_lock_dir), envir = parent.frame())
+  withr::defer(
+    unlink(audit_lock_dir, recursive = TRUE),
+    envir = parent.frame()
+  )
 
   # Set up a file-based audit hook that writes JSON lines
   # The hook writes one JSON object per line with process metadata
@@ -52,7 +55,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
       }
       Sys.sleep(0.005)
     }
-    on.exit(unlink(audit_lock_dir), add = TRUE)
+    on.exit(unlink(audit_lock_dir, recursive = TRUE), add = TRUE)
 
     connection <- file(audit_log_file, open = "ab")
     on.exit(close(connection), add = TRUE)
@@ -61,6 +64,13 @@ testthat::test_that("Shiny module async audit: events from main & worker process
       connection
     )
   }
+  environment(audit_hook) <- list2env(
+    list(
+      audit_log_file = audit_log_file,
+      audit_lock_dir = audit_lock_dir
+    ),
+    parent = baseenv()
+  )
 
   withr::local_options(list(shinyOAuth.audit_hook = audit_hook))
 
@@ -72,12 +82,15 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # Exercise both daemons concurrently so the log writer is tested under the
   # same cross-process contention that it is intended to protect against.
   captured_options <- shinyOAuth:::capture_async_options()
-  probe_results <- vector("list", 2L)
-  for (flow in seq_along(probe_results)) {
-    task <- shinyOAuth:::async_dispatch(
+  probe_tasks <- lapply(seq_len(2L), function(flow) {
+    force(flow)
+    shinyOAuth:::async_dispatch(
       expr = quote({
         .ns <- asNamespace("shinyOAuth")
         .ns$with_async_options(captured_options, {
+          # Keep both jobs active long enough for the dispatcher to assign
+          # them to separate daemons before the concurrent writes begin.
+          Sys.sleep(0.25)
           for (index in seq_len(20L)) {
             .ns$audit_event(
               "test_concurrent_writer_probe",
@@ -93,22 +106,20 @@ testthat::test_that("Shiny module async audit: events from main & worker process
         flow = flow
       )
     )
-    local({
-      result_index <- flow
-      promises::then(promises::as.promise(task), function(value) {
-        probe_results[[result_index]] <<- value
-      })
-    })
+  })
+  probe_results <- mirai::collect_mirai(probe_tasks)
+  probe_error_types <- vapply(
+    probe_results,
+    function(result) shinyOAuth:::classify_mirai_error(result) %||% "",
+    character(1)
+  )
+  testthat::expect_true(
+    all(!nzchar(probe_error_types)),
+    info = paste(probe_error_types[nzchar(probe_error_types)], collapse = ", ")
+  )
+  if (any(nzchar(probe_error_types))) {
+    return(invisible(NULL))
   }
-  probe_deadline <- Sys.time() + 15
-  while (
-    any(vapply(probe_results, is.null, logical(1))) &&
-      Sys.time() < probe_deadline
-  ) {
-    later::run_now(0.05)
-    Sys.sleep(0.01)
-  }
-  testthat::expect_false(any(vapply(probe_results, is.null, logical(1))))
   probe_pids <- vapply(
     probe_results,
     function(result) {
