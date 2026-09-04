@@ -455,9 +455,18 @@ validate_id_token <- function(
     err_id_token("Multiple audiences but azp claim missing")
   }
 
-  # auth_time validation per OIDC Core §3.1.2.1 / §2:
-  # When max_age was requested, auth_time MUST be present. Validate
-  # that now - auth_time <= max_age + leeway.
+  # auth_time validation per OIDC Core §2 / §3.1.2.1:
+  # When present, auth_time is a NumericDate and must therefore be a JSON
+  # number. When max_age was requested, it MUST also be present and satisfy
+  # now - auth_time <= max_age + leeway.
+  auth_time_present <- "auth_time" %in% names(payload)
+  if (
+    auth_time_present &&
+      !jwt_is_single_finite_number(payload[["auth_time"]])
+  ) {
+    err_id_token("auth_time claim must be a single finite number")
+  }
+
   if (!is.null(max_age)) {
     max_age_val <- suppressWarnings(as.numeric(max_age))
     if (
@@ -468,13 +477,10 @@ validate_id_token <- function(
     ) {
       err_id_token("max_age must be a non-negative finite number")
     }
-    if (is.null(payload[["auth_time"]])) {
+    if (!auth_time_present) {
       err_id_token(
         "ID token missing auth_time claim (required when max_age is requested, OIDC Core 3.1.2.1)"
       )
-    }
-    if (!jwt_is_single_finite_number(payload[["auth_time"]])) {
-      err_id_token("auth_time claim must be a single finite number")
     }
     auth_time_val <- as.numeric(payload[["auth_time"]])
     if (auth_time_val > (now + lwe)) {

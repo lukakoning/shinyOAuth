@@ -303,11 +303,11 @@ test_that("validate_id_token works with max_age = 0 (equivalent to prompt=login)
 })
 
 
-test_that("validate_id_token ignores auth_time when max_age is not requested", {
+test_that("validate_id_token validates optional auth_time without max_age", {
   client <- mk_client()
   now <- floor(as.numeric(Sys.time()))
 
-  # auth_time present but very old; without max_age, no validation occurs
+  # A valid but very old auth_time is accepted because age is not enforced.
   jwt <- build_jwt(
     list(alg = "none"),
     list(
@@ -324,6 +324,30 @@ test_that("validate_id_token ignores auth_time when max_age is not requested", {
     expect_silent(
       shinyOAuth:::validate_id_token(client, jwt)
     )
+
+    bad_auth_times <- list(
+      "123",
+      list(value = 123),
+      I(c(123, 124)),
+      NULL
+    )
+    for (bad_auth_time in bad_auth_times) {
+      invalid_jwt <- build_jwt(
+        list(alg = "none"),
+        list(
+          iss = "https://issuer.example.com",
+          aud = "client-xyz",
+          sub = "user-1",
+          exp = now + 300,
+          iat = now - 1,
+          auth_time = bad_auth_time
+        )
+      )
+      expect_error(
+        shinyOAuth:::validate_id_token(client, invalid_jwt),
+        regexp = "auth_time claim must be a single finite number"
+      )
+    }
   })
 })
 
