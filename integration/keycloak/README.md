@@ -20,6 +20,20 @@ This folder provides a minimal Keycloak setup to run local integration tests aga
   - `shiny-jar-pjwt` (confidential; `private_key_jwt`; RS256-signed Request Objects and `request_uri` support)
   - `shiny-jar-pjwt-jwe` (confidential; `private_key_jwt`; signed-and-encrypted Request Objects and `request_uri` support)
 
+## Prerequisites
+
+- Docker Engine with the Compose v2 plugin
+- Bash, `curl`, and the OpenSSL command-line tools on `PATH`
+- R 4.1 or newer with the package's development dependencies plus `rvest`;
+  for example, run `remotes::install_deps(dependencies = TRUE)` and then
+  `install.packages("rvest")` from the repository root
+- A locally launchable Chrome or Chromium browser for the shinytest2/chromote
+  tests. If chromote cannot find it automatically, set `CHROMOTE_CHROME` to the
+  browser executable before running the script
+
+The one-shot script installs the local shinyOAuth source package without
+installing dependencies, so install these prerequisites first.
+
 ## Run integration tests
 
 ```bash

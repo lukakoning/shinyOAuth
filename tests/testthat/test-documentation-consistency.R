@@ -315,3 +315,25 @@ testthat::test_that("low-level callback example names the state parameter", {
   )
   testthat::expect_false(grepl("code & payload", example, fixed = TRUE))
 })
+
+testthat::test_that("Keycloak guide lists one-shot prerequisites", {
+  keycloak_docs <- project_text("integration", "keycloak", "README.md")
+
+  for (requirement in c(
+    "Docker Engine",
+    "Bash",
+    "`curl`",
+    "OpenSSL",
+    "R 4.1 or newer",
+    "rvest",
+    "Chrome or Chromium",
+    "CHROMOTE_CHROME"
+  )) {
+    testthat::expect_match(
+      keycloak_docs,
+      requirement,
+      fixed = TRUE,
+      info = requirement
+    )
+  }
+})
