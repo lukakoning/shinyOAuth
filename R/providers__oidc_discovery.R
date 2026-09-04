@@ -845,7 +845,7 @@ oauth_provider_oidc_discover <- function(
         field,
         " must be a JSON array of non-empty strings"
       ),
-      context = setNames(list(value), field)
+      context = stats::setNames(list(value), field)
     )
   }
 
@@ -878,7 +878,7 @@ oauth_provider_oidc_discover <- function(
         field,
         " must be a non-empty JSON array of non-empty strings"
       ),
-      context = setNames(list(value), field)
+      context = stats::setNames(list(value), field)
     )
   }
 
