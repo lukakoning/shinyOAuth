@@ -575,6 +575,25 @@ jwt_validate_crit_field <- function(value, signal_error) {
   crit
 }
 
+#' Internal: validate the JOSE b64 header
+#'
+#' @param value Parsed `b64` header value.
+#' @param signal_error Function used to report validation failures.
+#' @return A scalar logical or `NULL`; otherwise signals through
+#'   `signal_error()`.
+#' @keywords internal
+#' @noRd
+jwt_validate_b64_field <- function(value, signal_error) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    signal_error("JWT b64 header must be a single non-missing boolean")
+  }
+
+  value
+}
+
 #' Reject duplicate JSON object members
 #'
 #' Used before JWT header and payload JSON is parsed.
@@ -740,12 +759,17 @@ validate_jose_header_fields <- function(header, signal_error) {
     jwt_header_field_exact(header, "crit") %||% NULL,
     signal_error
   )
+  b64 <- jwt_validate_b64_field(
+    jwt_header_field_exact(header, "b64") %||% NULL,
+    signal_error
+  )
 
   list(
     alg = alg,
     kid = kid,
     typ = typ,
-    crit = crit
+    crit = crit,
+    b64 = b64
   )
 }
 
@@ -770,6 +794,12 @@ enforce_inbound_jwt_header_policy <- function(
   on_typ_invalid = NULL,
   on_crit_invalid = NULL
 ) {
+  if (identical(header_fields[["b64"]], FALSE)) {
+    signal_error(
+      "JWT b64=false header is not allowed for JWT profile tokens"
+    )
+  }
+
   typ <- header_fields[["typ"]]
   if (!is.null(typ)) {
     bare_typ <- sub("^application/", "", tolower(typ))

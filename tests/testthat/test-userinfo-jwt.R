@@ -28,9 +28,18 @@ make_signed_jwt <- function(
   jose::jwt_encode_sig(clm, key = key, header = header)
 }
 
-make_signed_userinfo_json <- function(payload_json, key, kid) {
-  header_json <- jsonlite::toJSON(
+make_signed_userinfo_json <- function(
+  payload_json,
+  key,
+  kid,
+  extra_header = list()
+) {
+  header <- utils::modifyList(
     list(typ = "JWT", alg = "RS256", kid = kid),
+    extra_header
+  )
+  header_json <- jsonlite::toJSON(
+    header,
     auto_unbox = TRUE
   )
   signing_input <- paste0(
@@ -523,6 +532,47 @@ test_that("get_userinfo errors when signed JWT is missing required exp", {
     class = "shinyOAuth_userinfo_error",
     regexp = "missing required temporal claim\\(s\\): exp"
   )
+})
+
+test_that("get_userinfo rejects b64=false with or without crit", {
+  key <- openssl::rsa_keygen(2048)
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  client@provider@userinfo_url <- "https://example.com/userinfo"
+  client@provider@issuer <- "https://issuer.example.com"
+  payload_json <- jsonlite::toJSON(
+    list(
+      sub = "user-b64",
+      iss = client@provider@issuer,
+      aud = client@client_id
+    ),
+    auto_unbox = TRUE
+  )
+
+  crit_cases <- list(without_crit = NULL, with_crit = list("b64"))
+  for (crit in crit_cases) {
+    extra_header <- list(b64 = FALSE)
+    if (!is.null(crit)) {
+      extra_header[["crit"]] <- crit
+    }
+    jwt_body <- make_signed_userinfo_json(
+      payload_json,
+      key,
+      kid = "userinfo-b64-key",
+      extra_header = extra_header
+    )
+    response <- httr2::response(
+      url = "https://example.com/userinfo",
+      status = 200,
+      headers = list("content-type" = "application/jwt"),
+      body = charToRaw(jwt_body)
+    )
+
+    expect_error(
+      shinyOAuth:::decode_userinfo_jwt(response, client),
+      class = "shinyOAuth_userinfo_error",
+      regexp = "b64=false header is not allowed"
+    )
+  }
 })
 
 test_that("required signed UserInfo time claims reject JSON null", {

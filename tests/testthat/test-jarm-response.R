@@ -874,6 +874,45 @@ test_that("validate_jarm_response rejects partially matched signed header names"
   )
 })
 
+test_that("validate_jarm_response rejects b64=false with or without crit", {
+  secret <- "jarm-b64-test-secret-at-least-32-bytes"
+  client <- make_jarm_test_client(
+    response_mode = "query.jwt",
+    jarm_signed_response_alg = "HS256",
+    client_secret = secret
+  )
+  client@provider@jarm_signing_alg_values_supported <- "HS256"
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    exp = now + 300,
+    code = "ok",
+    state = "state-1"
+  )
+
+  crit_cases <- list(without_crit = NULL, with_crit = list("b64"))
+  for (crit in crit_cases) {
+    header <- list(alg = "HS256", typ = "JWT", b64 = FALSE)
+    if (!is.null(crit)) {
+      header[["crit"]] <- crit
+    }
+    response <- shinyOAuth:::encode_hmac_jwt_with_header(
+      claims = claims,
+      secret = secret,
+      header = header,
+      size = 256,
+      alg = "HS256"
+    )
+
+    expect_error(
+      shinyOAuth:::validate_jarm_response(client, response),
+      class = "shinyOAuth_state_error",
+      regexp = "b64=false header is not allowed"
+    )
+  }
+})
+
 test_that("validate_jarm_response rejects clients that did not request JARM", {
   client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   client@provider@issuer <- "https://issuer.example.com"
