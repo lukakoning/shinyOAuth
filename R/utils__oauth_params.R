@@ -639,11 +639,26 @@ claim_matches_requested_values <- function(actual, requested) {
 #' Used by `validate_essential_claims()` when it builds mismatch messages.
 #'
 #' @param requested Requested value list.
+#' @param expose Whether to include raw values for explicit local debugging.
 #' @return One human-readable expectation string.
 #' @keywords internal
 #' @noRd
-format_claim_value_expectation <- function(requested) {
-  rendered <- vapply(requested, canonicalize_claim_value, character(1))
+format_claim_value_expectation <- function(requested, expose = FALSE) {
+  rendered <- vapply(
+    requested,
+    function(value) {
+      canonical <- canonicalize_claim_value(value)
+      if (isTRUE(expose)) {
+        canonical
+      } else {
+        paste0(
+          "digest=",
+          string_digest(canonical)
+        )
+      }
+    },
+    character(1)
+  )
   if (length(rendered) == 1) {
     return(rendered[[1]])
   }
@@ -723,12 +738,13 @@ validate_essential_claims <- function(client, claims_present, target) {
 
       if (!claim_name %in% present_names) {
         if (!claim_name %in% missing_claims) {
+          expose_values <- isTRUE(allow_expose_error_body())
           value_mismatches <- c(
             value_mismatches,
             paste0(
               claim_name,
               " is missing (expected ",
-              format_claim_value_expectation(expected_values),
+              format_claim_value_expectation(expected_values, expose_values),
               ")"
             )
           )
@@ -738,14 +754,22 @@ validate_essential_claims <- function(client, claims_present, target) {
 
       actual_value <- claims_present[[claim_name]]
       if (!claim_matches_requested_values(actual_value, expected_values)) {
+        expose_values <- isTRUE(allow_expose_error_body())
+        actual_rendered <- canonicalize_claim_value(actual_value)
+        if (!expose_values) {
+          actual_rendered <- paste0(
+            "digest=",
+            string_digest(actual_rendered)
+          )
+        }
         value_mismatches <- c(
           value_mismatches,
           paste0(
             claim_name,
             " expected ",
-            format_claim_value_expectation(expected_values),
+            format_claim_value_expectation(expected_values, expose_values),
             " but got ",
-            canonicalize_claim_value(actual_value)
+            actual_rendered
           )
         )
       }

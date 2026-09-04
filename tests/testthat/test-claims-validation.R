@@ -463,6 +463,88 @@ test_that("validate_essential_claims: 'strict' mode errors on mismatched request
   )
 })
 
+test_that("claim mismatch diagnostics redact ID token and UserInfo values", {
+  digest_key <- charToRaw(strrep("d", 32))
+  expected <- list(
+    id_token = "expected-id-person@example.test",
+    userinfo = "expected-info-person@example.test"
+  )
+  actual <- list(
+    id_token = "returned-id-person@example.test",
+    userinfo = "returned-info-person@example.test"
+  )
+  events <- list()
+  withr::local_options(list(
+    shinyOAuth.audit_digest_key = digest_key,
+    shinyOAuth.expose_error_body = FALSE,
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
+  ))
+  cli <- make_test_client(
+    use_nonce = TRUE,
+    claims = list(
+      id_token = list(email = list(value = expected$id_token)),
+      userinfo = list(email = list(value = expected$userinfo))
+    ),
+    claims_validation = "strict"
+  )
+
+  for (target in names(expected)) {
+    error <- tryCatch(
+      shinyOAuth:::validate_essential_claims(
+        cli,
+        list(email = actual[[target]]),
+        target
+      ),
+      error = identity
+    )
+    diagnostic <- conditionMessage(error)
+    event_message <- paste(
+      unlist(events[[length(events)]][["message"]]),
+      collapse = " "
+    )
+    expected_digest <- shinyOAuth:::string_digest(
+      shinyOAuth:::canonicalize_claim_value(expected[[target]])
+    )
+    actual_digest <- shinyOAuth:::string_digest(
+      shinyOAuth:::canonicalize_claim_value(actual[[target]])
+    )
+
+    expect_s3_class(error, paste0("shinyOAuth_", target, "_error"))
+    target_label <- if (identical(target, "id_token")) "ID token" else target
+    expect_match(diagnostic, target_label, fixed = TRUE)
+    expect_match(diagnostic, paste0("digest=", expected_digest), fixed = TRUE)
+    expect_match(diagnostic, paste0("digest=", actual_digest), fixed = TRUE)
+    expect_false(grepl(expected[[target]], diagnostic, fixed = TRUE))
+    expect_false(grepl(actual[[target]], diagnostic, fixed = TRUE))
+    expect_false(grepl(expected[[target]], event_message, fixed = TRUE))
+    expect_false(grepl(actual[[target]], event_message, fixed = TRUE))
+  }
+})
+
+test_that("explicit sensitive diagnostics may include claim mismatch values", {
+  expected <- "expected-person@example.test"
+  actual <- "returned-person@example.test"
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
+  cli <- make_test_client(
+    claims = list(userinfo = list(email = list(value = expected))),
+    claims_validation = "strict"
+  )
+
+  error <- tryCatch(
+    shinyOAuth:::validate_essential_claims(
+      cli,
+      list(email = actual),
+      "userinfo"
+    ),
+    error = identity
+  )
+
+  expect_match(conditionMessage(error), expected, fixed = TRUE)
+  expect_match(conditionMessage(error), actual, fixed = TRUE)
+})
+
 test_that("validate_essential_claims: 'strict' mode errors when value-constrained claim is missing", {
   cli <- make_test_client(
     claims = list(
