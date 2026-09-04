@@ -4,7 +4,13 @@
 \alias{oauth_form_post_ui}
 \title{Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks}
 \usage{
-oauth_form_post_ui(base_ui, id, client, callback_path = NULL)
+oauth_form_post_ui(
+  base_ui,
+  id,
+  client,
+  callback_path = NULL,
+  request_uri_resolver = NULL
+)
 }
 \arguments{
 \item{base_ui}{Existing Shiny UI object, or a UI function accepting \code{req}.}
@@ -16,6 +22,13 @@ the \code{id} argument passed to the server module.}
 
 \item{callback_path}{Optional URL path to accept POST callbacks on. Defaults
 to the path component of \code{client@redirect_uri}.}
+
+\item{request_uri_resolver}{Optional function accepting the Rook \code{req} environment and returning the
+trusted, public absolute request URI without relying on query parameters.
+Return \code{NULL} to reject the route. This is intended for HTTPS-terminating
+proxies whose backend request has an HTTP Rook scheme. The function must
+verify the proxy trust boundary before using forwarded headers; its result is
+still required to match the configured redirect origin and \code{callback_path}.}
 }
 \value{
 A Shiny UI function. Pass it to \code{\link[shiny:shinyApp]{shiny::shinyApp()}} and, for non-root
@@ -57,8 +70,10 @@ than the smaller of \code{client@state_payload_max_age} and the configured
 are also bounded by the \verb{shinyOAuth.callback_max_form_post_*} options
 described in the usage vignette. Before reading the POST body, this wrapper
 compares the server-observed request scheme, authority, and path with the
-configured redirect origin and \code{callback_path}. Reverse proxies must preserve
-the public Host and set the trusted Rook request scheme correctly.
+configured redirect origin and \code{callback_path}. Reverse proxies can supply a
+\code{request_uri_resolver} that reconstructs the public URI only after verifying
+the request came through a trusted proxy. Forwarded headers are never trusted
+by the default resolver.
 }
 \examples{
 if (

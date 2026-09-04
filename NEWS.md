@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* `oauth_form_post_ui()` now supports explicit trusted-proxy request URI
+normalization for HTTPS termination and mounted apps.
+
 * JWKS keys with standard `key_ops` arrays are now considered correctly for
 signature verification and Request Object encryption.
 

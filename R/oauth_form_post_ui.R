@@ -43,8 +43,10 @@
 #' are also bounded by the `shinyOAuth.callback_max_form_post_*` options
 #' described in the usage vignette. Before reading the POST body, this wrapper
 #' compares the server-observed request scheme, authority, and path with the
-#' configured redirect origin and `callback_path`. Reverse proxies must preserve
-#' the public Host and set the trusted Rook request scheme correctly.
+#' configured redirect origin and `callback_path`. Reverse proxies can supply a
+#' `request_uri_resolver` that reconstructs the public URI only after verifying
+#' the request came through a trusted proxy. Forwarded headers are never trusted
+#' by the default resolver.
 #'
 #' @param base_ui
 #' Existing Shiny UI object, or a UI function accepting `req`.
@@ -56,6 +58,13 @@
 #' @param callback_path
 #' Optional URL path to accept POST callbacks on. Defaults
 #' to the path component of `client@redirect_uri`.
+#' @param request_uri_resolver
+#' Optional function accepting the Rook `req` environment and returning the
+#' trusted, public absolute request URI without relying on query parameters.
+#' Return `NULL` to reject the route. This is intended for HTTPS-terminating
+#' proxies whose backend request has an HTTP Rook scheme. The function must
+#' verify the proxy trust boundary before using forwarded headers; its result is
+#' still required to match the configured redirect origin and `callback_path`.
 #'
 #' @return
 #' A Shiny UI function. Pass it to [shiny::shinyApp()] and, for non-root
@@ -69,7 +78,8 @@ oauth_form_post_ui <- function(
   base_ui,
   id,
   client,
-  callback_path = NULL
+  callback_path = NULL,
+  request_uri_resolver = NULL
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -80,6 +90,11 @@ oauth_form_post_ui <- function(
   callback_path <- normalize_oauth_form_post_callback_path(
     callback_path %||% oauth_form_post_redirect_path(client)
   )
+  if (is.null(request_uri_resolver)) {
+    request_uri_resolver <- oauth_form_post_request_uri
+  } else if (!is.function(request_uri_resolver)) {
+    err_input("{.arg request_uri_resolver} must be NULL or a function.")
+  }
 
   mark_form_post_ui_called(id, client)
 
@@ -87,6 +102,7 @@ oauth_form_post_ui <- function(
   force(id)
   force(client)
   force(callback_path)
+  force(request_uri_resolver)
 
   request_matches <- oauth_form_post_request_matches
   callback_route <- oauth_callback_route
@@ -99,7 +115,8 @@ oauth_form_post_ui <- function(
         req,
         callback_path,
         redirect_uri = client@redirect_uri,
-        callback_route = callback_route
+        callback_route = callback_route,
+        request_uri_resolver = request_uri_resolver
       )
     ) {
       return(handle_request(req, id = id, client = client))
@@ -255,6 +272,8 @@ oauth_form_post_request_uri <- function(req) {
 #' @param callback_path Normalized callback path.
 #' @param redirect_uri Configured OAuth redirect URI.
 #' @param callback_route Function that canonicalizes an absolute callback URI.
+#' @param request_uri_resolver Function that resolves the trusted public request
+#'   URI from the Rook request.
 #' @return `TRUE` when the request method and route match the callback.
 #' @keywords internal
 #' @noRd
@@ -262,13 +281,18 @@ oauth_form_post_request_matches <- function(
   req,
   callback_path,
   redirect_uri,
-  callback_route
+  callback_route,
+  request_uri_resolver = oauth_form_post_request_uri
 ) {
   if (!identical(req[["REQUEST_METHOD"]], "POST")) {
     return(FALSE)
   }
 
-  actual <- callback_route(oauth_form_post_request_uri(req))
+  request_uri <- tryCatch(
+    request_uri_resolver(req),
+    error = function(...) NULL
+  )
+  actual <- callback_route(request_uri)
   expected <- callback_route(redirect_uri)
   if (is.null(actual) || is.null(expected)) {
     return(FALSE)

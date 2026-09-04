@@ -172,6 +172,77 @@ test_that("oauth_form_post_ui rejects callbacks on the wrong origin", {
   )))
 })
 
+test_that("oauth_form_post_ui supports trusted HTTPS proxy normalization", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@redirect_uri <- "https://app.example/mounted/app/callback"
+
+  trusted_proxy_uri <- function(req) {
+    if (
+      !identical(req[["REMOTE_ADDR"]], "10.0.0.10") ||
+        !identical(req[["HTTP_X_FORWARDED_PROTO"]], "https")
+    ) {
+      return(NULL)
+    }
+    paste0(
+      "https://app.example",
+      req[["SCRIPT_NAME"]],
+      req[["PATH_INFO"]]
+    )
+  }
+  default_ui <- oauth_form_post_ui(
+    shiny::fluidPage(),
+    id = "auth-default-proxy",
+    client = cli
+  )
+  proxy_ui <- oauth_form_post_ui(
+    shiny::fluidPage(),
+    id = "auth",
+    client = cli,
+    request_uri_resolver = trusted_proxy_uri
+  )
+
+  url <- prepare_call(cli, browser_token = valid_browser_token())
+  enc_state <- parse_query_param(url, "state")
+  req <- make_form_post_req(
+    path = "/callback",
+    body = paste0("code=ok&state=", enc_state),
+    scheme = "http",
+    authority = "backend.internal:3838"
+  )
+  req[["SCRIPT_NAME"]] <- "/mounted/app"
+  req[["REMOTE_ADDR"]] <- "10.0.0.10"
+  req[["HTTP_X_FORWARDED_PROTO"]] <- "https"
+
+  expect_null(default_ui(req))
+  response <- proxy_ui(req)
+  expect_identical(response[["status"]], 303L)
+
+  untrusted_req <- make_form_post_req(
+    path = "/callback",
+    body = "code=must-not-be-parsed&state=must-not-be-parsed",
+    scheme = "http",
+    authority = "backend.internal:3838"
+  )
+  untrusted_req[["SCRIPT_NAME"]] <- "/mounted/app"
+  untrusted_req[["REMOTE_ADDR"]] <- "203.0.113.8"
+  untrusted_req[["HTTP_X_FORWARDED_PROTO"]] <- "https"
+  expect_null(proxy_ui(untrusted_req))
+})
+
+test_that("oauth_form_post_ui validates request_uri_resolver", {
+  cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  expect_error(
+    oauth_form_post_ui(
+      shiny::fluidPage(),
+      id = "auth",
+      client = cli,
+      request_uri_resolver = "https://app.example"
+    ),
+    class = "shinyOAuth_input_error",
+    regexp = "request_uri_resolver"
+  )
+})
+
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(
