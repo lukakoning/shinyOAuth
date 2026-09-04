@@ -388,8 +388,10 @@ restore_async_otel_envvars <- function(old_envvars) {
 
 #' Run code with captured async options restored
 #'
-#' Restores the main process' shinyOAuth options and OTEL environment while
-#' evaluating worker code inside `async_dispatch()`.
+#' Restores the main process' authoritative shinyOAuth option state and OTEL
+#' environment while evaluating worker code inside `async_dispatch()`. Options
+#' absent from the capture are cleared from reused workers for the duration of
+#' the call.
 #'
 #' @param captured_opts Named list returned by `capture_async_options()`.
 #' @param code Code to evaluate with the captured settings restored.
@@ -399,6 +401,20 @@ restore_async_otel_envvars <- function(old_envvars) {
 with_async_options <- function(captured_opts, code) {
   if (is.null(captured_opts) || length(captured_opts) == 0) {
     return(force(code))
+  }
+  # Keep these helpers local so this function remains self-contained when a
+  # test or downstream caller serializes it directly to a worker.
+  current_option_names <- function() {
+    grep("^shinyOAuth\\.", names(options()), value = TRUE)
+  }
+  unset_options <- function(option_names) {
+    if (length(option_names) > 0) {
+      do.call(
+        options,
+        stats::setNames(rep(list(NULL), length(option_names)), option_names)
+      )
+    }
+    invisible(NULL)
   }
   old_async_worker <- set_async_worker_context(is_async_worker(captured_opts))
   on.exit(set_async_worker_context(old_async_worker), add = TRUE)
@@ -433,12 +449,25 @@ with_async_options <- function(captured_opts, code) {
     )
   }
 
-  if (length(opts_to_set) == 0) {
-    return(force(code))
+  # Treat the captured shinyOAuth options as an authoritative snapshot. A
+  # reused worker may retain settings from an earlier task, including hooks or
+  # security-sensitive keys that are absent in the current parent process.
+  old_option_names <- current_option_names()
+  old_opts <- options()[old_option_names]
+  on.exit(
+    {
+      unset_options(current_option_names())
+      if (length(old_opts) > 0) {
+        do.call(options, old_opts)
+      }
+    },
+    add = TRUE
+  )
+
+  unset_options(setdiff(old_option_names, names(opts_to_set)))
+  if (length(opts_to_set) > 0) {
+    do.call(options, opts_to_set)
   }
-  # Temporarily set options and restore on exit
-  old_opts <- do.call(options, opts_to_set)
-  on.exit(do.call(options, old_opts), add = TRUE)
   force(code)
 }
 

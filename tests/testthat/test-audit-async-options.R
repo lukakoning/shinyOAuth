@@ -138,6 +138,118 @@ testthat::test_that("with_async_options correctly restores options in worker", {
   testthat::expect_null(getOption("shinyOAuth.timeout"))
 })
 
+testthat::test_that("with_async_options clears stale options absent from capture", {
+  stale_hook <- function(event) event
+  stale_key <- charToRaw(strrep("a", 32))
+  withr::local_options(list(
+    shinyOAuth.timeout = 99,
+    shinyOAuth.audit_hook = stale_hook,
+    shinyOAuth.audit_digest_key = stale_key
+  ))
+
+  captured <- withr::with_options(
+    list(
+      shinyOAuth.timeout = NULL,
+      shinyOAuth.audit_hook = NULL,
+      shinyOAuth.audit_digest_key = NULL
+    ),
+    shinyOAuth:::capture_async_options()
+  )
+
+  testthat::expect_null(captured[["shinyOAuth.timeout"]])
+  testthat::expect_null(captured[["shinyOAuth.audit_hook"]])
+  testthat::expect_null(captured[["shinyOAuth.audit_digest_key"]])
+
+  worker_values <- shinyOAuth:::with_async_options(captured, {
+    list(
+      timeout = getOption("shinyOAuth.timeout"),
+      hook = getOption("shinyOAuth.audit_hook"),
+      digest_key = getOption("shinyOAuth.audit_digest_key")
+    )
+  })
+
+  testthat::expect_null(worker_values[["timeout"]])
+  testthat::expect_null(worker_values[["hook"]])
+  testthat::expect_null(worker_values[["digest_key"]])
+  testthat::expect_identical(getOption("shinyOAuth.timeout"), 99)
+  testthat::expect_identical(getOption("shinyOAuth.audit_hook"), stale_hook)
+  testthat::expect_identical(
+    getOption("shinyOAuth.audit_digest_key"),
+    stale_key
+  )
+})
+
+testthat::test_that("reused daemons clear stale options absent from capture", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  ok <- tryCatch(
+    {
+      mirai::daemons(1, rs = "--vanilla")
+      TRUE
+    },
+    error = function(...) FALSE
+  )
+  testthat::skip_if(!ok, "Could not start mirai daemon")
+  withr::defer(mirai::daemons(0))
+  assert_shinyoauth_available_in_daemon()
+
+  captured <- withr::with_options(
+    list(
+      shinyOAuth.allow_redirect = NULL,
+      shinyOAuth.audit_hook = NULL,
+      shinyOAuth.audit_digest_key = NULL
+    ),
+    shinyOAuth:::capture_async_options()
+  )
+
+  poison <- mirai::mirai({
+    options(
+      shinyOAuth.allow_redirect = TRUE,
+      shinyOAuth.audit_hook = function(event) event,
+      shinyOAuth.audit_digest_key = charToRaw(strrep("f", 32))
+    )
+    Sys.getpid()
+  })
+  mirai::call_mirai(poison)
+
+  check <- mirai::mirai(
+    {
+      .ns <- asNamespace("shinyOAuth")
+      during <- .ns$with_async_options(captured, {
+        list(
+          allow_redirect = .ns$allow_redirect(),
+          hook = getOption("shinyOAuth.audit_hook"),
+          digest_key = getOption("shinyOAuth.audit_digest_key")
+        )
+      })
+      list(
+        process_id = Sys.getpid(),
+        during = during,
+        restored = list(
+          allow_redirect = getOption("shinyOAuth.allow_redirect"),
+          hook_is_function = is.function(getOption("shinyOAuth.audit_hook")),
+          digest_key = getOption("shinyOAuth.audit_digest_key")
+        )
+      )
+    },
+    captured = captured
+  )
+  mirai::call_mirai(check)
+  result <- check$data
+
+  testthat::expect_identical(result$process_id, poison$data)
+  testthat::expect_false(result$during$allow_redirect)
+  testthat::expect_null(result$during$hook)
+  testthat::expect_null(result$during$digest_key)
+  testthat::expect_true(result$restored$allow_redirect)
+  testthat::expect_true(result$restored$hook_is_function)
+  testthat::expect_identical(
+    result$restored$digest_key,
+    charToRaw(strrep("f", 32))
+  )
+})
+
 testthat::test_that("with_async_options restores captured otel env vars", {
   withr::local_envvar(c(
     OTEL_TRACES_EXPORTER = "http",
