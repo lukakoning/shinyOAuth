@@ -47,65 +47,25 @@ automatically. When a particular discovery field is omitted, shinyOAuth keeps
 the same defaults documented for \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}.
 }
 \examples{
-# Configure generic OAuth 2.0 provider (no OIDC)
-generic_provider <- oauth_provider(
-  name = "example",
-  auth_url = "https://example.com/oauth/authorize",
-  token_url = "https://example.com/oauth/token",
-  # Optional URL for fetching user info:
-  userinfo_url = "https://example.com/oauth/userinfo"
-)
-
-# Configure generic OIDC provider manually
-# (This defaults to using nonce & ID token validation)
-generic_oidc_provider <- oauth_provider_oidc(
-  name = "My OIDC",
-  base_url = "https://my-issuer.example.com"
-)
-
-# Configure a OIDC provider via OIDC discovery
-# (requires network access)
+# Sign in with Apple requires an Apple Services ID, Team ID, key ID, and the
+# corresponding P-256 private key. Network access is required for discovery.
 if (interactive()) {
-  # Using Auth0 sample issuer as an example
-  oidc_discovery_provider <- oauth_provider_oidc_discover(
-    issuer = "https://samples.auth0.com"
+  apple_provider <- oauth_provider_apple()
+
+  apple_secret <- oauth_client_secret_apple(
+    client_id = "com.example.web",
+    team_id = "ABCDEFGHIJ",
+    key_id = "ABC123DEFG",
+    private_key = openssl::read_key("AuthKey_ABC123DEFG.p8")
   )
-}
 
-# GitHub preconfigured provider
-github_provider <- oauth_provider_github()
-
-# Google preconfigured provider
-google_provider <- oauth_provider_google()
-
-# Microsoft preconfigured provider
-# See `?oauth_provider_microsoft` for example using a custom tenant ID
-
-# Spotify preconfigured provider
-spotify_provider <- oauth_provider_spotify()
-
-# Slack via OIDC discovery
-# (requires network access)
-if (interactive()) {
-  slack_provider <- oauth_provider_slack()
-}
-
-# Keycloak
-# (requires configured Keycloak realm; example below is therefore not run)
-if (interactive()) {
-  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
-  oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
-}
-
-# Auth0
-# (requires configured Auth0 domain; example below is therefore not run)
-if (interactive()) {
-  oauth_provider_auth0(domain = "your-tenant.auth0.com")
-}
-
-# Okta
-# (requires configured Okta domain; example below is therefore not run)
-if (interactive()) {
-  oauth_provider_okta(domain = "dev-123456.okta.com")
+  apple_client <- oauth_client(
+    provider = apple_provider,
+    client_id = "com.example.web",
+    client_secret = apple_secret,
+    redirect_uri = "https://example.com/oauth/callback",
+    scopes = c("openid", "email", "name"),
+    response_mode = "form_post"
+  )
 }
 }

@@ -265,3 +265,21 @@ testthat::test_that("GitHub OAuth help points to OAuth App settings", {
     fixed = TRUE
   ))
 })
+
+testthat::test_that("Apple provider help uses an Apple example", {
+  provider_docs <- project_text("R", "providers__apple.R")
+  example <- project_text("inst", "examples", "oauth_provider_apple.R")
+
+  testthat::expect_match(
+    provider_docs,
+    "@example inst/examples/oauth_provider_apple.R",
+    fixed = TRUE
+  )
+  testthat::expect_match(example, "oauth_provider_apple()", fixed = TRUE)
+  testthat::expect_match(
+    example,
+    "oauth_client_secret_apple(",
+    fixed = TRUE
+  )
+  testthat::expect_match(example, 'response_mode = "form_post"', fixed = TRUE)
+})

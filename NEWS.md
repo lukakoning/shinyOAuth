@@ -137,6 +137,7 @@ secretless setups; printing also handles an explicitly empty secret correctly.
 
 * Provider integrations now include `oauth_provider_apple()` and
 `oauth_client_secret_apple()` for Apple's OIDC flow and ES256 client secret.
+Provider help includes a complete client configuration example.
 `oauth_provider_okta(auth_server = NULL)` can target Okta's org authorization
 server, `oauth_provider_auth0()` preserves Auth0's trailing-slash issuer for
 strict validation, and `oauth_provider_oidc()` respects its documented

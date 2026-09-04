@@ -44,7 +44,7 @@
 #'
 #' @return [OAuthProvider] object configured for Sign in with Apple
 #'
-#' @example inst/examples/oauth_provider.R
+#' @example inst/examples/oauth_provider_apple.R
 #'
 #' @export
 oauth_provider_apple <- function(name = "apple") {
