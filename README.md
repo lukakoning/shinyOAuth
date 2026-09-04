@@ -6,21 +6,25 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/shinyOAuth)](https://CRAN.R-project.org/package=shinyOAuth)
 <!-- badges: end -->
 
-'[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OAuth 2.0 and OpenID Connect (OIDC)
-authorization and authentication for [Shiny](https://github.com/rstudio/shiny) apps. It is built
+'[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)' is an R package implementing provider‑agnostic OpenID Connect (OIDC) authentication and OAuth 2.0
+authorization for [Shiny](https://github.com/rstudio/shiny) apps. It is built
 with modern S7 classes and security in mind.
 
-OAuth 2.0/OIDC lets users sign in to your app using accounts they already have (e.g., Google, Microsoft, GitHub,
-and many more), or via your self-hosted identity provider (e.g., Keycloak), or
-via an identity-as-a-service provider (e.g., Auth0, Okta).
+OIDC lets users authenticate to your app using accounts they already have (for
+example Google or Microsoft), a self-hosted identity provider such as Keycloak,
+or an identity service such as Auth0 or Okta. Supported OAuth-only integrations
+such as GitHub and Spotify can bootstrap an application identity through their
+provider-specific user APIs; an OAuth access token is an authorization
+credential, not an identity assertion.
 
 To achieve this, your app redirects unauthenticated users to the identity provider, they authenticate there,
 and are redirected back to your app with an authorization code. Your app exchanges this code for tokens
-which prove the user's identity, and optionally allow your app to call the provider's APIs on the user's behalf
-(e.g., to fetch data associated with the user's account).
+that authorize API access. In OIDC flows, a validated ID token authenticates
+the user. Supported OAuth-only integrations instead obtain identity-like profile
+data from a provider-specific API.
 
 This package streamlines this flow for Shiny applications,
-enabling developers to add OAuth 2.0/OIDC authorization/authentication to their apps with
+enabling developers to add OIDC authentication and OAuth authorization to their apps with
 minimal code. The provided Shiny module handles redirecting unauthenticated users,
 managing state/PKCE/nonce for secure code-token exchange,
 verifying OIDC tokens, automatically fetching user info and performing token refresh,
@@ -29,7 +33,7 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 
 ## Features
 
-- Shiny module: `oauth_module_server()` gives you a ready‑to‑use OAuth 2.0/OIDC authentication flow
+- Shiny module: `oauth_module_server()` gives you a ready‑to‑use OIDC authentication and OAuth authorization flow
   with secure defaults. Easily read authentication status, token details, & user info as reactive values
   in your Shiny server logic
 

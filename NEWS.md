@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Package overviews now distinguish OIDC authentication from OAuth
+authorization and provider-specific identity bootstrapping.
+
 * Client-hosted JAR documentation now reflects that `request_uri` publication
 requires HTTPS.
 

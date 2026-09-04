@@ -104,3 +104,29 @@ testthat::test_that("claims validation docs describe conditional defaults", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("package overview distinguishes authentication from authorization", {
+  description <- project_text("DESCRIPTION")
+  readme <- project_text("README.md")
+
+  testthat::expect_match(
+    description,
+    "OIDC Authentication and OAuth Authorization",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    readme,
+    "an OAuth access token is an authorization\ncredential, not an identity assertion",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    readme,
+    "a validated ID token authenticates\nthe user",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "tokens\nwhich prove the user's identity",
+    readme,
+    fixed = TRUE
+  ))
+})
