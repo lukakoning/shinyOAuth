@@ -3,8 +3,8 @@
 ## shinyOAuth (development version)
 
 - Added JWT Secured Authorization Response Mode (JARM) support with
-  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. JARM
-  callbacks resume through
+  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. Signed
+  and encrypted JARM responses are validated through
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md);
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
   continues to accept only classic direct callbacks. The maximum
@@ -22,7 +22,8 @@
   - Multi-issuer mode requires direct callbacks to use JARM or
     advertised RFC 9207 issuer identification.
   - Distinct-redirect mode requires a complete set of canonically
-    distinct routes and is supported through
+    distinct `authorization_server_redirect_uris` and is supported
+    through
     [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
     where the received route can be verified.
   - Callback dispatch verifies the browser-visible scheme, authority,
@@ -35,7 +36,8 @@
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)/`OAuthProvider`
   arguments have been reorganized and renamed for clarity. The helper
   constructors retain compatibility aliases, while the S7 classes use
-  only the new names:
+  only the new names; callers of the low-level S7 constructors should
+  use named arguments:
 
   - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
     - `client_private_key` -\> `client_assertion_private_key`
@@ -103,8 +105,8 @@
     location. Discovered values are preserved and reused across
     ID-token, JARM, Request Object, and signed UserInfo verification.
   - Signing keys for generic OAuth/JARM issuers are resolved through RFC
-    8414 metadata, and fails early when a required `jwks_uri` is
-    missing, malformed, or disallowed by host policy.
+    8414 metadata, and configuration fails early when a required
+    `jwks_uri` is missing, malformed, or disallowed by host policy.
 
 - Provider integrations now include
   [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
@@ -112,15 +114,18 @@
   [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
   for Apple’s OIDC flow and ES256 client secret.
   `oauth_provider_okta(auth_server = NULL)` can target Okta’s org
-  authorization server, and
+  authorization server,
+  [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
+  preserves Auth0’s trailing-slash issuer for strict validation, and
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   respects its documented `token_auth_style` override.
 
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
   now:
 
-  - Accepts an issuer base URL or the standard discovery URL and reports
-    both the attempted URL and underlying error on transport failure.
+  - Accepts an issuer base URL or the standard
+    `/.well-known/openid-configuration` URL and reports both the
+    attempted URL and underlying error on transport failure.
   - Treats a single trailing-slash difference as equivalent when
     checking the discovered issuer, while preserving the advertised
     issuer for downstream `iss` validation.
@@ -207,8 +212,12 @@
   - Trusted provider `error_uri` values are preserved across deferred
     error callbacks, but unrelated hosts are dropped unless allowlisted
     with `shinyOAuth.allowed_hosts`.
-  - Fragment cleanup now handles values containing additional `=`
-    characters while preserving unrelated parameters.
+  - Pre-session form-post payloads are sealed before state-store
+    persistence, preventing a writable external store from altering
+    accepted callbacks.
+  - Browser cleanup removes JARM `response` values from JARM callbacks
+    and handles fragment values containing additional `=` characters
+    while preserving unrelated parameters.
 
 - DPoP handling has been hardened:
 

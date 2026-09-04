@@ -43,15 +43,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. JARM callbacks resume through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> continues to accept only classic direct callbacks. The maximum response-JWT lifetime is configurable with <code>jarm_max_lifetime</code> (default 600 seconds). Discovery supports the canonical <code>jarm_*_values_supported</code> metadata fields and their older <code>authorization_*</code> aliases. For Keycloak interoperability, <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code>, with an opt-out for strict duplicate rejection.</p></li>
+<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. Signed and encrypted JARM responses are validated through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> continues to accept only classic direct callbacks. The maximum response-JWT lifetime is configurable with <code>jarm_max_lifetime</code> (default 600 seconds). Discovery supports the canonical <code>jarm_*_values_supported</code> metadata fields and their older <code>authorization_*</code> aliases. For Keycloak interoperability, <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code>, with an opt-out for strict duplicate rejection.</p></li>
 <li>
 <p>Added RFC 9700 multi-authorization-server configuration through <code>authorization_server_mode</code>:</p>
 <ul><li>Multi-issuer mode requires direct callbacks to use JARM or advertised RFC 9207 issuer identification.</li>
-<li>Distinct-redirect mode requires a complete set of canonically distinct routes and is supported through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, where the received route can be verified.</li>
+<li>Distinct-redirect mode requires a complete set of canonically distinct <code>authorization_server_redirect_uris</code> and is supported through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, where the received route can be verified.</li>
 <li>Callback dispatch verifies the browser-visible scheme, authority, and path before parsing parameters or consuming state. The pre-session form-post wrapper performs the same check before reading the POST body.</li>
 </ul></li>
 <li>
-<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> arguments have been reorganized and renamed for clarity. The helper constructors retain compatibility aliases, while the S7 classes use only the new names:</p>
+<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> arguments have been reorganized and renamed for clarity. The helper constructors retain compatibility aliases, while the S7 classes use only the new names; callers of the low-level S7 constructors should use named arguments:</p>
 <ul><li>
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>:
 <ul><li>
@@ -152,12 +152,12 @@
 <ul><li>
 <code>issuer_thus_oidc</code> defaults to <code>TRUE</code> for compatibility. Generic RFC 8414 providers can set it to <code>FALSE</code> to retain issuer validation without enabling OIDC behavior.</li>
 <li>An explicit <code>jwks_uri</code> can override discovery for providers that publish signing keys outside discovery or need a pinned runtime location. Discovered values are preserved and reused across ID-token, JARM, Request Object, and signed UserInfo verification.</li>
-<li>Signing keys for generic OAuth/JARM issuers are resolved through RFC 8414 metadata, and fails early when a required <code>jwks_uri</code> is missing, malformed, or disallowed by host policy.</li>
+<li>Signing keys for generic OAuth/JARM issuers are resolved through RFC 8414 metadata, and configuration fails early when a required <code>jwks_uri</code> is missing, malformed, or disallowed by host policy.</li>
 </ul></li>
-<li><p>Provider integrations now include <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> and <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> for Apple’s OIDC flow and ES256 client secret. <code>oauth_provider_okta(auth_server = NULL)</code> can target Okta’s org authorization server, and <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> respects its documented <code>token_auth_style</code> override.</p></li>
+<li><p>Provider integrations now include <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> and <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> for Apple’s OIDC flow and ES256 client secret. <code>oauth_provider_okta(auth_server = NULL)</code> can target Okta’s org authorization server, <code><a href="../reference/oauth_provider_auth0.html">oauth_provider_auth0()</a></code> preserves Auth0’s trailing-slash issuer for strict validation, and <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> respects its documented <code>token_auth_style</code> override.</p></li>
 <li>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
-<ul><li>Accepts an issuer base URL or the standard discovery URL and reports both the attempted URL and underlying error on transport failure.</li>
+<ul><li>Accepts an issuer base URL or the standard <code>/.well-known/openid-configuration</code> URL and reports both the attempted URL and underlying error on transport failure.</li>
 <li>Treats a single trailing-slash difference as equivalent when checking the discovered issuer, while preserving the advertised issuer for downstream <code>iss</code> validation.</li>
 <li>Requires HTTPS for issuer, endpoint, JWKS, and mTLS alias URLs. Loopback HTTP requires explicit opt-in with <code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>.</li>
 <li>Allows secure authorization, token, UserInfo, introspection, revocation, and PAR endpoints on hosts other than the issuer. Explicit <code>shinyOAuth.allowed_hosts</code> restrictions still apply, and JWKS retains its separate issuer-host policy.</li>
@@ -198,7 +198,8 @@
 <li>
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> warns once when form-post response modes are used without a corresponding <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> wrapper.</li>
 <li>Trusted provider <code>error_uri</code> values are preserved across deferred error callbacks, but unrelated hosts are dropped unless allowlisted with <code>shinyOAuth.allowed_hosts</code>.</li>
-<li>Fragment cleanup now handles values containing additional <code>=</code> characters while preserving unrelated parameters.</li>
+<li>Pre-session form-post payloads are sealed before state-store persistence, preventing a writable external store from altering accepted callbacks.</li>
+<li>Browser cleanup removes JARM <code>response</code> values from JARM callbacks and handles fragment values containing additional <code>=</code> characters while preserving unrelated parameters.</li>
 </ul></li>
 <li>
 <p>DPoP handling has been hardened:</p>
