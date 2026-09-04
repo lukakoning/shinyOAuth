@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* OIDC UserInfo binding now always compares the actual UserInfo and ID-token
+`sub` claims; custom application identity selectors cannot replace this check.
+
 * Prebuilt `httr2` requests with a body now infer `POST` consistently for
 request execution, retry safety, and DPoP proofs.
 

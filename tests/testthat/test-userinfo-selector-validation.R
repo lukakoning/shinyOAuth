@@ -18,7 +18,7 @@ make_client <- function(provider) {
   )
 }
 
-test_that("userinfo_id_selector must yield scalar string", {
+test_that("userinfo sub must be a scalar OIDC subject", {
   prov <- make_provider(
     id_token_validation = TRUE,
     userinfo_id_token_match = TRUE,
@@ -42,7 +42,7 @@ test_that("userinfo_id_selector must yield scalar string", {
 
   expect_error(
     verify_userinfo_id_token_subject_match(cli, ui, token),
-    regexp = "selector .* scalar|coercible|invalid userinfo subject",
+    regexp = "invalid sub claim",
     class = "shinyOAuth_userinfo_error"
   )
 })
@@ -75,7 +75,7 @@ test_that("userinfo subject mismatch still errors specifically", {
   )
 })
 
-test_that("custom selector also drives the UserInfo OIDC comparison", {
+test_that("custom selector cannot replace the UserInfo OIDC sub comparison", {
   prov <- make_provider(
     id_token_validation = TRUE,
     userinfo_id_token_match = TRUE,
@@ -93,9 +93,23 @@ test_that("custom selector also drives the UserInfo OIDC comparison", {
     iat = now
   )
   token <- jose::jwt_encode_hmac(claim, cli@client_secret, header = header)
-  ui <- list(sub = "different-sub", id = "id-token-sub")
+  misleading_userinfo <- list(sub = "different-sub", id = "id-token-sub")
+  missing_sub_userinfo <- list(id = "id-token-sub")
 
-  expect_true(isTRUE(verify_userinfo_id_token_subject_match(cli, ui, token)))
+  expect_error(
+    verify_userinfo_id_token_subject_match(
+      cli,
+      misleading_userinfo,
+      token
+    ),
+    regexp = "does not match",
+    class = "shinyOAuth_userinfo_mismatch"
+  )
+  expect_error(
+    verify_userinfo_id_token_subject_match(cli, missing_sub_userinfo, token),
+    regexp = "invalid sub claim",
+    class = "shinyOAuth_userinfo_error"
+  )
 })
 
 test_that("get_userinfo audit normalizes custom selector output", {

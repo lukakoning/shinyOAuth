@@ -1013,10 +1013,9 @@ fail_signed_userinfo_claim_validation <- function(
 
 #' Verify UserInfo and ID token subject consistency
 #'
-#' Used once both the ID token and UserInfo payload are available. The
-#' comparison uses the provider's `userinfo_id_selector`, so custom selector
-#' policies also define the subject that gets matched against the validated ID
-#' token baseline.
+#' Used once both the ID token and UserInfo payload are available. OIDC requires
+#' the actual `sub` claims to match; provider-specific identity selectors are
+#' reserved for application identity and audit fields.
 #'
 #' @param oauth_client OAuth client carrying provider policy.
 #' @param userinfo UserInfo claim list.
@@ -1075,10 +1074,9 @@ normalize_userinfo_subject_value <- function(ui_val, strict = FALSE) {
 
 #' Verify UserInfo and ID token subject consistency
 #'
-#' Used once both the ID token and UserInfo payload are available. The
-#' comparison uses the provider's `userinfo_id_selector`, so custom selector
-#' policies also define the subject that gets matched against the validated ID
-#' token baseline.
+#' Used once both the ID token and UserInfo payload are available. OIDC requires
+#' the actual `sub` claims to match; provider-specific identity selectors are
+#' reserved for application identity and audit fields.
 #'
 #' @param oauth_client OAuth client carrying provider policy.
 #' @param userinfo UserInfo claim list.
@@ -1104,13 +1102,6 @@ verify_userinfo_id_token_subject_match <- function(
     err_input("id_token must be a valid string")
   }
 
-  if (
-    is.null(oauth_client@provider@userinfo_id_selector) ||
-      !is.function(oauth_client@provider@userinfo_id_selector)
-  ) {
-    err_config("provider userinfo_id_selector is not configured")
-  }
-
   # Compare -----------------------------------------------------------------
 
   # Parse id_token payload without re-validating signature
@@ -1125,11 +1116,10 @@ verify_userinfo_id_token_subject_match <- function(
   }
 
   id_sub <- id_payload[["sub"]]
-  ui_val <- oauth_client@provider@userinfo_id_selector(userinfo)
-  ui_sub <- normalize_userinfo_subject_value(ui_val, strict = TRUE)
+  ui_sub <- userinfo[["sub"]]
 
-  if (!is_valid_string(id_sub) || !is_valid_string(ui_sub)) {
-    err_userinfo("Missing sub claim in id_token or invalid userinfo subject")
+  if (!is_valid_oidc_sub(id_sub) || !is_valid_oidc_sub(ui_sub)) {
+    err_userinfo("Missing or invalid sub claim in id_token or userinfo")
   }
 
   if (!identical(id_sub, ui_sub)) {
