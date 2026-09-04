@@ -170,6 +170,41 @@ jwe_compact_parts <- function(jwe) {
 
 ## 1.3 Key normalization ------------------------------------------------------
 
+#' Normalize JWK recipient metadata
+#'
+#' Returns a structured JWK for parsed JWK and JWK JSON inputs while returning
+#' `NULL` for PEM and OpenSSL key inputs, which carry no JOSE metadata.
+#'
+#' @param key Recipient public-key input.
+#' @param arg_name Argument name used in error messages.
+#' @return A parsed JWK list or `NULL`.
+#' @keywords internal
+#' @noRd
+normalize_jwe_recipient_jwk <- function(
+  key,
+  arg_name = "request_object_encryption_jwk"
+) {
+  if (is.list(key) && !inherits(key, c("key", "pubkey", "rsa", "ecdsa"))) {
+    return(key)
+  }
+
+  if (is.character(key) && length(key) >= 1L) {
+    text <- paste(key, collapse = "\n")
+    if (grepl("^\\s*\\{", text)) {
+      parsed_jwk <- try(
+        jsonlite::fromJSON(text, simplifyVector = FALSE),
+        silent = TRUE
+      )
+      if (!inherits(parsed_jwk, "try-error") && is.list(parsed_jwk)) {
+        return(parsed_jwk)
+      }
+      err_config(paste0("Failed to parse ", arg_name, " JWK JSON"))
+    }
+  }
+
+  NULL
+}
+
 #' Normalize a compact JWE recipient public-key input
 #'
 #' Accepts an OpenSSL key object, a PEM string, a parsed JWK object, or a JWK
@@ -193,22 +228,13 @@ normalize_jwe_recipient_public_key <- function(
     return(key)
   }
 
-  if (is.list(key)) {
-    return(jwk_to_pubkey(key))
+  structured_jwk <- normalize_jwe_recipient_jwk(key, arg_name = arg_name)
+  if (!is.null(structured_jwk)) {
+    return(jwk_to_pubkey(structured_jwk))
   }
 
   if (is.character(key) && length(key) >= 1L) {
     text <- paste(key, collapse = "\n")
-    if (grepl("^\\s*\\{", text)) {
-      parsed_jwk <- try(
-        jsonlite::fromJSON(text, simplifyVector = FALSE),
-        silent = TRUE
-      )
-      if (!inherits(parsed_jwk, "try-error") && is.list(parsed_jwk)) {
-        return(jwk_to_pubkey(parsed_jwk))
-      }
-    }
-
     parsed_key <- try(openssl::read_pubkey(text), silent = TRUE)
     if (!inherits(parsed_key, "try-error")) {
       return(parsed_key)
@@ -534,7 +560,7 @@ resolve_authorization_request_encryption_public_key <- function(
 
   explicit_key <- client@provider@request_object_encryption_jwk %||% NULL
   if (!is.null(explicit_key)) {
-    explicit_jwk <- if (is.list(explicit_key)) explicit_key else NULL
+    explicit_jwk <- normalize_jwe_recipient_jwk(explicit_key)
     explicit_kid <- explicit_jwk[["kid"]] %||% NULL
     explicit_alg <- canonicalize_jwe_alg(
       explicit_jwk[["alg"]] %||% ""
@@ -563,6 +589,21 @@ resolve_authorization_request_encryption_public_key <- function(
           "' but the client requested '",
           canonicalize_jwe_alg(alg),
           "'"
+        )
+      )
+    }
+    if (
+      !is.null(explicit_jwk) &&
+        length(select_candidate_jwks_for_encryption(
+          explicit_jwk,
+          alg = alg
+        )) !=
+          1L
+    ) {
+      err_config(
+        paste(
+          "provider request_object_encryption_jwk is not permitted for",
+          "encryption by its use or key_ops metadata"
         )
       )
     }

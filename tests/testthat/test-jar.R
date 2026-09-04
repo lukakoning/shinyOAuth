@@ -1001,6 +1001,98 @@ test_that("request object encryption only selects pinned recipient keys", {
   )
 })
 
+test_that("JWK list and JSON encryption inputs enforce alg metadata", {
+  encryption_key <- openssl::rsa_keygen(bits = 2048)
+  encryption_jwk <- jsonlite::fromJSON(
+    jose::write_jwk(encryption_key$pubkey),
+    simplifyVector = FALSE
+  )
+  encryption_jwk[["kid"]] <- "encryption-key-7"
+  encryption_jwk[["alg"]] <- "RSA1_5"
+
+  representations <- list(
+    jwk = encryption_jwk,
+    json = jsonlite::toJSON(encryption_jwk, auto_unbox = TRUE)
+  )
+  for (representation in representations) {
+    provider <- make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A128CBC-HS256",
+      request_object_encryption_jwk = representation
+    )
+    client <- make_jar_test_client(
+      provider = provider,
+      request_object_encryption_alg = "RSA-OAEP",
+      request_object_encryption_enc = "A128CBC-HS256"
+    )
+
+    expect_error(
+      shinyOAuth:::prepare_call(client, valid_browser_token()),
+      class = "shinyOAuth_config_error",
+      regexp = "advertises JWE alg 'RSA1_5' but the client requested 'RSA-OAEP'"
+    )
+  }
+})
+
+test_that("JWK list and JSON encryption inputs retain kid and key policy", {
+  encryption_key <- openssl::rsa_keygen(bits = 2048)
+  encryption_jwk <- jsonlite::fromJSON(
+    jose::write_jwk(encryption_key$pubkey),
+    simplifyVector = FALSE
+  )
+  encryption_jwk[["kid"]] <- "encryption-key-7"
+  encryption_jwk[["alg"]] <- "RSA-OAEP"
+  encryption_jwk[["use"]] <- "enc"
+  encryption_jwk[["key_ops"]] <- list("encrypt", "wrapKey")
+
+  representations <- list(
+    jwk = encryption_jwk,
+    json = jsonlite::toJSON(encryption_jwk, auto_unbox = TRUE)
+  )
+  for (representation in representations) {
+    provider <- make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A128CBC-HS256",
+      request_object_encryption_jwk = representation
+    )
+    client <- make_jar_test_client(
+      provider = provider,
+      request_object_encryption_alg = "RSA-OAEP",
+      request_object_encryption_enc = "A128CBC-HS256"
+    )
+
+    auth_url <- shinyOAuth:::prepare_call(client, valid_browser_token())
+    request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
+    decrypted <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
+
+    expect_identical(decrypted$header$kid, "encryption-key-7")
+  }
+
+  encryption_jwk[["use"]] <- "sig"
+  restricted_representations <- list(
+    jwk = encryption_jwk,
+    json = jsonlite::toJSON(encryption_jwk, auto_unbox = TRUE)
+  )
+  for (representation in restricted_representations) {
+    provider <- make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A128CBC-HS256",
+      request_object_encryption_jwk = representation
+    )
+    client <- make_jar_test_client(
+      provider = provider,
+      request_object_encryption_alg = "RSA-OAEP",
+      request_object_encryption_enc = "A128CBC-HS256"
+    )
+
+    expect_error(
+      shinyOAuth:::prepare_call(client, valid_browser_token()),
+      class = "shinyOAuth_config_error",
+      regexp = "not permitted for encryption by its use or key_ops metadata"
+    )
+  }
+})
+
 test_that("OIDC request minimal front-channel mode is rejected without PAR", {
   expect_error(
     make_jar_test_client(
