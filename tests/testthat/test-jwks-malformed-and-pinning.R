@@ -182,7 +182,7 @@ test_that("fetch_jwks rejects duplicate JWKS top-level members", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- shinyOAuth:::rtrim_slash(srv$url())
 
   expect_error(
     shinyOAuth:::fetch_jwks(
