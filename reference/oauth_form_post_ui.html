@@ -105,7 +105,13 @@ main callback flow can resume from a prevalidated POST boundary.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_form_post_ui</span><span class="op">(</span><span class="va">base_ui</span>, <span class="va">id</span>, <span class="va">client</span>, callback_path <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_form_post_ui</span><span class="op">(</span></span>
+<span>  <span class="va">base_ui</span>,</span>
+<span>  <span class="va">id</span>,</span>
+<span>  <span class="va">client</span>,</span>
+<span>  callback_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_uri_resolver <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -129,6 +135,15 @@ the <code>id</code> argument passed to the server module.</p></dd>
 <dd><p>Optional URL path to accept POST callbacks on. Defaults
 to the path component of <code>client@redirect_uri</code>.</p></dd>
 
+
+<dt id="arg-request-uri-resolver">request_uri_resolver<a class="anchor" aria-label="anchor" href="#arg-request-uri-resolver"></a></dt>
+<dd><p>Optional function accepting the Rook <code>req</code> environment and returning the
+trusted, public absolute request URI without relying on query parameters.
+Return <code>NULL</code> to reject the route. This is intended for HTTPS-terminating
+proxies whose backend request has an HTTP Rook scheme. The function must
+verify the proxy trust boundary before using forwarded headers; its result is
+still required to match the configured redirect origin and <code>callback_path</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -147,8 +162,10 @@ than the smaller of <code>client@state_payload_max_age</code> and the configured
 are also bounded by the <code>shinyOAuth.callback_max_form_post_*</code> options
 described in the usage vignette. Before reading the POST body, this wrapper
 compares the server-observed request scheme, authority, and path with the
-configured redirect origin and <code>callback_path</code>. Reverse proxies must preserve
-the public Host and set the trusted Rook request scheme correctly.</p>
+configured redirect origin and <code>callback_path</code>. Reverse proxies can supply a
+<code>request_uri_resolver</code> that reconstructs the public URI only after verifying
+the request came through a trusted proxy. Forwarded headers are never trusted
+by the default resolver.</p>
     </div>
 
     <div class="section level2">

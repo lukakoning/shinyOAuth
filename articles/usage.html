@@ -471,6 +471,34 @@ usually harmless. If your <code>redirect_uri</code> is a sub-route (like
 <code>uiPattern = ".*"</code> so Shiny routes that POST request through
 <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> before the app returns to its normal
 GET flow.</p>
+<p>When a trusted reverse proxy terminates HTTPS but forwards plain HTTP
+to Shiny, provide a <code>request_uri_resolver</code>. The resolver must
+first verify that the request came from your proxy; do not trust
+forwarded headers from arbitrary clients. This example also reconstructs
+a mounted application path:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">trusted_proxy_uri</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"REMOTE_ADDR"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"10.0.0.10"</span><span class="op">)</span> <span class="op">||</span></span>
+<span>      <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"HTTP_X_FORWARDED_PROTO"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"https"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
+<span>    <span class="st">"https://app.example"</span>,</span>
+<span>    <span class="va">req</span><span class="op">[[</span><span class="st">"SCRIPT_NAME"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>    <span class="va">req</span><span class="op">[[</span><span class="st">"PATH_INFO"</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span></span>
+<span>  <span class="va">base_ui</span>,</span>
+<span>  id <span class="op">=</span> <span class="st">"auth"</span>,</span>
+<span>  client <span class="op">=</span> <span class="va">client</span>,</span>
+<span>  request_uri_resolver <span class="op">=</span> <span class="va">trusted_proxy_uri</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use the proxy address and fixed public origin from your deployment.
+The resolved URI must still match <code>client@redirect_uri</code> and
+<code>callback_path</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="deploying-on-posit-connect-cloud-avoiding-embedded-deployment">Deploying on Posit Connect Cloud (avoiding embedded deployment)<a class="anchor" aria-label="anchor" href="#deploying-on-posit-connect-cloud-avoiding-embedded-deployment"></a>

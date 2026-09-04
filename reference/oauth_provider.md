@@ -184,24 +184,22 @@ userinfo[["sub"]]
   Should take a single argument (the userinfo list) and return the user
   ID as a string.
 
-  This is used for helpers that need a provider-specific user
-  identifier, such as audit fields and UserInfo-to-ID-token subject
-  matching. If you configure a selector other than `function(x) x$sub`,
-  that selector also defines which UserInfo value is compared against
-  the validated ID token `sub`. Helper constructors like
-  `oauth_provider()` and
+  This is used for helpers that need a provider-specific application
+  user identifier, such as audit fields. It does not replace OIDC
+  subject binding: when a validated ID token and UserInfo are both
+  available, their actual `sub` claims are always compared. Helper
+  constructors like `oauth_provider()` and
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  provide a default selector that extracts the `sub` field.
+  provide a default selector that extracts `sub`.
 
 - userinfo_id_token_match:
 
   Whether to fail closed if UserInfo cannot be bound to a validated ID
   token subject. Whenever both UserInfo and a validated ID token are
   available, shinyOAuth compares the validated ID token `sub` to the
-  value returned by `userinfo_id_selector(userinfo)`. Setting this field
-  to `TRUE` additionally requires a validated ID token baseline whenever
-  UserInfo is fetched. This requires `userinfo_required`, a configured
-  `userinfo_id_selector`, plus either `id_token_validation` or
+  actual UserInfo `sub`. Setting this field to `TRUE` additionally
+  requires a validated ID token baseline whenever UserInfo is fetched.
+  This requires `userinfo_required` plus either `id_token_validation` or
   `use_nonce` to be `TRUE`.
 
   For `oauth_provider()`, when not explicitly supplied, this is inferred

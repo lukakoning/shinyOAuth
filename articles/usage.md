@@ -425,6 +425,37 @@ sub-route (like `http://127.0.0.1:8100/callback`), use
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
 before the app returns to its normal GET flow.
 
+When a trusted reverse proxy terminates HTTPS but forwards plain HTTP to
+Shiny, provide a `request_uri_resolver`. The resolver must first verify
+that the request came from your proxy; do not trust forwarded headers
+from arbitrary clients. This example also reconstructs a mounted
+application path:
+
+``` r
+trusted_proxy_uri <- function(req) {
+  if (!identical(req[["REMOTE_ADDR"]], "10.0.0.10") ||
+      !identical(req[["HTTP_X_FORWARDED_PROTO"]], "https")) {
+    return(NULL)
+  }
+
+  paste0(
+    "https://app.example",
+    req[["SCRIPT_NAME"]],
+    req[["PATH_INFO"]]
+  )
+}
+
+ui <- oauth_form_post_ui(
+  base_ui,
+  id = "auth",
+  client = client,
+  request_uri_resolver = trusted_proxy_uri
+)
+```
+
+Use the proxy address and fixed public origin from your deployment. The
+resolved URI must still match `client@redirect_uri` and `callback_path`.
+
 ## Deploying on Posit Connect Cloud (avoiding embedded deployment)
 
 To be able to handle OAuth callbacks properly, your Shiny app needs to

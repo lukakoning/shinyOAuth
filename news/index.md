@@ -2,6 +2,42 @@
 
 ## shinyOAuth (development version)
 
+- mTLS registration now accepts and normalizes IPv6 SANs whose
+  compressed zero run appears at the end of the address.
+
+- JWT claim parsing now preserves JSON arrays until claim-specific
+  validation, preventing one-element arrays from being accepted as
+  scalar claims.
+
+- [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  now supports explicit trusted-proxy request URI normalization for
+  HTTPS termination and mounted apps.
+
+- JWKS keys with standard `key_ops` arrays are now considered correctly
+  for signature verification and Request Object encryption.
+
+- JWT and JWE parsing now bounds JOSE header size and JSON nesting, and
+  handles long string values without disproportionate work.
+
+- Malformed UserInfo and JARM responses no longer copy parser excerpts
+  into audit or telemetry output; diagnostics retain safe type, size,
+  and digest data.
+
+- Required signed-UserInfo time claims and essential claims no longer
+  accept JSON `null` or empty values as satisfying the configured
+  policy.
+
+- OIDC UserInfo binding now always compares the actual UserInfo and
+  ID-token `sub` claims; custom application identity selectors cannot
+  replace this check.
+
+- Prebuilt `httr2` requests with a body now infer `POST` consistently
+  for request execution, retry safety, and DPoP proofs.
+
+- Query parameters, repeated form fields, and HTTP Basic client
+  credentials now encode literal percent escapes without exposing
+  embedded parameter delimiters.
+
 - The Spotify example now validates provider-generated links and image
   URLs before rendering them.
 
@@ -54,8 +90,8 @@
 - Callback state now binds token-exchange, client-assertion, JAR, and
   PAR security settings across workers.
 
-- Audit and telemetry sink failures no longer replace OAuth errors when
-  R is configured to turn warnings into errors.
+- Audit and OpenTelemetry setup or sink failures no longer interrupt
+  OAuth work when R is configured to turn warnings into errors.
 
 - Added JWT Secured Authorization Response Mode (JARM) support with
   `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. Signed

@@ -43,7 +43,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The Spotify example now validates provider-generated links and image URLs before rendering them.</p></li>
+<ul><li><p>mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero run appears at the end of the address.</p></li>
+<li><p>JWT claim parsing now preserves JSON arrays until claim-specific validation, preventing one-element arrays from being accepted as scalar claims.</p></li>
+<li><p><code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> now supports explicit trusted-proxy request URI normalization for HTTPS termination and mounted apps.</p></li>
+<li><p>JWKS keys with standard <code>key_ops</code> arrays are now considered correctly for signature verification and Request Object encryption.</p></li>
+<li><p>JWT and JWE parsing now bounds JOSE header size and JSON nesting, and handles long string values without disproportionate work.</p></li>
+<li><p>Malformed UserInfo and JARM responses no longer copy parser excerpts into audit or telemetry output; diagnostics retain safe type, size, and digest data.</p></li>
+<li><p>Required signed-UserInfo time claims and essential claims no longer accept JSON <code>null</code> or empty values as satisfying the configured policy.</p></li>
+<li><p>OIDC UserInfo binding now always compares the actual UserInfo and ID-token <code>sub</code> claims; custom application identity selectors cannot replace this check.</p></li>
+<li><p>Prebuilt <code>httr2</code> requests with a body now infer <code>POST</code> consistently for request execution, retry safety, and DPoP proofs.</p></li>
+<li><p>Query parameters, repeated form fields, and HTTP Basic client credentials now encode literal percent escapes without exposing embedded parameter delimiters.</p></li>
+<li><p>The Spotify example now validates provider-generated links and image URLs before rendering them.</p></li>
 <li><p>The Spotify vignette is now self-contained on all supported R versions.</p></li>
 <li><p>Package overviews now distinguish OIDC authentication from OAuth authorization and provider-specific identity bootstrapping.</p></li>
 <li><p>Client-hosted JAR documentation now reflects that <code>request_uri</code> publication requires HTTPS.</p></li>
@@ -60,7 +70,7 @@
 <li><p>Provider endpoint URLs now preserve consecutive path slashes.</p></li>
 <li><p>JARM callbacks now authenticate their sealed state before they can trigger a provider key refresh.</p></li>
 <li><p>Callback state now binds token-exchange, client-assertion, JAR, and PAR security settings across workers.</p></li>
-<li><p>Audit and telemetry sink failures no longer replace OAuth errors when R is configured to turn warnings into errors.</p></li>
+<li><p>Audit and OpenTelemetry setup or sink failures no longer interrupt OAuth work when R is configured to turn warnings into errors.</p></li>
 <li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. Signed and encrypted JARM responses are validated through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> continues to accept only classic direct callbacks. The maximum response-JWT lifetime is configurable with <code>jarm_max_lifetime</code> (default 600 seconds). Discovery supports the canonical <code>jarm_*_values_supported</code> metadata fields and their older <code>authorization_*</code> aliases. For Keycloak interoperability, <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code>, with an opt-out for strict duplicate rejection.</p></li>
 <li>
 <p>Added RFC 9700 multi-authorization-server configuration through <code>authorization_server_mode</code>:</p>

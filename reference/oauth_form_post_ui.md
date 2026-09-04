@@ -29,7 +29,13 @@ callback flow can resume from a prevalidated POST boundary.
 ## Usage
 
 ``` r
-oauth_form_post_ui(base_ui, id, client, callback_path = NULL)
+oauth_form_post_ui(
+  base_ui,
+  id,
+  client,
+  callback_path = NULL,
+  request_uri_resolver = NULL
+)
 ```
 
 ## Arguments
@@ -55,6 +61,16 @@ oauth_form_post_ui(base_ui, id, client, callback_path = NULL)
   Optional URL path to accept POST callbacks on. Defaults to the path
   component of `client@redirect_uri`.
 
+- request_uri_resolver:
+
+  Optional function accepting the Rook `req` environment and returning
+  the trusted, public absolute request URI without relying on query
+  parameters. Return `NULL` to reject the route. This is intended for
+  HTTPS-terminating proxies whose backend request has an HTTP Rook
+  scheme. The function must verify the proxy trust boundary before using
+  forwarded headers; its result is still required to match the
+  configured redirect origin and `callback_path`.
+
 ## Value
 
 A Shiny UI function. Pass it to
@@ -78,8 +94,10 @@ query parameters are also bounded by the
 `shinyOAuth.callback_max_form_post_*` options described in the usage
 vignette. Before reading the POST body, this wrapper compares the
 server-observed request scheme, authority, and path with the configured
-redirect origin and `callback_path`. Reverse proxies must preserve the
-public Host and set the trusted Rook request scheme correctly.
+redirect origin and `callback_path`. Reverse proxies can supply a
+`request_uri_resolver` that reconstructs the public URI only after
+verifying the request came through a trusted proxy. Forwarded headers
+are never trusted by the default resolver.
 
 ## Examples
 
