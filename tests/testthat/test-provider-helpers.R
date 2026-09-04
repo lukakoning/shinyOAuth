@@ -495,7 +495,7 @@ test_that("oauth_provider_auth0 constructs correct issuer from domain", {
   expect_identical(p@issuer, issuer)
 })
 
-test_that("oauth_provider_auth0 accepts an issuer without its trailing slash", {
+test_that("oauth_provider_auth0 rejects a discovered issuer without its trailing slash", {
   issuer <- "https://my-domain.auth0.com"
   disc_json <- make_discovery_doc(issuer)
 
@@ -511,10 +511,11 @@ test_that("oauth_provider_auth0 accepts an issuer without its trailing slash", {
     .package = "shinyOAuth"
   )
 
-  p <- oauth_provider_auth0(domain = "my-domain.auth0.com")
-
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
-  expect_identical(p@issuer, issuer)
+  expect_error(
+    oauth_provider_auth0(domain = "my-domain.auth0.com"),
+    class = "shinyOAuth_config_error",
+    regexp = "issuer mismatch"
+  )
 })
 
 test_that("oauth_provider_auth0 includes audience in extra_auth_params", {
