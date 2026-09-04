@@ -130,3 +130,23 @@ testthat::test_that("package overview distinguishes authentication from authoriz
     fixed = TRUE
   ))
 })
+
+testthat::test_that("PKCE docs distinguish exchange and browser binding", {
+  auth_docs <- project_text("vignettes", "authentication-flow.Rmd")
+
+  testthat::expect_match(
+    auth_docs,
+    "bind the\n  authorization request to the later token exchange",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    auth_docs,
+    "the state and browser\n  token provide the browser-session binding",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "PKCE: a `code_verifier` and matching `code_challenge` that prove the same",
+    auth_docs,
+    fixed = TRUE
+  ))
+})

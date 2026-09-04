@@ -56,8 +56,9 @@ keep the flow linked to the right session and protect the callback:
 
 - State: a random value used to link the callback to this login attempt and help
   block forged callbacks; 'shinyOAuth' also seals extra context into it
-- PKCE: a `code_verifier` and matching `code_challenge` that prove the same
-  browser session finishes the flow
+- PKCE: a `code_verifier` and matching `code_challenge` that bind the
+  authorization request to the later token exchange; the state and browser
+  token provide the browser-session binding
 - Nonce (OIDC): a random value that is checked again when validating the ID token
 
 'shinyOAuth' seals the state by storing extra context inside an encrypted and
