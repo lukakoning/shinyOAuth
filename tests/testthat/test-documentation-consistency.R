@@ -74,3 +74,18 @@ testthat::test_that("request_uri docs describe fail-closed HTTPS policy", {
     fixed = TRUE
   ))
 })
+
+testthat::test_that("Ed448 at_hash docs describe fail-closed validation", {
+  provider_docs <- project_text("R", "classes__OAuthProvider.R")
+
+  testthat::expect_match(
+    provider_docs,
+    "any Ed448 ID\n#'   token containing an `at_hash` claim fails closed",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "shinyOAuth skips\n#'   that optional check",
+    provider_docs,
+    fixed = TRUE
+  ))
+})
