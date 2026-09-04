@@ -58,3 +58,31 @@ testthat::test_that("browser tests run only in Chrome-provisioned CI", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("integration tests require a fresh successful install", {
+  runner <- testthat::test_path(
+    "..",
+    "..",
+    "integration",
+    "keycloak",
+    "run-tests.R"
+  )
+  testthat::skip_if_not(
+    file.exists(runner),
+    "Integration runner unavailable in installed package tests"
+  )
+  runner_text <- paste(readLines(runner, warn = FALSE), collapse = "\n")
+
+  testthat::expect_match(runner_text, "processx::run(", fixed = TRUE)
+  testthat::expect_match(runner_text, '"CMD",', fixed = TRUE)
+  testthat::expect_match(runner_text, '"INSTALL",', fixed = TRUE)
+  testthat::expect_match(runner_text, "error_on_status = FALSE", fixed = TRUE)
+  testthat::expect_match(
+    runner_text,
+    "if (!identical(install_result$status, 0L))",
+    fixed = TRUE
+  )
+  testthat::expect_match(runner_text, "integration_library <- tempfile(", fixed = TRUE)
+  testthat::expect_match(runner_text, 'find.package("shinyOAuth")', fixed = TRUE)
+  testthat::expect_match(runner_text, "R_LIBS = integration_library_path", fixed = TRUE)
+})
