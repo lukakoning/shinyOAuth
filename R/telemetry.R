@@ -1692,6 +1692,7 @@ otel_is_allowed_event_field <- function(name) {
       "body_bytes",
       "body_digest",
       "browser_token_digest",
+      "code_digest",
       "callback_error",
       "callback_issuer",
       "compact_jwe_failure",

@@ -219,6 +219,7 @@ testthat::test_that("otel_event_attributes allows only approved fields", {
     type = "audit_login_success",
     trace_id = "abc123",
     provider = "github",
+    code_digest = "safe-code-digest",
     access_token = "secret_token",
     refresh_token = "secret_refresh",
     id_token = "secret_id",
@@ -271,6 +272,7 @@ testthat::test_that("otel_event_attributes allows only approved fields", {
   testthat::expect_identical(attrs[["event.type"]], "audit_login_success")
   testthat::expect_identical(attrs[["oauth.provider.name"]], "github")
   testthat::expect_identical(attrs[["oauth.status"]], "ok")
+  testthat::expect_identical(attrs[["code_digest"]], "safe-code-digest")
 })
 
 testthat::test_that("otel_event_attributes sanitizes every URL-valued field", {
