@@ -87,7 +87,7 @@ oauth_provider_oidc <- function(
 #'
 #' @details
 #' You can register a new GitHub OAuth 2.0 app in your
-#' ['Developer Settings'](https://github.com/settings/apps).
+#' [OAuth App settings](https://github.com/settings/developers).
 #'
 #' @param name Optional provider name (default "github")
 #'

@@ -17,7 +17,7 @@ Ready-to-use OAuth 2.0 provider settings for GitHub.
 }
 \details{
 You can register a new GitHub OAuth 2.0 app in your
-\href{https://github.com/settings/apps}{'Developer Settings'}.
+\href{https://github.com/settings/developers}{OAuth App settings}.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)

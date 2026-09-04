@@ -250,3 +250,18 @@ testthat::test_that("Spotify vignette validates rendered provider URLs", {
     "https://i.scdn.co/image/abc"
   )
 })
+
+testthat::test_that("GitHub OAuth help points to OAuth App settings", {
+  provider_docs <- project_text("R", "providers.R")
+
+  testthat::expect_match(
+    provider_docs,
+    "[OAuth App settings](https://github.com/settings/developers)",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "https://github.com/settings/apps",
+    provider_docs,
+    fixed = TRUE
+  ))
+})
