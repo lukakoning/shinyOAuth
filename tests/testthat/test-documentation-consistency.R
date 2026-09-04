@@ -54,3 +54,23 @@ testthat::test_that("OIDC docs separate host and loopback HTTP policy", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("request_uri docs describe fail-closed HTTPS policy", {
+  client_docs <- project_text("R", "classes__OAuthClient.R")
+
+  testthat::expect_match(
+    client_docs,
+    "Caller-managed `request_uri` publication requires HTTPS",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    client_docs,
+    "HTTP URLs are\n#'   rejected",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "shinyOAuth still publishes it but warns",
+    client_docs,
+    fixed = TRUE
+  ))
+})

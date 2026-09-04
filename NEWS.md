@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Client-hosted JAR documentation now reflects that `request_uri` publication
+requires HTTPS.
+
 * OIDC documentation now distinguishes endpoint host allowlists from the
 separate loopback HTTP development opt-in.
 
