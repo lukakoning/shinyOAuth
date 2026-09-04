@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Malformed UserInfo and JARM responses no longer copy parser excerpts into
+audit or telemetry output; diagnostics retain safe type, size, and digest data.
+
 * Required signed-UserInfo time claims and essential claims no longer accept
 JSON `null` or empty values as satisfying the configured policy.
 

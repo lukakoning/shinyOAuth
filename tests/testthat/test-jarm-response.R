@@ -203,6 +203,121 @@ make_compact_jwe_with_header <- function(header_json) {
   )
 }
 
+test_that("JARM parser diagnostics redact JWT and JWE response data", {
+  decrypt_key <- openssl::rsa_keygen(2048)
+  plain_client <- make_jarm_test_client()
+  encrypted_client <- make_jarm_test_client(
+    jarm_encrypted_response_alg = "RSA-OAEP",
+    jarm_encrypted_response_enc = "A256CBC-HS512",
+    jarm_decryption_private_key = decrypt_key
+  )
+  sentinels <- c(
+    header = "JARM_HEADER_SECRET_8821",
+    payload = "JARM_PAYLOAD_SECRET_6407",
+    jwe = "JARM_JWE_SECRET_1553"
+  )
+  malformed_header <- paste0('{"alg":"RS256","secret":"', sentinels[[1]])
+  valid_header <- '{"alg":"RS256"}'
+  malformed_payload <- paste0('{"code":"', sentinels[[2]])
+  malformed_jwe_header <- paste0(
+    '{"alg":"RSA-OAEP","enc":"A256CBC-HS512","secret":"',
+    sentinels[[3]]
+  )
+  cases <- list(
+    header = list(
+      client = plain_client,
+      response = paste(
+        shinyOAuth:::base64url_encode(charToRaw(malformed_header)),
+        shinyOAuth:::base64url_encode(charToRaw("{}")),
+        "AA",
+        sep = "."
+      )
+    ),
+    payload = list(
+      client = plain_client,
+      response = paste(
+        shinyOAuth:::base64url_encode(charToRaw(valid_header)),
+        shinyOAuth:::base64url_encode(charToRaw(malformed_payload)),
+        "AA",
+        sep = "."
+      )
+    ),
+    jwe = list(
+      client = encrypted_client,
+      response = make_compact_jwe_with_header(malformed_jwe_header)
+    )
+  )
+  events <- list()
+  log_calls <- list()
+  exception_calls <- list()
+  mock_span <- list(
+    set_attribute = function(...) invisible(NULL),
+    add_event = function(name, attributes = NULL) {
+      exception_calls[[length(exception_calls) + 1L]] <<- list(
+        name = name,
+        attributes = attributes
+      )
+    },
+    set_status = function(...) invisible(NULL)
+  )
+
+  withr::local_options(list(
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    },
+    shinyOAuth.otel_logging_enabled = TRUE,
+    shinyOAuth.otel_tracing_enabled = TRUE,
+    shinyOAuth.expose_error_body = FALSE
+  ))
+
+  errors <- testthat::with_mocked_bindings(
+    log = function(msg, severity, attributes = NULL, ...) {
+      log_calls[[length(log_calls) + 1L]] <<- list(
+        msg = msg,
+        severity = severity,
+        attributes = attributes
+      )
+    },
+    .package = "otel",
+    {
+      lapply(cases, function(case) {
+        error <- tryCatch(
+          shinyOAuth:::validate_jarm_response(
+            case[["client"]],
+            case[["response"]]
+          ),
+          error = identity
+        )
+        shinyOAuth:::otel_note_error(error, span = mock_span)
+        error
+      })
+    }
+  )
+
+  rendered <- paste(
+    c(
+      vapply(errors, conditionMessage, character(1)),
+      capture.output(str(events)),
+      capture.output(str(log_calls)),
+      capture.output(str(exception_calls))
+    ),
+    collapse = "\n"
+  )
+  for (sentinel in sentinels) {
+    expect_no_match(rendered, sentinel, fixed = TRUE)
+  }
+  expect_true(any(vapply(
+    events,
+    function(event) is_valid_string(event[["body_digest"]]),
+    logical(1)
+  )))
+  expect_true(all(vapply(
+    exception_calls,
+    function(call) is.null(call[["attributes"]][["exception.message"]]),
+    logical(1)
+  )))
+})
+
 test_that("handle_callback rejects direct code/state callbacks for JARM clients", {
   modes <- c("jwt", "query.jwt", "form_post.jwt")
 
@@ -1357,7 +1472,7 @@ test_that("validate_jarm_response rejects duplicate identical iss claims by defa
   expect_error(
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
-    regexp = "duplicate member name: iss"
+    regexp = "JARM payload could not be parsed"
   )
 })
 
@@ -1474,7 +1589,7 @@ test_that("validate_jarm_response rejects nested duplicate iss claims", {
   expect_error(
     shinyOAuth:::validate_jarm_response(client, response),
     class = "shinyOAuth_state_error",
-    regexp = "duplicate member name: iss"
+    regexp = "JARM payload could not be parsed"
   )
 })
 

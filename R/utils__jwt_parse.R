@@ -30,10 +30,14 @@ parse_jwt_payload <- function(jwt) {
       jsonlite::fromJSON(payload_text, simplifyVector = FALSE)
     ),
     error = function(e) {
-      err_parse(c(
+      err_parse(
         "Failed to parse JWT payload JSON",
-        "i" = conditionMessage(e)
-      ))
+        context = safe_parse_failure_context(
+          payload_text,
+          "jwt_payload_json",
+          e
+        )
+      )
     }
   )
 }
@@ -95,10 +99,14 @@ parse_jwt_header <- function(jwt) {
   tryCatch(
     jsonlite::fromJSON(header_text, simplifyVector = FALSE),
     error = function(e) {
-      err_parse(c(
+      err_parse(
         "Failed to parse JWT header JSON",
-        "i" = conditionMessage(e)
-      ))
+        context = safe_parse_failure_context(
+          header_text,
+          "jwt_header_json",
+          e
+        )
+      )
     }
   )
 }
@@ -223,10 +231,14 @@ strict_decode_jwt_json_text <- function(segment_raw, field_name) {
   }
 
   text <- tryCatch(rawToChar(segment_raw), error = function(e) {
-    err_parse(c(
+    err_parse(
       paste0("Failed to decode JWT ", field_name, " JSON text"),
-      "i" = conditionMessage(e)
-    ))
+      context = safe_parse_failure_context(
+        NULL,
+        paste0("jwt_", field_name, "_text"),
+        e
+      )
+    )
   })
 
   if (!isTRUE(validUTF8(text))) {

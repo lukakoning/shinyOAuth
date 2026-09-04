@@ -46,6 +46,46 @@ err_abort <- function(
   )
 }
 
+#' Build non-sensitive context for a parser failure
+#'
+#' Records only the parser phase, input size, keyed digest, and condition class.
+#' Raw parser diagnostics can include fragments of an untrusted response and
+#' must not be copied into audit or telemetry events.
+#'
+#' @param input Parsed character input, when available.
+#' @param phase Stable parser phase identifier.
+#' @param error Optional parser condition.
+#' @return Named list safe for condition context and event sinks.
+#' @keywords internal
+#' @noRd
+safe_parse_failure_context <- function(input, phase, error = NULL) {
+  input_value <- if (is_valid_string(input)) as.character(input) else NULL
+  error_classes <- tryCatch(class(error), error = function(...) character(0))
+  error_class <- if (
+    length(error_classes) > 0L && is_valid_string(error_classes[[1L]])
+  ) {
+    error_classes[[1L]]
+  } else {
+    NULL
+  }
+
+  compact_list(list(
+    phase = phase,
+    reason = "parse_error",
+    body_bytes = if (!is.null(input_value)) {
+      nchar(input_value, type = "bytes")
+    } else {
+      NULL
+    },
+    body_digest = if (!is.null(input_value)) {
+      string_digest(input_value)
+    } else {
+      NULL
+    },
+    error_class = error_class
+  ))
+}
+
 #' Format the standard shinyOAuth condition header
 #'
 #' Used by errors, warnings, and informs that present a concise shinyOAuth

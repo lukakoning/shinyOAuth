@@ -541,10 +541,14 @@ parse_jarm_payload <- function(
   tryCatch(
     jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
     error = function(e) {
-      err_parse(c(
+      err_parse(
         "Failed to parse JWT payload JSON",
-        "i" = conditionMessage(e)
-      ))
+        context = safe_parse_failure_context(
+          payload_text,
+          "jarm_payload_json",
+          e
+        )
+      )
     }
   )
 }
@@ -889,10 +893,14 @@ validate_jarm_response <- function(
     jwe_parts <- tryCatch(
       jwe_compact_parts(response),
       error = function(e) {
-        err_invalid_state(paste0(
-          "Encrypted JARM response could not be parsed: ",
-          conditionMessage(e)
-        ))
+        err_invalid_state(
+          "Encrypted JARM response could not be parsed",
+          context = safe_parse_failure_context(
+            response,
+            "jarm_jwe",
+            e
+          )
+        )
       }
     )
     outer_header_fields <- validate_encrypted_jarm_protected_header(
@@ -932,10 +940,14 @@ validate_jarm_response <- function(
           err_invalid_state("Encrypted JARM response could not be decrypted")
         }
 
-        err_invalid_state(paste0(
-          "Encrypted JARM response could not be parsed: ",
-          conditionMessage(e)
-        ))
+        err_invalid_state(
+          "Encrypted JARM response could not be parsed",
+          context = safe_parse_failure_context(
+            response,
+            "jarm_jwe",
+            e
+          )
+        )
       }
     )
     jwt_str <- decrypted[["plaintext"]] %||% NA_character_
@@ -951,10 +963,14 @@ validate_jarm_response <- function(
   header <- tryCatch(
     parse_jwt_header(jwt_str),
     error = function(e) {
-      err_invalid_state(paste0(
-        "JARM header could not be parsed: ",
-        conditionMessage(e)
-      ))
+      err_invalid_state(
+        "JARM header could not be parsed",
+        context = safe_parse_failure_context(
+          jwt_str,
+          "jarm_header",
+          e
+        )
+      )
     }
   )
   header_fields <- validate_jose_header_fields(
@@ -988,10 +1004,14 @@ validate_jarm_response <- function(
       )
     ),
     error = function(e) {
-      err_invalid_state(paste0(
-        "JARM payload could not be parsed: ",
-        conditionMessage(e)
-      ))
+      err_invalid_state(
+        "JARM payload could not be parsed",
+        context = safe_parse_failure_context(
+          jwt_str,
+          "jarm_payload",
+          e
+        )
+      )
     }
   )
   claims <- as.list(claims)

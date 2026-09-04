@@ -206,6 +206,31 @@ get_userinfo <- function(
           )
         }
         if (inherits(ui, "try-error")) {
+          parser_error <- attr(ui, "condition")
+          if (
+            is_jwt_response &&
+              inherits(parser_error, "shinyOAuth_userinfo_error")
+          ) {
+            jwt_body <- try(httr2::resp_body_string(resp), silent = TRUE)
+            if (inherits(jwt_body, "try-error")) {
+              jwt_body <- NULL
+            }
+            audit_userinfo_event(
+              oauth_client,
+              status = "parse_error",
+              shiny_session = shiny_session,
+              extra = c(
+                list(parse = "jwt"),
+                safe_parse_failure_context(
+                  jwt_body,
+                  "userinfo_jwt",
+                  parser_error
+                )
+              )
+            )
+            stop(parser_error)
+          }
+
           # Extract non-sensitive context to aid debugging without leaking tokens
           url <- try(httr2::resp_url(resp), silent = TRUE)
           if (inherits(url, "try-error")) {
@@ -224,31 +249,29 @@ get_userinfo <- function(
           if (inherits(body_str, "try-error")) {
             body_str <- NA_character_
           }
-          body_digest <- NA_character_
-          if (is_valid_string(body_str)) {
-            dig <- try(openssl::sha256(charToRaw(body_str)), silent = TRUE)
-            if (!inherits(dig, "try-error")) {
-              body_digest <- paste0(
-                sprintf("%02x", as.integer(dig)),
-                collapse = ""
-              )
-            }
-          }
+          parse_type <- if (is_jwt_response) "jwt" else "json"
+          parse_context <- safe_parse_failure_context(
+            body_str,
+            paste0("userinfo_", parse_type),
+            parser_error
+          )
 
           # Emit audit event even on parse failures
           audit_userinfo_event(
             oauth_client,
             status = "parse_error",
             shiny_session = shiny_session,
-            extra = list(
-              http_status = status,
-              url = url,
-              content_type = ct,
-              body_digest = body_digest
+            extra = c(
+              list(
+                http_status = status,
+                url = url,
+                content_type = ct,
+                parse = parse_type
+              ),
+              parse_context
             )
           )
 
-          parse_type <- if (is_jwt_response) "jwt" else "json"
           err_userinfo(
             c(
               "x" = if (is_jwt_response) {
@@ -256,7 +279,6 @@ get_userinfo <- function(
               } else {
                 "Failed to parse userinfo response as JSON"
               },
-              "!" = conditionMessage(attr(ui, "condition")),
               "i" = if (is_valid_string(ct)) {
                 paste0("Content-Type: ", ct)
               } else {
@@ -265,13 +287,14 @@ get_userinfo <- function(
               "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
               "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
             ),
-            context = list(
-              phase = "userinfo",
-              parse = parse_type,
-              http_status = status,
-              url = url,
-              content_type = ct,
-              body_digest = body_digest
+            context = c(
+              list(
+                parse = parse_type,
+                http_status = status,
+                url = url,
+                content_type = ct
+              ),
+              parse_context
             )
           )
         }
@@ -458,20 +481,22 @@ decode_userinfo_jwt <- function(
   header <- try(parse_jwt_header(jwt_str), silent = TRUE)
 
   if (inherits(header, "try-error")) {
-    header_reason <- tryCatch(
-      conditionMessage(attr(header, "condition")),
-      error = function(e) as.character(header)
-    )
     audit_userinfo_event(
       oauth_client,
       status = "userinfo_jwt_header_parse_failed",
       shiny_session = shiny_session
     )
-    err_userinfo(c(
-      "x" = "UserInfo JWT header could not be parsed",
-      "i" = header_reason,
-      "i" = "A well-formed JWT header is required for verification (OIDC Core 5.3.2)"
-    ))
+    err_userinfo(
+      c(
+        "x" = "UserInfo JWT header could not be parsed",
+        "i" = "A well-formed JWT header is required for verification (OIDC Core 5.3.2)"
+      ),
+      context = safe_parse_failure_context(
+        jwt_str,
+        "userinfo_jwt_header",
+        attr(header, "condition")
+      )
+    )
   }
 
   header_fields <- tryCatch(
@@ -689,13 +714,14 @@ decode_userinfo_jwt <- function(
         status = "userinfo_jwt_payload_parse_failed",
         shiny_session = shiny_session
       )
-      err_userinfo(c(
-        "x" = "UserInfo JWT payload could not be parsed",
-        "i" = tryCatch(
-          conditionMessage(attr(claims, "condition")),
-          error = function(e) as.character(claims)
+      err_userinfo(
+        "UserInfo JWT payload could not be parsed",
+        context = safe_parse_failure_context(
+          jwt_str,
+          "userinfo_jwt_payload",
+          attr(claims, "condition")
         )
-      ))
+      )
     }
 
     claims <- as.list(claims)

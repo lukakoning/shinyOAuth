@@ -137,10 +137,14 @@ jwe_compact_parts <- function(jwe) {
   protected_header <- tryCatch(
     jsonlite::fromJSON(protected_text, simplifyVector = FALSE),
     error = function(e) {
-      err_parse(c(
+      err_parse(
         "Failed to parse JWE protected header JSON",
-        "i" = conditionMessage(e)
-      ))
+        context = safe_parse_failure_context(
+          protected_text,
+          "jwe_protected_header_json",
+          e
+        )
+      )
     }
   )
 
