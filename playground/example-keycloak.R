@@ -9,6 +9,8 @@ devtools::load_all()
 library(shiny)
 
 # Configure provider and client
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+
 provider <- oauth_provider_keycloak(
   base_url = "http://localhost:8080",
   realm = "master"

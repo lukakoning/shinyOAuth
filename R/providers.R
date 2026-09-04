@@ -370,7 +370,8 @@ oauth_provider_slack <- function(name = "slack") {
 #' Create a Keycloak [OAuthProvider] (via OIDC discovery)
 #'
 #' @param base_url Base URL of the Keycloak server, e.g.,
-#'  "http://localhost:8080"
+#'  "http://localhost:8080". Local HTTP development also requires
+#'  `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.
 #' @param realm Keycloak realm name, e.g., "myrealm"
 #' @param name Optional provider name. Defaults to `paste0('keycloak-', realm)`
 #' @param token_auth_style Optional override for token endpoint authentication

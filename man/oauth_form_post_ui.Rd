@@ -72,6 +72,8 @@ if (
   library(shiny)
   library(shinyOAuth)
 
+  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+
   provider <- oauth_provider_keycloak(
     base_url = Sys.getenv("KEYCLOAK_BASE_URL"),
     realm = Sys.getenv("KEYCLOAK_REALM")

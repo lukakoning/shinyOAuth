@@ -1,5 +1,7 @@
 # shinyOAuth (development version)
 
+* Local HTTP Keycloak examples now include the required loopback opt-in.
+
 * Audit HTTP context now omits query strings, request headers, and client
 addresses by default. Raw request context remains available only through the
 existing explicit diagnostic opt-in.

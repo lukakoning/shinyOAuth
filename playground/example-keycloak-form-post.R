@@ -12,6 +12,7 @@ library(shiny)
 auth_port <- as.integer(Sys.getenv("SHINYOAUTH_APP_PORT", "8100"))
 keycloak_base_url <- Sys.getenv("KEYCLOAK_BASE_URL", "http://localhost:8080")
 keycloak_realm <- Sys.getenv("KEYCLOAK_REALM", "shinyoauth")
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 start_local_keycloak <- !identical(
   tolower(Sys.getenv("SHINYOAUTH_START_KEYCLOAK", "true")),
   "false"

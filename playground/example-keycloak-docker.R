@@ -7,6 +7,8 @@ library(shinyOAuth)
 
 auth_port <- as.integer(Sys.getenv("SHINYOAUTH_APP_PORT", "3000"))
 
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+
 provider <- oauth_provider_keycloak(
   base_url = "http://localhost:8080",
   realm = "shinyoauth"

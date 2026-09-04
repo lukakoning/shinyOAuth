@@ -236,6 +236,7 @@ if (interactive()) {
 # Keycloak
 # (requires configured Keycloak realm; example below is therefore not run)
 if (interactive()) {
+  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
   oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
 }
 

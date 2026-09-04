@@ -45,6 +45,7 @@ library(shiny)
 
 # ---------- Config ----------
 issuer <- "http://localhost:8080/realms/master"
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
 client_id <- Sys.getenv("OAUTH_CLIENT_ID", unset = "so-hmac")
 client_secret <- Sys.getenv("OAUTH_CLIENT_SECRET", unset = "")

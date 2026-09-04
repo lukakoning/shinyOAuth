@@ -350,6 +350,8 @@ sealed state before issuing the one-time callback handle.
 library(shiny)
 library(shinyOAuth)
 
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+
 provider <- oauth_provider_keycloak(
   base_url = "http://localhost:8080",
   realm = "shinyoauth"
