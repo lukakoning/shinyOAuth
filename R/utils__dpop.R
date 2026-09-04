@@ -754,7 +754,7 @@ req_add_dpop_proof <- function(
     return(req)
   }
 
-  method <- req[["method"]] %||% "GET"
+  method <- resolve_client_bearer_method(req = req)
   url <- req[["url"]] %||% NA_character_
   if (!is_valid_string(url)) {
     err_config("Request URL missing while building DPoP proof")

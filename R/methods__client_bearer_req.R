@@ -330,7 +330,8 @@ prepare_client_bearer_request <- function(
   token_type = NULL,
   dpop_nonce = NULL
 ) {
-  validate_client_bearer_method(method = method, req = req)
+  request_method <- resolve_client_bearer_method(method = method, req = req)
+  validate_client_bearer_method(method = request_method)
 
   token_info <- resolve_client_bearer_token(
     token = token,
@@ -355,7 +356,7 @@ prepare_client_bearer_request <- function(
   req <- build_client_bearer_authorized_request(
     url = target_url,
     req = req,
-    method = method,
+    method = request_method,
     token = token,
     access_token = token_info[["access_token"]],
     token_type = token_info[["token_type"]],
@@ -373,6 +374,43 @@ prepare_client_bearer_request <- function(
   list(req = req, token_info = token_info)
 }
 
+#' Resolve the effective method of an httr2 request
+#'
+#' Mirrors httr2's request preparation rules so body-bearing requests without
+#' an explicit method are treated as POST before authentication and retry
+#' policy are applied.
+#'
+#' @param method Optional explicit HTTP method override.
+#' @param req Optional httr2 request object.
+#' @return Uppercase scalar HTTP method.
+#' @keywords internal
+#' @noRd
+resolve_client_bearer_method <- function(method = NULL, req = NULL) {
+  if (is_valid_string(method)) {
+    return(toupper(as.character(method)))
+  }
+  if (!inherits(req, "httr2_request")) {
+    return("GET")
+  }
+
+  request_method <- tryCatch(req[["method"]], error = function(...) NULL)
+  if (is_valid_string(request_method)) {
+    return(toupper(as.character(request_method)))
+  }
+
+  options <- tryCatch(req[["options"]], error = function(...) NULL)
+  if (is.list(options) && "nobody" %in% names(options)) {
+    return("HEAD")
+  }
+
+  body <- tryCatch(req[["body"]], error = function(...) NULL)
+  if (!is.null(body)) {
+    return("POST")
+  }
+
+  "GET"
+}
+
 #' Reject credential-reflecting HTTP methods
 #'
 #' Used by `prepare_client_bearer_request()` before access-token validation or
@@ -385,15 +423,7 @@ prepare_client_bearer_request <- function(
 #' @keywords internal
 #' @noRd
 validate_client_bearer_method <- function(method = NULL, req = NULL) {
-  request_method <- method
-  if (!is_valid_string(request_method) && inherits(req, "httr2_request")) {
-    request_method <- tryCatch(req[["method"]], error = function(...) NULL)
-  }
-  if (!is_valid_string(request_method)) {
-    request_method <- "GET"
-  }
-
-  request_method <- toupper(as.character(request_method))
+  request_method <- resolve_client_bearer_method(method = method, req = req)
   if (request_method %in% c("TRACE", "TRACK")) {
     err_input(c(
       paste0("Authenticated ", request_method, " requests are not allowed"),

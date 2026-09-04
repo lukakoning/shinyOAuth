@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Prebuilt `httr2` requests with a body now infer `POST` consistently for
+request execution, retry safety, and DPoP proofs.
+
 * Query parameters, repeated form fields, and HTTP Basic client credentials now
 encode literal percent escapes without exposing embedded parameter delimiters.
 

@@ -491,6 +491,43 @@ test_that("perform_resource_req preserves original request body query and option
   expect_equal(seen$low_speed_time, 2)
 })
 
+test_that("prebuilt body requests consistently infer POST", {
+  requests <- list(
+    json = httr2::request("https://example.com/json") |>
+      httr2::req_body_json(list(value = 1)),
+    form = httr2::request("https://example.com/form") |>
+      httr2::req_body_form(value = "1"),
+    raw = httr2::request("https://example.com/raw") |>
+      httr2::req_body_raw(charToRaw("value")),
+    multipart = httr2::request("https://example.com/multipart") |>
+      httr2::req_body_multipart(value = "1")
+  )
+
+  for (request_name in names(requests)) {
+    seen <- new.env(parent = emptyenv())
+    testthat::local_mocked_bindings(
+      req_with_retry = function(req, idempotent = TRUE) {
+        seen$method <- req[["method"]]
+        seen$wire_method <- httr2::req_dry_run(req, quiet = TRUE)[["method"]]
+        seen$idempotent <- idempotent
+        httr2::response(
+          url = as.character(req[["url"]]),
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw("{}")
+        )
+      },
+      .package = "shinyOAuth"
+    )
+
+    perform_resource_req(token = "tok", url = requests[[request_name]])
+
+    expect_identical(seen$method, "POST", info = request_name)
+    expect_identical(seen$wire_method, "POST", info = request_name)
+    expect_identical(seen$idempotent, FALSE, info = request_name)
+  }
+})
+
 test_that("perform_client_bearer_req is a deprecated alias for perform_resource_req", {
   withr::local_options(lifecycle_verbosity = "warning")
 
@@ -732,7 +769,6 @@ test_that("perform_resource_req preserves original DPoP request body query and o
   )
 
   req <- httr2::request("https://resource.example.com/api") |>
-    httr2::req_method("PATCH") |>
     httr2::req_url_query(from_req = 1) |>
     httr2::req_body_json(list(name = "example"), auto_unbox = TRUE) |>
     httr2::req_options(low_speed_time = 2)
@@ -752,6 +788,6 @@ test_that("perform_resource_req preserves original DPoP request body query and o
   expect_identical(seen$body_name, "example")
   expect_identical(seen$content_type, "application/json")
   expect_equal(seen$low_speed_time, 2)
-  expect_identical(seen$htm, "PATCH")
+  expect_identical(seen$htm, "POST")
   expect_identical(seen$htu, "https://resource.example.com/api")
 })
