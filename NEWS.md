@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* JWT and JWE parsing now bounds JOSE header size and JSON nesting, and handles
+long string values without disproportionate work.
+
 * Malformed UserInfo and JARM responses no longer copy parser excerpts into
 audit or telemetry output; diagnostics retain safe type, size, and digest data.
 

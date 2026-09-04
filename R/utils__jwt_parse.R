@@ -93,6 +93,7 @@ parse_jwt_header <- function(jwt) {
     parts[["header_raw"]],
     "header"
   )
+  validate_jose_header_size(header_text, "JWT header")
   reject_duplicate_json_object_members(header_text, "JWT header")
   assert_json_text_is_object(header_text, "JWT header")
   # Normalize JSON parse failures to a consistent parse error class
@@ -582,12 +583,18 @@ jwt_validate_crit_field <- function(value, signal_error) {
 #'
 #' @param json_text JSON text to inspect.
 #' @param label Human-readable label used in parse errors.
+#' @param max_depth Maximum permitted object/array nesting depth.
 #' @return Invisibly returns `NULL` on success. Otherwise this function raises a
 #'   parse error.
 #' @keywords internal
 #' @noRd
-reject_duplicate_json_object_members <- function(json_text, label) {
-  chars <- strsplit(enc2utf8(json_text), "", fixed = TRUE)[[1]]
+reject_duplicate_json_object_members <- function(
+  json_text,
+  label,
+  max_depth = 64L
+) {
+  json_text <- enc2utf8(json_text)
+  chars <- strsplit(json_text, "", fixed = TRUE)[[1]]
   if (!length(chars)) {
     return(invisible(NULL))
   }
@@ -600,22 +607,18 @@ reject_duplicate_json_object_members <- function(json_text, label) {
     ch <- chars[[index]]
 
     if (identical(ch, '"')) {
-      token <- character(0)
       index <- index + 1L
+      token_start <- index
       escaping <- FALSE
 
       while (index <= length(chars)) {
         ch_inner <- chars[[index]]
         if (isTRUE(escaping)) {
-          token <- c(token, ch_inner)
           escaping <- FALSE
         } else if (identical(ch_inner, "\\")) {
-          token <- c(token, ch_inner)
           escaping <- TRUE
         } else if (identical(ch_inner, '"')) {
           break
-        } else {
-          token <- c(token, ch_inner)
         }
         index <- index + 1L
       }
@@ -638,29 +641,67 @@ reject_duplicate_json_object_members <- function(json_text, label) {
           lookahead <= length(chars) &&
           identical(chars[[lookahead]], ":")
       ) {
-        key <- jwt_decode_json_string_token(paste(token, collapse = ""))
+        token_end <- index - 1L
+        token <- if (token_end < token_start) {
+          ""
+        } else {
+          substr(json_text, token_start, token_end)
+        }
+        key <- jwt_decode_json_string_token(token)
         level <- length(container_stack)
-        seen <- seen_stack[[level]] %||% character(0)
-        if (key %in% seen) {
+        seen <- seen_stack[[level]]
+        key_id <- paste0(
+          "k:",
+          base64url_encode(charToRaw(enc2utf8(key)))
+        )
+        if (exists(key_id, envir = seen, inherits = FALSE)) {
           err_parse(paste0(label, " contains duplicate member name: ", key))
         }
-        seen_stack[[level]] <- c(seen, key)
+        assign(key_id, TRUE, envir = seen)
       }
     } else if (identical(ch, "{")) {
-      container_stack <- c(container_stack, "object")
-      seen_stack[[length(container_stack)]] <- character(0)
+      level <- length(container_stack) + 1L
+      if (level > max_depth) {
+        err_parse(paste0(label, " exceeds the maximum JSON nesting depth"))
+      }
+      container_stack[[level]] <- "object"
+      seen_stack[level] <- list(new.env(hash = TRUE, parent = emptyenv()))
     } else if (identical(ch, "[")) {
-      container_stack <- c(container_stack, "array")
-      seen_stack[[length(container_stack)]] <- NULL
+      level <- length(container_stack) + 1L
+      if (level > max_depth) {
+        err_parse(paste0(label, " exceeds the maximum JSON nesting depth"))
+      }
+      container_stack[[level]] <- "array"
+      seen_stack[level] <- list(NULL)
     } else if (identical(ch, "}") || identical(ch, "]")) {
       if (length(container_stack) > 0L) {
         last_index <- length(container_stack)
-        container_stack <- container_stack[-last_index]
-        seen_stack <- seen_stack[-last_index]
+        length(container_stack) <- last_index - 1L
+        length(seen_stack) <- last_index - 1L
       }
     }
 
     index <- index + 1L
+  }
+
+  invisible(NULL)
+}
+
+#' Enforce a small decoded JOSE header limit
+#'
+#' JOSE headers are parsed before authentication, so their size is bounded
+#' independently of the enclosing callback or response-body limit.
+#'
+#' @param header_text Decoded JOSE header JSON.
+#' @param label Human-readable label used in parse errors.
+#' @return Invisibly returns `NULL` on success.
+#' @keywords internal
+#' @noRd
+validate_jose_header_size <- function(header_text, label) {
+  max_bytes <- 4096L
+  actual_bytes <- nchar(enc2utf8(header_text), type = "bytes")
+  if (actual_bytes > max_bytes) {
+    err_parse(paste0(label, " exceeds the maximum size"))
   }
 
   invisible(NULL)

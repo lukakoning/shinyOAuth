@@ -132,6 +132,7 @@ jwe_compact_parts <- function(jwe) {
     protected_raw,
     "protected header"
   )
+  validate_jose_header_size(protected_text, "JWE protected header")
   reject_duplicate_json_object_members(protected_text, "JWE protected header")
   assert_json_text_is_object(protected_text, "JWE protected header")
   protected_header <- tryCatch(
