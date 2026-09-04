@@ -511,10 +511,8 @@ normalize_mtls_registration_ipv6_literal <- function(value) {
   has_compression <- grepl("::", normalized, fixed = TRUE)
   if (
     has_compression &&
-      (
-        grepl(":::", normalized, fixed = TRUE) ||
-          grepl("::.*::", normalized, perl = TRUE)
-      )
+      (grepl(":::", normalized, fixed = TRUE) ||
+        grepl("::.*::", normalized, perl = TRUE))
   ) {
     err_input("Invalid IPv6 SAN literal")
   }

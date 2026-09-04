@@ -52,15 +52,17 @@ test_that("fetched key_ops arrays are usable and malformed arrays fail closed", 
     key
   }
   jwks_json <- jsonlite::toJSON(
-    list(keys = list(
-      make_key("sig-verify", "sig", list("verify")),
-      make_key("sig-both", "sig", list("sign", "verify")),
-      make_key("enc-wrap", "enc", list("encrypt", "wrapKey")),
-      make_key("mixed", "sig", list("verify", 1)),
-      make_key("duplicate", "sig", list("verify", "verify")),
-      make_key("empty", "sig", list()),
-      make_key("wrong", "sig", list("sign"))
-    )),
+    list(
+      keys = list(
+        make_key("sig-verify", "sig", list("verify")),
+        make_key("sig-both", "sig", list("sign", "verify")),
+        make_key("enc-wrap", "enc", list("encrypt", "wrapKey")),
+        make_key("mixed", "sig", list("verify", 1)),
+        make_key("duplicate", "sig", list("verify", "verify")),
+        make_key("empty", "sig", list()),
+        make_key("wrong", "sig", list("sign"))
+      )
+    ),
     auto_unbox = TRUE
   )
 

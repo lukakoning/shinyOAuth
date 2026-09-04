@@ -488,7 +488,8 @@ rank_request_object_encryption_jwk <- function(jwk, alg) {
 
   key_ops <- normalize_jwk_key_ops(
     jwk[["key_ops"]] %||% character(0)
-  ) %||% character(0)
+  ) %||%
+    character(0)
   if (length(key_ops) > 0 && any(key_ops %in% c("encrypt", "wrapKey"))) {
     score <- score + 2L
   }

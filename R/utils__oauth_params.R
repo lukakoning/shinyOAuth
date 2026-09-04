@@ -722,14 +722,17 @@ validate_essential_claims <- function(client, claims_present, target) {
     present_names <- names(claims_present) %||% character(0)
   }
 
-  missing_claims <- essential[!vapply(
-    essential,
-    function(claim_name) {
-      claim_name %in% present_names &&
-        claim_has_meaningful_value(claims_present[[claim_name]])
-    },
-    logical(1)
-  )]
+  missing_claims <- essential[
+    !vapply(
+      essential,
+      function(claim_name) {
+        claim_name %in%
+          present_names &&
+          claim_has_meaningful_value(claims_present[[claim_name]])
+      },
+      logical(1)
+    )
+  ]
 
   value_mismatches <- character(0)
   if (length(value_constraints) > 0) {

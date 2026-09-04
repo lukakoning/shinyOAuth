@@ -345,10 +345,12 @@ apply_async_otel_envvars <- function(captured_envvars) {
   # reused async workers must have a provider cache known to match the desired
   # environment. A successful outer setup is also trusted by nested setup.
   cache_reset <- TRUE
-  if (!identical(
-    async_otel_cache_state$verified_envvars,
-    desired_envvars
-  )) {
+  if (
+    !identical(
+      async_otel_cache_state$verified_envvars,
+      desired_envvars
+    )
+  ) {
     cache_reset <- isTRUE(reset_async_otel_cache(desired_envvars))
   }
 

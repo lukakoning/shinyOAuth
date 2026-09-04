@@ -3,11 +3,14 @@ testthat::test_that("package audit calls use the authoritative registry", {
   r_dir <- testthat::test_path("..", "..", "R")
   testthat::skip_if_not(dir.exists(r_dir), "Package R sources are unavailable")
 
-  source_text <- paste(vapply(
-    list.files(r_dir, pattern = "\\.R$", full.names = TRUE),
-    function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
-    ""
-  ), collapse = "\n")
+  source_text <- paste(
+    vapply(
+      list.files(r_dir, pattern = "\\.R$", full.names = TRUE),
+      function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
+      ""
+    ),
+    collapse = "\n"
+  )
   matches <- regmatches(
     source_text,
     gregexpr(

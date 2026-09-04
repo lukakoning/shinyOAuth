@@ -6,7 +6,10 @@ testthat::test_that("Keycloak runner preserves logs before failure cleanup", {
     "keycloak",
     "run-integration.sh"
   )
-  testthat::skip_if_not(file.exists(script_path), "Integration runner unavailable")
+  testthat::skip_if_not(
+    file.exists(script_path),
+    "Integration runner unavailable"
+  )
 
   script <- readLines(script_path, warn = FALSE)
   failure_guard <- grep('if [ "$rc" -ne 0 ]; then', script, fixed = TRUE)
@@ -33,7 +36,10 @@ testthat::test_that("Keycloak clients use exact local redirect registrations", {
     "keycloak",
     "realm-shinyoauth.json"
   )
-  testthat::skip_if_not(file.exists(fixture_path), "Integration fixture unavailable")
+  testthat::skip_if_not(
+    file.exists(fixture_path),
+    "Integration fixture unavailable"
+  )
 
   fixture <- jsonlite::read_json(fixture_path, simplifyVector = FALSE)
   redirects <- unlist(lapply(fixture$clients, `[[`, "redirectUris"))

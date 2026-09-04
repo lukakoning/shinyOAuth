@@ -2012,17 +2012,22 @@ provider_fingerprint <- function(provider) {
       transform = toupper
     ),
     request_object_encryption_alg_values_supported = state_policy_string_set(
-      provider_prop("request_object_encryption_alg_values_supported", character()),
+      provider_prop(
+        "request_object_encryption_alg_values_supported",
+        character()
+      ),
       transform = toupper
     ),
     request_object_encryption_enc_values_supported = state_policy_string_set(
-      provider_prop("request_object_encryption_enc_values_supported", character()),
+      provider_prop(
+        "request_object_encryption_enc_values_supported",
+        character()
+      ),
       transform = toupper
     ),
-    request_object_encryption_key =
-      state_policy_request_encryption_key_identity(
-        provider_prop("request_object_encryption_jwk", NULL)
-      ),
+    request_object_encryption_key = state_policy_request_encryption_key_identity(
+      provider_prop("request_object_encryption_jwk", NULL)
+    ),
     authorization_request_front_channel_mode = provider_prop(
       "authorization_request_front_channel_mode",
       "compat"

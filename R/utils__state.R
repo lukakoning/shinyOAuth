@@ -594,8 +594,9 @@ state_client_policy_fingerprint <- function(client) {
       NA_character_
     },
     client_assertion_private_key_kid = client@client_assertion_private_key_kid,
-    client_assertion_private_key_thumbprint =
-      state_policy_client_assertion_key_thumbprint(client),
+    client_assertion_private_key_thumbprint = state_policy_client_assertion_key_thumbprint(
+      client
+    ),
     client_assertion_alg = client@client_assertion_alg,
     client_assertion_audience = client@client_assertion_audience,
     dpop_require_access_token = isTRUE(client@dpop_require_access_token),

@@ -1,6 +1,9 @@
 testthat::test_that("local virtual environments are excluded from source builds", {
   buildignore <- testthat::test_path("..", "..", ".Rbuildignore")
-  testthat::skip_if_not(file.exists(buildignore), "Source build metadata unavailable")
+  testthat::skip_if_not(
+    file.exists(buildignore),
+    "Source build metadata unavailable"
+  )
 
   patterns <- readLines(buildignore, warn = FALSE)
   testthat::expect_true("^\\.venv$" %in% patterns)
@@ -8,7 +11,12 @@ testthat::test_that("local virtual environments are excluded from source builds"
 
 testthat::test_that("browser tests run only in Chrome-provisioned CI", {
   root <- testthat::test_path("..", "..")
-  browser_tests <- file.path(root, "tests", "testthat", "test_chromote_cookie.R")
+  browser_tests <- file.path(
+    root,
+    "tests",
+    "testthat",
+    "test_chromote_cookie.R"
+  )
   check_workflow <- file.path(root, ".github", "workflows", "R-CMD-check.yaml")
   browser_workflow <- file.path(
     root,
@@ -82,9 +90,21 @@ testthat::test_that("integration tests require a fresh successful install", {
     "if (!identical(install_result$status, 0L))",
     fixed = TRUE
   )
-  testthat::expect_match(runner_text, "integration_library <- tempfile(", fixed = TRUE)
-  testthat::expect_match(runner_text, 'find.package("shinyOAuth")', fixed = TRUE)
-  testthat::expect_match(runner_text, "R_LIBS = integration_library_path", fixed = TRUE)
+  testthat::expect_match(
+    runner_text,
+    "integration_library <- tempfile(",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    runner_text,
+    'find.package("shinyOAuth")',
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    runner_text,
+    "R_LIBS = integration_library_path",
+    fixed = TRUE
+  )
 })
 
 testthat::test_that("local Keycloak ports are bound only to loopback", {

@@ -204,10 +204,12 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     info = "Should have parsed at least one audit event"
   )
   probe_events <- Filter(
-    function(event) identical(
-      event[["type"]],
-      "audit_test_concurrent_writer_probe"
-    ),
+    function(event) {
+      identical(
+        event[["type"]],
+        "audit_test_concurrent_writer_probe"
+      )
+    },
     events
   )
   testthat::expect_length(probe_events, 40L)
