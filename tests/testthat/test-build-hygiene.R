@@ -52,4 +52,9 @@ testthat::test_that("browser tests run only in Chrome-provisioned CI", {
     "test_chromote_cookie.R",
     fixed = TRUE
   )
+  testthat::expect_match(
+    browser_ci_text,
+    "stop_on_failure = TRUE",
+    fixed = TRUE
+  )
 })

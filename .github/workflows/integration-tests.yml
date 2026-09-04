@@ -50,7 +50,7 @@ jobs:
           SHINYOAUTH_BROWSER_TESTS: true
           CHROMOTE_CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          Rscript -e 'testthat::test_file("tests/testthat/test_chromote_cookie.R")'
+          Rscript -e 'testthat::test_file("tests/testthat/test_chromote_cookie.R", stop_on_failure = TRUE)'
 
       - name: Docker info (debug)
         run: |
