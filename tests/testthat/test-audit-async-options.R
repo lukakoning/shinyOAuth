@@ -201,8 +201,19 @@ testthat::test_that("with_async_options clears stale worker otel vars missing fr
   )
 })
 
-testthat::test_that("with_async_options warns when otel cache reset hook is unavailable", {
+testthat::test_that("with_async_options disables otel when cache reset is unavailable", {
   withr::local_envvar(c(OTEL_TRACES_EXPORTER = "http"))
+  withr::local_options(list(
+    shinyOAuth.otel_tracing_enabled = TRUE,
+    shinyOAuth.otel_logging_enabled = TRUE
+  ))
+
+  cache_state <- getFromNamespace("async_otel_cache_state", "shinyOAuth")
+  old_verified <- cache_state$verified_envvars
+  cache_state$verified_envvars <- NULL
+  withr::defer({
+    cache_state$verified_envvars <- old_verified
+  })
 
   warned <- NULL
   result <- withCallingHandlers(
@@ -216,8 +227,21 @@ testthat::test_that("with_async_options warns when otel cache reset hook is unav
       },
       .package = "shinyOAuth",
       {
-        shinyOAuth:::apply_async_otel_envvars(
-          c(OTEL_TRACES_EXPORTER = "none")
+        shinyOAuth:::with_async_options(
+          list(
+            shinyOAuth.otel_tracing_enabled = TRUE,
+            shinyOAuth.otel_logging_enabled = TRUE,
+            ".shinyOAuth.otel_envvars" = c(
+              OTEL_TRACES_EXPORTER = "none"
+            )
+          ),
+          {
+            list(
+              tracing = shinyOAuth:::otel_tracing_enabled(),
+              logging = shinyOAuth:::otel_logging_enabled(),
+              exporter = Sys.getenv("OTEL_TRACES_EXPORTER")
+            )
+          }
         )
       }
     ),
@@ -227,11 +251,15 @@ testthat::test_that("with_async_options warns when otel cache reset hook is unav
     }
   )
 
-  testthat::expect_true(isTRUE(result[["changed"]]))
-  testthat::expect_identical(Sys.getenv("OTEL_TRACES_EXPORTER"), "none")
+  testthat::expect_false(result[["tracing"]])
+  testthat::expect_false(result[["logging"]])
+  testthat::expect_identical(result[["exporter"]], "none")
+  testthat::expect_identical(Sys.getenv("OTEL_TRACES_EXPORTER"), "http")
+  testthat::expect_true(shinyOAuth:::otel_tracing_enabled())
+  testthat::expect_true(shinyOAuth:::otel_logging_enabled())
   testthat::expect_match(
     warned %||% "",
-    "Async OpenTelemetry exporter changes may not take effect"
+    "OpenTelemetry tracing and logging are disabled"
   )
 })
 

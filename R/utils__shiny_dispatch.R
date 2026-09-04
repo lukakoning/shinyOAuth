@@ -97,6 +97,12 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     }
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
       .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
+      if (!isTRUE(.otel_env_state[["cache_reset"]])) {
+        options(
+          shinyOAuth.otel_tracing_enabled = FALSE,
+          shinyOAuth.otel_logging_enabled = FALSE
+        )
+      }
       if (isTRUE(.otel_env_state[["changed"]])) {
         on.exit(
           .ns$restore_async_otel_envvars(.otel_env_state[[

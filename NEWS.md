@@ -21,6 +21,9 @@ rotate JWKS key material without changing the key ID.
 * Configured audit digest keys must now be scalar and at least 32 bytes; invalid
 or empty values fail closed instead of silently using unkeyed SHA-256.
 
+* Async tasks now disable OpenTelemetry when a reused worker's provider cache
+cannot be reset safely.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through

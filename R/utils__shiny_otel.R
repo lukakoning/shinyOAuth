@@ -5,6 +5,13 @@
 
 # 1 Async option and OTEL propagation ------------------------------------------
 
+# Records the exact OTEL environment for which the provider cache was last
+# reset successfully. This lets nested async setup avoid invalidating a span
+# that the outer dispatcher has just created, while still treating a fresh or
+# previously failed worker cache as untrusted.
+async_otel_cache_state <- new.env(parent = emptyenv())
+async_otel_cache_state$verified_envvars <- NULL
+
 ## 1.1 Capture and apply configuration -----------------------------------------
 
 #' Capture shinyOAuth options for async workers
@@ -237,8 +244,8 @@ warn_about_async_otel_cache_reset <- function(
     c(
       "!" = detail,
       "i" = paste(
-        "Reused Mirai workers may keep stale tracer, logger, or exporter",
-        "providers until they are recreated."
+        "OpenTelemetry tracing and logging are disabled for the current",
+        "async task so data cannot be sent through a stale provider."
       ),
       "i" = paste(
         "shinyOAuth feature-tests otel's cache reset hook and uses the",
@@ -261,18 +268,21 @@ warn_about_async_otel_cache_reset <- function(
 #'   could be emitted.
 #' @keywords internal
 #' @noRd
-reset_async_otel_cache <- function() {
+reset_async_otel_cache <- function(envvars) {
   cache_reset <- resolve_async_otel_cache_reset()
   if (!is.function(cache_reset$reset)) {
+    async_otel_cache_state$verified_envvars <- NULL
     return(warn_about_async_otel_cache_reset("missing"))
   }
 
   tryCatch(
     {
       cache_reset$reset()
+      async_otel_cache_state$verified_envvars <- envvars
       invisible(TRUE)
     },
     error = function(e) {
+      async_otel_cache_state$verified_envvars <- NULL
       warn_about_async_otel_cache_reset(
         "failed",
         name = cache_reset$name,
@@ -289,14 +299,16 @@ reset_async_otel_cache <- function() {
 #' configuration changes.
 #'
 #' @param captured_envvars Named character vector of OTEL environment values.
-#' @return List with `changed` and `old_envvars` entries for later restoration.
+#' @return List with `changed`, `old_envvars`, and `cache_reset` entries for
+#'   later restoration and fail-closed telemetry gating.
 #' @keywords internal
 #' @noRd
 apply_async_otel_envvars <- function(captured_envvars) {
   if (is.null(captured_envvars) || length(captured_envvars) == 0) {
     return(list(
       changed = FALSE,
-      old_envvars = stats::setNames(character(0), character(0))
+      old_envvars = stats::setNames(character(0), character(0)),
+      cache_reset = TRUE
     ))
   }
 
@@ -304,36 +316,47 @@ apply_async_otel_envvars <- function(captured_envvars) {
   # captured by the parent because they were unset there. Treat the captured
   # state as authoritative and clear any extra OTEL vars currently living in
   # the worker, while preserving them for restore on exit.
-  env_names <- unique(c(
+  env_names <- sort(unique(c(
     names(captured_envvars),
     current_async_otel_envvar_names()
-  ))
-  old_envvars <- Sys.getenv(env_names, unset = NA_character_)
+  )))
+  old_envvars <- stats::setNames(
+    Sys.getenv(env_names, unset = NA_character_),
+    env_names
+  )
   desired_envvars <- stats::setNames(
     rep(NA_character_, length(env_names)),
     env_names
   )
   desired_envvars[names(captured_envvars)] <- captured_envvars
   otel_envvars_changed <- !identical(old_envvars, desired_envvars)
-  if (!isTRUE(otel_envvars_changed)) {
-    return(list(changed = FALSE, old_envvars = old_envvars))
-  }
-
-  new_values <- desired_envvars[!is.na(desired_envvars)]
-  vars_to_unset <- names(desired_envvars)[is.na(desired_envvars)]
-  if (length(new_values)) {
-    do.call(Sys.setenv, as.list(new_values))
-  }
-  if (length(vars_to_unset)) {
-    Sys.unsetenv(vars_to_unset)
+  if (isTRUE(otel_envvars_changed)) {
+    new_values <- desired_envvars[!is.na(desired_envvars)]
+    vars_to_unset <- names(desired_envvars)[is.na(desired_envvars)]
+    if (length(new_values)) {
+      do.call(Sys.setenv, as.list(new_values))
+    }
+    if (length(vars_to_unset)) {
+      Sys.unsetenv(vars_to_unset)
+    }
   }
 
   # OTEL_* env vars only affect provider setup at initialization time, so
-  # reused async workers must rebuild cached providers after any env change,
-  # including transitions from an enabled exporter back to "none".
-  reset_async_otel_cache()
+  # reused async workers must have a provider cache known to match the desired
+  # environment. A successful outer setup is also trusted by nested setup.
+  cache_reset <- TRUE
+  if (!identical(
+    async_otel_cache_state$verified_envvars,
+    desired_envvars
+  )) {
+    cache_reset <- isTRUE(reset_async_otel_cache(desired_envvars))
+  }
 
-  list(changed = TRUE, old_envvars = old_envvars)
+  list(
+    changed = otel_envvars_changed,
+    old_envvars = old_envvars,
+    cache_reset = cache_reset
+  )
 }
 
 #' Restore OTEL environment variables after async worker propagation
@@ -356,7 +379,7 @@ restore_async_otel_envvars <- function(old_envvars) {
     Sys.unsetenv(restore_unset)
   }
 
-  reset_async_otel_cache()
+  reset_async_otel_cache(old_envvars)
 
   invisible(NULL)
 }
@@ -387,6 +410,10 @@ with_async_options <- function(captured_opts, code) {
   ]
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
     otel_env_state <- apply_async_otel_envvars(captured_envvars)
+    if (!isTRUE(otel_env_state$cache_reset)) {
+      opts_to_set[["shinyOAuth.otel_tracing_enabled"]] <- FALSE
+      opts_to_set[["shinyOAuth.otel_logging_enabled"]] <- FALSE
+    }
     if (isTRUE(otel_env_state$changed)) {
       on.exit(
         restore_async_otel_envvars(otel_env_state$old_envvars),
