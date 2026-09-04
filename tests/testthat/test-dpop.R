@@ -1852,7 +1852,7 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
   expect_identical(payload[["htm"]], "POST")
   expect_identical(
     payload[["htu"]],
-    paste0(sub("/+$", "", srv$url()), "/token")
+    prov@token_url
   )
 })
 
