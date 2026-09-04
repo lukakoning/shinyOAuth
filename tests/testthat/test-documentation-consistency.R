@@ -185,3 +185,12 @@ testthat::test_that("OTel docs describe exception-message opt-in", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("Spotify vignette defines its fallback operator", {
+  spotify_docs <- project_text("vignettes", "example-spotify.Rmd")
+  definition <- regexpr("`%||%` <- function", spotify_docs, fixed = TRUE)[[1L]]
+  first_use <- regexpr("%||%", spotify_docs, fixed = TRUE)[[1L]]
+
+  testthat::expect_gt(definition, 0L)
+  testthat::expect_identical(first_use, definition + 1L)
+})

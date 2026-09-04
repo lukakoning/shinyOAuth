@@ -41,6 +41,10 @@ library(bslib)
 library(ggplot2)
 library(DT)
 
+`%||%` <- function(x, fallback) {
+  if (is.null(x)) fallback else x
+}
+
 # Configure provider and client for Spotify
 
 provider <- oauth_provider_spotify()
