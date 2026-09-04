@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* OIDC documentation now distinguishes endpoint host allowlists from the
+separate loopback HTTP development opt-in.
+
 * Local HTTP Keycloak examples now include the required loopback opt-in.
 
 * Audit HTTP context now omits query strings, request headers, and client

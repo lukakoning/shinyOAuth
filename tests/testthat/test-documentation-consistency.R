@@ -27,3 +27,30 @@ testthat::test_that("local HTTP Keycloak examples show the required opt-in", {
     )
   }
 })
+
+testthat::test_that("OIDC docs separate host and loopback HTTP policy", {
+  discovery_docs <- project_text("R", "providers__oidc_discovery.R")
+  keycloak_docs <- project_text("integration", "keycloak", "README.md")
+  usage_docs <- project_text("vignettes", "usage.Rmd")
+
+  testthat::expect_match(
+    discovery_docs,
+    "Host allowlisting does not permit HTTP",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    keycloak_docs,
+    "shinyOAuth.allow_insecure_oidc_loopback",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    keycloak_docs,
+    "ordinary endpoint host allowlist\ndoes not permit HTTP",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    usage_docs,
+    "it does not relax OIDC discovery",
+    fixed = TRUE
+  )
+})

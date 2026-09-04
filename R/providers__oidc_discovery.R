@@ -122,10 +122,12 @@
 #'   and RFC 8414. If a global whitelist is supplied via
 #'   `options(shinyOAuth.allowed_hosts)`, discovery restricts endpoints to that
 #'   whitelist. RFC 8705 `mtls_endpoint_aliases` follow the same default and
-#'   explicit-allowlist policy. Scheme policy (HTTPS, with HTTP only for
-#'   explicitly allowed hosts such as loopback development servers) is
-#'   delegated to `is_ok_host()`; see `?is_ok_host`. JWKS host pinning remains a
-#'   separate policy and defaults to requiring the issuer host exactly.
+#'   explicit-allowlist policy. Host allowlisting does not permit HTTP:
+#'   discovery requires HTTPS unless a loopback host is explicitly enabled for
+#'   development with
+#'   `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`. JWKS host
+#'   pinning remains a separate policy and defaults to requiring the issuer
+#'   host exactly.
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
 #'   "https://login.example.com". The standard discovery-document URL ending

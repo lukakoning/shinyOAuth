@@ -47,9 +47,9 @@ Key endpoints after startup:
 - Admin console: http://localhost:8080/admin (login with admin/admin)
 
 Note on PAR: this local Keycloak setup serves PAR metadata over plain HTTP.
-'shinyOAuth' accepts that local PAR endpoint through the same non-HTTPS host policy used
-for the other endpoints, so the PAR integration tests work through the regular localhost
-allowlist behavior rather than a PAR-specific override.
+The integration runner explicitly enables the loopback-only development option
+`shinyOAuth.allow_insecure_oidc_loopback`; the ordinary endpoint host allowlist
+does not permit HTTP. No PAR-specific override is used.
 
 To verify OIDC discovery quickly:
 ```bash
