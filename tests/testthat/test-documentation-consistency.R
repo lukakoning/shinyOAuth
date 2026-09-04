@@ -283,3 +283,18 @@ testthat::test_that("Apple provider help uses an Apple example", {
   )
   testthat::expect_match(example, 'response_mode = "form_post"', fixed = TRUE)
 })
+
+testthat::test_that("OAuthToken docs include unknown expiry values", {
+  token_docs <- project_text("R", "classes__OAuthToken.R")
+
+  testthat::expect_match(
+    token_docs,
+    "`NA_real_` when the expiry is unknown",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    token_docs,
+    "`Inf` for a\n#'  non-expiring token",
+    fixed = TRUE
+  )
+})

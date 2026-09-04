@@ -17,7 +17,8 @@
 #' @param refresh_token Refresh token (if provided by the provider)
 #' @param id_token ID token (if provided by the provider; OpenID Connect)
 #' @param expires_at Numeric timestamp (seconds since epoch) when the access
-#'  token expires. `Inf` for non-expiring tokens
+#'  token expires, `NA_real_` when the expiry is unknown, or `Inf` for a
+#'  non-expiring token
 #' @param userinfo List containing user information fetched from the provider's
 #'  userinfo endpoint (if fetched)
 #' @param cnf Optional confirmation claim set returned alongside a

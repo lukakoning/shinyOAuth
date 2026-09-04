@@ -27,7 +27,8 @@ OAuthToken(
 \item{id_token}{ID token (if provided by the provider; OpenID Connect)}
 
 \item{expires_at}{Numeric timestamp (seconds since epoch) when the access
-token expires. \code{Inf} for non-expiring tokens}
+token expires, \code{NA_real_} when the expiry is unknown, or \code{Inf} for a
+non-expiring token}
 
 \item{userinfo}{List containing user information fetched from the provider's
 userinfo endpoint (if fetched)}
