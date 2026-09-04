@@ -96,6 +96,50 @@ test_that("audit_event emits audit_ events via audit hook", {
   expect_identical(events[[1]][["foo"]], "bar")
 })
 
+test_that("transport audit events strip secrets from URL-valued fields", {
+  sentinel <- "TOPSECRET_URL_QUERY"
+  events <- list()
+  withr::local_options(list(shinyOAuth.audit_hook = function(event) {
+    events[[length(events) + 1L]] <<- event
+  }))
+
+  expect_error(
+    shinyOAuth:::err_transport(
+      "Request failed",
+      context = list(
+        url = paste0(
+          "https://user:pass@example.test/resource?api_key=",
+          sentinel
+        ),
+        redirect_uri = paste0(
+          "https://client.example.test/cb?value=",
+          sentinel
+        ),
+        nested = list(
+          discovery_url = paste0(
+            "https://issuer.example.test/.well-known?value=",
+            sentinel
+          )
+        )
+      )
+    ),
+    class = "shinyOAuth_transport_error"
+  )
+
+  expect_identical(events[[1L]][["url"]], "https://example.test/resource")
+  expect_identical(
+    events[[1L]][["redirect_uri"]],
+    "https://client.example.test/cb"
+  )
+  serialized <- as.character(jsonlite::toJSON(
+    events[[1L]],
+    auto_unbox = TRUE,
+    null = "null"
+  ))
+  expect_no_match(serialized, sentinel, fixed = TRUE)
+  expect_no_match(serialized, "user:pass", fixed = TRUE)
+})
+
 test_that("log_condition prints only when explicitly enabled", {
   # By default should be silent
   e <- tryCatch(shinyOAuth:::err_pkce("x"), error = identity)

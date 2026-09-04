@@ -1657,37 +1657,107 @@ otel_translate_event_key <- function(name) {
   )
 }
 
-#' Detect sensitive OTEL event field names
+#' Detect allowed OTEL event field names
 #'
-#' Used to keep secrets and request artifacts out of OTEL log attributes.
+#' OpenTelemetry event attributes use a closed allowlist so a newly added or
+#' misspelled context field cannot silently export credentials or personal
+#' data. Used by `otel_event_attributes()`.
 #'
 #' @param name Event field name.
-#' @return `TRUE` when the field name should be filtered; otherwise `FALSE`.
+#' @return `TRUE` when the field name is an approved event attribute.
 #' @keywords internal
 #' @noRd
-otel_is_sensitive_event_field <- function(name) {
+otel_is_allowed_event_field <- function(name) {
   if (!is_valid_string(name)) {
     return(FALSE)
   }
 
-  normalized_name <- tolower(gsub("[^A-Za-z0-9]+", "_", trimws(name)))
-
-  normalized_name %in%
+  name %in%
     c(
-      "access_token",
-      "refresh_token",
-      "id_token",
-      "code",
-      "state",
-      "browser_token"
-    ) ||
-    grepl("(^|_)client_secret$", normalized_name) ||
-    grepl("(^|_)client_assertion$", normalized_name) ||
-    grepl("(^|_)code_verifier$", normalized_name) ||
-    grepl("(^|_)nonce$", normalized_name) ||
-    grepl("(^|_)dpop_proof$", normalized_name) ||
-    grepl("(^|_)request_uri$", normalized_name) ||
-    grepl("(^|_)request$", normalized_name)
+      "type",
+      "trace_id",
+      "message",
+      "provider",
+      "client_provider",
+      "issuer",
+      "client_issuer",
+      "client_id_digest",
+      "module_id",
+      "phase",
+      "status",
+      "active",
+      "actual_bytes",
+      "alg",
+      "authenticated",
+      "body_bytes",
+      "body_digest",
+      "browser_token_digest",
+      "callback_error",
+      "callback_issuer",
+      "compact_jwe_failure",
+      "component",
+      "content_type",
+      "discovery_url",
+      "endpoint",
+      "endpoint_host",
+      "error_class",
+      "expected_issuer",
+      "expires_at",
+      "expires_in_synthesized",
+      "handle_digest",
+      "http_status",
+      "introspected_client_id_digest",
+      "issuer_host",
+      "jwks_host",
+      "jwks_host_allow_only",
+      "jwks_uri",
+      "kept_token",
+      "length",
+      "max_age",
+      "max_bytes",
+      "method",
+      "min_chars",
+      "mirai_error_type",
+      "new_expires_at",
+      "nonce_present",
+      "ns_prefix",
+      "oauth_error",
+      "oauth_error_description",
+      "oauth_error_uri",
+      "par_used",
+      "param",
+      "parameter",
+      "pkce_method",
+      "previous_authenticated",
+      "reason",
+      "received_id_token",
+      "received_refresh_token",
+      "redirect_blocked",
+      "redirect_uri",
+      "refresh_token_present",
+      "refresh_token_rotated",
+      "request_object_used",
+      "request_uri_used",
+      "requested_pkce_method",
+      "requested_token_auth_style",
+      "revoked",
+      "scope_digest",
+      "scopes_count",
+      "state_digest",
+      "style",
+      "sub_digest",
+      "sub_source",
+      "supported",
+      "target_module_id",
+      "token_endpoint",
+      "transport_error",
+      "url",
+      "url_protocol",
+      "used_pkce",
+      "was_authenticated",
+      "where",
+      "which"
+    )
 }
 
 #' Build OTEL-safe event attributes
@@ -1703,13 +1773,14 @@ otel_event_attributes <- function(event) {
   if (!is.list(event) || !length(event)) {
     return(NULL)
   }
+  event <- sanitize_event_url_fields(event)
 
   attrs <- list()
   for (nm in names(event)) {
     if (!is_valid_string(nm) || nm %in% c("timestamp", "shiny_session")) {
       next
     }
-    if (otel_is_sensitive_event_field(nm)) {
+    if (!otel_is_allowed_event_field(nm)) {
       next
     }
     if (is.list(event[[nm]])) {

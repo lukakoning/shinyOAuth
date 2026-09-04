@@ -113,6 +113,42 @@ sanitize_audit_hook_event <- function(event) {
   event
 }
 
+#' Remove credentials from URL-valued event fields
+#'
+#' Sanitizes URL-like fields recursively before an event reaches either an
+#' audit hook or OpenTelemetry. Query strings, fragments, and userinfo are not
+#' useful as event dimensions and may contain credentials or personal data.
+#'
+#' @param event Event payload or nested event value.
+#' @param field_name Name of the value within its parent, when available.
+#' @return Event payload with URL-valued fields reduced to scheme, authority,
+#'   and path. Unparseable URL-valued fields are omitted.
+#' @keywords internal
+#' @noRd
+sanitize_event_url_fields <- function(event, field_name = NULL) {
+  normalized_name <- if (is_valid_string(field_name)) {
+    tolower(gsub("[^A-Za-z0-9]+", "_", trimws(field_name)))
+  } else {
+    ""
+  }
+  is_url_field <- grepl("(^|_)(url|uri|issuer)$", normalized_name) ||
+    identical(normalized_name, "token_endpoint")
+
+  if (is_url_field) {
+    return(tryCatch(otel_http_url_full(event), error = function(...) NULL))
+  }
+  if (!is.list(event) || !length(event)) {
+    return(event)
+  }
+
+  nms <- names(event)
+  for (i in seq_along(event)) {
+    child_name <- if (!is.null(nms) && nzchar(nms[[i]])) nms[[i]] else NULL
+    event[i] <- list(sanitize_event_url_fields(event[[i]], child_name))
+  }
+  event
+}
+
 #' Dispatch one trace or audit event
 #'
 #' Enriches one event with Shiny context and forwards it to OpenTelemetry and
@@ -142,6 +178,7 @@ emit_trace_event <- function(event) {
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
     event
   })
+  event <- sanitize_event_url_fields(event)
   tryCatch(
     {
       otel_emit_log(event)

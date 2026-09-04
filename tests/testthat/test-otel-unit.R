@@ -214,7 +214,7 @@ testthat::test_that("otel_translate_event_key returns NULL for invalid input", {
 # otel_event_attributes
 # ===========================================================================
 
-testthat::test_that("otel_event_attributes filters sensitive fields", {
+testthat::test_that("otel_event_attributes allows only approved fields", {
   event <- list(
     type = "audit_login_success",
     trace_id = "abc123",
@@ -233,6 +233,10 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
     dpop_proof = "secret_proof",
     request = "secret_request",
     request_uri = "https://client.example.com/request.jwt",
+    api_key = "secret_api_key",
+    authorization = "Bearer secret_authorization",
+    password = "secret_password",
+    unknown_field = "secret_unknown",
     status = "ok"
   )
 
@@ -252,7 +256,11 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
     "nonce",
     "dpop_proof",
     "request",
-    "request_uri"
+    "request_uri",
+    "api_key",
+    "authorization",
+    "password",
+    "unknown_field"
   )) {
     testthat::expect_false(
       key %in% names(attrs),
@@ -263,6 +271,30 @@ testthat::test_that("otel_event_attributes filters sensitive fields", {
   testthat::expect_identical(attrs[["event.type"]], "audit_login_success")
   testthat::expect_identical(attrs[["oauth.provider.name"]], "github")
   testthat::expect_identical(attrs[["oauth.status"]], "ok")
+})
+
+testthat::test_that("otel_event_attributes sanitizes every URL-valued field", {
+  sentinel <- "TOPSECRET_URL_QUERY"
+  attrs <- shinyOAuth:::otel_event_attributes(list(
+    type = "transport_error",
+    url = paste0("https://user:pass@example.test/resource?api_key=", sentinel),
+    redirect_uri = paste0("https://client.example.test/cb?value=", sentinel),
+    issuer = paste0("https://issuer.example.test/tenant?value=", sentinel),
+    api_key = sentinel
+  ))
+
+  testthat::expect_identical(attrs[["url"]], "https://example.test/resource")
+  testthat::expect_identical(
+    attrs[["redirect_uri"]],
+    "https://client.example.test/cb"
+  )
+  testthat::expect_identical(
+    attrs[["oauth.provider.issuer"]],
+    "https://issuer.example.test/tenant"
+  )
+  serialized <- as.character(jsonlite::toJSON(attrs, auto_unbox = TRUE))
+  testthat::expect_no_match(serialized, sentinel, fixed = TRUE)
+  testthat::expect_no_match(serialized, "user:pass", fixed = TRUE)
 })
 
 testthat::test_that("otel_event_attributes skips timestamp and shiny_session", {
@@ -700,25 +732,24 @@ testthat::test_that("otel_emit_log does not include sensitive fields", {
     }
   )
 
-  if (!is.null(captured_attrs)) {
-    attr_names <- names(captured_attrs)
-    for (key in c(
-      "access_token",
-      "refresh_token",
-      "id_token",
-      "code",
-      "state",
-      "browser_token"
-    )) {
-      testthat::expect_false(
-        key %in% attr_names,
-        info = paste0(
-          "Sensitive key '",
-          key,
-          "' in otel log attributes"
-        )
+  testthat::expect_false(is.null(captured_attrs))
+  attr_names <- names(captured_attrs)
+  for (key in c(
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "code",
+    "state",
+    "browser_token"
+  )) {
+    testthat::expect_false(
+      key %in% attr_names,
+      info = paste0(
+        "Sensitive key '",
+        key,
+        "' in otel log attributes"
       )
-    }
+    )
   }
 })
 

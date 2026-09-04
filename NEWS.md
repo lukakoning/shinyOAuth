@@ -4,6 +4,9 @@
 addresses by default. Raw request context remains available only through the
 existing explicit diagnostic opt-in.
 
+* Audit and OpenTelemetry events now remove userinfo, queries, and fragments
+from URL-valued fields, and OpenTelemetry log attributes use a closed allowlist.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through
