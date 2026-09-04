@@ -163,6 +163,27 @@ test_that("SAN helpers normalize IP literals for registration metadata", {
     ),
     "2001:db8::1:0:0:1"
   )
+
+  ipv6_cases <- c(
+    "::1" = "::1",
+    "2001:0DB8::1" = "2001:db8::1",
+    "2001:0DB8::" = "2001:db8::",
+    "::" = "::"
+  )
+  for (input in names(ipv6_cases)) {
+    expect_identical(
+      shinyOAuth:::normalize_mtls_registration_ipv6_literal(input),
+      unname(ipv6_cases[[input]])
+    )
+  }
+
+  for (input in c("2001::db8::1", "2001:db8:::", ":::")) {
+    expect_error(
+      shinyOAuth:::normalize_mtls_registration_ipv6_literal(input),
+      class = "shinyOAuth_input_error",
+      regexp = "Invalid IPv6 SAN literal"
+    )
+  }
 })
 
 test_that("oauth_client_mtls_registration builds inline self-signed jwks", {

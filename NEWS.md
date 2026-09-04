@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero
+run appears at the end of the address.
+
 * JWT claim parsing now preserves JSON arrays until claim-specific validation,
 preventing one-element arrays from being accepted as scalar claims.
 

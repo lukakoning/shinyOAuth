@@ -509,18 +509,26 @@ normalize_mtls_registration_ipv6_literal <- function(value) {
 
   normalized <- expand_mtls_registration_ipv6_embedded_ipv4(normalized)
   has_compression <- grepl("::", normalized, fixed = TRUE)
-  if (has_compression && grepl("::.*::", normalized, perl = TRUE)) {
+  if (
+    has_compression &&
+      (
+        grepl(":::", normalized, fixed = TRUE) ||
+          grepl("::.*::", normalized, perl = TRUE)
+      )
+  ) {
     err_input("Invalid IPv6 SAN literal")
   }
 
   if (has_compression) {
-    sides <- strsplit(normalized, "::", fixed = TRUE)[[1]]
-    if (length(sides) != 2L) {
-      err_input("Invalid IPv6 SAN literal")
-    }
-
-    left <- parse_mtls_registration_ipv6_hextets(sides[[1]])
-    right <- parse_mtls_registration_ipv6_hextets(sides[[2]])
+    compression_at <- regexpr("::", normalized, fixed = TRUE)[[1]]
+    left_text <- substr(normalized, 1L, compression_at - 1L)
+    right_text <- substr(
+      normalized,
+      compression_at + 2L,
+      nchar(normalized)
+    )
+    left <- parse_mtls_registration_ipv6_hextets(left_text)
+    right <- parse_mtls_registration_ipv6_hextets(right_text)
     zero_count <- 8L - length(left) - length(right)
     if (zero_count < 1L) {
       err_input("Invalid IPv6 SAN literal")
