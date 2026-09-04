@@ -23,7 +23,10 @@ make_apple_discovery_doc <- function() {
   )
 }
 
-mock_apple_discovery <- function(disc_json = make_apple_discovery_doc()) {
+mock_apple_discovery <- function(
+  disc_json = make_apple_discovery_doc(),
+  .env = parent.frame()
+) {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       testthat::expect_match(
@@ -38,7 +41,8 @@ mock_apple_discovery <- function(disc_json = make_apple_discovery_doc()) {
         body = charToRaw(as.character(disc_json))
       )
     },
-    .package = "shinyOAuth"
+    .package = "shinyOAuth",
+    .env = .env
   )
 }
 
