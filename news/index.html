@@ -43,55 +43,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Pull-request pkgdown builds now run with read-only repository permissions and without persisted checkout credentials. GitHub Pages deployment runs in a separate non-PR workflow that alone receives <code>contents: write</code> permission.</p></li>
-<li><p>The Cloud Run deployment example now pins its Rocker base image by digest and installs R dependencies from a dated Posit Package Manager snapshot.</p></li>
-<li><p>Documentation now correctly describes the 24-hour <code>exp - iat</code> limit as package hardening, rather than attributing it to OIDC Core validation rule 9.</p></li>
-<li><p>Client-hosted JAR <code>request_uri</code> values now fail closed unless they use HTTPS, as required by RFC 9101 Section 5.2. The general non-HTTPS host policy no longer downgrades this requirement to a warning.</p></li>
-<li><p>OIDC issuer, endpoint, JWKS, and mTLS alias URLs now require HTTPS even when the general URL policy permits loopback HTTP. Local development can explicitly opt in with <code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>.</p></li>
-<li><p>ID-token and OIDC UserInfo <code>sub</code> claims must now contain between 1 and 255 ASCII characters, as required for OpenID Connect Subject Identifiers.</p></li>
-<li><p>JWKS validation now requires the RFC 7517 <code>keys</code> member to be a JSON array; a single JWK object is no longer silently wrapped as a one-element set.</p></li>
-<li><p>OIDC Discovery now rejects scalar and object values for optional metadata fields defined as JSON arrays, instead of silently coercing them to vectors.</p></li>
-<li><p>Inbound JOSE and JWK identifiers are now compared case-sensitively. ID-token and signed UserInfo <code>alg</code> values, plus JWK <code>alg</code>, <code>use</code>, <code>key_ops</code>, <code>kty</code>, and <code>crv</code>, must use their registered spelling.</p></li>
-<li><p>OIDC Discovery compares the returned <code>issuer</code> with the issuer used for discovery after removing one trailing slash from both values, while preserving the discovered issuer verbatim for downstream token validation.</p></li>
-<li><p>ID-token validation now rejects additional <code>aud</code> values that the client does not trust. An <code>azp</code> value matching <code>client_id</code> no longer implicitly authorizes other audiences.</p></li>
-<li><p>Token introspection now requires RFC 7662’s JSON Boolean <code>active</code> value and fails closed on strings or numbers. Nonconforming providers can temporarily restore the old coercion with <code>options(shinyOAuth.allow_legacy_introspection_active = TRUE)</code>.</p></li>
-<li><p>Added explicit RFC 9700 multi-authorization-server configuration through <code>authorization_server_mode</code>. Multi-issuer mode now fails closed unless direct callbacks have advertised RFC 9207 support or use JARM; distinct-redirect mode requires a complete set of canonically distinct redirect routes and is limited to module callback handling, where the received route can be verified.</p></li>
-<li><p>OAuth callback dispatch now compares the browser-visible canonical scheme, authority, and path with the client’s configured redirect URI before parsing callback parameters or consuming state. This makes distinct redirect URIs an effective RFC 9700 provider mix-up defense for query, query-JARM, and form-post callbacks. The pre-session form-post wrapper also verifies the server-observed scheme, authority, and path before reading the POST body.</p></li>
-<li><p><code>reauth_after_seconds</code> is now a non-rolling authentication lifetime: token refresh no longer resets it. OIDC reauthentication sends transaction-bound <code>max_age=0</code>, validates the required <code>auth_time</code>, and uses validated <code>auth_time</code> as the new lifetime origin. Documentation now distinguishes this from the local-session bound available to OAuth-only providers.</p></li>
-<li><p>Authentication lifecycle changes now invalidate pending login and refresh operations on logout, replacement login, expiry, reauthentication, and session end. Late async completions cannot restore or clear newer credentials, stale credentials are revoked best-effort, and an abandoned refresh no longer leaves proactive refresh disabled for a later login.</p></li>
-<li><p>Direct callbacks carrying exactly one of <code>code</code> or <code>error</code> but no <code>state</code> are again reported as <code>invalid_state</code>. The early response-shape check still prevents state consumption, while ambiguous callback shapes remain <code>invalid_callback_query</code>.</p></li>
-<li><p>ID-token validation now fails closed whenever a present Ed448 <code>at_hash</code> cannot be validated by the available crypto bindings, even when the claim was not configured as required.</p></li>
-<li><p>Forced JWKS-refresh throttling now uses an atomic, expiring <code>$set_if_absent(key, value, ttl)</code> claim for shared cache backends. Shared or custom caches without that primitive fail closed instead of racing separate <code>$get()</code>/<code>$set()</code> operations; <code><a href="../reference/custom_cache.html">custom_cache()</a></code> now exposes the optional hook.</p></li>
-<li><p>Generic JWKS discovery now continues to OIDC-compatible well-known locations when a valid RFC 8414 metadata document omits the optional <code>jwks_uri</code>, instead of stopping before a usable metadata document is found.</p></li>
-<li><p>JWKS validation now rejects vector-valued metadata where JWK requires a scalar (<code>kty</code>, <code>kid</code>, <code>use</code>, <code>alg</code>, and <code>crv</code>), and algorithm filtering defensively excludes malformed keys.</p></li>
-<li><p><code>jwks_pin_mode = "all"</code> now fails closed if a supported JWKS key’s RFC 7638 thumbprint cannot be computed, preserving the invariant that every supported key is pinned.</p></li>
-<li><p>Pre-encoded character <code>claims</code> values must now be JSON objects, as required for the OIDC Claims request parameter; valid JSON scalars and arrays are rejected.</p></li>
-<li><p>Browser callback cleanup now removes fragment parameters even when their raw values contain additional <code>=</code> characters, while preserving unrelated fragment parameters unchanged.</p></li>
-<li><p>The <code>future_promise()</code> async fallback now opts into parallel-safe random number generation, avoiding live-integration RNG misuse warnings from <code>future</code>.</p></li>
-<li><p>DPoP nonce retries now require the RFC 9449 response status and challenge shape: authorization-server challenges are <code>400</code> JSON errors, while resource server challenges are structurally parsed <code>401</code> <code>WWW-Authenticate: DPoP</code> errors. Successful or unrelated error responses carrying nonce-like text are no longer replayed.</p></li>
-<li><p>Direct query callbacks now use the same response-shape validation as plain <code>form_post</code>: exactly one of <code>code</code> or <code>error</code>, plus <code>state</code>, is required before single-use state can be consumed.</p></li>
-<li><p>Deprecated <code><a href="../reference/perform_client_bearer_req.html">perform_client_bearer_req()</a></code> now preserves the method of a prebuilt <code>httr2</code> request when <code>method</code> is omitted, matching <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>.</p></li>
-<li><p>Refreshed OIDC ID tokens may now omit the original token’s <code>auth_time</code>, and base OIDC refresh no longer imposes extension-specific <code>azp</code> presence or value symmetry. When a refreshed token includes <code>auth_time</code>, it must still match the original. The authentication-flow documentation now states this <code>azp</code> scope correctly.</p></li>
-<li><p><code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> now accepts its documented <code>token_auth_style</code> override instead of always forcing HTTP Basic authentication.</p></li>
-<li><p>Resource and UserInfo helpers no longer allow <code>token_type</code> overrides to downgrade a DPoP <code>OAuthToken</code> or one carrying a <code>cnf.jkt</code> binding to Bearer. For <code>OAuthToken</code> objects, overrides may only fill a genuinely missing, unbound token type.</p></li>
-<li><p>OIDC authorization transactions now seal the normalized, transmitted <code>max_age</code> value into encrypted state, include it in provider and callback-policy fingerprints, and use that exact value for callback <code>auth_time</code> validation.</p></li>
-<li><p>Sanitized HTTP audit summaries now replace <code>Referer</code> with <code>[REDACTED]</code> so OAuth callback credentials in Referer URLs cannot leak to audit sinks. Other non-sensitive headers continue to be retained.</p></li>
-<li><p>The Spotify example now HTML-escapes remote track, album, artist, and genre metadata in its DT tables, preventing provider-controlled markup from running in the authenticated Shiny origin.</p></li>
-<li><p>Authenticated resource helpers now reject <code>TRACE</code> and the nonstandard <code>TRACK</code> method before attaching Bearer or DPoP credentials, preventing servers from reflecting those credentials in diagnostic responses.</p></li>
-<li><p>OIDC discovery now accepts authorization, token, UserInfo, introspection, revocation, and PAR endpoints on secure hosts other than the issuer host, as allowed by OIDC Discovery and RFC 8414. Setting <code>shinyOAuth.allowed_hosts</code> still applies an explicit endpoint allowlist, and JWKS keeps its separate issuer-host pinning policy by default.</p></li>
-<li><p>OIDC discovery now rejects incomplete or malformed required Provider Metadata. Discovered providers must advertise Authorization Code response support, subject identifier types, RS256 ID-token signing support, and a <code>jwks_uri</code>, including when automatic ID-token validation is disabled.</p></li>
-<li><p>The dedicated Keycloak integration runner now requires both HTTP and HTTPS discovery endpoints, treats infrastructure and fixture setup problems as test failures, and enforces a zero-skip budget.</p></li>
-<li><p>Async integration coverage now requires mirai audit work to run in a distinct worker process and exercises successful and failed OAuth callbacks through a real <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession</a></code> worker.</p></li>
-<li><p>JWT claim parsing no longer coerces heterogeneous JSON arrays. In particular, an <code>aud</code> array containing non-string elements is now rejected instead of being coerced to strings during parsing.</p></li>
-<li><p>ID tokens and signed UserInfo JWTs are now considered expired at the exact <code>exp</code> second, as required by RFC 7519.</p></li>
-<li><p>DPoP proof <code>iat</code> claims no longer overflow after the 32-bit Unix-time limit in January 2038.</p></li>
-<li><p>ID token and signed UserInfo validation now accept <code>application/jwt</code> as an equivalent, case-insensitive form of the <code>JWT</code> JOSE <code>typ</code> value.</p></li>
-<li><p>Form-encoded token responses now decode <code>+</code> as a space while preserving percent-encoded literal plus signs.</p></li>
-<li><p>Generic HTTP retries now honor server-provided <code>Retry-After</code> delays up to the separate <code>shinyOAuth.retry_after_cap</code> option (60 seconds by default), preventing untrusted endpoints from blocking synchronous Shiny workers indefinitely.</p></li>
-<li><p>PAR POSTs no longer use generic transport or transient HTTP retries, avoiding duplicate <code>request_uri</code> allocations and Request Object replays after a lost successful response. The bounded DPoP nonce-challenge replay remains enabled.</p></li>
-<li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. JARM callbacks currently resume through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> only; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> still accepts only the classic direct <code>code</code> + sealed <code>state</code> callback shape. JARM clients can tune the maximum accepted authorization-response JWT lifetime with <code>jarm_max_lifetime</code> (default 600 seconds).</p></li>
+<ul><li><p>Added JWT Secured Authorization Response Mode (JARM) support with <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, and <code>"form_post.jwt"</code>. JARM callbacks resume through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>; <code><a href="../reference/handle_callback.html">handle_callback()</a></code> continues to accept only classic direct callbacks. The maximum response-JWT lifetime is configurable with <code>jarm_max_lifetime</code> (default 600 seconds). Discovery supports the canonical <code>jarm_*_values_supported</code> metadata fields and their older <code>authorization_*</code> aliases. For Keycloak interoperability, <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code>, with an opt-out for strict duplicate rejection.</p></li>
 <li>
-<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> have had their arguments reorganized and renamed for better clarity. Both helper constructors (<code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>) still resolve previous argument names through compatibility aliases, but the underlying S7 classes only use the new names. Renamed arguments include:</p>
+<p>Added RFC 9700 multi-authorization-server configuration through <code>authorization_server_mode</code>:</p>
+<ul><li>Multi-issuer mode requires direct callbacks to use JARM or advertised RFC 9207 issuer identification.</li>
+<li>Distinct-redirect mode requires a complete set of canonically distinct routes and is supported through <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, where the received route can be verified.</li>
+<li>Callback dispatch verifies the browser-visible scheme, authority, and path before parsing parameters or consuming state. The pre-session form-post wrapper performs the same check before reading the POST body.</li>
+</ul></li>
+<li>
+<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> and <code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> arguments have been reorganized and renamed for clarity. The helper constructors retain compatibility aliases, while the S7 classes use only the new names:</p>
 <ul><li>
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>:
 <ul><li>
@@ -186,40 +146,86 @@
 </li>
 </ul></li>
 </ul></li>
+<li><p><code><a href="../reference/oauth_client.html">oauth_client()</a></code>/<code>OAuthClient</code> no longer defaults <code>client_id</code> or <code>client_secret</code> from <code>OAUTH_CLIENT_ID</code>/<code>OAUTH_CLIENT_SECRET</code>. An omitted <code>client_secret</code> is treated as absent, supporting <code>private_key_jwt</code> and other secretless setups; printing also handles an explicitly empty secret correctly.</p></li>
 <li>
-<p><code><a href="../reference/oauth_client.html">oauth_client()</a></code> (<code>OAuthClient</code>) now:</p>
-<ul><li>Supports <code>dpop_require_observed_cnf = TRUE</code> for high-assurance DPoP deployments. When enabled, shinyOAuth rejects <code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf.jkt</code> locally in the token or via introspection, so opaque tokens no longer rely on <code>token_type</code> alone.</li>
-<li>No longer defaults <code>client_id</code> / <code>client_secret</code> from <code>Sys.getenv('OAUTH_CLIENT_ID')</code>/<code>Sys.getenv('OAUTH_CLIENT_SECRET')</code>, to make it more explicit that these values must be set for the client to work.</li>
-<li>Has printing which now handles <code>client_secret = ""</code> cleanly for public-client setups that do not send a secret, instead of failing while formatting the redacted console preview.</li>
-<li>Treats an omitted <code>client_secret</code> as an absent value (<code>character(0)</code>), so <code>private_key_jwt</code> and other secretless client-auth setups can omit the argument and still flow through the normal auth-style validation instead of failing at argument matching.</li>
+<p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code>/<code>OAuthProvider</code> changes:</p>
+<ul><li>
+<code>issuer_thus_oidc</code> defaults to <code>TRUE</code> for compatibility. Generic RFC 8414 providers can set it to <code>FALSE</code> to retain issuer validation without enabling OIDC behavior.</li>
+<li>An explicit <code>jwks_uri</code> can override discovery for providers that publish signing keys outside discovery or need a pinned runtime location. Discovered values are preserved and reused across ID-token, JARM, Request Object, and signed UserInfo verification.</li>
+<li>Signing keys for generic OAuth/JARM issuers are resolved through RFC 8414 metadata, and fails early when a required <code>jwks_uri</code> is missing, malformed, or disallowed by host policy.</li>
 </ul></li>
-<li>
-<p><code><a href="../reference/oauth_provider.html">oauth_provider()</a></code> / <code>OAuthProvider</code> now:</p>
-<ul><li>Have <code>issuer_thus_oidc</code>, which defaults to <code>TRUE</code> so a configured <code>issuer</code> keeps enabling OIDC behavior as in previous versions. Generic RFC 8414 providers can set it to <code>FALSE</code> to retain issuer validation without enabling nonce, ID-token, or <code>openid</code> scope behavior.</li>
-<li>Accept an explicit <code>jwks_uri</code> override for providers that publish signing keys outside OIDC discovery or that need a pinned runtime JWKS location.</li>
-<li>Preserve discovered <code>jwks_uri</code> values on discovery-backed providers so ID-token, JARM, Request Object, and signed UserInfo verification all reuse the same resolved JWKS source.</li>
-<li>Fall back to RFC 8414 authorization-server metadata when runtime JWKS fetches need to resolve signing keys for generic OAuth 2.0 / JARM issuers, instead of relying only on OpenID Connect discovery.</li>
-<li>Fail earlier when discovery enables signature-validation modes but omits <code>jwks_uri</code>, or when the discovered JWKS URL is malformed or violates the configured host policy.</li>
-</ul></li>
+<li><p>Provider integrations now include <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> and <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> for Apple’s OIDC flow and ES256 client secret. <code>oauth_provider_okta(auth_server = NULL)</code> can target Okta’s org authorization server, and <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> respects its documented <code>token_auth_style</code> override.</p></li>
 <li>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> now:</p>
-<ul><li>Accepts either an issuer base URL or the standard <code>/.well-known/openid-configuration</code> URL. Full discovery URLs are normalized back to the issuer base before request construction, so strict issuer matching still applies without requiring <code>issuer_match = "host"</code>.</li>
-<li>Has transport failures surface the attempted <code>/.well-known/openid-configuration</code> URL plus the underlying network error, making discovery misconfiguration and connectivity problems easier to diagnose.</li>
-<li>Accepts discovery metadata that differs from the configured issuer only by one trailing slash in the published <code>issuer</code>, while still storing the provider’s advertised issuer verbatim for downstream <code>iss</code> checks.</li>
-<li>Preserves JARM discovery metadata from the canonical <code>jarm_*_values_supported</code> fields, while still accepting the older <code>authorization_*</code> compatibility aliases.</li>
+<ul><li>Accepts an issuer base URL or the standard discovery URL and reports both the attempted URL and underlying error on transport failure.</li>
+<li>Treats a single trailing-slash difference as equivalent when checking the discovered issuer, while preserving the advertised issuer for downstream <code>iss</code> validation.</li>
+<li>Requires HTTPS for issuer, endpoint, JWKS, and mTLS alias URLs. Loopback HTTP requires explicit opt-in with <code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>.</li>
+<li>Allows secure authorization, token, UserInfo, introspection, revocation, and PAR endpoints on hosts other than the issuer. Explicit <code>shinyOAuth.allowed_hosts</code> restrictions still apply, and JWKS retains its separate issuer-host policy.</li>
+<li>Rejects malformed required Provider Metadata, including missing Authorization Code, subject-type, RS256 signing, or <code>jwks_uri</code> support (even when automatic ID-token validation is disabled), and rejects non-array values for optional metadata defined as arrays.</li>
 </ul></li>
-<li><p><code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code> has been added which configures Apple’s OIDC endpoints and ID-token defaults, and added <code><a href="../reference/oauth_client_secret_apple.html">oauth_client_secret_apple()</a></code> which generates the ES256 JWT that Apple expects in the <code>client_secret</code> field of an <code>OAuthClient</code> configured with <code><a href="../reference/oauth_provider_apple.html">oauth_provider_apple()</a></code>.</p></li>
-<li><p><code><a href="../reference/oauth_provider_okta.html">oauth_provider_okta()</a></code> can now target Okta’s org authorization server with <code>auth_server = NULL</code>, instead of always forcing <code>/oauth2/{auth_server}</code> and the custom-server path.</p></li>
-<li><p><code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code> now defaults <code>jarm_tolerate_duplicate_top_level_iss = TRUE</code> for interoperability with current Keycloak JARM responses, while still letting callers opt out and fail closed on duplicate top-level <code>iss</code> members.</p></li>
-<li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now warns once when a client resolves to <code>response_mode = "form_post"</code> or <code>"form_post.jwt"</code> but no prior <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> call was detected for that module/client callback setup, helping catch missing form_post UI wrappers earlier.</p></li>
-<li><p>Long-lived token-expiry and reauthentication timers are now scheduled in bounded chunks without overflowing R integers. Module timer durations must be finite, so invalid <code>Inf</code> settings fail during parameter validation.</p></li>
-<li><p>Proactive token refresh now paces repeated attempts. Short-lived refreshed tokens wait for half their new lifetime, while failures use bounded exponential backoff with jitter and honor <code>Retry-After</code> when available.</p></li>
-<li><p><code>client_secret_basic</code> now form-encodes the client ID and client secret before constructing the HTTP Basic credentials, including reserved, space, percent, plus, and non-ASCII characters as required by RFC 6749.</p></li>
-<li><p>Provider callback <code>error_uri</code> values now have to stay on a provider host or another host you already allowlist via <code>options(shinyOAuth.allowed_hosts = ...)</code>. Unrelated HTTPS hosts are now dropped instead of being surfaced through <code>values$error_uri</code>. Trusted <code>error_uri</code> values are also preserved across deferred OAuth error callbacks that wait for the browser token before resuming.</p></li>
-<li><p>Native audit hooks now receive <code>shiny_session$session_token_digest</code> by default instead of the raw Shiny <code>session$token</code>. Set <code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code> only when you explicitly need the raw token in a controlled sink.</p></li>
-<li><p>HTTP audit summaries now redact JARM <code>response</code> values and the <code>shinyOAuth_form_post</code> and <code>shinyOAuth_form_post_id</code> callback parameters.</p></li>
-<li><p>Internal list-like access now consistently uses exact <code>[[...]]</code> indexing instead of <code>$</code>, reducing potential for accidental partial matches across runtime code, tests, and integration fixtures.</p></li>
-<li><p>Added <code><a href="../articles/advanced-security.html">vignette("advanced-security", package = "shinyOAuth")</a></code>, which collects higher-assurance configuration guidance for mTLS, JAR, PAR, <code>form_post</code>, JARM, and DPoP setups.</p></li>
+<li>
+<p>JWKS discovery, validation, and caching are stricter:</p>
+<ul><li>Generic discovery continues to OIDC-compatible well-known locations when RFC 8414 metadata omits the optional <code>jwks_uri</code>.</li>
+<li>A JWKS must contain a JSON-array <code>keys</code> member. Scalar JWK properties (<code>kty</code>, <code>kid</code>, <code>use</code>, <code>alg</code>, and <code>crv</code>) cannot be vectors, and malformed keys are excluded from algorithm filtering.</li>
+<li>JOSE/JWK identifiers are compared case-sensitively using their registered spelling, including <code>alg</code>, <code>use</code>, <code>key_ops</code>, <code>kty</code>, and <code>crv</code>.</li>
+<li>
+<code>jwks_pin_mode = "all"</code> fails closed if any supported key’s RFC 7638 thumbprint cannot be computed.</li>
+<li>Shared-cache refresh throttling now requires atomic, expiring <code>$set_if_absent(key, value, ttl)</code> support. <code><a href="../reference/custom_cache.html">custom_cache()</a></code> exposes the hook; shared or custom caches without it fail closed.</li>
+</ul></li>
+<li>
+<p>OIDC ID-token, UserInfo, and claims validation is more precise:</p>
+<ul><li>
+<code>sub</code> must contain 1 to 255 ASCII characters, and heterogeneous JWT arrays such as <code>aud</code> with non-string elements are rejected rather than coerced.</li>
+<li>Additional <code>aud</code> values must be trusted explicitly; a matching <code>azp</code> no longer authorizes other audiences.</li>
+<li>ID tokens and signed UserInfo JWTs expire at the exact <code>exp</code> second. JOSE <code>typ</code> values of <code>JWT</code> and <code>application/jwt</code> are accepted case-insensitively.</li>
+<li>A present Ed448 <code>at_hash</code> fails closed when the crypto bindings cannot validate it, even when the claim is not configured as required.</li>
+<li>Pre-encoded <code>claims</code> parameters must be JSON objects; JSON scalars and arrays are rejected.</li>
+<li>The documented 24-hour <code>exp - iat</code> limit is now correctly described as package hardening rather than an OIDC Core rule.</li>
+</ul></li>
+<li>
+<p>Authentication lifetime and refresh handling has been hardened:</p>
+<ul><li>
+<code>reauth_after_seconds</code> is non-rolling and is no longer reset by token refresh. OIDC reauthentication sends transaction-bound <code>max_age=0</code>, requires <code>auth_time</code>, and uses it as the new lifetime origin; OAuth-only providers retain a local-session lifetime bound.</li>
+<li>The normalized transmitted <code>max_age</code> is sealed into state, included in security-policy fingerprints, and reused for callback validation.</li>
+<li>Refreshed OIDC ID tokens may omit <code>auth_time</code>; when present, it must match the original. Base OIDC refresh no longer imposes extension-specific <code>azp</code> presence or value symmetry.</li>
+<li>Logout, replacement login, expiry, reauthentication, and session end invalidate pending login and refresh work. Late completions cannot overwrite newer credentials, and stale credentials are revoked best-effort.</li>
+<li>Proactive refresh now backs off with jitter after failures and waits for half the new lifetime after a short-lived refresh, honoring <code>Retry-After</code> where available.</li>
+<li>Long-lived expiry and reauthentication timers are scheduled in bounded chunks; non-finite module timer settings now fail validation.</li>
+</ul></li>
+<li>
+<p>Callback handling is stricter and more consistent:</p>
+<ul><li>Direct query and plain <code>form_post</code> callbacks require exactly one of <code>code</code> or <code>error</code>, plus <code>state</code>, before consuming single-use state. A recognizable callback missing only <code>state</code> reports <code>invalid_state</code>; ambiguous shapes report <code>invalid_callback_query</code>.</li>
+<li>
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> warns once when form-post response modes are used without a corresponding <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> wrapper.</li>
+<li>Trusted provider <code>error_uri</code> values are preserved across deferred error callbacks, but unrelated hosts are dropped unless allowlisted with <code>shinyOAuth.allowed_hosts</code>.</li>
+<li>Fragment cleanup now handles values containing additional <code>=</code> characters while preserving unrelated parameters.</li>
+</ul></li>
+<li>
+<p>DPoP handling has been hardened:</p>
+<ul><li>
+<code>dpop_require_observed_cnf = TRUE</code> requires a DPoP token’s <code>cnf.jkt</code> binding to be observed locally or through introspection.</li>
+<li>Nonce retries require the RFC 9449 status and challenge shape: <code>400</code> JSON errors from authorization servers or parsed <code>401 WWW-Authenticate: DPoP</code> challenges from resource servers.</li>
+<li>Resource and UserInfo helpers cannot downgrade DPoP-bound tokens to Bearer through <code>token_type</code> overrides.</li>
+<li>Proof <code>iat</code> values no longer overflow after the 32-bit Unix-time limit in January 2038.</li>
+</ul></li>
+<li><p>JAR and PAR handling has been hardened. Client-hosted JAR <code>request_uri</code> values now require HTTPS regardless of the general non-HTTPS host policy. PAR POSTs no longer use generic transport or transient HTTP retries, avoiding duplicate <code>request_uri</code> allocations and Request Object replays; bounded DPoP nonce replay remains enabled.</p></li>
+<li>
+<p>Token, introspection, HTTP, and resource-request handling improvements:</p>
+<ul><li>Token introspection requires a JSON Boolean <code>active</code>. Legacy coercion can be restored temporarily with <code>options(shinyOAuth.allow_legacy_introspection_active = TRUE)</code>.</li>
+<li>Form-encoded token responses decode <code>+</code> as space while preserving percent-encoded literal plus signs. <code>client_secret_basic</code> likewise form-encodes client IDs and secrets before constructing credentials.</li>
+<li>Generic retries honor <code>Retry-After</code> up to <code>shinyOAuth.retry_after_cap</code> (60 seconds by default).</li>
+<li>Authenticated resource helpers reject <code>TRACE</code> and <code>TRACK</code> before attaching credentials.</li>
+<li>Deprecated <code><a href="../reference/perform_client_bearer_req.html">perform_client_bearer_req()</a></code> preserves the method of a prebuilt <code>httr2</code> request when <code>method</code> is omitted.</li>
+</ul></li>
+<li><p>Audit data is safer by default. Native hooks receive <code>shiny_session$session_token_digest</code> instead of the raw session token; set <code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code> to opt back in. HTTP summaries redact <code>Referer</code>, JARM <code>response</code>, <code>shinyOAuth_form_post</code>, and <code>shinyOAuth_form_post_id</code> values.</p></li>
+<li>
+<p>Documentation, examples, tests, and maintenance:</p>
+<ul><li>Added <code><a href="../articles/advanced-security.html">vignette("advanced-security", package = "shinyOAuth")</a></code> for mTLS, JAR, PAR, <code>form_post</code>, JARM, and DPoP configuration.</li>
+<li>The Cloud Run example pins its Rocker image by digest and installs R dependencies from a dated Posit Package Manager snapshot. The Spotify example HTML-escapes remote metadata displayed in DT tables.</li>
+<li>Pull-request pkgdown builds now have read-only permissions and no persisted checkout credentials; GitHub Pages deployment is isolated in its own write-enabled workflow.</li>
+<li>Keycloak and async integration tests now enforce their expected endpoints, worker isolation, callback coverage, and zero-skip policy more strictly.</li>
+<li>The <code>future_promise()</code> fallback uses parallel-safe random-number generation, and internal list-like access consistently uses exact <code>[[...]]</code> indexing.</li>
+</ul></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="shinyoauth-050">shinyOAuth 0.5.0<a class="anchor" aria-label="anchor" href="#shinyoauth-050"></a></h2><p class="text-muted">CRAN release: 2026-05-23</p>
