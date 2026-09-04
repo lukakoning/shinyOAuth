@@ -27,6 +27,8 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # Create a temporary file for audit logs
   audit_log_file <- tempfile(fileext = ".jsonl")
   withr::defer(unlink(audit_log_file), envir = parent.frame())
+  audit_lock_dir <- paste0(audit_log_file, ".lock")
+  withr::defer(unlink(audit_lock_dir), envir = parent.frame())
 
   # Set up a file-based audit hook that writes JSON lines
   # The hook writes one JSON object per line with process metadata
@@ -35,21 +37,29 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     event$.hook_pid <- Sys.getpid()
     event$.hook_time <- as.character(Sys.time())
 
-    line <- tryCatch(
-      jsonlite::toJSON(event, auto_unbox = TRUE, null = "null"),
-      error = function(e) {
-        jsonlite::toJSON(
-          list(
-            type = event$type %||% "unknown",
-            error = "serialization_failed",
-            .hook_pid = Sys.getpid()
-          ),
-          auto_unbox = TRUE
-        )
-      }
+    line <- jsonlite::toJSON(
+      event,
+      auto_unbox = TRUE,
+      null = "null"
     )
-    # Append to log file (thread-safe atomic write via cat with append)
-    cat(line, "\n", file = audit_log_file, append = TRUE)
+
+    # Directory creation is atomic across the worker processes. Hold this
+    # small lock until the complete JSON line has been appended.
+    deadline <- Sys.time() + 5
+    while (!dir.create(audit_lock_dir, showWarnings = FALSE)) {
+      if (Sys.time() >= deadline) {
+        stop("Timed out acquiring the audit test log lock", call. = FALSE)
+      }
+      Sys.sleep(0.005)
+    }
+    on.exit(unlink(audit_lock_dir), add = TRUE)
+
+    connection <- file(audit_log_file, open = "ab")
+    on.exit(close(connection), add = TRUE)
+    writeBin(
+      c(charToRaw(enc2utf8(as.character(line))), charToRaw("\n")),
+      connection
+    )
   }
 
   withr::local_options(list(shinyOAuth.audit_hook = audit_hook))
@@ -58,6 +68,55 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   client <- make_public_client(prov)
 
   main_pid <- Sys.getpid()
+
+  # Exercise both daemons concurrently so the log writer is tested under the
+  # same cross-process contention that it is intended to protect against.
+  captured_options <- shinyOAuth:::capture_async_options()
+  probe_results <- vector("list", 2L)
+  for (flow in seq_along(probe_results)) {
+    task <- shinyOAuth:::async_dispatch(
+      expr = quote({
+        .ns <- asNamespace("shinyOAuth")
+        .ns$with_async_options(captured_options, {
+          for (index in seq_len(20L)) {
+            .ns$audit_event(
+              "concurrent_writer_probe",
+              context = list(flow = flow, index = index)
+            )
+            Sys.sleep(0.005)
+          }
+          Sys.getpid()
+        })
+      }),
+      args = list(
+        captured_options = captured_options,
+        flow = flow
+      )
+    )
+    local({
+      result_index <- flow
+      promises::then(promises::as.promise(task), function(value) {
+        probe_results[[result_index]] <<- value
+      })
+    })
+  }
+  probe_deadline <- Sys.time() + 15
+  while (
+    any(vapply(probe_results, is.null, logical(1))) &&
+      Sys.time() < probe_deadline
+  ) {
+    later::run_now(0.05)
+    Sys.sleep(0.01)
+  }
+  testthat::expect_false(any(vapply(probe_results, is.null, logical(1))))
+  probe_pids <- vapply(
+    probe_results,
+    function(result) {
+      as.integer(shinyOAuth:::replay_async_conditions(result))
+    },
+    integer(1)
+  )
+  testthat::expect_length(unique(probe_pids), 2L)
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -121,19 +180,26 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     info = "Audit log file should contain events"
   )
 
-  # Parse each JSON line
-  events <- lapply(log_lines, function(line) {
-    tryCatch(
-      jsonlite::fromJSON(line, simplifyVector = FALSE),
-      error = function(e) NULL
-    )
-  })
-  events <- Filter(Negate(is.null), events)
+  # Every emitted line must be complete, valid JSON. Do not discard malformed
+  # records because that would hide cross-process append corruption.
+  events <- lapply(
+    log_lines,
+    jsonlite::fromJSON,
+    simplifyVector = FALSE
+  )
 
   testthat::expect_true(
     length(events) > 0,
     info = "Should have parsed at least one audit event"
   )
+  probe_events <- Filter(
+    function(event) identical(
+      event[["type"]],
+      "audit_concurrent_writer_probe"
+    ),
+    events
+  )
+  testthat::expect_length(probe_events, 40L)
 
   # 7) Categorize events by type
   event_types <- vapply(
