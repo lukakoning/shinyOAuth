@@ -147,9 +147,9 @@ strict validation, and `oauth_provider_oidc()` respects its documented
   - Accepts an issuer base URL or the standard
   `/.well-known/openid-configuration` URL and reports both the attempted URL
   and underlying error on transport failure.
-  - Treats a single trailing-slash difference as equivalent when checking the
-  discovered issuer, while preserving the advertised issuer for downstream
-  `iss` validation.
+  - Requires the requested and discovered issuer identifiers to match exactly,
+  including trailing slashes, and preserves the advertised issuer for
+  downstream `iss` validation.
   - Requires HTTPS for issuer, endpoint, JWKS, and mTLS alias URLs. Loopback
   HTTP requires explicit opt-in with
   `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.

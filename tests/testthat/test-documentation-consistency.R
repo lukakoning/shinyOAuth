@@ -337,3 +337,18 @@ testthat::test_that("Keycloak guide lists one-shot prerequisites", {
     )
   }
 })
+
+testthat::test_that("NEWS consistently describes exact discovery issuers", {
+  news <- project_text("NEWS.md")
+
+  testthat::expect_match(
+    news,
+    "requested and discovered issuer identifiers to match exactly",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl(
+    "trailing-slash difference as equivalent",
+    news,
+    fixed = TRUE
+  ))
+})
