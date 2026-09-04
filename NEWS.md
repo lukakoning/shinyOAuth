@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Query parameters, repeated form fields, and HTTP Basic client credentials now
+encode literal percent escapes without exposing embedded parameter delimiters.
+
 * The Spotify example now validates provider-generated links and image URLs
 before rendering them.
 

@@ -50,3 +50,12 @@ test_that("client_secret_basic encoding preserves its single separator", {
   expect_identical(client_secret, "c%3Ad")
   expect_identical(paste0(client_id, ":", client_secret), "a%3Ab:c%3Ad")
 })
+
+test_that("client_secret_basic treats existing escapes as literal text", {
+  expect_identical(
+    shinyOAuth:::encode_client_secret_basic_credential(
+      "client%41:secret&=+# caf\u00e9"
+    ),
+    "client%2541%3Asecret%26%3D%2B%23+caf%C3%A9"
+  )
+})

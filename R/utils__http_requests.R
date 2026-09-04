@@ -246,7 +246,11 @@ apply_direct_client_auth <- function(req, params, client, context) {
 #' @keywords internal
 #' @noRd
 encode_client_secret_basic_credential <- function(value) {
-  encoded <- utils::URLencode(enc2utf8(value), reserved = TRUE)
+  encoded <- utils::URLencode(
+    enc2utf8(value),
+    reserved = TRUE,
+    repeated = TRUE
+  )
   gsub("%20", "+", encoded, fixed = TRUE)
 }
 

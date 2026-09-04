@@ -384,6 +384,10 @@ encode_www_form_param <- function(name, value) {
     return(character())
   }
 
-  name <- utils::URLencode(name, reserved = TRUE)
-  paste0(name, "=", utils::URLencode(value, reserved = TRUE))
+  name <- utils::URLencode(name, reserved = TRUE, repeated = TRUE)
+  paste0(
+    name,
+    "=",
+    utils::URLencode(value, reserved = TRUE, repeated = TRUE)
+  )
 }

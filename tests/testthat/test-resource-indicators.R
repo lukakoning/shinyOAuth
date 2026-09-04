@@ -75,6 +75,35 @@ test_that("prepare_call includes repeated RFC 8707 resource indicators", {
   expect_match(auth_url, "resource=urn%3Aexample%3Aledger")
 })
 
+test_that("repeated form fields encode literal percent escapes and delimiters", {
+  params <- list(
+    "na%41&me" = c(
+      "value%41&code_verifier=attack +:#",
+      "caf\u00e9%"
+    )
+  )
+
+  encoded <- shinyOAuth:::encode_www_form_params(params)
+  fields <- strsplit(encoded, "&", fixed = TRUE)[[1]]
+  decoded <- lapply(fields, function(field) {
+    pair <- strsplit(field, "=", fixed = TRUE)[[1]]
+    c(
+      utils::URLdecode(gsub("+", " ", pair[[1]], fixed = TRUE)),
+      utils::URLdecode(gsub("+", " ", pair[[2]], fixed = TRUE))
+    )
+  })
+
+  expect_length(fields, 2L)
+  expect_identical(vapply(decoded, `[[`, "", 1L), rep("na%41&me", 2L))
+  expect_identical(
+    decoded[[1]][[2]],
+    "value%41&code_verifier=attack +:#"
+  )
+  expect_match(encoded, "%2541")
+  expect_match(encoded, "%26code_verifier%3Dattack")
+  expect_match(encoded, "caf%C3%A9%25")
+})
+
 test_that("swap_code_for_token_set sends resource indicators in token body", {
   cli <- make_test_client(
     resource = c(
