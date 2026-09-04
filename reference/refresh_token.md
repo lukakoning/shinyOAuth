@@ -32,7 +32,7 @@ refresh_token(
   oauth_client,
   token,
   async = FALSE,
-  introspect = FALSE,
+  introspect = NULL,
   shiny_session = NULL
 )
 ```
@@ -66,10 +66,11 @@ refresh_token(
 
 - introspect:
 
-  Logical, default FALSE. After a successful refresh, if the provider
-  exposes an introspection endpoint, introspect the new access token for
-  validation and audit/diagnostics. When enabled, refresh fails if
-  introspection is unsupported, inactive, or missing required
+  `NULL` (default) or a logical. After a successful refresh, introspect
+  the new access token when either this argument is `TRUE` or the client
+  was configured with `introspect = TRUE`. A per-call `FALSE` cannot
+  disable a configured client requirement. When enabled, refresh fails
+  if introspection is unsupported, inactive, or missing required
   `introspect_elements`. The raw introspection result is not stored
   separately, but a successful introspection response may backfill
   `token@cnf`.

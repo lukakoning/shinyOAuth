@@ -55,8 +55,9 @@ callback:
 - State: a random value used to link the callback to this login attempt
   and help block forged callbacks; ‘shinyOAuth’ also seals extra context
   into it
-- PKCE: a `code_verifier` and matching `code_challenge` that prove the
-  same browser session finishes the flow
+- PKCE: a `code_verifier` and matching `code_challenge` that bind the
+  authorization request to the later token exchange; the state and
+  browser token provide the browser-session binding
 - Nonce (OIDC): a random value that is checked again when validating the
   ID token
 
@@ -478,7 +479,9 @@ before making external calls:
   runs after ‘shinyOAuth’ has validated the ID token; configure the
   provider with `id_token_validation = TRUE` or `use_nonce = TRUE` so
   those checks run on trusted token content. This is skipped when
-  `claims_validation = "none"` (the default)
+  `claims_validation = "none"`. When `claims_validation` is omitted, it
+  defaults to `"warn"` if `claims` contains enforceable requirements and
+  to `"none"` otherwise
 - ACR enforcement (OIDC Core §2, §3.1.2.1): if the client was created
   with `required_acr_values`, the ID token’s `acr` claim must be present
   and match one of the specified values. This ensures the provider

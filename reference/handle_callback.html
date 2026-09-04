@@ -160,16 +160,16 @@ token verification fails, the function raises an error.</p>
 <span class="r-in"><span>  <span class="co">#  (`oauth_module_server()` handles this typically)</span></span></span>
 <span class="r-in"><span>  <span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu"><a href="prepare_call.html">prepare_call</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Redirect user to authorization URL; retrieve code &amp; payload from query;</span></span></span>
+<span class="r-in"><span>  <span class="co"># Redirect user to authorization URL; retrieve code &amp; state from the query;</span></span></span>
 <span class="r-in"><span>  <span class="co"># read also `&lt;browser_token&gt;` from browser cookie</span></span></span>
 <span class="r-in"><span>  <span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
 <span class="r-in"><span>  <span class="va">code</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
-<span class="r-in"><span>  <span class="va">payload</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
+<span class="r-in"><span>  <span class="va">state</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
 <span class="r-in"><span>  <span class="va">browser_token</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Handle callback, exchanging code for token and validating state</span></span></span>
 <span class="r-in"><span>  <span class="co"># (`oauth_module_server()` handles this typically)</span></span></span>
-<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu">handle_callback</span><span class="op">(</span><span class="va">client</span>, <span class="va">code</span>, <span class="va">payload</span>, <span class="va">browser_token</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu">handle_callback</span><span class="op">(</span><span class="va">client</span>, <span class="va">code</span>, <span class="va">state</span>, <span class="va">browser_token</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

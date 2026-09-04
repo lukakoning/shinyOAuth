@@ -152,7 +152,8 @@ OAuthProvider(
   Whether to use PKCE. This adds a `code_challenge` parameter to the
   authorization request and requires a `code_verifier` when exchanging
   the authorization code for tokens. This helps protect against
-  authorization code interception attacks.
+  authorization code interception attacks. Public clients
+  (`token_auth_style = "public"`) must enable PKCE.
 
 - pkce_method:
 
@@ -318,7 +319,8 @@ OAuthProvider(
   In most cases, a TTL between 15 minutes and 2 hours is reasonable.
   Shorter TTLs pick up new keys faster but do more network work; longer
   TTLs reduce traffic but may take longer to notice key rotation. If a
-  new `kid` appears, shinyOAuth will also do a one-time refresh
+  new `kid` appears or cached key material no longer verifies a
+  signature, shinyOAuth also performs a rate-limited one-time refresh
   automatically.
 
 - jwks_cache:
@@ -377,12 +379,12 @@ OAuthProvider(
   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
   `ES384`, `ES512`, and `EdDSA` for OKP-backed signatures. When ID token
   `at_hash` validation is in play, Ed25519 is supported. Ed448 `at_hash`
-  cannot be validated with the current crypto bindings, so shinyOAuth
-  skips that optional check unless `id_token_at_hash_required = TRUE`,
-  in which case Ed448 ID tokens fail fast. Symmetric HMAC algorithms
-  `HS256`, `HS384`, `HS512` are also supported but require that you
-  supply a `client_secret` and explicitly enable HMAC verification via
-  the option `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
+  cannot be validated with the current crypto bindings, so any Ed448 ID
+  token containing an `at_hash` claim fails closed, whether or not that
+  claim was configured as required. Symmetric HMAC algorithms `HS256`,
+  `HS384`, `HS512` are also supported but require that you supply a
+  `client_secret` and explicitly enable HMAC verification via the option
+  `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
   `c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")`, which
   intentionally excludes HS\*. Only include `HS*` if you are certain the
   `client_secret` is stored strictly server-side and is never shipped
@@ -641,6 +643,7 @@ if (interactive()) {
 # Keycloak
 # (requires configured Keycloak realm; example below is therefore not run)
 if (interactive()) {
+  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
   oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
 }
 

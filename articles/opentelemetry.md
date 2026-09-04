@@ -60,8 +60,11 @@ When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set,
 OAuth flows. All spans share these behaviors:
 
 - Successful operations are marked with status `ok`; errors are marked
-  `error` and include an `exception` event with the error class and
-  message
+  `error` and include an `exception` event with the error class.
+  Condition messages are omitted by default and are attached only when
+  the debugging option `options(shinyOAuth.expose_error_body = TRUE)` is
+  enabled; those messages may include provider details and should be
+  handled as sensitive data
 - Top-level ‘shinyOAuth’ operation spans are often started as roots so
   they stay visible instead of being buried under Shiny’s internal
   `reactive_update` spans
@@ -212,6 +215,19 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `shiny.module_id`
   - `oauth.phase = "form_post.callback_lookup"`
   - `oauth.form_post.handle_digest`
+
+#### Span: `shinyOAuth.form_post.callback.consume_state`
+
+- When: when a resumed form-post callback must consume its sealed state
+  from the state store because the pre-session bridge did not supply
+  stored state values
+- Represents: single-use state lookup and removal before callback
+  validation
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `shiny.module_id`
+  - `oauth.phase = "form_post.callback_state_consume"`
 
 #### Span: `shinyOAuth.callback.validate`
 

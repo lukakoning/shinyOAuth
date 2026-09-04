@@ -96,44 +96,19 @@ designed to serialize cleanly with
     `stop_mirai()`
   - `NA` — not a mirai-specific error (e.g., sync path or future
     backend)
-- `shiny_session$http`: a compact HTTP summary with fields:
-  - `method`, `path`, `query_string`, `host`, `scheme`, `remote_addr`
-  - `headers`: a list of request headers derived from `HTTP_*`
-    environment variables, with lowercase names (e.g., `user_agent`).
-
-With the default `options(shinyOAuth.audit_redact_http = TRUE)`,
-`remote_addr` is replaced with `[REDACTED]` before the event is emitted.
+- `shiny_session$http`: a compact HTTP summary containing `method`,
+  `path`, `host`, and `scheme` by default.
 
 Note: the raw `session$request` from Shiny is not included to keep the
 event JSON-serializable and concise.
 
 ### HTTP context sanitization
 
-For safety, the `shiny_session$http` summary is automatically sanitized
-before being attached to events. This prevents accidental secret leakage
-when forwarding events to log sinks:
-
-- OAuth query parameters are redacted: callback credentials such as
-  `code`, `state`, JARM `response`, form-post callback handles
-  (`shinyOAuth_form_post` and `shinyOAuth_form_post_id`),
-  `access_token`, `refresh_token`, `id_token`, `token`, `session_state`,
-  `code_verifier`, and `nonce`, plus credential-bearing token-endpoint
-  parameters such as `client_secret`, `client_assertion`, `assertion`,
-  `username`, and `password`, are replaced with `[REDACTED]`.
-- Sensitive headers are removed: `Cookie`, `Set-Cookie`,
-  `Authorization`, `Proxy_Authorization`, `Proxy_Authenticate`, and
-  `WWW-Authenticate` headers are stripped entirely.
-- Referer URLs are redacted: the complete `Referer` value is replaced
-  with `[REDACTED]` so callback `code`, `state`, and other URL
-  credentials cannot reach audit sinks.
-- Proxy headers are redacted: headers starting with `x_` (e.g.,
-  `x_forwarded_for`, `x_real_ip`) are replaced with `[REDACTED]` to
-  avoid leaking internal infrastructure details.
-- Client IP addresses are redacted: `remote_addr` is replaced with
-  `[REDACTED]` while HTTP redaction stays enabled.
-
-This means you can safely forward the `shiny_session$http` object to
-external logging systems without manually stripping secrets.
+For safety, query strings, request headers, and client addresses are
+omitted from `shiny_session$http` by default. This closed-by-default
+policy also keeps unknown query parameters and forwarding or identity
+headers from exposing secrets or personal data to log sinks. Continue to
+apply your normal sink-side data controls when forwarding events.
 
 If a legacy hook truly needs the raw Shiny session token, opt in
 explicitly with
@@ -148,9 +123,10 @@ debugging, you can disable redaction temporarily:
 options(shinyOAuth.audit_redact_http = FALSE)
 ```
 
-Do not use this in production log sinks. Raw mode can expose
-authorization codes, state values, cookies, authorization headers,
-client assertions, and client IP addresses.
+Do not use this in production log sinks. Raw mode includes the complete
+query string, all `HTTP_*` request headers, and the client address, and
+can therefore expose unknown application secrets and personal data as
+well as OAuth values.
 
 ### Excluding HTTP context entirely
 
@@ -222,8 +198,18 @@ If you run multiple workers/processes and want digests to be comparable
 across them, configure a shared key:
 
 ``` r
-options(shinyOAuth.audit_digest_key = Sys.getenv("AUDIT_DIGEST_KEY"))
+audit_digest_key <- Sys.getenv("AUDIT_DIGEST_KEY", unset = NA_character_)
+if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
+  stop("AUDIT_DIGEST_KEY must be configured before the app starts")
+}
+options(shinyOAuth.audit_digest_key = audit_digest_key)
 ```
+
+Configured keys must be a single character value or raw vector
+containing at least 32 bytes. Generate the setting from at least 32
+cryptographically random bytes and store it in your deployment’s secret
+manager. Invalid, missing, or short configured values fail rather than
+falling back to an unkeyed digest.
 
 To disable keying (legacy deterministic SHA-256 digests):
 
@@ -676,7 +662,7 @@ These let you log failures to the same sink as audit events.
 - Fields:
   - `type` (`"http_error"`), `trace_id`, `message`
   - `status`: HTTP status code (integer, or `NA` if unavailable)
-  - `url`: the request URL
+  - `url`: the request URL without userinfo, query, or fragment
   - `body_digest`: SHA-256 hex digest of the response body (for
     correlation without leaking content)
   - `oauth_error`, `oauth_error_uri`: RFC 6749 §5.2 structured error

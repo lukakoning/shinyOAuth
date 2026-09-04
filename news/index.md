@@ -2,6 +2,61 @@
 
 ## shinyOAuth (development version)
 
+- The Spotify example now validates provider-generated links and image
+  URLs before rendering them.
+
+- The Spotify vignette is now self-contained on all supported R
+  versions.
+
+- Package overviews now distinguish OIDC authentication from OAuth
+  authorization and provider-specific identity bootstrapping.
+
+- Client-hosted JAR documentation now reflects that `request_uri`
+  publication requires HTTPS.
+
+- OIDC documentation now distinguishes endpoint host allowlists from the
+  separate loopback HTTP development opt-in.
+
+- Local HTTP Keycloak examples now include the required loopback opt-in.
+
+- Audit HTTP context now omits query strings, request headers, and
+  client addresses by default. Raw request context remains available
+  only through the existing explicit diagnostic opt-in.
+
+- Audit and OpenTelemetry events now remove userinfo, queries, and
+  fragments from URL-valued fields, and OpenTelemetry log attributes use
+  a closed allowlist.
+
+- OIDC discovery now requires the requested and discovered issuer
+  identifiers to match exactly, including trailing slashes.
+
+- [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  now always enforces introspection configured on the client; per-call
+  arguments may enable, but cannot disable, that policy.
+
+- Public clients must now enable PKCE.
+
+- ID token, JARM, and signed UserInfo validation now recover when
+  providers rotate JWKS key material without changing the key ID.
+
+- Configured audit digest keys must now be scalar and at least 32 bytes;
+  invalid or empty values fail closed instead of silently using unkeyed
+  SHA-256.
+
+- Async tasks now disable OpenTelemetry when a reused worker’s provider
+  cache cannot be reset safely.
+
+- Provider endpoint URLs now preserve consecutive path slashes.
+
+- JARM callbacks now authenticate their sealed state before they can
+  trigger a provider key refresh.
+
+- Callback state now binds token-exchange, client-assertion, JAR, and
+  PAR security settings across workers.
+
+- Audit and telemetry sink failures no longer replace OAuth errors when
+  R is configured to turn warnings into errors.
+
 - Added JWT Secured Authorization Response Mode (JARM) support with
   `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. Signed
   and encrypted JARM responses are validated through
@@ -112,7 +167,8 @@
   [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
   and
   [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
-  for Apple’s OIDC flow and ES256 client secret.
+  for Apple’s OIDC flow and ES256 client secret. Provider help includes
+  a complete client configuration example.
   `oauth_provider_okta(auth_server = NULL)` can target Okta’s org
   authorization server,
   [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
@@ -126,8 +182,8 @@
   - Accepts an issuer base URL or the standard
     `/.well-known/openid-configuration` URL and reports both the
     attempted URL and underlying error on transport failure.
-  - Treats a single trailing-slash difference as equivalent when
-    checking the discovered issuer, while preserving the advertised
+  - Requires the requested and discovered issuer identifiers to match
+    exactly, including trailing slashes, and preserves the advertised
     issuer for downstream `iss` validation.
   - Requires HTTPS for issuer, endpoint, JWKS, and mTLS alias URLs.
     Loopback HTTP requires explicit opt-in with
@@ -323,7 +379,9 @@ CRAN release: 2026-05-23
   handling, token exchange/refresh, userinfo/introspection/revocation,
   and session-end cleanup. See
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
-  for more information.
+  for more information. The span catalog includes form-post callback
+  state consumption and documents the opt-in policy for exception
+  messages.
 
 - Observability and audit logging improvements:
 

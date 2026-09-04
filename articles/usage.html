@@ -419,6 +419,8 @@ inner sealed state before issuing the one-time callback handle.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
 <span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>,</span>
 <span>  realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
@@ -526,7 +528,8 @@ automatic redaction of sensitive data in audit events (default:
 authorization headers, codes, state values, and client IP addresses</li>
 <li>
 <code>options(shinyOAuth.audit_digest_key = ...)</code> – shared key
-for HMAC-SHA256 digests used in audit/OTel attributes. By default,
+of at least 32 bytes for HMAC-SHA256 digests used in audit/OTel
+attributes. Invalid configured keys fail closed; by default,
 ‘shinyOAuth’ generates a random per-process key when this is not
 configured</li>
 <li>
@@ -563,9 +566,8 @@ unexpired token but does not define this lifetime cap. Default
 check</li>
 <li>
 <code>options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))</code>
-- allows hosts to use <code>http://</code> scheme instead of
-<code>https://</code>
-</li>
+- allows these hosts to use <code>http://</code> in non-OIDC URL checks;
+it does not relax OIDC discovery</li>
 <li>
 <code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>
 – development-only opt-in for OIDC issuer and endpoint URLs on HTTP

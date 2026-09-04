@@ -21,8 +21,8 @@ object for use with a GitHub OAuth 2.0 app
 
 ## Details
 
-You can register a new GitHub OAuth 2.0 app in your ['Developer
-Settings'](https://github.com/settings/apps).
+You can register a new GitHub OAuth 2.0 app in your [OAuth App
+settings](https://github.com/settings/developers).
 
 ## Examples
 
@@ -73,6 +73,7 @@ if (interactive()) {
 # Keycloak
 # (requires configured Keycloak realm; example below is therefore not run)
 if (interactive()) {
+  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
   oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
 }
 

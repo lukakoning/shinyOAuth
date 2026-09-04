@@ -96,9 +96,8 @@ oauth_provider_oidc_discover(
   document's `issuer` against the input `issuer`.
 
   - `"url"` (default): require the issuer used for discovery to match
-    after normalizing a full discovery-document input back to its issuer
-    base URL and removing one trailing slash from both values
-    (recommended).
+    exactly after normalizing a full discovery-document input back to
+    its issuer base URL, including any trailing slash (recommended).
 
   - `"host"`: compare only scheme + host (explicit opt-out; not
     recommended).
@@ -234,14 +233,12 @@ discovery might fail early.
   OIDC Discovery and RFC 8414. If a global whitelist is supplied via
   `options(shinyOAuth.allowed_hosts)`, discovery restricts endpoints to
   that whitelist. RFC 8705 `mtls_endpoint_aliases` follow the same
-  default and explicit-allowlist policy. Scheme policy (HTTPS, with HTTP
-  only for explicitly allowed hosts such as loopback development
-  servers) is delegated to
-  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md);
-  see
-  [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md).
-  JWKS host pinning remains a separate policy and defaults to requiring
-  the issuer host exactly.
+  default and explicit-allowlist policy. Host allowlisting does not
+  permit HTTP: discovery requires HTTPS unless a loopback host is
+  explicitly enabled for development with
+  `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`. JWKS host
+  pinning remains a separate policy and defaults to requiring the issuer
+  host exactly.
 
 ## Examples
 
@@ -292,6 +289,7 @@ if (interactive()) {
 # Keycloak
 # (requires configured Keycloak realm; example below is therefore not run)
 if (interactive()) {
+  options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
   oauth_provider_keycloak(base_url = "http://localhost:8080", realm = "myrealm")
 }
 

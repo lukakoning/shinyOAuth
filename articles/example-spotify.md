@@ -38,6 +38,50 @@ library(bslib)
 library(ggplot2)
 library(DT)
 
+`%||%` <- function(x, fallback) {
+  if (is.null(x)) fallback else x
+}
+
+spotify_safe_url <- function(url, allowed_hosts) {
+  if (!is.character(url) || length(url) != 1L || is.na(url) || !nzchar(url)) {
+    return(NULL)
+  }
+
+  parsed <- tryCatch(httr2::url_parse(url), error = function(e) NULL)
+  if (is.null(parsed)) {
+    return(NULL)
+  }
+
+  host <- tolower(parsed$hostname %||% "")
+  allowed_hosts <- tolower(allowed_hosts)
+  host_allowed <- any(vapply(
+    allowed_hosts,
+    function(allowed) {
+      identical(host, allowed) || endsWith(host, paste0(".", allowed))
+    },
+    logical(1)
+  ))
+  userinfo_absent <- !nzchar(parsed$username %||% "") &&
+    !nzchar(parsed$password %||% "")
+  port_allowed <- is.null(parsed$port) ||
+    identical(as.character(parsed$port), "443")
+
+  if (
+    !identical(tolower(parsed$scheme %||% ""), "https") ||
+      !host_allowed ||
+      !userinfo_absent ||
+      !port_allowed
+  ) {
+    return(NULL)
+  }
+
+  url
+}
+
+spotify_safe_image_url <- function(url) {
+  spotify_safe_url(url, c("scdn.co", "spotifycdn.com"))
+}
+
 # Configure provider and client for Spotify
 
 provider <- oauth_provider_spotify()
@@ -225,7 +269,7 @@ get_currently_playing <- function(token) {
   
   art_url <- tryCatch(
     {
-      item[["album"]][["images"]][[1]][["url"]]
+      spotify_safe_image_url(item[["album"]][["images"]][[1]][["url"]])
     },
     error = function(e) NULL
   )
@@ -601,7 +645,7 @@ server <- function(input, output, session) {
         is.data.frame(user_info$images) &&
         nrow(user_info$images) > 0
     ) {
-      img_url <- user_info$images$url[[1]]
+      img_url <- spotify_safe_image_url(user_info$images$url[[1]])
       if (!is.null(img_url) && nzchar(img_url)) {
         avatar <- tags$img(
           src = img_url,
@@ -651,13 +695,20 @@ server <- function(input, output, session) {
         is.list(user_info$external_urls) &&
         !is.null(user_info$external_urls$spotify)
     ) {
-      spotify_link <- a(
-        icon("external-link-alt", class = "ms-2"),
-        href = user_info$external_urls$spotify,
-        class = "text-decoration-none text-success",
-        target = "_blank",
-        title = "Open in Spotify"
+      profile_url <- spotify_safe_url(
+        user_info$external_urls$spotify,
+        "open.spotify.com"
       )
+      if (!is.null(profile_url)) {
+        spotify_link <- a(
+          icon("external-link-alt", class = "ms-2"),
+          href = profile_url,
+          class = "text-decoration-none text-success",
+          target = "_blank",
+          rel = "noopener noreferrer",
+          title = "Open in Spotify"
+        )
+      }
     }
 
     tagList(

@@ -108,6 +108,50 @@ features, see:
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rstudio/DT" class="external-link">DT</a></span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">`%||%`</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">fallback</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="va">fallback</span> <span class="kw">else</span> <span class="va">x</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">spotify_safe_url</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">url</span>, <span class="va">allowed_hosts</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">is.character</a></span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">1L</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">||</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">url</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">parsed</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/url_parse.html" class="external-link">url_parse</a></span><span class="op">(</span><span class="va">url</span><span class="op">)</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">host</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/chartr.html" class="external-link">tolower</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">hostname</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="st">""</span><span class="op">)</span></span>
+<span>  <span class="va">allowed_hosts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/chartr.html" class="external-link">tolower</a></span><span class="op">(</span><span class="va">allowed_hosts</span><span class="op">)</span></span>
+<span>  <span class="va">host_allowed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/any.html" class="external-link">any</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span></span>
+<span>    <span class="va">allowed_hosts</span>,</span>
+<span>    <span class="kw">function</span><span class="op">(</span><span class="va">allowed</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">host</span>, <span class="va">allowed</span><span class="op">)</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/startsWith.html" class="external-link">endsWith</a></span><span class="op">(</span><span class="va">host</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"."</span>, <span class="va">allowed</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="op">}</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">userinfo_absent</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">username</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="st">""</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
+<span>    <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">password</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="st">""</span><span class="op">)</span></span>
+<span>  <span class="va">port_allowed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">port</span><span class="op">)</span> <span class="op">||</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">port</span><span class="op">)</span>, <span class="st">"443"</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span></span>
+<span>    <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html" class="external-link">tolower</a></span><span class="op">(</span><span class="va">parsed</span><span class="op">$</span><span class="va">scheme</span> <span class="op"><a href="https://rdrr.io/r/base/Control.html" class="external-link">%||%</a></span> <span class="st">""</span><span class="op">)</span>, <span class="st">"https"</span><span class="op">)</span> <span class="op">||</span></span>
+<span>      <span class="op">!</span><span class="va">host_allowed</span> <span class="op">||</span></span>
+<span>      <span class="op">!</span><span class="va">userinfo_absent</span> <span class="op">||</span></span>
+<span>      <span class="op">!</span><span class="va">port_allowed</span></span>
+<span>  <span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span></span>
+<span>  <span class="va">url</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">spotify_safe_image_url</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu">spotify_safe_url</span><span class="op">(</span><span class="va">url</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"scdn.co"</span>, <span class="st">"spotifycdn.com"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
 <span><span class="co"># Configure provider and client for Spotify</span></span>
 <span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -295,7 +339,7 @@ features, see:
 <span>  </span>
 <span>  <span class="va">art_url</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span></span>
 <span>    <span class="op">{</span></span>
-<span>      <span class="va">item</span><span class="op">[[</span><span class="st">"album"</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="st">"images"</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="st">"url"</span><span class="op">]</span><span class="op">]</span></span>
+<span>      <span class="fu">spotify_safe_image_url</span><span class="op">(</span><span class="va">item</span><span class="op">[[</span><span class="st">"album"</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="st">"images"</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">[[</span><span class="st">"url"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>    <span class="op">}</span>,</span>
 <span>    error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="cn">NULL</span></span>
 <span>  <span class="op">)</span></span>
@@ -671,7 +715,7 @@ features, see:
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">is.data.frame</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">$</span><span class="va">images</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">$</span><span class="va">images</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
 <span>    <span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">img_url</span> <span class="op">&lt;-</span> <span class="va">user_info</span><span class="op">$</span><span class="va">images</span><span class="op">$</span><span class="va">url</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span>      <span class="va">img_url</span> <span class="op">&lt;-</span> <span class="fu">spotify_safe_image_url</span><span class="op">(</span><span class="va">user_info</span><span class="op">$</span><span class="va">images</span><span class="op">$</span><span class="va">url</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>      <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">img_url</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">img_url</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>        <span class="va">avatar</span> <span class="op">&lt;-</span> <span class="va">tags</span><span class="op">$</span><span class="fu">img</span><span class="op">(</span></span>
 <span>          src <span class="op">=</span> <span class="va">img_url</span>,</span>
@@ -721,13 +765,20 @@ features, see:
 <span>        <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">is.list</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">$</span><span class="va">external_urls</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
 <span>        <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">$</span><span class="va">external_urls</span><span class="op">$</span><span class="va">spotify</span><span class="op">)</span></span>
 <span>    <span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">spotify_link</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">a</a></span><span class="op">(</span></span>
-<span>        <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html" class="external-link">icon</a></span><span class="op">(</span><span class="st">"external-link-alt"</span>, class <span class="op">=</span> <span class="st">"ms-2"</span><span class="op">)</span>,</span>
-<span>        href <span class="op">=</span> <span class="va">user_info</span><span class="op">$</span><span class="va">external_urls</span><span class="op">$</span><span class="va">spotify</span>,</span>
-<span>        class <span class="op">=</span> <span class="st">"text-decoration-none text-success"</span>,</span>
-<span>        target <span class="op">=</span> <span class="st">"_blank"</span>,</span>
-<span>        title <span class="op">=</span> <span class="st">"Open in Spotify"</span></span>
+<span>      <span class="va">profile_url</span> <span class="op">&lt;-</span> <span class="fu">spotify_safe_url</span><span class="op">(</span></span>
+<span>        <span class="va">user_info</span><span class="op">$</span><span class="va">external_urls</span><span class="op">$</span><span class="va">spotify</span>,</span>
+<span>        <span class="st">"open.spotify.com"</span></span>
 <span>      <span class="op">)</span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">profile_url</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">spotify_link</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">a</a></span><span class="op">(</span></span>
+<span>          <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/icon.html" class="external-link">icon</a></span><span class="op">(</span><span class="st">"external-link-alt"</span>, class <span class="op">=</span> <span class="st">"ms-2"</span><span class="op">)</span>,</span>
+<span>          href <span class="op">=</span> <span class="va">profile_url</span>,</span>
+<span>          class <span class="op">=</span> <span class="st">"text-decoration-none text-success"</span>,</span>
+<span>          target <span class="op">=</span> <span class="st">"_blank"</span>,</span>
+<span>          rel <span class="op">=</span> <span class="st">"noopener noreferrer"</span>,</span>
+<span>          title <span class="op">=</span> <span class="st">"Open in Spotify"</span></span>
+<span>        <span class="op">)</span></span>
+<span>      <span class="op">}</span></span>
 <span>    <span class="op">}</span></span>
 <span></span>
 <span>    <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>

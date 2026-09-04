@@ -193,7 +193,8 @@ band with the provider</p></li>
 <dd><p>Whether to use PKCE. This adds a <code>code_challenge</code> parameter to
 the authorization request and requires a <code>code_verifier</code> when exchanging
 the authorization code for tokens. This helps protect against authorization
-code interception attacks.</p></dd>
+code interception attacks. Public clients (<code>token_auth_style = "public"</code>)
+must enable PKCE.</p></dd>
 
 
 <dt id="arg-pkce-method">pkce_method<a class="anchor" aria-label="anchor" href="#arg-pkce-method"></a></dt>
@@ -332,8 +333,9 @@ keys outside OIDC discovery, or when you intentionally want to override
 runtime metadata-based JWKS resolution.</p>
 <p>In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 TTLs pick up new keys faster but do more network work; longer TTLs reduce
-traffic but may take longer to notice key rotation. If a new <code>kid</code> appears,
-shinyOAuth will also do a one-time refresh automatically.</p></dd>
+traffic but may take longer to notice key rotation. If a new <code>kid</code> appears
+or cached key material no longer verifies a signature, shinyOAuth also
+performs a rate-limited one-time refresh automatically.</p></dd>
 
 
 <dt id="arg-jwks-cache">jwks_cache<a class="anchor" aria-label="anchor" href="#arg-jwks-cache"></a></dt>
@@ -388,9 +390,9 @@ Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supp
 asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
 <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> for OKP-backed signatures. When ID token
 <code>at_hash</code> validation is in play, Ed25519 is supported. Ed448 <code>at_hash</code>
-cannot be validated with the current crypto bindings, so shinyOAuth skips
-that optional check unless <code>id_token_at_hash_required = TRUE</code>, in which
-case Ed448 ID tokens fail fast.
+cannot be validated with the current crypto bindings, so any Ed448 ID
+token containing an <code>at_hash</code> claim fails closed, whether or not that
+claim was configured as required.
 Symmetric HMAC algorithms <code>HS256</code>, <code>HS384</code>, <code>HS512</code> are also supported but
 require that you supply a <code>client_secret</code> and explicitly enable HMAC
 verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.
@@ -651,6 +653,7 @@ requests must match with the same certificate.</p></dd>
 <span class="r-in"><span><span class="co"># Keycloak</span></span></span>
 <span class="r-in"><span><span class="co"># (requires configured Keycloak realm; example below is therefore not run)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span>base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"myrealm"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>

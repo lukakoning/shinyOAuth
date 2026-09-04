@@ -39,8 +39,9 @@ OAuthToken(
 
 - expires_at:
 
-  Numeric timestamp (seconds since epoch) when the access token expires.
-  `Inf` for non-expiring tokens
+  Numeric timestamp (seconds since epoch) when the access token expires,
+  `NA_real_` when the expiry is unknown, or `Inf` for a non-expiring
+  token
 
 - userinfo:
 

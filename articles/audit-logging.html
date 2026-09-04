@@ -190,61 +190,21 @@ future backend)</li>
 </ul>
 </li>
 <li>
-<code>shiny_session$http</code>: a compact HTTP summary with fields:
-<ul>
-<li>
-<code>method</code>, <code>path</code>, <code>query_string</code>,
-<code>host</code>, <code>scheme</code>, <code>remote_addr</code>
-</li>
-<li>
-<code>headers</code>: a list of request headers derived from
-<code>HTTP_*</code> environment variables, with lowercase names (e.g.,
-<code>user_agent</code>).</li>
+<code>shiny_session$http</code>: a compact HTTP summary containing
+<code>method</code>, <code>path</code>, <code>host</code>, and
+<code>scheme</code> by default.</li>
 </ul>
-</li>
-</ul>
-<p>With the default
-<code>options(shinyOAuth.audit_redact_http = TRUE)</code>,
-<code>remote_addr</code> is replaced with <code>[REDACTED]</code> before
-the event is emitted.</p>
 <p>Note: the raw <code>session$request</code> from Shiny is not included
 to keep the event JSON-serializable and concise.</p>
 <div class="section level3">
 <h3 id="http-context-sanitization">HTTP context sanitization<a class="anchor" aria-label="anchor" href="#http-context-sanitization"></a>
 </h3>
-<p>For safety, the <code>shiny_session$http</code> summary is
-automatically sanitized before being attached to events. This prevents
-accidental secret leakage when forwarding events to log sinks:</p>
-<ul>
-<li>OAuth query parameters are redacted: callback credentials such as
-<code>code</code>, <code>state</code>, JARM <code>response</code>,
-form-post callback handles (<code>shinyOAuth_form_post</code> and
-<code>shinyOAuth_form_post_id</code>), <code>access_token</code>,
-<code>refresh_token</code>, <code>id_token</code>, <code>token</code>,
-<code>session_state</code>, <code>code_verifier</code>, and
-<code>nonce</code>, plus credential-bearing token-endpoint parameters
-such as <code>client_secret</code>, <code>client_assertion</code>,
-<code>assertion</code>, <code>username</code>, and
-<code>password</code>, are replaced with <code>[REDACTED]</code>.</li>
-<li>Sensitive headers are removed: <code>Cookie</code>,
-<code>Set-Cookie</code>, <code>Authorization</code>,
-<code>Proxy_Authorization</code>, <code>Proxy_Authenticate</code>, and
-<code>WWW-Authenticate</code> headers are stripped entirely.</li>
-<li>Referer URLs are redacted: the complete <code>Referer</code> value
-is replaced with <code>[REDACTED]</code> so callback <code>code</code>,
-<code>state</code>, and other URL credentials cannot reach audit
-sinks.</li>
-<li>Proxy headers are redacted: headers starting with <code>x_</code>
-(e.g., <code>x_forwarded_for</code>, <code>x_real_ip</code>) are
-replaced with <code>[REDACTED]</code> to avoid leaking internal
-infrastructure details.</li>
-<li>Client IP addresses are redacted: <code>remote_addr</code> is
-replaced with <code>[REDACTED]</code> while HTTP redaction stays
-enabled.</li>
-</ul>
-<p>This means you can safely forward the <code>shiny_session$http</code>
-object to external logging systems without manually stripping
-secrets.</p>
+<p>For safety, query strings, request headers, and client addresses are
+omitted from <code>shiny_session$http</code> by default. This
+closed-by-default policy also keeps unknown query parameters and
+forwarding or identity headers from exposing secrets or personal data to
+log sinks. Continue to apply your normal sink-side data controls when
+forwarding events.</p>
 <p>If a legacy hook truly needs the raw Shiny session token, opt in
 explicitly with
 <code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code>.
@@ -254,9 +214,10 @@ specific reason to expose the raw token.</p>
 local debugging, you can disable redaction temporarily:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_redact_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>Do not use this in production log sinks. Raw mode can expose
-authorization codes, state values, cookies, authorization headers,
-client assertions, and client IP addresses.</p>
+<p>Do not use this in production log sinks. Raw mode includes the
+complete query string, all <code>HTTP_*</code> request headers, and the
+client address, and can therefore expose unknown application secrets and
+personal data as well as OAuth values.</p>
 </div>
 <div class="section level3">
 <h3 id="excluding-http-context-entirely">Excluding HTTP context entirely<a class="anchor" aria-label="anchor" href="#excluding-http-context-entirely"></a>
@@ -323,7 +284,16 @@ configure a shared key.</p>
 <p>If you run multiple workers/processes and want digests to be
 comparable across them, configure a shared key:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">audit_digest_key</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY"</span>, unset <span class="op">=</span> <span class="cn">NA_character_</span><span class="op">)</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">audit_digest_key</span><span class="op">)</span> <span class="op">||</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">audit_digest_key</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY must be configured before the app starts"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="va">audit_digest_key</span><span class="op">)</span></span></code></pre></div>
+<p>Configured keys must be a single character value or raw vector
+containing at least 32 bytes. Generate the setting from at least 32
+cryptographically random bytes and store it in your deployment’s secret
+manager. Invalid, missing, or short configured values fail rather than
+falling back to an unkeyed digest.</p>
 <p>To disable keying (legacy deterministic SHA-256 digests):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
@@ -1073,7 +1043,8 @@ non-success status</li>
 <code>status</code>: HTTP status code (integer, or <code>NA</code>
 if unavailable)</li>
 <li>
-<code>url</code>: the request URL</li>
+<code>url</code>: the request URL without userinfo, query, or
+fragment</li>
 <li>
 <code>body_digest</code>: SHA-256 hex digest of the response body
 (for correlation without leaking content)</li>

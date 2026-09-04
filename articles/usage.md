@@ -371,6 +371,8 @@ one-time callback handle.
 library(shiny)
 library(shinyOAuth)
 
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+
 provider <- oauth_provider_keycloak(
   base_url = "http://localhost:8080",
   realm = "shinyoauth"
@@ -464,10 +466,10 @@ you want to tune logging, networking, or a specific advanced behavior.
   redaction of sensitive data in audit events (default: `TRUE`). Debug
   only: raw mode can expose cookies, authorization headers, codes, state
   values, and client IP addresses
-- `options(shinyOAuth.audit_digest_key = ...)` – shared key for
-  HMAC-SHA256 digests used in audit/OTel attributes. By default,
-  ‘shinyOAuth’ generates a random per-process key when this is not
-  configured
+- `options(shinyOAuth.audit_digest_key = ...)` – shared key of at least
+  32 bytes for HMAC-SHA256 digests used in audit/OTel attributes.
+  Invalid configured keys fail closed; by default, ‘shinyOAuth’
+  generates a random per-process key when this is not configured
 - `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable
   ‘shinyOAuth’ OpenTelemetry span creation and async trace-context
   propagation. Default: `TRUE`
@@ -491,7 +493,8 @@ for more details about logs and traces via OpenTelemetry.
   but does not define this lifetime cap. Default `86400` (24 hours). Set
   to `Inf` to disable the check
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` -
-  allows hosts to use `http://` scheme instead of `https://`
+  allows these hosts to use `http://` in non-OIDC URL checks; it does
+  not relax OIDC discovery
 - `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)` –
   development-only opt-in for OIDC issuer and endpoint URLs on HTTP
   loopback origins; production OIDC metadata URLs must use HTTPS

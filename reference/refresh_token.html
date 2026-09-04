@@ -106,7 +106,7 @@ userinfo data.</p>
 <span>  <span class="va">oauth_client</span>,</span>
 <span>  <span class="va">token</span>,</span>
 <span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -134,10 +134,11 @@ used. Non-sequential future plans run off the main R session;
 
 
 <dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
-<dd><p>Logical, default FALSE. After a successful refresh, if the
-provider exposes an introspection endpoint, introspect the new access
-token for validation and audit/diagnostics. When enabled, refresh fails
-if introspection is unsupported, inactive, or missing required
+<dd><p><code>NULL</code> (default) or a logical. After a successful refresh,
+introspect the new access token when either this argument is <code>TRUE</code> or the
+client was configured with <code>introspect = TRUE</code>. A per-call <code>FALSE</code> cannot
+disable a configured client requirement. When enabled, refresh fails if
+introspection is unsupported, inactive, or missing required
 <code>introspect_elements</code>. The raw introspection result is not stored
 separately, but a successful introspection response may backfill
 <code>token@cnf</code>.</p></dd>

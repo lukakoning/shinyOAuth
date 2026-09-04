@@ -91,65 +91,26 @@ the same defaults documented for <code><a href="oauth_provider_oidc_discover.htm
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Configure generic OAuth 2.0 provider (no OIDC)</span></span></span>
-<span class="r-in"><span><span class="va">generic_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  name <span class="op">=</span> <span class="st">"example"</span>,</span></span>
-<span class="r-in"><span>  auth_url <span class="op">=</span> <span class="st">"https://example.com/oauth/authorize"</span>,</span></span>
-<span class="r-in"><span>  token_url <span class="op">=</span> <span class="st">"https://example.com/oauth/token"</span>,</span></span>
-<span class="r-in"><span>  <span class="co"># Optional URL for fetching user info:</span></span></span>
-<span class="r-in"><span>  userinfo_url <span class="op">=</span> <span class="st">"https://example.com/oauth/userinfo"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure generic OIDC provider manually</span></span></span>
-<span class="r-in"><span><span class="co"># (This defaults to using nonce &amp; ID token validation)</span></span></span>
-<span class="r-in"><span><span class="va">generic_oidc_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_oidc.html">oauth_provider_oidc</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  name <span class="op">=</span> <span class="st">"My OIDC"</span>,</span></span>
-<span class="r-in"><span>  base_url <span class="op">=</span> <span class="st">"https://my-issuer.example.com"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure a OIDC provider via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Sign in with Apple requires an Apple Services ID, Team ID, key ID, and the</span></span></span>
+<span class="r-in"><span><span class="co"># corresponding P-256 private key. Network access is required for discovery.</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="co"># Using Auth0 sample issuer as an example</span></span></span>
-<span class="r-in"><span>  <span class="va">oidc_discovery_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    issuer <span class="op">=</span> <span class="st">"https://samples.auth0.com"</span></span></span>
+<span class="r-in"><span>  <span class="va">apple_provider</span> <span class="op">&lt;-</span> <span class="fu">oauth_provider_apple</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="va">apple_secret</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client_secret_apple.html">oauth_client_secret_apple</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    client_id <span class="op">=</span> <span class="st">"com.example.web"</span>,</span></span>
+<span class="r-in"><span>    team_id <span class="op">=</span> <span class="st">"ABCDEFGHIJ"</span>,</span></span>
+<span class="r-in"><span>    key_id <span class="op">=</span> <span class="st">"ABC123DEFG"</span>,</span></span>
+<span class="r-in"><span>    private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"AuthKey_ABC123DEFG.p8"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># GitHub preconfigured provider</span></span></span>
-<span class="r-in"><span><span class="va">github_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Google preconfigured provider</span></span></span>
-<span class="r-in"><span><span class="va">google_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_google.html">oauth_provider_google</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Microsoft preconfigured provider</span></span></span>
-<span class="r-in"><span><span class="co"># See `?oauth_provider_microsoft` for example using a custom tenant ID</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Spotify preconfigured provider</span></span></span>
-<span class="r-in"><span><span class="va">spotify_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_spotify.html">oauth_provider_spotify</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Slack via OIDC discovery</span></span></span>
-<span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">slack_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider_slack.html">oauth_provider_slack</a></span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Keycloak</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Keycloak realm; example below is therefore not run)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span>base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"myrealm"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Auth0</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Auth0 domain; example below is therefore not run)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="oauth_provider_auth0.html">oauth_provider_auth0</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"your-tenant.auth0.com"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Okta</span></span></span>
-<span class="r-in"><span><span class="co"># (requires configured Okta domain; example below is therefore not run)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="oauth_provider_okta.html">oauth_provider_okta</a></span><span class="op">(</span>domain <span class="op">=</span> <span class="st">"dev-123456.okta.com"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">apple_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    provider <span class="op">=</span> <span class="va">apple_provider</span>,</span></span>
+<span class="r-in"><span>    client_id <span class="op">=</span> <span class="st">"com.example.web"</span>,</span></span>
+<span class="r-in"><span>    client_secret <span class="op">=</span> <span class="va">apple_secret</span>,</span></span>
+<span class="r-in"><span>    redirect_uri <span class="op">=</span> <span class="st">"https://example.com/oauth/callback"</span>,</span></span>
+<span class="r-in"><span>    scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"email"</span>, <span class="st">"name"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    response_mode <span class="op">=</span> <span class="st">"form_post"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

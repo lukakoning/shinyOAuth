@@ -138,8 +138,8 @@ Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly to validate the
 discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
-after normalizing a full discovery-document input back to its issuer base
-URL and removing one trailing slash from both values (recommended).</p></li>
+exactly after normalizing a full discovery-document input back to its
+issuer base URL, including any trailing slash (recommended).</p></li>
 <li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
 <li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
 </ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>
@@ -249,10 +249,12 @@ but may use hosts other than the issuer host as permitted by OIDC Discovery
 and RFC 8414. If a global whitelist is supplied via
 <code>options(shinyOAuth.allowed_hosts)</code>, discovery restricts endpoints to that
 whitelist. RFC 8705 <code>mtls_endpoint_aliases</code> follow the same default and
-explicit-allowlist policy. Scheme policy (HTTPS, with HTTP only for
-explicitly allowed hosts such as loopback development servers) is
-delegated to <code><a href="is_ok_host.html">is_ok_host()</a></code>; see <code><a href="is_ok_host.html">?is_ok_host</a></code>. JWKS host pinning remains a
-separate policy and defaults to requiring the issuer host exactly.</p></li>
+explicit-allowlist policy. Host allowlisting does not permit HTTP:
+discovery requires HTTPS unless a loopback host is explicitly enabled for
+development with
+<code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>. JWKS host
+pinning remains a separate policy and defaults to requiring the issuer
+host exactly.</p></li>
 </ul></div>
 
     <div class="section level2">
@@ -303,6 +305,7 @@ separate policy and defaults to requiring the issuer host exactly.</p></li>
 <span class="r-in"><span><span class="co"># Keycloak</span></span></span>
 <span class="r-in"><span><span class="co"># (requires configured Keycloak realm; example below is therefore not run)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span>base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"myrealm"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
