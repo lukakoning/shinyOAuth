@@ -280,6 +280,43 @@ test_that("validate_essential_claims: 'strict' mode passes when all essential cl
   )
 })
 
+test_that("essential claims reject null and empty decoded values", {
+  cli <- make_test_client(
+    claims = list(
+      userinfo = list(
+        auth_time = list(essential = TRUE),
+        nickname = list(essential = TRUE),
+        roles = list(essential = TRUE),
+        email_verified = list(essential = TRUE)
+      )
+    ),
+    claims_validation = "strict"
+  )
+  invalid <- jsonlite::fromJSON(
+    paste0(
+      '{"auth_time":null,"nickname":"",',
+      '"roles":[],"email_verified":false}'
+    ),
+    simplifyVector = FALSE
+  )
+  valid <- jsonlite::fromJSON(
+    paste0(
+      '{"auth_time":0,"nickname":"neo",',
+      '"roles":["reader"],"email_verified":false}'
+    ),
+    simplifyVector = FALSE
+  )
+
+  expect_error(
+    shinyOAuth:::validate_essential_claims(cli, invalid, "userinfo"),
+    class = "shinyOAuth_userinfo_error",
+    regexp = "auth_time, nickname, roles"
+  )
+  expect_no_error(
+    shinyOAuth:::validate_essential_claims(cli, valid, "userinfo")
+  )
+})
+
 test_that("validate_essential_claims: 'warn' mode warns on missing essential claims", {
   cli <- make_test_client(
     use_nonce = TRUE,

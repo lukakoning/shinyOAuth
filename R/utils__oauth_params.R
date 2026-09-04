@@ -651,6 +651,32 @@ format_claim_value_expectation <- function(requested) {
   paste0("one of ", paste(rendered, collapse = ", "))
 }
 
+#' Test whether an essential claim contains a returned value
+#'
+#' JSON `null`, empty strings, and empty arrays do not satisfy an essential
+#' claim request. Boolean `FALSE` and numeric zero remain valid values.
+#'
+#' @param value Decoded claim value.
+#' @return A single logical value.
+#' @keywords internal
+#' @noRd
+claim_has_meaningful_value <- function(value) {
+  if (is.null(value) || length(value) == 0L) {
+    return(FALSE)
+  }
+  if (is.character(value)) {
+    return(any(!is.na(value) & nzchar(value)))
+  }
+  if (is.atomic(value)) {
+    return(any(!is.na(value)))
+  }
+  if (is.list(value)) {
+    return(any(vapply(value, claim_has_meaningful_value, logical(1))))
+  }
+
+  FALSE
+}
+
 #' Validate requested claims against returned claims
 #'
 #' Used by `verify_token_set()` for ID token claims and by UserInfo validation
@@ -681,7 +707,14 @@ validate_essential_claims <- function(client, claims_present, target) {
     present_names <- names(claims_present) %||% character(0)
   }
 
-  missing_claims <- setdiff(essential, present_names)
+  missing_claims <- essential[!vapply(
+    essential,
+    function(claim_name) {
+      claim_name %in% present_names &&
+        claim_has_meaningful_value(claims_present[[claim_name]])
+    },
+    logical(1)
+  )]
 
   value_mismatches <- character(0)
   if (length(value_constraints) > 0) {
@@ -729,7 +762,7 @@ validate_essential_claims <- function(client, claims_present, target) {
     msg_parts <- c(
       msg_parts,
       paste0(
-        "Essential claims missing from ",
+        "Essential claims missing or empty in ",
         target_label,
         " response (OIDC Core Section 5.5): ",
         paste(missing_claims, collapse = ", ")

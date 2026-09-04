@@ -855,9 +855,10 @@ validate_signed_userinfo_claims <- function(
   } else {
     character(0)
   }
+  claim_names <- names(claims) %||% character(0)
   missing_temporal_claims <- setdiff(
     required_temporal_claims,
-    names(claims) %||% character(0)
+    claim_names
   )
   if (length(missing_temporal_claims) > 0) {
     fail_signed_userinfo_claim_validation(
@@ -876,7 +877,7 @@ validate_signed_userinfo_claims <- function(
     )
   }
 
-  if (!is.null(claims[["exp"]])) {
+  if ("exp" %in% claim_names) {
     if (!jwt_is_single_finite_number(claims[["exp"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_exp",
@@ -910,7 +911,7 @@ validate_signed_userinfo_claims <- function(
     }
   }
 
-  if (!is.null(claims[["iat"]])) {
+  if ("iat" %in% claim_names) {
     if (!jwt_is_single_finite_number(claims[["iat"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_iat",
@@ -944,7 +945,7 @@ validate_signed_userinfo_claims <- function(
     }
   }
 
-  if (!is.null(claims[["nbf"]])) {
+  if ("nbf" %in% claim_names) {
     if (!jwt_is_single_finite_number(claims[["nbf"]])) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_nbf",

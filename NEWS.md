@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Required signed-UserInfo time claims and essential claims no longer accept
+JSON `null` or empty values as satisfying the configured policy.
+
 * OIDC UserInfo binding now always compares the actual UserInfo and ID-token
 `sub` claims; custom application identity selectors cannot replace this check.
 

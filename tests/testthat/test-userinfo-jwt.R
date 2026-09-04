@@ -28,6 +28,25 @@ make_signed_jwt <- function(
   jose::jwt_encode_sig(clm, key = key, header = header)
 }
 
+make_signed_userinfo_json <- function(payload_json, key, kid) {
+  header_json <- jsonlite::toJSON(
+    list(typ = "JWT", alg = "RS256", kid = kid),
+    auto_unbox = TRUE
+  )
+  signing_input <- paste0(
+    shinyOAuth:::base64url_encode(charToRaw(header_json)),
+    ".",
+    shinyOAuth:::base64url_encode(charToRaw(payload_json))
+  )
+  signature <- openssl::signature_create(
+    charToRaw(signing_input),
+    hash = openssl::sha256,
+    key = key
+  )
+
+  paste0(signing_input, ".", shinyOAuth:::base64url_encode(signature))
+}
+
 make_eddsa_signed_jwt <- function(
   payload_list,
   keypair,
@@ -504,6 +523,50 @@ test_that("get_userinfo errors when signed JWT is missing required exp", {
     class = "shinyOAuth_userinfo_error",
     regexp = "missing required temporal claim\\(s\\): exp"
   )
+})
+
+test_that("required signed UserInfo time claims reject JSON null", {
+  key <- openssl::rsa_keygen(2048)
+  kid <- "kid-null-required-times"
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = TRUE)
+  jwk$kid <- kid
+  jwk$use <- "sig"
+  jwt_body <- NULL
+
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      httr2::response(
+        url = as.character(req[["url"]]),
+        status = 200,
+        headers = list("content-type" = "application/jwt"),
+        body = charToRaw(jwt_body)
+      )
+    },
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+
+  for (claim_name in c("exp", "iat", "nbf")) {
+    payload_json <- paste0(
+      '{"sub":"user-null-times",',
+      '"iss":"https://issuer.example.com","aud":"abc","',
+      claim_name,
+      '":null}'
+    )
+    jwt_body <- make_signed_userinfo_json(payload_json, key, kid)
+    cli <- make_test_client(
+      userinfo_jwt_required_time_claims = claim_name
+    )
+    cli@provider@userinfo_url <- "https://example.com/userinfo"
+    cli@provider@issuer <- "https://issuer.example.com"
+
+    expect_error(
+      get_userinfo(cli, token = "access-token"),
+      class = "shinyOAuth_userinfo_error",
+      regexp = paste0(claim_name, ".*single finite number"),
+      info = claim_name
+    )
+  }
 })
 
 test_that("oauth_client rejects invalid required UserInfo JWT temporal claims", {
