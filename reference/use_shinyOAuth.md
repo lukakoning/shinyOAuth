@@ -49,7 +49,7 @@ injects this dependency for you.
 
 ``` r
 ui <- shiny::fluidPage(
-  use_shinyOAuth(),
+  use_shinyOAuth()
   # ...
 )
 ```

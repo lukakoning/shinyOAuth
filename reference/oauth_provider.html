@@ -337,7 +337,9 @@ cachem-compatible backend, including a shared cache created with
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys
 whose thumbprints match these values depending on <code>jwks_pin_mode</code>.
 This is an advanced hardening option that lets you pre-authorize expected
-keys.</p></dd>
+keys. Only keys matching a configured pin are eligible for signature
+verification or Request Object encryption; <code>jwks_pin_mode</code> controls
+whether the surrounding JWK Set may also contain unpinned keys.</p></dd>
 
 
 <dt id="arg-jwks-pin-mode">jwks_pin_mode<a class="anchor" aria-label="anchor" href="#arg-jwks-pin-mode"></a></dt>
