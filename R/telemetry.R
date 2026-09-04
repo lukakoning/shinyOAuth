@@ -22,7 +22,7 @@ otel_tracer_name <- "io.github.lukakoning.shinyOAuth" # nolint
 #' @keywords internal
 #' @noRd
 otel_telemetry_warning <- function(context, error) {
-  warn_pkg(
+  warn_event_sink_failure(
     "OpenTelemetry disabled for this operation",
     c(
       "!" = paste0(

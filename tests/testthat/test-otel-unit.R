@@ -956,6 +956,65 @@ testthat::test_that("otel_telemetry_warning uses rlang::warn", {
   )
 })
 
+testthat::test_that("span startup failures cannot replace business work under warn = 2", {
+  withr::local_options(list(
+    warn = 2,
+    shinyOAuth.otel_tracing_enabled = TRUE
+  ))
+  executed <- FALSE
+
+  testthat::expect_warning(
+    result <- testthat::with_mocked_bindings(
+      start_local_active_span = function(...) {
+        stop("span startup failed")
+      },
+      .package = "otel",
+      shinyOAuth:::with_otel_span("test.span", {
+        executed <- TRUE
+        42
+      })
+    ),
+    "OpenTelemetry disabled for this operation"
+  )
+  testthat::expect_true(executed)
+  testthat::expect_identical(result, 42)
+
+  testthat::expect_error(
+    suppressWarnings(testthat::with_mocked_bindings(
+      start_local_active_span = function(...) {
+        stop("span startup failed")
+      },
+      .package = "otel",
+      shinyOAuth:::with_otel_span("test.span", stop("business failure"))
+    )),
+    regexp = "business failure"
+  )
+})
+
+testthat::test_that("span activation failures cannot replace business work under warn = 2", {
+  withr::local_options(list(
+    warn = 2,
+    shinyOAuth.otel_tracing_enabled = TRUE
+  ))
+  executed <- FALSE
+
+  testthat::expect_warning(
+    result <- testthat::with_mocked_bindings(
+      local_active_span = function(...) {
+        stop("span activation failed")
+      },
+      .package = "otel",
+      shinyOAuth:::otel_with_active_span(list(), {
+        executed <- TRUE
+        "ok"
+      })
+    ),
+    "OpenTelemetry disabled for this operation"
+  )
+  testthat::expect_true(executed)
+  testthat::expect_identical(result, "ok")
+})
+
 # ===========================================================================
 # with_otel_span error paths (mock-based)
 # ===========================================================================
