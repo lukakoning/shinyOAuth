@@ -21,14 +21,14 @@ if (interactive()) {
   #  (`oauth_module_server()` handles this typically)
   authorization_url <- prepare_call(client, "<browser_token>")
 
-  # Redirect user to authorization URL; retrieve code & payload from query;
+  # Redirect user to authorization URL; retrieve code & state from the query;
   # read also `<browser_token>` from browser cookie
   # (`oauth_module_server()` handles this typically)
   code <- "..."
-  payload <- "..."
+  state <- "..."
   browser_token <- "..."
 
   # Handle callback, exchanging code for token and validating state
   # (`oauth_module_server()` handles this typically)
-  token <- handle_callback(client, code, payload, browser_token)
+  token <- handle_callback(client, code, state, browser_token)
 }

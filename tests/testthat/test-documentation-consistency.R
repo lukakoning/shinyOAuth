@@ -298,3 +298,20 @@ testthat::test_that("OAuthToken docs include unknown expiry values", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("low-level callback example names the state parameter", {
+  example <- project_text("inst", "examples", "call_methods.R")
+
+  testthat::expect_match(
+    example,
+    "retrieve code & state from the query",
+    fixed = TRUE
+  )
+  testthat::expect_match(example, 'state <- "..."', fixed = TRUE)
+  testthat::expect_match(
+    example,
+    "handle_callback(client, code, state, browser_token)",
+    fixed = TRUE
+  )
+  testthat::expect_false(grepl("code & payload", example, fixed = TRUE))
+})
