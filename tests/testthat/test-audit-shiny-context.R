@@ -102,31 +102,28 @@ testthat::test_that("shinyOAuth.audit_include_http = FALSE excludes http from ev
   testthat::expect_false("token" %in% names(ss))
 })
 
-testthat::test_that("audit_event includes redacted HTTP context by default", {
+testthat::test_that("audit_event omits query values and headers by default", {
+  sentinels <- c(
+    "TOPSECRET_UNKNOWN_QUERY",
+    "alice.sentinel@example.test",
+    "ey.SENTINEL.jwt",
+    "203.0.113.9"
+  )
   events <- list()
   req <- list(
     REQUEST_METHOD = "GET",
     PATH_INFO = "/callback",
-    QUERY_STRING = paste(
-      "code=authcode123",
-      "state=mystate",
-      "client_secret=super-secret",
-      "client_assertion=jwt-assertion",
-      "request=signed.request.jwt",
-      "request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3Aabc123",
-      "code_challenge=challenge123",
-      "claims=%7B%22userinfo%22%3A%7B%22email%22%3A%7B%22essential%22%3Atrue%7D%7D%7D",
-      "login_hint=alice%40example.com",
-      "error_description=Sensitive%20provider%20detail",
-      "safe=keep_me",
-      sep = "&"
+    QUERY_STRING = paste0(
+      "api_key=",
+      sentinels[[1L]],
+      "&email=",
+      sentinels[[2L]]
     ),
     HTTP_HOST = "example.com",
-    HTTP_COOKIE = "session=secret123",
-    HTTP_AUTHORIZATION = "Bearer token123",
-    HTTP_REFERER = "https://app.example/cb?code=SECRET_CODE&state=SECRET_STATE",
-    HTTP_USER_AGENT = "TestClient/1.0",
-    HTTP_X_FORWARDED_FOR = "192.168.1.1"
+    HTTP_CF_ACCESS_JWT_ASSERTION = sentinels[[3L]],
+    HTTP_FORWARDED = paste0("for=", sentinels[[4L]]),
+    HTTP_X_FORWARDED_FOR = sentinels[[4L]],
+    REMOTE_ADDR = sentinels[[4L]]
   )
 
   withr::local_options(list(
@@ -134,14 +131,8 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
       events[[length(events) + 1L]] <<- e
     },
     shinyOAuth.audit_include_http = TRUE,
-    shinyOAuth.audit_redact_http = TRUE
+    shinyOAuth.audit_redact_http = NULL
   ))
-  testthat::local_mocked_bindings(
-    url_query_parse = function(...) {
-      stop("query parse failed")
-    },
-    .package = "shinyOAuth"
-  )
 
   testthat::with_mocked_bindings(
     get_current_shiny_request = function() req,
@@ -169,54 +160,22 @@ testthat::test_that("audit_event includes redacted HTTP context by default", {
   testthat::expect_null(
     http_event[[1L]][["shiny_session"]][["token"]]
   )
-  headers <- http[["headers"]]
   testthat::expect_equal(http[["method"]], "GET")
-  testthat::expect_match(http[["query_string"]], "safe=keep_me")
-  testthat::expect_no_match(http[["query_string"]], "authcode123")
-  testthat::expect_no_match(http[["query_string"]], "mystate")
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "super-secret"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "jwt-assertion"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "signed.request.jwt"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "request_uri%3Aabc123"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "challenge123"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "alice%40example.com"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "Sensitive%20provider%20detail"
-  )
-  testthat::expect_null(headers[["cookie"]])
-  testthat::expect_null(headers[["authorization"]])
-  testthat::expect_identical(headers[["referer"]], "[REDACTED]")
-  testthat::expect_equal(
-    headers[["user_agent"]],
-    "TestClient/1.0"
-  )
-  testthat::expect_equal(
-    headers[["x_forwarded_for"]],
-    "[REDACTED]"
-  )
-  testthat::expect_equal(http[["remote_addr"]], "[REDACTED]")
+  testthat::expect_null(http[["query_string"]])
+  testthat::expect_null(http[["headers"]])
+  testthat::expect_null(http[["remote_addr"]])
+
+  serialized <- as.character(jsonlite::toJSON(
+    http_event[[1L]],
+    auto_unbox = TRUE,
+    null = "null"
+  ))
+  for (sentinel in sentinels) {
+    testthat::expect_no_match(serialized, sentinel, fixed = TRUE)
+  }
 })
 
-testthat::test_that("audit_event redacts malformed callback query strings", {
+testthat::test_that("audit_event omits malformed callback query strings", {
   events <- list()
   req <- list(
     REQUEST_METHOD = "GET",
@@ -260,17 +219,8 @@ testthat::test_that("audit_event redacts malformed callback query strings", {
     "http",
     exact = TRUE
   ]]
-  testthat::expect_match(http[["query_string"]], "safe=keep_me")
-  testthat::expect_no_match(http[["query_string"]], "authcode123")
-  testthat::expect_no_match(http[["query_string"]], "mystate")
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "signed.request.jwt"
-  )
-  testthat::expect_no_match(
-    http[["query_string"]],
-    "request_uri:abc123"
-  )
+  testthat::expect_null(http[["query_string"]])
+  testthat::expect_null(http[["headers"]])
 })
 
 testthat::test_that("raw query fallback redacts sensitive callback values", {

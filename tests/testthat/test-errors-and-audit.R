@@ -346,7 +346,7 @@ test_that("redact_headers handles empty/null input gracefully", {
   expect_equal(shinyOAuth:::redact_headers(list()), list())
 })
 
-test_that("sanitize_http_summary sanitizes both query_string and headers", {
+test_that("sanitize_http_summary omits unbounded request fields", {
   summary <- list(
     method = "GET",
     path = "/callback",
@@ -360,19 +360,9 @@ test_that("sanitize_http_summary sanitizes both query_string and headers", {
   )
   result <- shinyOAuth:::sanitize_http_summary(summary)
 
-  # Query string should be sanitized
-  expect_no_match(result[["query_string"]], "secret")
-  expect_match(result[["query_string"]], "REDACTED")
-  # Headers should be sanitized
-  expect_null(result[["headers"]][["cookie"]])
-  expect_equal(
-    result[["headers"]][["user_agent"]],
-    "Test/1.0"
-  )
-  expect_equal(
-    result[["headers"]][["x_forwarded_for"]],
-    "[REDACTED]"
-  )
+  expect_null(result[["query_string"]])
+  expect_null(result[["headers"]])
+  expect_null(result[["remote_addr"]])
   # Other fields should remain
   expect_equal(result[["method"]], "GET")
   expect_equal(result[["path"]], "/callback")
@@ -403,7 +393,7 @@ test_that("sanitize_http_summary ignores partial matches in summary keys", {
   expect_null(result[["remote_addr"]])
 })
 
-test_that("build_http_summary returns sanitized output", {
+test_that("build_http_summary returns closed-by-default output", {
   # Create a mock request object
   req <- list(
     REQUEST_METHOD = "GET",
@@ -429,31 +419,9 @@ test_that("build_http_summary returns sanitized output", {
   )
   result <- shinyOAuth:::build_http_summary(req)
 
-  # Sensitive values should be redacted
-  expect_no_match(result[["query_string"]], "authcode123")
-  expect_no_match(result[["query_string"]], "mystate")
-  expect_no_match(result[["query_string"]], "signed.request.jwt")
-  expect_no_match(result[["query_string"]], "request_uri%3Aabc123")
-  expect_no_match(result[["query_string"]], "alice%40example.com")
-  expect_null(result[["headers"]][["cookie"]])
-  expect_null(result[["headers"]][["authorization"]])
-  expect_null(
-    result[["headers"]][["proxy_authorization"]]
-  )
-  expect_null(
-    result[["headers"]][["www_authenticate"]]
-  )
-  expect_identical(result[["headers"]][["referer"]], "[REDACTED]")
-  expect_false(any(grepl("SECRET_", unlist(result), fixed = TRUE)))
-  expect_equal(
-    result[["headers"]][["x_forwarded_for"]],
-    "[REDACTED]"
-  )
-  # Safe values should remain
-  expect_equal(
-    result[["headers"]][["user_agent"]],
-    "TestClient/1.0"
-  )
+  expect_null(result[["query_string"]])
+  expect_null(result[["headers"]])
+  expect_null(result[["remote_addr"]])
   expect_equal(result[["method"]], "GET")
   expect_equal(result[["path"]], "/callback")
 })
@@ -511,13 +479,13 @@ test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {
     )
   })
 
-  # When option is TRUE (explicit), should still redact
+  # When option is TRUE (explicit), unbounded fields should be omitted
 
   withr::with_options(list(shinyOAuth.audit_redact_http = TRUE), {
     result <- shinyOAuth:::build_http_summary(req)
-    expect_no_match(result[["query_string"]], "authcode123")
-    expect_null(result[["headers"]][["cookie"]])
-    expect_equal(result[["remote_addr"]], "[REDACTED]")
+    expect_null(result[["query_string"]])
+    expect_null(result[["headers"]])
+    expect_null(result[["remote_addr"]])
   })
 })
 
