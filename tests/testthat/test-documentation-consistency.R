@@ -165,3 +165,23 @@ testthat::test_that("OTel catalog includes form-post state consumption", {
     fixed = TRUE
   )
 })
+
+testthat::test_that("OTel docs describe exception-message opt-in", {
+  otel_docs <- project_text("vignettes", "opentelemetry.Rmd")
+
+  testthat::expect_match(
+    otel_docs,
+    "Condition messages are\n  omitted by default",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    otel_docs,
+    "options(shinyOAuth.expose_error_body = TRUE)",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    otel_docs,
+    "should be handled as sensitive data",
+    fixed = TRUE
+  )
+})

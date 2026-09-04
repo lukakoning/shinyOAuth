@@ -306,7 +306,8 @@ TTL and the `shinyOAuth.callback_max_form_post_*` size-cap options.
 key OAuth operations such as module initialization, login/callback handling, 
 token exchange/refresh, userinfo/introspection/revocation, and session-end 
 cleanup. See `vignette("opentelemetry", package = "shinyOAuth")` for more
-information. The span catalog includes form-post callback state consumption.
+information. The span catalog includes form-post callback state consumption
+and documents the opt-in policy for exception messages.
 
 * Observability and audit logging improvements:
   - Improved observability correlation for existing audit flows. Interactive

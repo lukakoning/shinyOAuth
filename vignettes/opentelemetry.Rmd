@@ -62,7 +62,10 @@ emitting all OTel logs.
 All spans share these behaviors:
 
 - Successful operations are marked with status `ok`; errors are marked `error`
-  and include an `exception` event with the error class and message
+  and include an `exception` event with the error class. Condition messages are
+  omitted by default and are attached only when the debugging option
+  `options(shinyOAuth.expose_error_body = TRUE)` is enabled; those messages may
+  include provider details and should be handled as sensitive data
 - Top-level 'shinyOAuth' operation spans are often started as roots so they stay
   visible instead of being buried under Shiny's internal `reactive_update`
   spans
