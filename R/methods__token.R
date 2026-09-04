@@ -676,10 +676,11 @@ introspect_token <- function(
 #'   configured via [mirai::daemons()]; otherwise the current [future] plan is
 #'   used. Non-sequential future plans run off the main R session;
 #'   `future::sequential()` stays in-process.
-#' @param introspect Logical, default FALSE. After a successful refresh, if the
-#'   provider exposes an introspection endpoint, introspect the new access
-#'   token for validation and audit/diagnostics. When enabled, refresh fails
-#'   if introspection is unsupported, inactive, or missing required
+#' @param introspect `NULL` (default) or a logical. After a successful refresh,
+#'   introspect the new access token when either this argument is `TRUE` or the
+#'   client was configured with `introspect = TRUE`. A per-call `FALSE` cannot
+#'   disable a configured client requirement. When enabled, refresh fails if
+#'   introspection is unsupported, inactive, or missing required
 #'   `introspect_elements`. The raw introspection result is not stored
 #'   separately, but a successful introspection response may backfill
 #'   `token@cnf`.
@@ -718,7 +719,7 @@ refresh_token <- function(
   oauth_client,
   token,
   async = FALSE,
-  introspect = FALSE,
+  introspect = NULL,
   shiny_session = NULL
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
@@ -727,10 +728,12 @@ refresh_token <- function(
     err_input("{.arg async} must be a single non-NA logical.")
   }
   if (
-    !(is.logical(introspect) && length(introspect) == 1 && !is.na(introspect))
+    !is.null(introspect) &&
+      !(is.logical(introspect) && length(introspect) == 1 && !is.na(introspect))
   ) {
-    err_input("{.arg introspect} must be a single non-NA logical.")
+    err_input("{.arg introspect} must be NULL or a single non-NA logical.")
   }
+  effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
 
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
     NULL
@@ -747,7 +750,7 @@ refresh_token <- function(
         call_args = list(
           oauth_client = oauth_client,
           token = token,
-          introspect = introspect
+          introspect = effective_introspect
         ),
         client = oauth_client,
         shiny_session = shiny_session,
@@ -923,7 +926,7 @@ refresh_token <- function(
           expires_in = tok[["expires_in"]],
           scope = tok[["scope"]]
         )
-        defer_certificate_binding <- isTRUE(introspect) &&
+        defer_certificate_binding <- isTRUE(effective_introspect) &&
           client_requests_certificate_bound_tokens(oauth_client) &&
           !is_valid_string(
             token_cnf_x5t_s256(
@@ -991,7 +994,7 @@ refresh_token <- function(
         )
 
         intro_res <- NULL
-        if (isTRUE(introspect)) {
+        if (isTRUE(effective_introspect)) {
           intro_res <- call_with_optional_shiny_session(
             introspect_token,
             oauth_client = oauth_client,
@@ -1087,7 +1090,7 @@ refresh_token <- function(
           refreshed_token@userinfo <- ui
         }
 
-        if (isTRUE(introspect)) {
+        if (isTRUE(effective_introspect)) {
           refreshed_token <- enforce_token_introspection_policy(
             oauth_client = oauth_client,
             token = refreshed_token,

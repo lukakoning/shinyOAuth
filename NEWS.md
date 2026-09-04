@@ -10,6 +10,9 @@ from URL-valued fields, and OpenTelemetry log attributes use a closed allowlist.
 * OIDC discovery now requires the requested and discovered issuer identifiers
 to match exactly, including trailing slashes.
 
+* `refresh_token()` now always enforces introspection configured on the client;
+per-call arguments may enable, but cannot disable, that policy.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through

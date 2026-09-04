@@ -257,6 +257,57 @@ testthat::test_that("refresh_token fails when introspection marks token inactive
   )
 })
 
+testthat::test_that("refresh_token always enforces configured introspection", {
+  cli <- make_test_client(
+    use_pkce = TRUE,
+    use_nonce = FALSE
+  )
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  cli@introspect <- TRUE
+  token <- OAuthToken(
+    access_token = "old",
+    refresh_token = "rt",
+    expires_at = as.numeric(Sys.time()) + 10,
+    id_token = NA_character_
+  )
+
+  for (per_call in list(NULL, FALSE)) {
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = as.character(req[["url"]]),
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(
+            '{"access_token":"new_at","token_type":"Bearer","expires_in":120}'
+          )
+        )
+      },
+      introspect_token = function(...) {
+        list(
+          supported = TRUE,
+          active = FALSE,
+          raw = list(),
+          status = "inactive"
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        testthat::expect_error(
+          refresh_token(
+            cli,
+            token,
+            async = FALSE,
+            introspect = per_call
+          ),
+          class = "shinyOAuth_token_error",
+          regexp = "not active"
+        )
+      }
+    )
+  }
+})
+
 testthat::test_that("refresh_token fails when introspection is missing required sub", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@introspection_url <- "https://example.com/introspect"
