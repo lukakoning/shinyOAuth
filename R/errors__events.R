@@ -149,17 +149,36 @@ sanitize_event_url_fields <- function(event, field_name = NULL) {
   event
 }
 
+#' Warn about an observational event-sink failure without throwing
+#'
+#' @param title Warning title.
+#' @param bullets Warning details.
+#' @return Invisibly returns `NULL`.
+#' @keywords internal
+#' @noRd
+warn_event_sink_failure <- function(title, bullets) {
+  # Audit and telemetry are observational side effects. A strict global warning
+  # policy must not turn their failure into a replacement for the OAuth error
+  # that the package is in the process of constructing.
+  old_warn <- getOption("warn")
+  on.exit(options(warn = old_warn), add = TRUE)
+  options(warn = 0)
+  tryCatch(
+    warn_pkg(title, bullets),
+    error = function(...) invisible(NULL)
+  )
+  invisible(NULL)
+}
+
 #' Dispatch one trace or audit event
 #'
 #' Enriches one event with Shiny context and forwards it to OpenTelemetry and
 #' the configured audit hook. `trace_hook` intentionally remains supported only
-#' as an undocumented backward-compatible alias when `audit_hook` is unset, so
-#' older apps keep working without reintroducing it into the main public options
-#' surface. When both options are configured, `audit_hook` always takes
-#' precedence. Native hook payloads expose `shiny_session$session_token_digest`
-#' by default; set `options(shinyOAuth.audit_include_raw_session_token = TRUE)`
-#' to opt back into the raw `shiny_session$token`. Used by `audit_event()` and
-#' direct internal event emitters.
+#' as an undocumented backward-compatible alias when `audit_hook` is unset.
+#' When both options are configured, `audit_hook` takes precedence. Native hook
+#' payloads expose `shiny_session$session_token_digest` by default; the raw
+#' token requires an explicit opt-in. Used by `audit_event()` and direct
+#' internal event emitters.
 #'
 #' @param event Named list describing one event.
 #' @return Invisibly returns `NULL`.
@@ -184,7 +203,7 @@ emit_trace_event <- function(event) {
       otel_emit_log(event)
     },
     error = function(e) {
-      warn_pkg(
+      warn_event_sink_failure(
         "Failed to emit OpenTelemetry log",
         c(
           "!" = paste0(
@@ -203,7 +222,7 @@ emit_trace_event <- function(event) {
     tryCatch(
       audit_hook(hook_event),
       error = function(e) {
-        warn_pkg(
+        warn_event_sink_failure(
           paste0("Configured shinyOAuth ", hook_name, " failed"),
           c(
             "!" = paste0(hook_name, " error: ", conditionMessage(e))

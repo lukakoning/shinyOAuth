@@ -120,6 +120,32 @@ test_that("audit_event emits audit_ events via audit hook", {
   expect_identical(events[[1]][["foo"]], "bar")
 })
 
+test_that("audit hook failures cannot replace OAuth errors under warn = 2", {
+  withr::local_options(list(
+    warn = 2,
+    shinyOAuth.audit_hook = function(event) stop("audit sink failed")
+  ))
+  observed_warning <- NULL
+
+  error <- withCallingHandlers(
+    tryCatch(
+      shinyOAuth:::err_invalid_state("original state failure"),
+      error = identity
+    ),
+    warning = function(w) {
+      observed_warning <<- w
+    }
+  )
+
+  expect_s3_class(error, "shinyOAuth_state_error")
+  expect_match(conditionMessage(error), "original state failure", fixed = TRUE)
+  expect_match(
+    conditionMessage(observed_warning),
+    "audit_hook error: audit sink failed",
+    fixed = TRUE
+  )
+})
+
 test_that("transport audit events strip secrets from URL-valued fields", {
   sentinel <- "TOPSECRET_URL_QUERY"
   events <- list()

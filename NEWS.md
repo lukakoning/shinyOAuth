@@ -32,6 +32,9 @@ provider key refresh.
 * Callback state now binds token-exchange, client-assertion, JAR, and PAR
 security settings across workers.
 
+* Audit and telemetry sink failures no longer replace OAuth errors when R is
+configured to turn warnings into errors.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through
