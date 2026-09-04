@@ -98,7 +98,7 @@ test_that("id_token_claims surfaces acr, amr, auth_time", {
   )
   decoded <- tok@id_token_claims
   expect_identical(decoded$acr, "urn:mace:incommon:iap:silver")
-  expect_identical(decoded$amr, c("pwd", "otp"))
+  expect_identical(decoded$amr, list("pwd", "otp"))
   expect_equal(decoded$auth_time, now - 60)
 })
 

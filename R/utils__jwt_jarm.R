@@ -325,7 +325,7 @@ validate_jarm_pre_signature_claims <- function(oauth_client, claims) {
   }
 
   iss <- jarm_claim(claims, "iss")
-  aud <- jarm_claim(claims, "aud")
+  aud <- normalize_jwt_audience(jarm_claim(claims, "aud"))
   exp <- jarm_claim(claims, "exp")
 
   issuer <- oauth_client@provider@issuer %||% NA_character_
@@ -539,7 +539,7 @@ parse_jarm_payload <- function(
   assert_json_text_is_object(payload_text, "JWT payload")
 
   tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
+    jsonlite::fromJSON(payload_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWT payload JSON",

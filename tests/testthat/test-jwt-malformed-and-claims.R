@@ -19,6 +19,20 @@ build_jwt <- function(header, claims, sig = "") {
   )
 }
 
+build_signed_raw_jwt <- function(header_json, payload_json, key) {
+  signing_input <- paste(
+    enc_b64url(header_json),
+    enc_b64url(payload_json),
+    sep = "."
+  )
+  signature <- openssl::signature_create(
+    charToRaw(signing_input),
+    hash = openssl::sha256,
+    key = key
+  )
+  paste(signing_input, enc_raw_b64url(signature), sep = ".")
+}
+
 mk_client <- function() {
   prov <- shinyOAuth::oauth_provider(
     name = "test",
@@ -239,8 +253,99 @@ test_that("JWT parsing preserves heterogeneous audience element types", {
       expected_client_id = client@client_id
     ),
     class = "shinyOAuth_userinfo_error",
-    regexp = "aud.*does not include client_id"
+    regexp = "aud"
   )
+})
+
+test_that("signed JWT scalar claims cannot be encoded as arrays", {
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+  key <- openssl::rsa_keygen(bits = 2048)
+  jwk <- jsonlite::fromJSON(
+    jose::write_jwk(key$pubkey),
+    simplifyVector = TRUE
+  )
+  jwk$kid <- "raw-json-types"
+  jwk$use <- "sig"
+  jwk$alg <- "RS256"
+  jwks <- list(keys = list(jwk))
+  header_json <- '{"alg":"RS256","kid":"raw-json-types"}'
+  values <- c(
+    iss = jsonlite::toJSON(client@provider@issuer, auto_unbox = TRUE),
+    aud = jsonlite::toJSON(client@client_id, auto_unbox = TRUE),
+    sub = '"user-1"',
+    iat = as.character(now - 1),
+    exp = as.character(now + 60)
+  )
+  make_payload <- function(array_claim = NULL) {
+    encoded <- values
+    if (!is.null(array_claim)) {
+      encoded[[array_claim]] <- paste0("[", encoded[[array_claim]], "]")
+    }
+    paste0(
+      "{",
+      paste0('"', names(encoded), '":', encoded, collapse = ","),
+      "}"
+    )
+  }
+  validate_raw <- function(jwt) {
+    testthat::with_mocked_bindings(
+      fetch_jwks = function(...) jwks,
+      shinyOAuth:::validate_id_token(client, jwt),
+      .package = "shinyOAuth"
+    )
+  }
+
+  valid_jwt <- build_signed_raw_jwt(header_json, make_payload(), key)
+  expect_no_error(validate_raw(valid_jwt))
+
+  for (claim in c("iss", "sub", "iat", "exp")) {
+    jwt <- build_signed_raw_jwt(header_json, make_payload(claim), key)
+    parsed <- shinyOAuth:::parse_jwt_payload(jwt)
+    expect_type(parsed[[claim]], "list")
+    expect_error(
+      validate_raw(jwt),
+      class = "shinyOAuth_id_token_error",
+      info = claim
+    )
+  }
+})
+
+test_that("JARM parsing preserves audience element types", {
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+  header <- enc_b64url('{"alg":"RS256"}')
+  make_jarm <- function(audience_json) {
+    payload <- paste0(
+      '{"iss":"',
+      client@provider@issuer,
+      '","aud":',
+      audience_json,
+      ',"exp":',
+      now + 60,
+      "}"
+    )
+    paste(header, enc_b64url(payload), "", sep = ".")
+  }
+
+  mixed <- shinyOAuth:::parse_jarm_payload(
+    make_jarm(paste0('[123,"', client@client_id, '"]'))
+  )
+  expect_type(mixed[["aud"]], "list")
+  expect_true(is.numeric(mixed[["aud"]][[1]]))
+  expect_identical(mixed[["aud"]][[2]], client@client_id)
+  expect_error(
+    shinyOAuth:::validate_jarm_pre_signature_claims(client, mixed),
+    class = "shinyOAuth_state_error",
+    regexp = "aud claim is invalid"
+  )
+
+  valid <- shinyOAuth:::parse_jarm_payload(
+    make_jarm(paste0('["', client@client_id, '"]'))
+  )
+  expect_type(valid[["aud"]], "list")
+  checked <- shinyOAuth:::validate_jarm_pre_signature_claims(client, valid)
+  expect_identical(checked[["aud"]], client@client_id)
 })
 
 test_that("exp/iat/nbf boundary conditions respect leeway", {

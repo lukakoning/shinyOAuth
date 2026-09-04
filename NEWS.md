@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* JWT claim parsing now preserves JSON arrays until claim-specific validation,
+preventing one-element arrays from being accepted as scalar claims.
+
 * `oauth_form_post_ui()` now supports explicit trusted-proxy request URI
 normalization for HTTPS termination and mounted apps.
 

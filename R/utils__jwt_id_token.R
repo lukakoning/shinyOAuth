@@ -336,7 +336,7 @@ validate_id_token <- function(
   ) {
     err_id_token("Issuer mismatch/invalid")
   }
-  aud <- payload[["aud"]]
+  aud <- normalize_jwt_audience(payload[["aud"]])
   # OIDC: aud MAY be a string or an array of strings. Accept length >= 1.
   if (
     !(is.character(aud) &&

@@ -843,7 +843,7 @@ validate_signed_userinfo_claims <- function(
   }
 
   # aud MUST be or include the RP's Client ID
-  aud <- claims[["aud"]]
+  aud <- normalize_jwt_audience(claims[["aud"]])
   if (
     is.null(aud) ||
       (is.character(aud) && (length(aud) == 0L || !any(nzchar(aud))))

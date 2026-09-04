@@ -3094,7 +3094,8 @@ compare_refresh_id_token_continuity <- function(
   original_payload
 ) {
   original_iss <- original_payload[["iss"]]
-  original_aud <- original_payload[["aud"]]
+  original_aud <- normalize_jwt_audience(original_payload[["aud"]])
+  new_aud <- normalize_jwt_audience(new_payload[["aud"]])
   original_auth_time <- original_payload[["auth_time"]]
   original_nonce <- original_payload[["nonce"]] %||% NULL
 
@@ -3107,11 +3108,9 @@ compare_refresh_id_token_continuity <- function(
     )
   }
   if (
-    !is.null(original_aud) &&
-      !identical(
-        sort(as.character(new_payload[["aud"]] %||% character())),
-        sort(as.character(original_aud))
-      )
+    is.null(original_aud) ||
+      is.null(new_aud) ||
+      !identical(sort(new_aud), sort(original_aud))
   ) {
     err_id_token(
       "Refresh returned an ID token with aud that does not match the original (OIDC 12.2)"

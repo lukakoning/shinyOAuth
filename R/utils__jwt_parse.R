@@ -26,9 +26,7 @@ parse_jwt_payload <- function(jwt) {
   assert_json_text_is_object(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jwt_simplify_json_arrays(
-      jsonlite::fromJSON(payload_text, simplifyVector = FALSE)
-    ),
+    jsonlite::fromJSON(payload_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWT payload JSON",
@@ -42,41 +40,41 @@ parse_jwt_payload <- function(jwt) {
   )
 }
 
-#' Simplify homogeneous JWT JSON arrays without coercing element types
+#' Normalize a JWT audience claim after parsing
 #'
-#' `jsonlite`'s general vector simplification can coerce heterogeneous arrays,
-#' such as `[123, "client"]`, to character vectors. JWT claim validation must
-#' retain that type distinction. This helper converts only arrays whose scalar
-#' elements already share a compatible JSON type.
+#' JWT payload parsing preserves JSON arrays as unnamed lists so one-element
+#' arrays cannot masquerade as scalar claims. Audience is one of the fields
+#' that explicitly permits either a string or an array of strings, so validators
+#' normalize that field only after checking every array element's type.
 #'
-#' @param value Parsed JSON value produced with `simplifyVector = FALSE`.
-#' @return Recursively simplified value with heterogeneous arrays preserved.
+#' @param value Parsed `aud` claim.
+#' @return A character vector, or `NULL` when the claim has an invalid type.
 #' @keywords internal
 #' @noRd
-jwt_simplify_json_arrays <- function(value) {
-  if (!is.list(value)) {
+normalize_jwt_audience <- function(value) {
+  if (is.character(value)) {
     return(value)
   }
-
-  out <- lapply(value, jwt_simplify_json_arrays)
-  if (!is.null(names(value)) || length(out) == 0L) {
-    return(out)
+  if (
+    !is.list(value) ||
+      length(value) == 0L ||
+      !is.null(names(value))
+  ) {
+    return(NULL)
   }
 
-  is_scalar_type <- function(x, predicate) {
-    length(x) == 1L && predicate(x)
-  }
-  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.character))) {
-    return(vapply(out, identity, character(1)))
-  }
-  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.logical))) {
-    return(vapply(out, identity, logical(1)))
-  }
-  if (all(vapply(out, is_scalar_type, logical(1), predicate = is.numeric))) {
-    return(vapply(out, as.numeric, numeric(1)))
+  scalar_strings <- vapply(
+    value,
+    function(element) {
+      is.character(element) && length(element) == 1L && !is.na(element)
+    },
+    logical(1)
+  )
+  if (!all(scalar_strings)) {
+    return(NULL)
   }
 
-  out
+  vapply(value, identity, character(1))
 }
 
 #' Internal: Parse JWT header (no validation)
