@@ -6,6 +6,50 @@
 
 ## 1.1 Audit helpers -----------------------------------------------------------
 
+#' Registered shinyOAuth audit event types
+#'
+#' This is the authoritative catalog used by the event emitter, documentation
+#' coverage tests, and serialization tests. Test-only event names may use the
+#' `test_` prefix without becoming part of the public catalog.
+#'
+#' @return Character vector of event names without the `audit_` prefix.
+#' @keywords internal
+#' @noRd
+audit_event_registry <- function() {
+  c(
+    "redirect_issued",
+    "callback_query_rejected",
+    "callback_iss_missing",
+    "callback_iss_mismatch",
+    "callback_iss_validation_failed",
+    "callback_received",
+    "callback_validation_success",
+    "callback_validation_failed",
+    "state_store_lookup_failed",
+    "state_store_removal_failed",
+    "token_exchange",
+    "token_exchange_error",
+    "token_introspection",
+    "login_success",
+    "login_failed",
+    "logout",
+    "session_cleared",
+    "token_revocation",
+    "refresh_failed_but_kept_session",
+    "browser_cookie_error",
+    "invalid_browser_token",
+    "token_refresh",
+    "userinfo",
+    "state_parse_failure",
+    "error_state_consumed",
+    "error_state_consumption_failed",
+    "session_started",
+    "session_ended",
+    "session_ended_revoke",
+    "authenticated_changed"
+  )
+}
+
 # Audit convenience to emit structured audit events
 # - type: short action name, e.g., "token_exchange", "token_refresh", "userinfo"
 # - context: named list of non-sensitive fields (redacted/digested values only)
@@ -42,6 +86,18 @@ audit_event <- function(
   shiny_session = NULL,
   trace_id = NULL
 ) {
+  if (!is_valid_string(type)) {
+    err_config("Audit event type must be a single non-empty string")
+  }
+  if (
+    !(type %in% audit_event_registry()) &&
+      !startsWith(type, "test_")
+  ) {
+    err_config(paste0(
+      "Unregistered shinyOAuth audit event type: ",
+      type
+    ))
+  }
   trace_id <- resolve_trace_id(trace_id)
   event <- c(
     list(

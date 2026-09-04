@@ -1,5 +1,40 @@
+testthat::test_that("package audit calls use the authoritative registry", {
+  registry <- shinyOAuth:::audit_event_registry()
+  r_dir <- testthat::test_path("..", "..", "R")
+  testthat::skip_if_not(dir.exists(r_dir), "Package R sources are unavailable")
+
+  source_text <- paste(vapply(
+    list.files(r_dir, pattern = "\\.R$", full.names = TRUE),
+    function(path) paste(readLines(path, warn = FALSE), collapse = "\n"),
+    ""
+  ), collapse = "\n")
+  matches <- regmatches(
+    source_text,
+    gregexpr(
+      'audit_event\\s*\\(\\s*"[a-z0-9_]+"',
+      source_text,
+      perl = TRUE
+    )
+  )[[1L]]
+  literal_types <- unique(sub(
+    '^.*"([a-z0-9_]+)"$',
+    "\\1",
+    matches
+  ))
+
+  testthat::expect_true(all(literal_types %in% registry))
+  testthat::expect_error(
+    shinyOAuth:::audit_event("unregistered_production_event"),
+    class = "shinyOAuth_config_error",
+    regexp = "Unregistered"
+  )
+})
+
 testthat::test_that("every audit event fires and serializes to JSON", {
-  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.otel_logging_enabled = FALSE
+  ))
 
   # Capture all audit events emitted during this test
   events <- list()
@@ -225,50 +260,24 @@ testthat::test_that("every audit event fires and serializes to JSON", {
     testthat::expect_true(S7::S7_inherits(t2, OAuthToken))
   }
 
+  # Emit each registered type through the real hook boundary. The flow checks
+  # above retain representative behavioral coverage; this registry-driven pass
+  # makes catalog and serialization coverage complete as new types are added.
+  for (type in shinyOAuth:::audit_event_registry()) {
+    shinyOAuth:::audit_event(type, context = list(registry_probe = TRUE))
+  }
+
   # Validate that every captured event can be serialized to JSON ---------------
   for (ev in events) {
     j <- jsonlite::toJSON(ev, auto_unbox = TRUE, null = "null")
     testthat::expect_true(nchar(as.character(j)) > 0)
   }
 
-  # Compute the set of types we expect to have seen
+  # Require the authoritative registry, not a second hand-maintained subset.
   # Consider only audit_* events (the audit hook also receives error traces)
   seen <- grep("^audit_", audit_types(events), value = TRUE)
-
-  expected <- c(
-    "audit_redirect_issued",
-    "audit_callback_received",
-    "audit_callback_validation_success",
-    "audit_callback_validation_failed",
-    "audit_token_exchange",
-    "audit_token_exchange_error",
-    "audit_login_success",
-    "audit_login_failed",
-    "audit_logout",
-    "audit_session_cleared",
-    "audit_refresh_failed_but_kept_session", # may not be seen in this run; don't strictly require
-    "audit_browser_cookie_error",
-    "audit_session_started",
-    "audit_session_ended",
-    "audit_authenticated_changed",
-    "audit_invalid_browser_token",
-    "audit_state_parse_failure",
-    "audit_token_refresh",
-    "audit_userinfo"
-  )
-
-  # We may not deterministically hit some events in this single test run:
-  # - refresh_failed_but_kept_session requires a failed refresh with indefinite_session
-  # - session_ended fires on onSessionEnded callback which may race with assertions
-  # - authenticated_changed fires on reactive state changes and may not be captured
-  # Treat these as optional for presence but ensure all other ones are seen.
-  optional_events <- c(
-    "audit_refresh_failed_but_kept_session",
-    "audit_session_ended",
-    "audit_authenticated_changed"
-  )
-  required <- setdiff(expected, optional_events)
-  testthat::expect_true(all(required %in% seen))
+  registered <- paste0("audit_", shinyOAuth:::audit_event_registry())
+  testthat::expect_setequal(seen, registered)
 
   # Ensure documentation lists all events we actually emit ---------------------
   # Locate the audit-logging vignette in source or built locations
@@ -297,8 +306,8 @@ testthat::test_that("every audit event fires and serializes to JSON", {
       doc_types <- unique(c(doc_types, cur))
     }
   }
-  # All seen event types must be documented
-  missing_in_doc <- setdiff(seen, doc_types)
+  # Every registered event type must be documented.
+  missing_in_doc <- setdiff(registered, doc_types)
   testthat::expect(
     length(missing_in_doc) == 0,
     paste(

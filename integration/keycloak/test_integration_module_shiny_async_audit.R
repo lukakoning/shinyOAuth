@@ -80,7 +80,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
         .ns$with_async_options(captured_options, {
           for (index in seq_len(20L)) {
             .ns$audit_event(
-              "concurrent_writer_probe",
+              "test_concurrent_writer_probe",
               context = list(flow = flow, index = index)
             )
             Sys.sleep(0.005)
@@ -195,7 +195,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   probe_events <- Filter(
     function(event) identical(
       event[["type"]],
-      "audit_concurrent_writer_probe"
+      "audit_test_concurrent_writer_probe"
     ),
     events
   )

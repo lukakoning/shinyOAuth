@@ -139,12 +139,12 @@ testthat::test_that("audit_event omits query values and headers by default", {
     get_current_shiny_session_token = function() "session-token",
     .package = "shinyOAuth",
     {
-      shinyOAuth:::audit_event("http_context")
+      shinyOAuth:::audit_event("test_http_context")
     }
   )
 
   http_event <- Filter(
-    function(e) e[["type"]] == "audit_http_context",
+    function(e) e[["type"]] == "audit_test_http_context",
     events
   )
   testthat::expect_length(http_event, 1L)
@@ -205,12 +205,12 @@ testthat::test_that("audit_event omits malformed callback query strings", {
     get_current_shiny_session_token = function() "session-token",
     .package = "shinyOAuth",
     {
-      shinyOAuth:::audit_event("http_context_malformed")
+      shinyOAuth:::audit_event("test_http_context_malformed")
     }
   )
 
   http_event <- Filter(
-    function(e) e[["type"]] == "audit_http_context_malformed",
+    function(e) e[["type"]] == "audit_test_http_context_malformed",
     events
   )
   testthat::expect_length(http_event, 1L)
@@ -298,12 +298,12 @@ testthat::test_that("audit_event can include raw HTTP context when redaction is 
     get_current_shiny_session_token = function() "session-token",
     .package = "shinyOAuth",
     {
-      shinyOAuth:::audit_event("http_context_raw")
+      shinyOAuth:::audit_event("test_http_context_raw")
     }
   )
 
   http_event <- Filter(
-    function(e) e[["type"]] == "audit_http_context_raw",
+    function(e) e[["type"]] == "audit_test_http_context_raw",
     events
   )
   testthat::expect_length(http_event, 1L)
@@ -342,12 +342,12 @@ testthat::test_that("audit hooks can opt back into raw Shiny session tokens", {
     get_current_shiny_session_token = function() "session-token",
     .package = "shinyOAuth",
     {
-      shinyOAuth:::audit_event("raw_session_token")
+      shinyOAuth:::audit_event("test_raw_session_token")
     }
   )
 
   raw_event <- Filter(
-    function(e) e[["type"]] == "audit_raw_session_token",
+    function(e) e[["type"]] == "audit_test_raw_session_token",
     events
   )
   testthat::expect_length(raw_event, 1L)
