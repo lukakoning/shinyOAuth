@@ -342,15 +342,29 @@ jwk_is_compatible_with_jwe_alg <- function(jwk, alg) {
 #' @param jwks_or_keys A JWKS list or candidate JWK list.
 #' @param alg JOSE key-management algorithm.
 #' @param kid Optional key id used to select one provider encryption key.
+#' @param pins Optional character vector of JWK thumbprints (base64url, RFC 7638)
+#'   to restrict recipient keys to.
 #' @return Filtered list of candidate JWK objects.
 #' @keywords internal
 #' @noRd
 select_candidate_jwks_for_encryption <- function(
   jwks_or_keys,
   alg,
-  kid = NULL
+  kid = NULL,
+  pins = NULL
 ) {
   keys <- normalize_request_object_encryption_jwks(jwks_or_keys)
+
+  if (!is.null(pins) && length(pins) > 0L) {
+    pins <- unique(as.character(pins))
+    keys <- Filter(
+      function(key) {
+        thumbprint <- try(compute_jwk_thumbprint(key), silent = TRUE)
+        !inherits(thumbprint, "try-error") && thumbprint %in% pins
+      },
+      keys
+    )
+  }
 
   keep_use <- vapply(
     keys,
@@ -579,7 +593,8 @@ resolve_authorization_request_encryption_public_key <- function(
   candidates <- select_candidate_jwks_for_encryption(
     jwks_or_keys = jwks,
     alg = alg,
-    kid = kid
+    kid = kid,
+    pins = client@provider@jwks_pins
   )
 
   if (length(candidates) == 0L) {

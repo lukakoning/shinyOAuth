@@ -919,6 +919,88 @@ test_that("encrypted request objects accept SPKI and PKCS#1 public PEM", {
   }
 })
 
+test_that("request object encryption only selects pinned recipient keys", {
+  signing_key <- openssl::rsa_keygen(bits = 2048)
+  encryption_key <- openssl::rsa_keygen(bits = 2048)
+  signing_jwk <- jsonlite::fromJSON(
+    jose::write_jwk(signing_key$pubkey),
+    simplifyVector = FALSE
+  )
+  signing_jwk[["kid"]] <- "pinned-signing-key"
+  signing_jwk[["use"]] <- "sig"
+  encryption_jwk <- jsonlite::fromJSON(
+    jose::write_jwk(encryption_key$pubkey),
+    simplifyVector = FALSE
+  )
+  encryption_jwk[["kid"]] <- "unpinned-encryption-key"
+  encryption_jwk[["use"]] <- "enc"
+  encryption_jwk[["alg"]] <- "RSA-OAEP"
+  jwks <- list(keys = list(signing_jwk, encryption_jwk))
+  signing_pin <- shinyOAuth:::compute_jwk_thumbprint(signing_jwk)
+  encryption_pin <- shinyOAuth:::compute_jwk_thumbprint(encryption_jwk)
+
+  expect_length(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      jwks,
+      alg = "RSA-OAEP",
+      pins = signing_pin
+    ),
+    0L
+  )
+  expect_identical(
+    shinyOAuth:::select_candidate_jwks_for_encryption(
+      jwks,
+      alg = "RSA-OAEP",
+      pins = encryption_pin
+    )[[1]][["kid"]],
+    "unpinned-encryption-key"
+  )
+
+  issuer <- "https://issuer.example.com"
+  jwks_uri <- paste0(issuer, "/jwks")
+  jwks_cache <- cachem::cache_mem(max_age = 3600)
+  provider <- make_jar_test_provider(
+    issuer = issuer,
+    request_object_encryption_alg_values_supported = "RSA-OAEP",
+    request_object_encryption_enc_values_supported = "A128CBC-HS256"
+  )
+  provider@jwks_uri <- jwks_uri
+  provider@jwks_cache <- jwks_cache
+  provider@jwks_pins <- signing_pin
+  provider@jwks_pin_mode <- "any"
+  cache_key <- shinyOAuth:::jwks_cache_key(
+    issuer,
+    pins = signing_pin,
+    pin_mode = "any",
+    issuer_match = provider@issuer_match,
+    jwks_host_issuer_match = provider@jwks_host_issuer_match,
+    jwks_host_allow_only = provider@jwks_host_allow_only,
+    jwks_uri_override = jwks_uri
+  )
+  jwks_cache$set(
+    cache_key,
+    list(
+      jwks = jwks,
+      fetched_at = as.numeric(Sys.time()),
+      discovery_issuer = issuer,
+      jwks_uri = jwks_uri,
+      jwks_uri_host = "issuer.example.com"
+    )
+  )
+  client <- make_jar_test_client(
+    provider = provider,
+    request_object_encryption_alg = "RSA-OAEP",
+    request_object_encryption_enc = "A128CBC-HS256",
+    request_object_encryption_kid = "unpinned-encryption-key"
+  )
+
+  expect_error(
+    shinyOAuth:::prepare_call(client, valid_browser_token()),
+    class = "shinyOAuth_config_error",
+    regexp = "No provider Request Object encryption key matched"
+  )
+})
+
 test_that("OIDC request minimal front-channel mode is rejected without PAR", {
   expect_error(
     make_jar_test_client(
