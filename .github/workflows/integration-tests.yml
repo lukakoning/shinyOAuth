@@ -45,6 +45,13 @@ jobs:
         run: |
           Rscript -e "sessionInfo()"
 
+      - name: Run browser cookie tests
+        env:
+          SHINYOAUTH_BROWSER_TESTS: true
+          CHROMOTE_CHROME: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: |
+          Rscript -e 'testthat::test_file("tests/testthat/test_chromote_cookie.R")'
+
       - name: Docker info (debug)
         run: |
           docker --version

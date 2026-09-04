@@ -30,6 +30,8 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
       # Run tests guarded by skip_on_cran() — security / timing / webfakes tests
       NOT_CRAN: true
+      # Browser tests run in the Chrome-provisioned integration workflow.
+      SHINYOAUTH_BROWSER_TESTS: false
       # Suppress NOTE about Chrome temp files left by chromote/shinytest2 tests
       _R_CHECK_THINGS_IN_TEMP_DIR_: false
 

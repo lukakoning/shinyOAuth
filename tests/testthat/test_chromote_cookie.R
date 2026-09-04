@@ -1,7 +1,7 @@
 # Integration tests for browser cookie handling using chromote via shinytest2
 
-# These tests require a headless Chrome session (chromote) and will be skipped
-# when dependencies are missing or on CRAN. They validate that:
+# These tests require explicit opt-in plus a launchable headless Chrome session
+# through chromote. They validate that:
 # - The module sets a browser token cookie on first load
 # - The cookie can be cleared via the exposed helper
 # - After clearing, re-setting generates a fresh random value
@@ -11,11 +11,73 @@
 # - We use a minimal, inert OAuthProvider and OAuthClient; no network calls occur
 # - document.cookie only exposes name=value; we validate presence and value shape
 
-local_skip_env <- function() {
-  testthat::skip_on_cran()
-  testthat::skip_if_not_installed("shinytest2")
-  testthat::skip_if_not_installed("chromote")
+.browser_probe_cache <- new.env(parent = emptyenv())
+.browser_probe_cache$result <- NULL
+
+browser_launchability <- function() {
+  if (!is.null(.browser_probe_cache$result)) {
+    return(.browser_probe_cache$result)
+  }
+
+  browser <- NULL
+  result <- tryCatch(
+    {
+      browser <- chromote::ChromoteSession$new()
+      browser$go_to("about:blank")
+      list(ok = TRUE, message = NULL)
+    },
+    error = function(e) {
+      list(ok = FALSE, message = conditionMessage(e))
+    }
+  )
+  if (!is.null(browser)) {
+    try(browser$close(), silent = TRUE)
+  }
+
+  .browser_probe_cache$result <- result
+  result
 }
+
+require_browser_test_env <- function(check_launch = TRUE) {
+  enabled <- tolower(trimws(Sys.getenv("SHINYOAUTH_BROWSER_TESTS", ""))) %in%
+    c("1", "true", "yes")
+  testthat::skip_if_not(
+    enabled,
+    "Set SHINYOAUTH_BROWSER_TESTS=true to run browser tests"
+  )
+
+  required_packages <- c("shinytest2", "chromote")
+  installed <- vapply(
+    required_packages,
+    requireNamespace,
+    quietly = TRUE,
+    FUN.VALUE = logical(1)
+  )
+  if (!all(installed)) {
+    testthat::fail(paste0(
+      "Browser tests were enabled but required packages are missing: ",
+      paste(required_packages[!installed], collapse = ", ")
+    ))
+  }
+
+  if (isTRUE(check_launch)) {
+    probe <- browser_launchability()
+    testthat::skip_if_not(
+      probe$ok,
+      paste0("Chrome launchability probe failed: ", probe$message)
+    )
+  }
+}
+
+testthat::test_that("browser cookie test environment can launch Chrome", {
+  require_browser_test_env(check_launch = FALSE)
+  probe <- browser_launchability()
+
+  testthat::expect_true(
+    probe$ok,
+    info = paste0("Unable to launch Chrome through chromote: ", probe$message)
+  )
+})
 
 make_test_app <- function(samesite = "Strict", path = NULL, id = "auth") {
   stopifnot(samesite %in% c("Strict", "Lax", "None"))
@@ -275,7 +337,7 @@ capture_clear_query_url <- function(
 # Basic cookie set/clear lifecycle
 
 testthat::test_that("browser token cookie is set, cleared, and re-set with new value", {
-  local_skip_env()
+  require_browser_test_env()
 
   app <- shinytest2::AppDriver$new(
     app = make_test_app(samesite = "Strict", id = "auth"),
@@ -325,7 +387,7 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
 })
 
 testthat::test_that("browser token cookie honors custom path and SameSite metadata", {
-  local_skip_env()
+  require_browser_test_env()
 
   app <- shinytest2::AppDriver$new(
     app = shiny::shinyApp(
@@ -367,7 +429,7 @@ testthat::test_that("browser token cookie honors custom path and SameSite metada
 })
 
 testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS root paths", {
-  local_skip_env()
+  require_browser_test_env()
 
   writes <- capture_set_cookie_writes(
     protocol = "https:",
@@ -385,7 +447,7 @@ testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS 
 })
 
 testthat::test_that("browser cleanup preserves ordinary response params", {
-  local_skip_env()
+  require_browser_test_env()
 
   testthat::expect_identical(
     capture_clear_query_url("https://example.com/cb?response=ok&foo=1"),
@@ -398,7 +460,7 @@ testthat::test_that("browser cleanup preserves ordinary response params", {
 })
 
 testthat::test_that("browser cleanup preserves compact response params unless flagged", {
-  local_skip_env()
+  require_browser_test_env()
 
   testthat::expect_identical(
     capture_clear_query_url(
@@ -415,7 +477,7 @@ testthat::test_that("browser cleanup preserves compact response params unless fl
 })
 
 testthat::test_that("browser cleanup drops flagged response params", {
-  local_skip_env()
+  require_browser_test_env()
 
   testthat::expect_identical(
     capture_clear_query_url(
@@ -448,7 +510,7 @@ testthat::test_that("browser cleanup drops flagged response params", {
 })
 
 testthat::test_that("browser fragment cleanup handles values containing equals", {
-  local_skip_env()
+  require_browser_test_env()
 
   testthat::expect_identical(
     capture_clear_query_url(
@@ -467,7 +529,7 @@ testthat::test_that("browser fragment cleanup handles values containing equals",
 # Error path: SameSite=None requires HTTPS
 
 testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
-  local_skip_env()
+  require_browser_test_env()
 
   app <- shinytest2::AppDriver$new(
     app = make_test_app(samesite = "None", id = "authnone"),
@@ -500,7 +562,7 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
 # Zero TTL should result in no persistent cookie (immediate expiry)
 
 testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
-  local_skip_env()
+  require_browser_test_env()
 
   app <- shinytest2::AppDriver$new(
     app = make_test_app(samesite = "Strict", id = "authzero"),
