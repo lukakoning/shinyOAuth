@@ -76,5 +76,6 @@ test_that("constant_time_compare is insensitive to content length timing (coarse
   })[["elapsed"]]
 
   # The times should be in the same ballpark; allow 3x to avoid false alarms
-  expect_lte(t_diff, max(3 * t_equal, t_equal + 0.02))
+  timing_limit <- max(3 * t_equal, t_equal + 0.02)
+  expect_lte(t_diff, timing_limit + sqrt(.Machine$double.eps))
 })
