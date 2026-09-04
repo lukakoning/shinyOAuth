@@ -150,3 +150,18 @@ testthat::test_that("PKCE docs distinguish exchange and browser binding", {
     fixed = TRUE
   ))
 })
+
+testthat::test_that("OTel catalog includes form-post state consumption", {
+  otel_docs <- project_text("vignettes", "opentelemetry.Rmd")
+
+  testthat::expect_match(
+    otel_docs,
+    "Span: `shinyOAuth.form_post.callback.consume_state`",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    otel_docs,
+    "oauth.phase = \"form_post.callback_state_consume\"",
+    fixed = TRUE
+  )
+})
