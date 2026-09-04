@@ -1,6 +1,7 @@
 ^.*\.Rproj$
 ^\.Rprofile$
 ^\.Rproj\.user$
+^\.venv$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^_pkgdown\.yml$
