@@ -1046,8 +1046,9 @@ if unavailable)</li>
 <code>url</code>: the request URL without userinfo, query, or
 fragment</li>
 <li>
-<code>body_digest</code>: SHA-256 hex digest of the response body
-(for correlation without leaking content)</li>
+<code>body_digest</code>: HMAC-SHA-256 hex digest of the response
+body using the configured or per-process audit digest key (for
+correlation without leaking content)</li>
 <li>
 <code>oauth_error</code>, <code>oauth_error_uri</code>: RFC 6749
 §5.2 structured error fields extracted from JSON error responses (e.g.,

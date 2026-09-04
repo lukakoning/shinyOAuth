@@ -663,8 +663,9 @@ These let you log failures to the same sink as audit events.
   - `type` (`"http_error"`), `trace_id`, `message`
   - `status`: HTTP status code (integer, or `NA` if unavailable)
   - `url`: the request URL without userinfo, query, or fragment
-  - `body_digest`: SHA-256 hex digest of the response body (for
-    correlation without leaking content)
+  - `body_digest`: HMAC-SHA-256 hex digest of the response body using
+    the configured or per-process audit digest key (for correlation
+    without leaking content)
   - `oauth_error`, `oauth_error_uri`: RFC 6749 §5.2 structured error
     fields extracted from JSON error responses (e.g., from the token
     endpoint)

@@ -878,7 +878,8 @@ of honoring it</li>
 during token exchange</li>
 <li>
 <code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies (may reveal details)</li>
+sanitized HTTP bodies and claim values in diagnostics (may reveal
+sensitive details)</li>
 </ul>
 <p>Don’t enable these options in production. They disable key security
 checks or alter error behavior, and are intended for local

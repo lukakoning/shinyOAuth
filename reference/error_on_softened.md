@@ -25,7 +25,8 @@ It only checks the following options:
 
 - `shinyOAuth.skip_id_sig`: Skips ID token signature verification
 
-- `shinyOAuth.expose_error_body`: Exposes HTTP response bodies
+- `shinyOAuth.expose_error_body`: Exposes HTTP response bodies and claim
+  values in diagnostics
 
 - `shinyOAuth.allow_unsigned_userinfo_jwt`: Accepts unsigned
   (`alg=none`) UserInfo JWTs
