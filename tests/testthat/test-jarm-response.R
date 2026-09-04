@@ -471,6 +471,19 @@ test_that("oauth_client defaults encrypted JARM enc when alg is set", {
   expect_identical(client@jarm_encrypted_response_enc, "A128CBC-HS256")
 })
 
+test_that("oauth_client rejects weak RSA keys for encrypted JARM", {
+  weak_key <- openssl::rsa_keygen(bits = 1024)
+
+  expect_error(
+    make_jarm_test_client(
+      response_mode = "query.jwt",
+      jarm_encrypted_response_alg = "RSA-OAEP",
+      jarm_decryption_private_key = weak_key
+    ),
+    regexp = "RSA modulus must be at least 2048 bits"
+  )
+})
+
 test_that("oauth_client allows JARM without manual provider capability metadata", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@issuer <- "https://issuer.example.com"

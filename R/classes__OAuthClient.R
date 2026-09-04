@@ -1818,6 +1818,20 @@ oauth_client_validate <- function(self) {
         )
       )
     }
+    response_decryption_key_bits <- jwe_rsa_key_size_bits(
+      response_decryption_key
+    )
+    if (
+      is.na(response_decryption_key_bits) ||
+        response_decryption_key_bits < 2048L
+    ) {
+      return(
+        paste(
+          "OAuthClient: jarm_decryption_private_key RSA modulus must be",
+          "at least 2048 bits"
+        )
+      )
+    }
   }
 
   provider_authorization_signing_algs <- as.character(

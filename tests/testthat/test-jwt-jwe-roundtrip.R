@@ -33,6 +33,34 @@ test_that("compact JWE helpers round-trip a nested JWT", {
   expect_identical(decrypted$plaintext, inner_jwt)
 })
 
+test_that("compact JWE helpers reject RSA keys smaller than 2048 bits", {
+  weak_key <- openssl::rsa_keygen(bits = 1024)
+  strong_key <- openssl::rsa_keygen(bits = 2048)
+
+  expect_error(
+    shinyOAuth:::jwe_compact_encrypt(
+      plaintext = "header.payload.signature",
+      public_key = weak_key$pubkey,
+      alg = "RSA-OAEP",
+      enc = "A128CBC-HS256"
+    ),
+    class = "shinyOAuth_config_error",
+    regexp = "RSA modulus must be at least 2048 bits"
+  )
+
+  compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
+    plaintext = "header.payload.signature",
+    public_key = strong_key$pubkey,
+    alg = "RSA-OAEP",
+    enc = "A128CBC-HS256"
+  )
+  expect_error(
+    shinyOAuth:::jwe_compact_decrypt(compact_jwe, weak_key),
+    class = "shinyOAuth_config_error",
+    regexp = "RSA modulus must be at least 2048 bits"
+  )
+})
+
 
 # 2. compact JWE integrity failures -------------------------------------------
 

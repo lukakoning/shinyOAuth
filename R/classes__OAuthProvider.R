@@ -1571,6 +1571,21 @@ oauth_provider_validate <- function(self) {
         )
       )
     }
+    request_object_encryption_key_bits <- jwe_rsa_key_size_bits(
+      parsed_request_object_encryption_key
+    )
+    if (
+      !inherits(parsed_request_object_encryption_key, "rsa") ||
+        is.na(request_object_encryption_key_bits) ||
+        request_object_encryption_key_bits < 2048L
+    ) {
+      return(
+        paste(
+          "OAuthProvider: request_object_encryption_jwk must be an RSA",
+          "public key with a modulus of at least 2048 bits"
+        )
+      )
+    }
   }
 
   if (

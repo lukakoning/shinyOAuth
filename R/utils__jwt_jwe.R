@@ -231,6 +231,54 @@ normalize_jwe_recipient_public_key <- function(
   ))
 }
 
+#' Return the size of an OpenSSL RSA key
+#'
+#' @param key OpenSSL RSA public or private key.
+#' @return Integer key size in bits, or `NA_integer_` when it cannot be read.
+#' @keywords internal
+#' @noRd
+jwe_rsa_key_size_bits <- function(key) {
+  key_details <- try(as.list(key), silent = TRUE)
+  if (inherits(key_details, "try-error") || !is.list(key_details)) {
+    return(NA_integer_)
+  }
+
+  size <- key_details[["size"]] %||% NA_integer_
+  if (
+    !is.numeric(size) ||
+      length(size) != 1L ||
+      is.na(size) ||
+      !is.finite(size)
+  ) {
+    return(NA_integer_)
+  }
+
+  as.integer(size)
+}
+
+#' Enforce the minimum RSA key size for RSA-OAEP JWE
+#'
+#' RFC 7518 section 4.3 requires RSA keys used with RSA-OAEP to be at least
+#' 2048 bits. This guard is shared by outbound Request Object encryption and
+#' inbound encrypted JARM decryption.
+#'
+#' @param key Normalized OpenSSL RSA public or private key.
+#' @param arg_name Key name used in configuration errors.
+#' @return `key`, invisibly.
+#' @keywords internal
+#' @noRd
+validate_jwe_rsa_key_strength <- function(key, arg_name) {
+  key_bits <- jwe_rsa_key_size_bits(key)
+  if (!inherits(key, "rsa") || is.na(key_bits)) {
+    err_config(paste0(arg_name, " must be an RSA key"))
+  }
+  if (key_bits < 2048L) {
+    err_config(paste0(arg_name, " RSA modulus must be at least 2048 bits"))
+  }
+
+  invisible(key)
+}
+
 #' Normalize a JWKS or JWK collection into a list of key objects
 #'
 #' Used by Request Object encryption key selection helpers.
@@ -716,6 +764,7 @@ jwe_compact_encrypt <- function(
 
   spec <- jwe_cbc_hmac_spec(enc)
   recipient_key <- normalize_jwe_recipient_public_key(public_key)
+  validate_jwe_rsa_key_strength(recipient_key, "compact JWE recipient key")
   plaintext_raw <- if (is.raw(plaintext)) {
     plaintext
   } else if (
@@ -815,6 +864,7 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     private_key,
     arg_name = "request_object_encryption_private_key"
   )
+  validate_jwe_rsa_key_strength(key, "compact JWE decryption key")
   cek_failed <- FALSE
   cek_raw <- try(
     openssl::rsa_decrypt(

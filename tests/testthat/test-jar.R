@@ -997,6 +997,16 @@ test_that("oauth_client validates request-object encryption configuration", {
       "provider request_object_encryption_alg_values_supported"
     )
   )
+
+  weak_encryption_key <- openssl::rsa_keygen(bits = 1024)
+  expect_error(
+    make_jar_test_provider(
+      request_object_encryption_alg_values_supported = "RSA-OAEP",
+      request_object_encryption_enc_values_supported = "A128CBC-HS256",
+      request_object_encryption_jwk = weak_encryption_key$pubkey
+    ),
+    regexp = "RSA public key with a modulus of at least 2048 bits"
+  )
 })
 
 test_that("request mode through PAR keeps client_id in the body for header auth", {
