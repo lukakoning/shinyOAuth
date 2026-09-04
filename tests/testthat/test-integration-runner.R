@@ -24,3 +24,41 @@ testthat::test_that("Keycloak runner preserves logs before failure cleanup", {
     fixed = TRUE
   )))
 })
+
+testthat::test_that("Keycloak clients use exact local redirect registrations", {
+  fixture_path <- testthat::test_path(
+    "..",
+    "..",
+    "integration",
+    "keycloak",
+    "realm-shinyoauth.json"
+  )
+  testthat::skip_if_not(file.exists(fixture_path), "Integration fixture unavailable")
+
+  fixture <- jsonlite::read_json(fixture_path, simplifyVector = FALSE)
+  redirects <- unlist(lapply(fixture$clients, `[[`, "redirectUris"))
+  origins <- unlist(lapply(fixture$clients, `[[`, "webOrigins"))
+  allowed_redirects <- c(
+    "http://localhost:3000",
+    "http://localhost:3000/callback",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3000/callback",
+    "http://localhost:8100",
+    "http://localhost:8100/callback",
+    "http://127.0.0.1:8100",
+    "http://127.0.0.1:8100/callback"
+  )
+  allowed_origins <- c(
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8100",
+    "http://127.0.0.1:8100"
+  )
+
+  testthat::expect_true(length(redirects) > 0L)
+  testthat::expect_true(all(redirects %in% allowed_redirects))
+  testthat::expect_false(any(grepl("*", redirects, fixed = TRUE)))
+  testthat::expect_true(length(origins) > 0L)
+  testthat::expect_true(all(origins %in% allowed_origins))
+  testthat::expect_false(any(origins == "+"))
+})

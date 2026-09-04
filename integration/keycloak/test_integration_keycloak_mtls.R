@@ -152,7 +152,7 @@ create_temp_certificate_bound_public_client <- function() {
       protocol = "openid-connect",
       publicClient = TRUE,
       redirectUris = keycloak_default_redirect_uris(),
-      webOrigins = list("+"),
+      webOrigins = keycloak_default_web_origins(),
       standardFlowEnabled = TRUE,
       implicitFlowEnabled = FALSE,
       serviceAccountsEnabled = FALSE,

@@ -11,12 +11,21 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -30,12 +39,21 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -50,12 +68,21 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -71,12 +98,21 @@
       "publicClient": false,
       "secret": "secret",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -92,12 +128,21 @@
       "publicClient": false,
       "secret": "secret",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
@@ -126,12 +171,21 @@
       "publicClient": false,
       "secret": "secret",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
@@ -147,12 +201,21 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
@@ -170,12 +233,21 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -193,12 +265,21 @@
       "publicClient": false,
       "secret": "hs256-request-object-secret-32b!",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
@@ -214,12 +295,21 @@
       "publicClient": false,
       "secret": "hs256-request-object-secret-32b!",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
@@ -238,12 +328,21 @@
       "publicClient": false,
       "secret": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -259,12 +358,21 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -280,12 +388,21 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -303,12 +420,21 @@
       "protocol": "openid-connect",
       "publicClient": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": true,
@@ -328,12 +454,21 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -348,12 +483,21 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -370,12 +514,21 @@
       "publicClient": false,
       "secret": "secret",
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8100/*"
+        "http://localhost:3000",
+        "http://localhost:3000/callback",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3000/callback",
+        "http://localhost:8100",
+        "http://localhost:8100/callback",
+        "http://127.0.0.1:8100",
+        "http://127.0.0.1:8100/callback"
       ],
-      "webOrigins": ["+"],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8100",
+        "http://127.0.0.1:8100"
+      ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,

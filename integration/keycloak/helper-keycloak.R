@@ -285,12 +285,21 @@ keycloak_create_mixup_realm <- function(
         protocol = "openid-connect",
         publicClient = TRUE,
         redirectUris = list(
-          "http://localhost:3000/*",
-          "http://127.0.0.1:3000/*",
-          "http://localhost:8100/*",
-          "http://127.0.0.1:8100/*"
+          "http://localhost:3000",
+          "http://localhost:3000/callback",
+          "http://127.0.0.1:3000",
+          "http://127.0.0.1:3000/callback",
+          "http://localhost:8100",
+          "http://localhost:8100/callback",
+          "http://127.0.0.1:8100",
+          "http://127.0.0.1:8100/callback"
         ),
-        webOrigins = list("+"),
+        webOrigins = list(
+          "http://localhost:3000",
+          "http://127.0.0.1:3000",
+          "http://localhost:8100",
+          "http://127.0.0.1:8100"
+        ),
         standardFlowEnabled = TRUE,
         implicitFlowEnabled = FALSE,
         directAccessGrantsEnabled = FALSE,
@@ -1309,10 +1318,23 @@ keycloak_temp_client_id <- function(prefix) {
 
 keycloak_default_redirect_uris <- function() {
   list(
-    "http://localhost:3000/*",
-    "http://127.0.0.1:3000/*",
-    "http://localhost:8100/*",
-    "http://127.0.0.1:8100/*"
+    "http://localhost:3000",
+    "http://localhost:3000/callback",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3000/callback",
+    "http://localhost:8100",
+    "http://localhost:8100/callback",
+    "http://127.0.0.1:8100",
+    "http://127.0.0.1:8100/callback"
+  )
+}
+
+keycloak_default_web_origins <- function() {
+  list(
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8100",
+    "http://127.0.0.1:8100"
   )
 }
 
@@ -1320,7 +1342,7 @@ keycloak_oidc_client_body <- function(
   client_id,
   public_client = FALSE,
   redirect_uris = keycloak_default_redirect_uris(),
-  web_origins = list("+"),
+  web_origins = keycloak_default_web_origins(),
   standard_flow_enabled = TRUE,
   implicit_flow_enabled = FALSE,
   service_accounts_enabled = FALSE,

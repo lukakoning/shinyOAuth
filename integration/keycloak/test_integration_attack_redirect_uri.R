@@ -11,52 +11,66 @@ if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
 }
 
-testthat::test_that("Redirect URI: Keycloak rejects unauthorized redirect_uri", {
-  skip_common()
-  local_test_options()
-
-  prov <- make_provider()
-
-  # Construct an auth URL manually with an evil redirect_uri
-  # Keycloak should reject this at the authorization endpoint
-  evil_redirect <- "http://evil.com/steal-code"
-  auth_url <- paste0(
-    prov@auth_url,
-    "?response_type=code",
-    "&client_id=shiny-public",
-    "&redirect_uri=",
-    utils::URLencode(evil_redirect, reserved = TRUE),
-    "&scope=openid",
-    "&state=fake-state"
-  )
-
+expect_auth_url_rejected <- function(auth_url, redirect_uri) {
   resp <- httr2::request(auth_url) |>
+    req_apply_keycloak_ca() |>
     httr2::req_error(is_error = function(resp) FALSE) |>
     httr2::req_headers(Accept = "text/html") |>
     httr2::req_options(followlocation = FALSE) |>
     httr2::req_perform()
 
-  # Keycloak should return an error page (not redirect to evil.com)
-  # Status should be 400 or the page should contain an error message
-  body <- httr2::resp_body_string(resp)
   status <- httr2::resp_status(resp)
+  location <- httr2::resp_header(resp, "location")
 
-  # Either HTTP error status or the body mentions invalid redirect
-  is_error <- status >= 400 ||
-    grepl(
-      "Invalid redirect|invalid_redirect|redirect_uri",
-      body,
-      ignore.case = TRUE
-    )
-  testthat::expect_true(
-    is_error,
+  testthat::expect_identical(
+    status,
+    400L,
     info = paste0(
-      "Expected Keycloak to reject evil redirect_uri. Status: ",
-      status,
-      "\nBody snippet: ",
-      substr(body, 1, 500)
+      "Expected HTTP 400 for unregistered redirect_uri ",
+      redirect_uri,
+      "; got ",
+      status
     )
   )
+  testthat::expect_null(
+    location,
+    info = paste0(
+      "Keycloak must not redirect to an unregistered URI; Location was ",
+      location %||% "<absent>"
+    )
+  )
+
+  invisible(resp)
+}
+
+expect_redirect_uri_rejected <- function(prov, redirect_uri) {
+  auth_url <- paste0(
+    prov@auth_url,
+    "?response_type=code",
+    "&client_id=shiny-public",
+    "&redirect_uri=",
+    utils::URLencode(redirect_uri, reserved = TRUE),
+    "&scope=openid",
+    "&state=fake-state"
+  )
+
+  expect_auth_url_rejected(auth_url, redirect_uri)
+}
+
+testthat::test_that("Redirect URI: Keycloak rejects unregistered redirects exactly", {
+  skip_common()
+  local_test_options()
+
+  prov <- make_provider()
+  rejected_redirects <- c(
+    "http://evil.com/steal-code",
+    "http://localhost:3000/callback/attacker",
+    "http://localhost:3000/callback?next=http://evil.com/steal-code"
+  )
+
+  for (redirect_uri in rejected_redirects) {
+    expect_redirect_uri_rejected(prov, redirect_uri)
+  }
 })
 
 testthat::test_that("Redirect URI: tampered redirect_uri in auth URL rejected by Keycloak", {
@@ -88,29 +102,9 @@ testthat::test_that("Redirect URI: tampered redirect_uri in auth URL rejected by
         url
       )
 
-      resp <- httr2::request(tampered_url) |>
-        httr2::req_error(is_error = function(resp) FALSE) |>
-        httr2::req_headers(Accept = "text/html") |>
-        httr2::req_options(followlocation = FALSE) |>
-        httr2::req_perform()
-
-      body <- httr2::resp_body_string(resp)
-      status <- httr2::resp_status(resp)
-
-      is_error <- status >= 400 ||
-        grepl(
-          "Invalid redirect|invalid_redirect|redirect_uri",
-          body,
-          ignore.case = TRUE
-        )
-      testthat::expect_true(
-        is_error,
-        info = paste0(
-          "Keycloak should reject modified redirect_uri. Status: ",
-          status,
-          "\nBody: ",
-          substr(body, 1, 500)
-        )
+      expect_auth_url_rejected(
+        tampered_url,
+        "http://attacker.com/callback"
       )
     }
   )

@@ -721,7 +721,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     body = keycloak_oidc_client_body(
       client_id = keycloak_temp_client_id("shiny-form-post-jarm"),
       public_client = TRUE,
-      redirect_uris = list(app_url, paste0(app_url, "/*")),
+      redirect_uris = list(app_url),
       attributes = list(
         "pkce.code.challenge.method" = "S256",
         "authorization.signed.response.alg" = "RS256"
@@ -834,7 +834,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     body = keycloak_oidc_client_body(
       client_id = keycloak_temp_client_id("shiny-form-post-jarm-enc"),
       public_client = TRUE,
-      redirect_uris = list(app_url, paste0(app_url, "/*")),
+      redirect_uris = list(app_url),
       attributes = list(
         "pkce.code.challenge.method" = "S256",
         "use.jwks.url" = "true",
