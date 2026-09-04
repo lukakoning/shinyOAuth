@@ -682,8 +682,10 @@ keycloak_browser_port_in_use <- function(port) {
 # test cannot occupy a shared port and cause later tests to skip.
 keycloak_stop_app_driver <- function(drv) {
   private <- try(drv$.__enclos_env__$private, silent = TRUE)
+  process <- NULL
 
   if (!inherits(private, "try-error") && is.environment(private)) {
+    process <- private$shiny_process
     worker_id <- private$shiny_worker_id
     if (length(worker_id) != 1L) {
       private$shiny_worker_id <- NA_character_
@@ -693,7 +695,6 @@ keycloak_stop_app_driver <- function(drv) {
   try(drv$stop(), silent = TRUE)
 
   if (!inherits(private, "try-error") && is.environment(private)) {
-    process <- private$shiny_process
     if (
       !is.null(process) &&
         isTRUE(tryCatch(
@@ -702,6 +703,9 @@ keycloak_stop_app_driver <- function(drv) {
         ))
     ) {
       try(process$kill(), silent = TRUE)
+    }
+    if (!is.null(process) && is.function(process$wait)) {
+      try(process$wait(timeout = 5000), silent = TRUE)
     }
   }
 

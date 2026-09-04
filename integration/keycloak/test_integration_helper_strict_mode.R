@@ -67,8 +67,13 @@ testthat::test_that("AppDriver cleanup survives malformed worker IDs", {
 
   process <- new.env(parent = emptyenv())
   process$alive <- TRUE
+  process$waited <- FALSE
   process$is_alive <- function() process$alive
   process$kill <- function() process$alive <- FALSE
+  process$wait <- function(timeout) {
+    process$waited <- TRUE
+    invisible(timeout)
+  }
   private$shiny_process <- process
 
   enclosing <- new.env(parent = emptyenv())
@@ -80,4 +85,32 @@ testthat::test_that("AppDriver cleanup survives malformed worker IDs", {
   testthat::expect_silent(keycloak_stop_app_driver(drv))
   testthat::expect_identical(private$shiny_worker_id, NA_character_)
   testthat::expect_false(process$alive)
+  testthat::expect_true(process$waited)
+})
+
+testthat::test_that("AppDriver cleanup retains the process handle while stopping", {
+  private <- new.env(parent = emptyenv())
+  private$shiny_worker_id <- "worker-1"
+
+  process <- new.env(parent = emptyenv())
+  process$alive <- TRUE
+  process$waited <- FALSE
+  process$is_alive <- function() process$alive
+  process$kill <- function() process$alive <- FALSE
+  process$wait <- function(timeout) {
+    process$waited <- TRUE
+    invisible(timeout)
+  }
+  private$shiny_process <- process
+
+  enclosing <- new.env(parent = emptyenv())
+  enclosing$private <- private
+  drv <- new.env(parent = emptyenv())
+  drv$.__enclos_env__ <- enclosing
+  drv$stop <- function() private$shiny_process <- NULL
+
+  testthat::expect_silent(keycloak_stop_app_driver(drv))
+  testthat::expect_null(private$shiny_process)
+  testthat::expect_false(process$alive)
+  testthat::expect_true(process$waited)
 })
