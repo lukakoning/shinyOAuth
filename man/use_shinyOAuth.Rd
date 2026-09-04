@@ -33,7 +33,7 @@ separate call here because that wrapper injects this dependency for you.
 }
 \examples{
 ui <- shiny::fluidPage(
-  use_shinyOAuth(),
+  use_shinyOAuth()
   # ...
 )
 

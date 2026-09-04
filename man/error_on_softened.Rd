@@ -22,7 +22,8 @@ It only checks the following options:
 \itemize{
 \item \code{shinyOAuth.skip_browser_token}: Skips browser cookie presence check
 \item \code{shinyOAuth.skip_id_sig}: Skips ID token signature verification
-\item \code{shinyOAuth.expose_error_body}: Exposes HTTP response bodies and claim values in diagnostics
+\item \code{shinyOAuth.expose_error_body}: Exposes HTTP response bodies and
+claim values in diagnostics
 \item \code{shinyOAuth.allow_unsigned_userinfo_jwt}: Accepts unsigned (\code{alg=none}) UserInfo JWTs
 \item \code{shinyOAuth.allow_redirect}: Allows sensitive HTTP flows to follow redirects
 }

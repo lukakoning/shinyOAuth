@@ -248,7 +248,9 @@ cachem-compatible backend, including a shared cache created with
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys
 whose thumbprints match these values depending on \code{jwks_pin_mode}.
 This is an advanced hardening option that lets you pre-authorize expected
-keys.}
+keys. Only keys matching a configured pin are eligible for signature
+verification or Request Object encryption; \code{jwks_pin_mode} controls
+whether the surrounding JWK Set may also contain unpinned keys.}
 
 \item{jwks_pin_mode}{Pinning policy when \code{jwks_pins} is provided. Either
 "any" (default; at least one key in JWKS must match) or "all" (every
