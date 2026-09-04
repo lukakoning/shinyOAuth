@@ -560,10 +560,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
     bs <- try(httr2::resp_body_string(resp), silent = TRUE)
     if (!inherits(bs, "try-error")) {
-      dig <- try(openssl::sha256(charToRaw(bs)), silent = TRUE)
-      if (!inherits(dig, "try-error")) {
-        body_digest <- paste0(sprintf("%02x", as.integer(dig)), collapse = "")
-      }
+      body_digest <- string_digest(bs)
       # RFC 6749 §5.2: try to extract structured error fields from JSON body
       parsed <- try(
         jsonlite::fromJSON(bs, simplifyVector = TRUE),

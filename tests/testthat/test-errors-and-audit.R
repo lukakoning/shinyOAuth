@@ -100,6 +100,54 @@ test_that("err_http includes status and optional body when exposure enabled", {
   })
 })
 
+test_that("err_http body digests use the configured audit HMAC key", {
+  body <- jsonlite::toJSON(
+    list(
+      error = "invalid_grant",
+      error_description = "Account alice@example.test is disabled"
+    ),
+    auto_unbox = TRUE
+  )
+  response <- httr2::response(
+    status = 400,
+    body = charToRaw(body),
+    headers = list("content-type" = "application/json"),
+    url = "https://id.example/token"
+  )
+  digest_with_key <- function(key) {
+    events <- list()
+    result <- withr::with_options(
+      list(
+        shinyOAuth.audit_digest_key = key,
+        shinyOAuth.audit_hook = function(event) {
+          events[[length(events) + 1L]] <<- event
+        }
+      ),
+      {
+        error <- tryCatch(
+          shinyOAuth:::err_http("Token exchange failed", response),
+          error = identity
+        )
+        list(
+          condition = error[["body_digest"]],
+          event = events[[length(events)]][["body_digest"]]
+        )
+      }
+    )
+    result
+  }
+
+  first_key <- charToRaw(strrep("a", 32))
+  second_key <- charToRaw(strrep("b", 32))
+  first <- digest_with_key(first_key)
+  second <- digest_with_key(second_key)
+
+  expect_identical(first$condition, shinyOAuth:::string_digest(body, first_key))
+  expect_identical(first$event, first$condition)
+  expect_identical(second$event, second$condition)
+  expect_false(identical(first$condition, second$condition))
+})
+
 test_that("audit_event emits audit_ events via audit hook", {
   events <- list()
   local_with_options(
