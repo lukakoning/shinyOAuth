@@ -1917,6 +1917,9 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
 #' @keywords internal
 #' @noRd
 provider_fingerprint <- function(provider) {
+  provider_prop <- function(name, default = NULL) {
+    tryCatch(S7::prop(provider, name), error = function(...) default)
+  }
   issuer_thus_oidc <- tryCatch(
     isTRUE(provider@issuer_thus_oidc),
     error = function(...) TRUE
@@ -1929,6 +1932,7 @@ provider_fingerprint <- function(provider) {
     token_url = provider@token_url,
     userinfo_url = provider@userinfo_url,
     introspection_url = provider@introspection_url,
+    revocation_url = provider_prop("revocation_url", NA_character_),
     issuer_match = provider@issuer_match,
     use_nonce = isTRUE(provider@use_nonce),
     use_pkce = isTRUE(provider@use_pkce),
@@ -1946,6 +1950,15 @@ provider_fingerprint <- function(provider) {
       provider@jarm_tolerate_duplicate_top_level_iss
     ),
     token_auth_style = provider@token_auth_style,
+    extra_auth_params_digest = state_policy_value_digest(
+      provider_prop("extra_auth_params", list())
+    ),
+    extra_token_params_digest = state_policy_value_digest(
+      provider_prop("extra_token_params", list())
+    ),
+    extra_token_headers_digest = state_policy_value_digest(
+      provider_prop("extra_token_headers", character())
+    ),
     jwks_uri = provider@jwks_uri,
     mtls_client_certificate_bound_access_tokens = isTRUE(
       provider@mtls_client_certificate_bound_access_tokens
@@ -1960,7 +1973,76 @@ provider_fingerprint <- function(provider) {
     ),
     allowed_token_types = state_policy_string_set(provider@allowed_token_types),
     leeway = provider@leeway,
-    mtls_endpoint_aliases = provider@mtls_endpoint_aliases
+    mtls_endpoint_aliases = provider@mtls_endpoint_aliases,
+    par_url = provider_prop("par_url", NA_character_),
+    par_required = isTRUE(provider_prop("par_required", FALSE)),
+    signed_request_object_required = isTRUE(provider_prop(
+      "signed_request_object_required",
+      FALSE
+    )),
+    request_parameter_supported = provider_prop(
+      "request_parameter_supported",
+      NA
+    ),
+    request_uri_parameter_supported = provider_prop(
+      "request_uri_parameter_supported",
+      NA
+    ),
+    request_uri_registration_required = provider_prop(
+      "request_uri_registration_required",
+      NA
+    ),
+    request_object_signing_alg_values_supported = state_policy_string_set(
+      provider_prop("request_object_signing_alg_values_supported", character()),
+      transform = toupper
+    ),
+    request_object_encryption_alg_values_supported = state_policy_string_set(
+      provider_prop("request_object_encryption_alg_values_supported", character()),
+      transform = toupper
+    ),
+    request_object_encryption_enc_values_supported = state_policy_string_set(
+      provider_prop("request_object_encryption_enc_values_supported", character()),
+      transform = toupper
+    ),
+    request_object_encryption_key =
+      state_policy_request_encryption_key_identity(
+        provider_prop("request_object_encryption_jwk", NULL)
+      ),
+    authorization_request_front_channel_mode = provider_prop(
+      "authorization_request_front_channel_mode",
+      "compat"
+    ),
+    authorization_response_iss_parameter_supported = isTRUE(provider_prop(
+      "authorization_response_iss_parameter_supported",
+      FALSE
+    )),
+    response_modes_supported = state_policy_string_set(
+      provider_prop("response_modes_supported", character()),
+      transform = tolower
+    ),
+    jarm_signing_alg_values_supported = state_policy_string_set(
+      provider_prop("jarm_signing_alg_values_supported", character()),
+      transform = toupper
+    ),
+    jarm_encryption_alg_values_supported = state_policy_string_set(
+      provider_prop("jarm_encryption_alg_values_supported", character()),
+      transform = toupper
+    ),
+    jarm_encryption_enc_values_supported = state_policy_string_set(
+      provider_prop("jarm_encryption_enc_values_supported", character()),
+      transform = toupper
+    ),
+    token_endpoint_auth_signing_alg_values_supported = state_policy_string_set(
+      provider_prop(
+        "token_endpoint_auth_signing_alg_values_supported",
+        character()
+      ),
+      transform = toupper
+    ),
+    dpop_signing_alg_values_supported = state_policy_string_set(
+      provider_prop("dpop_signing_alg_values_supported", character()),
+      transform = toupper
+    )
   )
 
   state_policy_digest(components)

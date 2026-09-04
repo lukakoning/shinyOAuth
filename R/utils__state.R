@@ -378,6 +378,85 @@ state_policy_string_set <- function(value, transform = identity) {
   sort(unique(enc2utf8(as.character(values))))
 }
 
+#' Digest an arbitrary policy value without embedding it in state
+#'
+#' Used for token parameters, headers, and credentials whose exact value must
+#' be bound to a callback without copying that value into the sealed payload.
+#'
+#' @param value Policy value to digest canonically.
+#' @return A length-1 SHA-256 fingerprint.
+#' @keywords internal
+#' @noRd
+state_policy_value_digest <- function(value) {
+  state_policy_digest(list(value = value))
+}
+
+#' Compute a client assertion signing-key thumbprint for state binding
+#'
+#' @param client OAuth client carrying assertion/JAR signing configuration.
+#' @return RFC 7638 JWK thumbprint, or `NA_character_` without a private key.
+#' @keywords internal
+#' @noRd
+state_policy_client_assertion_key_thumbprint <- function(client) {
+  if (is.null(client@client_assertion_private_key)) {
+    return(NA_character_)
+  }
+
+  key <- normalize_private_key_input(
+    client@client_assertion_private_key,
+    arg_name = "client_assertion_private_key"
+  )
+  public_key <- as.list(key)[["pubkey"]]
+  jwk <- jsonlite::fromJSON(
+    jose::write_jwk(public_key),
+    simplifyVector = TRUE
+  )
+  compute_jwk_thumbprint(jwk)
+}
+
+#' Identify an explicit provider Request Object encryption key
+#'
+#' @param value Provider `request_object_encryption_jwk` value.
+#' @return Canonical public-key identity suitable for a provider fingerprint.
+#' @keywords internal
+#' @noRd
+state_policy_request_encryption_key_identity <- function(value) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+
+  metadata <- if (is.list(value)) {
+    value
+  } else if (
+    is.character(value) &&
+      length(value) >= 1L &&
+      grepl("^\\s*\\{", paste(value, collapse = "\n"))
+  ) {
+    tryCatch(
+      jsonlite::fromJSON(
+        paste(value, collapse = "\n"),
+        simplifyVector = FALSE
+      ),
+      error = function(...) list()
+    )
+  } else {
+    list()
+  }
+  public_key <- normalize_jwe_recipient_public_key(value)
+  public_jwk <- jsonlite::fromJSON(
+    jose::write_jwk(public_key),
+    simplifyVector = TRUE
+  )
+
+  list(
+    thumbprint = compute_jwk_thumbprint(public_jwk),
+    kid = metadata[["kid"]] %||% NA_character_,
+    alg = metadata[["alg"]] %||% NA_character_,
+    use = metadata[["use"]] %||% NA_character_,
+    key_ops = state_policy_string_set(metadata[["key_ops"]])
+  )
+}
+
 #' Compute a DPoP key thumbprint for state binding
 #'
 #' Used by `state_client_policy_fingerprint()` when a client enables DPoP.
@@ -509,11 +588,29 @@ state_client_policy_fingerprint <- function(client) {
     required_acr_values = state_policy_string_set(client@required_acr_values),
     introspect = isTRUE(client@introspect),
     introspect_elements = state_policy_string_set(client@introspect_elements),
+    client_secret_digest = if (is_valid_string(client@client_secret)) {
+      state_policy_value_digest(client@client_secret)
+    } else {
+      NA_character_
+    },
+    client_assertion_private_key_kid = client@client_assertion_private_key_kid,
+    client_assertion_private_key_thumbprint =
+      state_policy_client_assertion_key_thumbprint(client),
+    client_assertion_alg = client@client_assertion_alg,
+    client_assertion_audience = client@client_assertion_audience,
     dpop_require_access_token = isTRUE(client@dpop_require_access_token),
     dpop_require_observed_cnf = isTRUE(client@dpop_require_observed_cnf),
     mtls_certificate_bound_access_tokens = isTRUE(
       client@mtls_certificate_bound_access_tokens
     ),
+    request_object_mode = client@request_object_mode,
+    request_object_signing_alg = client@request_object_signing_alg,
+    request_object_audience = client@request_object_audience,
+    request_object_encryption_alg = client@request_object_encryption_alg,
+    request_object_encryption_enc = client@request_object_encryption_enc,
+    request_object_encryption_kid = client@request_object_encryption_kid,
+    request_object_ttl = client@request_object_ttl,
+    request_object_nbf_skew = client@request_object_nbf_skew,
     dpop_signing_alg = if (client_has_dpop(client)) {
       resolve_dpop_alg(client)
     } else {

@@ -212,6 +212,51 @@ test_that("state_client_policy_fingerprint includes JARM callback policy", {
   ))
 })
 
+test_that("state_client_policy_fingerprint binds assertion and JAR controls", {
+  make_policy_client <- function(...) {
+    args <- utils::modifyList(
+      list(
+        provider = make_test_provider(use_pkce = TRUE),
+        client_id = "abc",
+        client_secret = paste(rep("a", 32), collapse = ""),
+        redirect_uri = "http://localhost:8100",
+        scopes = character(),
+        state_store = cachem::cache_mem(max_age = 600),
+        state_key = paste0(
+          "0123456789abcdefghijklmnopqrstuvwxyz",
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        )
+      ),
+      list(...)
+    )
+    do.call(oauth_client, args)
+  }
+
+  signing_key <- openssl::rsa_keygen()
+  base <- shinyOAuth:::state_client_policy_fingerprint(make_policy_client())
+  variants <- list(
+    make_policy_client(client_secret = paste(rep("b", 32), collapse = "")),
+    make_policy_client(
+      client_assertion_private_key = signing_key,
+      client_assertion_private_key_kid = "assertion-key"
+    ),
+    make_policy_client(
+      request_object_mode = "request",
+      request_object_signing_alg = "HS256",
+      request_object_audience = "https://issuer.example.com"
+    ),
+    make_policy_client(request_object_ttl = 60),
+    make_policy_client(request_object_nbf_skew = 5)
+  )
+
+  for (variant in variants) {
+    expect_false(identical(
+      base,
+      shinyOAuth:::state_client_policy_fingerprint(variant)
+    ))
+  }
+})
+
 test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
   # Cover browser_token mismatch and PKCE verifier missing
   cli <- make_test_client(use_pkce = TRUE, use_nonce = TRUE)

@@ -280,3 +280,41 @@ test_that("provider_fingerprint changes when callback security policy changes", 
     shinyOAuth:::provider_fingerprint(tolerant_duplicate_iss)
   ))
 })
+
+test_that("provider_fingerprint binds token exchange, JAR, and PAR policy", {
+  make_provider <- function(...) {
+    args <- utils::modifyList(
+      list(
+        name = "fingerprint-policy",
+        auth_url = "https://issuer.example.com/authorize",
+        token_url = "https://issuer.example.com/token",
+        issuer = "https://issuer.example.com",
+        token_auth_style = "body",
+        use_pkce = TRUE
+      ),
+      list(...)
+    )
+    do.call(oauth_provider, args)
+  }
+
+  base <- shinyOAuth:::provider_fingerprint(make_provider())
+  encryption_key <- as.list(openssl::rsa_keygen())[["pubkey"]]
+  variants <- list(
+    make_provider(extra_token_params = list(audience = "api")),
+    make_provider(extra_token_headers = c(`X-Tenant` = "tenant-a")),
+    make_provider(
+      par_url = "https://issuer.example.com/par",
+      par_required = TRUE
+    ),
+    make_provider(signed_request_object_required = TRUE),
+    make_provider(request_parameter_supported = TRUE),
+    make_provider(request_object_encryption_jwk = encryption_key)
+  )
+
+  for (variant in variants) {
+    expect_false(identical(
+      base,
+      shinyOAuth:::provider_fingerprint(variant)
+    ))
+  }
+})
