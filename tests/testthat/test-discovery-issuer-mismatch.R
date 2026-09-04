@@ -77,25 +77,25 @@ test_that("validate_discovery_issuer errors on issuer path mismatch by default",
   )
 })
 
-test_that("validate_discovery_issuer matches without a trailing slash", {
+test_that("validate_discovery_issuer rejects a missing trailing slash", {
   f <- shinyOAuth:::validate_discovery_issuer
-  expect_identical(
+  expect_error(
     f(
       "https://login.example.com/tenant-a/",
       "https://login.example.com/tenant-a"
     ),
-    "https://login.example.com/tenant-a"
+    class = "shinyOAuth_config_error"
   )
 })
 
-test_that("validate_discovery_issuer matches with a trailing slash", {
+test_that("validate_discovery_issuer rejects an added trailing slash", {
   f <- shinyOAuth:::validate_discovery_issuer
-  expect_identical(
+  expect_error(
     f(
       "https://login.example.com/tenant-a",
       "https://login.example.com/tenant-a/"
     ),
-    "https://login.example.com/tenant-a/"
+    class = "shinyOAuth_config_error"
   )
 })
 

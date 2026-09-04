@@ -234,7 +234,7 @@ test_that("fetch_jwks stores jwks_uri_host in cache entry", {
     res$send_json(object = good_jwks, auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- sub("/$", "", srv$url())
 
   cache <- cachem::cache_mem(max_age = 3600)
   shinyOAuth:::fetch_jwks(
@@ -376,7 +376,9 @@ test_that("oidc discovery preserves jwks_uri for runtime verification", {
   base <- sub("/$", "", srv$url())
   withr::local_options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
-  provider <- oauth_provider_oidc_discover(issuer = srv$url())
+  provider <- oauth_provider_oidc_discover(
+    issuer = sub("/$", "", srv$url())
+  )
   jwks <- shinyOAuth:::fetch_jwks(
     issuer = provider@issuer,
     jwks_cache = provider@jwks_cache,
@@ -412,7 +414,7 @@ test_that("fetch_jwks rejects discovery issuer mismatch by default", {
     res$send_json(object = good_jwks, auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- sub("/$", "", srv$url())
 
   cache <- cachem::cache_mem(max_age = 3600)
   expect_error(
@@ -496,7 +498,7 @@ test_that("fetch_jwks does not reuse cached entry after global host allowlist ti
     res$send_json(object = good_jwks, auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- sub("/$", "", srv$url())
 
   cache <- cachem::cache_mem(max_age = 3600)
   jwks <- shinyOAuth:::fetch_jwks(

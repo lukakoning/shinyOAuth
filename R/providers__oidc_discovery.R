@@ -166,8 +166,8 @@
 #'  discovery document's `issuer` against the input `issuer`.
 #'
 #'  - `"url"` (default): require the issuer used for discovery to match
-#'    after normalizing a full discovery-document input back to its issuer base
-#'    URL and removing one trailing slash from both values (recommended).
+#'    exactly after normalizing a full discovery-document input back to its
+#'    issuer base URL, including any trailing slash (recommended).
 #'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
 #'  - `"none"`: do not validate issuer consistency.
 #'

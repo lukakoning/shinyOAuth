@@ -30,7 +30,7 @@ testthat::test_that("discovery selects conservative client auth methods (basic/p
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
   testthat::expect_identical(prov@token_auth_style, "header")
@@ -60,7 +60,7 @@ testthat::test_that("discovery returns body when only client_secret_post is adve
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
   testthat::expect_identical(prov@token_auth_style, "body")
@@ -90,7 +90,7 @@ testthat::test_that("discovery with 'none' requires PKCE and uses public auth wh
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   # With PKCE (default TRUE), we accept and use the dedicated public style
   prov <- oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
@@ -136,7 +136,7 @@ testthat::test_that("public discovery auth does not read env client_secret", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
   testthat::expect_identical(prov@token_auth_style, "public")
@@ -238,7 +238,7 @@ test_that("oidc discovery accepts advertised signing algorithm supersets", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(
     prov@request_object_signing_alg_values_supported,
@@ -281,7 +281,7 @@ test_that("oidc discovery preserves request-object encryption metadata", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(
     prov@request_object_encryption_alg_values_supported,
@@ -317,7 +317,7 @@ test_that("oidc discovery preserves RFC 9207 callback issuer metadata", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_true(
     isTRUE(prov@authorization_response_iss_parameter_supported)
@@ -350,7 +350,7 @@ test_that("oidc discovery preserves authorization request transport metadata", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(prov@request_parameter_supported, FALSE)
   testthat::expect_identical(prov@request_uri_parameter_supported, TRUE)
@@ -380,7 +380,7 @@ test_that("discovery applies default request transport metadata when omitted", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(prov@request_parameter_supported, FALSE)
   testthat::expect_identical(prov@request_uri_parameter_supported, TRUE)
@@ -412,7 +412,7 @@ test_that("oidc discovery allows PAR when caller-managed request_uri is disabled
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(
     prov@par_url,
@@ -479,7 +479,7 @@ test_that("discovery blocks request mode when request transport is unsupported a
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(prov@request_parameter_supported, FALSE)
   testthat::expect_error(
@@ -531,7 +531,7 @@ test_that("oidc discovery lets caller override request object signing algs", {
   srv <- webfakes::local_app_process(app)
 
   prov <- oauth_provider_oidc_discover(
-    issuer = srv$url(),
+    issuer = sub("/$", "", srv$url()),
     request_object_signing_alg_values_supported = "HS256"
   )
 
@@ -564,7 +564,7 @@ testthat::test_that("JWT-only advertisement requires explicit token_auth_style",
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   # Should error because we no longer auto-select JWT
   testthat::expect_error(
@@ -604,7 +604,7 @@ testthat::test_that("mTLS-only advertisement requires explicit token_auth_style"
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer),
@@ -645,7 +645,7 @@ testthat::test_that("mixed none + client_secret_basic prefers confidential auth"
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   # Even with PKCE enabled, confidential auth (header) should be preferred
   # over public-client 'none' when both are advertised.
@@ -684,7 +684,7 @@ testthat::test_that("mixed none + client_secret_post prefers confidential auth",
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   # Confidential 'body' style should win over public 'none' + PKCE
   prov <- oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE)
@@ -715,7 +715,7 @@ testthat::test_that("when methods are not advertised, fall back to header (histo
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
   testthat::expect_identical(prov@token_auth_style, "header")
@@ -754,7 +754,7 @@ testthat::test_that("discovery stores JAR, PAR, and JWT auth metadata", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- srv$url()
+  issuer <- sub("/$", "", srv$url())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
 
@@ -796,7 +796,7 @@ testthat::test_that("discovery stores RFC 9449 DPoP metadata", {
   })
   srv <- webfakes::local_app_process(app)
 
-  prov <- oauth_provider_oidc_discover(issuer = srv$url())
+  prov <- oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url()))
 
   testthat::expect_identical(
     prov@dpop_signing_alg_values_supported,
@@ -836,7 +836,7 @@ testthat::test_that("discovery stores RFC 8705 mTLS metadata", {
   srv <- webfakes::local_app_process(app)
 
   prov <- oauth_provider_oidc_discover(
-    issuer = srv$url(),
+    issuer = sub("/$", "", srv$url()),
     token_auth_style = "tls_client_auth"
   )
 
@@ -887,7 +887,7 @@ testthat::test_that("discovery rejects malformed tls_client_certificate_bound_ac
 
     testthat::expect_error(
       oauth_provider_oidc_discover(
-        issuer = srv$url(),
+        issuer = sub("/$", "", srv$url()),
         token_auth_style = "tls_client_auth"
       ),
       class = "shinyOAuth_parse_error",
