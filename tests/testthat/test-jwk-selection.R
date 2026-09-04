@@ -181,4 +181,33 @@ test_that("JWK selection treats malformed key_ops as unusable", {
     )),
     0L
   )
+
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "parsed-array", key_ops = list("sign", "verify"))
+    )),
+    1L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "parsed-mixed", key_ops = list("verify", 1))
+    )),
+    0L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "parsed-duplicate", key_ops = list("verify", "verify"))
+    )),
+    0L
+  )
+  expect_length(
+    select_one(modifyList(
+      key_template,
+      list(kid = "parsed-empty", key_ops = list())
+    )),
+    0L
+  )
 })

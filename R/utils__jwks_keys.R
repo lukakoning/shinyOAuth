@@ -8,6 +8,45 @@
 
 ## 1.1 Select candidate keys ---------------------------------------------------
 
+#' Normalize a JWK key_ops array
+#'
+#' `jsonlite` represents JSON arrays as unnamed lists when parsing with
+#' `simplifyVector = FALSE`. Accept that representation only when every array
+#' element is a scalar string. Character vectors remain supported for callers
+#' that already hold normalized JWKs.
+#'
+#' @param value A JWK `key_ops` value.
+#' @return A character vector, or `NULL` when the value is malformed.
+#' @keywords internal
+#' @noRd
+normalize_jwk_key_ops <- function(value) {
+  if (is.character(value)) {
+    return(value)
+  }
+  if (
+    !is.list(value) ||
+      length(value) == 0L ||
+      !is.null(names(value))
+  ) {
+    return(NULL)
+  }
+
+  scalar_strings <- vapply(
+    value,
+    function(operation) {
+      is.character(operation) &&
+        length(operation) == 1L &&
+        !is.na(operation)
+    },
+    logical(1)
+  )
+  if (!all(scalar_strings)) {
+    return(NULL)
+  }
+
+  vapply(value, identity, character(1))
+}
+
 #' Internal: Select candidate JWKs for signature verification
 #'
 #' Filters keys that declare use != "sig" while retaining keys that omit `use`.
@@ -92,7 +131,8 @@ select_candidate_jwks <- function(
       if (inherits(ops, "try-error") || is.null(ops)) {
         return(TRUE)
       }
-      if (!is.character(ops) || length(ops) == 0L || anyNA(ops)) {
+      ops <- normalize_jwk_key_ops(ops)
+      if (is.null(ops) || length(ops) == 0L || anyNA(ops)) {
         return(FALSE)
       }
       if (

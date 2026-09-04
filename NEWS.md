@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* JWKS keys with standard `key_ops` arrays are now considered correctly for
+signature verification and Request Object encryption.
+
 * JWT and JWE parsing now bounds JOSE header size and JSON nesting, and handles
 long string values without disproportionate work.
 

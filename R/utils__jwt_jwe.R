@@ -326,7 +326,8 @@ select_candidate_jwks_for_encryption <- function(
       if (inherits(key_ops, "try-error") || is.null(key_ops)) {
         return(TRUE)
       }
-      if (!is.character(key_ops) || length(key_ops) == 0L || anyNA(key_ops)) {
+      key_ops <- normalize_jwk_key_ops(key_ops)
+      if (is.null(key_ops) || length(key_ops) == 0L || anyNA(key_ops)) {
         return(FALSE)
       }
       if (
@@ -389,7 +390,9 @@ rank_request_object_encryption_jwk <- function(jwk, alg) {
     score <- score + 4L
   }
 
-  key_ops <- jwk[["key_ops"]] %||% character(0)
+  key_ops <- normalize_jwk_key_ops(
+    jwk[["key_ops"]] %||% character(0)
+  ) %||% character(0)
   if (length(key_ops) > 0 && any(key_ops %in% c("encrypt", "wrapKey"))) {
     score <- score + 2L
   }
