@@ -33,13 +33,14 @@ test_that("string_digest keying is controlled by shinyOAuth.audit_digest_key", {
   })
 
   # A fixed key yields deterministic HMAC digests
-  local_with_options(list(shinyOAuth.audit_digest_key = "test-key"), {
+  fixed_key <- "0123456789abcdef0123456789abcdef"
+  local_with_options(list(shinyOAuth.audit_digest_key = fixed_key), {
     d2 <- shinyOAuth:::string_digest("hello")
     d3 <- shinyOAuth:::string_digest("hello")
     expect_identical(d2, d3)
     expect_identical(
       d2,
-      hex(openssl::sha256(charToRaw("hello"), key = charToRaw("test-key")))
+      hex(openssl::sha256(charToRaw("hello"), key = charToRaw(fixed_key)))
     )
   })
 
@@ -49,6 +50,29 @@ test_that("string_digest keying is controlled by shinyOAuth.audit_digest_key", {
     d_default <- shinyOAuth:::string_digest("hello")
     expect_false(identical(d_default, hex(openssl::sha256(charToRaw("hello")))))
   })
+})
+
+test_that("configured audit digest keys fail closed when invalid or weak", {
+  invalid_keys <- list(
+    "",
+    "too-short",
+    c(
+      "0123456789abcdef0123456789abcdef",
+      "fedcba9876543210fedcba9876543210"
+    ),
+    charToRaw("too-short"),
+    123
+  )
+
+  for (key in invalid_keys) {
+    local_with_options(list(shinyOAuth.audit_digest_key = key), {
+      expect_error(
+        shinyOAuth:::get_audit_digest_key(),
+        class = "shinyOAuth_config_error",
+        regexp = "audit_digest_key"
+      )
+    })
+  }
 })
 
 test_that("err_abort/err_pkce attach classes and trace ids", {

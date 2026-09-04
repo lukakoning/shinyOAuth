@@ -18,6 +18,9 @@ per-call arguments may enable, but cannot disable, that policy.
 * ID token, JARM, and signed UserInfo validation now recover when providers
 rotate JWKS key material without changing the key ID.
 
+* Configured audit digest keys must now be scalar and at least 32 bytes; invalid
+or empty values fail closed instead of silently using unkeyed SHA-256.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through

@@ -170,8 +170,17 @@ If you run multiple workers/processes and want digests to be comparable across t
 configure a shared key:
 
 ```r
-options(shinyOAuth.audit_digest_key = Sys.getenv("AUDIT_DIGEST_KEY"))
+audit_digest_key <- Sys.getenv("AUDIT_DIGEST_KEY", unset = NA_character_)
+if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
+  stop("AUDIT_DIGEST_KEY must be configured before the app starts")
+}
+options(shinyOAuth.audit_digest_key = audit_digest_key)
 ```
+
+Configured keys must be a single character value or raw vector containing at
+least 32 bytes. Generate the setting from at least 32 cryptographically random
+bytes and store it in your deployment's secret manager. Invalid, missing, or
+short configured values fail rather than falling back to an unkeyed digest.
 
 To disable keying (legacy deterministic SHA-256 digests):
 

@@ -77,23 +77,35 @@ get_audit_digest_key <- function() {
 
   # Check for explicit user-supplied key
   if (!is.null(opt)) {
-    # User supplied a key; coerce to raw if character
     if (is.character(opt)) {
-      return(charToRaw(paste(opt, collapse = "")))
+      if (
+        length(opt) != 1L ||
+          is.na(opt) ||
+          nchar(opt, type = "bytes") < 32L
+      ) {
+        err_config(c(
+          "x" = "Invalid `shinyOAuth.audit_digest_key` option",
+          "!" = "A configured character key must be one non-missing value of at least 32 bytes.",
+          "i" = "Generate the key from at least 32 random bytes, or use FALSE to explicitly disable HMAC keying."
+        ))
+      }
+      return(charToRaw(opt))
     }
     if (is.raw(opt)) {
+      if (length(opt) < 32L) {
+        err_config(c(
+          "x" = "Invalid `shinyOAuth.audit_digest_key` option",
+          "!" = "A configured raw key must contain at least 32 bytes.",
+          "i" = "Generate the key with a cryptographically secure random source."
+        ))
+      }
       return(opt)
     }
-    # Invalid type: fall through to auto-generate with warning
-    warn_pkg(
-      "Invalid `shinyOAuth.audit_digest_key` option",
-      c(
-        "!" = "`shinyOAuth.audit_digest_key` must be a character scalar or raw vector.",
-        "i" = "Falling back to an auto-generated per-process key."
-      ),
-      .frequency = "once",
-      .frequency_id = "shinyOAuth.audit_digest_key_invalid"
-    )
+    err_config(c(
+      "x" = "Invalid `shinyOAuth.audit_digest_key` option",
+      "!" = "The option must be a character scalar of at least 32 bytes, a raw vector of at least 32 bytes, or FALSE.",
+      "i" = "Remove the option to use an auto-generated per-process key."
+    ))
   }
 
   # Auto-generate per-process key on first call
