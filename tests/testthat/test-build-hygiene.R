@@ -86,3 +86,23 @@ testthat::test_that("integration tests require a fresh successful install", {
   testthat::expect_match(runner_text, 'find.package("shinyOAuth")', fixed = TRUE)
   testthat::expect_match(runner_text, "R_LIBS = integration_library_path", fixed = TRUE)
 })
+
+testthat::test_that("local Keycloak ports are bound only to loopback", {
+  compose_file <- testthat::test_path(
+    "..",
+    "..",
+    "integration",
+    "keycloak",
+    "docker-compose.yml"
+  )
+  testthat::skip_if_not(
+    file.exists(compose_file),
+    "Integration compose file unavailable in installed package tests"
+  )
+  compose_text <- paste(readLines(compose_file, warn = FALSE), collapse = "\n")
+
+  testthat::expect_match(compose_text, '"127.0.0.1:8080:8080"', fixed = TRUE)
+  testthat::expect_match(compose_text, '"127.0.0.1:8443:8443"', fixed = TRUE)
+  testthat::expect_false(grepl('"8080:8080"', compose_text, fixed = TRUE))
+  testthat::expect_false(grepl('"8443:8443"', compose_text, fixed = TRUE))
+})
