@@ -204,6 +204,44 @@ test_that("UserInfo JWT triggers JWKS refresh when kid misses initially", {
   expect_equal(fetch_call_count, 2L)
 })
 
+test_that("UserInfo JWT refreshes rotated material with the same kid", {
+  old_key <- openssl::rsa_keygen(2048)
+  new_key <- openssl::rsa_keygen(2048)
+  as_public_jwk <- function(key) {
+    jwk <- jsonlite::fromJSON(
+      jose::write_jwk(key$pubkey),
+      simplifyVector = TRUE
+    )
+    jwk$kid <- "stable-kid"
+    jwk$use <- "sig"
+    jwk
+  }
+  stale_jwks <- list(keys = list(as_public_jwk(old_key)))
+  fresh_jwks <- list(keys = list(as_public_jwk(new_key)))
+  claims <- list(
+    sub = "user-rotated",
+    iss = "https://issuer.example.com",
+    aud = "abc"
+  )
+  jwt_body <- make_signed_jwt_h(claims, new_key, kid = "stable-kid")
+  cli <- make_userinfo_client()
+  fetches <- 0L
+
+  testthat::local_mocked_bindings(
+    req_with_retry = mock_jwt_response(jwt_body),
+    fetch_jwks = function(..., force_refresh = FALSE) {
+      fetches <<- fetches + 1L
+      if (isTRUE(force_refresh)) fresh_jwks else stale_jwks
+    },
+    jwks_force_refresh_allowed = function(...) TRUE,
+    .package = "shinyOAuth"
+  )
+
+  result <- get_userinfo(cli, token = "access-token")
+  expect_identical(result[["sub"]], "user-rotated")
+  expect_identical(fetches, 2L)
+})
+
 test_that("UserInfo JWT fails closed when JWKS refresh is rate-limited", {
   key <- openssl::rsa_keygen(2048)
 

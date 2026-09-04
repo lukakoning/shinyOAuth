@@ -155,7 +155,7 @@ validate_id_token <- function(
         pin_mode = pin_mode,
         provider = prov
       )
-      verified <- FALSE
+      did_force_refresh <- FALSE
       # Determine candidate keys with safer kid handling
       if (!is.null(kid)) {
         # If header has kid, try only matching keys. If none match, refresh JWKS once and try again.
@@ -166,7 +166,6 @@ validate_id_token <- function(
           pins = pins
         )
         if (length(kid_keys) == 0L) {
-          did_force_refresh <- FALSE
           if (
             isTRUE(jwks_force_refresh_allowed(
               issuer,
@@ -238,24 +237,45 @@ validate_id_token <- function(
         err_id_token("No Microsoft JWKS key matches token issuer scope")
       }
 
-      # Attempt verification only with the selected keys (no fallback to all when kid is present)
-      for (jk in keys) {
-        pub <- try(jwk_to_pubkey(jk), silent = TRUE)
-        if (inherits(pub, "try-error")) {
-          next
-        }
-        if (isTRUE(verify_jws_signature_no_time(id_token, pub, alg))) {
-          verified <- TRUE
-          if (identical(alg, "EdDSA")) {
-            verified_eddsa_curve <- resolve_verified_eddsa_curve(
-              jwk = jk,
-              key = pub
-            )
-          }
-          break
+      # A provider may rotate key material while retaining the same kid. If
+      # cached candidates do not verify, refresh once under the shared throttle
+      # and retry with only the newly selected candidates.
+      verified_key <- verify_jwt_with_jwks(id_token, keys, alg)
+      if (is.null(verified_key) && !isTRUE(did_force_refresh)) {
+        refreshed_jwks <- force_refresh_provider_jwks(
+          issuer,
+          jwks_cache,
+          pins = pins,
+          pin_mode = pin_mode,
+          provider = prov
+        )
+        if (!is.null(refreshed_jwks)) {
+          did_force_refresh <- TRUE
+          keys <- select_candidate_jwks(
+            refreshed_jwks,
+            header_alg = alg,
+            kid = kid,
+            pins = pins
+          )
+          keys <- filter_jwks_for_alg(keys, alg)
+          keys <- filter_microsoft_jwks_for_token_issuer(
+            keys,
+            provider_issuer = issuer,
+            token_issuer = parsed_payload[["iss"]] %||% NULL,
+            token_tid = issuer_expectation[["token_tid"]]
+          )
+          verified_key <- verify_jwt_with_jwks(id_token, keys, alg)
         }
       }
-      if (!isTRUE(verified)) err_id_token("ID token signature invalid")
+      if (is.null(verified_key)) {
+        err_id_token("ID token signature invalid")
+      }
+      if (identical(alg, "EdDSA")) {
+        verified_eddsa_curve <- resolve_verified_eddsa_curve(
+          jwk = verified_key[["jwk"]],
+          key = verified_key[["key"]]
+        )
+      }
     } else if (alg %in% c("HS256", "HS384", "HS512")) {
       # Gate HMAC verification behind an explicit, opt-in option
       allow_hs <- isTRUE(getOption("shinyOAuth.allow_hs", FALSE))

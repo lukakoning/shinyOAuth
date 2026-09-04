@@ -233,8 +233,9 @@ runtime metadata-based JWKS resolution.
 
 In most cases, a TTL between 15 minutes and 2 hours is reasonable. Shorter
 TTLs pick up new keys faster but do more network work; longer TTLs reduce
-traffic but may take longer to notice key rotation. If a new \code{kid} appears,
-shinyOAuth will also do a one-time refresh automatically.}
+traffic but may take longer to notice key rotation. If a new \code{kid} appears
+or cached key material no longer verifies a signature, shinyOAuth also
+performs a rate-limited one-time refresh automatically.}
 
 \item{jwks_cache}{Cache used for the provider's signing keys (JWKS). If not
 provided, shinyOAuth creates an in-memory cache for 1 hour with

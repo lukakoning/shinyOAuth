@@ -81,6 +81,62 @@ test_that("Unknown kid triggers at most one forced JWKS refresh per interval", {
   expect_gte(total_fetches, 3L)
 })
 
+test_that("ID token verification refreshes rotated key material with the same kid", {
+  testthat::skip_if_not_installed("jose")
+
+  old_key <- openssl::rsa_keygen(bits = 2048)
+  new_key <- openssl::rsa_keygen(bits = 2048)
+  as_public_jwk <- function(key) {
+    jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+    list(kty = jwk$kty, n = jwk$n, e = jwk$e, kid = "stable-kid")
+  }
+  stale_jwks <- list(keys = list(as_public_jwk(old_key)))
+  fresh_jwks <- list(keys = list(as_public_jwk(new_key)))
+  now <- as.numeric(Sys.time())
+  issuer <- "https://issuer.example.test"
+  provider <- oauth_provider(
+    name = "rotating",
+    auth_url = paste0(issuer, "/authorize"),
+    token_url = paste0(issuer, "/token"),
+    issuer = issuer,
+    allowed_algs = "RS256",
+    jwks_cache = cachem::cache_mem(max_age = 3600)
+  )
+  client <- oauth_client(
+    provider = provider,
+    client_id = "client-1",
+    client_secret = "unused",
+    redirect_uri = "https://client.example.test/callback"
+  )
+  id_token <- jose::jwt_encode_sig(
+    jose::jwt_claim(
+      iss = issuer,
+      aud = "client-1",
+      sub = "user-1",
+      exp = now + 120,
+      iat = now - 1
+    ),
+    key = new_key,
+    header = list(alg = "RS256", kid = "stable-kid", typ = "JWT")
+  )
+  fetches <- 0L
+
+  testthat::with_mocked_bindings(
+    fetch_jwks = function(..., force_refresh = FALSE) {
+      fetches <<- fetches + 1L
+      if (isTRUE(force_refresh)) fresh_jwks else stale_jwks
+    },
+    jwks_force_refresh_allowed = function(...) TRUE,
+    .package = "shinyOAuth",
+    {
+      payload <- shinyOAuth:::validate_id_token(client, id_token)
+      expect_identical(payload[["sub"]], "user-1")
+    }
+  )
+
+  expect_identical(fetches, 2L)
+})
+
 test_that("shared JWKS refresh throttling uses an atomic claim", {
   claimed <- FALSE
   get_calls <- 0L

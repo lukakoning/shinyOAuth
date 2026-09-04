@@ -580,6 +580,60 @@ jwks_force_refresh_allowed <- function(
   TRUE
 }
 
+#' Force-refresh provider JWKS when the shared throttle allows it
+#'
+#' Used after a key miss or signature failure so key rotation can be recovered
+#' without allowing unbounded network fetches.
+#'
+#' @param issuer Issuer URL.
+#' @param jwks_cache JWKS cache backend.
+#' @param pins Optional pinned JWK thumbprints.
+#' @param pin_mode Pinning mode.
+#' @param provider Optional OAuth provider carrying issuer and host policy.
+#' @param min_interval Minimum seconds between forced refreshes.
+#' @return Refreshed JWKS, or `NULL` when the refresh is rate-limited.
+#' @keywords internal
+#' @noRd
+force_refresh_provider_jwks <- function(
+  issuer,
+  jwks_cache,
+  pins = NULL,
+  pin_mode = c("any", "all"),
+  provider = NULL,
+  min_interval = 30
+) {
+  pin_mode <- match.arg(pin_mode)
+  host_match <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
+  allow_only <- try(provider@jwks_host_allow_only, silent = TRUE)
+  if (inherits(allow_only, "try-error")) {
+    allow_only <- NA_character_
+  }
+
+  allowed <- jwks_force_refresh_allowed(
+    issuer,
+    jwks_cache,
+    pins = pins,
+    pin_mode = pin_mode,
+    min_interval = min_interval,
+    issuer_match = provider_issuer_match(provider),
+    jwks_host_issuer_match = host_match,
+    jwks_host_allow_only = allow_only,
+    jwks_uri_override = provider_jwks_uri(provider)
+  )
+  if (!isTRUE(allowed)) {
+    return(NULL)
+  }
+
+  fetch_jwks(
+    issuer,
+    jwks_cache,
+    force_refresh = TRUE,
+    pins = pins,
+    pin_mode = pin_mode,
+    provider = provider
+  )
+}
+
 #' Internal: Compute cache key for JWKS entries
 #'
 #' Internal: normalize host allowlist patterns for JWKS cache keys

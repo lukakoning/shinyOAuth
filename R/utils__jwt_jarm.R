@@ -191,6 +191,7 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
     pin_mode = prov@jwks_pin_mode %||% "any",
     provider = prov
   )
+  did_force_refresh <- FALSE
   if (!is.null(kid)) {
     keys <- select_candidate_jwks(
       jwks,
@@ -199,7 +200,6 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
       pins = prov@jwks_pins %||% character()
     )
     if (length(keys) == 0L) {
-      did_force_refresh <- FALSE
       if (
         isTRUE(jwks_force_refresh_allowed(
           prov@issuer,
@@ -258,14 +258,29 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
     err_invalid_state("No compatible provider JWKS keys found for JARM")
   }
 
-  for (jk in keys) {
-    pub <- try(jwk_to_pubkey(jk), silent = TRUE)
-    if (inherits(pub, "try-error")) {
-      next
+  verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
+  if (is.null(verified_key) && !isTRUE(did_force_refresh)) {
+    refreshed_jwks <- force_refresh_provider_jwks(
+      prov@issuer,
+      prov@jwks_cache,
+      pins = prov@jwks_pins %||% character(),
+      pin_mode = prov@jwks_pin_mode %||% "any",
+      provider = prov
+    )
+    if (!is.null(refreshed_jwks)) {
+      keys <- select_candidate_jwks(
+        refreshed_jwks,
+        header_alg = alg,
+        kid = kid,
+        pins = prov@jwks_pins %||% character()
+      )
+      keys <- filter_jwks_for_alg(keys, alg)
+      verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
     }
-    if (isTRUE(verify_jws_signature_no_time(jwt_str, pub, alg))) {
-      return(invisible(TRUE))
-    }
+  }
+
+  if (!is.null(verified_key)) {
+    return(invisible(TRUE))
   }
 
   err_invalid_state("JARM signature is invalid")

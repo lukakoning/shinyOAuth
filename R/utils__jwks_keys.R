@@ -251,6 +251,32 @@ jwk_to_pubkey <- function(jwk) {
   key
 }
 
+#' Verify a JWT against candidate JWKS keys
+#'
+#' Tries each already-selected candidate key and returns the matching JWK and
+#' parsed public key. Used by ID token, JARM, and signed UserInfo validation so
+#' they can retry once after a JWKS refresh without duplicating verification
+#' logic.
+#'
+#' @param jwt Compact JWT string.
+#' @param keys Candidate JWK list.
+#' @param alg Expected signing algorithm.
+#' @return A list containing `jwk` and `key`, or `NULL` when none verify.
+#' @keywords internal
+#' @noRd
+verify_jwt_with_jwks <- function(jwt, keys, alg) {
+  for (jwk in keys) {
+    key <- try(jwk_to_pubkey(jwk), silent = TRUE)
+    if (inherits(key, "try-error")) {
+      next
+    }
+    if (isTRUE(verify_jws_signature_no_time(jwt, key, alg))) {
+      return(list(jwk = jwk, key = key))
+    }
+  }
+  NULL
+}
+
 #' Internal: Compute RFC 7638 JWK thumbprint (SHA-256, base64url, no padding)
 #'
 #' Supports RSA, EC, and OKP public keys. The canonical JSON serialization uses

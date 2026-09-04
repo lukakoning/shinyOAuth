@@ -15,6 +15,9 @@ per-call arguments may enable, but cannot disable, that policy.
 
 * Public clients must now enable PKCE.
 
+* ID token, JARM, and signed UserInfo validation now recover when providers
+rotate JWKS key material without changing the key ID.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through

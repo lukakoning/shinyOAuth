@@ -459,6 +459,44 @@ test_that("validate_jarm_response refreshes JWKS once when JARM kid is missing",
   expect_identical(fetch_call_count, 2L)
 })
 
+test_that("validate_jarm_response refreshes rotated material with the same kid", {
+  old_key <- openssl::rsa_keygen()
+  new_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "state-1"
+    ),
+    key = new_key,
+    kid = "stable-kid"
+  )
+  stale_jwks <- list(
+    keys = list(make_jarm_public_jwk(old_key, kid = "stable-kid"))
+  )
+  fresh_jwks <- list(
+    keys = list(make_jarm_public_jwk(new_key, kid = "stable-kid"))
+  )
+  fetches <- 0L
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(..., force_refresh = FALSE) {
+      fetches <<- fetches + 1L
+      if (isTRUE(force_refresh)) fresh_jwks else stale_jwks
+    },
+    jwks_force_refresh_allowed = function(...) TRUE,
+    .package = "shinyOAuth"
+  )
+
+  normalized <- shinyOAuth:::validate_jarm_response(client, response)
+  expect_identical(normalized$code, "ok")
+  expect_identical(fetches, 2L)
+})
+
 test_that("validate_jarm_response fails closed when JARM JWKS refresh is rate-limited", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")

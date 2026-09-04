@@ -605,6 +605,7 @@ decode_userinfo_jwt <- function(
     pins = prov@jwks_pins %||% character()
   )
   keys <- filter_jwks_for_alg(keys, alg)
+  did_force_refresh <- FALSE
 
   # One-shot JWKS refresh-on-kid-miss: if kid is present but no candidate keys
   # match, force-refresh JWKS once then re-select (mirrors validate_id_token()).
@@ -628,6 +629,7 @@ decode_userinfo_jwt <- function(
         jwks_uri_override = provider_jwks_uri(prov)
       ))
     ) {
+      did_force_refresh <- TRUE
       jwks <- try(
         fetch_jwks(
           prov@issuer,
@@ -651,47 +653,67 @@ decode_userinfo_jwt <- function(
     }
   }
 
-  if (length(keys) > 0L) {
-    for (jk in keys) {
-      pub <- try(jwk_to_pubkey(jk), silent = TRUE)
-      if (inherits(pub, "try-error")) {
-        next
-      }
-      if (!isTRUE(verify_jws_signature_no_time(jwt_str, pub, alg))) {
-        next
-      }
+  verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
+  if (
+    is.null(verified_key) &&
+      length(keys) > 0L &&
+      !isTRUE(did_force_refresh)
+  ) {
+    refreshed_jwks <- try(
+      force_refresh_provider_jwks(
+        prov@issuer,
+        prov@jwks_cache,
+        pins = prov@jwks_pins %||% character(),
+        pin_mode = prov@jwks_pin_mode %||% "any",
+        provider = prov
+      ),
+      silent = TRUE
+    )
+    if (!inherits(refreshed_jwks, "try-error") && !is.null(refreshed_jwks)) {
+      keys <- select_candidate_jwks(
+        refreshed_jwks,
+        header_alg = alg,
+        kid = kid,
+        pins = prov@jwks_pins %||% character()
+      )
+      keys <- filter_jwks_for_alg(keys, alg)
+      verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
+    }
+  }
 
-      claims <- try(parse_jwt_payload(jwt_str), silent = TRUE)
-      if (inherits(claims, "try-error")) {
-        audit_userinfo_event(
-          oauth_client,
-          status = "userinfo_jwt_payload_parse_failed",
-          shiny_session = shiny_session
-        )
-        err_userinfo(c(
-          "x" = "UserInfo JWT payload could not be parsed",
-          "i" = tryCatch(
-            conditionMessage(attr(claims, "condition")),
-            error = function(e) as.character(claims)
-          )
-        ))
-      }
-
-      claims <- as.list(claims)
-      # §5.3.2 MUST: signed userinfo MUST contain iss matching the
-      # OP's Issuer Identifier and aud matching/including the RP's
-      # Client ID. Temporal validation is delegated here so provider leeway
-      # is applied consistently across signed UserInfo JWT verification.
-      validate_signed_userinfo_claims(
-        claims,
-        expected_issuer = prov@issuer,
-        expected_client_id = oauth_client@client_id,
-        oauth_client = oauth_client,
+  if (!is.null(verified_key)) {
+    claims <- try(parse_jwt_payload(jwt_str), silent = TRUE)
+    if (inherits(claims, "try-error")) {
+      audit_userinfo_event(
+        oauth_client,
+        status = "userinfo_jwt_payload_parse_failed",
         shiny_session = shiny_session
       )
-      return(claims)
+      err_userinfo(c(
+        "x" = "UserInfo JWT payload could not be parsed",
+        "i" = tryCatch(
+          conditionMessage(attr(claims, "condition")),
+          error = function(e) as.character(claims)
+        )
+      ))
     }
 
+    claims <- as.list(claims)
+    # §5.3.2 MUST: signed userinfo MUST contain iss matching the
+    # OP's Issuer Identifier and aud matching/including the RP's
+    # Client ID. Temporal validation is delegated here so provider leeway
+    # is applied consistently across signed UserInfo JWT verification.
+    validate_signed_userinfo_claims(
+      claims,
+      expected_issuer = prov@issuer,
+      expected_client_id = oauth_client@client_id,
+      oauth_client = oauth_client,
+      shiny_session = shiny_session
+    )
+    return(claims)
+  }
+
+  if (length(keys) > 0L) {
     # Candidate keys existed but none verified the signature —
     # this indicates tampering or serious misconfiguration.
     audit_userinfo_event(
