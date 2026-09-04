@@ -828,6 +828,9 @@ validate_encrypted_jarm_protected_header <- function(
 #' @param outer_iss Optional RFC 9207 `iss` parameter sent alongside the JARM
 #'   response. When present, it must match the issuer conveyed by the JARM
 #'   response.
+#' @param authenticate_state Optional function that authenticates the sealed
+#'   state claim before any provider JWKS lookup. Callback entry points supply
+#'   this function; lower-level signature tests may omit it.
 #' @return Normalized callback payload list.
 #' @keywords internal
 #' @noRd
@@ -835,7 +838,8 @@ validate_jarm_response <- function(
   oauth_client,
   response,
   transport = c("query", "form_post"),
-  outer_iss = NULL
+  outer_iss = NULL,
+  authenticate_state = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   transport <- match.arg(transport)
@@ -1002,6 +1006,25 @@ validate_jarm_response <- function(
     err_invalid_state(
       "Outer iss parameter does not match JARM iss claim (RFC 9207)"
     )
+  }
+
+  # Authenticate the client-generated sealed state before an untrusted JARM
+  # can trigger a provider JWKS refresh. Full response-shape validation still
+  # occurs after the signature has been verified.
+  state <- jarm_claim(claims, "state")
+  validate_untrusted_query_param(
+    "state",
+    state,
+    oauth_callback_limits()[["state"]]
+  )
+  if (!is_valid_string(state)) {
+    err_invalid_state("JARM payload missing required state")
+  }
+  if (!is.null(authenticate_state)) {
+    if (!is.function(authenticate_state)) {
+      err_config("authenticate_state must be NULL or a function")
+    }
+    authenticate_state(state)
   }
 
   verify_jarm_signature(

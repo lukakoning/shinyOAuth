@@ -415,6 +415,46 @@ test_that("validate_jarm_response verifies signed JARM payloads", {
   expect_identical(normalized$iss, client@provider@issuer)
 })
 
+test_that("JARM authenticates sealed state before any JWKS lookup", {
+  sig_key <- openssl::rsa_keygen()
+  client <- make_jarm_test_client(response_mode = "query.jwt")
+  now <- floor(as.numeric(Sys.time()))
+  response <- make_signed_jarm(
+    payload_list = list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = now + 300,
+      code = "ok",
+      state = "attacker-state"
+    ),
+    key = sig_key,
+    kid = "unknown-kid"
+  )
+  jwks_fetches <- 0L
+
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) {
+      jwks_fetches <<- jwks_fetches + 1L
+      list(keys = list())
+    },
+    .package = "shinyOAuth"
+  )
+
+  testthat::expect_error(
+    shinyOAuth:::validate_jarm_response(
+      client,
+      response,
+      authenticate_state = function(state) {
+        testthat::expect_identical(state, "attacker-state")
+        shinyOAuth:::err_invalid_state("sealed state is invalid")
+      }
+    ),
+    class = "shinyOAuth_state_error",
+    regexp = "sealed state is invalid"
+  )
+  testthat::expect_identical(jwks_fetches, 0L)
+})
+
 test_that("validate_jarm_response refreshes JWKS once when JARM kid is missing", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -1043,7 +1083,7 @@ test_that("validate_jarm_response rejects payloads with both code and error", {
   )
 })
 
-test_that("validate_jarm_response requires state after signature verification", {
+test_that("validate_jarm_response requires state before signature verification", {
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "query.jwt")
   now <- floor(as.numeric(Sys.time()))
@@ -1074,7 +1114,7 @@ test_that("validate_jarm_response requires state after signature verification", 
     class = "shinyOAuth_state_error",
     regexp = "missing required state"
   )
-  expect_true(verified)
+  expect_false(verified)
 })
 
 test_that("validate_jarm_response rejects partially matched JARM claim names", {

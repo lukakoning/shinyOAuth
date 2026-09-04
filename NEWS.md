@@ -26,6 +26,9 @@ cannot be reset safely.
 
 * Provider endpoint URLs now preserve consecutive path slashes.
 
+* JARM callbacks now authenticate their sealed state before they can trigger a
+provider key refresh.
+
 * Added JWT Secured Authorization Response Mode (JARM) support with
 `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`.
 Signed and encrypted JARM responses are validated through

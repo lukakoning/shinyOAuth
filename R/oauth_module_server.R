@@ -2568,12 +2568,31 @@ oauth_module_server <- function(
       transport <- match.arg(transport)
       drop_response <- isTRUE(drop_response) || identical(transport, "query")
 
+      authenticated_state_payload <- decrypted_payload
+      authenticate_jarm_state <- function(state) {
+        authenticated_state_payload <<- if (is.null(decrypted_payload)) {
+          state_payload_decrypt_validate(
+            client,
+            state,
+            audit_success = FALSE
+          )
+        } else {
+          state_payload_revalidate(
+            client,
+            decrypted_payload,
+            audit_success = FALSE
+          )
+        }
+        authenticated_state_payload
+      }
+
       normalized <- tryCatch(
         validate_jarm_response(
           client,
           response,
           transport = transport,
-          outer_iss = outer_iss
+          outer_iss = outer_iss,
+          authenticate_state = authenticate_jarm_state
         ),
         error = function(e) {
           clear_oauth_module_callback_query(
@@ -2610,7 +2629,7 @@ oauth_module_server <- function(
 
       .resume_cached_jarm_response(
         normalized_response = normalized,
-        decrypted_payload = decrypted_payload,
+        decrypted_payload = authenticated_state_payload,
         phase = phase,
         drop_response = drop_response
       )

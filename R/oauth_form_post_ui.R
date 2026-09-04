@@ -306,20 +306,24 @@ oauth_form_post_handle_request <- function(req, id, client) {
           )
         )
         if (identical(payload[["type"]], "response")) {
+          state_payload <- NULL
           normalized <- validate_jarm_response(
             client,
             payload[["response"]],
             transport = "form_post",
-            outer_iss = payload[["iss"]] %||% NULL
+            outer_iss = payload[["iss"]] %||% NULL,
+            authenticate_state = function(state) {
+              state_payload <<- state_payload_decrypt_validate(
+                client,
+                state,
+                audit_success = FALSE
+              )
+              state_payload
+            }
           )
           # Persist the normalized JARM callback so the module can resume from
           # this prevalidated result without depending on a second JWKS fetch.
           payload[["normalized_response"]] <- normalized
-          state_payload <- state_payload_decrypt_validate(
-            client,
-            normalized[["state"]] %||% NA_character_,
-            audit_success = FALSE
-          )
           otel_set_span_attributes(
             attributes = list(
               shinyoauth.trace_id = state_payload[[
