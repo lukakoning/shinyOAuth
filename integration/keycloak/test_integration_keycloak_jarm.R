@@ -300,10 +300,14 @@ testthat::test_that("Keycloak signed query.jwt live flow exercises duplicate iss
 
       testthat::expect_true(keycloak_nonempty_string(response_jwt))
       testthat::expect_gte(iss_count, 2L)
-      testthat::expect_error(
+      strict_error <- testthat::expect_error(
         shinyOAuth:::validate_jarm_response(strict_client, response_jwt),
         class = "shinyOAuth_state_error",
-        regexp = "duplicate member name: iss"
+        regexp = "JARM payload could not be parsed"
+      )
+      testthat::expect_identical(
+        strict_error$context$phase,
+        "jarm_payload"
       )
 
       values$.process_query(callback_query(login))
