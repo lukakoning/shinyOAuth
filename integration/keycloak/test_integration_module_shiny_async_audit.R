@@ -114,7 +114,7 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     character(1)
   )
   testthat::expect_true(
-    all(!nzchar(probe_error_types)),
+    !any(nzchar(probe_error_types)),
     info = paste(probe_error_types[nzchar(probe_error_types)], collapse = ", ")
   )
   if (any(nzchar(probe_error_types))) {

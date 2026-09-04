@@ -36,7 +36,7 @@
 #'
 #' @examples
 #' ui <- shiny::fluidPage(
-#'   use_shinyOAuth(),
+#'   use_shinyOAuth()
 #'   # ...
 #' )
 #'

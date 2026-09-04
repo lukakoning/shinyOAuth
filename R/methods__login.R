@@ -2888,7 +2888,7 @@ verify_token_set <- function(
           client = client,
           token_set = token_set
         )
-      ),
+      )
     )
   )
 }

@@ -683,7 +683,7 @@ claim_has_meaningful_value <- function(value) {
     return(any(!is.na(value) & nzchar(value)))
   }
   if (is.atomic(value)) {
-    return(any(!is.na(value)))
+    return(!all(is.na(value)))
   }
   if (is.list(value)) {
     return(any(vapply(value, claim_has_meaningful_value, logical(1))))
